@@ -89,7 +89,11 @@ export const buildContextCapsule = async (
             rerankPort: requestNoRerank ? null : (deps.rerankPort ?? null),
           },
           request.query,
-          { ...request, noRerank: requestNoRerank }
+          {
+            ...request,
+            noRerank: requestNoRerank,
+            traceSession: deps.traceSession,
+          }
         );
         if (!result.ok) {
           throw new ContextRuntimeError(
@@ -113,6 +117,16 @@ export const buildContextCapsule = async (
       budgetExhausted
         ? "No evidence fit the requested Context Capsule budget"
         : "No in-scope evidence was available for the Context Capsule"
+    );
+  }
+  const traceResult = await deps.traceSession?.recordContext(
+    plan.projection.value
+  );
+  if (traceResult && !traceResult.ok) {
+    throw new ContextRuntimeError(
+      "retrieval_failed",
+      `Trace recording failed: ${traceResult.error.message}`,
+      traceResult.error.cause
     );
   }
   return plan.projection.value;

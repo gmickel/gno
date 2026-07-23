@@ -36,9 +36,8 @@ Deliver add opt-in trace storage retention and redaction as one implementation-s
 
 
 ## Done summary
-TBD
-
+Implemented opt-in private retrieval trace storage with strict metadata/replay redaction, migration v14, atomic idempotency, deterministic bounded retention, exact cascade deletion, physical purge receipts, closed evidence schemas, and documented configuration/database contracts. Independent review: SHIP. Commit: 0902389.
 ## Evidence
 - Commits:
-- Tests:
+- Tests: bun run lint:check, bun test test/store/adapter.test.ts test/store/retrieval-traces.test.ts test/store/retrieval-trace-purge.test.ts test/store/migrations.test.ts, bun run docs:verify, .flow/bin/flowctl validate --spec fn-100-private-retrieval-learning-loop --json, git diff --check
 - PRs:

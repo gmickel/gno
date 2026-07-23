@@ -2,6 +2,7 @@ import type { Config } from "../config/types";
 import type { ContextCapsuleV1 } from "../core/context-capsule";
 import type { ContextEvidenceCompilerDeps } from "../core/context-evidence";
 import type { ContextVerifierDeps } from "../core/context-verifier";
+import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { EmbeddingPort, RerankPort } from "../llm/types";
 import type { QueryModeInput } from "../pipeline/types";
 import type { StorePort } from "../store/types";
@@ -45,6 +46,8 @@ export interface ContextCapsuleRuntimeDeps {
   countTokens?: (accountingJson: string) => number;
   tokenizerFingerprint?: string | null;
   resolveCurrentRanks?: ContextVerifierDeps["resolveCurrentRanks"];
+  /** Optional non-canonical receipt session owned by the calling surface. */
+  traceSession?: RetrievalTraceSession;
 }
 
 export type ContextRuntimeErrorCode =

@@ -79,6 +79,10 @@ editorUriTemplate: "vscode://file/{path}:{line}:{col}"
 gateway:
   host: 127.0.0.1
   enableWrite: false
+
+# Private local retrieval receipts are absent/off by default.
+retrievalTraces:
+  enabled: false
 ```
 
 ## Resident HTTP MCP Gateway
@@ -118,6 +122,83 @@ Upgrading from a stdio-only setup requires no client-config migration:
 `gno mcp` remains supported. Start `gno serve` or `gno daemon` only for clients
 that can use the resident URL `http://127.0.0.1:3000/mcp`. Stop any resident
 owner for the same data directory before switching between serve and daemon.
+
+## Private Retrieval Traces
+
+Retrieval trace recording is local, opt-in, and disabled when
+`retrievalTraces` is absent or `enabled: false`. Enabling it requires an
+explicit redaction mode and every retention bound:
+
+```yaml
+retrievalTraces:
+  enabled: true
+  redactionMode: metadata
+  retention:
+    maxAgeDays: 30
+    maxTraces: 1000
+    maxRecordsPerTrace: 10000
+    maxBytes: 16777216
+```
+
+`metadata` stores content-free query/goal/filter shapes plus validated evidence
+identity such as source hashes, docids, ranks, and exact line spans. It does not
+store raw query, goal, filter values, passages, filesystem paths, or external
+URLs, and it is not replay-capable.
+
+`replay` is separate, explicit consent to retain the normalized raw query,
+goal, and validated retrieval filters. Even in replay mode, event/run payloads
+use closed evidence schemas: no source passages, absolute paths, or external
+URLs are accepted. Receipts stay in the active local index database; the
+recorder has no telemetry or upload path.
+
+Each traced application request creates one local session at the CLI, REST,
+MCP, or SDK boundary. It records normalized retrieval stages, exact canonical
+source spans, explicit open/cite/pin outcomes, capability fallbacks, and a
+terminal outcome. Search-result planner details remain internal and do not
+change public result JSON. Ask records only citations retained after final
+citation validation; failures, partial answers, and cancellations are terminal
+states, never implicit relevance judgments.
+
+Random trace identity is response metadata only: CLI stderr, the
+`X-GNO-Trace-ID` REST header, MCP `_meta.gno.retrievalTrace.traceId`, or the
+SDK's non-enumerable `RETRIEVAL_TRACE_METADATA` symbol. It never enters a
+canonical Context Capsule or changes `capsuleId`. Retrieval-only CLI calls may
+be continued with `gno get --trace-id <id>`.
+
+Retention uses epoch-millisecond timestamps and deterministically removes
+expired traces first, then traces exceeding the per-trace record limit, then
+the oldest traces until count and logical-storage byte bounds are satisfied.
+Changing `maxAgeDays` applies the shorter current policy to existing receipts.
+
+Per-trace deletion removes every owned run, event, judgment, and export link
+transactionally, but SQLite WAL history may remain until checkpointed. Full
+purge enables SQLite secure deletion for the transaction and requires a
+successful truncating WAL checkpoint before reporting physical cleanup
+complete. User-created exports and external backups remain user-owned and must
+be deleted separately.
+
+Disabling `retrievalTraces.enabled` stops new capture and fingerprint work; it
+does not make existing local receipts unmanageable. `gno trace`, the SDK, and
+the loopback REST/Web surfaces can still inspect, explicitly label, export, or
+delete stored receipts. Metadata-mode label references use an index-local,
+random redaction secret persisted in database metadata so retries stay stable
+across restarts without exposing the secret through any surface.
+
+### Trace schema upgrades and recovery
+
+Trace storage is database schema v14. Existing v12 and v13 indexes upgrade
+transactionally: a failed migration preserves the prior schema version and
+does not leave partial trace tables. Stop the active resident owner and back up
+the SQLite database together with live `-wal`/`-shm` companions before moving
+an important index between GNO versions; never copy a database while it is
+being written.
+
+There is no in-place downgrade command. Disabling recording is reversible and
+does not delete receipts. Use explicit export first when evidence must be
+retained, `gno trace delete` for one receipt, or `gno --yes trace purge --json`
+for all local trace rows. Only a purge receipt with
+`physicalCleanup: completed` proves WAL truncation; exported artifacts and
+external backups remain outside the purge boundary.
 
 ## Collections
 

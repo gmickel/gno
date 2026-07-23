@@ -16,6 +16,7 @@ import {
 } from "../../app/context-surface";
 import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
 import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
+import { RETRIEVAL_TRACE_METADATA } from "../../core/retrieval-trace-session";
 import { normalizeTag } from "../../core/tags";
 import { handleAddCollection } from "./add-collection";
 import { handleCapture } from "./capture";
@@ -42,6 +43,20 @@ import { handleRemoveCollection } from "./remove-collection";
 import { handleSearch } from "./search";
 import { handleStatus } from "./status";
 import { handleSync } from "./sync";
+import {
+  handleTraceDelete,
+  handleTraceExport,
+  handleTraceLabel,
+  handleTraceList,
+  handleTracePurge,
+  handleTraceShow,
+  traceDeleteInputSchema,
+  traceExportInputSchema,
+  traceLabelInputSchema,
+  traceListInputSchema,
+  tracePurgeInputSchema,
+  traceShowInputSchema,
+} from "./trace";
 import { handleVsearch } from "./vsearch";
 import {
   handleCreateFolder,
@@ -96,6 +111,10 @@ export const MCP_WRITE_TOOL_NAMES = new Set([
   "gno_rename_note",
   "gno_move_note",
   "gno_duplicate_note",
+  "gno_trace_label",
+  "gno_trace_export",
+  "gno_trace_delete",
+  "gno_trace_purge",
 ]);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -563,6 +582,12 @@ const getInputSchema = z.object({
     .boolean()
     .default(true)
     .describe("Include line numbers in output"),
+  traceId: z
+    .string()
+    .min(1)
+    .max(128)
+    .optional()
+    .describe("Continue an open retrieval trace returned by a search/query"),
 });
 
 const multiGetInputSchema = z.object({
@@ -847,9 +872,16 @@ export async function runTool<T>(
   const modelLease = ctx.acquireModelLease?.();
   try {
     const data = await (ctx.runWithSnapshot?.(fn) ?? fn());
+    const traceMetadata =
+      data !== null && typeof data === "object"
+        ? (data as Record<PropertyKey, unknown>)[RETRIEVAL_TRACE_METADATA]
+        : undefined;
     return {
       content: [{ type: "text", text: formatText(data) }],
       structuredContent: data as { [x: string]: unknown },
+      ...(traceMetadata
+        ? { _meta: { gno: { retrievalTrace: traceMetadata } } }
+        : {}),
     };
   } catch (e) {
     // Exception firewall: never throw, always return isError
@@ -996,6 +1028,20 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   );
 
   server.tool(
+    "gno_trace_list",
+    "List bounded metadata-only summaries of private local retrieval traces. Raw replay queries are omitted from history.",
+    traceListInputSchema.shape,
+    (args) => handleTraceList(args, ctx)
+  );
+
+  server.tool(
+    "gno_trace_show",
+    "Inspect one bounded local retrieval trace. Replay-mode content is returned only for the explicitly requested trace.",
+    traceShowInputSchema.shape,
+    (args) => handleTraceShow(args, ctx)
+  );
+
+  server.tool(
     "gno_list_tags",
     "List all tags with document counts. Use prefix to filter hierarchical tags (e.g. 'project/').",
     listTagsInputSchema.shape,
@@ -1052,6 +1098,34 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   );
 
   if (ctx.enableWrite) {
+    server.tool(
+      "gno_trace_label",
+      "Append an explicit relevant, irrelevant, or missing_expected judgment to a local retrieval trace.",
+      traceLabelInputSchema.shape,
+      (args) => handleTraceLabel(args, ctx)
+    );
+
+    server.tool(
+      "gno_trace_export",
+      "Build a deterministic local agentic receipt from one or more immutable terminal retrieval traces.",
+      traceExportInputSchema.shape,
+      (args) => handleTraceExport(args, ctx)
+    );
+
+    server.tool(
+      "gno_trace_delete",
+      "Delete one private local retrieval trace and all owned receipt records.",
+      traceDeleteInputSchema.shape,
+      (args) => handleTraceDelete(args, ctx)
+    );
+
+    server.tool(
+      "gno_trace_purge",
+      "Purge every private local retrieval trace receipt. Requires confirm=true.",
+      tracePurgeInputSchema.shape,
+      (args) => handleTracePurge(args, ctx)
+    );
+
     server.tool(
       "gno_capture",
       "Create a new document in a collection. Writes to disk. Does NOT auto-embed; run gno_index after to make it searchable via vector search.",

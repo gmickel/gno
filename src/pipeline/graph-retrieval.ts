@@ -62,6 +62,7 @@ const matchesDocumentFilters = (
     until?: string;
     categories?: string[];
     author?: string;
+    relPathPrefix?: string;
   }
 ): boolean => {
   if (
@@ -201,6 +202,7 @@ export async function expandGraphCandidates(
     until?: string;
     categories?: string[];
     author?: string;
+    relPathPrefix?: string;
   } = {}
 ): Promise<GraphRetrievalResult> {
   const maxCandidates = Math.max(
@@ -247,6 +249,13 @@ export async function expandGraphCandidates(
   const seedDocids = new Set<string>();
   for (const doc of seedDocsResult.value) {
     if (!doc.mirrorHash) {
+      continue;
+    }
+    if (
+      options.relPathPrefix !== undefined &&
+      doc.relPath !== options.relPathPrefix &&
+      !doc.relPath.startsWith(`${options.relPathPrefix}/`)
+    ) {
       continue;
     }
     const rank =
@@ -325,7 +334,12 @@ export async function expandGraphCandidates(
   }
 
   const metadataFilteredDocs = docsResult.value.filter(
-    (doc) => doc.mirrorHash && matchesDocumentFilters(doc, options)
+    (doc) =>
+      doc.mirrorHash &&
+      (options.relPathPrefix === undefined ||
+        doc.relPath === options.relPathPrefix ||
+        doc.relPath.startsWith(`${options.relPathPrefix}/`)) &&
+      matchesDocumentFilters(doc, options)
   );
   const docs = await filterDocsByTags(store, metadataFilteredDocs, options);
   const docByDocid = new Map(docs.map((doc) => [doc.docid, doc]));

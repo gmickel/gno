@@ -52,6 +52,24 @@ import type {
   IngestErrorInput,
   IngestErrorRow,
   MigrationResult,
+  RetrievalTraceAppendResult,
+  RetrievalTraceBundle,
+  RetrievalTraceCursor,
+  RetrievalTraceBoundedBundle,
+  RetrievalTraceDeleteCounts,
+  RetrievalTraceEventInput,
+  RetrievalTraceExportInput,
+  RetrievalTraceExportBundle,
+  RetrievalTraceExportManifestInput,
+  RetrievalTraceExportManifestRow,
+  RetrievalTraceInput,
+  RetrievalTraceJudgmentInput,
+  RetrievalTracePurgeResult,
+  RetrievalTraceRetentionPolicy,
+  RetrievalTraceRetentionResult,
+  RetrievalTraceRow,
+  RetrievalTraceRunInput,
+  RetrievalTraceTerminalStatus,
   StorePort,
   StoreResult,
   TagCount,
@@ -78,6 +96,28 @@ import { err, ok } from "../types";
 import { getStoredEmbeddingFingerprint } from "../vector/freshness";
 import { modelTableName } from "../vector/sqlite-vec";
 import { loadFts5Snowball } from "./fts5-snowball";
+import {
+  appendExportManifest as appendStoredTraceExportManifest,
+  getBoundedTrace as getBoundedStoredTrace,
+  getExportBundle as getStoredTraceExportBundle,
+  getExportManifest as getStoredTraceExportManifest,
+  getOrCreateRedactionSecret as getOrCreateStoredTraceRedactionSecret,
+} from "./retrieval-trace-management-store";
+import {
+  deleteTrace as deleteStoredTrace,
+  enforceRetention as enforceStoredTraceRetention,
+  purgeTraces as purgeStoredTraces,
+} from "./retrieval-trace-retention";
+import {
+  appendEvent as appendStoredTraceEvent,
+  appendExport as appendStoredTraceExport,
+  appendJudgment as appendStoredTraceJudgment,
+  appendRun as appendStoredTraceRun,
+  createTrace as createStoredTrace,
+  finalizeTrace as finalizeStoredTrace,
+  getTrace as getStoredTrace,
+  listTraces as listStoredTraces,
+} from "./retrieval-trace-store";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FTS5 Query Escaping
@@ -780,6 +820,107 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         cause
       );
     }
+  }
+
+  async createRetrievalTrace(
+    input: RetrievalTraceInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return createStoredTrace(this.ensureOpen(), input);
+  }
+
+  async getRetrievalTrace(
+    traceId: string
+  ): Promise<StoreResult<RetrievalTraceBundle | null>> {
+    return getStoredTrace(this.ensureOpen(), traceId);
+  }
+
+  async getBoundedRetrievalTrace(
+    traceId: string,
+    detailLimit: number
+  ): Promise<StoreResult<RetrievalTraceBoundedBundle | null>> {
+    return getBoundedStoredTrace(this.ensureOpen(), traceId, detailLimit);
+  }
+
+  async listRetrievalTraces(
+    limit: number,
+    cursor?: RetrievalTraceCursor
+  ): Promise<StoreResult<RetrievalTraceRow[]>> {
+    return listStoredTraces(this.ensureOpen(), limit, cursor);
+  }
+
+  async finalizeRetrievalTrace(
+    traceId: string,
+    status: RetrievalTraceTerminalStatus,
+    updatedAtMs: number
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return finalizeStoredTrace(this.ensureOpen(), traceId, status, updatedAtMs);
+  }
+
+  async appendRetrievalTraceRun(
+    input: RetrievalTraceRunInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return appendStoredTraceRun(this.ensureOpen(), input);
+  }
+
+  async appendRetrievalTraceEvent(
+    input: RetrievalTraceEventInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return appendStoredTraceEvent(this.ensureOpen(), input);
+  }
+
+  async appendRetrievalTraceJudgment(
+    input: RetrievalTraceJudgmentInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return appendStoredTraceJudgment(this.ensureOpen(), input);
+  }
+
+  async appendRetrievalTraceExport(
+    input: RetrievalTraceExportInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return appendStoredTraceExport(this.ensureOpen(), input);
+  }
+
+  async appendRetrievalTraceExportManifest(
+    input: RetrievalTraceExportManifestInput
+  ): Promise<StoreResult<RetrievalTraceAppendResult>> {
+    return appendStoredTraceExportManifest(this.ensureOpen(), input);
+  }
+
+  async getRetrievalTraceExportManifest(
+    exportId: string
+  ): Promise<StoreResult<RetrievalTraceExportManifestRow | null>> {
+    return getStoredTraceExportManifest(this.ensureOpen(), exportId);
+  }
+
+  async getRetrievalTraceExportBundle(
+    exportId: string
+  ): Promise<StoreResult<RetrievalTraceExportBundle | null>> {
+    return getStoredTraceExportBundle(this.ensureOpen(), exportId);
+  }
+
+  async getOrCreateRetrievalTraceRedactionSecret(): Promise<
+    StoreResult<string>
+  > {
+    return getOrCreateStoredTraceRedactionSecret(this.ensureOpen());
+  }
+
+  async deleteRetrievalTrace(
+    traceId: string
+  ): Promise<StoreResult<RetrievalTraceDeleteCounts>> {
+    return deleteStoredTrace(this.ensureOpen(), traceId);
+  }
+
+  async purgeRetrievalTraces(): Promise<
+    StoreResult<RetrievalTracePurgeResult>
+  > {
+    return purgeStoredTraces(this.ensureOpen());
+  }
+
+  async enforceRetrievalTraceRetention(
+    policy: RetrievalTraceRetentionPolicy,
+    nowMs: number
+  ): Promise<StoreResult<RetrievalTraceRetentionResult>> {
+    return enforceStoredTraceRetention(this.ensureOpen(), policy, nowMs);
   }
 
   getContextGeneration(): number {
@@ -1652,6 +1793,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             SELECT id FROM documents
             WHERE active = 1
             ${options.collection ? "AND collection = ?" : ""}
+            ${
+              options.relPathPrefix !== undefined
+                ? "AND (rel_path = ? OR substr(rel_path, 1, length(?) + 1) = ? || '/')"
+                : ""
+            }
           )
           ORDER BY score
           LIMIT ?
@@ -1705,6 +1851,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const queryParams = [
         builtQuery.query,
         ...(options.collection ? [options.collection] : []),
+        ...(options.relPathPrefix !== undefined
+          ? [
+              options.relPathPrefix,
+              options.relPathPrefix,
+              options.relPathPrefix,
+            ]
+          : []),
         ftsLimit,
         ...params,
       ];
@@ -4622,7 +4775,6 @@ interface DbIngestErrorRow {
   details_json: string | null;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Row Mappers (snake_case -> camelCase)
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -27,6 +27,8 @@ import {
   resolveTemporalRange,
   shouldSortByRecency,
 } from "./temporal";
+import { attachSearchResultPlannerMetadata } from "./trace-metadata";
+import { SEARCH_RESULT_PLANNER_METADATA } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Score Normalization
@@ -113,7 +115,7 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
       : undefined;
   }
 
-  return {
+  const result: SearchResult = {
     docid: fts.docid ?? "",
     score: fts.score, // Raw score, normalized later as batch
     uri: fts.uri ?? "",
@@ -127,6 +129,19 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
     source,
     conversion: fts.mirrorHash ? { mirrorHash: fts.mirrorHash } : undefined,
   };
+  if (!(chunk && fts.mirrorHash)) return result;
+  return attachSearchResultPlannerMetadata(result, {
+    retrievalRank: 0,
+    mirrorHash: fts.mirrorHash,
+    seq: chunk.seq,
+    sources: ["bm25"],
+    graphExpanded: false,
+    startLine: chunk.startLine,
+    endLine: chunk.endLine,
+    passageHash: new Bun.CryptoHasher("sha256")
+      .update(chunk.text)
+      .digest("hex"),
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -142,6 +157,7 @@ export async function searchBm25(
   query: string,
   options: SearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
+  const traceStartedAt = options.traceSession ? performance.now() : 0;
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
   const recencySort = shouldSortByRecency(query);
@@ -161,6 +177,7 @@ export async function searchBm25(
   const ftsResult = await store.searchFts(query, {
     limit: retrievalLimit,
     collection: options.collection,
+    relPathPrefix: options.retrievalScope?.relPathPrefix,
     language: options.lang,
     snippet: !(options.full || options.lineNumbers),
     tagsAll: options.tagsAll,
@@ -331,9 +348,13 @@ export async function searchBm25(
   }
 
   const finalResults = filteredResults.slice(0, limit);
+  for (const [index, result] of finalResults.entries()) {
+    const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
+    if (metadata) metadata.retrievalRank = index + 1;
+  }
   await attachSearchResultContexts(store, finalResults);
 
-  return ok({
+  const output: SearchResults = {
     results: finalResults,
     meta: {
       query,
@@ -349,5 +370,17 @@ export async function searchBm25(
       author: options.author,
       queryLanguage,
     },
-  });
+  };
+  const traceResult = await options.traceSession?.recordRetrieval(
+    output,
+    performance.now() - traceStartedAt
+  );
+  if (traceResult && !traceResult.ok) {
+    return err(
+      "QUERY_FAILED",
+      `Trace recording failed: ${traceResult.error.message}`,
+      traceResult.error.cause
+    );
+  }
+  return ok(output);
 }

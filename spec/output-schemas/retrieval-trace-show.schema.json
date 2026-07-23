@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/retrieval-trace-show@1.0",
+  "title": "GNO Retrieval Trace Detail",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "trace",
+    "runs",
+    "events",
+    "judgments",
+    "exports",
+    "totals",
+    "truncated"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "trace": {
+      "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/trace"
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/run"
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/event"
+      }
+    },
+    "judgments": {
+      "type": "array",
+      "items": {
+        "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/judgment"
+      }
+    },
+    "exports": {
+      "type": "array",
+      "items": {
+        "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/exportRow"
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runs", "events", "judgments", "exports"],
+      "properties": {
+        "runs": { "type": "integer", "minimum": 0 },
+        "events": { "type": "integer", "minimum": 0 },
+        "judgments": { "type": "integer", "minimum": 0 },
+        "exports": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "truncated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runs", "events", "judgments", "exports"],
+      "properties": {
+        "runs": { "type": "boolean" },
+        "events": { "type": "boolean" },
+        "judgments": { "type": "boolean" },
+        "exports": { "type": "boolean" }
+      }
+    }
+  }
+}

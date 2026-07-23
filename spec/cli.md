@@ -664,6 +664,69 @@ With `--verbose`, embedding errors are logged to stderr:
 
 ---
 
+### Retrieval trace receipts
+
+When local retrieval tracing is enabled, successful `search`, `vsearch`,
+`query`, `ask`, `get`, and `context build` commands write one
+`Trace: <traceId>` receipt line to stderr after the normal result. Stdout and
+all JSON/Markdown/file payload schemas remain byte-for-byte unchanged.
+Retrieval-only commands leave the trace open for explicit evidence follow-up.
+Pass that receipt back to `gno get --trace-id <traceId>` to record the exact
+opened line range against the same query. Disabled tracing performs no trace
+ID, fingerprint, or receipt work and writes no receipt line.
+
+Trace management remains available for already-stored receipts after recording
+is disabled:
+
+```text
+gno trace list [-n <limit>] [--cursor <cursor>] [--json|--md]
+gno trace show <trace-id> [--detail-limit <limit>] [--json|--md]
+gno trace label <trace-id> --label <relevant|irrelevant|missing-expected> --target <ref>
+  [--target-kind <document|chunk|span>] [--from-line <line> --to-line <line>]
+  [--source-hash <sha256>] [--docid <docid>] [--idempotency-key <key>] [--json|--md]
+gno trace export <trace-id...> [--format <agentic-receipt|qrels>] [--output <path>] [--json]
+gno trace replay <qrels-export-id> --candidate <bm25|vector|hybrid>
+  [-n <limit>] [--candidate-limit <limit>] [--no-expand] [--no-rerank] [--json|--md]
+gno trace delete <trace-id> [--json|--md]
+gno --yes trace purge [--json|--md]
+```
+
+`list` is newest-first, cursor-paginated, and never returns raw replay queries
+or goals. `show` returns one bounded detail receipt with exact per-section
+totals and truncation flags. A relevant or irrelevant label must resolve to
+recorded evidence; `missing-expected` accepts only a content-free `gno://` URI,
+docid, or immutable source hash. Labels are append-only and retry-safe.
+
+`export` accepts one or more immutable terminal traces and sorts and
+deduplicates their IDs. The default deterministic `agentic-receipt` artifact
+preserves the complete stored receipt. `--format qrels` requires replay-mode
+receipts with an exact query, strict filters, ranked evidence, and at least one
+explicit relevant or missing-expected judgment. It exports only hashes,
+coordinates, ranks, capabilities, fallbacks, and explicit outcomes—never
+source or mirror text. Both formats reject open or missing traces.
+`completed`, `partial`, `failed`, and `cancelled` remain distinct; no terminal
+state implies negative relevance.
+
+`replay` verifies the saved qrels aggregate manifest and reruns only the named
+candidate against the current local index. It compares final and planner ranks,
+coverage, explicit open/cite/pin outcomes, capability fallbacks, fingerprints,
+and unchanged/stale/missing source state. The result is
+`improved|unchanged|regressed|unreplayable` with a human promotion
+recommendation and `applied: false`; replay never changes configuration,
+boosts, prompts, models, traces, or user files. Missing or cascaded manifest
+links and changed source hashes fail closed instead of becoming an empty
+successful run.
+Without `--output`, JSON is the complete `retrieval-trace-export` receipt.
+`--output` writes only the canonical artifact atomically and intentionally
+emits no stdout. Full purge requires the global `--yes` flag and reports
+whether SQLite/WAL physical cleanup completed, remained busy, or failed.
+
+Structured outputs validate against
+`retrieval-trace-{list,show,judgment,export,qrels,replay,delete,purge}.schema.json`;
+file-only `trace export --output` is the documented exception.
+
+---
+
 ### gno search
 
 BM25 keyword search over indexed documents.
@@ -1002,7 +1065,7 @@ Retrieve a single document by reference.
 **Synopsis:**
 
 ```bash
-gno get <ref> [--from <line>] [-l <lines>] [--line-numbers] [--source] [--json|--md]
+gno get <ref> [--from <line>] [-l <lines>] [--line-numbers] [--trace-id <id>] [--source] [--json|--md]
 ```
 
 **Arguments:**
@@ -1016,6 +1079,7 @@ gno get <ref> [--from <line>] [-l <lines>] [--line-numbers] [--source] [--json|-
 | `--from` | integer | Start at line number |
 | `-l` | integer | Limit to N lines |
 | `--line-numbers` | boolean | Prefix lines with numbers |
+| `--trace-id` | string | Continue an open retrieval trace and record the exact returned span |
 | `--source` | boolean | Include source metadata in output |
 
 **Ref Formats:**
@@ -1040,6 +1104,7 @@ See [Output Schemas](./output-schemas/get.schema.json)
 gno get gno://work/contracts/nda.docx
 gno get "#a1b2c3d4" --line-numbers
 gno get work/doc.md:120 -l 50
+gno get gno://work/doc.md --from 120 -l 50 --trace-id <traceId>
 ```
 
 ---
@@ -1243,6 +1308,9 @@ Indexed title, heading, and configured-context metadata remains JSON-escaped;
 exact passage bytes remain unchanged inside the fence. Budgets, normalized
 retrieval requests, capability attempts/outcomes, fingerprints, snapshots,
 fallbacks, omissions, and truncation remain auditable.
+An enabled retrieval trace links the request to `capsuleId` in local trace
+storage and returns its random identity only on stderr. The trace identity is
+never added to the canonical Capsule, its budget, or its deterministic ID.
 Invalid goals,
 budgets, filters, URI/index combinations, or output paths exit 1. Snapshot,
 retrieval, provenance, and store failures exit 2 with no partial Capsule.

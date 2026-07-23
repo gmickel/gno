@@ -68,6 +68,12 @@ describe("workspace tabs", () => {
     expect(next.tabs[0]?.label).toContain("a.md");
   });
 
+  test("labels retrieval trace history tabs", () => {
+    const storage = createStorage();
+    const state = loadWorkspaceState("/traces", storage);
+    expect(state.tabs[0]?.label).toBe("Trace history");
+  });
+
   test("persists active tab browse tree state", () => {
     const storage = createStorage();
     const state = loadWorkspaceState("/browse?collection=notes", storage);

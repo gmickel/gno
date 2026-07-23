@@ -8,6 +8,7 @@
 import { z } from "zod";
 
 import { URI_PREFIX } from "../app/constants";
+import { RetrievalTraceConfigSchema } from "./retrieval-traces";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -338,6 +339,9 @@ export const ConfigSchema = z.object({
 
   /** Resident Streamable HTTP MCP gateway configuration */
   gateway: HttpGatewayConfigSchema.optional(),
+
+  /** Private local retrieval trace recording. Absent means recording off. */
+  retrievalTraces: RetrievalTraceConfigSchema.optional(),
 });
 
 export type Config = Omit<z.infer<typeof ConfigSchema>, "contentTypes"> & {

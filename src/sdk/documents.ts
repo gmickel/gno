@@ -24,6 +24,11 @@ import type {
 
 import { getDocumentCapabilities } from "../core/document-capabilities";
 import { isGlobPattern, parseRef, splitRefs } from "../core/ref-parser";
+import {
+  attachRetrievalTraceMetadata,
+  evidenceFromExactDocument,
+  RetrievalTraceSession,
+} from "../core/retrieval-trace-session";
 import { sdkError } from "./errors";
 
 const URI_PREFIX_PATTERN = /^gno:\/\/[^/]+\//;
@@ -72,7 +77,7 @@ function buildConversionMeta(
   };
 }
 
-export async function getDocumentByRef(
+async function getDocumentByRefUntraced(
   store: StorePort,
   config: Config,
   ref: string,
@@ -157,6 +162,48 @@ export async function getDocumentByRef(
       contentAvailable: doc.mirrorHash !== null,
     }),
   };
+}
+
+export async function getDocumentByRef(
+  store: StorePort,
+  config: Config,
+  ref: string,
+  options: GnoGetOptions = {}
+): Promise<GetResponse> {
+  const response = await getDocumentByRefUntraced(store, config, ref, options);
+  if (!options.traceId) return response;
+  const resumed = await RetrievalTraceSession.resume({
+    store,
+    config: config.retrievalTraces,
+    traceId: options.traceId,
+  });
+  if (!resumed.ok) {
+    throw sdkError("STORE", resumed.error.message, {
+      cause: resumed.error.cause,
+    });
+  }
+  const traceSession = resumed.value;
+  if (!traceSession) return response;
+  const lines = response.returnedLines ?? {
+    start: 1,
+    end: response.totalLines,
+  };
+  const evidence = evidenceFromExactDocument({
+    docid: response.docid,
+    uri: response.uri,
+    sourceHash: response.source.sourceHash,
+    mirrorHash: response.conversion?.mirrorHash,
+    content: response.content,
+    startLine: lines.start,
+    endLine: lines.end,
+  });
+  if (evidence) {
+    const got = await traceSession.recordEvidence("get", [evidence]);
+    if (!got.ok) throw sdkError("STORE", got.error.message);
+    const opened = await traceSession.recordEvidence("open", [evidence]);
+    if (!opened.ok) throw sdkError("STORE", opened.error.message);
+  }
+  return attachRetrievalTraceMetadata(response, traceSession);
 }
 
 function truncateContent(

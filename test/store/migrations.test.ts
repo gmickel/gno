@@ -54,7 +54,7 @@ describe("store migrations", () => {
 
       const upgradeResult = runMigrations(db, migrations, "unicode61");
       expect(upgradeResult.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(13);
+      expect(getSchemaVersion(db)).toBe(14);
 
       const indexedRow = db
         .query<{ indexed_at: string | null }, []>(
@@ -88,6 +88,13 @@ describe("store migrations", () => {
         .all()
         .map((column) => column.name);
       expect(documentColumns).toContain("fts_mirror_hash");
+
+      const traceColumns = db
+        .query<{ name: string }, []>("PRAGMA table_info(retrieval_traces)")
+        .all()
+        .map((column) => column.name);
+      expect(traceColumns).toContain("creation_digest");
+      expect(traceColumns).toContain("expires_at_ms");
     } finally {
       db.close();
     }
@@ -148,7 +155,7 @@ describe("store migrations", () => {
 
       const upgraded = runMigrations(db, migrations, "unicode61");
       expect(upgraded.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(13);
+      expect(getSchemaVersion(db)).toBe(14);
       const rows = db
         .query<{ rel_path: string; fts_mirror_hash: string | null }, []>(
           "SELECT rel_path, fts_mirror_hash FROM documents ORDER BY rel_path"

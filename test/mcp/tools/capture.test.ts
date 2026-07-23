@@ -13,6 +13,7 @@ import { CAPTURE_MAX_TEXT_BYTES } from "../../../src/core/capture";
 import { defaultSyncService } from "../../../src/ingestion";
 import { handleCapture } from "../../../src/mcp/tools/capture";
 import { registerTools } from "../../../src/mcp/tools/index";
+import { handleTracePurge } from "../../../src/mcp/tools/trace";
 import { SqliteAdapter } from "../../../src/store/sqlite/adapter";
 import { safeRm } from "../../helpers/cleanup";
 
@@ -91,6 +92,25 @@ describe("gno_capture MCP", () => {
 
     expect(names).not.toContain("gno_capture");
     expect(names).toContain("gno_search");
+    expect(names).toContain("gno_trace_list");
+    expect(names).toContain("gno_trace_show");
+    expect(names).not.toContain("gno_trace_label");
+    expect(names).not.toContain("gno_trace_export");
+    expect(names).not.toContain("gno_trace_delete");
+    expect(names).not.toContain("gno_trace_purge");
+  });
+
+  test("trace mutation handlers defend against direct disabled dispatch", async () => {
+    const result = await handleTracePurge(
+      { confirm: true },
+      toolContext(false)
+    );
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toEqual({
+      error: "WRITE_DISABLED",
+      message:
+        "Trace mutations require gateway.enableWrite or --mcp-enable-write",
+    });
   });
 
   test("direct handler rejects disabled writes", async () => {

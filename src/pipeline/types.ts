@@ -5,6 +5,7 @@
  * @module src/pipeline/types
  */
 
+import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { StoreResult } from "../store/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,6 +49,11 @@ export interface SearchResultPlannerMetadata {
   seq: number;
   sources: FusionSource[];
   graphExpanded: boolean;
+  /** Exact canonical chunk coordinates, retained even for full-content output. */
+  startLine?: number;
+  endLine?: number;
+  /** SHA-256 of the complete canonical chunk lines. */
+  passageHash?: string;
 }
 
 /** Single search result matching output schema */
@@ -122,10 +128,26 @@ export interface SearchMeta {
   trace?: QueryDiagnoseTrace;
 }
 
+export const SEARCH_RESULTS_TRACE_METADATA = Symbol(
+  "gno.searchResultsTraceMetadata"
+);
+
+export interface SearchCapabilityOutcome {
+  capability: string;
+  status: "attempted" | "used" | "unavailable" | "failed";
+  reasonCode?: string;
+}
+
+export interface SearchResultsTraceMetadata {
+  capabilityOutcomes: SearchCapabilityOutcome[];
+  fallbackCodes: string[];
+}
+
 /** Complete search results wrapper */
 export interface SearchResults {
   results: SearchResult[];
   meta: SearchMeta;
+  [SEARCH_RESULTS_TRACE_METADATA]?: SearchResultsTraceMetadata;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,12 +156,19 @@ export interface SearchResults {
 
 /** Common options for all search commands */
 export interface SearchOptions {
+  /** Internal receipt seam; never serialized or included in public schemas. */
+  traceSession?: RetrievalTraceSession;
   /** Max results */
   limit?: number;
   /** Min score threshold (0-1) */
   minScore?: number;
   /** Filter by collection */
   collection?: string;
+  /** Internal exact corpus scope used by deterministic retrieval replay. */
+  retrievalScope?: {
+    relPathPrefix?: string;
+    allowedMirrorHashes: string[];
+  };
   /** Language filter/hint (BCP-47) */
   lang?: string;
   /** Include full content instead of snippet */
@@ -357,11 +386,25 @@ export const DEFAULT_PIPELINE_CONFIG: PipelineConfig = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Citation reference */
+export const CITATION_TRACE_METADATA = Symbol("gno.citationTraceMetadata");
+
+export interface CitationTraceMetadata {
+  sourceHash: string;
+  mirrorHash: string;
+  passageHash: string;
+  seq?: number;
+  rank: number;
+  plannerRank?: number;
+  sources?: FusionSource[];
+  graphExpanded?: boolean;
+}
+
 export interface Citation {
   docid: string;
   uri: string;
   startLine?: number;
   endLine?: number;
+  [CITATION_TRACE_METADATA]?: CitationTraceMetadata;
 }
 
 /** Source selection entry for answer-generation explain */

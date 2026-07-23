@@ -71,6 +71,7 @@ Recipe rules:
 | **Index**    | `init`, `collection add/list/remove`, `index`, `update`, `embed` | Set up and maintain document index                     |
 | **Tags**     | `tags`, `tags add`, `tags rm`                                    | Organize and filter documents                          |
 | **Context**  | `context add/list/rm/check/build/verify`                         | Configure guidance or compile/verify evidence Capsules |
+| **Traces**   | `trace list/show/label/export/replay/delete/purge`               | Manage and replay private retrieval receipts           |
 | **Models**   | `models list/use/pull/clear/path`                                | Manage local AI models                                 |
 | **Serve**    | `serve`, `daemon`                                                | One resident Web/headless gateway and watcher          |
 | **Publish**  | `publish export`                                                 | Export gno.sh publish artifacts                        |
@@ -168,6 +169,24 @@ When the user wants a synthesized answer instead of ranked evidence:
 gno ask "What changed in the deployment process?" --answer
 ```
 
+Trace recording is local and off by default. `metadata` mode is diagnostic-only
+and omits raw query/goal/filter values; `replay` is separate explicit consent
+to retain those bounded inputs under configured local retention limits. No
+receipt is uploaded automatically, and disabling capture does not disable
+inspection or deletion of existing receipts.
+
+For an explicitly labeled, replay-mode receipt, export content-free qrels and
+compare one candidate without changing the live ranking setup:
+
+```bash
+gno trace export <trace-id> --format qrels --output qrels.json
+gno trace replay <qrels-export-id> --candidate hybrid --md
+```
+
+Treat replay as evidence for a human promotion decision. It always reports
+`applied: false`; never claim that replay changed boosts, prompts, models,
+configuration, traces, or source files.
+
 ## MCP Retrieval Strategy
 
 For a long-lived client that supports Streamable HTTP, start one resident owner
@@ -176,6 +195,14 @@ with `gno serve` or `gno daemon` and connect to
 Serve is always loopback-only. Only daemon accepts an explicit non-loopback bind,
 and only with a restrictive bearer-token file plus exact Host/Origin allowlists.
 Authentication never enables writes by itself.
+
+For explicit retrieval feedback, use `gno_trace_list` and `gno_trace_show` to
+inspect local receipts. Never infer irrelevance from a missing click, a failed
+request, or a partial/cancelled outcome. Use write-enabled
+`gno_trace_label` only when the user explicitly supplies a
+relevant/irrelevant/missing-expected judgment. Trace export/delete/purge are
+also write tools and require separate write enablement; bearer authentication
+alone is insufficient.
 
 When using GNO through MCP, prefer this retrieval order:
 

@@ -85,6 +85,18 @@ import {
 import { resolveEffectiveIndex } from "../core/indexed-reference";
 import { resolveNoteCreatePlan } from "../core/note-creation";
 import { resolveNotePreset } from "../core/note-presets";
+import { RetrievalTraceManagementService } from "../core/retrieval-trace-management";
+import {
+  finishRetrievalTraceAfterError,
+  retrievalTraceFilters,
+  startRetrievalTraceRequest,
+} from "../core/retrieval-trace-request";
+import {
+  attachRetrievalTraceMetadata,
+  getRetrievalTraceMetadata,
+  RETRIEVAL_TRACE_METADATA,
+  type RetrievalTraceSession,
+} from "../core/retrieval-trace-session";
 import { extractSections } from "../core/sections";
 import { normalizeStructuredQueryInput } from "../core/structured-query";
 import { parseAndValidateTagFilter } from "../core/tags";
@@ -98,8 +110,9 @@ import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../llm/policy";
 import { resolveModelUri } from "../llm/registry";
 import {
+  answerTraceTerminalStatus,
   generateGroundedAnswer,
-  processAnswerResult,
+  processAnswerResultWithTrace,
 } from "../pipeline/answer";
 import { formatQueryForEmbedding } from "../pipeline/contextual";
 import { searchHybrid } from "../pipeline/hybrid";
@@ -143,6 +156,21 @@ function unwrapStore<T>(
     throw sdkError(code, result.error.message, { cause: result.error.cause });
   }
   return result.value;
+}
+
+function unwrapTraceStore<T>(result: StoreResult<T>): T {
+  if (result.ok) return result.value;
+  const code =
+    result.error.code === "NOT_FOUND"
+      ? "NOT_FOUND"
+      : result.error.code === "INVALID_INPUT" ||
+          result.error.code === "CONSTRAINT_VIOLATION"
+        ? "VALIDATION"
+        : "STORE";
+  throw sdkError(code, result.error.message, {
+    cause: result.error.cause,
+    details: { traceCode: result.error.code },
+  });
 }
 
 async function resolveClientState(
@@ -429,9 +457,33 @@ class GnoClientImpl implements GnoClient {
     options: import("../pipeline/types").SearchOptions = {}
   ): Promise<SearchResults> {
     this.assertOpen();
-    return this.decorateSearchResults(
-      unwrapStore(await searchBm25(this.store, query, options))
-    );
+    let traceSession: RetrievalTraceSession | null = null;
+    try {
+      traceSession = unwrapStore(
+        await startRetrievalTraceRequest({
+          store: this.store,
+          config: this.config,
+          query,
+          filters: retrievalTraceFilters(options),
+          pipeline: "bm25",
+          indexName: this.indexName,
+        })
+      );
+      return attachRetrievalTraceMetadata(
+        this.decorateSearchResults(
+          unwrapStore(
+            await searchBm25(this.store, query, {
+              ...options,
+              traceSession: traceSession ?? undefined,
+            })
+          )
+        ),
+        traceSession ?? undefined
+      );
+    } catch (cause) {
+      await finishRetrievalTraceAfterError(traceSession, cause);
+      throw cause;
+    }
   }
 
   async vsearch(
@@ -440,14 +492,33 @@ class GnoClientImpl implements GnoClient {
   ): Promise<SearchResults> {
     this.assertOpen();
 
-    const ports = await this.createRuntimePorts({
-      embed: true,
-      requiredEmbed: true,
-      embedModel: options.model,
-      collection: options.collection,
-    });
+    let ports: RuntimePorts | null = null;
+    let traceSession: RetrievalTraceSession | null = null;
 
     try {
+      const embedUri = resolveModelUri(
+        this.config,
+        "embed",
+        options.model,
+        options.collection
+      );
+      traceSession = unwrapStore(
+        await startRetrievalTraceRequest({
+          store: this.store,
+          config: this.config,
+          query,
+          filters: retrievalTraceFilters(options),
+          pipeline: "vector",
+          indexName: this.indexName,
+          modelUris: [embedUri],
+        })
+      );
+      ports = await this.createRuntimePorts({
+        embed: true,
+        requiredEmbed: true,
+        embedModel: options.model,
+        collection: options.collection,
+      });
       if (!ports.embedPort || !ports.vectorIndex) {
         throw sdkError(
           "MODEL",
@@ -464,23 +535,29 @@ class GnoClientImpl implements GnoClient {
         });
       }
 
-      return this.decorateSearchResults(
-        unwrapStore(
-          await searchVectorWithEmbedding(
-            {
-              store: this.store,
-              vectorIndex: ports.vectorIndex,
-              embedPort: ports.embedPort,
-              config: this.config,
-            },
-            query,
-            new Float32Array(queryEmbedResult.value),
-            options
+      return attachRetrievalTraceMetadata(
+        this.decorateSearchResults(
+          unwrapStore(
+            await searchVectorWithEmbedding(
+              {
+                store: this.store,
+                vectorIndex: ports.vectorIndex,
+                embedPort: ports.embedPort,
+                config: this.config,
+              },
+              query,
+              new Float32Array(queryEmbedResult.value),
+              { ...options, traceSession: traceSession ?? undefined }
+            )
           )
-        )
+        ),
+        traceSession ?? undefined
       );
+    } catch (cause) {
+      await finishRetrievalTraceAfterError(traceSession, cause);
+      throw cause;
     } finally {
-      await this.disposeRuntimePorts(ports);
+      if (ports) await this.disposeRuntimePorts(ports);
     }
   }
 
@@ -506,36 +583,81 @@ class GnoClientImpl implements GnoClient {
           : undefined,
     };
 
-    const ports = await this.createRuntimePorts({
-      embed: true,
-      expand: !options.noExpand && !options.queryModes?.length,
-      rerank: !options.noRerank,
-      embedModel: options.embedModel,
-      expandModel: options.expandModel,
-      genModel: options.genModel,
-      rerankModel: options.rerankModel,
-      collection: options.collection,
-    });
+    const expandRequested = !options.noExpand && !options.queryModes?.length;
+    const rerankRequested = !options.noRerank;
+    const embedUri = resolveModelUri(
+      this.config,
+      "embed",
+      options.embedModel,
+      options.collection
+    );
+    const expandUri = expandRequested
+      ? resolveModelUri(
+          this.config,
+          "expand",
+          options.expandModel ?? options.genModel,
+          options.collection
+        )
+      : undefined;
+    const rerankUri = rerankRequested
+      ? resolveModelUri(
+          this.config,
+          "rerank",
+          options.rerankModel,
+          options.collection
+        )
+      : undefined;
+    let ports: RuntimePorts | null = null;
+    let traceSession: RetrievalTraceSession | null = null;
 
     try {
-      return this.decorateSearchResults(
-        unwrapStore(
-          await searchHybrid(
-            {
-              store: this.store,
-              config: this.config,
-              vectorIndex: ports.vectorIndex,
-              embedPort: ports.embedPort,
-              expandPort: ports.expandPort,
-              rerankPort: ports.rerankPort,
-            },
-            query,
-            options
-          )
-        )
+      traceSession = unwrapStore(
+        await startRetrievalTraceRequest({
+          store: this.store,
+          config: this.config,
+          query,
+          filters: retrievalTraceFilters(options),
+          pipeline: "hybrid",
+          indexName: this.indexName,
+          modelUris: [embedUri, expandUri, rerankUri].filter(
+            (value): value is string => Boolean(value)
+          ),
+        })
       );
+      ports = await this.createRuntimePorts({
+        embed: true,
+        expand: expandRequested,
+        rerank: rerankRequested,
+        embedModel: options.embedModel,
+        expandModel: options.expandModel,
+        genModel: options.genModel,
+        rerankModel: options.rerankModel,
+        collection: options.collection,
+      });
+      return attachRetrievalTraceMetadata(
+        this.decorateSearchResults(
+          unwrapStore(
+            await searchHybrid(
+              {
+                store: this.store,
+                config: this.config,
+                vectorIndex: ports.vectorIndex,
+                embedPort: ports.embedPort,
+                expandPort: ports.expandPort,
+                rerankPort: ports.rerankPort,
+              },
+              query,
+              { ...options, traceSession: traceSession ?? undefined }
+            )
+          )
+        ),
+        traceSession ?? undefined
+      );
+    } catch (cause) {
+      await finishRetrievalTraceAfterError(traceSession, cause);
+      throw cause;
     } finally {
-      await this.disposeRuntimePorts(ports);
+      if (ports) await this.disposeRuntimePorts(ports);
     }
   }
 
@@ -560,20 +682,72 @@ class GnoClientImpl implements GnoClient {
 
     const answerRequested = Boolean(options.answer && !options.noAnswer);
     const needsExpansionGen = !options.noExpand && !options.queryModes?.length;
-    const ports = await this.createRuntimePorts({
-      embed: true,
-      expand: needsExpansionGen,
-      answer: answerRequested,
-      rerank: !options.noRerank,
-      expandModel: options.expandModel,
-      genModel: options.genModel,
-      embedModel: options.embedModel,
-      rerankModel: options.rerankModel,
-      collection: options.collection,
-    });
+    const rerankRequested = !options.noRerank;
+    const embedUri = resolveModelUri(
+      this.config,
+      "embed",
+      options.embedModel,
+      options.collection
+    );
+    const expandUri = needsExpansionGen
+      ? resolveModelUri(
+          this.config,
+          "expand",
+          options.expandModel ?? options.genModel,
+          options.collection
+        )
+      : undefined;
+    const answerUri = answerRequested
+      ? resolveModelUri(
+          this.config,
+          "gen",
+          options.genModel,
+          options.collection
+        )
+      : undefined;
+    const rerankUri = rerankRequested
+      ? resolveModelUri(
+          this.config,
+          "rerank",
+          options.rerankModel,
+          options.collection
+        )
+      : undefined;
+    let ports: RuntimePorts | null = null;
+    let traceSession: RetrievalTraceSession | null = null;
 
     try {
+      traceSession = unwrapStore(
+        await startRetrievalTraceRequest({
+          store: this.store,
+          config: this.config,
+          query,
+          filters: retrievalTraceFilters(options),
+          pipeline: "ask",
+          indexName: this.indexName,
+          modelUris: [embedUri, expandUri, answerUri, rerankUri].filter(
+            (value): value is string => Boolean(value)
+          ),
+        })
+      );
+      ports = await this.createRuntimePorts({
+        embed: true,
+        expand: needsExpansionGen,
+        answer: answerRequested,
+        rerank: rerankRequested,
+        expandModel: options.expandModel,
+        genModel: options.genModel,
+        embedModel: options.embedModel,
+        rerankModel: options.rerankModel,
+        collection: options.collection,
+      });
       if (answerRequested && !ports.answerPort) {
+        await traceSession?.recordCapability(
+          "answer_generation",
+          "unavailable",
+          "model_unavailable"
+        );
+        await traceSession?.finish("failed");
         throw sdkError(
           "MODEL",
           "Answer generation requested but no generation model is available"
@@ -608,6 +782,7 @@ class GnoClientImpl implements GnoClient {
             noRerank: options.noRerank,
             candidateLimit: options.candidateLimit,
             queryLanguageHint: options.queryLanguageHint,
+            traceSession: traceSession ?? undefined,
           }
         )
       );
@@ -622,6 +797,7 @@ class GnoClientImpl implements GnoClient {
         ports.answerPort &&
         searchResult.results.length > 0
       ) {
+        await traceSession?.recordCapability("answer_generation", "attempted");
         const rawAnswer = await generateGroundedAnswer(
           { genPort: ports.answerPort, store: this.store },
           query,
@@ -629,16 +805,26 @@ class GnoClientImpl implements GnoClient {
           options.maxAnswerTokens ?? 512
         );
         if (!rawAnswer) {
+          await traceSession?.recordCapability(
+            "answer_generation",
+            "failed",
+            "generation_failed"
+          );
+          await traceSession?.finish("failed");
           throw sdkError("MODEL", "Answer generation failed");
         }
-        const processed = processAnswerResult(rawAnswer);
+        await traceSession?.recordCapability("answer_generation", "used");
+        const processed = await processAnswerResultWithTrace(
+          rawAnswer,
+          traceSession ?? undefined
+        );
         answer = processed.answer;
         citations = processed.citations;
         answerContext = processed.answerContext;
         answerGenerated = true;
       }
 
-      return {
+      const askResult: AskResult = {
         query,
         mode: searchResult.meta.vectorsUsed ? "hybrid" : "bm25_only",
         queryLanguage: searchResult.meta.queryLanguage ?? "und",
@@ -658,8 +844,26 @@ class GnoClientImpl implements GnoClient {
           answerContext,
         },
       };
+      if (answerRequested && traceSession) {
+        if (!answerGenerated) {
+          unwrapStore(
+            await traceSession.recordCapability(
+              "answer_generation",
+              "unavailable",
+              "no_evidence"
+            )
+          );
+        }
+        unwrapStore(
+          await traceSession.finish(answerTraceTerminalStatus(citations))
+        );
+      }
+      return attachRetrievalTraceMetadata(askResult, traceSession ?? undefined);
+    } catch (cause) {
+      await finishRetrievalTraceAfterError(traceSession, cause);
+      throw cause;
     } finally {
-      await this.disposeRuntimePorts(ports);
+      if (ports) await this.disposeRuntimePorts(ports);
     }
   }
 
@@ -673,13 +877,48 @@ class GnoClientImpl implements GnoClient {
     const collection =
       input.collections?.length === 1 ? input.collections[0] : undefined;
     const useModels = input.depthPolicy !== "fast";
-    const ports = await this.createRuntimePorts({
-      embed: useModels,
-      rerank: useModels,
-      collection,
-    });
+    const modelUris = useModels
+      ? [
+          resolveModelUri(this.config, "embed", undefined, collection),
+          resolveModelUri(this.config, "rerank", undefined, collection),
+        ]
+      : [];
+    let ports: RuntimePorts | null = null;
+    let traceSession: RetrievalTraceSession | null = null;
     try {
-      return await buildContextCapsule(
+      traceSession = unwrapStore(
+        await startRetrievalTraceRequest({
+          store: this.store,
+          config: this.config,
+          query: input.query ?? input.goal,
+          goal: input.goal,
+          filters: {
+            limit: input.limit,
+            collection,
+            collections: [...(input.collections ?? [])].sort(),
+            lang: input.lang,
+            tagsAll: input.tagsAll,
+            tagsAny: input.tagsAny,
+            since: input.since,
+            until: input.until,
+            categories: input.categories,
+            author: input.author,
+            graph: input.graph,
+            candidateLimit: input.candidateLimit,
+            queryModes: input.queryModes,
+            uriPrefix: input.uriPrefix ?? undefined,
+          },
+          pipeline: "context",
+          indexName: this.indexName,
+          modelUris,
+        })
+      );
+      ports = await this.createRuntimePorts({
+        embed: useModels,
+        rerank: useModels,
+        collection,
+      });
+      const capsule = await buildContextCapsule(
         { ...input, indexName: this.indexName },
         {
           store: this.store,
@@ -688,10 +927,16 @@ class GnoClientImpl implements GnoClient {
           vectorIndex: ports.vectorIndex,
           embedPort: ports.embedPort,
           rerankPort: ports.rerankPort,
+          traceSession: traceSession ?? undefined,
         }
       );
+      if (traceSession) unwrapStore(await traceSession.finish("completed"));
+      return attachRetrievalTraceMetadata(capsule, traceSession ?? undefined);
+    } catch (cause) {
+      await finishRetrievalTraceAfterError(traceSession, cause);
+      throw cause;
     } finally {
-      await this.disposeRuntimePorts(ports);
+      if (ports) await this.disposeRuntimePorts(ports);
     }
   }
 
@@ -726,10 +971,20 @@ class GnoClientImpl implements GnoClient {
         ref,
         options
       );
-      return {
+      const decorated = {
         ...result,
         uri: decorateUriForIndex(result.uri, scoped.indexName),
       };
+      const traceMetadata = getRetrievalTraceMetadata(result);
+      if (traceMetadata) {
+        Object.defineProperty(decorated, RETRIEVAL_TRACE_METADATA, {
+          configurable: false,
+          enumerable: false,
+          value: traceMetadata,
+          writable: false,
+        });
+      }
+      return decorated;
     } finally {
       await scoped.close();
     }
@@ -785,6 +1040,60 @@ class GnoClientImpl implements GnoClient {
       await this.store.getStatus({
         embedModel: resolveModelUri(this.config, "embed"),
       })
+    );
+  }
+
+  async listRetrievalTraces(
+    options: import("../core/retrieval-trace-management").RetrievalTraceListRequest = {}
+  ) {
+    this.assertOpen();
+    return unwrapTraceStore(
+      await new RetrievalTraceManagementService(this.store).list(options)
+    );
+  }
+
+  async getRetrievalTrace(
+    traceId: string,
+    options: { detailLimit?: number } = {}
+  ) {
+    this.assertOpen();
+    return unwrapTraceStore(
+      await new RetrievalTraceManagementService(this.store).show(
+        traceId,
+        options
+      )
+    );
+  }
+
+  async labelRetrievalTrace(
+    input: import("../core/retrieval-trace-management").RetrievalTraceLabelRequest
+  ) {
+    this.assertOpen();
+    return unwrapTraceStore(
+      await new RetrievalTraceManagementService(this.store).label(input)
+    );
+  }
+
+  async exportRetrievalTraces(
+    input: import("../core/retrieval-trace-management").RetrievalTraceExportRequest
+  ) {
+    this.assertOpen();
+    return unwrapTraceStore(
+      await new RetrievalTraceManagementService(this.store).export(input)
+    );
+  }
+
+  async deleteRetrievalTrace(traceId: string) {
+    this.assertOpen();
+    return unwrapTraceStore(
+      await new RetrievalTraceManagementService(this.store).delete(traceId)
+    );
+  }
+
+  async purgeRetrievalTraces() {
+    this.assertOpen();
+    return unwrapTraceStore(
+      await new RetrievalTraceManagementService(this.store).purge()
     );
   }
 

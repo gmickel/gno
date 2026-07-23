@@ -92,6 +92,9 @@ test("strict materialization rejects URI and hidden planner identity drift", asy
       seq: chunk.seq,
       sources: ["bm25" as const],
       graphExpanded: false,
+      startLine: chunk.startLine,
+      endLine: chunk.endLine,
+      passageHash: sha256Text(chunk.text),
     },
   };
   const planned = (result: SearchResult): ContextRetrievalCandidate => ({

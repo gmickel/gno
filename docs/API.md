@@ -126,6 +126,85 @@ curl -X POST http://localhost:3000/api/collections \
 
 > **Note**: Token auth is optional. Requests without an `Origin` header (like curl) work without a token.
 
+### Private Retrieval Trace Header
+
+When opt-in retrieval traces are enabled, `/api/search`, `/api/query`,
+`/api/ask`, and `/api/context` return the local trace identity in:
+
+```http
+X-GNO-Trace-ID: <trace-id>
+```
+
+The header is transport metadata. It is never inserted into response JSON,
+Markdown, search-result items, or the canonical Context Capsule, so enabling
+tracing does not change body bytes or Capsule identity. Validation failures
+that occur before trace creation have no trace header. Failures after trace
+creation return the header and finalize the receipt as `failed` or
+`cancelled`; Ask responses without supported cited evidence finalize as
+`partial`.
+
+Search and query receipts remain open for an explicit follow-up document read.
+Pass their response header back on `GET /api/doc` to append exact `get` and
+`open` evidence to the same local trace:
+
+```bash
+trace_id="$(
+  curl -sS -D - -o /tmp/gno-search.json \
+    -X POST http://localhost:3000/api/search \
+    -H "Content-Type: application/json" \
+    -d '{"query":"authentication"}' |
+  awk 'tolower($1) == "x-gno-trace-id:" { print $2 }' |
+  tr -d '\r'
+)"
+
+curl -sS "http://localhost:3000/api/doc?uri=gno://notes/auth.md" \
+  -H "X-GNO-Trace-ID: ${trace_id}"
+```
+
+The continuation header is ignored when recording is disabled. It does not
+enable tracing or authorize any mutation.
+
+### Retrieval Trace Management
+
+Stored receipts remain manageable after new recording is disabled:
+
+| Method   | Endpoint                               | Purpose                                |
+| -------- | -------------------------------------- | -------------------------------------- |
+| `GET`    | `/api/traces?limit=50&cursor=...`      | Bounded metadata-only history          |
+| `GET`    | `/api/traces/:traceId?detailLimit=500` | Bounded detail with exact totals       |
+| `POST`   | `/api/traces/:traceId/judgments`       | Append an explicit judgment            |
+| `POST`   | `/api/traces/export`                   | Export one immutable aggregate receipt |
+| `DELETE` | `/api/traces/:traceId`                 | Delete one trace and owned records     |
+| `DELETE` | `/api/traces`                          | Purge all local trace receipts         |
+
+Example explicit label:
+
+```bash
+curl -sS -X POST \
+  http://127.0.0.1:3000/api/traces/TRACKED_ID/judgments \
+  -H "Content-Type: application/json" \
+  -d '{
+    "label": "relevant",
+    "targetRef": "gno://notes/decision.md"
+  }'
+```
+
+`label` is `relevant`, `irrelevant`, or `missing_expected`. Relevant and
+irrelevant targets must resolve to exact evidence stored in the trace.
+Missing-expected accepts only a content-free `gno://` URI, docid, or source
+hash. Retries are idempotent; corrections append new judgments.
+
+Export accepts `{ "traceIds": ["..."], "format": "agentic-receipt" }`. It
+rejects open or missing traces, sorts and deduplicates membership, and keeps
+completed, partial, failed, and cancelled outcomes distinct. Purge returns
+exact deletion counts plus `physicalCleanup`; only `completed` confirms the
+SQLite WAL was truncated.
+
+These endpoints are available only on loopback `gno serve`. Unsafe methods use
+the same same-origin/token CSRF boundary as other Web mutations. Gateway bearer
+authentication identifies a caller but does not authorize trace mutation, and
+the non-loopback daemon does not mount these REST routes.
+
 ---
 
 ## Endpoints
@@ -1050,6 +1129,10 @@ For converted source formats such as PDF or DOCX, `capabilities.editable` is `fa
 ```bash
 curl "http://localhost:3000/api/doc?uri=gno://notes/readme.md" | jq '.content'
 ```
+
+To attach this explicit read to an open search/query receipt, send the
+`X-GNO-Trace-ID` response header from the earlier request. The response echoes
+the same header after exact full-document `get` and `open` spans are recorded.
 
 ---
 

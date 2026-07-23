@@ -26,6 +26,8 @@ import {
   shouldSortByRecency,
   type TemporalRange,
 } from "./temporal";
+import { attachSearchResultPlannerMetadata } from "./trace-metadata";
+import { SEARCH_RESULT_PLANNER_METADATA } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Score Normalization
@@ -76,6 +78,7 @@ export async function searchVectorWithEmbedding(
   queryEmbedding: Float32Array,
   options: SearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
+  const traceStartedAt = options.traceSession ? performance.now() : 0;
   const { store, vectorIndex } = deps;
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
@@ -102,6 +105,7 @@ export async function searchVectorWithEmbedding(
     retrievalLimit,
     {
       minScore,
+      allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     }
   );
 
@@ -124,6 +128,7 @@ export async function searchVectorWithEmbedding(
   // Cache docs to avoid N+1 queries (filtered by collection and tags)
   const docByMirrorHash = await buildDocumentMap(store, {
     collection: options.collection,
+    relPathPrefix: options.retrievalScope?.relPathPrefix,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
     since: temporalRange.since,
@@ -214,6 +219,7 @@ export async function searchVectorWithEmbedding(
             language: chunk.language,
             startLine: chunk.startLine,
             endLine: chunk.endLine,
+            seq: chunk.seq,
           },
           score,
         });
@@ -223,40 +229,56 @@ export async function searchVectorWithEmbedding(
 
     const collectionPath = collectionPaths.get(doc.collection);
 
-    results.push({
-      docid: doc.docid,
-      score,
-      uri: doc.uri,
-      title: doc.title ?? undefined,
-      contentType: doc.contentType ?? undefined,
-      categories: doc.categories ?? undefined,
-      line: chunk.startLine,
-      snippet: chunk.text,
-      snippetLanguage: chunk.language ?? undefined,
-      snippetRange: {
-        startLine: chunk.startLine,
-        endLine: chunk.endLine,
-      },
-      source: {
-        relPath: doc.relPath,
-        absPath: collectionPath
-          ? `${collectionPath}/${doc.relPath}`
-          : undefined,
-        mime: doc.sourceMime,
-        ext: doc.sourceExt,
-        modifiedAt: doc.sourceMtime,
-        documentDate: doc.frontmatterDate ?? undefined,
-        sizeBytes: doc.sourceSize,
-        sourceHash: doc.sourceHash,
-      },
-      conversion: doc.mirrorHash
-        ? {
-            mirrorHash: doc.mirrorHash,
-            converterId: doc.converterId ?? undefined,
-            converterVersion: doc.converterVersion ?? undefined,
-          }
-        : undefined,
-    });
+    results.push(
+      attachSearchResultPlannerMetadata(
+        {
+          docid: doc.docid,
+          score,
+          uri: doc.uri,
+          title: doc.title ?? undefined,
+          contentType: doc.contentType ?? undefined,
+          categories: doc.categories ?? undefined,
+          line: chunk.startLine,
+          snippet: chunk.text,
+          snippetLanguage: chunk.language ?? undefined,
+          snippetRange: {
+            startLine: chunk.startLine,
+            endLine: chunk.endLine,
+          },
+          source: {
+            relPath: doc.relPath,
+            absPath: collectionPath
+              ? `${collectionPath}/${doc.relPath}`
+              : undefined,
+            mime: doc.sourceMime,
+            ext: doc.sourceExt,
+            modifiedAt: doc.sourceMtime,
+            documentDate: doc.frontmatterDate ?? undefined,
+            sizeBytes: doc.sourceSize,
+            sourceHash: doc.sourceHash,
+          },
+          conversion: doc.mirrorHash
+            ? {
+                mirrorHash: doc.mirrorHash,
+                converterId: doc.converterId ?? undefined,
+                converterVersion: doc.converterVersion ?? undefined,
+              }
+            : undefined,
+        },
+        {
+          retrievalRank: 0,
+          mirrorHash: vec.mirrorHash,
+          seq: chunk.seq,
+          sources: ["vector"],
+          graphExpanded: false,
+          startLine: chunk.startLine,
+          endLine: chunk.endLine,
+          passageHash: new Bun.CryptoHasher("sha256")
+            .update(chunk.text)
+            .digest("hex"),
+        }
+      )
+    );
   }
 
   // For --full, fetch full content and build results
@@ -279,7 +301,7 @@ export async function searchVectorWithEmbedding(
 
       const collectionPath = collectionPaths.get(doc.collection);
 
-      results.push({
+      const result: SearchResult = {
         docid: doc.docid,
         score,
         uri: doc.uri,
@@ -312,7 +334,23 @@ export async function searchVectorWithEmbedding(
               converterVersion: doc.converterVersion ?? undefined,
             }
           : undefined,
-      });
+      };
+      results.push(
+        doc.mirrorHash
+          ? attachSearchResultPlannerMetadata(result, {
+              retrievalRank: 0,
+              mirrorHash: doc.mirrorHash,
+              seq: chunk.seq,
+              sources: ["vector"],
+              graphExpanded: false,
+              startLine: chunk.startLine,
+              endLine: chunk.endLine,
+              passageHash: new Bun.CryptoHasher("sha256")
+                .update(chunk.text)
+                .digest("hex"),
+            })
+          : result
+      );
     }
   }
 
@@ -334,9 +372,13 @@ export async function searchVectorWithEmbedding(
   }
 
   const finalResults = results.slice(0, limit);
+  for (const [index, result] of finalResults.entries()) {
+    const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
+    if (metadata) metadata.retrievalRank = index + 1;
+  }
   await attachSearchResultContexts(store, finalResults);
 
-  return ok({
+  const output: SearchResults = {
     results: finalResults,
     meta: {
       query,
@@ -353,7 +395,19 @@ export async function searchVectorWithEmbedding(
       author: options.author,
       queryLanguage,
     },
-  });
+  };
+  const traceResult = await options.traceSession?.recordRetrieval(
+    output,
+    performance.now() - traceStartedAt
+  );
+  if (traceResult && !traceResult.ok) {
+    return err(
+      "QUERY_FAILED",
+      `Trace recording failed: ${traceResult.error.message}`,
+      traceResult.error.cause
+    );
+  }
+  return ok(output);
 }
 
 /**
@@ -397,6 +451,7 @@ interface ChunkInfo {
   language: string | null;
   startLine: number;
   endLine: number;
+  seq: number;
 }
 
 interface DocumentInfo {
@@ -425,6 +480,7 @@ interface DocumentInfo {
 
 interface DocumentMapOptions {
   collection?: string;
+  relPathPrefix?: string;
   tagsAll?: string[];
   tagsAny?: string[];
   since?: string;
@@ -513,6 +569,13 @@ async function buildDocumentMap(
   }
 
   for (const doc of activeDocs) {
+    if (
+      options.relPathPrefix !== undefined &&
+      doc.relPath !== options.relPathPrefix &&
+      !doc.relPath.startsWith(`${options.relPathPrefix}/`)
+    ) {
+      continue;
+    }
     if (!isWithinTemporalRange(doc.sourceMtime, temporalRange)) {
       continue;
     }

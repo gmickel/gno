@@ -94,6 +94,22 @@ See [spec/cli.md](../spec/cli.md#output-format-support-matrix) for which command
 
 ## Search Commands
 
+### Private retrieval receipts
+
+With `retrievalTraces.enabled: true`, successful `search`, `vsearch`, `query`,
+`ask`, `get`, and `context build` calls print `Trace: <traceId>` to stderr.
+Normal stdout—including JSON—is unchanged. Retrieval-only calls keep that
+trace open so a later exact read can be linked:
+
+```bash
+gno query "deployment decision"
+# stderr: Trace: <traceId>
+gno get gno://work/decisions/deploy.md --from 40 -l 20 --trace-id <traceId>
+```
+
+Tracing disabled: no ID generation, fingerprint work, local receipt write, or
+stderr receipt. See [Configuration](./CONFIGURATION.md#private-retrieval-traces).
+
 ### gno search
 
 Full-text search using document-level BM25 with Snowball stemmer.
@@ -413,6 +429,7 @@ Options:
 - `--from <line>` - Start output at line number (1-indexed)
 - `-l, --limit <lines>` - Limit to N lines
 - `--line-numbers` - Prefix lines with numbers
+- `--trace-id <id>` - Continue an open query receipt and record the exact returned span
 - `--source` - Include source metadata
 
 ### gno multi-get
@@ -610,6 +627,64 @@ contexts.
 gno embed
 gno embed notes
 ```
+
+## Private Retrieval Trace Commands
+
+When retrieval traces are enabled, use the receipt ID printed on stderr to
+inspect and explicitly label the local evidence path:
+
+```bash
+gno trace list --md
+gno trace show <trace-id> --json
+gno trace label <trace-id> --label relevant \
+  --target gno://notes/decision.md
+gno trace label <trace-id> --label missing-expected \
+  --target '#abcdef'
+```
+
+Relevant and irrelevant labels must match evidence already recorded by that
+trace. Missing-expected labels accept only a `gno://` URI, docid, or immutable
+source hash; GNO does not copy document text into the judgment. Retrying the
+same label is idempotent. A later correction is appended instead of rewriting
+history.
+
+Build one deterministic receipt from immutable terminal traces:
+
+```bash
+gno trace export <trace-id> <another-trace-id> --output traces.json
+gno trace export <trace-id> --format qrels --output qrels.json
+```
+
+Open traces cannot be exported. Completed, partial, failed, and cancelled
+outcomes stay distinct and never become implicit negative labels.
+Qrels export additionally requires replay-mode receipts with complete query,
+filter, rank, hash, and exact-span provenance. It writes only content-free
+identities and outcomes; source and mirror text are not copied.
+
+Compare that immutable qrels baseline with a candidate retrieval pipeline:
+
+```bash
+gno trace replay <qrels-export-id> --candidate bm25 --md
+gno trace replay <qrels-export-id> --candidate hybrid \
+  --candidate-limit 100 --no-expand --json
+```
+
+Replay verifies the local aggregate manifest before running, reports final
+rank separately from planner rank, classifies sources as unchanged, stale,
+missing, inactive, or unindexed, and preserves capability/fallback truth. It
+can recommend promotion but always returns `applied: false`; it never edits
+ranking, prompts, models, configuration, traces, or user files.
+
+Delete one receipt or purge all local receipt data:
+
+```bash
+gno trace delete <trace-id>
+gno --yes trace purge --json
+```
+
+The purge receipt reports `physicalCleanup` as `completed`, `wal_busy`, or
+`failed`; only `completed` confirms the SQLite WAL was truncated. Recording
+can be disabled without disabling management of receipts already stored.
 
 ## Context Commands
 

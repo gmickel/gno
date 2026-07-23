@@ -84,7 +84,7 @@ export interface VectorIndexPort {
   searchNearest(
     embedding: Float32Array,
     k: number,
-    options?: { minScore?: number }
+    options?: { minScore?: number; allowedMirrorHashes?: string[] }
   ): Promise<StoreResult<VectorSearchResult[]>>;
 
   // ─────────────────────────────────────────────────────────────────────────

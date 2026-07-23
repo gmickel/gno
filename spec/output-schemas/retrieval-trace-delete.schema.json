@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/retrieval-trace-delete@1.0",
+  "title": "GNO Retrieval Trace Delete",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "traceId", "deleted", "counts"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "traceId": { "type": "string" },
+    "deleted": { "type": "boolean" },
+    "counts": {
+      "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/counts"
+    }
+  }
+}

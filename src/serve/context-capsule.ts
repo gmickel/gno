@@ -1,5 +1,6 @@
 /** REST adapters for the shared Context Capsule application boundary. */
 
+import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { GnoContextErrorCode } from "../sdk/types";
 import type { ServerContext } from "./context";
 
@@ -20,6 +21,8 @@ import {
   parseContextVerifySurfaceInput,
 } from "../app/context-surface";
 import { ContextCapsuleContractError } from "../core/context-capsule";
+import { startRetrievalTraceRequest } from "../core/retrieval-trace-request";
+import { withRetrievalTraceHeader } from "./retrieval-trace";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
 const MARKDOWN_HEADERS = {
@@ -80,6 +83,7 @@ export const handleContextBuild = async (
   context: ServerContext,
   request: Request
 ): Promise<Response> => {
+  let traceSession: RetrievalTraceSession | null = null;
   try {
     const { input, format } = parseContextBuildSurfaceInput(
       await parseJsonBody(request),
@@ -90,6 +94,42 @@ export const handleContextBuild = async (
       context.indexName,
       context.config.collections.map((collection) => collection.name)
     );
+    const started = await startRetrievalTraceRequest({
+      store: context.store,
+      config: context.config,
+      query: input.query ?? input.goal,
+      goal: input.goal,
+      filters: {
+        limit: input.limit,
+        collection:
+          input.collections?.length === 1 ? input.collections[0] : undefined,
+        collections: [...(input.collections ?? [])].sort(),
+        lang: input.lang,
+        tagsAll: input.tagsAll,
+        tagsAny: input.tagsAny,
+        since: input.since,
+        until: input.until,
+        categories: input.categories,
+        author: input.author,
+        graph: input.graph,
+        candidateLimit: input.candidateLimit,
+        queryModes: input.queryModes,
+        uriPrefix: input.uriPrefix ?? undefined,
+      },
+      pipeline: "context",
+      indexName: context.indexName,
+      modelUris: [
+        context.embedPort?.modelUri,
+        context.rerankPort?.modelUri,
+      ].filter((value): value is string => Boolean(value)),
+    });
+    if (!started.ok) {
+      throw Object.assign(
+        new Error(`Retrieval trace start failed: ${started.error.message}`),
+        { code: "retrieval_failed" }
+      );
+    }
+    traceSession = started.value;
     const capsule = await buildContextCapsule(input, {
       store: context.store,
       config: context.config,
@@ -97,16 +137,35 @@ export const handleContextBuild = async (
       vectorIndex: context.vectorIndex,
       embedPort: context.embedPort,
       rerankPort: context.rerankPort,
+      traceSession: traceSession ?? undefined,
     });
-    return format === "md"
-      ? new Response(formatContextCapsuleMarkdown(capsule), {
-          headers: MARKDOWN_HEADERS,
-        })
-      : new Response(canonicalBuiltContextCapsuleJson(capsule), {
-          headers: JSON_HEADERS,
-        });
+    const finished = await traceSession?.finish(
+      request.signal.aborted ? "cancelled" : "completed"
+    );
+    if (finished && !finished.ok) {
+      throw Object.assign(
+        new Error(
+          `Retrieval trace finalization failed: ${finished.error.message}`
+        ),
+        { code: "retrieval_failed" }
+      );
+    }
+    const response =
+      format === "md"
+        ? new Response(formatContextCapsuleMarkdown(capsule), {
+            headers: MARKDOWN_HEADERS,
+          })
+        : new Response(canonicalBuiltContextCapsuleJson(capsule), {
+            headers: JSON_HEADERS,
+          });
+    return withRetrievalTraceHeader(response, traceSession);
   } catch (error) {
-    return errorResponse(error);
+    if (traceSession) {
+      await traceSession.finish(
+        request.signal.aborted ? "cancelled" : "failed"
+      );
+    }
+    return withRetrievalTraceHeader(errorResponse(error), traceSession);
   }
 };
 

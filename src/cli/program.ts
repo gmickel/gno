@@ -164,6 +164,15 @@ async function writeOutput(
   }
 }
 
+/** Emit opt-in trace identity without changing command stdout payloads. */
+export function writeRetrievalTraceReceipt(
+  metadata: { traceId: string } | undefined
+): void {
+  if (metadata) {
+    process.stderr.write(`Trace: ${metadata.traceId}\n`);
+  }
+}
+
 async function resolveTerminalLinkPolicy(
   format: "terminal" | "json" | "files" | "csv" | "md" | "xml"
 ): Promise<
@@ -292,6 +301,7 @@ export function createProgram(): Command {
   wireOnboardingCommands(program);
   wireCaptureCommand(program);
   wireManagementCommands(program);
+  wireTraceCommands(program);
   wirePublishCommand(program);
   wireVecCommands(program);
   wireRetrievalCommands(program);
@@ -313,6 +323,244 @@ Report issues: ${ISSUES_URL}`
   );
 
   return program;
+}
+
+function wireTraceCommands(program: Command): void {
+  const traceCmd = program
+    .command("trace")
+    .description("Inspect and manage private local retrieval traces");
+
+  const outputFormat = (options: Record<string, unknown>): "json" | "md" =>
+    getFormat(options) === "json" ? "json" : "md";
+
+  traceCmd
+    .command("list")
+    .description("List bounded, redacted retrieval trace summaries")
+    .option("-n, --limit <num>", "maximum traces", "50")
+    .option("--cursor <cursor>", "continue from a previous list receipt")
+    .option("--json", "JSON output")
+    .option("--md", "Markdown output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
+      const { traceList } = await import("./commands/trace");
+      const output = await traceList(
+        {
+          limit: parsePositiveInt("limit", cmdOpts.limit),
+          cursor: cmdOpts.cursor as string | undefined,
+        },
+        {
+          configPath: globals.config,
+          indexName: globals.index,
+          format: outputFormat(cmdOpts),
+        }
+      );
+      process.stdout.write(output);
+    });
+
+  traceCmd
+    .command("show <trace-id>")
+    .description("Inspect one bounded retrieval trace receipt")
+    .option("--detail-limit <num>", "maximum records per detail section", "500")
+    .option("--json", "JSON output")
+    .option("--md", "Markdown output")
+    .action(async (traceId: string, cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
+      const { traceShow } = await import("./commands/trace");
+      const output = await traceShow(
+        traceId,
+        {
+          detailLimit: parsePositiveInt("detail-limit", cmdOpts.detailLimit),
+        },
+        {
+          configPath: globals.config,
+          indexName: globals.index,
+          format: outputFormat(cmdOpts),
+        }
+      );
+      process.stdout.write(output);
+    });
+
+  traceCmd
+    .command("label <trace-id>")
+    .description("Append an explicit retrieval relevance judgment")
+    .requiredOption(
+      "--label <label>",
+      "relevant, irrelevant, or missing-expected"
+    )
+    .requiredOption("--target <ref>", "evidence or expected-document reference")
+    .option("--target-kind <kind>", "document, chunk, or span")
+    .option("--from-line <num>", "exact evidence start line")
+    .option("--to-line <num>", "exact evidence end line")
+    .option("--source-hash <sha256>", "expected immutable source hash")
+    .option("--docid <docid>", "expected document ID")
+    .option("--idempotency-key <key>", "caller retry key")
+    .option("--json", "JSON output")
+    .option("--md", "Markdown output")
+    .action(async (traceId: string, cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
+      const rawLabel = String(cmdOpts.label).replace("-", "_");
+      if (!["relevant", "irrelevant", "missing_expected"].includes(rawLabel)) {
+        throw new CliError(
+          "VALIDATION",
+          "--label must be relevant, irrelevant, or missing-expected"
+        );
+      }
+      const rawTargetKind = cmdOpts.targetKind;
+      if (
+        rawTargetKind !== undefined &&
+        (typeof rawTargetKind !== "string" ||
+          !["document", "chunk", "span"].includes(rawTargetKind))
+      ) {
+        throw new CliError(
+          "VALIDATION",
+          "--target-kind must be document, chunk, or span"
+        );
+      }
+      const { traceLabel } = await import("./commands/trace");
+      const output = await traceLabel(
+        {
+          traceId,
+          label: rawLabel as "relevant" | "irrelevant" | "missing_expected",
+          targetRef: String(cmdOpts.target),
+          targetKind: rawTargetKind as
+            | "document"
+            | "chunk"
+            | "span"
+            | undefined,
+          startLine:
+            cmdOpts.fromLine === undefined
+              ? undefined
+              : parsePositiveInt("from-line", cmdOpts.fromLine),
+          endLine:
+            cmdOpts.toLine === undefined
+              ? undefined
+              : parsePositiveInt("to-line", cmdOpts.toLine),
+          sourceHash: cmdOpts.sourceHash as string | undefined,
+          docid: cmdOpts.docid as string | undefined,
+          idempotencyKey: cmdOpts.idempotencyKey as string | undefined,
+        },
+        {
+          configPath: globals.config,
+          indexName: globals.index,
+          format: outputFormat(cmdOpts),
+        }
+      );
+      process.stdout.write(output);
+    });
+
+  traceCmd
+    .command("export <trace-ids...>")
+    .description("Export immutable terminal traces as one local receipt")
+    .option("--format <format>", "agentic-receipt or qrels", "agentic-receipt")
+    .option("--output <path>", "write canonical artifact atomically")
+    .option("--json", "JSON output")
+    .action(async (traceIds: string[], cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
+      const exportFormat = String(cmdOpts.format);
+      if (!["agentic-receipt", "qrels"].includes(exportFormat)) {
+        throw new CliError(
+          "VALIDATION",
+          "--format must be agentic-receipt or qrels"
+        );
+      }
+      const { traceExport } = await import("./commands/trace");
+      process.stdout.write(
+        await traceExport(traceIds, {
+          configPath: globals.config,
+          indexName: globals.index,
+          format: "json",
+          output: cmdOpts.output as string | undefined,
+          exportFormat: exportFormat as "agentic-receipt" | "qrels",
+        })
+      );
+    });
+
+  traceCmd
+    .command("replay <export-id>")
+    .description("Compare one immutable qrels baseline with a candidate")
+    .requiredOption("--candidate <type>", "bm25, vector, or hybrid")
+    .option("-n, --limit <num>", "result cutoff")
+    .option("--candidate-limit <num>", "candidate pool size")
+    .option("--no-expand", "disable query expansion")
+    .option("--no-rerank", "disable reranking")
+    .option("--json", "JSON output")
+    .option("--md", "Markdown output")
+    .action(async (exportId: string, cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
+      const candidateType = String(cmdOpts.candidate);
+      if (!["bm25", "vector", "hybrid"].includes(candidateType)) {
+        throw new CliError(
+          "VALIDATION",
+          "--candidate must be bm25, vector, or hybrid"
+        );
+      }
+      const { traceReplay } = await import("./commands/replay");
+      process.stdout.write(
+        await traceReplay(
+          exportId,
+          {
+            id: `cli-${candidateType}`,
+            type: candidateType as "bm25" | "vector" | "hybrid",
+            limit:
+              cmdOpts.limit === undefined
+                ? undefined
+                : parsePositiveInt("limit", cmdOpts.limit),
+            candidateLimit:
+              cmdOpts.candidateLimit === undefined
+                ? undefined
+                : parsePositiveInt("candidate-limit", cmdOpts.candidateLimit),
+            noExpand: cmdOpts.expand === false,
+            noRerank: cmdOpts.rerank === false,
+          },
+          {
+            configPath: globals.config,
+            indexName: globals.index,
+            format: outputFormat(cmdOpts),
+            offline: globals.offline,
+          }
+        )
+      );
+    });
+
+  traceCmd
+    .command("delete <trace-id>")
+    .description("Delete one trace and every owned local record")
+    .option("--json", "JSON output")
+    .option("--md", "Markdown output")
+    .action(async (traceId: string, cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
+      const { traceDelete } = await import("./commands/trace");
+      process.stdout.write(
+        await traceDelete(traceId, {
+          configPath: globals.config,
+          indexName: globals.index,
+          format: outputFormat(cmdOpts),
+        })
+      );
+    });
+
+  traceCmd
+    .command("purge")
+    .description("Delete every local retrieval trace receipt")
+    .option("--json", "JSON output")
+    .option("--md", "Markdown output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
+      if (!globals.yes) {
+        throw new CliError(
+          "VALIDATION",
+          "Trace purge requires the global --yes confirmation"
+        );
+      }
+      const { tracePurge } = await import("./commands/trace");
+      process.stdout.write(
+        await tracePurge({
+          configPath: globals.config,
+          indexName: globals.index,
+          format: outputFormat(cmdOpts),
+        })
+      );
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -435,6 +683,7 @@ function wireSearchCommands(program: Command): void {
         terminalLinks: await resolveTerminalLinkPolicy(format),
       });
       await writeOutput(output, format);
+      writeRetrievalTraceReceipt(result.metadata);
     });
 
   // vsearch - Vector similarity search
@@ -547,6 +796,7 @@ function wireSearchCommands(program: Command): void {
         terminalLinks: await resolveTerminalLinkPolicy(format),
       });
       await writeOutput(output, format);
+      writeRetrievalTraceReceipt(result.metadata);
     });
 
   // query - Hybrid search with expansion and reranking
@@ -768,6 +1018,7 @@ function wireSearchCommands(program: Command): void {
         terminalLinks: await resolveTerminalLinkPolicy(format),
       });
       await writeOutput(output, format);
+      writeRetrievalTraceReceipt(result.metadata);
     });
 
   // bench - Retrieval benchmark fixture runner
@@ -960,6 +1211,7 @@ function wireSearchCommands(program: Command): void {
         showSources,
       });
       await writeOutput(output, format);
+      writeRetrievalTraceReceipt(result.metadata);
     });
 }
 
@@ -1191,6 +1443,7 @@ function wireRetrievalCommands(program: Command): void {
       parsePositiveInt.bind(null, "limit")
     )
     .option("--line-numbers", "Prefix lines with numbers")
+    .option("--trace-id <id>", "Continue an open retrieval trace")
     .option("--source", "Include source metadata")
     .option("--json", "JSON output")
     .option("--md", "Markdown output")
@@ -1209,6 +1462,7 @@ function wireRetrievalCommands(program: Command): void {
         source: Boolean(cmdOpts.source),
         json: format === "json",
         md: format === "md",
+        traceId: cmdOpts.traceId as string | undefined,
       });
 
       if (!result.success) {
@@ -1225,6 +1479,7 @@ function wireRetrievalCommands(program: Command): void {
           md: format === "md",
         })}\n`
       );
+      writeRetrievalTraceReceipt(result.metadata);
     });
 
   // multi-get - Retrieve multiple documents

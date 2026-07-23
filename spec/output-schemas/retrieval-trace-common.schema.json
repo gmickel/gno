@@ -1,0 +1,492 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/retrieval-trace-common@1.0",
+  "title": "GNO Retrieval Trace Common Types",
+  "definitions": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "textShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["characters", "terms"],
+      "properties": {
+        "characters": { "type": "integer", "minimum": 0 },
+        "terms": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "fingerprints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pipeline", "model", "config", "index"],
+      "properties": {
+        "pipeline": { "$ref": "#/definitions/sha256" },
+        "model": { "$ref": "#/definitions/sha256" },
+        "config": { "$ref": "#/definitions/sha256" },
+        "index": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "summary": { "$ref": "gno://schemas/retrieval-trace-summary@1.0" },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "traceId",
+        "schemaVersion",
+        "redactionMode",
+        "replayCapable",
+        "status",
+        "queryText",
+        "queryDigest",
+        "queryShape",
+        "goalText",
+        "goalDigest",
+        "goalShape",
+        "filters",
+        "fingerprints",
+        "createdAtMs",
+        "updatedAtMs",
+        "expiresAtMs",
+        "byteSize",
+        "creationDigest"
+      ],
+      "properties": {
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "schemaVersion": { "const": "1.0" },
+        "redactionMode": { "enum": ["metadata", "replay"] },
+        "replayCapable": { "type": "boolean" },
+        "status": {
+          "enum": ["open", "completed", "partial", "failed", "cancelled"]
+        },
+        "queryText": { "type": ["string", "null"] },
+        "queryDigest": {
+          "anyOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+        },
+        "queryShape": { "$ref": "#/definitions/textShape" },
+        "goalText": { "type": ["string", "null"] },
+        "goalDigest": {
+          "anyOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+        },
+        "goalShape": { "$ref": "#/definitions/textShape" },
+        "filters": {
+          "oneOf": [
+            {
+              "$ref": "gno://schemas/retrieval-trace-filters@1.0#/definitions/filters"
+            },
+            {
+              "$ref": "gno://schemas/retrieval-trace-filters@1.0#/definitions/metadataFilters"
+            }
+          ]
+        },
+        "fingerprints": { "$ref": "#/definitions/fingerprints" },
+        "createdAtMs": { "type": "integer", "minimum": 0 },
+        "updatedAtMs": { "type": "integer", "minimum": 0 },
+        "expiresAtMs": { "type": "integer", "minimum": 0 },
+        "byteSize": { "type": "integer", "minimum": 0 },
+        "creationDigest": { "$ref": "#/definitions/sha256" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "redactionMode": { "const": "metadata" } },
+            "required": ["redactionMode"]
+          },
+          "then": {
+            "properties": {
+              "filters": {
+                "$ref": "gno://schemas/retrieval-trace-filters@1.0#/definitions/metadataFilters"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "redactionMode": { "const": "replay" } },
+            "required": ["redactionMode"]
+          },
+          "then": {
+            "properties": {
+              "filters": {
+                "$ref": "gno://schemas/retrieval-trace-filters@1.0#/definitions/filters"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "traceId",
+        "idempotencyKey",
+        "kind",
+        "payload",
+        "createdAtMs",
+        "payloadBytes",
+        "canonicalDigest"
+      ],
+      "properties": {
+        "runId": { "type": "string" },
+        "traceId": { "type": "string" },
+        "idempotencyKey": { "type": "string" },
+        "kind": { "enum": ["retrieval", "context", "get"] },
+        "payload": {
+          "oneOf": [
+            {
+              "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/retrievalPayload"
+            },
+            {
+              "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/contextPayload"
+            },
+            {
+              "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/evidencePayload"
+            }
+          ]
+        },
+        "createdAtMs": { "type": "integer", "minimum": 0 },
+        "payloadBytes": { "type": "integer", "minimum": 0 },
+        "canonicalDigest": { "$ref": "#/definitions/sha256" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "retrieval" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/retrievalPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "context" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/contextPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "get" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/evidencePayload"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "traceId",
+        "runId",
+        "idempotencyKey",
+        "kind",
+        "payload",
+        "createdAtMs",
+        "payloadBytes",
+        "canonicalDigest"
+      ],
+      "properties": {
+        "eventId": { "type": "string" },
+        "traceId": { "type": "string" },
+        "runId": { "type": ["string", "null"] },
+        "idempotencyKey": { "type": "string" },
+        "kind": {
+          "enum": [
+            "query",
+            "retrieval",
+            "context",
+            "get",
+            "open",
+            "cite",
+            "pin",
+            "capability",
+            "complete"
+          ]
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/queryPayload"
+            },
+            {
+              "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/retrievalPayload"
+            },
+            {
+              "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/contextPayload"
+            },
+            {
+              "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/evidencePayload"
+            },
+            {
+              "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/capabilityPayload"
+            },
+            {
+              "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/completePayload"
+            }
+          ]
+        },
+        "createdAtMs": { "type": "integer", "minimum": 0 },
+        "payloadBytes": { "type": "integer", "minimum": 0 },
+        "canonicalDigest": { "$ref": "#/definitions/sha256" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "query" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/queryPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "retrieval" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/retrievalPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "context" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/contextPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": { "enum": ["get", "open", "cite", "pin"] }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/evidencePayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "capability" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/capabilityPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "complete" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/completePayload"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "judgment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "judgmentId",
+        "traceId",
+        "runId",
+        "idempotencyKey",
+        "label",
+        "targetKind",
+        "targetRef",
+        "target",
+        "createdAtMs",
+        "targetBytes",
+        "canonicalDigest"
+      ],
+      "properties": {
+        "judgmentId": { "type": "string" },
+        "traceId": { "type": "string" },
+        "runId": { "type": ["string", "null"] },
+        "idempotencyKey": { "type": "string" },
+        "label": { "enum": ["relevant", "irrelevant", "missing_expected"] },
+        "targetKind": { "enum": ["document", "chunk", "span", "query"] },
+        "targetRef": { "type": "string" },
+        "target": {
+          "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/judgmentTarget"
+        },
+        "createdAtMs": { "type": "integer", "minimum": 0 },
+        "targetBytes": { "type": "integer", "minimum": 0 },
+        "canonicalDigest": { "$ref": "#/definitions/sha256" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "targetKind": { "const": "document" } },
+            "required": ["targetKind"]
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/documentTarget"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "targetKind": { "const": "chunk" } },
+            "required": ["targetKind"]
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "allOf": [
+                  {
+                    "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/judgmentTarget"
+                  },
+                  {
+                    "type": "object",
+                    "properties": { "seq": {} },
+                    "required": ["seq"]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "targetKind": { "const": "span" } },
+            "required": ["targetKind"]
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "allOf": [
+                  {
+                    "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/judgmentTarget"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "startLine": {},
+                      "endLine": {}
+                    },
+                    "required": ["startLine", "endLine"]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "exportRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exportId",
+        "traceId",
+        "format",
+        "artifactHash",
+        "createdAtMs"
+      ],
+      "properties": {
+        "exportId": { "type": "string" },
+        "traceId": { "type": "string" },
+        "format": { "enum": ["agentic-receipt", "qrels"] },
+        "artifactHash": { "$ref": "#/definitions/sha256" },
+        "createdAtMs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exportId",
+        "traceIds",
+        "format",
+        "artifactHash",
+        "createdAtMs"
+      ],
+      "properties": {
+        "exportId": { "type": "string" },
+        "traceIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "format": { "enum": ["agentic-receipt", "qrels"] },
+        "artifactHash": { "$ref": "#/definitions/sha256" },
+        "createdAtMs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "traces",
+        "runs",
+        "events",
+        "judgments",
+        "exports",
+        "exportLinks"
+      ],
+      "properties": {
+        "traces": { "type": "integer", "minimum": 0 },
+        "runs": { "type": "integer", "minimum": 0 },
+        "events": { "type": "integer", "minimum": 0 },
+        "judgments": { "type": "integer", "minimum": 0 },
+        "exports": { "type": "integer", "minimum": 0 },
+        "exportLinks": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

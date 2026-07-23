@@ -70,3 +70,12 @@ export {
   ScopeTypeSchema,
 } from "./types";
 export type { HttpGatewayConfig } from "./types";
+export {
+  RETRIEVAL_TRACE_DEFAULT_RETENTION,
+  type RetrievalTraceConfig,
+  RetrievalTraceConfigSchema,
+  type RetrievalTraceRedactionMode,
+  RetrievalTraceRedactionModeSchema,
+  type RetrievalTraceRetention,
+  RetrievalTraceRetentionSchema,
+} from "./retrieval-traces";

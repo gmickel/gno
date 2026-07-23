@@ -5,6 +5,10 @@
  * @module src/cli/commands/get
  */
 
+import type {
+  RetrievalTraceSession,
+  RetrievalTraceSurfaceMetadata,
+} from "../../core/retrieval-trace-session";
 import type { DocumentRow, StorePort, StoreResult } from "../../store/types";
 import type { ParsedRef } from "./ref-parser";
 
@@ -17,6 +21,10 @@ import {
   getDocumentCapabilities,
   type DocumentCapabilities,
 } from "../../core/document-capabilities";
+import {
+  evidenceFromExactDocument,
+  RetrievalTraceSession as TraceSession,
+} from "../../core/retrieval-trace-session";
 import { parseRef } from "./ref-parser";
 import { initStore } from "./shared";
 
@@ -41,10 +49,18 @@ export interface GetCommandOptions {
   json?: boolean;
   /** Markdown output */
   md?: boolean;
+  /** Continue an open retrieval receipt returned by a prior query. */
+  traceId?: string;
+  /** Internal shared-session seam for in-process callers. */
+  traceSession?: RetrievalTraceSession;
 }
 
 export type GetResult =
-  | { success: true; data: GetResponse }
+  | {
+      success: true;
+      data: GetResponse;
+      metadata?: RetrievalTraceSurfaceMetadata;
+    }
   | { success: false; error: string; isValidation?: boolean };
 
 export interface GetResponse {
@@ -138,7 +154,53 @@ export async function get(
   const { store, config } = initResult;
 
   try {
-    return await fetchDocument(store, parsed, options, config, indexName);
+    let traceSession = options.traceSession;
+    if (!traceSession && options.traceId) {
+      const resumed = await TraceSession.resume({
+        store,
+        config: config.retrievalTraces,
+        traceId: options.traceId,
+      });
+      if (!resumed.ok) {
+        return { success: false, error: resumed.error.message };
+      }
+      traceSession = resumed.value ?? undefined;
+    }
+    const result = await fetchDocument(
+      store,
+      parsed,
+      options,
+      config,
+      indexName
+    );
+    if (!result.success || !traceSession) return result;
+    const lines = result.data.returnedLines ?? {
+      start: 1,
+      end: result.data.totalLines,
+    };
+    const evidence = evidenceFromExactDocument({
+      docid: result.data.docid,
+      uri: result.data.uri,
+      sourceHash: result.data.source.sourceHash,
+      mirrorHash: result.data.conversion?.mirrorHash,
+      content: result.data.content,
+      startLine: lines.start,
+      endLine: lines.end,
+    });
+    if (evidence) {
+      const getEvent = await traceSession.recordEvidence("get", [evidence]);
+      if (!getEvent.ok) {
+        return { success: false, error: getEvent.error.message };
+      }
+      const openEvent = await traceSession.recordEvidence("open", [evidence]);
+      if (!openEvent.ok) {
+        return { success: false, error: openEvent.error.message };
+      }
+    }
+    return {
+      ...result,
+      metadata: traceSession.metadata(),
+    };
   } finally {
     await store.close();
   }
@@ -375,7 +437,6 @@ export function formatGet(
     }
     return `Error: ${result.error}`;
   }
-
   const { data } = result;
 
   if (options.json) {

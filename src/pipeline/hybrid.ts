@@ -55,9 +55,10 @@ import {
   shouldSortByRecency,
 } from "./temporal";
 import {
-  DEFAULT_PIPELINE_CONFIG,
-  SEARCH_RESULT_PLANNER_METADATA,
-} from "./types";
+  attachSearchResultPlannerMetadata,
+  attachSearchResultsTraceMetadata,
+} from "./trace-metadata";
+import { DEFAULT_PIPELINE_CONFIG } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dependencies
@@ -121,11 +122,13 @@ async function checkBm25Strength(
     until?: string;
     categories?: string[];
     author?: string;
+    relPathPrefix?: string;
   }
 ): Promise<boolean> {
   const result = await store.searchFts(query, {
     limit: 5,
     collection: options?.collection,
+    relPathPrefix: options?.relPathPrefix,
     language: options?.lang,
     tagsAll: options?.tagsAll,
     tagsAny: options?.tagsAny,
@@ -179,11 +182,13 @@ async function searchFtsChunks(
     until?: string;
     categories?: string[];
     author?: string;
+    relPathPrefix?: string;
   }
 ): Promise<FtsChunksResult> {
   const result = await store.searchFts(query, {
     limit: options.limit,
     collection: options.collection,
+    relPathPrefix: options.relPathPrefix,
     language: options.lang,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
@@ -216,7 +221,11 @@ async function searchVectorChunks(
   vectorIndex: VectorIndexPort,
   embedPort: EmbeddingPort,
   query: string,
-  options: { limit: number; minScore?: number }
+  options: {
+    limit: number;
+    minScore?: number;
+    allowedMirrorHashes?: string[];
+  }
 ): Promise<ChunkId[]> {
   if (!vectorIndex.searchAvailable) {
     return [];
@@ -234,7 +243,10 @@ async function searchVectorChunks(
   const searchResult = await vectorIndex.searchNearest(
     queryEmbedding,
     options.limit,
-    { minScore: options.minScore }
+    {
+      minScore: options.minScore,
+      allowedMirrorHashes: options.allowedMirrorHashes,
+    }
   );
 
   if (!searchResult.ok) {
@@ -381,6 +393,7 @@ export async function searchHybrid(
           until: temporalRange.until,
           categories: options.categories,
           author: options.author,
+          relPathPrefix: options.retrievalScope?.relPathPrefix,
         });
 
     if (hasStrongSignal) {
@@ -397,6 +410,8 @@ export async function searchHybrid(
       });
       if (expandResult.ok) {
         expansion = expandResult.value;
+      } else {
+        counters.fallbackEvents.push("expansion_error");
       }
     }
   }
@@ -428,6 +443,7 @@ export async function searchHybrid(
     until: temporalRange.until,
     categories: options.categories,
     author: options.author,
+    relPathPrefix: options.retrievalScope?.relPathPrefix,
   });
 
   // Propagate FTS syntax errors as INVALID_INPUT
@@ -462,6 +478,7 @@ export async function searchHybrid(
           until: temporalRange.until,
           categories: options.categories,
           author: options.author,
+          relPathPrefix: options.retrievalScope?.relPathPrefix,
         })
       )
     );
@@ -509,6 +526,7 @@ export async function searchHybrid(
         query,
         {
           limit: limit * 2 * retrievalMultiplier,
+          allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
         }
       );
 
@@ -552,7 +570,10 @@ export async function searchHybrid(
 
           const searchResult = await vectorIndex.searchNearest(
             new Float32Array(embedding),
-            variant.limit
+            variant.limit,
+            {
+              allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
+            }
           );
           if (!searchResult.ok || searchResult.value.length === 0) {
             continue;
@@ -615,6 +636,7 @@ export async function searchHybrid(
     limit,
     candidateLimit,
     disabled: !options.graph || options.noGraph,
+    relPathPrefix: options.retrievalScope?.relPathPrefix,
     lang: options.lang,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
@@ -735,6 +757,14 @@ export async function searchHybrid(
   const matchesMetadataFilters = (
     doc: (typeof docsResult.value)[number]
   ): boolean => {
+    const relPathPrefix = options.retrievalScope?.relPathPrefix;
+    if (
+      relPathPrefix !== undefined &&
+      doc.relPath !== relPathPrefix &&
+      !doc.relPath.startsWith(`${relPathPrefix}/`)
+    ) {
+      return false;
+    }
     if (!isWithinTemporalRange(doc.sourceMtime, temporalRange)) {
       return false;
     }
@@ -923,42 +953,51 @@ export async function searchHybrid(
       if (!docidMap.has(docidKey)) docidMap.set(docidKey, doc.docid);
       const collectionPath = collectionPaths.get(doc.collection);
       seenDocids.add(doc.docid);
-      results.push({
-        docid: doc.docid,
-        score: candidate.blendedScore,
-        uri: doc.uri,
-        title: doc.title ?? undefined,
-        contentType: doc.contentType ?? undefined,
-        categories: doc.categories ?? undefined,
-        line: snippetChunk.startLine,
-        snippet,
-        snippetLanguage: chunk.language ?? undefined,
-        snippetRange,
-        source: {
-          relPath: doc.relPath,
-          absPath: collectionPath
-            ? `${collectionPath}/${doc.relPath}`
-            : undefined,
-          mime: doc.sourceMime,
-          ext: doc.sourceExt,
-          modifiedAt: doc.sourceMtime,
-          documentDate: doc.frontmatterDate ?? undefined,
-          sizeBytes: doc.sourceSize,
-          sourceHash: doc.sourceHash,
-        },
-        conversion: {
-          mirrorHash: candidate.mirrorHash,
-          converterId: doc.converterId ?? undefined,
-          converterVersion: doc.converterVersion ?? undefined,
-        },
-        [SEARCH_RESULT_PLANNER_METADATA]: {
-          retrievalRank: candidateIndex + 1,
-          mirrorHash: candidate.mirrorHash,
-          seq: snippetChunk.seq,
-          sources: [...candidate.sources].sort(),
-          graphExpanded: candidate.sources.includes("graph"),
-        },
-      });
+      results.push(
+        attachSearchResultPlannerMetadata(
+          {
+            docid: doc.docid,
+            score: candidate.blendedScore,
+            uri: doc.uri,
+            title: doc.title ?? undefined,
+            contentType: doc.contentType ?? undefined,
+            categories: doc.categories ?? undefined,
+            line: snippetChunk.startLine,
+            snippet,
+            snippetLanguage: chunk.language ?? undefined,
+            snippetRange,
+            source: {
+              relPath: doc.relPath,
+              absPath: collectionPath
+                ? `${collectionPath}/${doc.relPath}`
+                : undefined,
+              mime: doc.sourceMime,
+              ext: doc.sourceExt,
+              modifiedAt: doc.sourceMtime,
+              documentDate: doc.frontmatterDate ?? undefined,
+              sizeBytes: doc.sourceSize,
+              sourceHash: doc.sourceHash,
+            },
+            conversion: {
+              mirrorHash: candidate.mirrorHash,
+              converterId: doc.converterId ?? undefined,
+              converterVersion: doc.converterVersion ?? undefined,
+            },
+          },
+          {
+            retrievalRank: candidateIndex + 1,
+            mirrorHash: candidate.mirrorHash,
+            seq: snippetChunk.seq,
+            sources: [...candidate.sources].sort(),
+            graphExpanded: candidate.sources.includes("graph"),
+            startLine: snippetChunk.startLine,
+            endLine: snippetChunk.endLine,
+            passageHash: new Bun.CryptoHasher("sha256")
+              .update(snippetChunk.text)
+              .digest("hex"),
+          }
+        )
+      );
     }
   }
   timings.assemblyMs = performance.now() - assemblyStartedAt;
@@ -1002,7 +1041,7 @@ export async function searchHybrid(
   const finalResults = results.slice(0, limit);
   await attachSearchResultContexts(store, finalResults);
 
-  return ok({
+  const output: SearchResults = {
     results: finalResults,
     meta: {
       query,
@@ -1033,5 +1072,74 @@ export async function searchHybrid(
       explain: explainData,
       trace: diagnoseTrace,
     },
+  };
+  const fallbackCodes = [...new Set(counters.fallbackEvents)].sort();
+  const capabilityOutcomes = [
+    { capability: "lexical_search", status: "used" as const },
+    vectorAvailable
+      ? fallbackCodes.includes("vector_embed_error")
+        ? {
+            capability: "semantic_search",
+            status: "failed" as const,
+            reasonCode: "vector_embed_error",
+          }
+        : { capability: "semantic_search", status: "used" as const }
+      : {
+          capability: "semantic_search",
+          status: "unavailable" as const,
+          reasonCode: "vector_unavailable",
+        },
+    expansion !== null
+      ? { capability: "query_expansion", status: "used" as const }
+      : {
+          capability: "query_expansion",
+          status:
+            expansionStatus === "attempted"
+              ? ("failed" as const)
+              : ("unavailable" as const),
+          reasonCode:
+            expansionStatus === "attempted"
+              ? "expansion_error"
+              : expansionStatus === "skipped_strong"
+                ? "expansion_skipped_strong"
+                : "expansion_disabled",
+        },
+    rerankResult.reranked
+      ? { capability: "reranking", status: "used" as const }
+      : {
+          capability: "reranking",
+          status:
+            rerankResult.fallbackReason === "error"
+              ? ("failed" as const)
+              : ("unavailable" as const),
+          reasonCode:
+            rerankResult.fallbackReason === "error"
+              ? "rerank_error"
+              : "rerank_disabled",
+        },
+    graphExpansion.meta.enabled
+      ? { capability: "graph_expansion", status: "used" as const }
+      : {
+          capability: "graph_expansion",
+          status: "unavailable" as const,
+          reasonCode:
+            graphExpansion.meta.fallbackReasons[0] ?? "graph_disabled",
+        },
+  ];
+  attachSearchResultsTraceMetadata(output, {
+    capabilityOutcomes,
+    fallbackCodes,
   });
+  const traceResult = await options.traceSession?.recordRetrieval(
+    output,
+    timings.totalMs
+  );
+  if (traceResult && !traceResult.ok) {
+    return err(
+      "QUERY_FAILED",
+      `Trace recording failed: ${traceResult.error.message}`,
+      traceResult.error.cause
+    );
+  }
+  return ok(output);
 }

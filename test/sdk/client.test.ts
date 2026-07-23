@@ -1,6 +1,7 @@
 import {
   createDefaultConfig,
   createGnoClient,
+  getRetrievalTraceMetadata,
   type GnoClient,
   type SearchResults,
 } from "@gmickel/gno";
@@ -229,6 +230,155 @@ describe("SDK client", () => {
     const result = await client.get("fixtures/authentication.md");
     expect(result.uri).toBe("gno://fixtures/authentication.md");
     expect(result.content).toContain("JWT");
+  });
+
+  test("preserves non-enumerable trace metadata across query-to-get", async () => {
+    const config = createDefaultConfig();
+    config.collections = [
+      {
+        name: "fixtures",
+        path: fixturesDir,
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      },
+    ];
+    config.contexts = [
+      { scopeType: "global", scopeKey: "/", text: "Global guidance" },
+      {
+        scopeType: "collection",
+        scopeKey: "fixtures:",
+        text: "Fixture guidance",
+      },
+      {
+        scopeType: "prefix",
+        scopeKey: "gno://fixtures/authentication.md",
+        text: "Authentication guidance",
+      },
+    ];
+    config.retrievalTraces = {
+      enabled: true,
+      redactionMode: "replay",
+      retention: {
+        maxAgeDays: 30,
+        maxTraces: 100,
+        maxRecordsPerTrace: 100,
+        maxBytes: 1024 * 1024,
+      },
+    };
+    const tracedClient = await createGnoClient({
+      config,
+      dbPath,
+      downloadPolicy: { offline: false, allowDownload: false },
+    });
+    try {
+      const results = await tracedClient.search("authentication");
+      const traceId = getRetrievalTraceMetadata(results)?.traceId;
+      expect(traceId).toBeString();
+      expect(JSON.stringify(results)).not.toContain(traceId);
+      const document = await tracedClient.get(results.results[0]?.uri ?? "", {
+        traceId,
+      });
+      expect(getRetrievalTraceMetadata(document)?.traceId).toBe(traceId);
+      expect(JSON.stringify(document)).not.toContain(traceId);
+    } finally {
+      await tracedClient.close();
+    }
+  });
+
+  test("manages private retrieval traces through the public SDK", async () => {
+    const config = createDefaultConfig();
+    config.collections = [
+      {
+        name: "fixtures",
+        path: fixturesDir,
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      },
+    ];
+    config.contexts = [
+      { scopeType: "global", scopeKey: "/", text: "Global guidance" },
+      {
+        scopeType: "collection",
+        scopeKey: "fixtures:",
+        text: "Fixture guidance",
+      },
+      {
+        scopeType: "prefix",
+        scopeKey: "gno://fixtures/authentication.md",
+        text: "Authentication guidance",
+      },
+    ];
+    config.retrievalTraces = {
+      enabled: true,
+      redactionMode: "replay",
+      retention: {
+        maxAgeDays: 30,
+        maxTraces: 100,
+        maxRecordsPerTrace: 100,
+        maxBytes: 1024 * 1024,
+      },
+    };
+    const tracedClient = await createGnoClient({
+      config,
+      dbPath,
+      downloadPolicy: { offline: false, allowDownload: false },
+    });
+    try {
+      const answer = await tracedClient.ask("JWT token", {
+        limit: 5,
+        noAnswer: true,
+        noExpand: true,
+        noRerank: true,
+      });
+      const traceId = getRetrievalTraceMetadata(answer)?.traceId;
+      expect(traceId).toBeString();
+
+      const history = await tracedClient.listRetrievalTraces({ limit: 20 });
+      expect(history.traces.some((trace) => trace.traceId === traceId)).toBe(
+        true
+      );
+      expect(JSON.stringify(history.traces)).not.toContain("queryText");
+
+      const detail = await tracedClient.getRetrievalTrace(traceId!);
+      expect(detail.trace.status).toBe("open");
+      const targetRef = answer.results[0]?.uri;
+      expect(targetRef).toBeString();
+
+      const labeled = await tracedClient.labelRetrievalTrace({
+        traceId: traceId!,
+        label: "relevant",
+        targetRef: targetRef!,
+      });
+      expect(labeled.result).toBe("inserted");
+
+      expect(
+        tracedClient.exportRetrievalTraces({ traceIds: [traceId!] })
+      ).rejects.toThrow("Open retrieval traces cannot be exported");
+
+      const deleted = await tracedClient.deleteRetrievalTrace(traceId!);
+      expect(deleted.deleted).toBe(true);
+      expect(tracedClient.getRetrievalTrace(traceId!)).rejects.toThrow(
+        "Retrieval trace not found"
+      );
+      try {
+        await tracedClient.deleteRetrievalTrace(traceId!);
+        throw new Error("Expected missing trace deletion to fail");
+      } catch (error) {
+        expect(error).toMatchObject({
+          code: "NOT_FOUND",
+          details: { traceCode: "NOT_FOUND" },
+        });
+      }
+
+      const purged = await tracedClient.purgeRetrievalTraces();
+      expect(
+        ["completed", "wal_busy", "failed"].includes(purged.physicalCleanup)
+      ).toBe(true);
+    } finally {
+      await tracedClient.close();
+    }
   });
 
   test("creates notes with folder context and preset scaffolds", async () => {

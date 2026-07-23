@@ -209,6 +209,9 @@ const resultForDocument = (
     seq: chunk.seq,
     sources: ["bm25"],
     graphExpanded: false,
+    startLine: chunk.startLine,
+    endLine: chunk.endLine,
+    passageHash: sha256Text(chunk.text),
   },
 });
 

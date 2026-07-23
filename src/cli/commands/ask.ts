@@ -5,6 +5,8 @@
  * @module src/cli/commands/ask
  */
 
+import type { RetrievalTraceSurfaceMetadata } from "../../core/retrieval-trace-session";
+import type { RetrievalTraceSession } from "../../core/retrieval-trace-session";
 import type {
   EmbeddingPort,
   GenerationPort,
@@ -12,12 +14,18 @@ import type {
 } from "../../llm/types";
 import type { AskOptions, AskResult, Citation } from "../../pipeline/types";
 
+import {
+  finishRetrievalTraceAfterError,
+  retrievalTraceFilters,
+  startRetrievalTraceRequest,
+} from "../../core/retrieval-trace-request";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
 import {
+  answerTraceTerminalStatus,
   generateGroundedAnswer,
-  processAnswerResult,
+  processAnswerResultWithTrace,
 } from "../../pipeline/answer";
 import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
 import {
@@ -55,7 +63,11 @@ export type AskCommandOptions = AskOptions & {
 };
 
 export type AskCommandResult =
-  | { success: true; data: AskResult }
+  | {
+      success: true;
+      data: AskResult;
+      metadata?: RetrievalTraceSurfaceMetadata;
+    }
   | { success: false; error: string };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,8 +100,50 @@ export async function ask(
   let expandPort: GenerationPort | null = null;
   let answerPort: GenerationPort | null = null;
   let rerankPort: RerankPort | null = null;
+  let traceSession: RetrievalTraceSession | undefined;
 
   try {
+    const answerRequested = Boolean(options.answer && !options.noAnswer);
+    const embedUri = resolveModelUri(
+      config,
+      "embed",
+      options.embedModel,
+      options.collection
+    );
+    const expandUri =
+      !options.noExpand && !options.queryModes?.length
+        ? resolveModelUri(
+            config,
+            "expand",
+            options.expandModel ?? options.genModel,
+            options.collection
+          )
+        : undefined;
+    const answerUri = answerRequested
+      ? resolveModelUri(config, "gen", options.genModel, options.collection)
+      : undefined;
+    const rerankUri = !options.noRerank
+      ? resolveModelUri(
+          config,
+          "rerank",
+          options.rerankModel,
+          options.collection
+        )
+      : undefined;
+    const traceStart = await startRetrievalTraceRequest({
+      store,
+      config,
+      query,
+      filters: retrievalTraceFilters({ ...options, limit }),
+      pipeline: "ask",
+      modelUris: [embedUri, expandUri, answerUri, rerankUri].filter(
+        (value): value is string => Boolean(value)
+      ),
+    });
+    if (!traceStart.ok) {
+      return { success: false, error: traceStart.error.message };
+    }
+    traceSession = traceStart.value ?? undefined;
     const llm = new LlmAdapter(config);
 
     // Resolve download policy from env/flags
@@ -105,12 +159,6 @@ export async function ask(
       : undefined;
 
     // Create embedding port
-    const embedUri = resolveModelUri(
-      config,
-      "embed",
-      options.embedModel,
-      options.collection
-    );
     const embedResult = await llm.createEmbeddingPort(embedUri, {
       policy,
       onProgress: downloadProgress
@@ -122,13 +170,7 @@ export async function ask(
     }
 
     // Create expansion port when expansion is enabled.
-    if (!options.noExpand && !options.queryModes?.length) {
-      const expandUri = resolveModelUri(
-        config,
-        "expand",
-        options.expandModel ?? options.genModel,
-        options.collection
-      );
+    if (expandUri) {
       const genResult = await llm.createExpansionPort(expandUri, {
         policy,
         onProgress: downloadProgress
@@ -141,14 +183,8 @@ export async function ask(
     }
 
     // Create answer generation port when answers are requested.
-    if (options.answer) {
-      const genUri = resolveModelUri(
-        config,
-        "gen",
-        options.genModel,
-        options.collection
-      );
-      const genResult = await llm.createGenerationPort(genUri, {
+    if (answerUri) {
+      const genResult = await llm.createGenerationPort(answerUri, {
         policy,
         onProgress: downloadProgress
           ? (progress) => downloadProgress("gen", progress)
@@ -160,13 +196,7 @@ export async function ask(
     }
 
     // Create rerank port (unless --fast or --no-rerank)
-    if (!options.noRerank) {
-      const rerankUri = resolveModelUri(
-        config,
-        "rerank",
-        options.rerankModel,
-        options.collection
-      );
+    if (rerankUri) {
       const rerankResult = await llm.createRerankPort(rerankUri, {
         policy,
         onProgress: downloadProgress
@@ -208,12 +238,14 @@ export async function ask(
       expandPort,
       rerankPort,
     };
-
-    // Check if answer generation is explicitly requested
-    const answerRequested = options.answer && !options.noAnswer;
-
     // Fail early if --answer is requested but no generation model available
     if (answerRequested && answerPort === null) {
+      await traceSession?.recordCapability(
+        "answer_generation",
+        "unavailable",
+        "model_unavailable"
+      );
+      await traceSession?.finish("failed");
       return {
         success: false,
         error:
@@ -239,9 +271,11 @@ export async function ask(
       noExpand: options.noExpand,
       noRerank: options.noRerank,
       candidateLimit: options.candidateLimit,
+      traceSession,
     });
 
     if (!searchResult.ok) {
+      await traceSession?.finish("failed");
       return { success: false, error: searchResult.error.message };
     }
 
@@ -261,6 +295,7 @@ export async function ask(
       answerRequested && answerPort !== null && results.length > 0;
 
     if (shouldGenerateAnswer && answerPort) {
+      await traceSession?.recordCapability("answer_generation", "attempted");
       const maxTokens = options.maxAnswerTokens ?? 512;
       const rawResult = await generateGroundedAnswer(
         { genPort: answerPort, store },
@@ -271,15 +306,25 @@ export async function ask(
 
       // Fail loudly if generation was requested but failed
       if (!rawResult) {
+        await traceSession?.recordCapability(
+          "answer_generation",
+          "failed",
+          "generation_failed"
+        );
+        await traceSession?.finish("failed");
         return {
           success: false,
           error:
             "Answer generation failed. The generation model may have encountered an error.",
         };
       }
+      await traceSession?.recordCapability("answer_generation", "used");
 
       // Process answer: extract valid citations, filter, renumber
-      const processed = processAnswerResult(rawResult);
+      const processed = await processAnswerResultWithTrace(
+        rawResult,
+        traceSession
+      );
       answer = processed.answer;
       citations = processed.citations;
       answerContext = processed.answerContext;
@@ -307,7 +352,32 @@ export async function ask(
       },
     };
 
-    return { success: true, data: askResult };
+    if (answerRequested) {
+      if (!answerGenerated) {
+        await traceSession?.recordCapability(
+          "answer_generation",
+          "unavailable",
+          "no_evidence"
+        );
+      }
+      const finalized = await traceSession?.finish(
+        answerTraceTerminalStatus(citations)
+      );
+      if (finalized && !finalized.ok) {
+        return { success: false, error: finalized.error.message };
+      }
+    }
+    return {
+      success: true,
+      data: askResult,
+      metadata: traceSession?.metadata(),
+    };
+  } catch (cause) {
+    await finishRetrievalTraceAfterError(traceSession, cause);
+    return {
+      success: false,
+      error: cause instanceof Error ? cause.message : "Ask failed",
+    };
   } finally {
     if (embedPort) {
       await embedPort.dispose();

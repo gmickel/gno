@@ -148,6 +148,54 @@ Collection names are case-insensitive on input and normalized to lowercase in re
 - Use `gno_multi_get` to batch the top result refs. Keep `maxBytes` bounded to avoid flooding client context.
 - Check `gno_status` when results look stale, vector search is unavailable, or embedding backlog may explain missing results.
 
+### Private retrieval metadata
+
+When local tracing is enabled, successful `gno_search`, `gno_vsearch`,
+`gno_query`, `gno_get`, and `gno_context` results include non-model-visible
+top-level response metadata:
+
+```json
+{
+  "_meta": {
+    "gno": {
+      "retrievalTrace": {
+        "traceId": "..."
+      }
+    }
+  }
+}
+```
+
+`structuredContent` and model-visible `content` are unchanged. `gno_get`
+accepts optional `traceId` to continue an open retrieval trace and records
+evidence only when a valid exact line range is returned. Out-of-range and
+failed gets never fabricate evidence. Disabled tracing omits `_meta` and does
+no trace ID or fingerprint work.
+
+Trace receipt management is split into read and mutation tool names so HTTP
+authorization can reject mutations before dispatch:
+
+| Tool               | Class    | Contract                                                   |
+| ------------------ | -------- | ---------------------------------------------------------- |
+| `gno_trace_list`   | read     | Bounded cursor page; summaries omit replay query/goal text |
+| `gno_trace_show`   | read     | One bounded detail receipt with exact totals/truncation    |
+| `gno_trace_label`  | mutation | Explicit relevant/irrelevant/missing_expected judgment     |
+| `gno_trace_export` | mutation | Deterministic multi-trace `agentic-receipt`                |
+| `gno_trace_delete` | mutation | Delete one trace and owned records                         |
+| `gno_trace_purge`  | mutation | Delete all receipts; requires `confirm: true`              |
+
+Read tools are always registered. Mutation tools are registered only when
+`enableWrite` is true and every handler rechecks that state. HTTP MCP also
+classifies all four mutation names in its pre-dispatch write set. A bearer
+identity authenticates a principal but never grants trace-write authority.
+Denied calls return `403`/`WRITE_DISABLED` without echoing trace content.
+
+Relevant and irrelevant targets must resolve to exact recorded evidence.
+`missing_expected` accepts only a safe document identity, never raw document
+content or a filesystem path. Aggregate exports reject open/missing traces and
+preserve each stored terminal state without treating partial, failed, or
+cancelled as negative feedback.
+
 ### gno_context
 
 Compile a deterministic, extractive Context Capsule. The active MCP server

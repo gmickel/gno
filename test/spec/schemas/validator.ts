@@ -41,6 +41,18 @@ async function loadAllSchemas(): Promise<void> {
     "graph",
     "graph-query",
     "query-diagnose",
+    "retrieval-trace-filters",
+    "retrieval-trace-payloads",
+    "retrieval-trace-summary",
+    "retrieval-trace-common",
+    "retrieval-trace-list",
+    "retrieval-trace-show",
+    "retrieval-trace-judgment",
+    "retrieval-trace-qrels",
+    "retrieval-trace-replay",
+    "retrieval-trace-export",
+    "retrieval-trace-delete",
+    "retrieval-trace-purge",
   ];
 
   for (const name of schemaFiles) {

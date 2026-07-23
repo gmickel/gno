@@ -1,0 +1,303 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/retrieval-trace-qrels@1.0",
+  "title": "GNO Retrieval Trace Qrels Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "format", "cases"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "format": { "const": "qrels" },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/case" }
+    }
+  },
+  "definitions": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "nullableHash": {
+      "oneOf": [{ "$ref": "#/definitions/hash" }, { "type": "null" }]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "docid",
+        "sourceHash",
+        "mirrorHash",
+        "uri",
+        "seq",
+        "startLine",
+        "endLine",
+        "passageHash",
+        "rank",
+        "plannerRank",
+        "score",
+        "sources",
+        "graphExpanded"
+      ],
+      "properties": {
+        "docid": { "type": "string", "minLength": 1 },
+        "sourceHash": { "$ref": "#/definitions/hash" },
+        "mirrorHash": { "$ref": "#/definitions/hash" },
+        "uri": { "type": "string", "pattern": "^gno://" },
+        "seq": {
+          "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+        },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "passageHash": { "$ref": "#/definitions/hash" },
+        "rank": {
+          "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }]
+        },
+        "plannerRank": {
+          "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }]
+        },
+        "score": {
+          "oneOf": [{ "type": "number" }, { "type": "null" }]
+        },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "graphExpanded": { "type": "boolean" }
+      }
+    },
+    "target": {
+      "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/judgmentTarget"
+    },
+    "qrel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qrelId",
+        "judgmentId",
+        "label",
+        "relevance",
+        "baselineMissing",
+        "target",
+        "evidence"
+      ],
+      "properties": {
+        "qrelId": { "type": "string", "minLength": 1 },
+        "judgmentId": { "type": "string", "minLength": 1 },
+        "label": {
+          "enum": ["relevant", "irrelevant", "missing_expected"]
+        },
+        "relevance": { "enum": [0, 1] },
+        "baselineMissing": { "type": "boolean" },
+        "target": { "$ref": "#/definitions/target" },
+        "evidence": {
+          "oneOf": [{ "$ref": "#/definitions/evidence" }, { "type": "null" }]
+        }
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "traceId",
+        "retrievalRunId",
+        "terminalStatus",
+        "query",
+        "fingerprints",
+        "baseline",
+        "judgments",
+        "qrels"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "traceId": { "type": "string", "minLength": 1 },
+        "retrievalRunId": { "type": "string", "minLength": 1 },
+        "terminalStatus": {
+          "enum": ["completed", "partial", "failed", "cancelled"]
+        },
+        "query": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "digest", "goalText", "goalDigest", "filters"],
+          "properties": {
+            "text": { "type": "string", "minLength": 1 },
+            "digest": { "$ref": "#/definitions/hash" },
+            "goalText": {
+              "oneOf": [{ "type": "string" }, { "type": "null" }]
+            },
+            "goalDigest": { "$ref": "#/definitions/nullableHash" },
+            "filters": {
+              "$ref": "gno://schemas/retrieval-trace-filters@1.0#/definitions/filters"
+            }
+          }
+        },
+        "fingerprints": {
+          "$ref": "gno://schemas/retrieval-trace-common@1.0#/definitions/fingerprints"
+        },
+        "baseline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ranked",
+            "capabilities",
+            "capabilityOutcomes",
+            "fallbackCodes",
+            "outcomes"
+          ],
+          "properties": {
+            "ranked": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/evidence" }
+            },
+            "capabilities": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "capabilityOutcomes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["capability", "status", "reasonCode"],
+                "properties": {
+                  "capability": { "type": "string" },
+                  "status": {
+                    "enum": ["attempted", "used", "unavailable", "failed"]
+                  },
+                  "reasonCode": {
+                    "oneOf": [{ "type": "string" }, { "type": "null" }]
+                  }
+                }
+              }
+            },
+            "fallbackCodes": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "outcomes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["opened", "cited", "pinned"],
+              "properties": {
+                "opened": {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/evidence" }
+                },
+                "cited": {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/evidence" }
+                },
+                "pinned": {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/evidence" }
+                }
+              }
+            }
+          }
+        },
+        "judgments": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["history", "effective"],
+          "properties": {
+            "history": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "judgmentId",
+                  "label",
+                  "targetKind",
+                  "target",
+                  "createdAtMs",
+                  "canonicalDigest"
+                ],
+                "properties": {
+                  "judgmentId": { "type": "string" },
+                  "label": {
+                    "enum": ["relevant", "irrelevant", "missing_expected"]
+                  },
+                  "targetKind": {
+                    "enum": ["document", "chunk", "span", "query"]
+                  },
+                  "target": { "$ref": "#/definitions/target" },
+                  "createdAtMs": { "type": "integer", "minimum": 0 },
+                  "canonicalDigest": { "$ref": "#/definitions/hash" }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "targetKind": { "const": "document" }
+                      },
+                      "required": ["targetKind"]
+                    },
+                    "then": {
+                      "properties": {
+                        "target": {
+                          "$ref": "gno://schemas/retrieval-trace-payloads@1.0#/definitions/documentTarget"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": { "targetKind": { "const": "chunk" } },
+                      "required": ["targetKind"]
+                    },
+                    "then": {
+                      "properties": {
+                        "target": {
+                          "allOf": [
+                            { "$ref": "#/definitions/target" },
+                            {
+                              "type": "object",
+                              "properties": { "seq": {} },
+                              "required": ["seq"]
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": { "targetKind": { "const": "span" } },
+                      "required": ["targetKind"]
+                    },
+                    "then": {
+                      "properties": {
+                        "target": {
+                          "allOf": [
+                            { "$ref": "#/definitions/target" },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "startLine": {},
+                                "endLine": {}
+                              },
+                              "required": ["startLine", "endLine"]
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "effective": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "qrels": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/qrel" }
+        }
+      }
+    }
+  }
+}

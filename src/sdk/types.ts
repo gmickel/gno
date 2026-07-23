@@ -19,6 +19,17 @@ import type { ContextEvidenceErrorCode } from "../core/context-evidence";
 import type { ContextVerifierErrorCode } from "../core/context-verifier";
 import type { NoteCollisionPolicy } from "../core/note-creation";
 import type { NotePresetId } from "../core/note-presets";
+import type {
+  RetrievalTraceDeleteResult,
+  RetrievalTraceDetail,
+  RetrievalTraceExportRequest,
+  RetrievalTraceExportResult,
+  RetrievalTraceLabelRequest,
+  RetrievalTraceLabelResult,
+  RetrievalTraceListRequest,
+  RetrievalTraceListResult,
+  RetrievalTracePurgeResult as RetrievalTraceManagementPurgeResult,
+} from "../core/retrieval-trace-management";
 import type { DocumentSection } from "../core/sections";
 import type { SyncResult } from "../ingestion";
 import type { DownloadPolicy } from "../llm/policy";
@@ -88,6 +99,8 @@ export type GnoContextErrorCode =
 export interface GnoGetOptions {
   from?: number;
   limit?: number;
+  /** Continue an open retrieval trace returned by search/query. */
+  traceId?: string;
 }
 
 export interface GnoMultiGetOptions {
@@ -221,6 +234,21 @@ export interface GnoClient {
     options?: GnoListOptions
   ): Promise<import("../cli/commands/ls").LsResponse>;
   status(): Promise<IndexStatus>;
+  listRetrievalTraces(
+    options?: RetrievalTraceListRequest
+  ): Promise<RetrievalTraceListResult>;
+  getRetrievalTrace(
+    traceId: string,
+    options?: { detailLimit?: number }
+  ): Promise<RetrievalTraceDetail>;
+  labelRetrievalTrace(
+    input: RetrievalTraceLabelRequest
+  ): Promise<RetrievalTraceLabelResult>;
+  exportRetrievalTraces(
+    input: RetrievalTraceExportRequest
+  ): Promise<RetrievalTraceExportResult>;
+  deleteRetrievalTrace(traceId: string): Promise<RetrievalTraceDeleteResult>;
+  purgeRetrievalTraces(): Promise<RetrievalTraceManagementPurgeResult>;
   update(options?: GnoUpdateOptions): Promise<SyncResult>;
   embed(options?: GnoEmbedOptions): Promise<GnoEmbedResult>;
   index(options?: GnoIndexOptions): Promise<GnoIndexResult>;

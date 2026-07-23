@@ -29,6 +29,7 @@ import DocumentEditor from "./pages/DocumentEditor";
 import DocView from "./pages/DocView";
 import GraphView from "./pages/GraphView";
 import Search from "./pages/Search";
+import TraceHistory from "./pages/TraceHistory";
 
 type Route =
   | "/"
@@ -39,7 +40,8 @@ type Route =
   | "/edit"
   | "/collections"
   | "/graph"
-  | "/connectors";
+  | "/connectors"
+  | "/traces";
 type Navigate = (to: string | number) => void;
 
 interface RoutePageProps {
@@ -57,6 +59,7 @@ const routes: Record<Route, React.ComponentType<RoutePageProps>> = {
   "/connectors": Connectors,
   "/ask": Ask,
   "/graph": GraphView,
+  "/traces": TraceHistory,
 };
 
 interface AppContentProps {
@@ -163,6 +166,14 @@ function AppContent({
               type="button"
             >
               Collections
+            </button>
+            <span className="text-border/30">—</span>
+            <button
+              className="transition-colors duration-300 hover:text-primary"
+              onClick={() => navigate("/traces")}
+              type="button"
+            >
+              Trace history
             </button>
             <span className="text-border/30">—</span>
             <a

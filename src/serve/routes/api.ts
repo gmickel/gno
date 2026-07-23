@@ -94,6 +94,14 @@ import {
   resolveNotePreset,
   type NotePresetId,
 } from "../../core/note-presets";
+import {
+  retrievalTraceFilters,
+  startRetrievalTraceRequest,
+} from "../../core/retrieval-trace-request";
+import {
+  evidenceFromExactDocument,
+  RetrievalTraceSession,
+} from "../../core/retrieval-trace-session";
 import { extractSections } from "../../core/sections";
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
 import {
@@ -118,7 +126,7 @@ import {
 } from "../../llm/registry";
 import {
   generateGroundedAnswer,
-  processAnswerResult,
+  processAnswerResultWithTrace,
 } from "../../pipeline/answer";
 import { diagnoseQueryTarget } from "../../pipeline/diagnose";
 import { searchHybrid } from "../../pipeline/hybrid";
@@ -145,6 +153,10 @@ import {
 } from "../context";
 import { analyzeImportPath } from "../import-preview";
 import { getActiveJob, getJobStatus, startJob } from "../jobs";
+import {
+  requestRetrievalTraceId,
+  withRetrievalTraceHeader,
+} from "../retrieval-trace";
 import { buildAppStatus, type StatusBuildDeps } from "../status";
 
 /** Mutable context holder for hot-reloading presets */
@@ -458,6 +470,65 @@ function errorResponse(
     },
     status
   );
+}
+
+interface RestTraceStart {
+  session: RetrievalTraceSession | null;
+  error: Response | null;
+}
+
+async function startRestTrace(
+  ctx: ServerContext,
+  input: {
+    query: string;
+    goal?: string;
+    filters?: Record<string, unknown>;
+    pipeline: string;
+    modelUris?: string[];
+  }
+): Promise<RestTraceStart> {
+  const started = await startRetrievalTraceRequest({
+    store: ctx.store,
+    config: ctx.config,
+    query: input.query,
+    goal: input.goal,
+    filters: input.filters,
+    pipeline: input.pipeline,
+    indexName: ctx.indexName,
+    modelUris: input.modelUris,
+  });
+  return started.ok
+    ? { session: started.value, error: null }
+    : {
+        session: null,
+        error: errorResponse(
+          "RUNTIME",
+          `Retrieval trace start failed: ${started.error.message}`,
+          500
+        ),
+      };
+}
+
+async function finishRestTrace(
+  request: Request,
+  session: RetrievalTraceSession | null,
+  status: "completed" | "partial" | "failed",
+  response: Response
+): Promise<Response> {
+  if (!session) return response;
+  const terminalStatus = request.signal.aborted ? "cancelled" : status;
+  const finished = await session.finish(terminalStatus);
+  if (!finished.ok) {
+    return withRetrievalTraceHeader(
+      errorResponse(
+        "RUNTIME",
+        `Retrieval trace finalization failed: ${finished.error.message}`,
+        500
+      ),
+      session
+    );
+  }
+  return withRetrievalTraceHeader(response, session);
 }
 
 function jobConflictResponse(jobResult: StartJobError): Response {
@@ -1639,7 +1710,8 @@ export async function handleDocsAutocomplete(
 export async function handleDoc(
   store: SqliteAdapter,
   config: Config,
-  url: URL
+  url: URL,
+  request?: Request
 ): Promise<Response> {
   const uri = url.searchParams.get("uri");
   if (!uri) {
@@ -1679,7 +1751,7 @@ export async function handleDoc(
   });
   const source = await buildSourceMeta(config.collections, doc);
 
-  return jsonResponse({
+  const responseData = {
     docid: doc.docid,
     uri: doc.uri,
     title: doc.title,
@@ -1690,7 +1762,52 @@ export async function handleDoc(
     tags,
     source,
     capabilities,
+  };
+  const continuationTraceId = request
+    ? requestRetrievalTraceId(request)
+    : undefined;
+  if (!continuationTraceId) return jsonResponse(responseData);
+
+  const resumed = await RetrievalTraceSession.resume({
+    store,
+    config: config.retrievalTraces,
+    traceId: continuationTraceId,
   });
+  if (!resumed.ok) {
+    return errorResponse("RUNTIME", resumed.error.message, 500);
+  }
+  const traceSession = resumed.value;
+  if (!traceSession) return jsonResponse(responseData);
+
+  if (content !== null) {
+    const endLine = content.split("\n").length;
+    const evidence = evidenceFromExactDocument({
+      docid: doc.docid,
+      uri: doc.uri,
+      sourceHash: doc.sourceHash,
+      mirrorHash: doc.mirrorHash ?? undefined,
+      content,
+      startLine: 1,
+      endLine,
+    });
+    if (evidence) {
+      const got = await traceSession.recordEvidence("get", [evidence]);
+      if (!got.ok) {
+        return withRetrievalTraceHeader(
+          errorResponse("RUNTIME", got.error.message, 500),
+          traceSession
+        );
+      }
+      const opened = await traceSession.recordEvidence("open", [evidence]);
+      if (!opened.ok) {
+        return withRetrievalTraceHeader(
+          errorResponse("RUNTIME", opened.error.message, 500),
+          traceSession
+        );
+      }
+    }
+  }
+  return withRetrievalTraceHeader(jsonResponse(responseData), traceSession);
 }
 
 /**
@@ -3372,9 +3489,13 @@ export async function handleCreateDoc(
  * Returns search results.
  */
 export async function handleSearch(
-  store: SqliteAdapter,
+  contextOrStore: ServerContext | SqliteAdapter,
   req: Request
 ): Promise<Response> {
+  const context =
+    "store" in contextOrStore ? contextOrStore : (null as ServerContext | null);
+  const store =
+    "store" in contextOrStore ? contextOrStore.store : contextOrStore;
   let body: SearchRequestBody;
   try {
     body = (await req.json()) as SearchRequestBody;
@@ -3486,13 +3607,30 @@ export async function handleSearch(
     author,
   };
 
-  const result = await searchBm25(store, rawQuery, options);
+  const trace = context
+    ? await startRestTrace(context, {
+        query: rawQuery,
+        filters: retrievalTraceFilters(options),
+        pipeline: "bm25",
+      })
+    : { session: null, error: null };
+  if (trace.error) return trace.error;
+
+  const result = await searchBm25(store, rawQuery, {
+    ...options,
+    traceSession: trace.session ?? undefined,
+  });
 
   if (!result.ok) {
-    return errorResponse("RUNTIME", result.error.message, 500);
+    return finishRestTrace(
+      req,
+      trace.session,
+      "failed",
+      errorResponse("RUNTIME", result.error.message, 500)
+    );
   }
 
-  return jsonResponse(result.value);
+  return withRetrievalTraceHeader(jsonResponse(result.value), trace.session);
 }
 
 /**
@@ -3626,6 +3764,41 @@ export async function handleQuery(
     : undefined;
   const author = body.author?.trim() || undefined;
 
+  const queryOptions = {
+    limit: Math.min(body.limit ?? 20, 50),
+    minScore: body.minScore,
+    collection: body.collection,
+    lang: body.lang,
+    intent: body.intent?.trim() || undefined,
+    candidateLimit:
+      body.candidateLimit !== undefined
+        ? Math.min(body.candidateLimit, 100)
+        : undefined,
+    exclude,
+    queryModes: normalizedQueryModes,
+    noExpand: body.noExpand,
+    noRerank: body.noRerank,
+    graph: body.graph === true,
+    noGraph: body.noGraph,
+    tagsAll,
+    tagsAny,
+    since: body.since,
+    until: body.until,
+    categories,
+    author,
+  };
+  const trace = await startRestTrace(ctx, {
+    query: normalizedQuery,
+    filters: retrievalTraceFilters(queryOptions),
+    pipeline: "hybrid",
+    modelUris: [
+      ctx.embedPort?.modelUri,
+      ctx.expandPort?.modelUri,
+      ctx.rerankPort?.modelUri,
+    ].filter((value): value is string => Boolean(value)),
+  });
+  if (trace.error) return trace.error;
+
   const result = await searchHybrid(
     {
       store: ctx.store,
@@ -3637,35 +3810,21 @@ export async function handleQuery(
     },
     normalizedQuery,
     {
-      limit: Math.min(body.limit ?? 20, 50),
-      minScore: body.minScore,
-      collection: body.collection,
-      lang: body.lang,
-      intent: body.intent?.trim() || undefined,
-      candidateLimit:
-        body.candidateLimit !== undefined
-          ? Math.min(body.candidateLimit, 100)
-          : undefined,
-      exclude,
-      queryModes: normalizedQueryModes,
-      noExpand: body.noExpand,
-      noRerank: body.noRerank,
-      graph: body.graph === true,
-      noGraph: body.noGraph,
-      tagsAll,
-      tagsAny,
-      since: body.since,
-      until: body.until,
-      categories,
-      author,
+      ...queryOptions,
+      traceSession: trace.session ?? undefined,
     }
   );
 
   if (!result.ok) {
-    return errorResponse("RUNTIME", result.error.message, 500);
+    return finishRestTrace(
+      req,
+      trace.session,
+      "failed",
+      errorResponse("RUNTIME", result.error.message, 500)
+    );
   }
 
-  return jsonResponse(result.value);
+  return withRetrievalTraceHeader(jsonResponse(result.value), trace.session);
 }
 
 /**
@@ -3878,15 +4037,6 @@ export async function handleAsk(
     return errorResponse("VALIDATION", "Query cannot be empty");
   }
 
-  // Check if answer generation is available
-  if (!ctx.capabilities.answer) {
-    return errorResponse(
-      "UNAVAILABLE",
-      "Answer generation not available. No answer model loaded.",
-      503
-    );
-  }
-
   // Parse tag filters
   let tagsAll: string[] | undefined;
   let tagsAny: string[] | undefined;
@@ -3973,6 +4123,64 @@ export async function handleAsk(
   const author = body.author?.trim() || undefined;
 
   const limit = Math.min(body.limit ?? 5, 20);
+  const askOptions = {
+    limit,
+    collection: body.collection,
+    lang: body.lang,
+    intent: body.intent?.trim() || undefined,
+    noExpand: body.noExpand,
+    noRerank: body.noRerank,
+    candidateLimit:
+      body.candidateLimit !== undefined
+        ? Math.min(body.candidateLimit, 100)
+        : undefined,
+    exclude,
+    queryModes: normalizedQueryModes,
+    tagsAll,
+    tagsAny,
+    since: body.since,
+    until: body.until,
+    categories,
+    author,
+  };
+  const trace = await startRestTrace(ctx, {
+    query: normalizedQuery,
+    filters: retrievalTraceFilters(askOptions),
+    pipeline: "ask",
+    modelUris: [
+      ctx.embedPort?.modelUri,
+      ctx.expandPort?.modelUri,
+      ctx.answerPort?.modelUri,
+      ctx.rerankPort?.modelUri,
+    ].filter((value): value is string => Boolean(value)),
+  });
+  if (trace.error) return trace.error;
+
+  if (!ctx.capabilities.answer) {
+    const unavailable = await trace.session?.recordCapability(
+      "answer_generation",
+      "unavailable",
+      "model_unavailable"
+    );
+    if (unavailable && !unavailable.ok) {
+      return finishRestTrace(
+        req,
+        trace.session,
+        "failed",
+        errorResponse("RUNTIME", unavailable.error.message, 500)
+      );
+    }
+    return finishRestTrace(
+      req,
+      trace.session,
+      "failed",
+      errorResponse(
+        "UNAVAILABLE",
+        "Answer generation not available. No answer model loaded.",
+        503
+      )
+    );
+  }
 
   // Run hybrid search first
   const searchResult = await searchHybrid(
@@ -3986,29 +4194,18 @@ export async function handleAsk(
     },
     normalizedQuery,
     {
-      limit,
-      collection: body.collection,
-      lang: body.lang,
-      intent: body.intent?.trim() || undefined,
-      noExpand: body.noExpand,
-      noRerank: body.noRerank,
-      candidateLimit:
-        body.candidateLimit !== undefined
-          ? Math.min(body.candidateLimit, 100)
-          : undefined,
-      exclude,
-      queryModes: normalizedQueryModes,
-      tagsAll,
-      tagsAny,
-      since: body.since,
-      until: body.until,
-      categories,
-      author,
+      ...askOptions,
+      traceSession: trace.session ?? undefined,
     }
   );
 
   if (!searchResult.ok) {
-    return errorResponse("RUNTIME", searchResult.error.message, 500);
+    return finishRestTrace(
+      req,
+      trace.session,
+      "failed",
+      errorResponse("RUNTIME", searchResult.error.message, 500)
+    );
   }
 
   const results = searchResult.value.results;
@@ -4020,20 +4217,93 @@ export async function handleAsk(
   let answerGenerated = false;
 
   if (ctx.answerPort) {
-    const maxTokens = body.maxAnswerTokens ?? 512;
-    const rawResult = await generateGroundedAnswer(
-      { genPort: ctx.answerPort, store: ctx.store },
-      normalizedQuery,
-      results,
-      maxTokens
+    const attempted = await trace.session?.recordCapability(
+      "answer_generation",
+      "attempted"
     );
+    if (attempted && !attempted.ok) {
+      return finishRestTrace(
+        req,
+        trace.session,
+        "failed",
+        errorResponse("RUNTIME", attempted.error.message, 500)
+      );
+    }
+    const maxTokens = body.maxAnswerTokens ?? 512;
+    let rawResult: Awaited<ReturnType<typeof generateGroundedAnswer>>;
+    try {
+      rawResult = await generateGroundedAnswer(
+        { genPort: ctx.answerPort, store: ctx.store },
+        normalizedQuery,
+        results,
+        maxTokens
+      );
+    } catch (error) {
+      await trace.session?.recordCapability(
+        "answer_generation",
+        "failed",
+        "generation_failed"
+      );
+      return finishRestTrace(
+        req,
+        trace.session,
+        "failed",
+        errorResponse(
+          "RUNTIME",
+          error instanceof Error ? error.message : String(error),
+          500
+        )
+      );
+    }
 
     if (rawResult) {
-      const processed = processAnswerResult(rawResult);
-      answer = processed.answer;
-      citations = processed.citations;
-      answerContext = processed.answerContext;
-      answerGenerated = true;
+      try {
+        const processed = await processAnswerResultWithTrace(
+          rawResult,
+          trace.session ?? undefined
+        );
+        answer = processed.answer;
+        citations = processed.citations;
+        answerContext = processed.answerContext;
+        answerGenerated = true;
+        const used = await trace.session?.recordCapability(
+          "answer_generation",
+          "used"
+        );
+        if (used && !used.ok) {
+          throw new Error(`Trace recording failed: ${used.error.message}`);
+        }
+      } catch (error) {
+        await trace.session?.recordCapability(
+          "answer_generation",
+          "failed",
+          "generation_failed"
+        );
+        return finishRestTrace(
+          req,
+          trace.session,
+          "failed",
+          errorResponse(
+            "RUNTIME",
+            error instanceof Error ? error.message : String(error),
+            500
+          )
+        );
+      }
+    } else {
+      const failed = await trace.session?.recordCapability(
+        "answer_generation",
+        "failed",
+        "generation_failed"
+      );
+      if (failed && !failed.ok) {
+        return finishRestTrace(
+          req,
+          trace.session,
+          "failed",
+          errorResponse("RUNTIME", failed.error.message, 500)
+        );
+      }
     }
   }
 
@@ -4058,7 +4328,13 @@ export async function handleAsk(
     },
   };
 
-  return jsonResponse(askResult);
+  const complete = answerGenerated && (citations?.length ?? 0) > 0;
+  return finishRestTrace(
+    req,
+    trace.session,
+    complete ? "completed" : "partial",
+    jsonResponse(askResult)
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4671,7 +4947,7 @@ export async function routeApi(
   }
 
   if (path === "/api/doc") {
-    return handleDoc(store, config, url);
+    return handleDoc(store, config, url, req);
   }
 
   if (path === "/api/doc-asset") {
@@ -4679,7 +4955,25 @@ export async function routeApi(
   }
 
   if (path === "/api/search" && req.method === "POST") {
-    return handleSearch(store, req);
+    return handleSearch(
+      {
+        store,
+        config,
+        indexName: "default",
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        answerPort: null,
+        rerankPort: null,
+        capabilities: {
+          bm25: true,
+          vector: false,
+          hybrid: false,
+          answer: false,
+        },
+      },
+      req
+    );
   }
 
   // Unknown API route

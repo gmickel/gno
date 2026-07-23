@@ -7,6 +7,7 @@ import {
   FolderHeartIcon,
   FolderIcon,
   GitForkIcon,
+  HistoryIcon,
   Layers,
   Loader2Icon,
   MessageSquare,
@@ -498,6 +499,15 @@ export default function Dashboard({ navigate }: PageProps) {
           >
             <GitForkIcon className="size-4" />
             Graph
+          </Button>
+          <Button
+            className="gap-2"
+            onClick={() => navigate("/traces")}
+            size="lg"
+            variant="outline"
+          >
+            <HistoryIcon className="size-4" />
+            Trace history
           </Button>
         </nav>
 

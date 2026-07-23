@@ -6,11 +6,21 @@
 
 import { join as pathJoin } from "node:path";
 
+import type { EmbeddingPort } from "../../llm/types";
 import type { SearchResult, SearchResults } from "../../pipeline/types";
 import type { ToolContext } from "../server";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
+import {
+  finishRetrievalTraceAfterError,
+  retrievalTraceFilters,
+  startRetrievalTraceRequest,
+} from "../../core/retrieval-trace-request";
+import {
+  attachRetrievalTraceMetadata,
+  type RetrievalTraceSession,
+} from "../../core/retrieval-trace-session";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
@@ -125,29 +135,55 @@ export function handleVsearch(
         undefined,
         args.collection
       );
-
-      // Resolve download policy from env (MCP has no CLI flags)
-      const policy = resolveDownloadPolicy(process.env, {});
-
-      // Non-TTY progress for MCP (periodic lines to stderr, not \r)
-      const downloadProgress = createNonTtyProgressRenderer();
-
-      // Create LLM adapter for embeddings
-      const llm = new LlmAdapter(ctx.config);
-      const embedResult = await llm.createEmbeddingPort(modelUri, {
-        policy,
-        onProgress: (progress) => downloadProgress("embed", progress),
+      const options = {
+        limit: args.limit ?? 5,
+        minScore: args.minScore,
+        collection: args.collection,
+        intent: args.intent,
+        exclude: args.exclude,
+        since: args.since,
+        until: args.until,
+        categories: args.categories,
+        author: args.author,
+        tagsAll: normalizeTagFilters(args.tagsAll),
+        tagsAny: normalizeTagFilters(args.tagsAny),
+      };
+      let traceSession: RetrievalTraceSession | undefined;
+      const traceStart = await startRetrievalTraceRequest({
+        store: ctx.store,
+        config: ctx.config,
+        query: args.query,
+        filters: retrievalTraceFilters(options),
+        pipeline: "vector",
+        indexName: ctx.indexName,
+        modelUris: [modelUri],
       });
-      if (!embedResult.ok) {
-        throw new Error(
-          `Failed to load embedding model: ${embedResult.error.message}. ` +
-            "Ensure models are downloaded with: gno models pull"
-        );
-      }
+      if (!traceStart.ok) throw new Error(traceStart.error.message);
+      traceSession = traceStart.value ?? undefined;
 
-      const embedPort = embedResult.value;
+      let embedPort: EmbeddingPort | null = null;
 
       try {
+        // Resolve download policy from env (MCP has no CLI flags)
+        const policy = resolveDownloadPolicy(process.env, {});
+
+        // Non-TTY progress for MCP (periodic lines to stderr, not \r)
+        const downloadProgress = createNonTtyProgressRenderer();
+
+        // Create LLM adapter for embeddings
+        const llm = new LlmAdapter(ctx.config);
+        const embedResult = await llm.createEmbeddingPort(modelUri, {
+          policy,
+          onProgress: (progress) => downloadProgress("embed", progress),
+        });
+        if (!embedResult.ok) {
+          throw new Error(
+            `Failed to load embedding model: ${embedResult.error.message}. ` +
+              "Ensure models are downloaded with: gno models pull"
+          );
+        }
+        embedPort = embedResult.value;
+
         // Embed query with contextual formatting
         const queryEmbedResult = await embedPort.embed(
           formatQueryForEmbedding(args.query, embedPort.modelUri)
@@ -196,17 +232,8 @@ export function handleVsearch(
           args.query,
           queryEmbedding,
           {
-            limit: args.limit ?? 5,
-            minScore: args.minScore,
-            collection: args.collection,
-            intent: args.intent,
-            exclude: args.exclude,
-            since: args.since,
-            until: args.until,
-            categories: args.categories,
-            author: args.author,
-            tagsAll: normalizeTagFilters(args.tagsAll),
-            tagsAny: normalizeTagFilters(args.tagsAny),
+            ...options,
+            traceSession,
           }
         );
 
@@ -217,17 +244,23 @@ export function handleVsearch(
         // Enrich with absPath
         const enrichedResults = enrichWithAbsPath(result.value.results, ctx);
 
-        return {
-          ...result.value,
-          results: enrichedResults,
-          meta: {
-            ...result.value.meta,
-            // Add queryLanguage hint if provided (per spec, lang is a hint for vsearch)
-            ...(args.lang ? { queryLanguage: args.lang } : {}),
+        return attachRetrievalTraceMetadata(
+          {
+            ...result.value,
+            results: enrichedResults,
+            meta: {
+              ...result.value.meta,
+              // Add queryLanguage hint if provided (per spec, lang is a hint for vsearch)
+              ...(args.lang ? { queryLanguage: args.lang } : {}),
+            },
           },
-        };
+          traceSession
+        );
+      } catch (cause) {
+        await finishRetrievalTraceAfterError(traceSession, cause);
+        throw cause;
       } finally {
-        await embedPort.dispose();
+        await embedPort?.dispose();
       }
     },
     formatSearchResults
