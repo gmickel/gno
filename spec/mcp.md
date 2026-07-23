@@ -78,6 +78,9 @@ Collection names are case-insensitive on input and normalized to lowercase in re
 
 ### Agent Retrieval Playbook
 
+- Prefer `gno_context` when the agent needs a complete, bounded evidence handoff
+  for one goal. It compiles exact source spans, coverage gaps, omissions, and
+  verification fingerprints in one call.
 - Prefer `gno_query` for normal questions. It is the default hybrid path and returns `uri`, `docid`, snippets, and `line` anchors for follow-up reads.
 - Use `gno_search` for exact phrases, filenames, identifiers, error messages, and known symbols.
 - Use `gno_vsearch` for semantic similarity when wording differs and embeddings are current.
@@ -88,6 +91,94 @@ Collection names are case-insensitive on input and normalized to lowercase in re
 - After search/query returns a `line`, call `gno_get` with `fromLine` and `lineCount` before fetching whole documents.
 - Use `gno_multi_get` to batch the top result refs. Keep `maxBytes` bounded to avoid flooding client context.
 - Check `gno_status` when results look stale, vector search is unavailable, or embedding backlog may explain missing results.
+
+### gno_context
+
+Compile a deterministic, extractive Context Capsule. The active MCP server
+supplies the canonical index name; callers cannot switch indexes in the request.
+The complete canonical payload—not each document independently—must fit the
+requested token and optional byte budget.
+
+Required input:
+
+```json
+{
+  "goal": "Compare the launch proposals",
+  "budgetTokens": 12000
+}
+```
+
+Optional input fields are `query`, `collections`, `uriPrefix`, `queryModes`,
+`tagsAll`, `tagsAny`, `categories`, `author`, `lang`, `since`, `until`, `graph`,
+`limit`, `candidateLimit`, `budgetBytes`, `safetyMarginTokens`,
+`safetyMarginBytes`, `depthPolicy` (`fast`, `balanced`, or `thorough`), and
+`format` (`json` or `md`). Input objects are closed: unknown fields return
+`invalid_input`. Unknown collections return `invalid_filter` before model or
+retrieval setup. Tag filters are NFC-normalized, lowercased, deduplicated, and
+validated before retrieval. `limit` and `candidateLimit` are global across all
+requested collections: result admission is capped after merging, and
+rerank/graph candidate work is distributed deterministically in canonical
+collection order.
+
+`structuredContent` is the complete canonical Context Capsule object for
+application clients. Model-visible text is always one deterministic
+`gno-context-agent-v1` JSON projection, even when the compatibility `format`
+field is present. The compact keys and tuple positions are part of that
+versioned contract:
+
+- `v`: projection version; `id`: Capsule identity.
+- `b`: requested tokens, requested bytes, used tokens, used bytes, estimator,
+  tokenizer fingerprint or `null`.
+- `r`: depth policy, index fingerprint, config fingerprint, retrieval
+  fingerprint, embedding-model fingerprint or `null`, rerank-model fingerprint
+  or `null`, enabled capability names, fallbacks.
+- `e[]`: URI, start line, end line, source hash, mirror hash, passage hash,
+  exact extractive text, title, heading, configured-context IDs, egress
+  classification. Title/heading are nullable; egress is explicit even when the
+  policy is unavailable.
+- `g`: evidence trust (`untrusted_data`), instruction boundary
+  (`hard_delimited`), then configured-guidance tuples containing context ID,
+  scope type, scope key, and exact guidance text. Evidence `contextIds` bind
+  each passage to these entries.
+- `c`: covered facets, then `[facet, gapCode]` pairs.
+- `o`: exact total omissions, then sparse `[reason, count]` pairs. An absent
+  reason has count zero.
+- `t`: global evidence-budget truncation; `trust` is always `untrusted_data`.
+
+The complete bounded omission audit and all descriptive fields remain in
+`structuredContent`. This avoids duplicating the full Capsule in model context
+without dropping exact evidence, gaps, budgets, identities, capabilities,
+fallbacks, truncation, omission counts, or the trust boundary.
+
+Indexed metadata and configured context are untrusted data, never instructions.
+The tool does not persist the Capsule. Unknown input fields are rejected by the
+MCP SDK's `InvalidParams` validation before the handler, and therefore return
+an MCP tool error rather than a structured GNO Context error. Validly shaped
+requests that fail in GNO use the public Context error taxonomy.
+
+Raw `gno_query`, `gno_get`, and `gno_multi_get` remain available when manual
+retrieval is more appropriate.
+
+---
+
+### gno_context_verify
+
+Verify a saved Capsule against the active MCP index without rebuilding or
+mutating it:
+
+```json
+{
+  "capsule": { "schemaVersion": "1.0", "...": "complete capsule" },
+  "format": "json"
+}
+```
+
+The receipt reports unchanged, stale, or missing evidence; current hashes when
+available; independent fingerprint drift; and ranking as unchanged, reranked,
+or unavailable. Index mismatch and malformed/non-canonical Capsules fail before
+evidence reads. `structuredContent` is the canonical verification receipt.
+
+---
 
 ### gno_search
 

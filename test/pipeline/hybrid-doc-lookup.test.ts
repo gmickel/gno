@@ -17,6 +17,7 @@ import type {
 } from "../../src/store/types";
 
 import { searchHybrid } from "../../src/pipeline/hybrid";
+import { SEARCH_RESULT_PLANNER_METADATA } from "../../src/pipeline/types";
 
 const NOW = "2026-02-22T00:00:00.000Z";
 
@@ -223,6 +224,75 @@ const TEST_COLLECTIONS: CollectionRow[] = [
 ];
 
 describe("searchHybrid targeted document lookup", () => {
+  test("preserves same-mirror documents in canonical URI order with planner metadata", async () => {
+    const sharedHash = "shared";
+    const notesDoc = makeDoc(1, sharedHash);
+    const archiveDoc: DocumentRow = {
+      ...makeDoc(2, sharedHash),
+      collection: "archive",
+      relPath: "shared-copy.md",
+      docid: "#archive",
+      uri: "gno://archive/shared-copy.md",
+      sourceHash: "archive-source",
+    };
+    const store: Partial<StorePort> = {
+      searchFts: async () => ({
+        ok: true as const,
+        value: [makeFtsResult(sharedHash, 0)],
+      }),
+      getDocumentsByMirrorHashes: async () => ({
+        ok: true as const,
+        value: [notesDoc, archiveDoc],
+      }),
+      getCollections: async () => ({
+        ok: true as const,
+        value: [
+          ...TEST_COLLECTIONS,
+          {
+            name: "archive",
+            path: "/tmp/archive",
+            pattern: "**/*",
+            include: null,
+            exclude: null,
+            updateCmd: null,
+            languageHint: null,
+            syncedAt: NOW,
+          },
+        ],
+      }),
+      getChunksBatch: async () => ({
+        ok: true as const,
+        value: new Map([[sharedHash, [makeChunk(sharedHash, 0)]]]),
+      }),
+    };
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "shared",
+      { noExpand: true, noRerank: true, limit: 5 }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.results.map((item) => item.uri)).toEqual([
+      "gno://archive/shared-copy.md",
+      "gno://notes/shared.md",
+    ]);
+    expect(
+      result.value.results.map(
+        (item) => item[SEARCH_RESULT_PLANNER_METADATA]?.retrievalRank
+      )
+    ).toEqual([1, 1]);
+    expect(JSON.stringify(result.value.results)).not.toContain("retrievalRank");
+  });
+
   test("uses getDocumentsByMirrorHashes, never listDocuments", async () => {
     const captured: { hashes: string[]; activeOnly?: boolean } = { hashes: [] };
 

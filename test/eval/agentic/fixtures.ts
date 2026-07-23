@@ -9,9 +9,87 @@ import type {
 import {
   modelVisibleUtf8Bytes,
   projectModelVisibleToolResult,
+  sha256Bytes,
 } from "../../../evals/agentic/canonical";
+import { formatContextAgentProjectionJson } from "../../../src/app/context-agent-projection";
 
 const ZERO_HASH = "0".repeat(64);
+
+export const productionCapsuleProjectionFixture = (taskId: string): string => {
+  const text = "INC-4827";
+  const passageHash = sha256Bytes(text);
+  return formatContextAgentProjectionJson({
+    capsuleId: sha256Bytes(taskId),
+    goal: "Find the incident ID.",
+    query: "incident ID",
+    budget: {
+      requestedTokens: 1000,
+      requestedBytes: 4000,
+      usedTokens: 100,
+      usedBytes: 400,
+      estimator: "unicode_conservative",
+      tokenizerFingerprint: null,
+    },
+    retrieval: {
+      depthPolicy: "fast",
+      indexFingerprint: ZERO_HASH,
+      configFingerprint: ZERO_HASH,
+      retrievalFingerprint: ZERO_HASH,
+      embeddingModelFingerprint: null,
+      rerankModelFingerprint: null,
+      capabilities: {
+        lexicalSearch: true,
+        semanticSearch: false,
+        reranking: false,
+        graphExpansion: false,
+        exactTokenCount: false,
+        configuredContext: false,
+        egressPolicy: false,
+      },
+      fallbacks: [],
+    },
+    guidance: {
+      evidenceTrust: "untrusted_data",
+      instructionBoundary: "hard_delimited",
+      configuredContexts: [],
+    },
+    evidence: [
+      {
+        uri: "gno://c001/d001.md",
+        title: null,
+        heading: null,
+        sourceHash: ZERO_HASH,
+        mirrorHash: ZERO_HASH,
+        startLine: 2,
+        endLine: 2,
+        passageHash,
+        contextIds: [],
+        egress: "unavailable",
+        text,
+      },
+    ],
+    coverage: {
+      requestedFacets: ["incident ID"],
+      coveredFacets: ["incident ID"],
+      unresolvedFacets: [],
+      gaps: [],
+    },
+    omissions: {
+      total: 0,
+      reasonCounts: {
+        duplicate: 0,
+        overlap: 0,
+        global_budget: 0,
+        redundant_coverage: 0,
+        document_share_cap: 0,
+        filtered_by_scope: 0,
+        invalid_coordinates: 0,
+      },
+      items: [],
+    },
+    truncated: false,
+  });
+};
 
 export const evidence = (
   overrides: Partial<EvidenceCoordinate> = {}

@@ -22,6 +22,9 @@ import type {
   GnoCreateFolderResult,
   GnoCreateNoteOptions,
   GnoCreateNoteResult,
+  GnoContextInput,
+  GnoContextResult,
+  GnoContextVerificationResult,
   GnoClientInitOptions,
   GnoDuplicateNoteOptions,
   GnoEmbedOptions,
@@ -39,8 +42,21 @@ import type {
   GnoVectorSearchOptions,
 } from "./types";
 
-import { decorateUriForIndex, getIndexDbPath } from "../app/constants";
-import { INDEX_NAME_REQUIREMENTS, isValidIndexName } from "../app/index-name";
+import {
+  decorateUriForIndex,
+  DEFAULT_INDEX_NAME,
+  getIndexDbPath,
+} from "../app/constants";
+import {
+  buildContextCapsule,
+  validateContextCapsuleBuildInput,
+  verifyContextCapsuleRuntime,
+} from "../app/context-runtime";
+import {
+  canonicalizeIndexName,
+  INDEX_NAME_REQUIREMENTS,
+  isValidIndexName,
+} from "../app/index-name";
 import {
   ConfigSchema,
   loadConfig,
@@ -108,7 +124,7 @@ interface OpenedClientState {
   store: SqliteAdapter;
   llm: LlmAdapter;
   downloadPolicy: DownloadPolicy;
-  indexName?: string;
+  indexName: string;
 }
 
 interface RuntimePorts {
@@ -161,7 +177,10 @@ async function resolveClientState(
     configSource = "file";
   }
 
-  const dbPath = options.dbPath ?? getIndexDbPath(options.indexName);
+  const indexName = canonicalizeIndexName(
+    options.indexName ?? DEFAULT_INDEX_NAME
+  );
+  const dbPath = options.dbPath ?? getIndexDbPath(indexName);
   await mkdir(dirname(dbPath), { recursive: true });
 
   const store = new SqliteAdapter();
@@ -179,7 +198,7 @@ async function resolveClientState(
     llm: new LlmAdapter(config, options.cacheDir),
     downloadPolicy:
       options.downloadPolicy ?? resolveDownloadPolicy(process.env, {}),
-    indexName: options.indexName,
+    indexName,
   };
 }
 
@@ -192,7 +211,7 @@ class GnoClientImpl implements GnoClient {
   private readonly store: SqliteAdapter;
   private readonly llm: LlmAdapter;
   private readonly downloadPolicy: DownloadPolicy;
-  private readonly indexName?: string;
+  private readonly indexName: string;
   private closed = false;
 
   constructor(state: OpenedClientState) {
@@ -642,6 +661,49 @@ class GnoClientImpl implements GnoClient {
     } finally {
       await this.disposeRuntimePorts(ports);
     }
+  }
+
+  async context(input: GnoContextInput): Promise<GnoContextResult> {
+    this.assertOpen();
+    validateContextCapsuleBuildInput(
+      { ...input, indexName: this.indexName },
+      this.indexName,
+      this.config.collections.map((collection) => collection.name)
+    );
+    const collection =
+      input.collections?.length === 1 ? input.collections[0] : undefined;
+    const useModels = input.depthPolicy !== "fast";
+    const ports = await this.createRuntimePorts({
+      embed: useModels,
+      rerank: useModels,
+      collection,
+    });
+    try {
+      return await buildContextCapsule(
+        { ...input, indexName: this.indexName },
+        {
+          store: this.store,
+          config: this.config,
+          indexName: this.indexName,
+          vectorIndex: ports.vectorIndex,
+          embedPort: ports.embedPort,
+          rerankPort: ports.rerankPort,
+        }
+      );
+    } finally {
+      await this.disposeRuntimePorts(ports);
+    }
+  }
+
+  async verifyContext(
+    capsule: GnoContextResult
+  ): Promise<GnoContextVerificationResult> {
+    this.assertOpen();
+    return verifyContextCapsuleRuntime(capsule, {
+      store: this.store,
+      config: this.config,
+      indexName: this.indexName,
+    });
   }
 
   async get(ref: string, options: GnoGetOptions = {}) {

@@ -73,6 +73,87 @@ interface EvidenceLine {
   line: number;
 }
 
+const evidenceVisibleInBundleContent = (
+  result: AgentVisibleToolResult
+): AgentVisibleToolResult["evidence"] => {
+  if (result.evidence.length > 0 || result.resultRole !== "evidence_bundle") {
+    return result.evidence;
+  }
+  try {
+    const payload = JSON.parse(result.content) as {
+      evidence?: unknown;
+      v?: unknown;
+      e?: unknown;
+    };
+    const evidence = Array.isArray(payload.evidence)
+      ? payload.evidence
+      : payload.v === "gno-context-agent-v1" && Array.isArray(payload.e)
+        ? payload.e
+        : null;
+    if (!evidence) return [];
+    return evidence.flatMap((value) => {
+      if (Array.isArray(value)) {
+        if (
+          typeof value[0] !== "string" ||
+          typeof value[1] !== "number" ||
+          !Number.isInteger(value[1]) ||
+          typeof value[2] !== "number" ||
+          !Number.isInteger(value[2]) ||
+          typeof value[3] !== "string" ||
+          typeof value[5] !== "string" ||
+          typeof value[6] !== "string"
+        ) {
+          return [];
+        }
+        return [
+          {
+            uri: value[0],
+            sourceHash: value[3],
+            startLine: value[1],
+            endLine: value[2],
+            spanHash: value[5],
+            sourceHashProvenance: "backend_provided" as const,
+            spanHashProvenance: "backend_provided" as const,
+            text: value[6],
+          },
+        ];
+      }
+      if (!value || typeof value !== "object") return [];
+      const item = value as Record<string, unknown>;
+      if (
+        typeof item.uri !== "string" ||
+        typeof item.sourceHash !== "string" ||
+        typeof item.startLine !== "number" ||
+        !Number.isInteger(item.startLine) ||
+        typeof item.endLine !== "number" ||
+        !Number.isInteger(item.endLine) ||
+        (typeof item.spanHash !== "string" &&
+          typeof item.passageHash !== "string") ||
+        typeof item.text !== "string"
+      ) {
+        return [];
+      }
+      return [
+        {
+          uri: item.uri,
+          sourceHash: item.sourceHash,
+          startLine: item.startLine,
+          endLine: item.endLine,
+          spanHash:
+            typeof item.passageHash === "string"
+              ? item.passageHash
+              : (item.spanHash as string),
+          sourceHashProvenance: "backend_provided" as const,
+          spanHashProvenance: "backend_provided" as const,
+          text: item.text,
+        },
+      ];
+    });
+  } catch {
+    return [];
+  }
+};
+
 const evidenceLines = (
   evidence: readonly AgentVisibleToolResult["evidence"][number][]
 ): EvidenceLine[] =>
@@ -293,7 +374,7 @@ class FixtureAgentSession implements OuterAgentSession {
     const lastCall = calls.at(-1);
     const readEvidence = calls
       .filter((call) => call.result.resultRole !== "candidates")
-      .flatMap((call) => call.result.evidence);
+      .flatMap((call) => evidenceVisibleInBundleContent(call.result));
     const candidateEvidence = calls
       .filter((call) => call.result.resultRole === "candidates")
       .flatMap((call) => call.result.evidence);

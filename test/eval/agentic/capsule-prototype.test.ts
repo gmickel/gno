@@ -10,15 +10,17 @@ import {
 import {
   canonicalJson,
   exactLineSpan,
+  projectModelVisibleToolResult,
   sha256Bytes,
 } from "../../../evals/agentic/canonical";
 import { loadAgenticFixture } from "../../../evals/agentic/fixture-db";
 import { runAgenticBenchmark } from "../../../evals/agentic/runner";
 import { scoreTrajectory } from "../../../evals/agentic/scoring";
+import { CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION } from "../../../src/app/context-agent-projection";
 
 const RECORDED_AT = "2026-07-22T00:00:00.000Z";
 
-describe("eval-only Capsule prototype", () => {
+describe("Capsule prototype with production model-visible projection", () => {
   let fixture: LoadedAgenticFixture;
 
   beforeAll(async () => {
@@ -51,6 +53,8 @@ describe("eval-only Capsule prototype", () => {
       expect(call).toBeDefined();
       if (!call) throw new Error("Capsule receipt has no search call");
       expect(call.result.resultRole).toBe("evidence_bundle");
+      expect(call.result.evidence.length).toBeGreaterThan(0);
+      expect(projectModelVisibleToolResult(call.result).evidence).toEqual([]);
       expect(call.backendInvocations).toBe(
         receipt.canonical.backendInvocations
       );
@@ -60,37 +64,13 @@ describe("eval-only Capsule prototype", () => {
       const payload = JSON.parse(
         call.result.content
       ) as CapsulePrototypePayload;
-      expect(payload.evalOnly).toBe(true);
-      expect(payload.schemaVersion).toBe("eval-capsule-prototype-v1");
-      expect(payload.budget.selectedModelVisibleUtf8Bytes).toBe(
-        call.modelVisibleUtf8Bytes
+      expect(payload.v).toBe(CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION);
+      expect(receipt.canonical.fingerprints.index).toMatch(/^[a-f0-9]{64}$/);
+      expect(receipt.canonical.fingerprints.config).toMatch(/^[a-f0-9]{64}$/);
+      expect(receipt.canonical.backendInvocations).toBeGreaterThan(1);
+      expect(payload.o[1].reduce((sum, [, count]) => sum + count, 0)).toBe(
+        payload.o[0]
       );
-      expect(payload.retrieval.backendInvocations).toBe(
-        receipt.canonical.backendInvocations
-      );
-      expect(
-        Object.values(payload.retrieval.backendInvocationStages).reduce(
-          (sum, count) => sum + count,
-          0
-        )
-      ).toBe(receipt.canonical.backendInvocations);
-      expect(payload.retrieval.backendInvocationStages.queryPlanning).toBe(1);
-      expect(payload.retrieval.backendInvocationStages.selection).toBe(1);
-      expect(payload.retrieval.backendInvocationStages.finalization).toBe(1);
-      expect(payload.omitted.counts).toEqual({
-        duplicate: payload.omitted.candidates.filter(
-          (item) => item.reason === "duplicate"
-        ).length,
-        overlap: payload.omitted.candidates.filter(
-          (item) => item.reason === "overlap"
-        ).length,
-        globalBudget: payload.omitted.candidates.filter(
-          (item) => item.reason === "global_budget"
-        ).length,
-        redundantCoverage: payload.omitted.candidates.filter(
-          (item) => item.reason === "redundant_coverage"
-        ).length,
-      });
       expect(payload).not.toHaveProperty("cli");
       expect(payload).not.toHaveProperty("mcp");
       expect(payload).not.toHaveProperty("rest");
@@ -107,6 +87,19 @@ describe("eval-only Capsule prototype", () => {
         );
         expect(evidence.sourceHash).toBe(source!.sourceHash);
         expect(evidence.spanHash).toBe(sha256Bytes(evidence.text));
+        expect(payload.e).toContainEqual([
+          evidence.uri,
+          evidence.startLine,
+          evidence.endLine,
+          evidence.sourceHash,
+          evidence.sourceHash,
+          evidence.spanHash,
+          evidence.text,
+          null,
+          null,
+          [],
+          "unavailable",
+        ]);
       }
     }
   });
@@ -152,7 +145,7 @@ describe("eval-only Capsule prototype", () => {
     );
   });
 
-  test("audits every deterministic omission by exact coordinate and reason", async () => {
+  test("audits deterministic exact omission counts", async () => {
     const run = await runAgenticBenchmark({
       fixture,
       adapters: { capsule: createCapsulePrototypeAdapterFactory() },
@@ -165,16 +158,8 @@ describe("eval-only Capsule prototype", () => {
       run.receipts[0]?.canonical.calls[0]?.result.content ?? ""
     ) as CapsulePrototypePayload;
 
-    expect(payload.omitted.candidates).toHaveLength(2);
-    expect(
-      payload.omitted.candidates.every(
-        (item) =>
-          item.uri === "gno://c018/d001.md" &&
-          item.sourceHash ===
-            "36a083e77527435026287d7a7e8586a1c69f6e04b68af0f73fabccaed580f74f" &&
-          item.reason === "redundant_coverage"
-      )
-    ).toBe(true);
+    expect(payload.o[0]).toBe(2);
+    expect(Object.fromEntries(payload.o[1]).redundant_coverage).toBe(2);
   });
 
   test("enforces active task scope for unscoped search and every read", async () => {

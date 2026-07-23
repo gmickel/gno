@@ -1,7 +1,4 @@
 {
-  "assignee": null,
-  "claim_note": "",
-  "claimed_at": null,
   "created_at": "2026-07-21T21:58:18.746941Z",
   "depends_on": [
     "fn-98-context-capsule-mvp.5"
@@ -12,5 +9,5 @@
   "spec_path": ".flow/tasks/fn-98-context-capsule-mvp.6.md",
   "status": "todo",
   "title": "Complete REST MCP parity promotion proof and documentation",
-  "updated_at": "2026-07-21T22:08:30.694859Z"
+  "updated_at": "2026-07-23T00:37:24.358299Z"
 }

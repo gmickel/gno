@@ -91,6 +91,7 @@ export function createMockContext(): ServerContext {
 
   return {
     config,
+    indexName: "default",
     answerPort: null,
     capabilities: {
       answer: false,

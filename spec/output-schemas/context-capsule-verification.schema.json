@@ -1,0 +1,1338 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/context-capsule-verification@1.0",
+  "title": "GNO Context Capsule Verification Receipt",
+  "description": "Successful, non-mutating verification of saved Capsule content and ranking state. Stale or missing evidence remains a completed receipt.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "coordinateSpace",
+    "capsuleId",
+    "operationStatus",
+    "contentStatus",
+    "contentCode",
+    "rankingStatus",
+    "rankingCode",
+    "currentFingerprints",
+    "fingerprintStatus",
+    "fingerprintReasons",
+    "indexSnapshot",
+    "evidence"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "coordinateSpace": { "const": "canonical_mirror" },
+    "capsuleId": { "$ref": "#/definitions/sha256" },
+    "operationStatus": { "const": "completed" },
+    "contentStatus": { "enum": ["unchanged", "stale", "missing"] },
+    "contentCode": {
+      "enum": ["verified_unchanged", "content_stale", "content_missing"]
+    },
+    "rankingStatus": { "enum": ["unchanged", "reranked", "unavailable"] },
+    "rankingCode": {
+      "enum": ["ranking_unchanged", "ranking_changed", "ranking_unavailable"]
+    },
+    "currentFingerprints": { "$ref": "#/definitions/currentFingerprints" },
+    "fingerprintStatus": { "enum": ["unchanged", "drifted"] },
+    "fingerprintReasons": {
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 0,
+          "items": false
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": [
+            {
+              "const": "config_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": [
+            {
+              "const": "embedding_model_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": [
+            {
+              "const": "rerank_model_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": [
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": [
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": [
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": [
+            {
+              "const": "config_changed"
+            },
+            {
+              "const": "retrieval_changed"
+            },
+            {
+              "const": "embedding_model_changed"
+            },
+            {
+              "const": "rerank_model_changed"
+            },
+            {
+              "const": "tokenizer_changed"
+            },
+            {
+              "const": "index_changed"
+            }
+          ]
+        }
+      ]
+    },
+    "indexSnapshot": { "$ref": "#/definitions/indexSnapshot" },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/evidenceVerification" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "contentStatus": { "const": "unchanged" } } },
+      "then": {
+        "properties": { "contentCode": { "const": "verified_unchanged" } }
+      }
+    },
+    {
+      "if": { "properties": { "contentStatus": { "const": "stale" } } },
+      "then": {
+        "properties": {
+          "contentCode": { "const": "content_stale" },
+          "rankingStatus": { "const": "unavailable" },
+          "rankingCode": { "const": "ranking_unavailable" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "contentStatus": { "const": "missing" } } },
+      "then": {
+        "properties": {
+          "contentCode": { "const": "content_missing" },
+          "rankingStatus": { "const": "unavailable" },
+          "rankingCode": { "const": "ranking_unavailable" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "rankingStatus": { "const": "unchanged" } } },
+      "then": {
+        "properties": { "rankingCode": { "const": "ranking_unchanged" } }
+      }
+    },
+    {
+      "if": { "properties": { "rankingStatus": { "const": "reranked" } } },
+      "then": {
+        "properties": { "rankingCode": { "const": "ranking_changed" } }
+      }
+    },
+    {
+      "if": { "properties": { "rankingStatus": { "const": "unavailable" } } },
+      "then": {
+        "properties": { "rankingCode": { "const": "ranking_unavailable" } }
+      }
+    },
+    {
+      "if": { "properties": { "fingerprintStatus": { "const": "unchanged" } } },
+      "then": {
+        "properties": {
+          "fingerprintReasons": { "type": "array", "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "fingerprintStatus": { "const": "drifted" } } },
+      "then": {
+        "properties": {
+          "fingerprintReasons": { "type": "array", "minItems": 1 }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "nullableSha256": {
+      "oneOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+    },
+    "currentFingerprints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config",
+        "retrieval",
+        "embeddingModel",
+        "rerankModel",
+        "tokenizer",
+        "index"
+      ],
+      "properties": {
+        "config": { "$ref": "#/definitions/sha256" },
+        "retrieval": { "$ref": "#/definitions/sha256" },
+        "embeddingModel": { "$ref": "#/definitions/nullableSha256" },
+        "rerankModel": { "$ref": "#/definitions/nullableSha256" },
+        "tokenizer": { "$ref": "#/definitions/nullableSha256" },
+        "index": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "fingerprintDriftReason": {
+      "enum": [
+        "config_changed",
+        "retrieval_changed",
+        "embedding_model_changed",
+        "rerank_model_changed",
+        "tokenizer_changed",
+        "index_changed"
+      ]
+    },
+    "gnoUri": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^gno://[a-z0-9][a-z0-9_-]{0,63}/(?!.*%2F)(?:[A-Za-z0-9_.!~*'()/\\-]|%[0-9A-F]{2})+(?:\\?index=(?:[A-Za-z0-9_.!~*'()\\-]|%[0-9A-F]{2})+)?$"
+    },
+    "indexSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before", "after", "stable"],
+      "properties": {
+        "before": { "$ref": "#/definitions/sha256" },
+        "after": { "$ref": "#/definitions/sha256" },
+        "stable": { "const": true }
+      }
+    },
+    "evidenceVerification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "uri",
+        "contentStatus",
+        "contentCode",
+        "rankingStatus",
+        "rankingCode",
+        "currentSourceHash",
+        "currentMirrorHash",
+        "currentPassageHash",
+        "currentRetrievalRank"
+      ],
+      "properties": {
+        "evidenceId": { "$ref": "#/definitions/sha256" },
+        "uri": { "$ref": "#/definitions/gnoUri" },
+        "contentStatus": { "enum": ["unchanged", "stale", "missing"] },
+        "contentCode": {
+          "enum": [
+            "verified_unchanged",
+            "source_stale",
+            "mirror_stale",
+            "mirror_corrupt",
+            "passage_stale",
+            "chunk_missing",
+            "chunk_corrupt",
+            "source_missing",
+            "mirror_missing"
+          ]
+        },
+        "rankingStatus": { "enum": ["unchanged", "reranked", "unavailable"] },
+        "rankingCode": {
+          "enum": [
+            "ranking_unchanged",
+            "ranking_changed",
+            "ranking_unavailable"
+          ]
+        },
+        "currentSourceHash": { "$ref": "#/definitions/nullableSha256" },
+        "currentMirrorHash": { "$ref": "#/definitions/nullableSha256" },
+        "currentPassageHash": { "$ref": "#/definitions/nullableSha256" },
+        "currentRetrievalRank": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "contentStatus": { "const": "unchanged" } } },
+          "then": {
+            "properties": {
+              "contentCode": { "const": "verified_unchanged" },
+              "currentSourceHash": { "$ref": "#/definitions/sha256" },
+              "currentMirrorHash": { "$ref": "#/definitions/sha256" },
+              "currentPassageHash": { "$ref": "#/definitions/sha256" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "contentStatus": { "const": "stale" } } },
+          "then": {
+            "properties": {
+              "contentCode": {
+                "enum": [
+                  "source_stale",
+                  "mirror_stale",
+                  "mirror_corrupt",
+                  "passage_stale",
+                  "chunk_missing",
+                  "chunk_corrupt"
+                ]
+              },
+              "currentSourceHash": { "$ref": "#/definitions/sha256" },
+              "currentMirrorHash": { "$ref": "#/definitions/sha256" },
+              "currentPassageHash": { "$ref": "#/definitions/sha256" },
+              "rankingStatus": { "const": "unavailable" },
+              "rankingCode": { "const": "ranking_unavailable" },
+              "currentRetrievalRank": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "contentStatus": { "const": "missing" } } },
+          "then": {
+            "properties": {
+              "contentCode": { "enum": ["source_missing", "mirror_missing"] },
+              "rankingStatus": { "const": "unavailable" },
+              "rankingCode": { "const": "ranking_unavailable" },
+              "currentRetrievalRank": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "contentCode": { "const": "source_missing" } }
+          },
+          "then": {
+            "properties": {
+              "contentStatus": { "const": "missing" },
+              "currentSourceHash": { "type": "null" },
+              "currentMirrorHash": { "type": "null" },
+              "currentPassageHash": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "contentCode": { "const": "mirror_missing" } }
+          },
+          "then": {
+            "properties": {
+              "contentStatus": { "const": "missing" },
+              "currentSourceHash": { "$ref": "#/definitions/sha256" },
+              "currentMirrorHash": {
+                "$ref": "#/definitions/nullableSha256"
+              },
+              "currentPassageHash": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "rankingStatus": { "const": "unchanged" } } },
+          "then": {
+            "properties": {
+              "rankingCode": { "const": "ranking_unchanged" },
+              "currentRetrievalRank": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "rankingStatus": { "const": "reranked" } } },
+          "then": {
+            "properties": {
+              "rankingCode": { "const": "ranking_changed" },
+              "currentRetrievalRank": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "rankingStatus": { "const": "unavailable" } }
+          },
+          "then": {
+            "properties": {
+              "rankingCode": { "const": "ranking_unavailable" },
+              "currentRetrievalRank": { "type": "null" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -7,13 +7,13 @@ import type {
   TrajectoryReceipt,
 } from "../../../evals/agentic/types";
 
-import { canonicalJson, sha256Bytes } from "../../../evals/agentic/canonical";
+import { sha256Bytes } from "../../../evals/agentic/canonical";
 import {
   evaluatePromotionGates,
   pairPromotionCohorts,
 } from "../../../evals/agentic/promotion";
 import { scoreRecordFor } from "../../../evals/agentic/scoring";
-import { receiptFixture } from "./fixtures";
+import { productionCapsuleProjectionFixture, receiptFixture } from "./fixtures";
 
 const successfulScore = (taskId: string): TaskScore => ({
   taskId,
@@ -36,11 +36,7 @@ const successfulScore = (taskId: string): TaskScore => ({
 });
 
 const replayFor = (receipt: TrajectoryReceipt): CapsuleReplayRecord => {
-  const payload = canonicalJson({
-    schemaVersion: "eval-capsule-prototype-v1",
-    evalOnly: true,
-    taskId: receipt.canonical.taskId,
-  });
+  const payload = productionCapsuleProjectionFixture(receipt.canonical.taskId);
   const firstCall = receipt.canonical.calls[0];
   if (!firstCall) throw new Error("Promotion fixture requires one call");
   firstCall.result.resultRole = "evidence_bundle";
@@ -139,7 +135,11 @@ describe("strict Capsule promotion identity", () => {
     );
 
     const noncanonical = promotionPair();
-    const raw = `{"taskId":"${noncanonical.taskId}","schemaVersion":"eval-capsule-prototype-v1","evalOnly":true}`;
+    const raw = JSON.stringify(
+      JSON.parse(productionCapsuleProjectionFixture(noncanonical.taskId)),
+      null,
+      2
+    );
     noncanonical.candidate.replay.first = {
       canonicalJson: raw,
       sha256: sha256Bytes(raw),
@@ -149,12 +149,9 @@ describe("strict Capsule promotion identity", () => {
     );
 
     const sentinel = promotionPair();
-    const sentinelPayload = canonicalJson({
-      schemaVersion: "eval-capsule-prototype-v1",
-      evalOnly: true,
-      taskId: sentinel.taskId,
-      sentinel: true,
-    });
+    const sentinelPayload = productionCapsuleProjectionFixture(
+      `${sentinel.taskId}-sentinel`
+    );
     sentinel.candidate.replay.first = {
       canonicalJson: sentinelPayload,
       sha256: sha256Bytes(sentinelPayload),

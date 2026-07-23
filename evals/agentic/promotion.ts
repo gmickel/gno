@@ -6,6 +6,7 @@ import type {
   TrajectoryReceipt,
 } from "./types";
 
+import { CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION } from "../../src/app/context-agent-projection";
 import { canonicalJson, sha256Bytes } from "./canonical";
 
 const pairKey = (receipt: TrajectoryReceipt): string =>
@@ -87,17 +88,125 @@ const replayMatchesReceipt = (
 
 const validateReplayPayload = (
   payload: CapsuleReplayRecord["first"],
-  taskId: string
+  _taskId: string
 ): boolean => {
   if (!payload.canonicalJson) return false;
   try {
     const parsed = JSON.parse(payload.canonicalJson) as Record<string, unknown>;
+    const budget = parsed.b;
+    const retrieval = parsed.r;
+    const evidence = parsed.e;
+    const guidance = parsed.g;
+    const coverage = parsed.c;
+    const omissions = parsed.o;
+    const hash = (value: unknown): boolean =>
+      typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
+    const stringArray = (value: unknown): boolean =>
+      Array.isArray(value) && value.every((item) => typeof item === "string");
+    const nullableNumber = (value: unknown): boolean =>
+      value === null || (typeof value === "number" && Number.isFinite(value));
+    const validReasonCounts =
+      Array.isArray(omissions) &&
+      Array.isArray(omissions[1]) &&
+      omissions[1].every(
+        (pair) =>
+          Array.isArray(pair) &&
+          pair.length === 2 &&
+          typeof pair[0] === "string" &&
+          typeof pair[1] === "number" &&
+          Number.isInteger(pair[1]) &&
+          pair[1] > 0
+      );
+    const countedTotal = validReasonCounts
+      ? (omissions[1] as Array<[string, number]>).reduce(
+          (sum, [, count]) => sum + count,
+          0
+        )
+      : Number.NaN;
     return (
       canonicalJson(parsed) === payload.canonicalJson &&
       sha256Bytes(payload.canonicalJson) === payload.sha256 &&
-      parsed.schemaVersion === "eval-capsule-prototype-v1" &&
-      parsed.evalOnly === true &&
-      parsed.taskId === taskId
+      parsed.v === CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION &&
+      hash(parsed.id) &&
+      Array.isArray(budget) &&
+      budget.length === 6 &&
+      budget
+        .slice(0, 2)
+        .every(
+          (value) => typeof value === "number" && Number.isFinite(value)
+        ) &&
+      budget.slice(2, 4).every(nullableNumber) &&
+      typeof budget[4] === "string" &&
+      (budget[5] === null || hash(budget[5])) &&
+      Array.isArray(retrieval) &&
+      retrieval.length === 8 &&
+      typeof retrieval[0] === "string" &&
+      hash(retrieval[1]) &&
+      hash(retrieval[2]) &&
+      hash(retrieval[3]) &&
+      (retrieval[4] === null || hash(retrieval[4])) &&
+      (retrieval[5] === null || hash(retrieval[5])) &&
+      stringArray(retrieval[6]) &&
+      stringArray(retrieval[7]) &&
+      Array.isArray(evidence) &&
+      evidence.length > 0 &&
+      evidence.every(
+        (item) =>
+          Array.isArray(item) &&
+          item.length === 11 &&
+          typeof item[0] === "string" &&
+          typeof item[1] === "number" &&
+          Number.isInteger(item[1]) &&
+          typeof item[2] === "number" &&
+          Number.isInteger(item[2]) &&
+          hash(item[3]) &&
+          hash(item[4]) &&
+          hash(item[5]) &&
+          typeof item[6] === "string" &&
+          (item[7] === null || typeof item[7] === "string") &&
+          (item[8] === null || typeof item[8] === "string") &&
+          Array.isArray(item[9]) &&
+          item[9].every(hash) &&
+          [
+            "local_only",
+            "lan",
+            "remote",
+            "unclassified",
+            "unavailable",
+          ].includes(item[10] as string)
+      ) &&
+      Array.isArray(guidance) &&
+      guidance.length === 3 &&
+      guidance[0] === "untrusted_data" &&
+      guidance[1] === "hard_delimited" &&
+      Array.isArray(guidance[2]) &&
+      guidance[2].every(
+        (item) =>
+          Array.isArray(item) &&
+          item.length === 4 &&
+          hash(item[0]) &&
+          ["global", "collection", "prefix"].includes(item[1] as string) &&
+          typeof item[2] === "string" &&
+          typeof item[3] === "string"
+      ) &&
+      Array.isArray(coverage) &&
+      coverage.length === 2 &&
+      stringArray(coverage[0]) &&
+      Array.isArray(coverage[1]) &&
+      coverage[1].every(
+        (gap) =>
+          Array.isArray(gap) &&
+          gap.length === 2 &&
+          gap.every((value) => typeof value === "string")
+      ) &&
+      Array.isArray(omissions) &&
+      omissions.length === 2 &&
+      typeof omissions[0] === "number" &&
+      Number.isInteger(omissions[0]) &&
+      omissions[0] >= 0 &&
+      countedTotal === omissions[0] &&
+      typeof parsed.t === "boolean" &&
+      parsed.trust === "untrusted_data"
     );
   } catch {
     return false;

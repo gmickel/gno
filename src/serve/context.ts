@@ -19,6 +19,8 @@ import type { DocumentEventBus } from "./doc-events";
 import type { EmbedScheduler } from "./embed-scheduler";
 import type { CollectionWatchService } from "./watch-service";
 
+import { DEFAULT_INDEX_NAME } from "../app/constants";
+import { canonicalizeIndexName } from "../app/index-name";
 import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../llm/policy";
 import { getActivePreset } from "../llm/registry";
@@ -64,6 +66,8 @@ export function resetDownloadState(): void {
 export interface ServerContext {
   store: SqliteAdapter;
   config: Config;
+  /** Canonical identity of the already-open resident store. */
+  indexName: string;
   vectorIndex: VectorIndexPort | null;
   embedPort: EmbeddingPort | null;
   expandPort: GenerationPort | null;
@@ -82,6 +86,7 @@ export interface ServerContext {
 
 export interface CreateServerContextOptions {
   offline?: boolean;
+  indexName?: string;
 }
 
 /**
@@ -197,6 +202,7 @@ export async function createServerContext(
   return {
     store,
     config,
+    indexName: canonicalizeIndexName(options.indexName ?? DEFAULT_INDEX_NAME),
     vectorIndex,
     embedPort,
     expandPort,
@@ -242,5 +248,8 @@ export async function reloadServerContext(
   options: CreateServerContextOptions = {}
 ): Promise<ServerContext> {
   await disposeServerContext(ctx);
-  return createServerContext(ctx.store, newConfig ?? ctx.config, options);
+  return createServerContext(ctx.store, newConfig ?? ctx.config, {
+    ...options,
+    indexName: options.indexName ?? ctx.indexName,
+  });
 }

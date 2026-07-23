@@ -66,8 +66,25 @@ describe("Capsule evidence selection", () => {
 
     expect(selection.evidence.map((item) => item.text)).toEqual(["alpha beta"]);
     expect(selection.omitted.map((item) => item.reason)).toEqual([
-      "global_budget",
-      "global_budget",
+      "redundant_coverage",
+      "redundant_coverage",
+    ]);
+  });
+
+  test("stops once each source has no new requested facet evidence", () => {
+    const selection = selectCapsuleEvidence(
+      [
+        candidate(1, 1, "complete", ["owner", "date"], 0),
+        candidate(2, 2, "duplicate owner", ["owner"], 1),
+        candidate(3, 3, "no facet", [], 2),
+      ],
+      () => true
+    );
+
+    expect(selection.evidence.map((item) => item.text)).toEqual(["complete"]);
+    expect(selection.omitted.map((item) => item.reason)).toEqual([
+      "redundant_coverage",
+      "redundant_coverage",
     ]);
   });
 });

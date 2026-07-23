@@ -93,6 +93,7 @@ describe("MCP link tools integration", () => {
 
   function toolContext(): ToolContext {
     return {
+      indexName: "default",
       store,
       config: {
         version: "1.0",

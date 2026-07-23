@@ -164,6 +164,51 @@ const results = await client.vsearch("natural language auth flow", {
 });
 ```
 
+### Context Capsules
+
+Compile exact evidence under one global budget, then verify it later without
+silently rebuilding it:
+
+```ts
+const capsule = await client.context({
+  goal: "compare the launch proposals",
+  budgetTokens: 12_000,
+  collections: ["work"],
+  depthPolicy: "balanced",
+});
+
+const receipt = await client.verifyContext(capsule);
+console.log(receipt.contentStatus, receipt.fingerprintStatus);
+```
+
+`client.context()` and the CLI share the same compiler and canonical projector.
+`client.verifyContext()` requires the client's effective index to match the
+Capsule scope. An omitted client `indexName` is canonical `default`; mismatches
+return `invalid_filter` before verification reads the store.
+The returned `GnoContextResult` includes exact evidence text and line ranges,
+source/mirror/passage hashes, configured-context bindings, coverage gaps,
+omission counts, capability fallbacks, and exact final payload accounting.
+`depthPolicy: "fast"` avoids model loading. The normalized request persists
+author, language, structured query modes, effective result/candidate limits,
+and graph intent. Capability states distinguish `not_requested`,
+`not_attempted`, `used`, and attempted `unavailable`; fallbacks describe only
+actual unavailable attempts. Unknown collections throw `invalid_filter` before
+retrieval or model setup. Tag filters are normalized, lowercased, deduplicated,
+and validated. Result admission and rerank/graph candidate limits remain global
+across multi-collection requests.
+
+`client.verifyContext()` validates canonical identity and metadata before store
+access, preserves exact evidence bytes, and returns the same verification
+receipt as the CLI. Ranking is `ranking_unavailable` when the current runtime
+does not supply a rank resolver. Context methods throw exported typed errors
+with `GnoContextErrorCode`; snapshot/load/provenance codes are identical across
+SDK and CLI JSON error details.
+
+For saved Capsules using `active_tokenizer`, verification requires the exact
+tokenizer fingerprint and deterministic accounting callback before any store
+I/O. The default SDK runtime does not invent one: it throws
+`tokenizer_unavailable` rather than accepting unverified `usedTokens`.
+
 ### Get / Multi-Get / List
 
 ```ts
@@ -279,6 +324,7 @@ Current stable root import surface:
 - `createDefaultConfig`
 - `ConfigSchema`
 - SDK/client/result types
+- Context Capsule result, verification, and error types
 
 The package root is the SDK entrypoint. The CLI remains available through the `gno` binary.
 

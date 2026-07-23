@@ -202,6 +202,15 @@ Adapter backend hashes, backend-hash diagnostics, call accounting, tokenizer
 accounting, temp paths, and oracle data are excluded from both the agent history
 and its UTF-8 byte count.
 
+For Capsule evidence bundles, `content` is byte-for-byte the production MCP
+`gno-context-agent-v1` text projection. Exact evidence is not duplicated in the
+normalized evidence field. The benchmark charges the complete normalized
+agent-visible envelope containing that text once; the full canonical Capsule
+in MCP `structuredContent` is application-only and excluded. This target models
+hosts that keep structured data outside model context. Hosts that expose both
+text and `structuredContent` must charge both and cannot cite this promotion
+result without a separate run.
+
 Canonical JSON recursively sorts object keys by code-unit order, preserves array
 order, and rejects `undefined`, non-finite numbers, and non-JSON values. It
 excludes all observations. Unchanged deterministic inputs therefore produce
@@ -496,4 +505,6 @@ can never overwrite the authoritative baseline.
   cohorts.
 - qmd is an optional exact-revision comparator and is never required by the
   standard test suite.
-- The eval-only Capsule adapter does not establish the production fn-98 API.
+- Capsule retrieval/planning remains a deterministic fixture prototype; its
+  model-visible serializer and omission accounting are the production MCP
+  contract.

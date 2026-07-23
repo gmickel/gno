@@ -42,3 +42,36 @@ export function createChunkLookup(
     return bySeq.get(seq);
   };
 }
+
+/**
+ * Prove that persisted chunk coordinates still address the exact stored
+ * canonical mirror bytes. Chunk text may begin or end mid-line; callers that
+ * need citation spans must expand it to full lines separately.
+ */
+export function chunkMatchesCanonicalContent(
+  chunk: ChunkRow,
+  content: string
+): boolean {
+  if (
+    content.includes("\r") ||
+    chunk.pos < 0 ||
+    chunk.startLine < 1 ||
+    chunk.endLine < chunk.startLine ||
+    chunk.text.length === 0 ||
+    chunk.pos + chunk.text.length > content.length
+  ) {
+    return false;
+  }
+  if (content.slice(chunk.pos, chunk.pos + chunk.text.length) !== chunk.text) {
+    return false;
+  }
+  let startLine = 1;
+  let endLine = 1;
+  const endOffset = chunk.pos + chunk.text.length - 1;
+  for (let offset = 0; offset < endOffset; offset += 1) {
+    if (content[offset] !== "\n") continue;
+    if (offset < chunk.pos) startLine += 1;
+    endLine += 1;
+  }
+  return startLine === chunk.startLine && endLine === chunk.endLine;
+}

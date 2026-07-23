@@ -30,6 +30,8 @@ async function loadAllSchemas(): Promise<void> {
     "mcp-job-list",
     "process-status",
     "activation-verification",
+    "context-capsule-v1",
+    "context-capsule-verification",
     "tags-list",
     "links-list",
     "backlinks",

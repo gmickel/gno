@@ -85,7 +85,7 @@ describe("committed authoritative agentic baseline", () => {
     }
   });
 
-  test("recomputes canonical fingerprint and failed promotion exactly", async () => {
+  test("recomputes canonical fingerprint and passed promotion exactly", async () => {
     const report = (await Bun.file(
       join(BASELINE_ROOT, "report.json")
     ).json()) as BenchmarkReport;
@@ -132,9 +132,16 @@ describe("committed authoritative agentic baseline", () => {
       evaluatePromotionGates(pairPromotionCohorts(baseline, candidate))
     ).toEqual(report.promotion!);
     expect(report.promotion).toMatchObject({
-      passed: false,
+      passed: true,
       pairCount: 48,
-      failures: ["context_byte_reduction_below_0.35_or_zero_denominator"],
+      failures: [],
+      metrics: {
+        baselineSuccessRate: 0.9583333333333334,
+        candidateSuccessRate: 1,
+        agentCallReduction: 0.4893617021276596,
+        contextByteReduction: 0.4412024014442252,
+        claimLinkageRate: 1,
+      },
     });
   });
 

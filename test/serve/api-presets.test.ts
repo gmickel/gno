@@ -38,6 +38,7 @@ function makeContextHolder(config: Config): ContextHolder {
     current: {
       store: {} as ContextHolder["current"]["store"],
       config,
+      indexName: "default",
       vectorIndex: null,
       embedPort: null,
       expandPort: null,

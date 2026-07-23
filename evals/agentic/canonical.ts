@@ -109,22 +109,76 @@ export const canonicalFingerprint = (value: unknown): string =>
 export const modelVisibleUtf8Bytes = (value: unknown): number =>
   new TextEncoder().encode(canonicalJson(value)).byteLength;
 
+const bundleContentCarriesExactEvidence = (
+  result: NormalizedToolResult
+): boolean => {
+  if (result.resultRole !== "evidence_bundle") return false;
+  try {
+    const payload = JSON.parse(result.content) as {
+      evidence?: unknown;
+      v?: unknown;
+      e?: unknown;
+    };
+    const evidence = Array.isArray(payload.evidence)
+      ? payload.evidence
+      : payload.v === "gno-context-agent-v1" && Array.isArray(payload.e)
+        ? payload.e
+        : null;
+    if (!evidence) return false;
+    return result.evidence.every((expected) =>
+      evidence.some((value) => {
+        if (Array.isArray(value)) {
+          return (
+            value[0] === expected.uri &&
+            value[1] === expected.startLine &&
+            value[2] === expected.endLine &&
+            value[3] === expected.sourceHash &&
+            value[5] === expected.spanHash &&
+            value[6] === expected.text
+          );
+        }
+        if (!value || typeof value !== "object") {
+          return false;
+        }
+        const item = value as Record<string, unknown>;
+        return (
+          item.uri === expected.uri &&
+          item.sourceHash === expected.sourceHash &&
+          item.startLine === expected.startLine &&
+          item.endLine === expected.endLine &&
+          (item.spanHash === expected.spanHash ||
+            item.passageHash === expected.spanHash) &&
+          item.text === expected.text
+        );
+      })
+    );
+  } catch {
+    return false;
+  }
+};
+
 export const projectModelVisibleToolResult = (
   result: NormalizedToolResult
 ): AgentVisibleToolResult => ({
   status: result.status,
   resultRole: result.resultRole,
   content: result.content,
-  evidence: result.evidence.map((item) => ({
-    uri: item.uri,
-    sourceHash: item.sourceHash,
-    startLine: item.startLine,
-    endLine: item.endLine,
-    spanHash: item.spanHash,
-    sourceHashProvenance: item.sourceHashProvenance,
-    spanHashProvenance: item.spanHashProvenance,
-    text: item.text,
-  })),
+  // Evidence bundles already carry these exact spans in their canonical
+  // content. The normalized evidence array is retained in the receipt for
+  // deterministic scoring, but exposing it again would charge/deliver every
+  // passage twice.
+  evidence: bundleContentCarriesExactEvidence(result)
+    ? []
+    : result.evidence.map((item) => ({
+        uri: item.uri,
+        sourceHash: item.sourceHash,
+        startLine: item.startLine,
+        endLine: item.endLine,
+        spanHash: item.spanHash,
+        sourceHashProvenance: item.sourceHashProvenance,
+        spanHashProvenance: item.spanHashProvenance,
+        text: item.text,
+      })),
   errorCode: result.errorCode,
 });
 

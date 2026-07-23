@@ -14,6 +14,26 @@ export interface DocumentSection {
 }
 
 const HEADING_REGEX = /^(#{1,6})\s+(.+?)\s*#*\s*$/u;
+const FENCE_REGEX = /^ {0,3}(`{3,}|~{3,})(.*)$/u;
+const FENCE_CLOSE_REGEX = /^ {0,3}(`{3,}|~{3,})[\t ]*$/u;
+
+interface OpenFence {
+  marker: "`" | "~";
+  length: number;
+}
+
+const fenceOpener = (line: string): OpenFence | null => {
+  const match = FENCE_REGEX.exec(line);
+  const run = match?.[1];
+  const suffix = match?.[2] ?? "";
+  if (!run || (run[0] === "`" && suffix.includes("`"))) return null;
+  return { marker: run[0] as OpenFence["marker"], length: run.length };
+};
+
+const closesFence = (line: string, fence: OpenFence): boolean => {
+  const run = FENCE_CLOSE_REGEX.exec(line)?.[1];
+  return Boolean(run && run[0] === fence.marker && run.length >= fence.length);
+};
 
 export function slugifySectionTitle(title: string): string {
   return (
@@ -32,8 +52,18 @@ export function extractSections(content: string): DocumentSection[] {
   const sections: DocumentSection[] = [];
   const counts = new Map<string, number>();
   const lines = content.split("\n");
+  let openFence: OpenFence | null = null;
 
   for (const [index, line] of lines.entries()) {
+    if (openFence) {
+      if (closesFence(line, openFence)) openFence = null;
+      continue;
+    }
+    const opener = fenceOpener(line);
+    if (opener) {
+      openFence = opener;
+      continue;
+    }
     const match = HEADING_REGEX.exec(line);
     if (!match) {
       continue;
@@ -59,4 +89,37 @@ export function extractSections(content: string): DocumentSection[] {
   }
 
   return sections;
+}
+
+/** Extract one inclusive, 1-based line range without normalizing source bytes. */
+export function extractInclusiveLines(
+  content: string,
+  startLine: number,
+  endLine: number
+): string | null {
+  if (
+    content.includes("\r") ||
+    !Number.isSafeInteger(startLine) ||
+    !Number.isSafeInteger(endLine) ||
+    startLine < 1 ||
+    endLine < startLine
+  ) {
+    return null;
+  }
+  const lines = content.split("\n");
+  if (endLine > lines.length) return null;
+  return lines.slice(startLine - 1, endLine).join("\n");
+}
+
+/** Find the nearest Markdown heading governing a 1-based source line. */
+export function headingForLine(
+  sections: readonly DocumentSection[],
+  line: number
+): string | null {
+  let heading: string | null = null;
+  for (const section of sections) {
+    if (section.line > line) break;
+    heading = section.title;
+  }
+  return heading;
 }

@@ -1,0 +1,691 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/context-capsule-v1@1.0",
+  "title": "GNO Context Capsule V1",
+  "description": "Deterministic, extractive evidence compiled under one canonical JSON budget.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "coordinateSpace",
+    "goal",
+    "query",
+    "scope",
+    "budget",
+    "retrieval",
+    "fingerprints",
+    "capabilities",
+    "fallbacks",
+    "guidance",
+    "evidence",
+    "coverage",
+    "omissions",
+    "truncated",
+    "warnings",
+    "capsuleId"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "budget": {
+            "type": "object",
+            "properties": { "estimator": { "const": "active_tokenizer" } },
+            "required": ["estimator"]
+          }
+        },
+        "required": ["budget"]
+      },
+      "then": {
+        "properties": {
+          "budget": {
+            "type": "object",
+            "properties": {
+              "tokenizerFingerprint": { "$ref": "#/definitions/sha256" }
+            }
+          },
+          "fingerprints": {
+            "type": "object",
+            "properties": { "tokenizer": { "$ref": "#/definitions/sha256" } }
+          },
+          "capabilities": {
+            "type": "object",
+            "properties": { "exactTokenCount": { "const": true } }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "budget": {
+            "type": "object",
+            "properties": { "tokenizerFingerprint": { "type": "null" } }
+          },
+          "fingerprints": {
+            "type": "object",
+            "properties": { "tokenizer": { "type": "null" } }
+          },
+          "capabilities": {
+            "type": "object",
+            "properties": { "exactTokenCount": { "const": false } }
+          },
+          "fallbacks": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "properties": {
+                "code": { "const": "tokenizer_unavailable" },
+                "capability": { "const": "token_count" }
+              },
+              "required": ["code", "capability"]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "coordinateSpace": { "const": "canonical_mirror" },
+    "capsuleId": { "$ref": "#/definitions/sha256" },
+    "goal": { "type": "string", "minLength": 1, "maxLength": 16384 },
+    "query": { "type": "string", "minLength": 1, "maxLength": 16384 },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "indexName",
+        "collections",
+        "uriPrefix",
+        "tagsAll",
+        "tagsAny",
+        "categories",
+        "since",
+        "until"
+      ],
+      "properties": {
+        "indexName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "collections": {
+          "type": "array",
+          "maxItems": 128,
+          "items": { "$ref": "#/definitions/collection" }
+        },
+        "uriPrefix": {
+          "oneOf": [
+            { "$ref": "#/definitions/gnoPrefixUri" },
+            { "type": "null" }
+          ]
+        },
+        "tagsAll": { "$ref": "#/definitions/filterValues" },
+        "tagsAny": { "$ref": "#/definitions/filterValues" },
+        "categories": { "$ref": "#/definitions/filterValues" },
+        "since": { "$ref": "#/definitions/nullableDate" },
+        "until": { "$ref": "#/definitions/nullableDate" }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authority",
+        "requestedTokens",
+        "requestedBytes",
+        "safetyMarginTokens",
+        "safetyMarginBytes",
+        "usedTokens",
+        "usedBytes",
+        "estimator",
+        "tokenizerFingerprint"
+      ],
+      "properties": {
+        "authority": { "const": "canonical_json" },
+        "requestedTokens": { "type": "integer", "minimum": 1 },
+        "requestedBytes": { "type": "integer", "minimum": 1 },
+        "safetyMarginTokens": { "type": "integer", "minimum": 0 },
+        "safetyMarginBytes": { "type": "integer", "minimum": 0 },
+        "usedTokens": { "type": "integer", "minimum": 1 },
+        "usedBytes": { "type": "integer", "minimum": 0 },
+        "estimator": {
+          "enum": ["active_tokenizer", "unicode_conservative"]
+        },
+        "tokenizerFingerprint": { "$ref": "#/definitions/nullableSha256" }
+      }
+    },
+    "retrieval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "depthPolicy",
+        "facets",
+        "queryVariants",
+        "expansionPolicy",
+        "request",
+        "capabilityStates",
+        "indexSnapshot"
+      ],
+      "properties": {
+        "depthPolicy": { "enum": ["fast", "balanced", "thorough"] },
+        "facets": { "$ref": "#/definitions/facets" },
+        "queryVariants": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": { "type": "string", "minLength": 1, "maxLength": 4096 }
+        },
+        "expansionPolicy": { "const": "deterministic_only" },
+        "request": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "author",
+            "lang",
+            "queryModes",
+            "limit",
+            "candidateLimit",
+            "graphRequested"
+          ],
+          "properties": {
+            "author": {
+              "oneOf": [
+                { "type": "string", "minLength": 1, "maxLength": 256 },
+                { "type": "null" }
+              ]
+            },
+            "lang": {
+              "oneOf": [
+                { "type": "string", "minLength": 1, "maxLength": 64 },
+                { "type": "null" }
+              ]
+            },
+            "queryModes": {
+              "type": "array",
+              "maxItems": 128,
+              "items": { "$ref": "#/definitions/queryMode" }
+            },
+            "limit": { "type": "integer", "minimum": 1 },
+            "candidateLimit": { "type": "integer", "minimum": 1 },
+            "graphRequested": { "type": "boolean" }
+          }
+        },
+        "capabilityStates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["semanticSearch", "reranking", "graphExpansion"],
+          "properties": {
+            "semanticSearch": { "$ref": "#/definitions/capabilityState" },
+            "reranking": { "$ref": "#/definitions/capabilityState" },
+            "graphExpansion": { "$ref": "#/definitions/capabilityState" }
+          }
+        },
+        "indexSnapshot": { "$ref": "#/definitions/indexSnapshot" }
+      }
+    },
+    "fingerprints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config",
+        "retrieval",
+        "embeddingModel",
+        "rerankModel",
+        "tokenizer"
+      ],
+      "properties": {
+        "config": { "$ref": "#/definitions/sha256" },
+        "retrieval": { "$ref": "#/definitions/sha256" },
+        "embeddingModel": { "$ref": "#/definitions/nullableSha256" },
+        "rerankModel": { "$ref": "#/definitions/nullableSha256" },
+        "tokenizer": { "$ref": "#/definitions/nullableSha256" }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lexicalSearch",
+        "semanticSearch",
+        "reranking",
+        "graphExpansion",
+        "exactTokenCount",
+        "configuredContext",
+        "egressPolicy"
+      ],
+      "properties": {
+        "lexicalSearch": { "const": true },
+        "semanticSearch": { "type": "boolean" },
+        "reranking": { "type": "boolean" },
+        "graphExpansion": { "type": "boolean" },
+        "exactTokenCount": { "type": "boolean" },
+        "configuredContext": { "type": "boolean" },
+        "egressPolicy": { "type": "boolean" }
+      }
+    },
+    "fallbacks": {
+      "type": "array",
+      "maxItems": 16,
+      "items": { "$ref": "#/definitions/fallback" }
+    },
+    "guidance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "extractiveOnly",
+        "evidenceTrust",
+        "instructionBoundary",
+        "configuredContexts"
+      ],
+      "properties": {
+        "extractiveOnly": { "const": true },
+        "evidenceTrust": { "const": "untrusted_data" },
+        "instructionBoundary": { "const": "hard_delimited" },
+        "configuredContexts": {
+          "type": "array",
+          "maxItems": 128,
+          "items": { "$ref": "#/definitions/configuredContext" }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/evidence" }
+    },
+    "coverage": { "$ref": "#/definitions/coverage" },
+    "omissions": { "$ref": "#/definitions/omissions" },
+    "truncated": { "type": "boolean" },
+    "warnings": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code"],
+        "properties": {
+          "code": {
+            "enum": [
+              "incomplete_coverage",
+              "omissions_truncated",
+              "token_estimate_used"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "nullableSha256": {
+      "oneOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+    },
+    "nullableDate": {
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+    "gnoUri": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^gno://[a-z0-9][a-z0-9_-]{0,63}/(?!.*%2F)(?:[A-Za-z0-9_.!~*'()/\\-]|%[0-9A-F]{2})+(?:\\?index=(?:[A-Za-z0-9_.!~*'()\\-]|%[0-9A-F]{2})+)?$"
+    },
+    "gnoPrefixUri": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^gno://[a-z0-9][a-z0-9_-]{0,63}/(?!.*%2F)(?:[A-Za-z0-9_.!~*'()/\\-]|%[0-9A-F]{2})*(?:\\?index=(?:[A-Za-z0-9_.!~*'()\\-]|%[0-9A-F]{2})+)?$"
+    },
+    "docid": { "type": "string", "pattern": "^#[a-f0-9]{6,}$" },
+    "collection": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+    },
+    "filterValues": {
+      "type": "array",
+      "maxItems": 128,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    },
+    "facets": {
+      "type": "array",
+      "maxItems": 128,
+      "items": { "type": "string", "minLength": 1, "maxLength": 512 }
+    },
+    "queryMode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "text"],
+      "properties": {
+        "mode": { "enum": ["term", "intent", "hyde"] },
+        "text": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      }
+    },
+    "capabilityState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested", "attempted", "outcome", "fallbackReasons"],
+      "properties": {
+        "requested": { "type": "boolean" },
+        "attempted": { "type": "boolean" },
+        "outcome": {
+          "enum": ["not_requested", "not_attempted", "used", "unavailable"]
+        },
+        "fallbackReasons": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "outcome": { "const": "not_requested" } } },
+          "then": {
+            "properties": {
+              "requested": { "const": false },
+              "attempted": { "const": false },
+              "fallbackReasons": { "type": "array", "maxItems": 0 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "outcome": { "const": "not_attempted" } } },
+          "then": {
+            "properties": {
+              "requested": { "const": true },
+              "attempted": { "const": false }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "outcome": { "const": "used" } } },
+          "then": {
+            "properties": {
+              "requested": { "const": true },
+              "attempted": { "const": true }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "outcome": { "const": "unavailable" } } },
+          "then": {
+            "properties": {
+              "requested": { "const": true },
+              "attempted": { "const": true },
+              "fallbackReasons": { "type": "array", "minItems": 1 }
+            }
+          }
+        }
+      ]
+    },
+    "indexSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before", "after", "stable"],
+      "properties": {
+        "before": { "$ref": "#/definitions/sha256" },
+        "after": { "$ref": "#/definitions/sha256" },
+        "stable": { "const": true }
+      }
+    },
+    "fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "capability"],
+      "properties": {
+        "code": {
+          "enum": [
+            "embedding_unavailable",
+            "reranking_unavailable",
+            "graph_unavailable",
+            "tokenizer_unavailable",
+            "egress_policy_unavailable"
+          ]
+        },
+        "capability": {
+          "enum": [
+            "semantic_search",
+            "reranking",
+            "graph_expansion",
+            "token_count",
+            "egress_policy"
+          ]
+        }
+      }
+    },
+    "configuredContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contextId", "scopeType", "scopeKey", "text"],
+      "properties": {
+        "contextId": { "$ref": "#/definitions/sha256" },
+        "scopeType": { "enum": ["global", "collection", "prefix"] },
+        "scopeKey": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 16384 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "scopeType": { "const": "global" } } },
+          "then": { "properties": { "scopeKey": { "const": "/" } } }
+        },
+        {
+          "if": { "properties": { "scopeType": { "const": "collection" } } },
+          "then": {
+            "properties": {
+              "scopeKey": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_-]{0,63}:$"
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "scopeType": { "const": "prefix" } } },
+          "then": {
+            "properties": {
+              "scopeKey": { "$ref": "#/definitions/gnoPrefixUri" }
+            }
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "uri",
+        "docid",
+        "collection",
+        "title",
+        "heading",
+        "startLine",
+        "endLine",
+        "text",
+        "sourceHash",
+        "mirrorHash",
+        "passageHash",
+        "modifiedAt",
+        "documentDate",
+        "observedAt",
+        "contextIds",
+        "retrievalRank",
+        "selectionRank",
+        "facets",
+        "trust",
+        "egress"
+      ],
+      "properties": {
+        "evidenceId": { "$ref": "#/definitions/sha256" },
+        "uri": { "$ref": "#/definitions/gnoUri" },
+        "docid": { "$ref": "#/definitions/docid" },
+        "collection": { "$ref": "#/definitions/collection" },
+        "title": { "type": ["string", "null"], "maxLength": 2048 },
+        "heading": { "type": ["string", "null"], "maxLength": 2048 },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "text": { "type": "string", "minLength": 1 },
+        "sourceHash": { "$ref": "#/definitions/sha256" },
+        "mirrorHash": { "$ref": "#/definitions/sha256" },
+        "passageHash": { "$ref": "#/definitions/sha256" },
+        "modifiedAt": { "$ref": "#/definitions/nullableDate" },
+        "documentDate": {
+          "oneOf": [
+            { "type": "string", "format": "date" },
+            { "type": "string", "format": "date-time" },
+            { "type": "null" }
+          ]
+        },
+        "observedAt": { "$ref": "#/definitions/nullableDate" },
+        "contextIds": {
+          "type": "array",
+          "maxItems": 128,
+          "items": { "$ref": "#/definitions/sha256" }
+        },
+        "retrievalRank": { "type": "integer", "minimum": 1 },
+        "selectionRank": { "type": "integer", "minimum": 1 },
+        "facets": { "$ref": "#/definitions/facets" },
+        "trust": { "const": "untrusted" },
+        "egress": {
+          "enum": ["local_only", "lan", "remote", "unclassified", "unavailable"]
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "complete",
+        "requestedFacets",
+        "coveredFacets",
+        "unresolvedFacets",
+        "gaps"
+      ],
+      "properties": {
+        "complete": { "type": "boolean" },
+        "requestedFacets": { "$ref": "#/definitions/facets" },
+        "coveredFacets": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["facet", "evidenceIds"],
+            "properties": {
+              "facet": { "type": "string", "minLength": 1, "maxLength": 512 },
+              "evidenceIds": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 256,
+                "items": { "$ref": "#/definitions/sha256" }
+              }
+            }
+          }
+        },
+        "unresolvedFacets": { "$ref": "#/definitions/facets" },
+        "gaps": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["facet", "code"],
+            "properties": {
+              "facet": { "type": "string", "minLength": 1, "maxLength": 512 },
+              "code": {
+                "enum": [
+                  "facet_not_found",
+                  "global_budget_exhausted",
+                  "capability_unavailable",
+                  "filtered_by_scope"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "omission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "uri",
+        "docid",
+        "startLine",
+        "endLine",
+        "passageHash",
+        "sourceHash",
+        "mirrorHash",
+        "reason"
+      ],
+      "properties": {
+        "candidateId": { "$ref": "#/definitions/sha256" },
+        "uri": { "$ref": "#/definitions/gnoUri" },
+        "docid": { "$ref": "#/definitions/docid" },
+        "startLine": { "type": ["integer", "null"], "minimum": 1 },
+        "endLine": { "type": ["integer", "null"], "minimum": 1 },
+        "passageHash": { "$ref": "#/definitions/nullableSha256" },
+        "sourceHash": { "$ref": "#/definitions/sha256" },
+        "mirrorHash": { "$ref": "#/definitions/sha256" },
+        "reason": {
+          "enum": [
+            "duplicate",
+            "overlap",
+            "global_budget",
+            "redundant_coverage",
+            "document_share_cap",
+            "filtered_by_scope",
+            "invalid_coordinates"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "startLine": { "type": "null" },
+            "endLine": { "type": "null" },
+            "passageHash": { "type": "null" }
+          }
+        },
+        {
+          "properties": {
+            "startLine": { "type": "integer", "minimum": 1 },
+            "endLine": { "type": "integer", "minimum": 1 },
+            "passageHash": { "$ref": "#/definitions/sha256" }
+          }
+        }
+      ]
+    },
+    "omissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "items", "reasonCounts", "truncated"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/definitions/omission" }
+        },
+        "reasonCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "duplicate",
+            "overlap",
+            "global_budget",
+            "redundant_coverage",
+            "document_share_cap",
+            "filtered_by_scope",
+            "invalid_coordinates"
+          ],
+          "properties": {
+            "duplicate": { "type": "integer", "minimum": 0 },
+            "overlap": { "type": "integer", "minimum": 0 },
+            "global_budget": { "type": "integer", "minimum": 0 },
+            "redundant_coverage": { "type": "integer", "minimum": 0 },
+            "document_share_cap": { "type": "integer", "minimum": 0 },
+            "filtered_by_scope": { "type": "integer", "minimum": 0 },
+            "invalid_coordinates": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "truncated": { "type": "boolean" }
+      }
+    }
+  }
+}

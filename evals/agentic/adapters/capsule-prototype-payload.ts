@@ -1,10 +1,15 @@
 import type {
+  ContextAgentProjection,
+  ContextAgentProjectionSource,
+} from "../../../src/app/context-agent-projection";
+import type {
   CapsuleCandidate,
   CapsuleOmission,
   CapsuleSelection,
 } from "../capsule-selection";
 import type { NormalizedToolEvidence, NormalizedToolResult } from "../types";
 
+import { formatContextAgentProjectionJson } from "../../../src/app/context-agent-projection";
 import {
   canonicalJson,
   modelVisibleUtf8Bytes,
@@ -12,56 +17,7 @@ import {
   sha256Bytes,
 } from "../canonical";
 
-export const CAPSULE_PROTOTYPE_SCHEMA_VERSION =
-  "eval-capsule-prototype-v1" as const;
-
-interface CapsulePayloadEvidence {
-  uri: string;
-  sourceHash: string;
-  startLine: number;
-  endLine: number;
-  spanHash: string;
-  text: string;
-}
-
-export interface CapsulePrototypePayload {
-  schemaVersion: typeof CAPSULE_PROTOTYPE_SCHEMA_VERSION;
-  evalOnly: true;
-  taskId: string;
-  goal: string;
-  query: string;
-  budget: {
-    maxModelVisibleUtf8Bytes: number;
-    selectedModelVisibleUtf8Bytes: number;
-  };
-  retrieval: {
-    variants: string[];
-    backendInvocations: number;
-    backendInvocationStages: {
-      queryPlanning: number;
-      lexicalSearch: number;
-      sourceRead: number;
-      selection: number;
-      finalization: number;
-    };
-    indexFingerprint: string;
-    configFingerprint: string;
-  };
-  coverage: {
-    coveredFacets: string[];
-    unresolvedFacets: string[];
-  };
-  evidence: CapsulePayloadEvidence[];
-  omitted: {
-    candidates: CapsuleOmission[];
-    counts: {
-      duplicate: number;
-      overlap: number;
-      globalBudget: number;
-      redundantCoverage: number;
-    };
-  };
-}
+export type CapsulePrototypePayload = ContextAgentProjection;
 
 export interface CapsulePayloadContext {
   taskId: string;
@@ -70,92 +26,138 @@ export interface CapsulePayloadContext {
   variants: readonly string[];
   facets: readonly string[];
   backendInvocations: number;
-  backendInvocationStages: CapsulePrototypePayload["retrieval"]["backendInvocationStages"];
+  backendInvocationStages: {
+    queryPlanning: number;
+    lexicalSearch: number;
+    sourceRead: number;
+    selection: number;
+    finalization: number;
+  };
   indexFingerprint: string;
   configFingerprint: string;
   maxModelVisibleUtf8Bytes: number;
 }
-
-const payloadEvidence = (
-  evidence: readonly CapsuleCandidate[]
-): CapsulePayloadEvidence[] =>
-  evidence.map((item) => ({
-    uri: item.uri,
-    sourceHash: item.sourceHash,
-    startLine: item.startLine,
-    endLine: item.endLine,
-    spanHash: item.spanHash,
-    text: item.text,
-  }));
 
 const normalizedEvidence = (
   evidence: readonly CapsuleCandidate[]
 ): NormalizedToolEvidence[] =>
   evidence.map(({ retrievalRank: _rank, facets: _facets, ...item }) => item);
 
-const omissionCounts = (
-  selection: CapsuleSelection
-): CapsulePrototypePayload["omitted"]["counts"] => ({
-  duplicate: selection.omitted.filter((item) => item.reason === "duplicate")
+const allReasonCounts = (
+  omitted: readonly CapsuleOmission[]
+): Record<string, number> => ({
+  duplicate: omitted.filter((item) => item.reason === "duplicate").length,
+  overlap: omitted.filter((item) => item.reason === "overlap").length,
+  global_budget: omitted.filter((item) => item.reason === "global_budget")
     .length,
-  overlap: selection.omitted.filter((item) => item.reason === "overlap").length,
-  globalBudget: selection.omitted.filter(
-    (item) => item.reason === "global_budget"
-  ).length,
-  redundantCoverage: selection.omitted.filter(
+  redundant_coverage: omitted.filter(
     (item) => item.reason === "redundant_coverage"
   ).length,
+  document_share_cap: 0,
+  filtered_by_scope: 0,
+  invalid_coordinates: 0,
 });
 
-const buildPayload = (
+const projectionSource = (
   context: CapsulePayloadContext,
   selection: CapsuleSelection,
-  selectedModelVisibleUtf8Bytes: number,
   conservativeOmissions?: readonly CapsuleOmission[]
-): CapsulePrototypePayload => {
+): ContextAgentProjectionSource => {
   const covered = new Set(selection.evidence.flatMap((item) => item.facets));
-  const omittedCandidates = conservativeOmissions
-    ? [...conservativeOmissions]
-    : [...selection.omitted];
+  const omitted = conservativeOmissions ?? selection.omitted;
   return {
-    schemaVersion: CAPSULE_PROTOTYPE_SCHEMA_VERSION,
-    evalOnly: true,
-    taskId: context.taskId,
+    capsuleId: sha256Bytes(
+      canonicalJson({
+        taskId: context.taskId,
+        query: context.query,
+        evidence: selection.evidence.map((item) => item.spanHash),
+      })
+    ),
     goal: context.goal,
     query: context.query,
     budget: {
-      maxModelVisibleUtf8Bytes: context.maxModelVisibleUtf8Bytes,
-      selectedModelVisibleUtf8Bytes,
+      requestedTokens: Math.max(
+        1,
+        Math.floor(context.maxModelVisibleUtf8Bytes / 4)
+      ),
+      requestedBytes: context.maxModelVisibleUtf8Bytes,
+      usedTokens: null,
+      usedBytes: null,
+      estimator: "model_visible_utf8",
+      tokenizerFingerprint: null,
     },
     retrieval: {
-      variants: [...context.variants],
-      backendInvocations: context.backendInvocations,
-      backendInvocationStages: context.backendInvocationStages,
+      depthPolicy: "fast",
       indexFingerprint: context.indexFingerprint,
       configFingerprint: context.configFingerprint,
+      retrievalFingerprint: sha256Bytes(
+        canonicalJson({
+          variants: context.variants,
+          stages: context.backendInvocationStages,
+        })
+      ),
+      embeddingModelFingerprint: null,
+      rerankModelFingerprint: null,
+      capabilities: {
+        lexicalSearch: true,
+        semanticSearch: false,
+        reranking: false,
+        graphExpansion: false,
+        exactTokenCount: false,
+        configuredContext: false,
+        egressPolicy: false,
+      },
+      fallbacks: [],
     },
+    guidance: {
+      evidenceTrust: "untrusted_data",
+      instructionBoundary: "hard_delimited",
+      configuredContexts: [],
+    },
+    evidence: selection.evidence.map((item) => ({
+      uri: item.uri,
+      title: null,
+      heading: null,
+      sourceHash: item.sourceHash,
+      mirrorHash: item.sourceHash,
+      startLine: item.startLine,
+      endLine: item.endLine,
+      passageHash: item.spanHash,
+      contextIds: [],
+      egress: "unavailable",
+      text: item.text,
+    })),
     coverage: {
+      requestedFacets: context.facets,
       coveredFacets: context.facets.filter((facet) => covered.has(facet)),
       unresolvedFacets: context.facets.filter((facet) => !covered.has(facet)),
+      gaps: context.facets
+        .filter((facet) => !covered.has(facet))
+        .map((facet) => ({ facet, code: "facet_not_found" })),
     },
-    evidence: payloadEvidence(selection.evidence),
-    omitted: {
-      candidates: omittedCandidates,
-      counts: omissionCounts({
-        ...selection,
-        omitted: omittedCandidates,
-      }),
+    omissions: {
+      total: omitted.length,
+      reasonCounts: allReasonCounts(omitted),
+      items: omitted.map((item) => ({
+        uri: item.uri,
+        sourceHash: item.sourceHash,
+        startLine: item.startLine,
+        endLine: item.endLine,
+        passageHash: item.spanHash,
+        reason: item.reason,
+      })),
     },
+    truncated: omitted.some((item) => item.reason === "global_budget"),
   };
 };
 
-const resultForPayload = (
-  payload: CapsulePrototypePayload,
+const resultForSource = (
+  source: ContextAgentProjectionSource,
   evidence: readonly CapsuleCandidate[]
 ): NormalizedToolResult => ({
   status: "ok",
   resultRole: "evidence_bundle",
-  content: canonicalJson(payload),
+  content: formatContextAgentProjectionJson(source),
   evidence: normalizedEvidence(evidence),
   errorCode: null,
 });
@@ -165,7 +167,6 @@ export const conservativeCapsuleResultFits = (
   evidence: readonly CapsuleCandidate[],
   allCandidates: readonly CapsuleCandidate[]
 ): boolean => {
-  const selection = { evidence: [...evidence], omitted: [] };
   const conservativeOmissions = allCandidates.map((candidate) => ({
     uri: candidate.uri,
     sourceHash: candidate.sourceHash,
@@ -174,15 +175,14 @@ export const conservativeCapsuleResultFits = (
     spanHash: candidate.spanHash,
     reason: "redundant_coverage" as const,
   }));
-  const payload = buildPayload(
+  const source = projectionSource(
     context,
-    selection,
-    context.maxModelVisibleUtf8Bytes,
+    { evidence: [...evidence], omitted: [] },
     conservativeOmissions
   );
   return (
     modelVisibleUtf8Bytes(
-      projectModelVisibleToolResult(resultForPayload(payload, evidence))
+      projectModelVisibleToolResult(resultForSource(source, evidence))
     ) <= context.maxModelVisibleUtf8Bytes
   );
 };
@@ -191,18 +191,8 @@ export const finalizeCapsuleResult = (
   context: CapsulePayloadContext,
   selection: CapsuleSelection
 ): { payload: CapsulePrototypePayload; result: NormalizedToolResult } => {
-  let used = context.maxModelVisibleUtf8Bytes;
-  let payload = buildPayload(context, selection, used);
-  let result = resultForPayload(payload, selection.evidence);
-  for (let iteration = 0; iteration < 6; iteration += 1) {
-    const measured = modelVisibleUtf8Bytes(
-      projectModelVisibleToolResult(result)
-    );
-    if (measured === used) break;
-    used = measured;
-    payload = buildPayload(context, selection, used);
-    result = resultForPayload(payload, selection.evidence);
-  }
+  const source = projectionSource(context, selection);
+  const result = resultForSource(source, selection.evidence);
   const finalBytes = modelVisibleUtf8Bytes(
     projectModelVisibleToolResult(result)
   );
@@ -211,7 +201,10 @@ export const finalizeCapsuleResult = (
       `Capsule result exceeds its global model-visible byte budget: ${finalBytes}`
     );
   }
-  return { payload, result };
+  return {
+    payload: JSON.parse(result.content) as CapsulePrototypePayload,
+    result,
+  };
 };
 
 export const canonicalCapsulePayloadJson = (
@@ -221,6 +214,4 @@ export const canonicalCapsulePayloadJson = (
 export const capsulePayloadFingerprint = (
   payload: CapsulePrototypePayload | string
 ): string =>
-  sha256Bytes(
-    typeof payload === "string" ? payload : canonicalCapsulePayloadJson(payload)
-  );
+  sha256Bytes(typeof payload === "string" ? payload : canonicalJson(payload));
