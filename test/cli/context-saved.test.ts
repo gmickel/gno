@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import { runCli } from "../../src/cli/run";
 import { safeRm } from "../helpers/cleanup";
+import { assertValid, loadSchema } from "../spec/schemas/validator";
 
 let stdoutData = "";
 let stderrData = "";
@@ -102,10 +103,19 @@ describe("saved Context Capsule CLI", () => {
     expect(JSON.stringify(registration)).not.toContain(
       "Mina owns the launch decision."
     );
+    expect(
+      assertValid(registration, await loadSchema("saved-capsule-watch"))
+    ).toBe(true);
 
     const listed = await cli("context", "watches", "--json");
     expect(listed.code).toBe(0);
     expect(JSON.parse(listed.stdout).registrations).toHaveLength(1);
+    expect(
+      assertValid(
+        JSON.parse(listed.stdout),
+        await loadSchema("saved-capsule-list")
+      )
+    ).toBe(true);
 
     const reverified = await cli(
       "context",
@@ -114,10 +124,42 @@ describe("saved Context Capsule CLI", () => {
       "--json"
     );
     expect(reverified.code).toBe(0);
-    expect(JSON.parse(reverified.stdout).verification).toMatchObject({
+    const completed = JSON.parse(reverified.stdout);
+    expect(completed.verification).toMatchObject({
       operationStatus: "completed",
       affectedQuestionState: "unaffected",
     });
+    expect(completed.registration.verification).toEqual(completed.verification);
+    expect(
+      assertValid(completed, await loadSchema("saved-capsule-reverification"))
+    ).toBe(true);
+
+    await Bun.write(
+      capsulePath,
+      `${await Bun.file(capsulePath).text()}
+`
+    );
+    const failedReverification = await cli(
+      "context",
+      "reverify",
+      registration.registrationId,
+      "--json"
+    );
+    expect(failedReverification.code).toBe(0);
+    const failed = JSON.parse(failedReverification.stdout);
+    expect(failed).toMatchObject({
+      receipt: null,
+      verification: {
+        triggerKind: "manual",
+        operationStatus: "failed",
+        affectedQuestionState: "unknown",
+        errorCode: "capsule_file_changed",
+      },
+    });
+    expect(failed.registration.verification).toEqual(failed.verification);
+    expect(
+      assertValid(failed, await loadSchema("saved-capsule-reverification"))
+    ).toBe(true);
 
     const removed = await cli(
       "context",
@@ -127,6 +169,12 @@ describe("saved Context Capsule CLI", () => {
     );
     expect(removed.code).toBe(0);
     expect(JSON.parse(removed.stdout).removed).toBe(true);
+    expect(
+      assertValid(
+        JSON.parse(removed.stdout),
+        await loadSchema("saved-capsule-unwatch")
+      )
+    ).toBe(true);
     const emptyList = JSON.parse(
       (await cli("context", "watches", "--json")).stdout
     );

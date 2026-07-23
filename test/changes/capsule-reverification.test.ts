@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -14,10 +14,13 @@ import {
 import { reverifySavedCapsuleManually } from "../../src/core/capsule-reverification";
 import { SavedCapsuleReverificationScheduler } from "../../src/core/capsule-reverification-scheduler";
 import { canonicalContextCapsuleJson } from "../../src/core/context-capsule";
+import { sha256Text } from "../../src/core/context-capsule-validation";
 import { SqliteAdapter } from "../../src/store";
 import {
   capsuleFor,
   createVerifierStore,
+  documentRow,
+  makeChunk,
   verifierFixture,
 } from "../core/context-verifier-fixture";
 import { safeRm } from "../helpers/cleanup";
@@ -284,6 +287,77 @@ describe("saved Context Capsule reverification", () => {
     });
   });
 
+  test("coalesces one serial drain across multiple Capsules and preserves high-water state on cancellation", async () => {
+    const secondPath = join(testDir, "decision-copy.capsule.json");
+    await Bun.write(secondPath, await Bun.file(capsulePath).text());
+    await registerSavedCapsule(adapter, "default", { filePath: capsulePath });
+    await registerSavedCapsule(adapter, "default", { filePath: secondPath });
+    expect(
+      (
+        await adapter.upsertDocument(
+          documentInput({
+            ...fixture.first,
+            sourceHash: "e".repeat(64),
+          })
+        )
+      ).ok
+    ).toBe(true);
+
+    const work: Array<(signal: AbortSignal) => Promise<void>> = [];
+    const drains: Array<{ affected: number }> = [];
+    const scheduler = new SavedCapsuleReverificationScheduler({
+      deps: { store: adapter, config, indexName: "default" },
+      startBackgroundWork: (operation) => {
+        work.push(operation);
+        return true;
+      },
+      onDrain: (result) => drains.push(result),
+    });
+    scheduler.notifySyncSettled();
+    scheduler.notifySyncSettled();
+    scheduler.notifySyncSettled();
+    expect(work).toHaveLength(1);
+    await work[0]!(new AbortController().signal);
+    expect(drains).toHaveLength(1);
+    expect(drains[0]?.affected).toBe(2);
+    expect(
+      (await listSavedCapsules(adapter)).map(
+        (registration) => registration.verification?.operationStatus
+      )
+    ).toEqual(["completed", "completed"]);
+
+    const beforeCancellation =
+      await adapter.getSavedCapsuleReverificationSequence();
+    expect(beforeCancellation.ok).toBe(true);
+    expect(
+      (
+        await adapter.upsertDocument(
+          documentInput({
+            ...fixture.first,
+            sourceHash: "f".repeat(64),
+          })
+        )
+      ).ok
+    ).toBe(true);
+    const cancelledWork: Array<(signal: AbortSignal) => Promise<void>> = [];
+    const cancelled = new SavedCapsuleReverificationScheduler({
+      deps: { store: adapter, config, indexName: "default" },
+      startBackgroundWork: (operation) => {
+        cancelledWork.push(operation);
+        return true;
+      },
+    });
+    cancelled.notifySyncSettled();
+    const controller = new AbortController();
+    controller.abort();
+    await cancelledWork[0]!(controller.signal);
+    expect(await adapter.getSavedCapsuleReverificationSequence()).toEqual(
+      beforeCancellation
+    );
+    await cancelled.dispose();
+    await scheduler.dispose();
+  });
+
   test("reports a changed saved file without rewriting it", async () => {
     const registration = await registerSavedCapsule(adapter, "default", {
       filePath: capsulePath,
@@ -302,4 +376,108 @@ describe("saved Context Capsule reverification", () => {
     });
     expect(await Bun.file(capsulePath).text()).toBe(changedBytes);
   });
+
+  test("records missing and invalid saved files without rewriting caller-owned bytes", async () => {
+    const missing = await registerSavedCapsule(adapter, "default", {
+      filePath: capsulePath,
+    });
+    await unlink(capsulePath);
+    const missingOutcome = await reverifySavedCapsuleManually(
+      missing.registrationId,
+      { store: adapter, config, indexName: "default" }
+    );
+    expect(missingOutcome).toMatchObject({
+      receipt: null,
+      verification: {
+        operationStatus: "failed",
+        affectedQuestionState: "unknown",
+        errorCode: "capsule_file_missing",
+      },
+    });
+    expect(await Bun.file(capsulePath).exists()).toBe(false);
+
+    const invalidBytes = '{"schemaVersion":"1.0","invalid":true}';
+    await Bun.write(capsulePath, invalidBytes);
+    adapter.getRawDb().run(
+      `UPDATE saved_capsule_registrations
+         SET file_hash = ?
+         WHERE registration_id = ?`,
+      [sha256Text(invalidBytes), missing.registrationId]
+    );
+    const invalidOutcome = await reverifySavedCapsuleManually(
+      missing.registrationId,
+      { store: adapter, config, indexName: "default" }
+    );
+    expect(invalidOutcome).toMatchObject({
+      receipt: null,
+      verification: {
+        operationStatus: "failed",
+        affectedQuestionState: "unknown",
+        errorCode: "capsule_read_failed",
+      },
+    });
+    expect(await Bun.file(capsulePath).text()).toBe(invalidBytes);
+  });
+
+  test("reverifies a saved Capsule across SQLite lookup batches", async () => {
+    const documents = [...fixture.state.documents];
+    const contents = new Map(fixture.state.contents);
+    const chunks = new Map(fixture.state.chunks);
+    for (let index = 0; index < 901; index += 1) {
+      const content = `# Owner\nOwner ${index} holds the decision.\nReview Friday.`;
+      const mirrorHash = sha256Text(content);
+      const document = documentRow(
+        index + 100,
+        `large-${index}.md`,
+        sha256Text(`source-${index}`),
+        mirrorHash
+      );
+      documents.push(document);
+      contents.set(mirrorHash, content);
+      chunks.set(mirrorHash, [makeChunk(mirrorHash, content)]);
+      expect((await adapter.upsertDocument(documentInput(document))).ok).toBe(
+        true
+      );
+      expect((await adapter.upsertContent(mirrorHash, content)).ok).toBe(true);
+      expect(
+        (
+          await adapter.upsertChunks(
+            mirrorHash,
+            (chunks.get(mirrorHash) ?? []).map((chunk) => ({
+              seq: chunk.seq,
+              pos: chunk.pos,
+              text: chunk.text,
+              startLine: chunk.startLine,
+              endLine: chunk.endLine,
+              language: chunk.language ?? undefined,
+              tokenCount: chunk.tokenCount ?? undefined,
+            }))
+          )
+        ).ok
+      ).toBe(true);
+    }
+    const state = {
+      documents,
+      contents,
+      chunks,
+      indexRevision: "saved-large-stable",
+    };
+    const mock = createVerifierStore(state);
+    const capsule = await capsuleFor(mock.store, state);
+    const largePath = join(testDir, "large.capsule.json");
+    const originalBytes = canonicalContextCapsuleJson(capsule);
+    await Bun.write(largePath, originalBytes);
+    const registration = await registerSavedCapsule(adapter, "default", {
+      filePath: largePath,
+    });
+
+    expect(registration.evidence).toHaveLength(903);
+    const outcome = await reverifySavedCapsuleManually(
+      registration.registrationId,
+      { store: adapter, config, indexName: "default" }
+    );
+    expect(outcome.verification.operationStatus).toBe("completed");
+    expect(outcome.receipt?.evidence).toHaveLength(903);
+    expect(await Bun.file(largePath).text()).toBe(originalBytes);
+  }, 60_000);
 });

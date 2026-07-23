@@ -63,21 +63,22 @@ Recipe rules:
 
 ## Command Overview
 
-| Category     | Commands                                                         | Description                                            |
-| ------------ | ---------------------------------------------------------------- | ------------------------------------------------------ |
-| **Search**   | `search`, `vsearch`, `query`, `ask`                              | Find documents by keywords, meaning, or get AI answers |
-| **Links**    | `links`, `backlinks`, `similar`, `graph`, `graph query`          | Navigate document relationships and typed connections  |
-| **Retrieve** | `get`, `multi-get`, `ls`                                         | Fetch document content by URI or ID                    |
-| **Index**    | `init`, `collection add/list/remove`, `index`, `update`, `embed` | Set up and maintain document index                     |
-| **Tags**     | `tags`, `tags add`, `tags rm`                                    | Organize and filter documents                          |
-| **Context**  | `context add/list/rm/check/build/verify`                         | Configure guidance or compile/verify evidence Capsules |
-| **Traces**   | `trace list/show/label/export/replay/delete/purge`               | Manage and replay private retrieval receipts           |
-| **Models**   | `models list/use/pull/clear/path`                                | Manage local AI models                                 |
-| **Serve**    | `serve`, `daemon`                                                | One resident Web/headless gateway and watcher          |
-| **Publish**  | `publish export`                                                 | Export gno.sh publish artifacts                        |
-| **MCP**      | `mcp`, `mcp install/uninstall/status`                            | AI assistant integration                               |
-| **Skill**    | `skill install/uninstall/show/paths`                             | Install skill for AI agents                            |
-| **Admin**    | `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`      | Maintenance and diagnostics                            |
+| Category     | Commands                                                                | Description                                                              |
+| ------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **Search**   | `search`, `vsearch`, `query`, `ask`                                     | Find documents by keywords, meaning, or get AI answers                   |
+| **Links**    | `links`, `backlinks`, `similar`, `graph`, `graph query`                 | Navigate document relationships and typed connections                    |
+| **Retrieve** | `get`, `multi-get`, `ls`                                                | Fetch document content by URI or ID                                      |
+| **Index**    | `init`, `collection add/list/remove`, `index`, `update`, `embed`        | Set up and maintain document index                                       |
+| **Tags**     | `tags`, `tags add`, `tags rm`                                           | Organize and filter documents                                            |
+| **Context**  | `context add/list/rm/check/build/verify/watch/watches/reverify/unwatch` | Configure guidance or compile, verify, and watch saved evidence Capsules |
+| **Changes**  | `changes`, `diff`, `impact`                                             | Inspect bounded metadata history and dependency impact                   |
+| **Traces**   | `trace list/show/label/export/replay/delete/purge`                      | Manage and replay private retrieval receipts                             |
+| **Models**   | `models list/use/pull/clear/path`                                       | Manage local AI models                                                   |
+| **Serve**    | `serve`, `daemon`                                                       | One resident Web/headless gateway and watcher                            |
+| **Publish**  | `publish export`                                                        | Export gno.sh publish artifacts                                          |
+| **MCP**      | `mcp`, `mcp install/uninstall/status`                                   | AI assistant integration                                                 |
+| **Skill**    | `skill install/uninstall/show/paths`                                    | Install skill for AI agents                                              |
+| **Admin**    | `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`             | Maintenance and diagnostics                                              |
 
 ## Search Modes
 
@@ -228,6 +229,36 @@ When using GNO through MCP, prefer this retrieval order:
 5. Use graph/link expansion for relationship context: `gno_graph_query` for typed relationship traversal, `gno_graph_neighbors` for nearby documents, `gno_graph_path` for "how are X and Y connected?", `gno_links`/`gno_backlinks` for one-document link expansion, and `gno_similar` for semantic neighbors. Prefer explicit or typed edges over inferred, ambiguous, or similarity edges when confidence matters.
 6. Use `gno_query_diagnose` when a known target document should have appeared but did not; it reports BM25/vector/fusion/graph/rerank stage presence and filter state.
 7. Use `gno_get` with `fromLine`/`lineCount` for targeted reads, or `gno_multi_get` to batch top refs.
+
+For a caller-owned canonical Capsule that should stay fresh locally:
+
+```bash
+gno context watch capsule.json --question "Who owns launch?" --notify --json
+gno context watches --json
+gno context reverify <registration-id> --json
+gno context unwatch <registration-id> --json
+```
+
+These lifecycle operations are CLI-only and scoped to the Capsule's index.
+They persist bounded metadata and evidence hashes, not Capsule or passage
+bytes. Automatic resident work starts only after settled index changes,
+produces the same canonical non-generative verification receipt, and never
+rewrites the saved file or invokes answer generation. A failed operation has
+no receipt. Local notifications contain no question, label, path, URI, hashes,
+receipt, credentials, or source content.
+
+Use Knowledge Delta when the task asks what changed or what depends on a
+changed source:
+
+```bash
+gno changes --since 2026-07-20T00:00:00Z --json
+gno diff gno://notes/plan.md --json
+gno impact gno://notes/plan.md --max-depth 3 --json
+```
+
+Treat cursors and change IDs as opaque. Journal results are bounded,
+metadata-only, and retention-aware; do not infer source-body history when a
+diff reports partial, expired, or unavailable history.
 
 Use narrower tools when the request tells you to:
 

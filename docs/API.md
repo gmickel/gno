@@ -1158,12 +1158,14 @@ metadata-only saved Capsule notifications:
 
 ```text
 event: capsule-reverified
-data: {"type":"capsule-reverified","registrationId":"capsule-…","capsuleId":"ctx-…","operationStatus":"completed","affectedQuestionState":"affected","changedAt":"2026-07-23T12:00:00.000Z"}
+data: {"type":"capsule-reverified","registrationId":"capsule-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","capsuleId":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","operationStatus":"completed","affectedQuestionState":"affected","changedAt":"2026-07-23T12:00:00.000Z"}
 ```
 
 The event is emitted only after the canonical verification receipt or separate
 operation failure has committed. It never includes a question, file path, URI,
-passage, Capsule body, or receipt body.
+hash, passage, Capsule body, receipt body, credential, or source content.
+Event data uses the closed `capsule-reverified-event.schema.json` contract.
+Saved-Capsule registration management remains CLI-only.
 
 ---
 

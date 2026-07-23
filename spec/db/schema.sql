@@ -514,7 +514,14 @@ CREATE TABLE IF NOT EXISTS saved_capsule_registrations (
   registered_at_ms INTEGER NOT NULL CHECK (registered_at_ms >= 0),
   updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= registered_at_ms),
   last_attempted_sequence INTEGER NOT NULL DEFAULT 0
-    CHECK (last_attempted_sequence >= 0)
+    CHECK (last_attempted_sequence >= 0),
+  CHECK (length(registration_id) BETWEEN 1 AND 128),
+  CHECK (length(CAST(file_path AS BLOB)) BETWEEN 1 AND 8192),
+  CHECK (length(file_hash) = 64 AND file_hash NOT GLOB '*[^0-9a-f]*'),
+  CHECK (length(capsule_id) = 64 AND capsule_id NOT GLOB '*[^0-9a-f]*'),
+  CHECK (length(CAST(index_name AS BLOB)) BETWEEN 1 AND 128),
+  CHECK (question IS NULL OR length(CAST(question AS BLOB)) <= 8192),
+  CHECK (label IS NULL OR length(CAST(label AS BLOB)) <= 512)
 );
 
 CREATE INDEX IF NOT EXISTS idx_saved_capsules_index
@@ -531,7 +538,13 @@ CREATE TABLE IF NOT EXISTS saved_capsule_evidence (
   PRIMARY KEY (registration_id, evidence_id),
   FOREIGN KEY (registration_id)
     REFERENCES saved_capsule_registrations(registration_id)
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+  CHECK (length(evidence_id) = 64 AND evidence_id NOT GLOB '*[^0-9a-f]*'),
+  CHECK (length(CAST(canonical_uri AS BLOB)) BETWEEN 1 AND 8192),
+  CHECK (length(CAST(collection AS BLOB)) BETWEEN 1 AND 256),
+  CHECK (length(source_hash) = 64 AND source_hash NOT GLOB '*[^0-9a-f]*'),
+  CHECK (length(mirror_hash) = 64 AND mirror_hash NOT GLOB '*[^0-9a-f]*'),
+  CHECK (length(passage_hash) = 64 AND passage_hash NOT GLOB '*[^0-9a-f]*')
 );
 
 CREATE INDEX IF NOT EXISTS idx_saved_capsule_evidence_uri
@@ -557,7 +570,31 @@ CREATE TABLE IF NOT EXISTS saved_capsule_verifications (
   verified_at_ms INTEGER NOT NULL CHECK (verified_at_ms >= 0),
   FOREIGN KEY (registration_id)
     REFERENCES saved_capsule_registrations(registration_id)
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+  CHECK (length(CAST(affected_reasons_json AS BLOB)) <= 4096),
+  CHECK (receipt_json IS NULL OR length(CAST(receipt_json AS BLOB)) <= 16777216),
+  CHECK (receipt_hash IS NULL OR (
+    length(receipt_hash) = 64 AND receipt_hash NOT GLOB '*[^0-9a-f]*'
+  )),
+  CHECK (error_code IS NULL OR length(CAST(error_code AS BLOB)) <= 256),
+  CHECK (error_message IS NULL OR length(CAST(error_message AS BLOB)) <= 4096),
+  CHECK (
+    (
+      operation_status = 'completed'
+      AND receipt_json IS NOT NULL
+      AND receipt_hash IS NOT NULL
+      AND error_code IS NULL
+      AND error_message IS NULL
+    )
+    OR
+    (
+      operation_status = 'failed'
+      AND receipt_json IS NULL
+      AND receipt_hash IS NULL
+      AND error_code IS NOT NULL
+      AND error_message IS NOT NULL
+    )
+  )
 );
 
 CREATE TABLE IF NOT EXISTS saved_capsule_reverification_state (

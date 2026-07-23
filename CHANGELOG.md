@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added bounded, metadata-only Knowledge Delta history through
+  `gno changes`, `gno diff`, and `gno impact`, with equivalent REST, MCP, and
+  SDK reads, opaque retention-aware cursors, structural diffs, and bounded
+  relationship evidence paths.
+- Added CLI-only saved Context Capsule lifecycle commands:
+  `gno context watch`, `watches`, `reverify`, and `unwatch`. The resident
+  runtime coalesces settled index changes, reverifies exact saved evidence,
+  persists canonical freshness receipts, and emits closed local metadata
+  notifications without rewriting caller-owned Capsule files.
+
+### Fixed
+
+- Made the pinned package-smoke model downloader use the typed
+  `ReadableStream` reader contract, preserving streaming and SHA-256
+  validation in package typecheck environments without async-iterator types.
+- Reconciled public release labels with package version `1.20.0`.
+
+### Security
+
+- Saved Capsule registrations persist only bounded file, Capsule, index, and
+  evidence identities. Capsule bodies, evidence passages, questions, labels,
+  paths, URIs, hashes, receipts, credentials, and source content are excluded
+  from local notification payloads; reverification never invokes answer
+  generation or autonomous synthesis.
+
 ## [1.20.0] - 2026-07-23
 
 ### Added

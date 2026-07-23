@@ -28,6 +28,12 @@ passage text, questions in notifications, or generated answers. `--notify`
 emits a metadata-only local `capsule-reverified` event after the verification
 record commits.
 
+Each registration belongs to the index database named by its Capsule. Saved
+files remain caller-owned and byte-for-byte unchanged on success, missing-file,
+invalid-file, or exact-hash-change outcomes. A completed operation stores the
+canonical `context verify` receipt; a failed operation stores only its disjoint
+error record. Neither path invokes verified Ask or any generation model.
+
 Use it when:
 
 - you want continuous indexing from the terminal

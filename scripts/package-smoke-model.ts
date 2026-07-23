@@ -60,7 +60,16 @@ export async function provisionPackageSmokeEmbeddingModel(): Promise<string> {
     if (!response.ok || !response.body) {
       throw new Error(`HTTP ${response.status}`);
     }
-    for await (const chunk of response.body) await writer.write(chunk);
+    const reader = response.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) await writer.write(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
     await writer.end();
   } catch (error) {
     await writer.end();

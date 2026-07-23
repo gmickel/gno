@@ -109,6 +109,142 @@ describe("store migrations", () => {
     }
   });
 
+  test("creates the metadata-only saved Capsule registry with bounded lifecycle constraints", () => {
+    const db = new Database(dbPath);
+    db.exec("PRAGMA foreign_keys = ON");
+
+    try {
+      expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
+      expect(getSchemaVersion(db)).toBe(16);
+
+      const savedTables = db
+        .query<{ name: string }, []>(
+          `SELECT name FROM sqlite_master
+           WHERE type = 'table' AND name LIKE 'saved_capsule_%'
+           ORDER BY name`
+        )
+        .all()
+        .map((row) => row.name);
+      expect(savedTables).toEqual([
+        "saved_capsule_evidence",
+        "saved_capsule_registrations",
+        "saved_capsule_reverification_state",
+        "saved_capsule_verifications",
+      ]);
+      expect(
+        db
+          .query<{ last_processed_sequence: number }, []>(
+            `SELECT last_processed_sequence
+             FROM saved_capsule_reverification_state
+             WHERE singleton_id = 1`
+          )
+          .get()
+      ).toEqual({ last_processed_sequence: 0 });
+
+      const registrationId = `capsule-${"a".repeat(40)}`;
+      const insertRegistration = db.prepare(
+        `INSERT INTO saved_capsule_registrations (
+           registration_id, file_path, file_hash, capsule_id, index_name,
+           question, label, notification_preference, registered_at_ms,
+           updated_at_ms, last_attempted_sequence
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      );
+      insertRegistration.run(
+        registrationId,
+        "/tmp/decision.capsule.json",
+        "b".repeat(64),
+        "c".repeat(64),
+        "default",
+        "Who owns the decision?",
+        "Decision",
+        "local",
+        1,
+        2,
+        0
+      );
+      expect(() =>
+        insertRegistration.run(
+          `capsule-${"d".repeat(40)}`,
+          "/tmp/decision.capsule.json",
+          "e".repeat(64),
+          "f".repeat(64),
+          "default",
+          null,
+          null,
+          "none",
+          1,
+          1,
+          0
+        )
+      ).toThrow();
+      expect(() =>
+        insertRegistration.run(
+          `capsule-${"d".repeat(40)}`,
+          "/tmp/other.capsule.json",
+          "not-a-hash",
+          "f".repeat(64),
+          "default",
+          null,
+          null,
+          "none",
+          1,
+          1,
+          0
+        )
+      ).toThrow();
+
+      db.run(
+        `INSERT INTO saved_capsule_evidence (
+           registration_id, evidence_id, canonical_uri, collection,
+           source_hash, mirror_hash, passage_hash
+         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          registrationId,
+          "1".repeat(64),
+          "gno://notes/decision.md",
+          "notes",
+          "2".repeat(64),
+          "3".repeat(64),
+          "4".repeat(64),
+        ]
+      );
+      db.run(
+        `INSERT INTO saved_capsule_verifications (
+           registration_id, trigger_kind, from_sequence, through_sequence,
+           operation_status, affected_question_state, affected_reasons_json,
+           receipt_json, receipt_hash, error_code, error_message, verified_at_ms
+         ) VALUES (?, 'manual', 0, 0, 'completed', 'unaffected', '[]',
+                   ?, ?, NULL, NULL, 3)`,
+        [registrationId, '{"schemaVersion":"1.0"}', "5".repeat(64)]
+      );
+      expect(() =>
+        db.run(
+          `UPDATE saved_capsule_verifications
+           SET error_code = 'mixed_outcome', error_message = 'invalid'
+           WHERE registration_id = ?`,
+          [registrationId]
+        )
+      ).toThrow();
+
+      db.run(
+        "DELETE FROM saved_capsule_registrations WHERE registration_id = ?",
+        [registrationId]
+      );
+      expect(
+        db
+          .query<{ count: number }, []>(
+            `SELECT (
+               (SELECT COUNT(*) FROM saved_capsule_evidence) +
+               (SELECT COUNT(*) FROM saved_capsule_verifications)
+             ) AS count`
+          )
+          .get()
+      ).toEqual({ count: 0 });
+    } finally {
+      db.close();
+    }
+  });
+
   test("backfills FTS sync markers only for fully aligned active legacy rows", () => {
     const db = new Database(dbPath);
 

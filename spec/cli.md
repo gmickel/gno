@@ -1402,6 +1402,18 @@ operation status, affected-question state, and timestamp; they contain no
 question, file path, URI, passage, Capsule, or receipt bytes. `context
 reverify` performs the same non-generative verification immediately.
 
+JSON contracts are Draft-07 and closed:
+
+- `watch`: `saved-capsule-watch.schema.json`; the initial verification is null.
+- `watches`: `saved-capsule-list.schema.json`.
+- `unwatch`: `saved-capsule-unwatch.schema.json`.
+- `reverify`: `saved-capsule-reverification.schema.json`; a completed
+  canonical receipt and a failed operation record are mutually exclusive.
+- local SSE notification data: `capsule-reverified-event.schema.json`.
+
+These registration-management surfaces are CLI-only. REST, MCP, and SDK expose
+the non-persistent `context verify` operation, not watch lifecycle mutations.
+
 ---
 
 ### gno models list

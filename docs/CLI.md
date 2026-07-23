@@ -839,6 +839,14 @@ gno context reverify capsule-abc123 --json
 gno context unwatch capsule-abc123
 ```
 
+Registrations are scoped to one index database. `watches`, `reverify`, and
+`unwatch` therefore use the matching global `--index` when the registration is
+not in the default index. JSON is governed by the closed Draft-07
+`saved-capsule-watch`, `saved-capsule-list`, `saved-capsule-unwatch`, and
+`saved-capsule-reverification` schemas. Completed reverification contains a
+canonical receipt; operation failure contains no receipt. These lifecycle
+commands are CLI-only—REST, MCP, and SDK do not add persistent watch endpoints.
+
 ### gno context rm
 
 ```bash
@@ -1192,6 +1200,10 @@ gno impact gno://notes/plan.md --max-depth 3 --max-edges 250 --json
 - `gno impact` follows inbound typed, wiki, and Markdown dependencies. Depth,
   node, edge, frontier, and visited-row caps are always enforced, and every result
   includes an evidence path back to the changed document.
+- Journal entries retain metadata and bounded structural summaries, not source
+  bodies. Retention may expire an opaque cursor; that response returns no
+  fabricated history and directs the caller to restart from the disclosed
+  earliest cursor.
 - Machine-readable contracts: `changes.schema.json`,
   `document-diff.schema.json`, and `impact.schema.json`.
 

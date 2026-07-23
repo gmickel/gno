@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/saved-capsule-reverification@1.0",
+  "title": "GNO Saved Context Capsule Reverification Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "registration", "verification", "receipt"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "registration": {
+      "$ref": "gno://schemas/saved-capsule-registration@1.0"
+    },
+    "verification": {
+      "$ref": "gno://schemas/saved-capsule-registration@1.0#/definitions/verification"
+    },
+    "receipt": {
+      "anyOf": [
+        { "$ref": "gno://schemas/context-capsule-verification@1.0" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "verification": {
+            "type": "object",
+            "properties": { "operationStatus": { "const": "completed" } },
+            "required": ["operationStatus"]
+          }
+        },
+        "required": ["verification"]
+      },
+      "then": {
+        "properties": {
+          "verification": {
+            "type": "object",
+            "properties": { "triggerKind": { "const": "manual" } },
+            "required": ["triggerKind"]
+          },
+          "receipt": {
+            "$ref": "gno://schemas/context-capsule-verification@1.0"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "verification": {
+            "type": "object",
+            "properties": { "triggerKind": { "const": "manual" } },
+            "required": ["triggerKind"]
+          },
+          "receipt": { "type": "null" }
+        }
+      }
+    }
+  ]
+}

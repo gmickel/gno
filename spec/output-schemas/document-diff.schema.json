@@ -69,5 +69,117 @@
     },
     "warnings": { "type": "array", "items": { "type": "string" } }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "available" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "change": {
+            "$ref": "gno://schemas/changes@1.0#/definitions/change"
+          },
+          "history": {
+            "type": "object",
+            "properties": {
+              "status": { "enum": ["available", "partial"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "expired" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "change": { "type": "null" },
+          "history": {
+            "type": "object",
+            "properties": {
+              "status": { "const": "unavailable" },
+              "reason": { "const": "change_expired" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "unavailable" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "change": { "type": "null" },
+          "history": {
+            "type": "object",
+            "properties": {
+              "status": { "const": "unavailable" },
+              "reason": {
+                "enum": ["no_retained_change", "change_not_found"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "history": {
+            "type": "object",
+            "properties": { "status": { "const": "available" } },
+            "required": ["status"]
+          }
+        },
+        "required": ["history"]
+      },
+      "then": {
+        "properties": {
+          "history": {
+            "type": "object",
+            "properties": { "reason": { "type": "null" } }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "history": {
+            "type": "object",
+            "properties": { "status": { "const": "partial" } },
+            "required": ["status"]
+          }
+        },
+        "required": ["history"]
+      },
+      "then": {
+        "properties": {
+          "change": {
+            "type": "object",
+            "properties": {
+              "structureDelta": {
+                "type": "object",
+                "properties": { "truncated": { "const": true } },
+                "required": ["truncated"]
+              }
+            },
+            "required": ["structureDelta"]
+          },
+          "history": {
+            "type": "object",
+            "properties": {
+              "reason": { "const": "structure_delta_truncated" }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

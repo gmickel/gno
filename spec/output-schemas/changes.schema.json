@@ -8,6 +8,7 @@
     "schemaVersion": { "type": "string", "const": "1.0" },
     "changes": {
       "type": "array",
+      "maxItems": 1000,
       "items": { "$ref": "#/definitions/change" }
     },
     "page": {
@@ -21,9 +22,13 @@
         "retentionTruncated"
       ],
       "properties": {
-        "nextCursor": { "type": ["string", "null"] },
-        "earliestCursor": { "type": "string", "minLength": 1 },
-        "latestCursor": { "type": "string", "minLength": 1 },
+        "nextCursor": { "type": ["string", "null"], "maxLength": 512 },
+        "earliestCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "latestCursor": { "type": "string", "minLength": 1, "maxLength": 512 },
         "cursorExpired": { "type": "boolean" },
         "truncated": { "type": "boolean" },
         "retentionTruncated": { "type": "boolean" }
@@ -33,6 +38,62 @@
     "warnings": { "type": "array", "items": { "type": "string" } }
   },
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "page": {
+            "type": "object",
+            "properties": { "cursorExpired": { "const": true } },
+            "required": ["cursorExpired"]
+          }
+        },
+        "required": ["page"]
+      },
+      "then": {
+        "properties": {
+          "changes": { "type": "array", "maxItems": 0 },
+          "page": {
+            "type": "object",
+            "properties": {
+              "nextCursor": { "type": "null" },
+              "retentionTruncated": { "const": true }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "page": {
+            "type": "object",
+            "properties": { "truncated": { "const": true } },
+            "required": ["truncated"]
+          }
+        },
+        "required": ["page"]
+      },
+      "then": {
+        "properties": {
+          "page": {
+            "type": "object",
+            "properties": {
+              "nextCursor": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "page": {
+            "type": "object",
+            "properties": { "nextCursor": { "type": "null" } }
+          }
+        }
+      }
+    }
+  ],
   "definitions": {
     "snapshot": {
       "type": "object",
@@ -48,8 +109,10 @@
         "relPath": { "type": "string" },
         "docid": { "type": "string", "pattern": "^#[a-f0-9]{6,}$" },
         "uri": { "type": "string", "pattern": "^gno://.+" },
-        "sourceHash": { "type": "string", "minLength": 1 },
-        "mirrorHash": { "type": ["string", "null"] },
+        "sourceHash": { "$ref": "#/definitions/sha256" },
+        "mirrorHash": {
+          "anyOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+        },
         "active": { "type": "boolean" }
       },
       "additionalProperties": false
@@ -58,8 +121,18 @@
       "type": "object",
       "required": ["added", "removed"],
       "properties": {
-        "added": { "type": "array", "items": { "type": "string" } },
-        "removed": { "type": "array", "items": { "type": "string" } }
+        "added": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        },
+        "removed": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        }
       },
       "additionalProperties": false
     },
@@ -67,9 +140,24 @@
       "type": "object",
       "required": ["added", "removed", "changed"],
       "properties": {
-        "added": { "type": "array", "items": { "type": "string" } },
-        "removed": { "type": "array", "items": { "type": "string" } },
-        "changed": { "type": "array", "items": { "type": "string" } }
+        "added": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        },
+        "removed": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        },
+        "changed": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        }
       },
       "additionalProperties": false
     },
@@ -85,6 +173,10 @@
       },
       "additionalProperties": false
     },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
     "change": {
       "type": "object",
       "required": [
@@ -97,7 +189,7 @@
         "structureDelta"
       ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1, "maxLength": 512 },
         "kind": {
           "type": "string",
           "enum": ["create", "update", "rename", "inactivate", "reactivate"]
@@ -112,7 +204,77 @@
         },
         "structureDelta": { "$ref": "#/definitions/structureDelta" }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "create" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "previous": { "type": "null" },
+              "current": {
+                "type": "object",
+                "properties": { "active": { "const": true } },
+                "required": ["active"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "enum": ["update", "rename"] } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "previous": { "$ref": "#/definitions/snapshot" },
+              "current": { "$ref": "#/definitions/snapshot" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "inactivate" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "previous": {
+                "type": "object",
+                "properties": { "active": { "const": true } },
+                "required": ["active"]
+              },
+              "current": {
+                "type": "object",
+                "properties": { "active": { "const": false } },
+                "required": ["active"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "reactivate" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "previous": {
+                "type": "object",
+                "properties": { "active": { "const": false } },
+                "required": ["active"]
+              },
+              "current": {
+                "type": "object",
+                "properties": { "active": { "const": true } },
+                "required": ["active"]
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

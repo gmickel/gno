@@ -15,10 +15,10 @@ Use GNO as a local MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Ra
 ## Overview
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and
-resources. GNO registers 22 tools in default read-only mode and 37 when writes
+resources. GNO registers 25 tools in default read-only mode and 40 when writes
 are explicitly enabled:
 
-- **Tools (read)**: gno_context, gno_context_verify, gno_ask, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_multi_get, gno_status, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
+- **Tools (read)**: gno_context, gno_context_verify, gno_ask, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_multi_get, gno_status, gno_changes, gno_diff, gno_impact, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
 - **Tools (write, opt-in)**: gno_trace_label, gno_trace_export, gno_trace_delete, gno_trace_purge, gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note
 - **Tools (jobs)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
@@ -1385,6 +1385,11 @@ write enablement.
 
 Structured content uses `changes@1.0`, `document-diff@1.0`, and `impact@1.0`,
 identical to CLI JSON, REST, and SDK results.
+
+Persistent saved-Capsule registration management is intentionally CLI-only:
+use `gno context watch`, `watches`, `reverify`, and `unwatch`. MCP
+`gno_context_verify` verifies the supplied Capsule without registering it,
+starting resident background work, or adding a write endpoint.
 
 ## Resources
 
