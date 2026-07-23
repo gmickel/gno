@@ -957,6 +957,40 @@ Show model cache directory.
 gno models path
 ```
 
+### gno publish export
+
+Export one active document or collection as a reader-safe gno.sh artifact:
+
+```bash
+gno publish export work-docs --out ~/Downloads/work-docs.json
+gno publish export "gno://work-docs/runbooks/deploy.md"
+gno publish export "gno://work-docs/runbooks/deploy.md" \
+  --visibility encrypted \
+  --passphrase "correct horse battery staple"
+```
+
+Options are `--out`, `--visibility`, `--passphrase`, `--slug`, `--title`,
+`--summary`, `--preview`, and `--json`. Without `--out`, GNO writes to the
+platform Downloads directory. A note with `publish: false` is refused; such
+notes are omitted from collection exports.
+
+Public artifacts include the canonical
+`gno://schemas/publish-artifact@1.0` manifest: stable projection revision,
+published Markdown paths and line locators, SHA-256 content/evidence identity,
+and closed public reader capabilities. Local source paths and source URIs are
+not exported. Metadata values containing embedded local path or GNO/file URI
+tokens are omitted; canonical and image fields accept only uncredentialed
+public HTTP(S) targets. Secret-link and invite-only artifacts contain the
+requested reader projection but no agent manifest or capability flags.
+Encrypted artifacts expose only ciphertext metadata and an opaque share token;
+GNO never adds plaintext evidence outside the encrypted payload. The V2
+builder emits a closed projection and validates bounded base64 payload fields,
+the positive safe-integer KDF iteration count, route/source identity, and the
+bounded opaque token before export.
+
+See [Publishing to gno.sh](PUBLISHING.md) for the visibility, public-agent,
+privacy, verification, and current commercial boundaries.
+
 ## Skill Commands
 
 Install GNO as a skill for AI coding assistants (Claude Code, Codex, OpenCode, OpenClaw, Hermes Agent).

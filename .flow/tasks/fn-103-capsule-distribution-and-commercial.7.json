@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-23T19:13:12.767061Z",
+  "depends_on": [
+    "fn-103-capsule-distribution-and-commercial.2"
+  ],
+  "id": "fn-103-capsule-distribution-and-commercial.7",
+  "priority": 7,
+  "spec": "fn-103-capsule-distribution-and-commercial",
+  "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.7.md",
+  "status": "todo",
+  "title": "Scope public agent snapshots and rollback by owner",
+  "updated_at": "2026-07-23T19:13:12.767221Z"
+}

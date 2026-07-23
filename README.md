@@ -710,7 +710,7 @@ GNO is local-first, but sometimes you want a URL to send someone. [**gno.sh**](h
 
 ![gno.sh publish reader](./assets/screenshots/publish-reader.jpg)
 
-The workflow is deliberately explicit: **export locally → upload artifact → share URL**. Your private notes and metadata stay on your machine. Only what you export leaves.
+The workflow is deliberately explicit: **export locally → upload artifact → share URL**. Private and `publish: false` notes stay on your machine. Exported artifacts omit local collection paths and source URIs.
 
 ```bash
 # Export a single note
@@ -744,6 +744,15 @@ Upload the artifact at [gno.sh/studio](https://gno.sh/studio) and pick a visibil
 | **Encrypted**   | GNO encrypts locally before upload; readers decrypt in-browser |
 
 **Reader experience**: editorial serif typography, drop caps, hanging punctuation, table of contents, keyboard shortcuts (`j/k`, `/`), scoped Pagefind-style search, and backlinks restricted to the published subset. Nothing leaks that you didn't publish.
+
+Public exports also carry a deterministic agent manifest. It lists only the
+sanitized published Markdown projection, with relative Markdown locators,
+content hashes, exact line spans, and Capsule-compatible evidence identities.
+The projection revision is stable while those published bytes and reader
+metadata are unchanged. Secret-link and invite-only exports do not receive
+agent capabilities or manifests. Encrypted exports remain ciphertext-only.
+Reader metadata drops embedded local path or GNO/file URI tokens; canonical
+and image fields accept only uncredentialed public HTTP(S) targets.
 
 Republishing a public, secret-link, or invite-only artifact updates the same URL. Encrypted shares should be replaced from a fresh local export so the server never needs your plaintext.
 

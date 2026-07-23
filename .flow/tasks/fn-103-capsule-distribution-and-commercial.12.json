@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-23T21:12:10.751594Z",
+  "depends_on": [
+    "fn-103-capsule-distribution-and-commercial.3"
+  ],
+  "id": "fn-103-capsule-distribution-and-commercial.12",
+  "priority": null,
+  "spec": "fn-103-capsule-distribution-and-commercial",
+  "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.12.md",
+  "status": "todo",
+  "title": "Seal design-partner outcomes with ordered event identity",
+  "updated_at": "2026-07-23T21:12:29.512243Z"
+}

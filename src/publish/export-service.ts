@@ -8,7 +8,7 @@ import type { Collection } from "../config/types";
 import type { DocumentRow, StorePort, TagRow } from "../store/types";
 
 import { parseRef } from "../core/ref-parser";
-import { parseFrontmatter } from "../ingestion/frontmatter";
+import { parseFrontmatter, stripFrontmatter } from "../ingestion/frontmatter";
 import { getContentBatch } from "../store/content-batch";
 import {
   buildEncryptedPublishArtifact,
@@ -186,11 +186,11 @@ async function exportCollectionArtifact(
     if (isPublishDisabledByFrontmatter(rawMarkdown)) {
       continue;
     }
+    const frontmatter = parseFrontmatter(rawMarkdown).metadata;
     const sanitized = sanitizeObsidianMarkdown(rawMarkdown);
     warnings.push(...sanitized.warnings);
-    const markdown = sanitized.markdown;
+    const markdown = stripFrontmatter(sanitized.markdown);
     const tags = tagsByDocId.get(doc.id) ?? [];
-    const frontmatter = parseFrontmatter(markdown).metadata;
     const title = deriveExportedTitle(doc);
     notes.push({
       markdown,
@@ -240,7 +240,6 @@ async function exportCollectionArtifact(
       encryptedPayload: encrypted.encryptedPayload,
       routeSlug,
       secretToken: encrypted.secretToken,
-      source: collection.name,
       sourceType: "collection",
     });
   }
@@ -249,7 +248,6 @@ async function exportCollectionArtifact(
     homeNoteSlug: chooseHomeNoteSlug(notes),
     notes,
     routeSlug,
-    source: collection.name,
     sourceType: "collection",
     summary,
     title,
@@ -274,11 +272,11 @@ async function exportDocumentArtifact(
       `Refused to export: ${doc.uri} has publish: false in frontmatter`
     );
   }
+  const frontmatter = parseFrontmatter(rawMarkdown).metadata;
   const sanitized = sanitizeObsidianMarkdown(rawMarkdown);
   warnings.push(...sanitized.warnings);
-  const markdown = sanitized.markdown;
+  const markdown = stripFrontmatter(sanitized.markdown);
   const tags = await loadDocumentTags(store, doc);
-  const frontmatter = parseFrontmatter(markdown).metadata;
   const title = options.title ?? deriveExportedTitle(doc);
   const summary =
     options.summary ?? deriveExportedSummary(markdown, frontmatter);
@@ -315,7 +313,6 @@ async function exportDocumentArtifact(
       encryptedPayload: encrypted.encryptedPayload,
       routeSlug,
       secretToken: encrypted.secretToken,
-      source: doc.uri,
       sourceType: "note",
     });
   }
@@ -331,7 +328,6 @@ async function exportDocumentArtifact(
       },
     ],
     routeSlug,
-    source: doc.uri,
     sourceType: "note",
     summary,
     title,

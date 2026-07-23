@@ -45,9 +45,15 @@ Deliver publish the reproducible three-way agent outcome demo as one implementat
 
 
 ## Done summary
-TBD
+Published the reproducible three-way Context Capsule outcome demo.
 
+- Added a closed, canonically fingerprinted demo schema and deterministic generator.
+- Froze one exact-identifier task across lexical-only, current GNO MCP primitives, and Context Capsule lanes with complete normalized receipts, scores, exact evidence, calls, bytes, token availability, matching cold-lifecycle latency, request, effective index, capability states, fallbacks, and payload.
+- Generated committed JSON and Markdown artifacts from the authoritative fn-97 benchmark.
+- Kept the 22-pair Verified Ask result separately labeled as answer-enforcement proof with its two missing-evidence exclusions.
+- Published the measured outcome on the hosted benchmarks feature page and docs with immutable source links and explicit one-task/variance limitations.
+- Added contract and hosted public-truth regression tests.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: c1fc6ac39046bc4189f08dba4b7da855463baca3, fef03bb
+- Tests: gno: bun run eval:agentic:demo, gno: bun run lint:check, gno: bun test test/eval/agentic (150 pass), gno: bun test (2857 pass, 1 platform skip, 0 fail), gno.sh: bun run check, gno.sh: bun run typecheck, gno.sh: bun run test (94 pass, 5 integration skips), gno.sh: bun run build (67 pages prerendered), immutable raw demo URL: HTTP 200
 - PRs:

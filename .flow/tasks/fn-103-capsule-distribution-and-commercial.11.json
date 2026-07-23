@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-23T20:23:29.158610Z",
+  "depends_on": [
+    "fn-103-capsule-distribution-and-commercial.10"
+  ],
+  "id": "fn-103-capsule-distribution-and-commercial.11",
+  "priority": 11,
+  "spec": "fn-103-capsule-distribution-and-commercial",
+  "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.11.md",
+  "status": "todo",
+  "title": "Correct Context Capsule demo public truth and links",
+  "updated_at": "2026-07-23T20:23:29.158792Z"
+}

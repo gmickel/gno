@@ -1,0 +1,284 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/publish-artifact@1.0",
+  "title": "GNO publish artifact",
+  "oneOf": [
+    { "$ref": "#/definitions/artifactV1" },
+    { "$ref": "#/definitions/artifactV2" }
+  ],
+  "definitions": {
+    "artifactV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "source", "exportedAt", "spaces"],
+      "properties": {
+        "version": { "const": 1 },
+        "source": { "$ref": "#/definitions/slug" },
+        "exportedAt": { "type": "string", "format": "date-time" },
+        "spaces": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/publicSpace" },
+              { "$ref": "#/definitions/restrictedSpace" }
+            ]
+          }
+        }
+      }
+    },
+    "artifactV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "source", "exportedAt", "spaces"],
+      "properties": {
+        "version": { "const": 2 },
+        "source": { "$ref": "#/definitions/slug" },
+        "exportedAt": { "type": "string", "format": "date-time" },
+        "spaces": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/encryptedSpace" }
+        }
+      }
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$",
+      "maxLength": 80
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "docid": {
+      "type": "string",
+      "pattern": "^#[a-f0-9]{8}$"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        ]
+      }
+    },
+    "note": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["markdown", "slug", "summary", "title"],
+      "properties": {
+        "markdown": { "type": "string" },
+        "metadata": { "$ref": "#/definitions/metadata" },
+        "slug": { "$ref": "#/definitions/slug" },
+        "summary": { "type": "string" },
+        "title": { "type": "string", "minLength": 1 }
+      }
+    },
+    "publicSpace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "notes",
+        "routeSlug",
+        "sourceType",
+        "summary",
+        "title",
+        "visibility",
+        "manifest"
+      ],
+      "properties": {
+        "homeNoteSlug": { "$ref": "#/definitions/slug" },
+        "notes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/note" }
+        },
+        "routeSlug": { "$ref": "#/definitions/slug" },
+        "sourceType": { "enum": ["note", "collection"] },
+        "summary": { "type": "string" },
+        "title": { "type": "string", "minLength": 1 },
+        "visibility": { "const": "public" },
+        "manifest": { "$ref": "#/definitions/publicManifest" }
+      }
+    },
+    "restrictedSpace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "notes",
+        "routeSlug",
+        "sourceType",
+        "summary",
+        "title",
+        "visibility"
+      ],
+      "properties": {
+        "homeNoteSlug": { "$ref": "#/definitions/slug" },
+        "notes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/note" }
+        },
+        "routeSlug": { "$ref": "#/definitions/slug" },
+        "sourceType": { "enum": ["note", "collection"] },
+        "summary": { "type": "string" },
+        "title": { "type": "string", "minLength": 1 },
+        "visibility": { "enum": ["secret-link", "invite-only"] }
+      }
+    },
+    "publicManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "projectionRevision",
+        "generatedAt",
+        "visibility",
+        "capabilities",
+        "documents"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "1.0" },
+        "projectionRevision": { "$ref": "#/definitions/hash" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "visibility": { "const": "public" },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capsuleEvidence",
+            "exactLineCitations",
+            "llmsTxt",
+            "markdownDocuments"
+          ],
+          "properties": {
+            "capsuleEvidence": { "const": true },
+            "exactLineCitations": { "const": true },
+            "llmsTxt": { "const": true },
+            "markdownDocuments": { "const": true }
+          }
+        },
+        "documents": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/publicDocument" }
+        }
+      }
+    },
+    "publicDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slug",
+        "title",
+        "summary",
+        "markdownPath",
+        "contentHash",
+        "byteLength",
+        "lineCount",
+        "evidence"
+      ],
+      "properties": {
+        "slug": { "$ref": "#/definitions/slug" },
+        "title": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string" },
+        "markdownPath": {
+          "type": "string",
+          "pattern": "^\\./[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?\\.md$"
+        },
+        "contentHash": { "$ref": "#/definitions/hash" },
+        "byteLength": { "type": "integer", "minimum": 0 },
+        "lineCount": { "type": "integer", "minimum": 1 },
+        "evidence": { "$ref": "#/definitions/publicEvidence" }
+      }
+    },
+    "publicEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "uri",
+        "docid",
+        "startLine",
+        "endLine",
+        "sourceHash",
+        "mirrorHash",
+        "passageHash",
+        "locator"
+      ],
+      "properties": {
+        "evidenceId": { "$ref": "#/definitions/hash" },
+        "uri": {
+          "type": "string",
+          "pattern": "^gno://public/[a-z0-9][a-z0-9-]{0,79}/[a-z0-9][a-z0-9-]{0,79}\\.md$"
+        },
+        "docid": { "$ref": "#/definitions/docid" },
+        "startLine": { "const": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "sourceHash": { "$ref": "#/definitions/hash" },
+        "mirrorHash": { "$ref": "#/definitions/hash" },
+        "passageHash": { "$ref": "#/definitions/hash" },
+        "locator": {
+          "type": "string",
+          "pattern": "^\\./[a-z0-9][a-z0-9-]{0,79}\\.md#L1-L[1-9][0-9]*$"
+        }
+      }
+    },
+    "encryptedSpace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "encryptedPayload",
+        "routeSlug",
+        "secretToken",
+        "sourceType",
+        "visibility"
+      ],
+      "properties": {
+        "encryptedPayload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ciphertext", "iterations", "iv", "salt"],
+          "properties": {
+            "ciphertext": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 67108864,
+              "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+            },
+            "iterations": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "iv": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024,
+              "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+            },
+            "salt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024,
+              "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+            }
+          }
+        },
+        "routeSlug": { "$ref": "#/definitions/slug" },
+        "secretToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "sourceType": { "enum": ["note", "collection"] },
+        "visibility": { "const": "encrypted" }
+      }
+    }
+  }
+}

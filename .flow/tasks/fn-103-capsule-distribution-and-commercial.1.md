@@ -38,9 +38,15 @@ Deliver extend the public publish artifact with agent-readable evidence as one i
 
 
 ## Done summary
-TBD
-
+Added a public-only agent manifest to reader-safe publish artifacts. Public
+spaces now expose deterministic projection revisions, sorted Markdown
+documents, exact line locators, content hashes, and Capsule-compatible evidence
+identities. Secret-link and invite-only spaces cannot carry agent manifests;
+encrypted artifacts remain opaque. Export serialization now omits local source
+URIs, collection paths, unpublished notes, raw frontmatter, secrets, and
+local-path metadata. Added a strict output schema, compile/runtime visibility
+guards, privacy regressions, and CLI/API/user documentation.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 240a76f
+- Tests: bun test test/publish test/cli/publish-export.test.ts test/serve/routes/publish-export.test.ts (13 pass, 0 fail), bunx tsc --noEmit (pass), bun run lint:check (pass), bun run docs:verify (13 pass, 0 fail, 2 model-cache skips), bun test (2851 pass, 1 Windows-only skip, 0 fail), .flow/bin/flowctl validate --spec fn-103-capsule-distribution-and-commercial --json (valid)
 - PRs:

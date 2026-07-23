@@ -34,10 +34,11 @@ import {
 } from "./fixtures";
 
 describe("agentic retrieval schemas", () => {
-  test("compiles all five closed versioned schemas", () => {
+  test("compiles all six closed versioned schemas", () => {
     expect(listAgenticSchemas()).toEqual([
       "agent-task",
       "benchmark-report",
+      "context-capsule-demo",
       "final-envelope",
       "hidden-oracle",
       "trajectory-receipt",

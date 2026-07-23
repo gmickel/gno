@@ -24,6 +24,7 @@ evals/agentic/
   promotion.ts
   verified-ask-outcome.ts
   verified-ask-promotion.ts
+  demos/context-capsule.ts
   registry.ts
   report.ts
   report-artifacts.ts
@@ -44,6 +45,7 @@ evals/agentic/
     final-envelope.schema.json
     trajectory-receipt.schema.json
     benchmark-report.schema.json
+    context-capsule-demo.schema.json
 
 evals/fixtures/agentic-retrieval/
   manifest.json
@@ -61,6 +63,9 @@ evals/fixtures/agentic-retrieval/
       verified-ask-promotion.json
       verified-ask-promotion.md
     optional/{qmd,local-model}/     # local opt-in evidence; not authoritative
+  demos/
+    context-capsule.json
+    context-capsule.md
 ```
 
 The first fixture version contains 24 original synthetic tasks and 34 Markdown
@@ -412,6 +417,48 @@ summary. The six files are staged and directory-renamed as one baseline set.
 The verified Ask files are a separate attributable outcome lane; they do not
 rename the Capsule retrieval promotion in `report.json`.
 
+## Reproducible Context Capsule demo
+
+`demos/context-capsule.json` is a closed, canonically fingerprinted projection
+of one frozen exact-identifier task from the authoritative fixture-agent
+report. It contains exactly three lanes in fixed order: the lexical-only
+no-GNO baseline, shipped GNO MCP query/get primitives, and the Context Capsule.
+Every lane retains its complete normalized trajectory receipt, score, exact
+evidence coordinates and hashes, final stop outcome, agent/backend call counts,
+model-visible UTF-8 bytes, token availability, and matching-lifecycle latency.
+
+All three lanes must share the task, outer agent, trial, seed, lifecycle,
+corpus, prompt, tool, model, runtime, and canonical effective-index
+fingerprints. The generator selects exactly one receipt and score per full
+identity and rejects ambiguous multi-trial input. Adapter configuration
+fingerprints may differ. The Capsule projection additionally retains its
+normalized `retrieval.request`, effective index fingerprint, capability states,
+fallback list, and complete model-visible payload. Validation parses the
+delivered evidence bundle and compares those values, then recomputes every
+displayed lane metric from the embedded receipt and score.
+
+Source provenance distinguishes each source run's clean `runGitCommit` from
+the later Git commit that contains the generated demo artifact. The artifact
+does not attempt to embed its own containing commit. Its report and Verified
+Ask fingerprints and projected fields must match the canonical linked source
+artifacts.
+
+The readable `context-capsule.md` is generated from the JSON contract. It
+states the single-trial variance limitation, reports tokens as unavailable
+without one pinned comparable tokenizer, and limits its claim to the measured
+controlled task. It discloses that the chosen task is the sole cold
+current-GNO-failure / Capsule-success case in the 24-task authoritative cohort,
+that the Capsule lane is an evaluation-only lexical prototype, and that its
+latency is not shipped-product latency. It cannot be used as a general
+product-superiority claim.
+
+The adjacent Verified Ask block is an attributable but separate
+`answer_enforcement` proof. It binds the clean-Git canonical fingerprint of the
+frozen 22-pair `raw_ask`/`verified_ask` artifact, retains the two declared
+missing-evidence exclusions, and exposes only answer-accuracy and unsupported-
+substantive-claim metrics. Those metrics are never merged into or labeled as
+retrieval metrics.
+
 ## Deterministic scoring
 
 The scorer compares typed claims and exact citations with the hidden oracle. It
@@ -551,6 +598,7 @@ Contract tests are ordinary offline tests:
 
 ```bash
 bun test test/eval/agentic
+bun run eval:agentic:demo
 ```
 
 The runner is local and opt-in:

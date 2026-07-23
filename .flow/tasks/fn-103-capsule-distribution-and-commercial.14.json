@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-07-23T21:12:12.578900Z",
+  "depends_on": [
+    "fn-103-capsule-distribution-and-commercial.2"
+  ],
+  "id": "fn-103-capsule-distribution-and-commercial.14",
+  "priority": null,
+  "spec": "fn-103-capsule-distribution-and-commercial",
+  "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.14.md",
+  "status": "todo",
+  "title": "Close production launch verifier integrity gaps",
+  "updated_at": "2026-07-23T21:12:32.645760Z"
+}

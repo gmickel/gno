@@ -2500,6 +2500,48 @@ done
 
 ---
 
+### Export gno.sh Publish Artifact
+
+```http
+POST /api/publish/export
+```
+
+Build a reader-safe artifact from one active collection name or document ref.
+The endpoint runs on the local `gno serve` boundary and does not upload the
+artifact.
+
+```json
+{
+  "target": "work-docs",
+  "visibility": "public",
+  "slug": "work-docs",
+  "title": "Work docs",
+  "summary": "Published operating notes"
+}
+```
+
+Optional `visibility` values are `public`, `secret-link`, `invite-only`, and
+`encrypted`. Encrypted export also requires `encryptionPassphrase`. The
+response contains `artifact`, `fileName`, `uploadUrl`, and sanitizer `warnings`.
+
+Public artifact spaces carry a manifest conforming to
+`gno://schemas/publish-artifact@1.0`: a stable projection revision, sorted
+documents, relative Markdown paths, exact line locators, content/evidence
+hashes, and closed public capabilities. The manifest and its revision derive
+only from sanitized published notes. `publish: false` notes, local collection
+paths, local source URIs, and metadata values containing embedded local path or
+GNO/file URI tokens are excluded. Canonical and image metadata fields accept
+only uncredentialed public HTTP(S) targets.
+
+Secret-link and invite-only artifacts have no agent manifest or capability
+activation flags. Encrypted artifacts expose no plaintext manifest or evidence;
+the server receives ciphertext metadata and an opaque token only. V2 artifact
+fields are closed and validated before export, including bounded base64
+payloads, positive safe-integer KDF iterations, route/source identity, and the
+bounded opaque token.
+
+---
+
 ## Error Responses
 
 All errors follow a consistent format:

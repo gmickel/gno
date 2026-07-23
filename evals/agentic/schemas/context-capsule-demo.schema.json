@@ -1,0 +1,312 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/evals/agentic/context-capsule-demo@1.0",
+  "title": "ContextCapsuleDemo",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "demoId",
+    "canonicalFingerprint",
+    "sourceBenchmark",
+    "frozenInput",
+    "methodology",
+    "variance",
+    "limitations",
+    "lanes",
+    "capsuleRetrieval",
+    "verifiedAsk"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "demoId": { "const": "context-capsule-demo@1" },
+    "canonicalFingerprint": { "$ref": "#/definitions/fingerprint" },
+    "sourceBenchmark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "benchmarkId",
+        "canonicalFingerprint",
+        "fixtureFingerprint",
+        "runGitCommit",
+        "reportPath",
+        "selection"
+      ],
+      "properties": {
+        "benchmarkId": { "type": "string", "minLength": 1 },
+        "canonicalFingerprint": { "$ref": "#/definitions/fingerprint" },
+        "fixtureFingerprint": { "$ref": "#/definitions/fingerprint" },
+        "runGitCommit": { "$ref": "#/definitions/gitCommit" },
+        "reportPath": { "type": "string", "minLength": 1 },
+        "selection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rule",
+            "cohortTaskCount",
+            "matchingTaskIds",
+            "selectedTaskId"
+          ],
+          "properties": {
+            "rule": { "const": "cold_gno_failure_capsule_success" },
+            "cohortTaskCount": { "type": "integer", "minimum": 1 },
+            "matchingTaskIds": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "selectedTaskId": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "frozenInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task",
+        "expected",
+        "environment",
+        "identity",
+        "lifecycle",
+        "sharedFingerprints"
+      ],
+      "properties": {
+        "task": { "$ref": "gno://schemas/evals/agentic/agent-task@1.0" },
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["claimKey", "value", "evidence"],
+          "properties": {
+            "claimKey": { "type": "string", "minLength": 1 },
+            "value": {},
+            "evidence": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "gno://schemas/evals/agentic/final-envelope@1.0#/definitions/evidence"
+              }
+            }
+          }
+        },
+        "environment": {
+          "$ref": "gno://schemas/evals/agentic/benchmark-report@1.0#/properties/environment"
+        },
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["trialId", "seed", "agentId"],
+          "properties": {
+            "trialId": { "type": "string", "minLength": 1 },
+            "seed": {
+              "oneOf": [{ "type": "integer" }, { "type": "null" }]
+            },
+            "agentId": { "type": "string", "minLength": 1 }
+          }
+        },
+        "lifecycle": { "const": "cold" },
+        "sharedFingerprints": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "corpus",
+            "prompt",
+            "tools",
+            "model",
+            "runtime",
+            "index"
+          ],
+          "properties": {
+            "corpus": { "$ref": "#/definitions/fingerprint" },
+            "prompt": { "$ref": "#/definitions/fingerprint" },
+            "tools": { "$ref": "#/definitions/fingerprint" },
+            "model": { "$ref": "#/definitions/fingerprint" },
+            "runtime": { "$ref": "#/definitions/fingerprint" },
+            "index": { "$ref": "#/definitions/fingerprint" }
+          }
+        }
+      }
+    },
+    "methodology": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "variance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trialCount", "estimate", "unavailableReason"],
+      "properties": {
+        "trialCount": { "const": 1 },
+        "estimate": { "type": "null" },
+        "unavailableReason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "lanes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/definitions/lane" }
+    },
+    "capsuleRetrieval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request",
+        "effectiveIndexFingerprint",
+        "capabilityStates",
+        "fallbacks",
+        "normalizedPayload"
+      ],
+      "properties": {
+        "request": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["toolName", "arguments"],
+          "properties": {
+            "toolName": { "type": "string", "minLength": 1 },
+            "arguments": { "type": "object" }
+          }
+        },
+        "effectiveIndexFingerprint": { "$ref": "#/definitions/fingerprint" },
+        "capabilityStates": {
+          "$ref": "gno://schemas/evals/agentic/trajectory-receipt@1.0#/definitions/capabilities"
+        },
+        "fallbacks": { "type": "array" },
+        "normalizedPayload": {}
+      }
+    },
+    "verifiedAsk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proofKind",
+        "benchmarkId",
+        "canonicalFingerprint",
+        "runGitCommit",
+        "artifactPath",
+        "pairCount",
+        "excludedTasks",
+        "metrics"
+      ],
+      "properties": {
+        "proofKind": { "const": "answer_enforcement" },
+        "benchmarkId": { "const": "verified-ask-outcome@1" },
+        "canonicalFingerprint": { "$ref": "#/definitions/fingerprint" },
+        "runGitCommit": { "$ref": "#/definitions/gitCommit" },
+        "artifactPath": { "type": "string", "minLength": 1 },
+        "pairCount": { "const": 22 },
+        "excludedTasks": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["taskId", "reason"],
+            "properties": {
+              "taskId": { "type": "string", "minLength": 1 },
+              "reason": { "const": "expected_missing_evidence" }
+            }
+          }
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "baselineAnswerAccuracy",
+            "candidateAnswerAccuracy",
+            "baselineUnsupportedSubstantiveClaims",
+            "candidateUnsupportedSubstantiveClaims",
+            "unsupportedSubstantiveClaimReduction"
+          ],
+          "properties": {
+            "baselineAnswerAccuracy": {
+              "oneOf": [{ "type": "number" }, { "type": "null" }]
+            },
+            "candidateAnswerAccuracy": {
+              "oneOf": [{ "type": "number" }, { "type": "null" }]
+            },
+            "baselineUnsupportedSubstantiveClaims": {
+              "oneOf": [{ "type": "number" }, { "type": "null" }]
+            },
+            "candidateUnsupportedSubstantiveClaims": {
+              "oneOf": [{ "type": "number" }, { "type": "null" }]
+            },
+            "unsupportedSubstantiveClaimReduction": {
+              "oneOf": [{ "type": "number" }, { "type": "null" }]
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "gitCommit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "lane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapterId", "label", "receipt", "score", "metrics"],
+      "properties": {
+        "adapterId": { "enum": ["lexical", "gno-mcp", "capsule"] },
+        "label": { "type": "string", "minLength": 1 },
+        "receipt": {
+          "$ref": "gno://schemas/evals/agentic/trajectory-receipt@1.0"
+        },
+        "score": {
+          "$ref": "gno://schemas/evals/agentic/benchmark-report@1.0#/definitions/scoreRecord"
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "completed",
+            "success",
+            "substantiveClaimEvidenceCoverage",
+            "agentCalls",
+            "backendInvocations",
+            "modelVisibleUtf8Bytes",
+            "measuredTokens",
+            "tokenUnavailableReason",
+            "endToEnd",
+            "stopOutcome"
+          ],
+          "properties": {
+            "completed": { "type": "boolean" },
+            "success": { "enum": [0, 1] },
+            "substantiveClaimEvidenceCoverage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "agentCalls": { "type": "integer", "minimum": 0 },
+            "backendInvocations": { "type": "integer", "minimum": 0 },
+            "modelVisibleUtf8Bytes": { "type": "integer", "minimum": 0 },
+            "measuredTokens": {
+              "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+            },
+            "tokenUnavailableReason": {
+              "oneOf": [{ "type": "string" }, { "type": "null" }]
+            },
+            "endToEnd": {
+              "$ref": "gno://schemas/evals/agentic/trajectory-receipt@1.0#/definitions/timing"
+            },
+            "stopOutcome": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}
