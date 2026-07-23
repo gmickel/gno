@@ -988,6 +988,9 @@ builder emits a closed projection and validates bounded base64 payload fields,
 the positive safe-integer KDF iteration count, route/source identity, and the
 bounded opaque token before export.
 
+See [Publishing to gno.sh](PUBLISHING.md) for the visibility, public-agent,
+privacy, verification, and current commercial boundaries.
+
 ## Skill Commands
 
 Install GNO as a skill for AI coding assistants (Claude Code, Codex, OpenCode, OpenClaw, Hermes Agent).
