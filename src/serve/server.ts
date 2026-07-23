@@ -581,7 +581,7 @@ export async function startServer(
             const url = new URL(req.url);
             return withSecurityHeaders(
               await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleDoc(store, ctxHolder.config, url)
+                handleDoc(store, ctxHolder.config, url, req)
               ),
               isDev
             );
@@ -624,7 +624,7 @@ export async function startServer(
             }
             return withSecurityHeaders(
               await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleSearch(store, req)
+                handleSearch(ctxHolder.current, req)
               ),
               isDev
             );

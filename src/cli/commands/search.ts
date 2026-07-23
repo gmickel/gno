@@ -5,8 +5,16 @@
  * @module src/cli/commands/search
  */
 
+import type {
+  RetrievalTraceSession,
+  RetrievalTraceSurfaceMetadata,
+} from "../../core/retrieval-trace-session";
 import type { SearchOptions, SearchResults } from "../../pipeline/types";
 
+import {
+  finishRetrievalTraceAfterError,
+  startRetrievalTraceRequest,
+} from "../../core/retrieval-trace-request";
 import { searchBm25 } from "../../pipeline/search";
 import {
   type FormatOptions,
@@ -38,7 +46,11 @@ export type SearchCommandOptions = SearchOptions & {
 };
 
 export type SearchResult =
-  | { success: true; data: SearchResults }
+  | {
+      success: true;
+      data: SearchResults;
+      metadata?: RetrievalTraceSurfaceMetadata;
+    }
   | { success: false; error: string; isValidation?: boolean };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,15 +80,42 @@ export async function search(
     return { success: false, error: initResult.error };
   }
 
-  const { store } = initResult;
+  const { store, config } = initResult;
+  let traceSession: RetrievalTraceSession | undefined;
 
   try {
+    const started = await startRetrievalTraceRequest({
+      store,
+      config,
+      query,
+      filters: {
+        limit,
+        collection: options.collection,
+        lang: options.lang,
+        full: options.full,
+        lineNumbers: options.lineNumbers,
+        tagsAll: options.tagsAll,
+        tagsAny: options.tagsAny,
+        since: options.since,
+        until: options.until,
+        categories: options.categories,
+        author: options.author,
+        intent: options.intent,
+        exclude: options.exclude,
+      },
+      pipeline: "bm25",
+      indexName: options.indexName,
+    });
+    if (!started.ok) return { success: false, error: started.error.message };
+    traceSession = started.value ?? undefined;
     const result = await searchBm25(store, query, {
       ...options,
       limit,
+      traceSession,
     });
 
     if (!result.ok) {
+      await traceSession?.finish("failed");
       // Map INVALID_INPUT to validation error for proper exit code
       const isValidation = result.error.code === "INVALID_INPUT";
       return {
@@ -89,6 +128,13 @@ export async function search(
     return {
       success: true,
       data: decorateSearchResultsForIndex(result.value, options.indexName),
+      metadata: traceSession?.metadata(),
+    };
+  } catch (cause) {
+    await finishRetrievalTraceAfterError(traceSession, cause);
+    return {
+      success: false,
+      error: cause instanceof Error ? cause.message : "Search failed",
     };
   } finally {
     await store.close();
@@ -135,7 +181,6 @@ export function formatSearch(
         })
       : `Error: ${result.error}`;
   }
-
   const formatOpts: FormatOptions = {
     format: getFormatType(options),
     full: options.full,

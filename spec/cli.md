@@ -664,6 +664,19 @@ With `--verbose`, embedding errors are logged to stderr:
 
 ---
 
+### Retrieval trace receipts
+
+When local retrieval tracing is enabled, successful `search`, `vsearch`,
+`query`, `ask`, `get`, and `context build` commands write one
+`Trace: <traceId>` receipt line to stderr after the normal result. Stdout and
+all JSON/Markdown/file payload schemas remain byte-for-byte unchanged.
+Retrieval-only commands leave the trace open for explicit evidence follow-up.
+Pass that receipt back to `gno get --trace-id <traceId>` to record the exact
+opened line range against the same query. Disabled tracing performs no trace
+ID, fingerprint, or receipt work and writes no receipt line.
+
+---
+
 ### gno search
 
 BM25 keyword search over indexed documents.
@@ -1002,7 +1015,7 @@ Retrieve a single document by reference.
 **Synopsis:**
 
 ```bash
-gno get <ref> [--from <line>] [-l <lines>] [--line-numbers] [--source] [--json|--md]
+gno get <ref> [--from <line>] [-l <lines>] [--line-numbers] [--trace-id <id>] [--source] [--json|--md]
 ```
 
 **Arguments:**
@@ -1016,6 +1029,7 @@ gno get <ref> [--from <line>] [-l <lines>] [--line-numbers] [--source] [--json|-
 | `--from` | integer | Start at line number |
 | `-l` | integer | Limit to N lines |
 | `--line-numbers` | boolean | Prefix lines with numbers |
+| `--trace-id` | string | Continue an open retrieval trace and record the exact returned span |
 | `--source` | boolean | Include source metadata in output |
 
 **Ref Formats:**
@@ -1040,6 +1054,7 @@ See [Output Schemas](./output-schemas/get.schema.json)
 gno get gno://work/contracts/nda.docx
 gno get "#a1b2c3d4" --line-numbers
 gno get work/doc.md:120 -l 50
+gno get gno://work/doc.md --from 120 -l 50 --trace-id <traceId>
 ```
 
 ---
@@ -1243,6 +1258,9 @@ Indexed title, heading, and configured-context metadata remains JSON-escaped;
 exact passage bytes remain unchanged inside the fence. Budgets, normalized
 retrieval requests, capability attempts/outcomes, fingerprints, snapshots,
 fallbacks, omissions, and truncation remain auditable.
+An enabled retrieval trace links the request to `capsuleId` in local trace
+storage and returns its random identity only on stderr. The trace identity is
+never added to the canonical Capsule, its budget, or its deterministic ID.
 Invalid goals,
 budgets, filters, URI/index combinations, or output paths exit 1. Snapshot,
 retrieval, provenance, and store failures exit 2 with no partial Capsule.

@@ -5,8 +5,18 @@
  * @module src/cli/commands/vsearch
  */
 
+import type {
+  RetrievalTraceSession,
+  RetrievalTraceSurfaceMetadata,
+} from "../../core/retrieval-trace-session";
+import type { EmbeddingPort } from "../../llm/types";
 import type { SearchOptions, SearchResults } from "../../pipeline/types";
 
+import {
+  finishRetrievalTraceAfterError,
+  retrievalTraceFilters,
+  startRetrievalTraceRequest,
+} from "../../core/retrieval-trace-request";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveModelUri } from "../../llm/registry";
 import { formatQueryForEmbedding } from "../../pipeline/contextual";
@@ -47,7 +57,11 @@ export type VsearchCommandOptions = SearchOptions & {
 };
 
 export type VsearchResult =
-  | { success: true; data: SearchResults }
+  | {
+      success: true;
+      data: SearchResults;
+      metadata?: RetrievalTraceSurfaceMetadata;
+    }
   | { success: false; error: string };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -78,6 +92,8 @@ export async function vsearch(
   }
 
   const { store, config } = initResult;
+  let embedPort: EmbeddingPort | null = null;
+  let traceSession: RetrievalTraceSession | undefined;
 
   try {
     // Get model URI from preset
@@ -87,67 +103,74 @@ export async function vsearch(
       options.model,
       options.collection
     );
+    const traceStart = await startRetrievalTraceRequest({
+      store,
+      config,
+      query,
+      filters: retrievalTraceFilters({ ...options, limit }),
+      pipeline: "vector",
+      indexName: options.indexName,
+      modelUris: [modelUri],
+    });
+    if (!traceStart.ok) {
+      return { success: false, error: traceStart.error.message };
+    }
+    traceSession = traceStart.value ?? undefined;
 
     // Create LLM adapter for embeddings
     const llm = new LlmAdapter(config);
     const embedResult = await llm.createEmbeddingPort(modelUri);
     if (!embedResult.ok) {
+      await traceSession?.finish("failed");
       return { success: false, error: embedResult.error.message };
     }
 
-    const embedPort = embedResult.value;
-
-    try {
-      // Embed query with contextual formatting (also determines dimensions)
-      const queryEmbedResult = await embedPort.embed(
-        formatQueryForEmbedding(query, embedPort.modelUri)
-      );
-      if (!queryEmbedResult.ok) {
-        return { success: false, error: queryEmbedResult.error.message };
-      }
-      const queryEmbedding = new Float32Array(queryEmbedResult.value);
-      const dimensions = queryEmbedding.length;
-
-      // Create vector index port
-      const db = store.getRawDb();
-      const vectorResult = await createVectorIndexPort(db, {
-        model: modelUri,
-        dimensions,
-      });
-
-      if (!vectorResult.ok) {
-        return { success: false, error: vectorResult.error.message };
-      }
-
-      const vectorIndex = vectorResult.value;
-
-      const deps: VectorSearchDeps = {
-        store,
-        vectorIndex,
-        embedPort,
-        config,
-      };
-
-      // Pass pre-computed embedding to avoid double-embed
-      const result = await searchVectorWithEmbedding(
-        deps,
-        query,
-        queryEmbedding,
-        { ...options, limit }
-      );
-
-      if (!result.ok) {
-        return { success: false, error: result.error.message };
-      }
-
-      return {
-        success: true,
-        data: decorateSearchResultsForIndex(result.value, options.indexName),
-      };
-    } finally {
-      await embedPort.dispose();
+    embedPort = embedResult.value;
+    const queryEmbedResult = await embedPort.embed(
+      formatQueryForEmbedding(query, embedPort.modelUri)
+    );
+    if (!queryEmbedResult.ok) {
+      await traceSession?.finish("failed");
+      return { success: false, error: queryEmbedResult.error.message };
     }
+    const queryEmbedding = new Float32Array(queryEmbedResult.value);
+    const vectorResult = await createVectorIndexPort(store.getRawDb(), {
+      model: modelUri,
+      dimensions: queryEmbedding.length,
+    });
+    if (!vectorResult.ok) {
+      await traceSession?.finish("failed");
+      return { success: false, error: vectorResult.error.message };
+    }
+    const deps: VectorSearchDeps = {
+      store,
+      vectorIndex: vectorResult.value,
+      embedPort,
+      config,
+    };
+    const result = await searchVectorWithEmbedding(
+      deps,
+      query,
+      queryEmbedding,
+      { ...options, limit, traceSession }
+    );
+    if (!result.ok) {
+      await traceSession?.finish("failed");
+      return { success: false, error: result.error.message };
+    }
+    return {
+      success: true,
+      data: decorateSearchResultsForIndex(result.value, options.indexName),
+      metadata: traceSession?.metadata(),
+    };
+  } catch (cause) {
+    await finishRetrievalTraceAfterError(traceSession, cause);
+    return {
+      success: false,
+      error: cause instanceof Error ? cause.message : "Vector search failed",
+    };
   } finally {
+    await embedPort?.dispose();
     await store.close();
   }
 }
@@ -194,7 +217,6 @@ export function formatVsearch(
         })
       : `Error: ${result.error}`;
   }
-
   const formatOpts: FormatOptions = {
     format: getFormatType(options),
     full: options.full,

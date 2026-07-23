@@ -1,5 +1,6 @@
 /** MCP Context Capsule tools over the shared application runtime. */
 
+import type { RetrievalTraceSession } from "../../core/retrieval-trace-session";
 import type { ModelLease } from "../../llm/nodeLlamaCpp/lifecycle";
 import type { EmbeddingPort, RerankPort } from "../../llm/types";
 import type { VectorIndexPort } from "../../store/vector";
@@ -20,6 +21,10 @@ import {
   parseContextVerifySurfaceInput,
 } from "../../app/context-surface";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
+import {
+  finishRetrievalTraceAfterError,
+  startRetrievalTraceRequest,
+} from "../../core/retrieval-trace-request";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
@@ -28,11 +33,15 @@ import { createVectorIndexPort } from "../../store/vector";
 interface ContextToolResultData {
   structuredContent: Record<string, unknown>;
   text: string;
+  traceId?: string;
 }
 
 const asToolResult = (data: ContextToolResultData): ToolResult => ({
   content: [{ type: "text", text: data.text }],
   structuredContent: data.structuredContent,
+  ...(data.traceId
+    ? { _meta: { gno: { retrievalTrace: { traceId: data.traceId } } } }
+    : {}),
 });
 
 const asToolError = (error: unknown): ToolResult => {
@@ -180,15 +189,50 @@ export const handleContext = (
       context.config.collections.map((collection) => collection.name)
     );
     const useModels = parsed.input.depthPolicy !== "fast";
-    const modelPorts = useModels
-      ? await createMcpModelPorts(
-          context,
-          parsed.input.collections?.length === 1
-            ? parsed.input.collections[0]
-            : undefined
-        )
-      : null;
+    const collection =
+      parsed.input.collections?.length === 1
+        ? parsed.input.collections[0]
+        : undefined;
+    const modelUris = useModels
+      ? [
+          resolveModelUri(context.config, "embed", undefined, collection),
+          resolveModelUri(context.config, "rerank", undefined, collection),
+        ]
+      : [];
+    let modelPorts: Awaited<ReturnType<typeof createMcpModelPorts>> | null =
+      null;
+    let traceSession: RetrievalTraceSession | undefined;
     try {
+      const traceStart = await startRetrievalTraceRequest({
+        store: context.store,
+        config: context.config,
+        query: parsed.input.query ?? parsed.input.goal,
+        goal: parsed.input.goal,
+        filters: {
+          limit: parsed.input.limit,
+          collection,
+          collections: [...(parsed.input.collections ?? [])].sort(),
+          lang: parsed.input.lang,
+          tagsAll: parsed.input.tagsAll,
+          tagsAny: parsed.input.tagsAny,
+          since: parsed.input.since,
+          until: parsed.input.until,
+          categories: parsed.input.categories,
+          author: parsed.input.author,
+          graph: parsed.input.graph,
+          candidateLimit: parsed.input.candidateLimit,
+          queryModes: parsed.input.queryModes,
+          uriPrefix: parsed.input.uriPrefix ?? undefined,
+        },
+        pipeline: "context",
+        indexName: context.indexName,
+        modelUris,
+      });
+      if (!traceStart.ok) throw new Error(traceStart.error.message);
+      traceSession = traceStart.value ?? undefined;
+      modelPorts = useModels
+        ? await createMcpModelPorts(context, collection)
+        : null;
       const capsule = await buildContextCapsule(parsed.input, {
         store: context.store,
         config: context.config,
@@ -196,14 +240,21 @@ export const handleContext = (
         vectorIndex: modelPorts?.vectorIndex ?? null,
         embedPort: modelPorts?.embedPort ?? null,
         rerankPort: modelPorts?.rerankPort ?? null,
+        traceSession,
       });
+      const finalized = await traceSession?.finish("completed");
+      if (finalized && !finalized.ok) throw new Error(finalized.error.message);
       return {
         structuredContent: capsule as unknown as Record<string, unknown>,
         // MCP model context receives this projection exactly once. The full
         // canonical capsule remains available to application clients through
         // structuredContent and is deliberately not duplicated in text.
         text: formatContextCapsuleAgentJson(capsule),
+        traceId: traceSession?.metadata()?.traceId,
       };
+    } catch (cause) {
+      await finishRetrievalTraceAfterError(traceSession, cause);
+      throw cause;
     } finally {
       await modelPorts?.dispose();
     }

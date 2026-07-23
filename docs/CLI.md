@@ -94,6 +94,22 @@ See [spec/cli.md](../spec/cli.md#output-format-support-matrix) for which command
 
 ## Search Commands
 
+### Private retrieval receipts
+
+With `retrievalTraces.enabled: true`, successful `search`, `vsearch`, `query`,
+`ask`, `get`, and `context build` calls print `Trace: <traceId>` to stderr.
+Normal stdout—including JSON—is unchanged. Retrieval-only calls keep that
+trace open so a later exact read can be linked:
+
+```bash
+gno query "deployment decision"
+# stderr: Trace: <traceId>
+gno get gno://work/decisions/deploy.md --from 40 -l 20 --trace-id <traceId>
+```
+
+Tracing disabled: no ID generation, fingerprint work, local receipt write, or
+stderr receipt. See [Configuration](./CONFIGURATION.md#private-retrieval-traces).
+
 ### gno search
 
 Full-text search using document-level BM25 with Snowball stemmer.
@@ -413,6 +429,7 @@ Options:
 - `--from <line>` - Start output at line number (1-indexed)
 - `-l, --limit <lines>` - Limit to N lines
 - `--line-numbers` - Prefix lines with numbers
+- `--trace-id <id>` - Continue an open query receipt and record the exact returned span
 - `--source` - Include source metadata
 
 ### gno multi-get

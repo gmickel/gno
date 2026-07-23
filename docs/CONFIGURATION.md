@@ -151,6 +151,20 @@ use closed evidence schemas: no source passages, absolute paths, or external
 URLs are accepted. Receipts stay in the active local index database; the
 recorder has no telemetry or upload path.
 
+Each traced application request creates one local session at the CLI, REST,
+MCP, or SDK boundary. It records normalized retrieval stages, exact canonical
+source spans, explicit open/cite/pin outcomes, capability fallbacks, and a
+terminal outcome. Search-result planner details remain internal and do not
+change public result JSON. Ask records only citations retained after final
+citation validation; failures, partial answers, and cancellations are terminal
+states, never implicit relevance judgments.
+
+Random trace identity is response metadata only: CLI stderr, the
+`X-GNO-Trace-ID` REST header, MCP `_meta.gno.retrievalTrace.traceId`, or the
+SDK's non-enumerable `RETRIEVAL_TRACE_METADATA` symbol. It never enters a
+canonical Context Capsule or changes `capsuleId`. Retrieval-only CLI calls may
+be continued with `gno get --trace-id <id>`.
+
 Retention uses epoch-millisecond timestamps and deterministically removes
 expired traces first, then traces exceeding the per-trace record limit, then
 the oldest traces until count and logical-storage byte bounds are satisfied.

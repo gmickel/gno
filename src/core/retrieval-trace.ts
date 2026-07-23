@@ -42,6 +42,7 @@ const traceFiltersSchema = z
     limit: z.number().int().positive().optional(),
     minScore: z.number().min(0).max(1).optional(),
     collection: z.string().max(256).optional(),
+    collections: z.array(z.string().min(1).max(256)).max(1000).optional(),
     lang: z.string().max(64).optional(),
     full: z.boolean().optional(),
     lineNumbers: z.boolean().optional(),
@@ -92,6 +93,10 @@ const evidenceRefBaseSchema = z
     endLine: z.number().int().positive().optional(),
     score: z.number().finite().optional(),
     rank: z.number().int().positive().optional(),
+    plannerRank: z.number().int().positive().optional(),
+    passageHash: sha256Schema.optional(),
+    sources: z.array(z.string().min(1).max(128)).max(16).optional(),
+    graphExpanded: z.boolean().optional(),
   })
   .strict();
 const refineEvidenceRef = (
@@ -203,6 +208,9 @@ interface RetrievalTraceRecorderDeps {
   redactionSecret?: string;
 }
 
+/** Query + retrieval run + retrieval event + terminal event. */
+export const MIN_RETRIEVAL_TRACE_RECORDS = 4;
+
 const normalizeText = (value: string): string =>
   value.replace(/\r\n/g, "\n").replace(/\r/g, "\n").normalize("NFC");
 
@@ -270,7 +278,10 @@ export class RetrievalTraceRecorder {
   async start(
     input: StartRetrievalTraceInput
   ): Promise<StoreResult<RetrievalTraceWriteResult>> {
-    if (!this.config?.enabled) {
+    if (
+      !this.config?.enabled ||
+      this.config.retention.maxRecordsPerTrace < MIN_RETRIEVAL_TRACE_RECORDS
+    ) {
       return ok({
         recorded: false,
         traceId: null,
@@ -440,12 +451,13 @@ export class RetrievalTraceRecorder {
     if (!retained.ok) return retained;
     const stored = await this.store.getRetrievalTrace(traceId);
     if (!stored.ok) return stored;
-    return stored.value
-      ? result
-      : err(
-          "CONSTRAINT_VIOLATION",
-          `Retrieval trace ${traceId} exceeded retention limits and was evicted`
-        );
+    if (!stored.value) {
+      return err(
+        "CONSTRAINT_VIOLATION",
+        `Retrieval trace ${traceId} exceeded retention limits and was evicted`
+      );
+    }
+    return result;
   }
 }
 

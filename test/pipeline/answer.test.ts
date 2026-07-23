@@ -5,9 +5,14 @@ import type { SearchResult } from "../../src/pipeline/types";
 
 import {
   ABSTENTION_MESSAGE,
+  answerTraceTerminalStatus,
   generateGroundedAnswer,
   processAnswerResult,
 } from "../../src/pipeline/answer";
+import {
+  CITATION_TRACE_METADATA,
+  SEARCH_RESULT_PLANNER_METADATA,
+} from "../../src/pipeline/types";
 
 function makeResult(
   docid: string,
@@ -15,17 +20,34 @@ function makeResult(
   snippet: string,
   title?: string
 ): SearchResult {
+  const mirrorHash = new Bun.CryptoHasher("sha256")
+    .update(snippet)
+    .digest("hex");
+  const sourceHash = new Bun.CryptoHasher("sha256").update(docid).digest("hex");
+  const endLine = snippet.split("\n").length;
   return {
     docid,
     score,
     uri: `gno://notes/${docid.slice(1)}.md`,
     title,
     snippet,
-    snippetRange: { startLine: 1, endLine: 5 },
+    snippetRange: { startLine: 1, endLine },
     source: {
       relPath: `${docid.slice(1)}.md`,
       mime: "text/markdown",
       ext: ".md",
+      sourceHash,
+    },
+    conversion: { mirrorHash },
+    [SEARCH_RESULT_PLANNER_METADATA]: {
+      retrievalRank: 1,
+      mirrorHash,
+      seq: 0,
+      sources: ["bm25"],
+      graphExpanded: false,
+      startLine: 1,
+      endLine,
+      passageHash: mirrorHash,
     },
   };
 }
@@ -300,6 +322,83 @@ describe("answer source selection", () => {
 });
 
 describe("answer citation hygiene", () => {
+  test("omits a first line that alone exceeds the source character budget", async () => {
+    let generated = false;
+    const result = makeResult("#oversized", 0.99, "x".repeat(32_001));
+    const raw = await generateGroundedAnswer(
+      {
+        genPort: makeGenPort("Should not run [1].", () => {
+          generated = true;
+        }),
+        store: null,
+      },
+      "What does the oversized source say?",
+      [result],
+      256
+    );
+    expect(raw).toBeNull();
+    expect(generated).toBeFalse();
+  });
+
+  test("marks generated answers without retained citations partial", () => {
+    expect(answerTraceTerminalStatus(undefined)).toBe("partial");
+    expect(answerTraceTerminalStatus([])).toBe("partial");
+    expect(
+      answerTraceTerminalStatus([
+        { docid: "#cited", uri: "gno://notes/cited.md" },
+      ])
+    ).toBe("completed");
+  });
+
+  test("anchors long-document evidence to exact complete retrieved lines", async () => {
+    const prefix = Array.from(
+      { length: 2_000 },
+      (_, index) => `padding ${index} ${"x".repeat(20)}`
+    );
+    const relevant = ["relevant alpha", "relevant beta"];
+    const suffix = ["after"];
+    const fullContent = [...prefix, ...relevant, ...suffix].join("\n");
+    const mirrorHash = new Bun.CryptoHasher("sha256")
+      .update(fullContent)
+      .digest("hex");
+    const passage = relevant.join("\n");
+    const result = makeResult("#a1b2c3d4", 0.99, passage, "Late evidence");
+    result.conversion = { mirrorHash };
+    result[SEARCH_RESULT_PLANNER_METADATA] = {
+      retrievalRank: 1,
+      mirrorHash,
+      seq: 12,
+      sources: ["vector"],
+      graphExpanded: false,
+      startLine: prefix.length + 1,
+      endLine: prefix.length + relevant.length,
+      passageHash: new Bun.CryptoHasher("sha256").update(passage).digest("hex"),
+    };
+    let prompt = "";
+    const raw = await generateGroundedAnswer(
+      {
+        genPort: makeGenPort("Late evidence [1].", (value) => {
+          prompt = value;
+        }),
+        store: {
+          getContent: async () => ({ ok: true as const, value: fullContent }),
+        } as never,
+      },
+      "Where is the relevant evidence?",
+      [result],
+      256
+    );
+    expect(raw?.citations[0]).toMatchObject({
+      startLine: prefix.length + 1,
+      endLine: prefix.length + relevant.length,
+    });
+    expect(raw?.citations[0]?.[CITATION_TRACE_METADATA]?.passageHash).toBe(
+      result[SEARCH_RESULT_PLANNER_METADATA]?.passageHash
+    );
+    expect(prompt).toContain(passage);
+    expect(prompt).not.toContain("padding 0");
+  });
+
   test("renumbers citations and preserves answer context explain", () => {
     const processed = processAnswerResult({
       answer: "Decision is in [3], with rationale in [1].",

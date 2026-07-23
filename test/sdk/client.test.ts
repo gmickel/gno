@@ -1,6 +1,7 @@
 import {
   createDefaultConfig,
   createGnoClient,
+  getRetrievalTraceMetadata,
   type GnoClient,
   type SearchResults,
 } from "@gmickel/gno";
@@ -229,6 +230,60 @@ describe("SDK client", () => {
     const result = await client.get("fixtures/authentication.md");
     expect(result.uri).toBe("gno://fixtures/authentication.md");
     expect(result.content).toContain("JWT");
+  });
+
+  test("preserves non-enumerable trace metadata across query-to-get", async () => {
+    const config = createDefaultConfig();
+    config.collections = [
+      {
+        name: "fixtures",
+        path: fixturesDir,
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      },
+    ];
+    config.contexts = [
+      { scopeType: "global", scopeKey: "/", text: "Global guidance" },
+      {
+        scopeType: "collection",
+        scopeKey: "fixtures:",
+        text: "Fixture guidance",
+      },
+      {
+        scopeType: "prefix",
+        scopeKey: "gno://fixtures/authentication.md",
+        text: "Authentication guidance",
+      },
+    ];
+    config.retrievalTraces = {
+      enabled: true,
+      redactionMode: "replay",
+      retention: {
+        maxAgeDays: 30,
+        maxTraces: 100,
+        maxRecordsPerTrace: 100,
+        maxBytes: 1024 * 1024,
+      },
+    };
+    const tracedClient = await createGnoClient({
+      config,
+      dbPath,
+      downloadPolicy: { offline: false, allowDownload: false },
+    });
+    try {
+      const results = await tracedClient.search("authentication");
+      const traceId = getRetrievalTraceMetadata(results)?.traceId;
+      expect(traceId).toBeString();
+      expect(JSON.stringify(results)).not.toContain(traceId);
+      const document = await tracedClient.get(results.results[0]?.uri ?? "", {
+        traceId,
+      });
+      expect(getRetrievalTraceMetadata(document)?.traceId).toBe(traceId);
+      expect(JSON.stringify(document)).not.toContain(traceId);
+    } finally {
+      await tracedClient.close();
+    }
   });
 
   test("creates notes with folder context and preset scaffolds", async () => {

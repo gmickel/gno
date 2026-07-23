@@ -16,6 +16,11 @@ import {
 } from "../../core/document-capabilities";
 import { resolveEffectiveIndex } from "../../core/indexed-reference";
 import { parseRef } from "../../core/ref-parser";
+import {
+  attachRetrievalTraceMetadata,
+  evidenceFromExactDocument,
+  RetrievalTraceSession,
+} from "../../core/retrieval-trace-session";
 import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
 import { runTool, type ToolResult } from "./index";
 
@@ -24,6 +29,7 @@ interface GetInput {
   fromLine?: number;
   lineCount?: number;
   lineNumbers?: boolean;
+  traceId?: string;
 }
 
 interface GetResponse {
@@ -165,6 +171,7 @@ export function handleGet(
 
         // Apply line range if specified
         let content = fullContent;
+        let exactContent = fullContent;
         let returnedLines: { start: number; end: number } | undefined;
 
         // lineNumbers defaults to true per spec
@@ -176,12 +183,14 @@ export function handleGet(
           if (startLine > totalLines) {
             // Return empty content for out-of-range request
             content = "";
+            exactContent = "";
             returnedLines = undefined;
           } else {
             const count = args.lineCount ?? totalLines - startLine + 1;
             const endLine = Math.min(startLine + count - 1, totalLines);
 
             const slicedLines = contentLines.slice(startLine - 1, endLine);
+            exactContent = slicedLines.join("\n");
 
             if (showLineNumbers) {
               content = slicedLines
@@ -242,7 +251,32 @@ export function handleGet(
           }),
         };
 
-        return response;
+        if (!args.traceId) return response;
+        const resumed = await RetrievalTraceSession.resume({
+          store: scoped.store,
+          config: ctx.config.retrievalTraces,
+          traceId: args.traceId,
+        });
+        if (!resumed.ok) throw new Error(resumed.error.message);
+        const traceSession = resumed.value;
+        if (!traceSession) return response;
+        const lines = returnedLines ?? { start: 1, end: totalLines };
+        const evidence = evidenceFromExactDocument({
+          docid: response.docid,
+          uri: response.uri,
+          sourceHash: response.source.sourceHash,
+          mirrorHash: response.conversion?.mirrorHash,
+          content: exactContent,
+          startLine: lines.start,
+          endLine: lines.end,
+        });
+        if (evidence) {
+          const got = await traceSession.recordEvidence("get", [evidence]);
+          if (!got.ok) throw new Error(got.error.message);
+          const opened = await traceSession.recordEvidence("open", [evidence]);
+          if (!opened.ok) throw new Error(opened.error.message);
+        }
+        return attachRetrievalTraceMetadata(response, traceSession);
       } finally {
         await scoped.close();
       }

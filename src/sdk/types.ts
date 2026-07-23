@@ -88,6 +88,8 @@ export type GnoContextErrorCode =
 export interface GnoGetOptions {
   from?: number;
   limit?: number;
+  /** Continue an open retrieval trace returned by search/query. */
+  traceId?: string;
 }
 
 export interface GnoMultiGetOptions {

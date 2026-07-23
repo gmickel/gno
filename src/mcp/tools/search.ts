@@ -6,10 +6,17 @@
 
 import { join as pathJoin } from "node:path";
 
+import type { RetrievalTraceSession } from "../../core/retrieval-trace-session";
 import type { SearchResult, SearchResults } from "../../pipeline/types";
 import type { ToolContext } from "../server";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
+import {
+  finishRetrievalTraceAfterError,
+  retrievalTraceFilters,
+  startRetrievalTraceRequest,
+} from "../../core/retrieval-trace-request";
+import { attachRetrievalTraceMetadata } from "../../core/retrieval-trace-session";
 import { searchBm25 } from "../../pipeline/search";
 import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
@@ -106,7 +113,7 @@ export function handleSearch(
         }
       }
 
-      const result = await searchBm25(ctx.store, args.query, {
+      const options = {
         limit: args.limit ?? 5,
         minScore: args.minScore,
         collection: args.collection,
@@ -119,19 +126,35 @@ export function handleSearch(
         author: args.author,
         tagsAll: normalizeTagFilters(args.tagsAll),
         tagsAny: normalizeTagFilters(args.tagsAny),
-      });
-
-      if (!result.ok) {
-        throw new Error(result.error.message);
-      }
-
-      // Enrich with absPath
-      const enrichedResults = enrichWithAbsPath(result.value.results, ctx);
-
-      return {
-        ...result.value,
-        results: enrichedResults,
       };
+      let traceSession: RetrievalTraceSession | undefined;
+      try {
+        const traceStart = await startRetrievalTraceRequest({
+          store: ctx.store,
+          config: ctx.config,
+          query: args.query,
+          filters: retrievalTraceFilters(options),
+          pipeline: "bm25",
+          indexName: ctx.indexName,
+        });
+        if (!traceStart.ok) throw new Error(traceStart.error.message);
+        traceSession = traceStart.value ?? undefined;
+        const result = await searchBm25(ctx.store, args.query, {
+          ...options,
+          traceSession,
+        });
+        if (!result.ok) throw new Error(result.error.message);
+        return attachRetrievalTraceMetadata(
+          {
+            ...result.value,
+            results: enrichWithAbsPath(result.value.results, ctx),
+          },
+          traceSession
+        );
+      } catch (cause) {
+        await finishRetrievalTraceAfterError(traceSession, cause);
+        throw cause;
+      }
     },
     formatSearchResults
   );

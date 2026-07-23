@@ -125,6 +125,113 @@ describe("private retrieval trace storage", () => {
     if (listed.ok) expect(listed.value).toHaveLength(0);
   });
 
+  test("pre-disables undersized lifecycles and reports concurrent retention eviction", async () => {
+    for (const maxRecordsPerTrace of [1, 2, 3]) {
+      const recorder = new RetrievalTraceRecorder(
+        new Proxy({} as StorePort, {
+          get: () => {
+            throw new Error("store touched");
+          },
+        }),
+        {
+          enabled: true,
+          redactionMode: "replay",
+          retention: {
+            maxAgeDays: 30,
+            maxTraces: 100,
+            maxRecordsPerTrace,
+            maxBytes: 1_000_000,
+          },
+        },
+        {
+          clock: () => {
+            throw new Error("clock touched");
+          },
+          idFactory: () => {
+            throw new Error("ID touched");
+          },
+        }
+      );
+      expect(
+        await recorder.start({
+          query: "must not start",
+          fingerprints: {
+            pipeline: HASH,
+            model: HASH,
+            config: HASH,
+            index: HASH,
+          },
+        })
+      ).toEqual({
+        ok: true,
+        value: {
+          recorded: false,
+          traceId: null,
+          replayCapable: false,
+          result: "disabled",
+        },
+      });
+    }
+
+    const config = {
+      enabled: true,
+      redactionMode: "replay" as const,
+      retention: {
+        maxAgeDays: 30,
+        maxTraces: 1,
+        maxRecordsPerTrace: 100,
+        maxBytes: 1_000_000,
+      },
+    };
+    const first = new RetrievalTraceRecorder(adapter, config, {
+      clock: () => 1_000,
+      idFactory: () => "direct-first",
+    });
+    const second = new RetrievalTraceRecorder(adapter, config, {
+      clock: () => 2_000,
+      idFactory: () => "direct-second",
+    });
+    expect(
+      (
+        await first.start({
+          query: "first",
+          fingerprints: {
+            pipeline: HASH,
+            model: HASH,
+            config: HASH,
+            index: HASH,
+          },
+        })
+      ).ok
+    ).toBeTrue();
+    expect(
+      (
+        await second.start({
+          query: "second",
+          fingerprints: {
+            pipeline: HASH,
+            model: HASH,
+            config: HASH,
+            index: HASH,
+          },
+        })
+      ).ok
+    ).toBeTrue();
+    const evictedWrite = await first.appendEvent({
+      eventId: "evicted-event",
+      traceId: "direct-first",
+      runId: null,
+      idempotencyKey: "evicted-event",
+      kind: "query",
+      payload: {},
+      createdAtMs: 1_001,
+    });
+    expect(evictedWrite.ok).toBeFalse();
+    if (!evictedWrite.ok) {
+      expect(evictedWrite.error.code).toBe("CONSTRAINT_VIOLATION");
+    }
+  });
+
   test("metadata mode persists only content-free shapes", async () => {
     const recorder = new RetrievalTraceRecorder(
       adapter,

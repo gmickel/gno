@@ -5,6 +5,8 @@
  * @module src/cli/commands/query
  */
 
+import type { RetrievalTraceSurfaceMetadata } from "../../core/retrieval-trace-session";
+import type { RetrievalTraceSession } from "../../core/retrieval-trace-session";
 import type {
   EmbeddingPort,
   GenerationPort,
@@ -16,6 +18,11 @@ import {
   fingerprintContentTypeRules,
   normalizeContentTypes,
 } from "../../config";
+import {
+  finishRetrievalTraceAfterError,
+  retrievalTraceFilters,
+  startRetrievalTraceRequest,
+} from "../../core/retrieval-trace-request";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
@@ -72,7 +79,11 @@ export interface QueryFormatOptions {
 }
 
 export type QueryResult =
-  | { success: true; data: SearchResults }
+  | {
+      success: true;
+      data: SearchResults;
+      metadata?: RetrievalTraceSurfaceMetadata;
+    }
   | { success: false; error: string };
 
 export type QueryDiagnoseCommandOptions = HybridSearchOptions & {
@@ -126,8 +137,47 @@ export async function query(
   let embedPort: EmbeddingPort | null = null;
   let expandPort: GenerationPort | null = null;
   let rerankPort: RerankPort | null = null;
+  let traceSession: RetrievalTraceSession | undefined;
 
   try {
+    const embedUri = resolveModelUri(
+      config,
+      "embed",
+      options.embedModel,
+      options.collection
+    );
+    const expandUri =
+      !options.noExpand && !options.queryModes?.length
+        ? resolveModelUri(
+            config,
+            "expand",
+            options.expandModel ?? options.genModel,
+            options.collection
+          )
+        : undefined;
+    const rerankUri = !options.noRerank
+      ? resolveModelUri(
+          config,
+          "rerank",
+          options.rerankModel,
+          options.collection
+        )
+      : undefined;
+    const traceStart = await startRetrievalTraceRequest({
+      store,
+      config,
+      query: queryText,
+      filters: retrievalTraceFilters({ ...options, limit }),
+      pipeline: "hybrid",
+      indexName: options.indexName,
+      modelUris: [embedUri, expandUri, rerankUri].filter(
+        (value): value is string => Boolean(value)
+      ),
+    });
+    if (!traceStart.ok) {
+      return { success: false, error: traceStart.error.message };
+    }
+    traceSession = traceStart.value ?? undefined;
     const llm = new LlmAdapter(config);
 
     // Resolve download policy from env/flags
@@ -143,12 +193,6 @@ export async function query(
       : undefined;
 
     // Create embedding port (for vector search)
-    const embedUri = resolveModelUri(
-      config,
-      "embed",
-      options.embedModel,
-      options.collection
-    );
     const embedResult = await llm.createEmbeddingPort(embedUri, {
       policy,
       onProgress: downloadProgress
@@ -161,13 +205,7 @@ export async function query(
 
     // Create expansion port - optional.
     // Skip when structured query modes are provided.
-    if (!options.noExpand && !options.queryModes?.length) {
-      const expandUri = resolveModelUri(
-        config,
-        "expand",
-        options.expandModel ?? options.genModel,
-        options.collection
-      );
+    if (expandUri) {
       const genResult = await llm.createExpansionPort(expandUri, {
         policy,
         onProgress: downloadProgress
@@ -180,13 +218,7 @@ export async function query(
     }
 
     // Create rerank port - optional
-    if (!options.noRerank) {
-      const rerankUri = resolveModelUri(
-        config,
-        "rerank",
-        options.rerankModel,
-        options.collection
-      );
+    if (rerankUri) {
       const rerankResult = await llm.createRerankPort(rerankUri, {
         policy,
         onProgress: downloadProgress
@@ -228,19 +260,27 @@ export async function query(
       expandPort,
       rerankPort,
     };
-
     const result = await searchHybrid(deps, queryText, {
       ...options,
       limit,
+      traceSession,
     });
 
     if (!result.ok) {
+      await traceSession?.finish("failed");
       return { success: false, error: result.error.message };
     }
 
     return {
       success: true,
       data: decorateSearchResultsForIndex(result.value, options.indexName),
+      metadata: traceSession?.metadata(),
+    };
+  } catch (cause) {
+    await finishRetrievalTraceAfterError(traceSession, cause);
+    return {
+      success: false,
+      error: cause instanceof Error ? cause.message : "Hybrid query failed",
     };
   } finally {
     if (embedPort) {
@@ -439,7 +479,6 @@ export function formatQuery(
         })
       : `Error: ${result.error}`;
   }
-
   // Output explain to stderr if present (async but best-effort)
   outputExplainToStderr(result.data);
 

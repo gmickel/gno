@@ -81,6 +81,13 @@ Use the narrower tools when the request is explicit:
 | `gno_multi_get`      | Batch several top result refs or glob-matched docs                              | Keep `maxBytes` bounded                           |
 | `gno_status`         | Results look stale, vector search fails, or embeddings may be missing           | Run write-enabled `gno_index` or `gno_embed`      |
 
+With private retrieval tracing enabled, `gno_search`, `gno_vsearch`,
+`gno_query`, `gno_get`, and `gno_context` return the random receipt identity in
+top-level `_meta.gno.retrievalTrace.traceId`. Model-visible content and
+`structuredContent` stay unchanged. Pass that value as optional `traceId` to
+`gno_get` to link the exact opened line range to the original retrieval.
+Disabled tracing omits `_meta` and performs no trace work.
+
 For ambiguous terms, pass `intent` instead of stuffing extra words into `query`:
 
 ```json

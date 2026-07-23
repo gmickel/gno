@@ -5,6 +5,7 @@
  * @module src/pipeline/answer
  */
 
+import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { GenerationPort } from "../llm/types";
 import type { StorePort } from "../store/types";
 import type {
@@ -15,6 +16,10 @@ import type {
 } from "./types";
 
 import { buildAnswerPrompt, type AnswerPromptSource } from "./answer-prompt";
+import {
+  CITATION_TRACE_METADATA,
+  SEARCH_RESULT_PLANNER_METADATA,
+} from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -23,6 +28,11 @@ import { buildAnswerPrompt, type AnswerPromptSource } from "./answer-prompt";
 /** Abstention message when LLM cannot ground answer */
 export const ABSTENTION_MESSAGE =
   "I don't have enough information in the provided sources to answer this question.";
+
+export const answerTraceTerminalStatus = (
+  citations: readonly Citation[] | undefined
+): "completed" | "partial" =>
+  citations && citations.length > 0 ? "completed" : "partial";
 
 /** Max characters per document (~8K tokens) */
 const MAX_DOC_CHARS = 32_000;
@@ -85,6 +95,65 @@ interface SelectedSource {
   candidate: SourceCandidate;
   reason: string;
 }
+
+interface ExactAnswerPassage {
+  text: string;
+  startLine: number;
+  endLine: number;
+  passageHash: string;
+}
+
+const sha256 = (value: string): string =>
+  new Bun.CryptoHasher("sha256").update(value).digest("hex");
+
+const completeLinePrefix = (
+  content: string,
+  startLine: number,
+  maxChars: number
+): ExactAnswerPassage | null => {
+  const lines = content.split("\n");
+  if (lines.length === 0) return null;
+  const selected: string[] = [];
+  let characters = 0;
+  for (const line of lines) {
+    const addition = selected.length === 0 ? line.length : line.length + 1;
+    if (characters + addition > maxChars) break;
+    selected.push(line);
+    characters += addition;
+  }
+  if (selected.length === 0) return null;
+  const text = selected.join("\n");
+  if (!text.trim()) return null;
+  return {
+    text,
+    startLine,
+    endLine: startLine + selected.length - 1,
+    passageHash: sha256(text),
+  };
+};
+
+const anchoredCompleteLines = (
+  content: string,
+  metadata: SearchResult[typeof SEARCH_RESULT_PLANNER_METADATA]
+): ExactAnswerPassage | null => {
+  if (
+    !metadata?.passageHash ||
+    metadata.startLine === undefined ||
+    metadata.endLine === undefined ||
+    metadata.endLine < metadata.startLine
+  ) {
+    return null;
+  }
+  const lines = content.split("\n");
+  const text = lines.slice(metadata.startLine - 1, metadata.endLine).join("\n");
+  if (
+    text.split("\n").length !== metadata.endLine - metadata.startLine + 1 ||
+    sha256(text) !== metadata.passageHash
+  ) {
+    return null;
+  }
+  return completeLinePrefix(text, metadata.startLine, MAX_DOC_CHARS);
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Citation Processing
@@ -423,52 +492,73 @@ export async function generateGroundedAnswer(
 ): Promise<AnswerGenerationResult | null> {
   const { genPort, store } = deps;
   const sourceSelection = selectAdaptiveSources(query, results);
+  const finalRanks = new Map(
+    results.map((result, index) => [result, index + 1] as const)
+  );
   const promptSources: AnswerPromptSource[] = [];
   const citations: Citation[] = [];
   let citationIndex = 0;
 
   for (const r of sourceSelection.selected) {
-    let content: string | null = null;
-    let usedFullContent = false;
+    let passage: ExactAnswerPassage | null = null;
+    const plannerMetadata = r[SEARCH_RESULT_PLANNER_METADATA];
+    const sourceHash = r.source.sourceHash;
+    const mirrorHash = r.conversion?.mirrorHash;
 
     // Try to fetch full document content if store available
-    if (store && r.conversion?.mirrorHash) {
-      const contentResult = await store.getContent(r.conversion.mirrorHash);
+    if (store && mirrorHash) {
+      const contentResult = await store.getContent(mirrorHash);
       if (contentResult.ok && contentResult.value) {
-        content = contentResult.value;
-        usedFullContent = true;
-        // Truncate to max doc chars
-        if (content.length > MAX_DOC_CHARS) {
-          content = `${content.slice(0, MAX_DOC_CHARS)}\n\n[... truncated ...]`;
+        if (sha256(contentResult.value) === mirrorHash) {
+          passage =
+            anchoredCompleteLines(contentResult.value, plannerMetadata) ??
+            completeLinePrefix(contentResult.value, 1, MAX_DOC_CHARS);
         }
       }
     }
 
-    // Fallback to snippet if full content unavailable
-    if (!content) {
-      if (!r.snippet || r.snippet.trim().length === 0) {
-        continue;
-      }
-      content =
-        r.snippet.length > MAX_SNIPPET_CHARS
-          ? `${r.snippet.slice(0, MAX_SNIPPET_CHARS)}...`
-          : r.snippet;
+    // Snippet fallback is allowed only when the planner proves it is the exact
+    // complete canonical chunk, never an FTS marker/ellipsis presentation.
+    if (
+      !passage &&
+      plannerMetadata?.passageHash &&
+      plannerMetadata.startLine !== undefined &&
+      plannerMetadata.endLine !== undefined &&
+      sha256(r.snippet) === plannerMetadata.passageHash &&
+      r.snippet.split("\n").length ===
+        plannerMetadata.endLine - plannerMetadata.startLine + 1
+    ) {
+      passage = completeLinePrefix(
+        r.snippet,
+        plannerMetadata.startLine,
+        MAX_SNIPPET_CHARS
+      );
     }
+    if (!(passage && sourceHash && mirrorHash)) continue;
 
     citationIndex += 1;
     promptSources.push({
       index: citationIndex,
       docid: r.docid,
       uri: r.uri,
-      content,
+      content: passage.text,
       guidance: r.context,
     });
-    // Clear line range when citing full content (not a specific snippet)
     citations.push({
       docid: r.docid,
       uri: r.uri,
-      startLine: usedFullContent ? undefined : r.snippetRange?.startLine,
-      endLine: usedFullContent ? undefined : r.snippetRange?.endLine,
+      startLine: passage.startLine,
+      endLine: passage.endLine,
+      [CITATION_TRACE_METADATA]: {
+        sourceHash,
+        mirrorHash,
+        passageHash: passage.passageHash,
+        seq: plannerMetadata?.seq,
+        rank: finalRanks.get(r) ?? 1,
+        plannerRank: plannerMetadata?.retrievalRank,
+        sources: plannerMetadata?.sources,
+        graphExpanded: plannerMetadata?.graphExpanded,
+      },
     });
   }
 
@@ -527,4 +617,50 @@ export function processAnswerResult(rawResult: AnswerGenerationResult): {
     citations: filteredCitations,
     answerContext: rawResult.answerContext,
   };
+}
+
+/** Process first, then record only citations retained in the final answer. */
+export async function processAnswerResultWithTrace(
+  rawResult: AnswerGenerationResult,
+  traceSession?: RetrievalTraceSession
+): Promise<ReturnType<typeof processAnswerResult>> {
+  const processed = processAnswerResult(rawResult);
+  if (!traceSession || processed.citations.length === 0) return processed;
+  const evidence = processed.citations.flatMap((citation) => {
+    const metadata = citation[CITATION_TRACE_METADATA];
+    if (
+      !metadata ||
+      citation.startLine === undefined ||
+      citation.endLine === undefined
+    ) {
+      return [];
+    }
+    return [
+      {
+        docid: citation.docid,
+        uri: citation.uri,
+        sourceHash: metadata.sourceHash,
+        mirrorHash: metadata.mirrorHash,
+        passageHash: metadata.passageHash,
+        startLine: citation.startLine,
+        endLine: citation.endLine,
+        rank: metadata.rank,
+        ...(metadata.seq === undefined ? {} : { seq: metadata.seq }),
+        ...(metadata.plannerRank === undefined
+          ? {}
+          : { plannerRank: metadata.plannerRank }),
+        ...(metadata.sources === undefined
+          ? {}
+          : { sources: metadata.sources }),
+        ...(metadata.graphExpanded === undefined
+          ? {}
+          : { graphExpanded: metadata.graphExpanded }),
+      },
+    ];
+  });
+  const recorded = await traceSession.recordEvidence("cite", evidence);
+  if (!recorded.ok) {
+    throw new Error(`Trace recording failed: ${recorded.error.message}`);
+  }
+  return processed;
 }

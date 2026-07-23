@@ -57,6 +57,7 @@ import {
 import {
   DEFAULT_PIPELINE_CONFIG,
   SEARCH_RESULT_PLANNER_METADATA,
+  SEARCH_RESULTS_TRACE_METADATA,
 } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -397,6 +398,8 @@ export async function searchHybrid(
       });
       if (expandResult.ok) {
         expansion = expandResult.value;
+      } else {
+        counters.fallbackEvents.push("expansion_error");
       }
     }
   }
@@ -957,6 +960,11 @@ export async function searchHybrid(
           seq: snippetChunk.seq,
           sources: [...candidate.sources].sort(),
           graphExpanded: candidate.sources.includes("graph"),
+          startLine: snippetChunk.startLine,
+          endLine: snippetChunk.endLine,
+          passageHash: new Bun.CryptoHasher("sha256")
+            .update(snippetChunk.text)
+            .digest("hex"),
         },
       });
     }
@@ -1002,7 +1010,7 @@ export async function searchHybrid(
   const finalResults = results.slice(0, limit);
   await attachSearchResultContexts(store, finalResults);
 
-  return ok({
+  const output: SearchResults = {
     results: finalResults,
     meta: {
       query,
@@ -1033,5 +1041,74 @@ export async function searchHybrid(
       explain: explainData,
       trace: diagnoseTrace,
     },
+  };
+  const fallbackCodes = [...new Set(counters.fallbackEvents)].sort();
+  const capabilityOutcomes = [
+    { capability: "lexical_search", status: "used" as const },
+    vectorAvailable
+      ? fallbackCodes.includes("vector_embed_error")
+        ? {
+            capability: "semantic_search",
+            status: "failed" as const,
+            reasonCode: "vector_embed_error",
+          }
+        : { capability: "semantic_search", status: "used" as const }
+      : {
+          capability: "semantic_search",
+          status: "unavailable" as const,
+          reasonCode: "vector_unavailable",
+        },
+    expansion !== null
+      ? { capability: "query_expansion", status: "used" as const }
+      : {
+          capability: "query_expansion",
+          status:
+            expansionStatus === "attempted"
+              ? ("failed" as const)
+              : ("unavailable" as const),
+          reasonCode:
+            expansionStatus === "attempted"
+              ? "expansion_error"
+              : expansionStatus === "skipped_strong"
+                ? "expansion_skipped_strong"
+                : "expansion_disabled",
+        },
+    rerankResult.reranked
+      ? { capability: "reranking", status: "used" as const }
+      : {
+          capability: "reranking",
+          status:
+            rerankResult.fallbackReason === "error"
+              ? ("failed" as const)
+              : ("unavailable" as const),
+          reasonCode:
+            rerankResult.fallbackReason === "error"
+              ? "rerank_error"
+              : "rerank_disabled",
+        },
+    graphExpansion.meta.enabled
+      ? { capability: "graph_expansion", status: "used" as const }
+      : {
+          capability: "graph_expansion",
+          status: "unavailable" as const,
+          reasonCode:
+            graphExpansion.meta.fallbackReasons[0] ?? "graph_disabled",
+        },
+  ];
+  Object.defineProperty(output, SEARCH_RESULTS_TRACE_METADATA, {
+    enumerable: false,
+    value: { capabilityOutcomes, fallbackCodes },
   });
+  const traceResult = await options.traceSession?.recordRetrieval(
+    output,
+    timings.totalMs
+  );
+  if (traceResult && !traceResult.ok) {
+    return err(
+      "QUERY_FAILED",
+      `Trace recording failed: ${traceResult.error.message}`,
+      traceResult.error.cause
+    );
+  }
+  return ok(output);
 }

@@ -26,6 +26,7 @@ import {
   shouldSortByRecency,
   type TemporalRange,
 } from "./temporal";
+import { SEARCH_RESULT_PLANNER_METADATA } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Score Normalization
@@ -76,6 +77,7 @@ export async function searchVectorWithEmbedding(
   queryEmbedding: Float32Array,
   options: SearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
+  const traceStartedAt = options.traceSession ? performance.now() : 0;
   const { store, vectorIndex } = deps;
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
@@ -214,6 +216,7 @@ export async function searchVectorWithEmbedding(
             language: chunk.language,
             startLine: chunk.startLine,
             endLine: chunk.endLine,
+            seq: chunk.seq,
           },
           score,
         });
@@ -256,6 +259,18 @@ export async function searchVectorWithEmbedding(
             converterVersion: doc.converterVersion ?? undefined,
           }
         : undefined,
+      [SEARCH_RESULT_PLANNER_METADATA]: {
+        retrievalRank: 0,
+        mirrorHash: vec.mirrorHash,
+        seq: chunk.seq,
+        sources: ["vector"],
+        graphExpanded: false,
+        startLine: chunk.startLine,
+        endLine: chunk.endLine,
+        passageHash: new Bun.CryptoHasher("sha256")
+          .update(chunk.text)
+          .digest("hex"),
+      },
     });
   }
 
@@ -312,6 +327,22 @@ export async function searchVectorWithEmbedding(
               converterVersion: doc.converterVersion ?? undefined,
             }
           : undefined,
+        ...(doc.mirrorHash
+          ? {
+              [SEARCH_RESULT_PLANNER_METADATA]: {
+                retrievalRank: 0,
+                mirrorHash: doc.mirrorHash,
+                seq: chunk.seq,
+                sources: ["vector" as const],
+                graphExpanded: false,
+                startLine: chunk.startLine,
+                endLine: chunk.endLine,
+                passageHash: new Bun.CryptoHasher("sha256")
+                  .update(chunk.text)
+                  .digest("hex"),
+              },
+            }
+          : {}),
       });
     }
   }
@@ -334,9 +365,13 @@ export async function searchVectorWithEmbedding(
   }
 
   const finalResults = results.slice(0, limit);
+  for (const [index, result] of finalResults.entries()) {
+    const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
+    if (metadata) metadata.retrievalRank = index + 1;
+  }
   await attachSearchResultContexts(store, finalResults);
 
-  return ok({
+  const output: SearchResults = {
     results: finalResults,
     meta: {
       query,
@@ -353,7 +388,19 @@ export async function searchVectorWithEmbedding(
       author: options.author,
       queryLanguage,
     },
-  });
+  };
+  const traceResult = await options.traceSession?.recordRetrieval(
+    output,
+    performance.now() - traceStartedAt
+  );
+  if (traceResult && !traceResult.ok) {
+    return err(
+      "QUERY_FAILED",
+      `Trace recording failed: ${traceResult.error.message}`,
+      traceResult.error.cause
+    );
+  }
+  return ok(output);
 }
 
 /**
@@ -397,6 +444,7 @@ interface ChunkInfo {
   language: string | null;
   startLine: number;
   endLine: number;
+  seq: number;
 }
 
 interface DocumentInfo {

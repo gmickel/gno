@@ -72,3 +72,8 @@ export {
   ContextRuntimeError,
   type ContextRuntimeErrorCode,
 } from "../app/context-runtime";
+export {
+  getRetrievalTraceMetadata,
+  RETRIEVAL_TRACE_METADATA,
+  type RetrievalTraceSurfaceMetadata,
+} from "../core/retrieval-trace-session";

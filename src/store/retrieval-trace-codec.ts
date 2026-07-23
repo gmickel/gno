@@ -45,6 +45,7 @@ const SAFE_RECEIPT_STRING_KEYS = new Set([
   "mode",
   "name",
   "outcome",
+  "passageHash",
   "reasonCode",
   "ref",
   "sourceHash",
@@ -59,6 +60,7 @@ const SAFE_RECEIPT_STRING_LIST_KEYS = new Set([
   "fallbackCodes",
   "fallbacks",
   "itemTypes",
+  "sources",
   "tags",
 ]);
 

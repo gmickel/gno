@@ -148,6 +148,30 @@ Collection names are case-insensitive on input and normalized to lowercase in re
 - Use `gno_multi_get` to batch the top result refs. Keep `maxBytes` bounded to avoid flooding client context.
 - Check `gno_status` when results look stale, vector search is unavailable, or embedding backlog may explain missing results.
 
+### Private retrieval metadata
+
+When local tracing is enabled, successful `gno_search`, `gno_vsearch`,
+`gno_query`, `gno_get`, and `gno_context` results include non-model-visible
+top-level response metadata:
+
+```json
+{
+  "_meta": {
+    "gno": {
+      "retrievalTrace": {
+        "traceId": "..."
+      }
+    }
+  }
+}
+```
+
+`structuredContent` and model-visible `content` are unchanged. `gno_get`
+accepts optional `traceId` to continue an open retrieval trace and records
+evidence only when a valid exact line range is returned. Out-of-range and
+failed gets never fabricate evidence. Disabled tracing omits `_meta` and does
+no trace ID or fingerprint work.
+
 ### gno_context
 
 Compile a deterministic, extractive Context Capsule. The active MCP server

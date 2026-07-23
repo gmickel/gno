@@ -164,6 +164,15 @@ async function writeOutput(
   }
 }
 
+/** Emit opt-in trace identity without changing command stdout payloads. */
+export function writeRetrievalTraceReceipt(
+  metadata: { traceId: string } | undefined
+): void {
+  if (metadata) {
+    process.stderr.write(`Trace: ${metadata.traceId}\n`);
+  }
+}
+
 async function resolveTerminalLinkPolicy(
   format: "terminal" | "json" | "files" | "csv" | "md" | "xml"
 ): Promise<
@@ -435,6 +444,7 @@ function wireSearchCommands(program: Command): void {
         terminalLinks: await resolveTerminalLinkPolicy(format),
       });
       await writeOutput(output, format);
+      writeRetrievalTraceReceipt(result.metadata);
     });
 
   // vsearch - Vector similarity search
@@ -547,6 +557,7 @@ function wireSearchCommands(program: Command): void {
         terminalLinks: await resolveTerminalLinkPolicy(format),
       });
       await writeOutput(output, format);
+      writeRetrievalTraceReceipt(result.metadata);
     });
 
   // query - Hybrid search with expansion and reranking
@@ -768,6 +779,7 @@ function wireSearchCommands(program: Command): void {
         terminalLinks: await resolveTerminalLinkPolicy(format),
       });
       await writeOutput(output, format);
+      writeRetrievalTraceReceipt(result.metadata);
     });
 
   // bench - Retrieval benchmark fixture runner
@@ -960,6 +972,7 @@ function wireSearchCommands(program: Command): void {
         showSources,
       });
       await writeOutput(output, format);
+      writeRetrievalTraceReceipt(result.metadata);
     });
 }
 
@@ -1191,6 +1204,7 @@ function wireRetrievalCommands(program: Command): void {
       parsePositiveInt.bind(null, "limit")
     )
     .option("--line-numbers", "Prefix lines with numbers")
+    .option("--trace-id <id>", "Continue an open retrieval trace")
     .option("--source", "Include source metadata")
     .option("--json", "JSON output")
     .option("--md", "Markdown output")
@@ -1209,6 +1223,7 @@ function wireRetrievalCommands(program: Command): void {
         source: Boolean(cmdOpts.source),
         json: format === "json",
         md: format === "md",
+        traceId: cmdOpts.traceId as string | undefined,
       });
 
       if (!result.success) {
@@ -1225,6 +1240,7 @@ function wireRetrievalCommands(program: Command): void {
           md: format === "md",
         })}\n`
       );
+      writeRetrievalTraceReceipt(result.metadata);
     });
 
   // multi-get - Retrieve multiple documents

@@ -126,6 +126,44 @@ curl -X POST http://localhost:3000/api/collections \
 
 > **Note**: Token auth is optional. Requests without an `Origin` header (like curl) work without a token.
 
+### Private Retrieval Trace Header
+
+When opt-in retrieval traces are enabled, `/api/search`, `/api/query`,
+`/api/ask`, and `/api/context` return the local trace identity in:
+
+```http
+X-GNO-Trace-ID: <trace-id>
+```
+
+The header is transport metadata. It is never inserted into response JSON,
+Markdown, search-result items, or the canonical Context Capsule, so enabling
+tracing does not change body bytes or Capsule identity. Validation failures
+that occur before trace creation have no trace header. Failures after trace
+creation return the header and finalize the receipt as `failed` or
+`cancelled`; Ask responses without supported cited evidence finalize as
+`partial`.
+
+Search and query receipts remain open for an explicit follow-up document read.
+Pass their response header back on `GET /api/doc` to append exact `get` and
+`open` evidence to the same local trace:
+
+```bash
+trace_id="$(
+  curl -sS -D - -o /tmp/gno-search.json \
+    -X POST http://localhost:3000/api/search \
+    -H "Content-Type: application/json" \
+    -d '{"query":"authentication"}' |
+  awk 'tolower($1) == "x-gno-trace-id:" { print $2 }' |
+  tr -d '\r'
+)"
+
+curl -sS "http://localhost:3000/api/doc?uri=gno://notes/auth.md" \
+  -H "X-GNO-Trace-ID: ${trace_id}"
+```
+
+The continuation header is ignored when recording is disabled. It does not
+enable tracing or authorize any mutation.
+
 ---
 
 ## Endpoints
@@ -1050,6 +1088,10 @@ For converted source formats such as PDF or DOCX, `capabilities.editable` is `fa
 ```bash
 curl "http://localhost:3000/api/doc?uri=gno://notes/readme.md" | jq '.content'
 ```
+
+To attach this explicit read to an open search/query receipt, send the
+`X-GNO-Trace-ID` response header from the earlier request. The response echoes
+the same header after exact full-document `get` and `open` spans are recorded.
 
 ---
 

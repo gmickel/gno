@@ -27,6 +27,7 @@ import {
   resolveTemporalRange,
   shouldSortByRecency,
 } from "./temporal";
+import { SEARCH_RESULT_PLANNER_METADATA } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Score Normalization
@@ -126,6 +127,22 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
     snippetRange,
     source,
     conversion: fts.mirrorHash ? { mirrorHash: fts.mirrorHash } : undefined,
+    ...(chunk && fts.mirrorHash
+      ? {
+          [SEARCH_RESULT_PLANNER_METADATA]: {
+            retrievalRank: 0,
+            mirrorHash: fts.mirrorHash,
+            seq: chunk.seq,
+            sources: ["bm25" as const],
+            graphExpanded: false,
+            startLine: chunk.startLine,
+            endLine: chunk.endLine,
+            passageHash: new Bun.CryptoHasher("sha256")
+              .update(chunk.text)
+              .digest("hex"),
+          },
+        }
+      : {}),
   };
 }
 
@@ -142,6 +159,7 @@ export async function searchBm25(
   query: string,
   options: SearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
+  const traceStartedAt = options.traceSession ? performance.now() : 0;
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
   const recencySort = shouldSortByRecency(query);
@@ -331,9 +349,13 @@ export async function searchBm25(
   }
 
   const finalResults = filteredResults.slice(0, limit);
+  for (const [index, result] of finalResults.entries()) {
+    const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
+    if (metadata) metadata.retrievalRank = index + 1;
+  }
   await attachSearchResultContexts(store, finalResults);
 
-  return ok({
+  const output: SearchResults = {
     results: finalResults,
     meta: {
       query,
@@ -349,5 +371,17 @@ export async function searchBm25(
       author: options.author,
       queryLanguage,
     },
-  });
+  };
+  const traceResult = await options.traceSession?.recordRetrieval(
+    output,
+    performance.now() - traceStartedAt
+  );
+  if (traceResult && !traceResult.ok) {
+    return err(
+      "QUERY_FAILED",
+      `Trace recording failed: ${traceResult.error.message}`,
+      traceResult.error.cause
+    );
+  }
+  return ok(output);
 }

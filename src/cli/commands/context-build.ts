@@ -1,6 +1,7 @@
 /** Context Capsule build command over the shared application runtime. */
 
 import type { ContextCapsuleBuildInput } from "../../app/context-runtime";
+import type { RetrievalTraceSession } from "../../core/retrieval-trace-session";
 import type { EmbeddingPort, RerankPort } from "../../llm/types";
 import type { VectorIndexPort } from "../../store/vector";
 
@@ -10,6 +11,10 @@ import {
   canonicalBuiltContextCapsuleJson,
   validateContextCapsuleBuildInput,
 } from "../../app/context-runtime";
+import {
+  finishRetrievalTraceAfterError,
+  startRetrievalTraceRequest,
+} from "../../core/retrieval-trace-request";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
@@ -77,13 +82,56 @@ export const contextBuild = async (
   let embedPort: EmbeddingPort | null = null;
   let rerankPort: RerankPort | null = null;
   let vectorIndex: VectorIndexPort | null = null;
+  let traceSession: RetrievalTraceSession | undefined;
   try {
     validateContextCapsuleBuildInput(
       { goal, ...options },
       options.indexName,
       config.collections.map((collection) => collection.name)
     );
+    const collection =
+      options.collections?.length === 1 ? options.collections[0] : undefined;
+    const embedUri =
+      options.depthPolicy === "fast"
+        ? undefined
+        : resolveModelUri(config, "embed", undefined, collection);
+    const rerankUri =
+      options.depthPolicy === "fast"
+        ? undefined
+        : resolveModelUri(config, "rerank", undefined, collection);
+    const traceStart = await startRetrievalTraceRequest({
+      store,
+      config,
+      query: options.query ?? goal,
+      goal,
+      filters: {
+        limit: options.limit,
+        collection,
+        collections: [...(options.collections ?? [])].sort(),
+        lang: options.lang,
+        tagsAll: options.tagsAll,
+        tagsAny: options.tagsAny,
+        since: options.since,
+        until: options.until,
+        categories: options.categories,
+        author: options.author,
+        graph: options.graph,
+        candidateLimit: options.candidateLimit,
+        queryModes: options.queryModes,
+        uriPrefix: options.uriPrefix ?? undefined,
+      },
+      pipeline: "context",
+      indexName: options.indexName,
+      modelUris: [embedUri, rerankUri].filter((value): value is string =>
+        Boolean(value)
+      ),
+    });
+    if (!traceStart.ok) throw new Error(traceStart.error.message);
+    traceSession = traceStart.value ?? undefined;
     if (options.depthPolicy !== "fast") {
+      if (!(embedUri && rerankUri)) {
+        throw new Error("Context model identities could not be resolved");
+      }
       const globals = getGlobals();
       const policy = resolveDownloadPolicy(process.env, {
         offline: globals.offline,
@@ -92,9 +140,6 @@ export const contextBuild = async (
       const progress = showProgress
         ? createThrottledProgressRenderer(createProgressRenderer())
         : undefined;
-      const collection =
-        options.collections?.length === 1 ? options.collections[0] : undefined;
-      const embedUri = resolveModelUri(config, "embed", undefined, collection);
       const embedResult = await llm.createEmbeddingPort(embedUri, {
         policy,
         onProgress: progress ? (value) => progress("embed", value) : undefined,
@@ -110,12 +155,6 @@ export const contextBuild = async (
           if (vectorResult.ok) vectorIndex = vectorResult.value;
         }
       }
-      const rerankUri = resolveModelUri(
-        config,
-        "rerank",
-        undefined,
-        collection
-      );
       const rerankResult = await llm.createRerankPort(rerankUri, {
         policy,
         onProgress: progress ? (value) => progress("rerank", value) : undefined,
@@ -132,12 +171,20 @@ export const contextBuild = async (
         vectorIndex,
         embedPort,
         rerankPort,
+        traceSession,
       }
     );
+    const finished = await traceSession?.finish("completed");
+    if (finished && !finished.ok) throw new Error(finished.error.message);
+    const traceMetadata = traceSession?.metadata();
+    if (traceMetadata) {
+      process.stderr.write(`Trace: ${traceMetadata.traceId}\n`);
+    }
     return options.format === "md"
       ? formatContextCapsuleMarkdown(capsule)
       : canonicalBuiltContextCapsuleJson(capsule);
   } catch (error) {
+    await finishRetrievalTraceAfterError(traceSession, error);
     if (error instanceof CliError) throw error;
     throw contextCliError(error);
   } finally {

@@ -16,6 +16,7 @@ import {
 } from "../../app/context-surface";
 import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
 import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
+import { RETRIEVAL_TRACE_METADATA } from "../../core/retrieval-trace-session";
 import { normalizeTag } from "../../core/tags";
 import { handleAddCollection } from "./add-collection";
 import { handleCapture } from "./capture";
@@ -563,6 +564,12 @@ const getInputSchema = z.object({
     .boolean()
     .default(true)
     .describe("Include line numbers in output"),
+  traceId: z
+    .string()
+    .min(1)
+    .max(128)
+    .optional()
+    .describe("Continue an open retrieval trace returned by a search/query"),
 });
 
 const multiGetInputSchema = z.object({
@@ -847,9 +854,16 @@ export async function runTool<T>(
   const modelLease = ctx.acquireModelLease?.();
   try {
     const data = await (ctx.runWithSnapshot?.(fn) ?? fn());
+    const traceMetadata =
+      data !== null && typeof data === "object"
+        ? (data as Record<PropertyKey, unknown>)[RETRIEVAL_TRACE_METADATA]
+        : undefined;
     return {
       content: [{ type: "text", text: formatText(data) }],
       structuredContent: data as { [x: string]: unknown },
+      ...(traceMetadata
+        ? { _meta: { gno: { retrievalTrace: traceMetadata } } }
+        : {}),
     };
   } catch (e) {
     // Exception firewall: never throw, always return isError

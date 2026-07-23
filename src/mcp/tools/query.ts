@@ -26,6 +26,15 @@ import {
   normalizeContentTypes,
 } from "../../config";
 import { resolveDepthPolicy } from "../../core/depth-policy";
+import {
+  finishRetrievalTraceAfterError,
+  retrievalTraceFilters,
+  startRetrievalTraceRequest,
+} from "../../core/retrieval-trace-request";
+import {
+  attachRetrievalTraceMetadata,
+  type RetrievalTraceSession,
+} from "../../core/retrieval-trace-session";
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
@@ -195,26 +204,79 @@ export function handleQuery(
           : undefined;
 
       const preset = getActivePreset(ctx.config);
-      const llm = new LlmAdapter(ctx.config);
-
-      // Resolve download policy from env (MCP has no CLI flags)
-      const policy = resolveDownloadPolicy(process.env, {});
-
-      // Non-TTY progress for MCP (periodic lines to stderr, not \r)
-      const downloadProgress = createNonTtyProgressRenderer();
 
       let embedPort: EmbeddingPort | null = null;
       let expandPort: GenerationPort | null = null;
       let rerankPort: RerankPort | null = null;
       let vectorIndex: VectorIndexPort | null = null;
+      let traceSession: RetrievalTraceSession | undefined;
       const embedUri = resolveModelUri(
         ctx.config,
         "embed",
         undefined,
         args.collection
       );
+      const hasStructuredModes = Boolean(queryModes?.length);
+      const depthPolicy = resolveDepthPolicy({
+        presetId: preset.id,
+        fast: args.fast,
+        thorough: args.thorough,
+        expand: args.expand,
+        rerank: args.rerank,
+        candidateLimit: args.candidateLimit,
+        hasStructuredModes,
+      });
+      const { noExpand, noRerank } = depthPolicy;
+      const expandUri =
+        !noExpand && !hasStructuredModes
+          ? resolveModelUri(ctx.config, "expand", undefined, args.collection)
+          : undefined;
+      const rerankUri = !noRerank
+        ? resolveModelUri(ctx.config, "rerank", undefined, args.collection)
+        : undefined;
+      const options = {
+        limit: args.limit ?? 5,
+        minScore: args.minScore,
+        collection: args.collection,
+        queryLanguageHint: args.lang,
+        intent: args.intent,
+        candidateLimit: depthPolicy.candidateLimit,
+        exclude: args.exclude,
+        since: args.since,
+        until: args.until,
+        categories: args.categories,
+        author: args.author,
+        noExpand,
+        noRerank,
+        graph: args.graph === true,
+        noGraph: args.noGraph || args.fast,
+        queryModes,
+        tagsAll: normalizeTagFilters(args.tagsAll),
+        tagsAny: normalizeTagFilters(args.tagsAny),
+      };
 
       try {
+        const traceStart = await startRetrievalTraceRequest({
+          store: ctx.store,
+          config: ctx.config,
+          query: queryText,
+          filters: retrievalTraceFilters(options),
+          pipeline: "hybrid",
+          indexName: ctx.indexName,
+          modelUris: [embedUri, expandUri, rerankUri].filter(
+            (value): value is string => Boolean(value)
+          ),
+        });
+        if (!traceStart.ok) throw new Error(traceStart.error.message);
+        traceSession = traceStart.value ?? undefined;
+        const llm = new LlmAdapter(ctx.config);
+
+        // Resolve download policy from env (MCP has no CLI flags)
+        const policy = resolveDownloadPolicy(process.env, {});
+
+        // Non-TTY progress for MCP (periodic lines to stderr, not \r)
+        const downloadProgress = createNonTtyProgressRenderer();
+
         // Create embedding port (for vector search) - optional
         const embedResult = await llm.createEmbeddingPort(embedUri, {
           policy,
@@ -224,41 +286,23 @@ export function handleQuery(
           embedPort = embedResult.value;
         }
 
-        const hasStructuredModes = Boolean(queryModes?.length);
-        const depthPolicy = resolveDepthPolicy({
-          presetId: preset.id,
-          fast: args.fast,
-          thorough: args.thorough,
-          expand: args.expand,
-          rerank: args.rerank,
-          candidateLimit: args.candidateLimit,
-          hasStructuredModes,
-        });
-        const { noExpand, noRerank } = depthPolicy;
-
         // Create expansion port - optional
-        if (!noExpand && !hasStructuredModes) {
-          const genResult = await llm.createExpansionPort(
-            resolveModelUri(ctx.config, "expand", undefined, args.collection),
-            {
-              policy,
-              onProgress: (progress) => downloadProgress("expand", progress),
-            }
-          );
+        if (expandUri) {
+          const genResult = await llm.createExpansionPort(expandUri, {
+            policy,
+            onProgress: (progress) => downloadProgress("expand", progress),
+          });
           if (genResult.ok) {
             expandPort = genResult.value;
           }
         }
 
         // Create rerank port - optional
-        if (!noRerank) {
-          const rerankResult = await llm.createRerankPort(
-            resolveModelUri(ctx.config, "rerank", undefined, args.collection),
-            {
-              policy,
-              onProgress: (progress) => downloadProgress("rerank", progress),
-            }
-          );
+        if (rerankUri) {
+          const rerankResult = await llm.createRerankPort(rerankUri, {
+            policy,
+            onProgress: (progress) => downloadProgress("rerank", progress),
+          });
           if (rerankResult.ok) {
             rerankPort = rerankResult.value;
           }
@@ -289,28 +333,9 @@ export function handleQuery(
           rerankPort,
         };
 
-        // Note: per spec, lang is a "hint" for query, not a filter
-        // Pass as queryLanguageHint to affect expansion prompt selection
-        // but NOT retrieval filtering (that would be options.lang)
         const result = await searchHybrid(deps, queryText, {
-          limit: args.limit ?? 5,
-          minScore: args.minScore,
-          collection: args.collection,
-          queryLanguageHint: args.lang, // Affects expansion prompt, not retrieval
-          intent: args.intent,
-          candidateLimit: depthPolicy.candidateLimit,
-          exclude: args.exclude,
-          since: args.since,
-          until: args.until,
-          categories: args.categories,
-          author: args.author,
-          noExpand,
-          noRerank,
-          graph: args.graph === true,
-          noGraph: args.noGraph || args.fast,
-          queryModes,
-          tagsAll: normalizeTagFilters(args.tagsAll),
-          tagsAny: normalizeTagFilters(args.tagsAny),
+          ...options,
+          traceSession,
         });
 
         if (!result.ok) {
@@ -320,15 +345,21 @@ export function handleQuery(
         // Enrich with absPath
         const enrichedResults = enrichWithAbsPath(result.value.results, ctx);
 
-        return {
-          ...result.value,
-          results: enrichedResults,
-          meta: {
-            ...result.value.meta,
-            // Add queryLanguage hint if provided
-            ...(args.lang ? { queryLanguage: args.lang } : {}),
+        return attachRetrievalTraceMetadata(
+          {
+            ...result.value,
+            results: enrichedResults,
+            meta: {
+              ...result.value.meta,
+              // Add queryLanguage hint if provided
+              ...(args.lang ? { queryLanguage: args.lang } : {}),
+            },
           },
-        };
+          traceSession
+        );
+      } catch (cause) {
+        await finishRetrievalTraceAfterError(traceSession, cause);
+        throw cause;
       } finally {
         if (embedPort) {
           await embedPort.dispose();
