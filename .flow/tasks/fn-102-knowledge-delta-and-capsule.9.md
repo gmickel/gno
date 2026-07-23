@@ -24,9 +24,20 @@ state.
 
 
 ## Done summary
-TBD
+Closed the stale saved-Capsule receipt persistence race.
 
+Verification persistence now atomically compares the expected Capsule ID and
+file hash with the current registration before writing a receipt or advancing
+`lastAttemptedSequence`. A mismatch returns a conflict with no mutation.
+Reverification reloads and retries once; the scheduler then uses its existing
+registration-epoch CAS to retry the global high-water drain. Persistent manual
+conflicts fail clearly after two bounded attempts.
+
+Deterministic coverage re-registers changed Capsule bytes during the first
+receipt write and proves the stale receipt never exists, only the replacement
+Capsule notification is emitted, the replacement receipt is persisted, and the
+registration/global sequences reach the current journal high-water.
 ## Evidence
-- Commits:
-- Tests:
-- PRs:
+- Commits: 2ef23ad
+- Tests: bun test test/changes/capsule-reverification.test.ts (12 pass, 0 fail), bun test (2846 pass, 1 expected Windows skip, 0 fail), bun run lint:check, bun run typecheck, bun run docs:verify (13 pass, 2 model-cache skips), .flow/bin/flowctl validate --all (110 specs, 318 tasks, valid)
+- PRs: 143
