@@ -102,3 +102,36 @@ If it fails, re-evaluate the substantive-claim segmentation and four-state verdi
 | R5 | CLI, REST, MCP, SDK, schemas, docs, and readable output share one verification result. | fn-101-trustworthy-synthesis-and-claim.3, fn-101-trustworthy-synthesis-and-claim.4 | — |
 | R6 | Deterministic stages run without a model; verifier unavailability degrades explicitly without fabricating confidence. | fn-101-trustworthy-synthesis-and-claim.1, fn-101-trustworthy-synthesis-and-claim.2, fn-101-trustworthy-synthesis-and-claim.3 | — |
 | R7 | `fn-97` cases show no answer-accuracy regression and a measurable reduction in unsupported substantive claims. | fn-101-trustworthy-synthesis-and-claim.4 | — |
+
+## Sync Log
+
+- 2026-07-23T10:50:38.590Z — **Gordon Mickel (Linear)**:
+
+  Implementation started on `feat/trustworthy-synthesis`.
+
+  Task 1 focus: deterministic claim segmentation, exact citation offsets, closed Capsule identity/freshness validation, four-state contract, strict schema parity, and abstention aggregation. Semantic support remains explicitly separate from citation presence.
+
+- 2026-07-23T11:08:00.460Z — **Gordon Mickel (Linear)**:
+
+  Task 1 complete on the feature branch.
+
+  - `90bacb5` deterministic claim verification contract
+  - `d020d55` Flow completion metadata
+  - Exact UTF-16 spans, closed Capsule/freshness identity, strict four-state semantics, 100% support gate, hygiene abstention, strict Zod/JSON schema parity
+  - Host gate: 26 focused/answer tests, type-aware lint and format clean
+  - Independent review: SHIP
+
+  Task 2 semantic verifier is now in progress.
+
+- 2026-07-23T11:21:22.428Z — **Gordon Mickel (Linear)**:
+
+  Task 2 complete on the feature branch.
+
+  - `a57d19f` bounded semantic verifier and structured-generation capability
+  - `8793389` Flow completion metadata
+  - Local GGUF JSON-Schema grammar enforcement; HTTP structured verification explicitly unavailable before network
+  - One-call, closed-evidence verifier with strict post-model claim/evidence partition validation and injection fixtures
+  - Host gate: 39 focused tests; lint/typecheck/format clean
+  - Independent review: SHIP
+
+  Task 3 cross-surface verified Ask integration is in progress.
