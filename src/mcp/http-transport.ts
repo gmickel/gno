@@ -11,8 +11,10 @@ import type {
 } from "./http-session";
 
 import { HttpMcpSessionStore } from "./http-session";
+import { MCP_WRITE_TOOL_NAMES } from "./tools/index";
 
 const DEFAULT_MAX_CONCURRENT_REQUESTS = 64;
+const DEFAULT_MAX_QUEUED_REQUESTS = 0;
 const MCP_HTTP_METHODS = new Set(["DELETE", "GET", "POST"]);
 const MCP_SESSION_HEADER = "mcp-session-id";
 
@@ -23,6 +25,13 @@ export interface HttpMcpTransportRuntime extends HttpMcpSessionRuntime {
 
 export interface HttpMcpTransportOptions extends HttpMcpSessionStoreOptions {
   maxConcurrentRequests?: number;
+  maxQueuedRequests?: number;
+  enableWrite?: boolean;
+}
+
+export interface HttpMcpRequestContext {
+  identity: string;
+  parsedBody?: unknown;
 }
 
 function jsonRpcError(
@@ -40,6 +49,22 @@ function jsonRpcError(
 function methodNotAllowed(): Response {
   return jsonRpcError(405, -32_000, "Method not allowed.", {
     Allow: "GET, POST, DELETE",
+  });
+}
+
+function containsUnauthorizedWrite(parsedBody: unknown): boolean {
+  const messages = Array.isArray(parsedBody) ? parsedBody : [parsedBody];
+  return messages.some((message) => {
+    if (typeof message !== "object" || message === null) return false;
+    const candidate = message as {
+      method?: unknown;
+      params?: { name?: unknown };
+    };
+    return (
+      candidate.method === "tools/call" &&
+      typeof candidate.params?.name === "string" &&
+      MCP_WRITE_TOOL_NAMES.has(candidate.params.name)
+    );
   });
 }
 
@@ -103,12 +128,16 @@ function wrapStreamingResponse(
   return new Response(body, response);
 }
 
-/** Stateful session gateway. The production server does not mount it yet. */
+/** Stateful session gateway used by the production `/mcp` route. */
 export class HttpMcpTransport {
   readonly #runtime: HttpMcpTransportRuntime;
   readonly #sessions: HttpMcpSessionStore;
   readonly #maxConcurrentRequests: number;
+  readonly #maxQueuedRequests: number;
+  readonly #enableWrite: boolean;
+  readonly #capacityWaiters: Array<(admitted: boolean) => void> = [];
   #activeRequests = 0;
+  #closed = false;
 
   constructor(
     runtime: HttpMcpTransportRuntime,
@@ -122,6 +151,11 @@ export class HttpMcpTransport {
         options.maxConcurrentRequests ?? DEFAULT_MAX_CONCURRENT_REQUESTS
       )
     );
+    this.#maxQueuedRequests = Math.max(
+      0,
+      Math.floor(options.maxQueuedRequests ?? DEFAULT_MAX_QUEUED_REQUESTS)
+    );
+    this.#enableWrite = options.enableWrite ?? false;
   }
 
   get activeRequests(): number {
@@ -132,18 +166,29 @@ export class HttpMcpTransport {
     return this.#sessions.size;
   }
 
-  async handleRequest(request: Request): Promise<Response> {
+  get queuedRequests(): number {
+    return this.#capacityWaiters.length;
+  }
+
+  async handleRequest(
+    request: Request,
+    context: HttpMcpRequestContext = { identity: "loopback" }
+  ): Promise<Response> {
     if (!MCP_HTTP_METHODS.has(request.method)) return methodNotAllowed();
-    if (this.#runtime.isShuttingDown)
+    if (this.#closed || this.#runtime.isShuttingDown)
       return jsonRpcError(503, -32_000, "Resident runtime is unavailable");
-    if (this.#activeRequests >= this.#maxConcurrentRequests)
-      return jsonRpcError(429, -32_000, "MCP request capacity exceeded");
+    if (!(await this.#acquireCapacity(request.signal))) {
+      if (this.#closed || this.#runtime.isShuttingDown)
+        return jsonRpcError(503, -32_000, "Resident runtime is unavailable");
+      return jsonRpcError(429, -32_000, "Too many requests");
+    }
 
     const admission = this.#runtime.admitRequest(request.signal);
-    if (!admission)
+    if (!admission) {
+      this.#releaseCapacity();
       return jsonRpcError(503, -32_000, "Resident runtime is unavailable");
+    }
 
-    this.#activeRequests += 1;
     let session: HttpMcpSession | undefined;
     let pending: PendingHttpMcpSession | undefined;
     let finished = false;
@@ -151,19 +196,32 @@ export class HttpMcpTransport {
       if (finished) return;
       finished = true;
       if (session) this.#sessions.finishRequest(session);
-      this.#activeRequests = Math.max(0, this.#activeRequests - 1);
+      this.#releaseCapacity();
       admission.finish();
     };
 
     try {
       const sessionId = request.headers.get(MCP_SESSION_HEADER);
-      let parsedBody: unknown;
+      let parsedBody = context.parsedBody;
+      if (request.method === "POST" && parsedBody === undefined) {
+        try {
+          parsedBody = await request.clone().json();
+        } catch {
+          finish();
+          return jsonRpcError(400, -32_700, "Parse error: Invalid JSON");
+        }
+      }
 
       if (sessionId) {
         session = this.#sessions.get(sessionId);
         if (!session) {
           finish();
           return jsonRpcError(404, -32_001, "Session not found");
+        }
+        if (session.securityIdentity !== context.identity) {
+          await this.#sessions.closeSession(sessionId);
+          finish();
+          return jsonRpcError(403, -32_000, "Forbidden");
         }
         this.#sessions.beginRequest(session);
       } else {
@@ -180,12 +238,6 @@ export class HttpMcpTransport {
           finish();
           return headerError;
         }
-        try {
-          parsedBody = await request.clone().json();
-        } catch {
-          finish();
-          return jsonRpcError(400, -32_700, "Parse error: Invalid JSON");
-        }
         if (!isInitializeRequest(parsedBody)) {
           finish();
           return jsonRpcError(
@@ -194,10 +246,12 @@ export class HttpMcpTransport {
             "Bad Request: No valid session ID provided"
           );
         }
-        pending = (await this.#sessions.createPendingSession()) ?? undefined;
+        pending =
+          (await this.#sessions.createPendingSession(context.identity)) ??
+          undefined;
         if (!pending) {
           finish();
-          return jsonRpcError(429, -32_000, "MCP session capacity exceeded");
+          return jsonRpcError(429, -32_000, "Too many requests");
         }
       }
 
@@ -213,9 +267,15 @@ export class HttpMcpTransport {
 
       const transport = session?.transport ?? pending?.transport;
       if (!transport) throw new Error("MCP transport was not created");
+      const requestBody = parsedBody;
+      if (!this.#enableWrite && containsUnauthorizedWrite(requestBody)) {
+        await pending?.discard();
+        finish();
+        return jsonRpcError(403, -32_000, "Forbidden");
+      }
       const response = await transport.handleRequest(
         request,
-        parsedBody === undefined ? undefined : { parsedBody }
+        requestBody === undefined ? undefined : { parsedBody: requestBody }
       );
 
       if (pending) {
@@ -241,6 +301,50 @@ export class HttpMcpTransport {
   }
 
   close(): Promise<void> {
+    this.#closed = true;
+    for (const resolve of this.#capacityWaiters.splice(0)) resolve(false);
     return this.#sessions.closeAll();
+  }
+
+  invalidateAuthenticatedSessions(): Promise<void> {
+    return this.#sessions.closeSessions();
+  }
+
+  #acquireCapacity(signal: AbortSignal): Promise<boolean> {
+    if (this.#closed || this.#runtime.isShuttingDown)
+      return Promise.resolve(false);
+    if (signal.aborted) return Promise.resolve(false);
+    if (this.#activeRequests < this.#maxConcurrentRequests) {
+      this.#activeRequests += 1;
+      return Promise.resolve(true);
+    }
+    if (this.#capacityWaiters.length >= this.#maxQueuedRequests)
+      return Promise.resolve(false);
+
+    return new Promise((resolve) => {
+      const complete = (admitted: boolean): void => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(admitted);
+      };
+      const onAbort = (): void => {
+        const index = this.#capacityWaiters.indexOf(complete);
+        if (index >= 0) this.#capacityWaiters.splice(index, 1);
+        complete(false);
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+      this.#capacityWaiters.push(complete);
+    });
+  }
+
+  #releaseCapacity(): void {
+    this.#activeRequests = Math.max(0, this.#activeRequests - 1);
+    const next = this.#capacityWaiters.shift();
+    if (!next) return;
+    if (this.#closed || this.#runtime.isShuttingDown) {
+      next(false);
+      return;
+    }
+    this.#activeRequests += 1;
+    next(true);
   }
 }

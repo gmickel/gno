@@ -6,9 +6,14 @@
  * @module src/serve/server
  */
 
+import type { HttpGatewayOverrides } from "../mcp/http-security";
+import type { ResidentRuntime } from "./resident-runtime";
 import type { ContextHolder } from "./routes/api";
-import type { McpHttpRouteHandlers } from "./routes/mcp";
 
+import {
+  isHttpGatewayLoopbackBind,
+  resolveHttpGatewayConfig,
+} from "../mcp/http-security";
 import { startBackgroundRuntime } from "./background-runtime";
 import { handleContextBuild, handleContextVerify } from "./context-capsule";
 import { DocumentEventBus } from "./doc-events";
@@ -68,9 +73,10 @@ import {
   handleDocLinks,
   handleDocSimilar,
 } from "./routes/links";
+import { createMcpHttpGateway } from "./routes/mcp";
 import { forbiddenResponse, isRequestAllowed } from "./security";
 
-export interface ServeOptions {
+export interface ServeOptions extends HttpGatewayOverrides {
   /** Port to listen on (default: 3000) */
   port?: number;
   /** Config path override */
@@ -86,11 +92,10 @@ export interface ServeResult {
 
 interface StartServerDependencies {
   startBackgroundRuntime?: typeof startBackgroundRuntime;
+  createMcpHttpGateway?: typeof createMcpHttpGateway;
   serve?: typeof Bun.serve;
   handleInstallConnector?: typeof handleInstallConnector;
   waitForShutdown?: (signal: AbortSignal) => Promise<void>;
-  /** Test-only until the MCP network security boundary lands in task 3. */
-  unsafeTestOnlyMcpRoute?: McpHttpRouteHandlers;
 }
 
 // Hostname parsing helpers - preserved for future fetch handler use
@@ -167,9 +172,35 @@ export async function startServer(
   const runtime = runtimeResult.runtime;
   const store = runtime.store;
   const ctxHolder: ContextHolder = runtime.ctxHolder;
-  const unsafeTestOnlyMcpRoute = dependencies.unsafeTestOnlyMcpRoute;
-  const unsafeTestOnlyRoutes: Record<string, McpHttpRouteHandlers> =
-    unsafeTestOnlyMcpRoute ? { "/mcp": unsafeTestOnlyMcpRoute } : {};
+  const gatewayConfig = resolveHttpGatewayConfig(runtime.config.gateway, {
+    host: options.host,
+    port,
+    tokenFile: options.tokenFile,
+    allowedHosts: options.allowedHosts,
+    allowedOrigins: options.allowedOrigins,
+    enableWrite: options.enableWrite,
+  });
+  if (!isHttpGatewayLoopbackBind(gatewayConfig.host)) {
+    await runtime.dispose();
+    return {
+      success: false,
+      error:
+        "gno serve remains loopback-only because Web and REST share its listener; use gno daemon for authenticated non-loopback MCP",
+    };
+  }
+  let gateway: Awaited<ReturnType<typeof createMcpHttpGateway>>;
+  try {
+    gateway = await (dependencies.createMcpHttpGateway ?? createMcpHttpGateway)(
+      runtime as ResidentRuntime,
+      gatewayConfig
+    );
+  } catch (error) {
+    await runtime.dispose();
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 
   // Shutdown controller for clean lifecycle
   const shutdownController = new AbortController();
@@ -192,16 +223,14 @@ export async function startServer(
   try {
     server = (dependencies.serve ?? Bun.serve)({
       port,
-      hostname: "127.0.0.1", // Loopback only - no LAN exposure
+      hostname: gatewayConfig.host,
 
       // Enable development mode for HMR and console logging
       development: isDev,
 
       // Static routes - Bun handles HTML bundling and /_bun/* assets automatically
       routes: {
-        // Deliberately absent in normal serve/daemon startup. Task 3 installs
-        // security middleware before this test-only transport can be enabled.
-        ...unsafeTestOnlyRoutes,
+        "/mcp": gateway.route,
         // SPA routes - all serve the same React app
         "/": homepage,
         "/search": homepage,
@@ -752,14 +781,16 @@ export async function startServer(
     });
   } catch (e) {
     removeShutdownHandlers();
-    await runtime.dispose();
+    await Promise.allSettled([gateway.close(), runtime.dispose()]);
     return {
       success: false,
       error: e instanceof Error ? e.message : String(e),
     };
   }
 
-  console.log(`GNO server running at http://localhost:${server.port}`);
+  console.log(
+    `GNO server running at http://${gatewayConfig.host}:${server.port}`
+  );
   console.log("Press Ctrl+C to stop");
 
   // Block until shutdown signal
@@ -777,7 +808,7 @@ export async function startServer(
   try {
     await server.stop(true);
   } finally {
-    await runtime.dispose();
+    await Promise.allSettled([gateway.close(), runtime.dispose()]);
   }
   return { success: true };
 }

@@ -26,6 +26,7 @@ async function runConnectorInstallRoute(actualConfigPath: string): Promise<{
     success: true as const,
     runtime: {
       actualConfigPath,
+      config: { collections: [] },
       store: {},
       ctxHolder: {
         current: {},
@@ -42,6 +43,12 @@ async function runConnectorInstallRoute(actualConfigPath: string): Promise<{
     { index: "client-work", port: 3210 },
     {
       startBackgroundRuntime: startRuntime as never,
+      createMcpHttpGateway: (async () => ({
+        route: async () => new Response("ok"),
+        close: async () => undefined,
+        security: {},
+        transport: {},
+      })) as never,
       serve: ((options: unknown) => {
         capturedOptions = options as CapturedServeOptions;
         return { port: 3210, stop } as never;
@@ -114,4 +121,45 @@ test("serve connector install route also pins the resolved default config", asyn
       process.env[ENV_CONFIG_DIR] = previousConfigDir;
     }
   }
+});
+
+test("serve rejects non-loopback binding before opening the shared Web/REST listener", async () => {
+  const dispose = mock(async () => undefined);
+  const createMcpHttpGateway = mock(async () => {
+    throw new Error("must not initialize gateway");
+  });
+  const serve = mock(() => {
+    throw new Error("must not open listener");
+  });
+  const result = await startServer(
+    {
+      host: "0.0.0.0",
+      tokenFile: "/tmp/gno-unused-token",
+      allowedHosts: ["workstation.example:3000"],
+      allowedOrigins: ["https://agent.example"],
+    },
+    {
+      startBackgroundRuntime: (async () => ({
+        success: true as const,
+        runtime: {
+          actualConfigPath: "/tmp/config/index.yml",
+          config: { collections: [] },
+          store: {},
+          ctxHolder: { current: {}, config: { collections: [] } },
+          dispose,
+        },
+      })) as never,
+      createMcpHttpGateway: createMcpHttpGateway as never,
+      serve: serve as never,
+    }
+  );
+
+  expect(result).toEqual({
+    success: false,
+    error:
+      "gno serve remains loopback-only because Web and REST share its listener; use gno daemon for authenticated non-loopback MCP",
+  });
+  expect(dispose).toHaveBeenCalledTimes(1);
+  expect(createMcpHttpGateway).toHaveBeenCalledTimes(0);
+  expect(serve).toHaveBeenCalledTimes(0);
 });

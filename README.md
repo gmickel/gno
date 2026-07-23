@@ -308,7 +308,7 @@ Use `gno daemon` when you want continuous indexing without the browser or
 desktop shell open.
 
 ```bash
-gno daemon                  # foreground (Ctrl+C to stop)
+gno daemon                  # foreground + /mcp on 127.0.0.1:3000
 gno daemon --no-sync-on-start
 gno daemon --detach         # background (macOS/Linux); auto-writes pid + log files
 gno daemon --status         # check the detached process
@@ -570,6 +570,11 @@ adds 11 opt-in mutation tools, for 30 total.
 **Design**: Default MCP mode is read-only: retrieval, graph, status, and job
 inspection. Your AI assistant synthesizes answers from retrieved context. Write
 tools are available only through the explicit `--enable-write` opt-in.
+
+`gno serve` and `gno daemon` also expose this surface as stateful Streamable
+HTTP at `http://127.0.0.1:3000/mcp`. HTTP stays read-only by default.
+Non-loopback binds require an explicit restrictive bearer-token file plus exact
+Host and Origin allowlists; authentication alone never enables mutation tools.
 
 [MCP setup guide →](https://gno.sh/docs/MCP/)
 

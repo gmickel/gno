@@ -424,7 +424,7 @@ export interface SpawnDetachedOptions {
    * self-contained executable like a single `.mjs` file).
    */
   entryScript?: string | null;
-  /** Optional port to embed in the pid-file payload (serve only). */
+  /** Optional resident HTTP port to embed in the pid-file payload. */
   port?: number | null;
   /** Working directory for the child. Defaults to `process.cwd()`. */
   cwd?: string;
@@ -789,29 +789,17 @@ export async function statusProcess(
     ? Math.max(0, Math.floor((now() - Date.parse(payload.started_at)) / 1000))
     : null;
 
-  // Schema invariant: a live serve must report a numeric port. If the pid-file
-  // is missing one somehow, fall back to not-running rather than lying.
-  const portForRunningServe =
-    running && effectiveKind === "serve"
-      ? typeof payload.port === "number"
-        ? payload.port
-        : null
-      : running && effectiveKind === "daemon"
-        ? null
-        : (payload.port ?? null);
-
-  const runningFinal =
-    running && !(effectiveKind === "serve" && portForRunningServe === null);
+  // Both resident modes expose an HTTP listener. If a live pid-file is
+  // missing its port, fall back to not-running rather than claiming a gateway
+  // that clients cannot locate.
+  const portForRunningProcess =
+    running && typeof payload.port === "number" ? payload.port : null;
+  const runningFinal = running && portForRunningProcess !== null;
 
   return {
     running: runningFinal,
     pid: payload.pid,
-    port:
-      runningFinal && effectiveKind === "serve"
-        ? portForRunningServe
-        : effectiveKind === "daemon"
-          ? null
-          : (payload.port ?? null),
+    port: runningFinal ? portForRunningProcess : (payload.port ?? null),
     cmd: effectiveKind,
     version: payload.version,
     started_at: payload.started_at,

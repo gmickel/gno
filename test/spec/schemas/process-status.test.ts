@@ -30,7 +30,7 @@ describe("process-status schema", () => {
       const status = {
         running: true,
         pid: 54_321,
-        port: null,
+        port: 3000,
         cmd: "daemon",
         version: "1.1.0",
         started_at: "2026-04-21T19:30:00Z",
@@ -186,11 +186,11 @@ describe("process-status schema", () => {
       expect(assertInvalid(status, schema)).toBe(true);
     });
 
-    test("rejects daemon with numeric port (cmd↔port invariant)", () => {
+    test("rejects live daemon without its gateway port", () => {
       const status = {
         running: true,
         pid: 1234,
-        port: 8080,
+        port: null,
         cmd: "daemon",
         version: "1.1.0",
         started_at: "2026-04-21T19:30:00Z",

@@ -1,9 +1,16 @@
 import type { CollectionSyncResult } from "../../ingestion";
+import type { HttpGatewayOverrides } from "../../mcp/http-security";
 import type { BackgroundRuntimeResult } from "../../serve/background-runtime";
+import type { ResidentRuntime } from "../../serve/resident-runtime";
 
+import {
+  DEFAULT_HTTP_GATEWAY_PORT,
+  resolveHttpGatewayConfig,
+} from "../../mcp/http-security";
 import { startBackgroundRuntime } from "../../serve/background-runtime";
+import { createMcpHttpGateway } from "../../serve/routes/mcp";
 
-export interface DaemonOptions {
+export interface DaemonOptions extends HttpGatewayOverrides {
   configPath?: string;
   index?: string;
   offline?: boolean;
@@ -24,6 +31,8 @@ type DaemonLogger = {
 
 type DaemonDeps = {
   startBackgroundRuntime?: typeof startBackgroundRuntime;
+  createMcpHttpGateway?: typeof createMcpHttpGateway;
+  serve?: typeof Bun.serve;
   logger?: DaemonLogger;
 };
 
@@ -109,10 +118,33 @@ export async function daemon(
   }
 
   const { runtime } = runtimeResult;
+  const gatewayConfig = resolveHttpGatewayConfig(runtime.config.gateway, {
+    host: options.host,
+    port: options.port ?? DEFAULT_HTTP_GATEWAY_PORT,
+    tokenFile: options.tokenFile,
+    allowedHosts: options.allowedHosts,
+    allowedOrigins: options.allowedOrigins,
+    enableWrite: options.enableWrite,
+  });
+  let gateway: Awaited<ReturnType<typeof createMcpHttpGateway>> | undefined;
+  let server: ReturnType<typeof Bun.serve> | undefined;
   try {
+    gateway = await (deps.createMcpHttpGateway ?? createMcpHttpGateway)(
+      runtime as ResidentRuntime,
+      gatewayConfig
+    );
+    server = (deps.serve ?? Bun.serve)({
+      port: gatewayConfig.port,
+      hostname: gatewayConfig.host,
+      development: false,
+      routes: { "/mcp": gateway.route },
+    });
     if (!options.quiet) {
       logger.log(
         `GNO daemon started for index "${options.index ?? "default"}" using ${runtime.config.collections.length} collection${runtime.config.collections.length === 1 ? "" : "s"}.`
+      );
+      logger.log(
+        `MCP gateway listening at http://${gatewayConfig.host}:${server.port}/mcp`
       );
       const watchState = runtime.watchService.getState();
       if (watchState.activeCollections.length > 0) {
@@ -155,6 +187,10 @@ export async function daemon(
       error: error instanceof Error ? error.message : String(error),
     };
   } finally {
-    await runtime.dispose();
+    await Promise.allSettled([
+      server?.stop(true),
+      gateway?.close(),
+      runtime.dispose(),
+    ]);
   }
 }

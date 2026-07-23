@@ -20,6 +20,7 @@ export interface HttpMcpSessionRuntime {
 
 export interface HttpMcpSession {
   readonly id: string;
+  readonly securityIdentity: string;
   readonly server: McpServer;
   readonly transport: WebStandardStreamableHTTPServerTransport;
   lastActivityAt: number;
@@ -130,7 +131,9 @@ export class HttpMcpSessionStore {
     session.lastActivityAt = this.#now();
   }
 
-  async createPendingSession(): Promise<PendingHttpMcpSession | null> {
+  async createPendingSession(
+    securityIdentity = "loopback"
+  ): Promise<PendingHttpMcpSession | null> {
     if (!this.capacityAvailable) return null;
 
     const server = this.#createServer(this.#runtime.mcpContext);
@@ -156,6 +159,7 @@ export class HttpMcpSessionStore {
         const releaseRuntimeSession = this.#runtime.openSession();
         host.session = {
           id: sessionId,
+          securityIdentity,
           server,
           transport,
           lastActivityAt: this.#now(),
@@ -225,6 +229,21 @@ export class HttpMcpSessionStore {
     this.#closed = true;
     clearInterval(this.#reapTimer);
 
+    const sessions = [...this.#sessions.values()];
+    this.#sessions.clear();
+    for (const session of sessions) session.releaseRuntimeSession();
+
+    const pending = [...this.#pending];
+    this.#pending.clear();
+    for (const host of pending) host.discarded = true;
+
+    await Promise.allSettled([
+      ...sessions.map((session) => session.server.close()),
+      ...pending.map((host) => host.server.close()),
+    ]);
+  }
+
+  async closeSessions(): Promise<void> {
     const sessions = [...this.#sessions.values()];
     this.#sessions.clear();
     for (const session of sessions) session.releaseRuntimeSession();

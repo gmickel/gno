@@ -5,6 +5,18 @@ import { daemon } from "../../src/cli/commands/daemon";
 type StartBackgroundRuntimeFn =
   typeof import("../../src/serve/background-runtime").startBackgroundRuntime;
 
+function gatewayDeps() {
+  return {
+    createMcpHttpGateway: (async () => ({
+      route: async () => new Response("ok"),
+      close: async () => undefined,
+      security: {},
+      transport: {},
+    })) as never,
+    serve: (() => ({ port: 3000, stop: async () => undefined })) as never,
+  };
+}
+
 describe("daemon command", () => {
   test("returns startup errors from background runtime", async () => {
     const result = await daemon(
@@ -62,6 +74,7 @@ describe("daemon command", () => {
         signal: controller.signal,
       },
       {
+        ...gatewayDeps(),
         startBackgroundRuntime: async () => ({
           success: true,
           runtime: {
@@ -144,6 +157,7 @@ describe("daemon command", () => {
         signal: controller.signal,
       },
       {
+        ...gatewayDeps(),
         startBackgroundRuntime: async () => ({
           success: true,
           runtime: {
@@ -250,6 +264,7 @@ describe("daemon command", () => {
         signal: controller.signal,
       },
       {
+        ...gatewayDeps(),
         startBackgroundRuntime,
       }
     );

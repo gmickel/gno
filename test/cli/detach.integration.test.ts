@@ -311,9 +311,7 @@ interface DetachedSpawn {
   pidFile: string;
   logFile: string;
   /**
-   * Listening port for serve detaches; null for daemon detaches (daemon is
-   * headless and never binds a port). Helpers that pass `port` through
-   * `--port` always populate it.
+   * Listening port for either resident mode.
    */
   port: number | null;
 }
@@ -372,9 +370,8 @@ async function spawnServeDetached(
 }
 
 /**
- * Narrow `DetachedSpawn.port` to `number` for serve cases. The serve helper
- * always sets `port`; daemon helpers leave it `null`. Throws if the contract
- * is violated rather than silently coercing.
+ * Narrow `DetachedSpawn.port` to `number`. Both resident modes expose an HTTP
+ * listener, so a missing port violates the detach contract.
  */
 function requirePort(spawned: DetachedSpawn): number {
   if (spawned.port === null) {
@@ -387,6 +384,7 @@ async function spawnDaemonDetached(
   testDir: string,
   env: CliEnv
 ): Promise<DetachedSpawn> {
+  const port = pickPort();
   const pidFile = join(testDir, "data", "daemon.pid");
   const logFile = join(testDir, "data", "daemon.log");
   const result = await runCli(
@@ -394,6 +392,8 @@ async function spawnDaemonDetached(
       "daemon",
       "--detach",
       "--no-sync-on-start",
+      "--port",
+      String(port),
       "--pid-file",
       pidFile,
       "--log-file",
@@ -413,7 +413,7 @@ async function spawnDaemonDetached(
         return null;
       }
       try {
-        return await readJsonFile<{ pid: number }>(pidFile);
+        return await readJsonFile<{ pid: number; port: number }>(pidFile);
       } catch {
         return null;
       }
@@ -421,7 +421,7 @@ async function spawnDaemonDetached(
     { timeoutMs: 5_000, label: "daemon pid-file" }
   );
 
-  return { pid: payload.pid, pidFile, logFile, port: null };
+  return { pid: payload.pid, pidFile, logFile, port: payload.port };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -589,8 +589,7 @@ describe("detach integration (Unix)", () => {
       >;
       expect(statusPayload.running).toBe(true);
       expect(statusPayload.pid).toBe(spawned.pid);
-      // Daemon is headless — port is always null in the schema.
-      expect(statusPayload.port).toBeNull();
+      expect(statusPayload.port).toBe(requirePort(spawned));
 
       const stop = await runCli(
         [

@@ -74,7 +74,45 @@ contentTypes:
 
 # Optional terminal hyperlink target template for CLI search output
 editorUriTemplate: "vscode://file/{path}:{line}:{col}"
+
+# Optional resident Streamable HTTP MCP gateway
+gateway:
+  host: 127.0.0.1
+  enableWrite: false
 ```
+
+## Resident HTTP MCP Gateway
+
+`gno serve` and `gno daemon` expose `/mcp`. The default configuration binds
+literal `127.0.0.1`, derives exact `127.0.0.1:<port>` and `localhost:<port>`
+Host/Origin allowlists, and leaves mutation tools disabled.
+
+```yaml
+gateway:
+  host: 0.0.0.0
+  tokenFile: ~/.config/gno/mcp-token
+  allowedHosts:
+    - workstation.local:3000
+  allowedOrigins:
+    - https://trusted-client.example
+  enableWrite: false
+  limits:
+    maxBodyBytes: 1048576
+    maxRequestsPerMinute: 120
+    maxConcurrentRequests: 64
+    maxQueuedRequests: 16
+    maxSessions: 32
+    sessionIdleTimeoutMs: 300000
+```
+
+Wildcard or non-loopback binding requires `tokenFile`, `allowedHosts`, and
+`allowedOrigins`; every allowlist value is exact and wildcards are rejected.
+`gno serve` remains loopback-only because its Web and REST surfaces share the
+listener; use `gno daemon` for authenticated non-loopback MCP access.
+An explicitly configured missing token file is generated with a random 256-bit
+token and mode `0600` on POSIX. Authentication and mutation authorization are
+separate: `enableWrite` must be true before HTTP write tools are registered or
+dispatched. CLI gateway flags override config values for one invocation.
 
 ## Collections
 

@@ -1174,7 +1174,7 @@ Both `gno daemon` and `gno serve` ship with a symmetric set of management flags 
 --json is only supported with `gno daemon --status`
 ```
 
-`--detach` writes a JSON pid-file at `{data}/{kind}.pid` containing `{pid, port?, cmd, version, started_at}` (port is omitted for `daemon`). `{data}` resolves to `resolveDirs().data` (honours `GNO_DATA_DIR`); pass `--pid-file` to override.
+`--detach` writes a JSON pid-file at `{data}/{kind}.pid` containing `{pid, port, cmd, version, started_at}`. For `serve`, `port` hosts Web, REST, and MCP; for `daemon`, it hosts the headless MCP gateway. `{data}` resolves to `resolveDirs().data` (honours `GNO_DATA_DIR`); pass `--pid-file` to override.
 
 **`--status` exit codes:**
 
@@ -1211,6 +1211,7 @@ Start a headless long-running watcher process for continuous indexing.
 
 ```bash
 gno daemon
+gno daemon --port 8080
 gno daemon --no-sync-on-start
 gno daemon --detach
 ```
@@ -1218,6 +1219,10 @@ gno daemon --detach
 Options:
 
 - `--no-sync-on-start` - Skip the initial sync pass and only watch future file changes
+- `-p, --port <num>` - Streamable HTTP MCP port (default: 3000)
+- `--host`, `--mcp-token-file`, repeatable `--mcp-allowed-host` /
+  `--mcp-allowed-origin`, and `--mcp-enable-write` - see
+  [Resident HTTP MCP security](MCP.md#resident-http-transport)
 - `--detach` / `--status` / `--stop` / `--pid-file <path>` / `--log-file <path>` - see [shared management contract](#long-running-processes) above
 
 **Behavior:**
@@ -1227,7 +1232,7 @@ Options:
 - Runs an initial sync by default, then embeds backlog immediately
 - Foreground: stays in the foreground until `SIGINT` / `SIGTERM`
 - Detached: parent prints `PID <pid>` and exits 0; child writes to `{data}/daemon.log` (or `--log-file`) in append mode
-- Does **not** start the web server or open any port
+- Hosts `/mcp` without the Web UI or browser REST routes
 
 **Notes:**
 
@@ -1266,6 +1271,9 @@ gno serve --detach
 Options:
 
 - `-p, --port <num>` - Port to listen on (default: 3000)
+- `--host`, `--mcp-token-file`, repeatable `--mcp-allowed-host` /
+  `--mcp-allowed-origin`, and `--mcp-enable-write` - see
+  [Resident HTTP MCP security](MCP.md#resident-http-transport)
 - `--detach` / `--status` / `--stop` / `--pid-file <path>` / `--log-file <path>` - see [shared management contract](#long-running-processes) above
 
 **Features:**
@@ -1284,10 +1292,14 @@ Options:
 - `GET /api/docs` - List documents (paginated: `?limit=20&offset=0&collection=name`)
 - `GET /api/doc` - Get document content (`?uri=gno://collection/path`)
 - `POST /api/search` - Search (`{"query": "...", "limit": 10}`)
+- `/mcp` - Stateful MCP 2025-11-25 Streamable HTTP (POST/GET/DELETE)
 
 **Security:**
 
-- Binds to `127.0.0.1` only (no LAN exposure)
+- Binds to literal `127.0.0.1` by default; non-loopback requires a restrictive
+  bearer-token file and exact Host/Origin allowlists
+- `gno serve` rejects non-loopback hosts because Web and REST share the
+  listener; use `gno daemon` for authenticated non-loopback MCP
 - Content Security Policy headers
 - CSRF protection for mutations
 - DNS rebinding protection

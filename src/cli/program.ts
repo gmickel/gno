@@ -2806,20 +2806,46 @@ function wireGraphCommand(program: Command): void {
 // Serve Command (web UI)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function wireDaemonCommand(program: Command): void {
-  const daemonCmd = program
-    .command("daemon")
-    .description("Start headless continuous indexing")
+function addGatewayOptions(
+  command: Command,
+  hostDescription = "HTTP listen address (default: 127.0.0.1)"
+): Command {
+  return command
+    .option("--host <address>", hostDescription)
+    .option("--mcp-token-file <path>", "restrictive bearer token file")
     .option(
-      "--no-sync-on-start",
-      "skip initial sync and only watch future file changes"
+      "--mcp-allowed-host <host>",
+      "exact allowed Host header (repeatable)",
+      (value: string, previous: string[] = []) => [...previous, value]
     )
-    // Local `--json` so `gno daemon --status --json` parses cleanly in any
-    // argv position. Mirrors the serve wiring: gated to --status only.
     .option(
-      "--json",
-      "JSON output (applies to --status; see process-status schema)"
+      "--mcp-allowed-origin <origin>",
+      "exact allowed Origin (repeatable)",
+      (value: string, previous: string[] = []) => [...previous, value]
+    )
+    .option(
+      "--mcp-enable-write",
+      "authorize HTTP MCP mutation tools (independent of authentication)"
     );
+}
+
+function wireDaemonCommand(program: Command): void {
+  const daemonCmd = addGatewayOptions(
+    program
+      .command("daemon")
+      .description("Start headless continuous indexing")
+      .option("-p, --port <num>", "MCP gateway port", "3000")
+      .option(
+        "--no-sync-on-start",
+        "skip initial sync and only watch future file changes"
+      )
+      // Local `--json` so `gno daemon --status --json` parses cleanly in any
+      // argv position. Mirrors the serve wiring: gated to --status only.
+      .option(
+        "--json",
+        "JSON output (applies to --status; see process-status schema)"
+      )
+  );
 
   // --detach / --status / --stop are mutually exclusive. Use Commander's
   // Option API so the conflict error is the native "option '--status'
@@ -2873,8 +2899,8 @@ function wireDaemonCommand(program: Command): void {
  * the foreground + detached-child paths boot the runtime.
  *
  * Mirrors `handleServeAction` exactly — same helper imports, same JSON
- * gating, same detached-child verification + pid-file cleanup. Daemon has no
- * `--port`, so the foreground path skips port validation entirely.
+ * gating, same detached-child verification + pid-file cleanup. Daemon's port
+ * identifies its headless MCP gateway.
  */
 async function handleDaemonAction(
   cmdOpts: Record<string, unknown>,
@@ -2927,7 +2953,9 @@ async function handleDaemonAction(
   }
 
   if (cmdOpts.detach) {
+    const port = parsePositiveInt("port", cmdOpts.port);
     await runDaemonDetach({
+      port,
       paths,
       spawnDetached,
       argv: resolveCliArgv(cmd),
@@ -2954,6 +2982,8 @@ async function handleDaemonAction(
     installPidFileCleanup(paths.pidFile);
   }
 
+  const port = parsePositiveInt("port", cmdOpts.port);
+
   const { daemon } = await import("./commands/daemon.js");
   const result = await daemon({
     configPath: globals.config,
@@ -2962,6 +2992,12 @@ async function handleDaemonAction(
     verbose: globals.verbose,
     quiet: globals.quiet,
     noSyncOnStart: cmdOpts.syncOnStart === false,
+    port,
+    host: cmdOpts.host as string | undefined,
+    tokenFile: cmdOpts.mcpTokenFile as string | undefined,
+    allowedHosts: cmdOpts.mcpAllowedHost as string[] | undefined,
+    allowedOrigins: cmdOpts.mcpAllowedOrigin as string[] | undefined,
+    enableWrite: cmdOpts.mcpEnableWrite === true ? true : undefined,
   });
   if (!result.success) {
     throw new CliError("RUNTIME", result.error);
@@ -2995,8 +3031,9 @@ async function runDaemonStatus(deps: DaemonStatusDeps): Promise<void> {
     process.stdout.write("gno daemon status\n");
     process.stdout.write(`${"─".repeat(50)}\n`);
     if (status.running) {
-      // Daemon is headless — no port to print.
-      process.stdout.write(`  running  yes (pid ${status.pid})\n`);
+      process.stdout.write(
+        `  running  yes (pid ${status.pid}, port ${status.port})\n`
+      );
       if (status.version) {
         process.stdout.write(`  version  ${status.version}\n`);
       }
@@ -3091,6 +3128,7 @@ async function runDaemonStop(deps: DaemonStopDeps): Promise<void> {
 }
 
 interface DaemonDetachDeps {
+  port: number;
   paths: { pidFile: string; logFile: string };
   spawnDetached: typeof import("./detach.js").spawnDetached;
   /**
@@ -3111,24 +3149,28 @@ async function runDaemonDetach(deps: DaemonDetachDeps): Promise<void> {
     argv: childArgv,
     pidFile: deps.paths.pidFile,
     logFile: deps.paths.logFile,
+    port: deps.port,
   });
-  // Daemon is headless — print pid only (no URL).
+  // Daemon has no Web UI URL; its listener exists solely for MCP.
   process.stdout.write(`PID ${result.pid}\n`);
 }
 
 function wireServeCommand(program: Command): void {
-  const serveCmd = program
-    .command("serve")
-    .description("Start web UI server")
-    .option("-p, --port <num>", "port to listen on", "3000")
-    // Local `--json` so `gno serve --status --json` parses cleanly in any
-    // argv position. Global `--json` already exists on the root program
-    // (see line 208); resolution goes through `getFormat()` /
-    // `getGlobals()` which precedence-merges local over global.
-    .option(
-      "--json",
-      "JSON output (applies to --status; see process-status schema)"
-    );
+  const serveCmd = addGatewayOptions(
+    program
+      .command("serve")
+      .description("Start web UI server")
+      .option("-p, --port <num>", "port to listen on", "3000")
+      // Local `--json` so `gno serve --status --json` parses cleanly in any
+      // argv position. Global `--json` already exists on the root program
+      // (see line 208); resolution goes through `getFormat()` /
+      // `getGlobals()` which precedence-merges local over global.
+      .option(
+        "--json",
+        "JSON output (applies to --status; see process-status schema)"
+      ),
+    "loopback HTTP listen address (default: 127.0.0.1)"
+  );
 
   // --detach / --status / --stop are mutually exclusive. Use Commander's
   // Option API so the conflict error is the native "option '--status'
@@ -3275,6 +3317,11 @@ async function handleServeAction(
     port,
     configPath: globals.config,
     index: globals.index,
+    host: cmdOpts.host as string | undefined,
+    tokenFile: cmdOpts.mcpTokenFile as string | undefined,
+    allowedHosts: cmdOpts.mcpAllowedHost as string[] | undefined,
+    allowedOrigins: cmdOpts.mcpAllowedOrigin as string[] | undefined,
+    enableWrite: cmdOpts.mcpEnableWrite === true ? true : undefined,
   });
 
   if (!result.success) {

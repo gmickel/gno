@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/mcp-http-error@1.0",
+  "title": "GNO HTTP MCP Boundary Error",
+  "description": "Redacted stable JSON-RPC error body for HTTP MCP network-boundary failures",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["jsonrpc", "error", "id"],
+  "properties": {
+    "jsonrpc": { "const": "2.0" },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "const": -32000 },
+        "message": {
+          "enum": [
+            "Unauthorized",
+            "Forbidden",
+            "Request body too large",
+            "Too many requests",
+            "Resident runtime unavailable"
+          ]
+        }
+      }
+    },
+    "id": { "type": "null" }
+  }
+}

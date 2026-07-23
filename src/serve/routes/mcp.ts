@@ -1,31 +1,63 @@
-/** Test-only route adapter for the not-yet-secured resident MCP endpoint. */
+/** Production route adapter for the secured resident MCP endpoint. */
 
-import type { HttpMcpTransport } from "../../mcp/http-transport";
+import type {
+  HttpMcpPeerServer,
+  ResolvedHttpGatewayConfig,
+} from "../../mcp/http-security";
+import type { ResidentRuntime } from "../resident-runtime";
 
-export interface McpRouteServerControl {
-  timeout(request: Request, seconds: number): void;
-}
+import { HttpMcpSecurity } from "../../mcp/http-security";
+import { HttpMcpTransport } from "../../mcp/http-transport";
 
-export interface McpHttpRouteHandlers {
-  DELETE(request: Request, server?: McpRouteServerControl): Promise<Response>;
-  GET(request: Request, server?: McpRouteServerControl): Promise<Response>;
-  POST(request: Request, server?: McpRouteServerControl): Promise<Response>;
+export type McpHttpRoute = (
+  request: Request,
+  server: HttpMcpPeerServer
+) => Promise<Response>;
+
+export interface McpHttpGateway {
+  readonly route: McpHttpRoute;
+  readonly security: HttpMcpSecurity;
+  readonly transport: HttpMcpTransport;
+  close(): Promise<void>;
 }
 
 /**
- * Build Bun route handlers without mounting them. Security task 3 owns the
- * production mount; tests inject this object explicitly through startServer.
+ * Build the route only after startup policy and token-file checks succeed.
+ * Every method passes through the external boundary before transport dispatch.
  */
-export function createTestOnlyMcpRoute(
-  transport: HttpMcpTransport
-): McpHttpRouteHandlers {
-  const handle = (
-    request: Request,
-    server?: McpRouteServerControl
-  ): Promise<Response> => {
-    // MCP POST responses and GET streams may both be long-lived SSE responses.
-    server?.timeout(request, 0);
-    return transport.handleRequest(request);
+export async function createMcpHttpGateway(
+  runtime: ResidentRuntime,
+  config: ResolvedHttpGatewayConfig
+): Promise<McpHttpGateway> {
+  runtime.mcpContext.enableWrite = config.enableWrite;
+  const transport = new HttpMcpTransport(runtime, {
+    enableWrite: config.enableWrite,
+    idleTimeoutMs: config.limits.sessionIdleTimeoutMs,
+    maxConcurrentRequests: config.limits.maxConcurrentRequests,
+    maxQueuedRequests: config.limits.maxQueuedRequests,
+    maxSessions: config.limits.maxSessions,
+  });
+  const security = new HttpMcpSecurity(config, {
+    onCredentialsChanged: () => transport.invalidateAuthenticatedSessions(),
+  });
+  await security.initialize();
+
+  const route: McpHttpRoute = async (request, server) => {
+    const authorization = await security.authorize(request, server);
+    if (!authorization.ok) return authorization.response;
+
+    // POST responses and GET streams may both be long-lived SSE responses.
+    server.timeout(request, 0);
+    return transport.handleRequest(authorization.value.request, {
+      identity: authorization.value.identity,
+      parsedBody: authorization.value.parsedBody,
+    });
   };
-  return { DELETE: handle, GET: handle, POST: handle };
+
+  return {
+    route,
+    security,
+    transport,
+    close: () => transport.close(),
+  };
 }

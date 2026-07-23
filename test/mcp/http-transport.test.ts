@@ -9,7 +9,6 @@ import type { ToolContext } from "../../src/mcp/context";
 import type { HttpMcpTransportRuntime } from "../../src/mcp/http-transport";
 
 import { HttpMcpTransport } from "../../src/mcp/http-transport";
-import { createTestOnlyMcpRoute } from "../../src/serve/routes/mcp";
 import { startServer } from "../../src/serve/server";
 
 const MCP_URL = "http://127.0.0.1:3210/mcp";
@@ -106,7 +105,8 @@ function postRequest(body: unknown, sessionId?: string): Request {
 
 async function initialize(
   transport: HttpMcpTransport,
-  id = 1
+  id = 1,
+  identity = "loopback"
 ): Promise<string> {
   const response = await transport.handleRequest(
     postRequest({
@@ -118,7 +118,8 @@ async function initialize(
         capabilities: {},
         clientInfo: { name: `test-client-${id}`, version: "1.0.0" },
       },
-    })
+    }),
+    { identity }
   );
   expect(response.status).toBe(200);
   const sessionId = response.headers.get("mcp-session-id");
@@ -378,12 +379,13 @@ describe("stateful Web Standard MCP transport", () => {
     expect(transport.activeSessions).toBe(1);
   });
 
-  test("keeps the route test-only and disables Bun idle timeouts when injected", async () => {
+  test("mounts the production route and preserves per-request SSE timeout control", async () => {
     const capturedRoutes: Array<Record<string, unknown>> = [];
     const stop = mock(async () => undefined);
     const dispose = mock(async () => undefined);
     const runtime = {
       actualConfigPath: "/tmp/config.yml",
+      config: { collections: [] },
       store: {},
       ctxHolder: { current: {}, config: { collections: [] } },
       eventBus: null,
@@ -398,34 +400,39 @@ describe("stateful Web Standard MCP transport", () => {
       return { port: 3210, stop } as never;
     }) as never;
 
+    const handleRequest = mock(async (_request: Request) => new Response("ok"));
+    const route = mock(
+      async (
+        request: Request,
+        server: { timeout(req: Request, seconds: number): void }
+      ) => {
+        server.timeout(request, 0);
+        return handleRequest(request);
+      }
+    );
+    const close = mock(async () => undefined);
     await startServer(
       {},
       {
         startBackgroundRuntime: startBackgroundRuntime as never,
+        createMcpHttpGateway: (async () => ({
+          route,
+          close,
+          security: {},
+          transport: {},
+        })) as never,
         serve,
         waitForShutdown: async () => undefined,
       }
     );
-    expect(capturedRoutes[0]?.["/mcp"]).toBeUndefined();
-
-    const handleRequest = mock(async () => new Response("ok"));
-    const route = createTestOnlyMcpRoute({ handleRequest } as never);
-    await startServer(
-      {},
-      {
-        startBackgroundRuntime: startBackgroundRuntime as never,
-        serve,
-        waitForShutdown: async () => undefined,
-        unsafeTestOnlyMcpRoute: route,
-      }
-    );
-    expect(capturedRoutes[1]?.["/mcp"]).toBe(route);
+    expect(capturedRoutes[0]?.["/mcp"]).toBe(route);
 
     const timeout = mock(() => undefined);
     const request = postRequest({});
-    await route.POST(request, { timeout });
+    await route(request, { timeout });
     expect(timeout).toHaveBeenCalledWith(request, 0);
     expect(handleRequest).toHaveBeenCalledWith(request);
+    expect(close).toHaveBeenCalledTimes(1);
   });
 
   test("rejects requests after resident shutdown starts", async () => {
@@ -435,5 +442,87 @@ describe("stateful Web Standard MCP transport", () => {
     runtime.beginShutdown();
     const response = await transport.handleRequest(postRequest({}));
     expect(response.status).toBe(503);
+  });
+
+  test("binds sessions to one authenticated identity", async () => {
+    const transport = new HttpMcpTransport(createRuntime(), {
+      createServer: () => new McpServer({ name: "identity", version: "1" }),
+    });
+    openTransports.push(transport);
+    const sessionId = await initialize(transport, 1, "principal-a");
+
+    const confused = await transport.handleRequest(getRequest(sessionId), {
+      identity: "principal-b",
+    });
+    expect(confused.status).toBe(403);
+    expect(
+      (
+        await transport.handleRequest(getRequest(sessionId), {
+          identity: "principal-a",
+        })
+      ).status
+    ).toBe(404);
+  });
+
+  test("rejects HTTP mutation calls unless separately authorized", async () => {
+    const transport = new HttpMcpTransport(createRuntime(), {
+      createServer: () => new McpServer({ name: "read-only", version: "1" }),
+      enableWrite: false,
+    });
+    openTransports.push(transport);
+    const sessionId = await initialize(transport);
+    const response = await transport.handleRequest(
+      postRequest(
+        {
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: { name: "gno_capture", arguments: {} },
+        },
+        sessionId
+      )
+    );
+    expect(response.status).toBe(403);
+    expect(await response.text()).toContain('"message":"Forbidden"');
+  });
+
+  test("bounds the request queue and releases it on stream completion", async () => {
+    const transport = new HttpMcpTransport(createRuntime(), {
+      createServer: () => new McpServer({ name: "queue", version: "1" }),
+      maxConcurrentRequests: 1,
+      maxQueuedRequests: 1,
+    });
+    openTransports.push(transport);
+    const sessionId = await initialize(transport);
+    const held = await transport.handleRequest(getRequest(sessionId));
+    const queued = transport.handleRequest(getRequest(sessionId));
+    await Bun.sleep(0);
+    expect(transport.queuedRequests).toBe(1);
+    expect((await transport.handleRequest(getRequest(sessionId))).status).toBe(
+      429
+    );
+
+    await held.body?.cancel();
+    const admitted = await queued;
+    expect(admitted.status).toBe(200);
+    await admitted.body?.cancel();
+  });
+
+  test("invalidates all sessions when credentials rotate", async () => {
+    const transport = new HttpMcpTransport(createRuntime(), {
+      createServer: () => new McpServer({ name: "rotation", version: "1" }),
+    });
+    openTransports.push(transport);
+    const sessionId = await initialize(transport, 1, "old-token");
+    expect(transport.activeSessions).toBe(1);
+    await transport.invalidateAuthenticatedSessions();
+    expect(transport.activeSessions).toBe(0);
+    expect(
+      (
+        await transport.handleRequest(getRequest(sessionId), {
+          identity: "old-token",
+        })
+      ).status
+    ).toBe(404);
   });
 });
