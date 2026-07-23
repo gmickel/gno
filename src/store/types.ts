@@ -467,6 +467,11 @@ export interface SavedCapsuleVerificationRecord {
   verifiedAtMs: number;
 }
 
+export interface SavedCapsuleVerificationExpectation {
+  capsuleId: string;
+  fileHash: string;
+}
+
 export interface SavedCapsuleReverificationState {
   lastProcessedSequence: number;
   registrationEpoch: number;
@@ -1538,10 +1543,14 @@ export interface StorePort {
     limit: number
   ): Promise<StoreResult<{ registrationIds: string[]; truncated: boolean }>>;
 
-  /** Persist the latest canonical receipt or disjoint operation failure. */
+  /**
+   * Persist a receipt/failure only for the expected registration identity.
+   * Returns false without advancing sequence state when the snapshot is stale.
+   */
   upsertSavedCapsuleVerification(
-    verification: SavedCapsuleVerificationRecord
-  ): Promise<StoreResult<void>>;
+    verification: SavedCapsuleVerificationRecord,
+    expectedRegistration: SavedCapsuleVerificationExpectation
+  ): Promise<StoreResult<boolean>>;
 
   /** Read the resident scheduler's durable journal high-water sequence. */
   getSavedCapsuleReverificationSequence(): Promise<StoreResult<number>>;

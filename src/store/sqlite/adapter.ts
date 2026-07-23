@@ -80,6 +80,7 @@ import type {
   SavedCapsuleRegistrationInput,
   SavedCapsuleRegistrationRecord,
   SavedCapsuleReverificationState,
+  SavedCapsuleVerificationExpectation,
   SavedCapsuleVerificationRecord,
   StorePort,
   StoreResult,
@@ -1713,11 +1714,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   }
 
   async upsertSavedCapsuleVerification(
-    verification: SavedCapsuleVerificationRecord
-  ): Promise<StoreResult<void>> {
+    verification: SavedCapsuleVerificationRecord,
+    expectedRegistration: SavedCapsuleVerificationExpectation
+  ): Promise<StoreResult<boolean>> {
     return upsertStoredSavedCapsuleVerification(
       this.ensureOpen(),
-      verification
+      verification,
+      expectedRegistration
     );
   }
 

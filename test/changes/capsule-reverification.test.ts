@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { Config } from "../../src/config/types";
+import type { ContextCapsuleV1 } from "../../src/core/context-capsule";
 import type { DocumentInput } from "../../src/store/types";
 
 import { createDefaultConfig } from "../../src/config";
@@ -14,7 +15,10 @@ import {
 import { reverifySavedCapsuleManually } from "../../src/core/capsule-reverification";
 import { SavedCapsuleReverificationScheduler } from "../../src/core/capsule-reverification-scheduler";
 import { decodeDocumentChangeCursor } from "../../src/core/change-journal";
-import { canonicalContextCapsuleJson } from "../../src/core/context-capsule";
+import {
+  canonicalContextCapsuleJson,
+  createContextCapsuleV1,
+} from "../../src/core/context-capsule";
 import { sha256Text } from "../../src/core/context-capsule-validation";
 import { SqliteAdapter } from "../../src/store";
 import {
@@ -46,6 +50,7 @@ describe("saved Context Capsule reverification", () => {
   let testDir = "";
   let capsulePath = "";
   let config: Config;
+  let capsule: ContextCapsuleV1;
   const fixture = verifierFixture(false);
 
   beforeEach(async () => {
@@ -94,7 +99,7 @@ describe("saved Context Capsule reverification", () => {
     }
 
     const mock = createVerifierStore(fixture.state);
-    const capsule = await capsuleFor(mock.store, fixture.state);
+    capsule = await capsuleFor(mock.store, fixture.state);
     capsulePath = join(testDir, "decision.capsule.json");
     await Bun.write(capsulePath, canonicalContextCapsuleJson(capsule));
   });
@@ -506,6 +511,136 @@ describe("saved Context Capsule reverification", () => {
       ok: true,
       value: decodeDocumentChangeCursor(latest.value.latestCursor),
     });
+  });
+
+  test("rejects a stale receipt and verifies the Capsule re-registered during persistence", async () => {
+    const original = await registerSavedCapsule(adapter, "default", {
+      filePath: capsulePath,
+      notificationPreference: "local",
+    });
+    expect(
+      (
+        await adapter.upsertDocument(
+          documentInput({
+            ...fixture.first,
+            sourceHash: "7".repeat(64),
+          })
+        )
+      ).ok
+    ).toBe(true);
+    const { capsuleId: originalCapsuleId, ...payload } = capsule;
+    const replacement = createContextCapsuleV1({
+      ...payload,
+      goal: "Find the replacement decision owners",
+    });
+    const replacementBytes = canonicalContextCapsuleJson(replacement);
+    const notifications: unknown[] = [];
+    const originalPersist =
+      adapter.upsertSavedCapsuleVerification.bind(adapter);
+    let persistCalls = 0;
+    const persistSpy = spyOn(
+      adapter,
+      "upsertSavedCapsuleVerification"
+    ).mockImplementation(async (verification, expectedRegistration) => {
+      persistCalls += 1;
+      if (persistCalls === 1) {
+        await Bun.write(capsulePath, replacementBytes);
+        const replacementRegistration = await registerSavedCapsule(
+          adapter,
+          "default",
+          {
+            filePath: capsulePath,
+            notificationPreference: "local",
+          }
+        );
+        expect(replacementRegistration.capsuleId).toBe(replacement.capsuleId);
+        const staleWrite = await originalPersist(
+          verification,
+          expectedRegistration
+        );
+        expect(staleWrite).toEqual({ ok: true, value: false });
+        expect((await listSavedCapsules(adapter))[0]?.verification).toBeNull();
+        return staleWrite;
+      }
+      return originalPersist(verification, expectedRegistration);
+    });
+    const scheduler = new SavedCapsuleReverificationScheduler({
+      deps: {
+        store: adapter,
+        config,
+        indexName: "default",
+        notify: (event) => notifications.push(event),
+      },
+      startBackgroundWork: () => false,
+    });
+
+    const drains = await scheduler.triggerNow();
+    persistSpy.mockRestore();
+    expect(persistCalls).toBe(2);
+    expect(drains.map(({ affected }) => affected)).toEqual([1, 0]);
+    const throughSequence = drains[0]!.throughSequence;
+    const stored = (await listSavedCapsules(adapter))[0];
+    expect(stored).toMatchObject({
+      registrationId: original.registrationId,
+      capsuleId: replacement.capsuleId,
+      fileHash: sha256Text(replacementBytes),
+      lastAttemptedSequence: throughSequence,
+    });
+    expect(stored?.verification).toMatchObject({
+      registrationId: original.registrationId,
+      operationStatus: "completed",
+      throughSequence,
+    });
+    expect(stored?.verification?.receiptJson).toContain(replacement.capsuleId);
+    expect(stored?.verification?.receiptJson).not.toContain(originalCapsuleId);
+    expect(await Bun.file(capsulePath).text()).toBe(replacementBytes);
+    expect(notifications).toEqual([
+      {
+        type: "capsule-reverified",
+        registrationId: original.registrationId,
+        capsuleId: replacement.capsuleId,
+        operationStatus: "completed",
+        affectedQuestionState: "affected",
+        changedAt: expect.any(String),
+      },
+    ]);
+    expect(await adapter.getSavedCapsuleReverificationSequence()).toEqual({
+      ok: true,
+      value: throughSequence,
+    });
+  });
+
+  test("bounds manual reverification when registration conflicts persist", async () => {
+    const registration = await registerSavedCapsule(adapter, "default", {
+      filePath: capsulePath,
+    });
+    const persistSpy = spyOn(
+      adapter,
+      "upsertSavedCapsuleVerification"
+    ).mockResolvedValue({ ok: true, value: false });
+
+    let conflict: unknown;
+    try {
+      await reverifySavedCapsuleManually(registration.registrationId, {
+        store: adapter,
+        config,
+        indexName: "default",
+      });
+    } catch (error) {
+      conflict = error;
+    }
+    expect(conflict).toMatchObject({
+      code: "store_failed",
+      message:
+        "Saved Context Capsule registration changed repeatedly during verification",
+    });
+    expect(persistSpy).toHaveBeenCalledTimes(2);
+    persistSpy.mockRestore();
+    const stored = (await listSavedCapsules(adapter))[0];
+    expect(stored?.verification).toBeNull();
+    expect(stored?.lastAttemptedSequence).toBe(
+      registration.lastAttemptedSequence
+    );
   });
 
   test("reports a changed saved file without rewriting it", async () => {

@@ -27,9 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   row/byte counters and bounded oldest-prefix deletion.
 - Closed saved-Capsule registration and conversion-failure journal gaps with a
   durable post-registration catch-up queue and race-safe scheduler high-water
-  advancement, so freshness checks cannot skip concurrent or disappearing
-  evidence; never-successful conversion placeholders no longer emit false
-  document-create events.
+  advancement plus identity-checked receipt persistence, so freshness checks
+  cannot skip concurrent or disappearing evidence or attach a stale receipt
+  after re-registration; never-successful conversion placeholders no longer
+  emit false document-create events.
 - Rejected explicitly empty Knowledge Delta filters/selectors across CLI, REST,
   MCP, and SDK; failed manual Capsule reverification now renders the persisted
   failure and exits nonzero.

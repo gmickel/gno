@@ -92,6 +92,7 @@ export type {
   SavedCapsuleRegistrationRecord,
   SavedCapsuleReverificationState,
   SavedCapsuleTriggerKind,
+  SavedCapsuleVerificationExpectation,
   SavedCapsuleVerificationRecord,
   StoreError,
   StoreErrorCode,

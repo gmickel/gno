@@ -8,6 +8,7 @@ import type {
   SavedCapsuleRegistrationInput,
   SavedCapsuleRegistrationRecord,
   SavedCapsuleReverificationState,
+  SavedCapsuleVerificationExpectation,
   SavedCapsuleVerificationRecord,
   StoreResult,
 } from "../types";
@@ -346,10 +347,26 @@ export const listSavedCapsuleIdsAffectedByChanges = (
 
 export const upsertSavedCapsuleVerification = (
   db: Database,
-  verification: SavedCapsuleVerificationRecord
-): StoreResult<void> => {
+  verification: SavedCapsuleVerificationRecord,
+  expectedRegistration: SavedCapsuleVerificationExpectation
+): StoreResult<boolean> => {
   try {
     const transaction = db.transaction(() => {
+      const registrationMatches = db
+        .query<{ found: number }, [string, string, string]>(
+          `SELECT 1 AS found
+           FROM saved_capsule_registrations
+           WHERE registration_id = ?
+             AND capsule_id = ?
+             AND file_hash = ?`
+        )
+        .get(
+          verification.registrationId,
+          expectedRegistration.capsuleId,
+          expectedRegistration.fileHash
+        );
+      if (!registrationMatches) return false;
+
       db.run(
         `INSERT INTO saved_capsule_verifications (
            registration_id, trigger_kind, from_sequence, through_sequence,
@@ -394,9 +411,9 @@ export const upsertSavedCapsuleVerification = (
           verification.registrationId,
         ]
       );
+      return true;
     });
-    transaction();
-    return ok(undefined);
+    return ok(transaction());
   } catch (cause) {
     return err(
       "QUERY_FAILED",

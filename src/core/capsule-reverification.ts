@@ -33,6 +33,8 @@ type ReverificationStore = StorePort &
     | "upsertSavedCapsuleVerification"
   >;
 
+const MAX_REGISTRATION_CONFLICT_ATTEMPTS = 2;
+
 export interface SavedCapsuleReverificationNotification {
   type: "capsule-reverified";
   registrationId: string;
@@ -121,11 +123,15 @@ const persist = async (
   deps: SavedCapsuleReverificationDeps,
   registration: SavedCapsuleRegistrationRecord,
   verification: SavedCapsuleVerificationRecord
-): Promise<void> => {
-  unwrapStore(
-    await deps.store.upsertSavedCapsuleVerification(verification),
+): Promise<boolean> => {
+  const persisted = unwrapStore(
+    await deps.store.upsertSavedCapsuleVerification(verification, {
+      capsuleId: registration.capsuleId,
+      fileHash: registration.fileHash,
+    }),
     "Failed to persist saved Context Capsule verification"
   );
+  if (!persisted) return false;
   if (registration.notificationPreference === "local") {
     deps.notify?.({
       type: "capsule-reverified",
@@ -136,13 +142,14 @@ const persist = async (
       changedAt: new Date(verification.verifiedAtMs).toISOString(),
     });
   }
+  return true;
 };
 
-export const reverifySavedCapsule = async (
+const reverifySavedCapsuleAttempt = async (
   registrationId: string,
   trigger: SavedCapsuleReverificationTrigger,
   deps: SavedCapsuleReverificationDeps
-): Promise<SavedCapsuleReverificationOutcome> => {
+): Promise<SavedCapsuleReverificationOutcome | null> => {
   const registration = await getSavedCapsule(deps.store, registrationId);
   const runtimeIndex = canonicalizeIndexName(
     deps.indexName || DEFAULT_INDEX_NAME
@@ -207,9 +214,32 @@ export const reverifySavedCapsule = async (
       verifiedAtMs,
     };
   }
-  await persist(deps, registration, verification);
+  if (!(await persist(deps, registration, verification))) return null;
   const refreshed = await getSavedCapsule(deps.store, registrationId);
   return { registration: refreshed, verification, receipt };
+};
+
+export const reverifySavedCapsule = async (
+  registrationId: string,
+  trigger: SavedCapsuleReverificationTrigger,
+  deps: SavedCapsuleReverificationDeps
+): Promise<SavedCapsuleReverificationOutcome> => {
+  for (
+    let attempt = 0;
+    attempt < MAX_REGISTRATION_CONFLICT_ATTEMPTS;
+    attempt += 1
+  ) {
+    const outcome = await reverifySavedCapsuleAttempt(
+      registrationId,
+      trigger,
+      deps
+    );
+    if (outcome) return outcome;
+  }
+  throw new SavedCapsuleRegistryError(
+    "store_failed",
+    "Saved Context Capsule registration changed repeatedly during verification"
+  );
 };
 
 export const reverifySavedCapsuleManually = async (
