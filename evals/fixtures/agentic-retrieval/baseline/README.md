@@ -13,6 +13,14 @@ closed schema-valid report; `canonical.json` is its observation-free canonical
 projection; `observations.json` holds environment and timing data with temporary
 paths projected to `<temp>`; `report.md` is the readable summary.
 
+`verified-ask-promotion.json` is the separate attributable 22-pair outcome
+lane: production raw Ask baseline versus production `buildVerifiedAsk`
+candidate under the same native index, retrieval request, deterministic answer
+agent, and initial draft. Its gate requires no answer-accuracy regression and
+strictly fewer unsupported substantive claims. `verified-ask-promotion.md` is
+the readable projection. These files do not rename or replace the Capsule
+retrieval metrics in `report.json`.
+
 `optional/qmd/` and `optional/local-model/` are non-authoritative local lanes.
 They may be written only as complete matrices and never replace
 `fixture-agent/`. qmd requires the exact checkout and model cache declared in

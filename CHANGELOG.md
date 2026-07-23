@@ -13,9 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   against one closed Context Capsule, preserves exact evidence spans and
   freshness state, classifies every substantive claim, and abstains below 100%
   support coverage.
-- Added adversarial verified-synthesis coverage plus agentic promotion gates
-  that require no task-accuracy loss and strictly fewer unsupported substantive
-  claims, with explicit unavailable/non-comparable reporting.
+- Added a separate attributable verified Ask outcome lane that executes
+  production raw Ask and production `buildVerifiedAsk` over 22 paired fixture
+  tasks. It requires no answer-accuracy loss and strictly fewer unsupported
+  substantive claims, while preserving the existing Capsule retrieval
+  promotion unchanged.
 
 ## [1.19.0] - 2026-07-23
 

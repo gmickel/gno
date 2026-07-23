@@ -1,7 +1,9 @@
 import type { BenchmarkReport } from "./types";
+import type { VerifiedAskPromotionArtifact } from "./verified-ask-outcome";
 
 import { canonicalJson } from "./canonical";
 import { benchmarkCanonicalProjection } from "./report";
+import { renderVerifiedAskPromotionMarkdown } from "./verified-ask-outcome";
 
 const stablePrettyJson = (value: unknown): string =>
   `${JSON.stringify(JSON.parse(canonicalJson(value)), null, 2)}\n`;
@@ -179,10 +181,13 @@ export interface BenchmarkArtifacts {
   canonicalJson: string;
   observationsJson: string;
   reportMarkdown: string;
+  verifiedAskPromotionJson?: string;
+  verifiedAskPromotionMarkdown?: string;
 }
 
 export const createBenchmarkArtifacts = (
-  report: BenchmarkReport
+  report: BenchmarkReport,
+  verifiedAskPromotion?: VerifiedAskPromotionArtifact
 ): BenchmarkArtifacts => {
   const projectedReport: BenchmarkReport = {
     ...report,
@@ -214,5 +219,12 @@ export const createBenchmarkArtifacts = (
       })),
     }),
     reportMarkdown: renderBenchmarkMarkdown(projectedReport),
+    ...(verifiedAskPromotion
+      ? {
+          verifiedAskPromotionJson: stablePrettyJson(verifiedAskPromotion),
+          verifiedAskPromotionMarkdown:
+            renderVerifiedAskPromotionMarkdown(verifiedAskPromotion),
+        }
+      : {}),
   };
 };

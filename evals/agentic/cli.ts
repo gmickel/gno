@@ -7,6 +7,7 @@ import type { OuterAgentFactory } from "./agent";
 import type { LoadedAgenticFixture } from "./fixture-db";
 import type { BenchmarkArtifacts } from "./report-artifacts";
 import type { CapsuleReplayRecord } from "./types";
+import type { VerifiedAskPromotionArtifact } from "./verified-ask-outcome";
 
 import { AgenticHarnessError } from "./adapter";
 import { AGENTIC_CLI_HELP, parseAgenticCliOptions } from "./cli-options";
@@ -27,6 +28,7 @@ import {
   renderBenchmarkMarkdown,
 } from "./report-artifacts";
 import { runAgenticBenchmark } from "./runner";
+import { runVerifiedAskOutcomeBenchmark } from "./verified-ask-outcome";
 
 const BASELINE_ROOT = join(AGENTIC_FIXTURE_ROOT, "baseline");
 
@@ -69,18 +71,32 @@ export const writeBenchmarkArtifacts = async (
   const backup = `${staging}.previous`;
   let movedPrevious = false;
   try {
-    const paths = [
-      join(staging, "report.json"),
-      join(staging, "canonical.json"),
-      join(staging, "observations.json"),
-      join(staging, "report.md"),
-    ];
-    await Promise.all([
-      Bun.write(paths[0]!, artifacts.reportJson),
-      Bun.write(paths[1]!, artifacts.canonicalJson),
-      Bun.write(paths[2]!, artifacts.observationsJson),
-      Bun.write(paths[3]!, artifacts.reportMarkdown),
-    ]);
+    const entries = [
+      ["report.json", artifacts.reportJson],
+      ["canonical.json", artifacts.canonicalJson],
+      ["observations.json", artifacts.observationsJson],
+      ["report.md", artifacts.reportMarkdown],
+      ...(artifacts.verifiedAskPromotionJson
+        ? [
+            [
+              "verified-ask-promotion.json",
+              artifacts.verifiedAskPromotionJson,
+            ] as const,
+          ]
+        : []),
+      ...(artifacts.verifiedAskPromotionMarkdown
+        ? [
+            [
+              "verified-ask-promotion.md",
+              artifacts.verifiedAskPromotionMarkdown,
+            ] as const,
+          ]
+        : []),
+    ] as const;
+    const paths = entries.map(([name]) => join(staging, name));
+    await Promise.all(
+      entries.map(([name, content]) => Bun.write(join(staging, name), content))
+    );
     const formatter = Bun.spawn([process.execPath, "x", "oxfmt", ...paths], {
       cwd: join(import.meta.dir, "../.."),
       stdout: "ignore",
@@ -116,6 +132,9 @@ export interface AgenticCliDependencies {
   loadFixture: () => Promise<LoadedAgenticFixture>;
   createAgentFactory: (agent: "fixture" | "local-model") => OuterAgentFactory;
   runBenchmark: typeof runAgenticBenchmark;
+  runVerifiedAskBenchmark: (
+    fixture: LoadedAgenticFixture
+  ) => Promise<VerifiedAskPromotionArtifact>;
   writeArtifacts: typeof writeBenchmarkArtifacts;
   stdout: Pick<typeof process.stdout, "write">;
   stderr: Pick<typeof process.stderr, "write">;
@@ -128,6 +147,7 @@ const defaultDependencies: AgenticCliDependencies = {
       ? new FixtureAgentFactory()
       : new LocalModelAgentFactory(),
   runBenchmark: runAgenticBenchmark,
+  runVerifiedAskBenchmark: runVerifiedAskOutcomeBenchmark,
   writeArtifacts: writeBenchmarkArtifacts,
   stdout: process.stdout,
   stderr: process.stderr,
@@ -211,9 +231,17 @@ export const runAgenticCli = async (
         trials,
       },
     });
+    const authoritativeFixtureLane =
+      lane === join(BASELINE_ROOT, "fixture-agent");
+    const verifiedAskPromotion = authoritativeFixtureLane
+      ? await dependencies.runVerifiedAskBenchmark(fixture)
+      : undefined;
     dependencies.stdout.write(renderBenchmarkMarkdown(report));
     if (options.write && lane)
-      await dependencies.writeArtifacts(lane, createBenchmarkArtifacts(report));
+      await dependencies.writeArtifacts(
+        lane,
+        createBenchmarkArtifacts(report, verifiedAskPromotion)
+      );
     if (
       report.receipts.some(
         (receipt) => receipt.canonical.failure.class === "harness_error"
@@ -221,6 +249,8 @@ export const runAgenticCli = async (
     )
       return 2;
     if (report.promotion && !report.promotion.passed) return 1;
+    if (verifiedAskPromotion && !verifiedAskPromotion.promotion.passed)
+      return 1;
     return 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

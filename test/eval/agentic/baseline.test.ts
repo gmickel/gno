@@ -26,6 +26,10 @@ import {
   scoreTrajectory,
 } from "../../../evals/agentic/scoring";
 import { validateAgenticSchema } from "../../../evals/agentic/validation";
+import {
+  evaluateVerifiedAskPromotion,
+  type VerifiedAskPromotionArtifact,
+} from "../../../evals/agentic/verified-ask-outcome";
 
 const BASELINE_ROOT = join(AGENTIC_FIXTURE_ROOT, "baseline", "fixture-agent");
 
@@ -175,5 +179,32 @@ describe("committed authoritative agentic baseline", () => {
     expect(observations).not.toMatch(/\/Users\/|\/private\/|\/var\/folders\//);
     expect(observations).toContain('"<temp>"');
     expect(canonicalJson(JSON.parse(observations))).toBeTruthy();
+  });
+
+  test("contains the separate attributable verified Ask promotion", async () => {
+    const artifact = (await Bun.file(
+      join(BASELINE_ROOT, "verified-ask-promotion.json")
+    ).json()) as VerifiedAskPromotionArtifact;
+    expect(artifact.benchmarkId).toBe("verified-ask-outcome@1");
+    expect(artifact.receipts).toHaveLength(44);
+    expect(artifact.scores).toHaveLength(44);
+    expect(
+      evaluateVerifiedAskPromotion(artifact.receipts, artifact.scores)
+    ).toEqual(artifact.promotion);
+    expect(artifact.promotion).toMatchObject({
+      passed: true,
+      pairCount: 22,
+      failures: [],
+      metrics: {
+        baselineAnswerAccuracy: 18 / 22,
+        candidateAnswerAccuracy: 18 / 22,
+        baselineUnsupportedSubstantiveClaims: 4,
+        candidateUnsupportedSubstantiveClaims: 0,
+        unsupportedSubstantiveClaimReduction: 1,
+      },
+    });
+    expect(
+      await Bun.file(join(BASELINE_ROOT, "verified-ask-promotion.md")).text()
+    ).toContain("Baseline: production raw Ask");
   });
 });
