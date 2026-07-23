@@ -12,6 +12,8 @@ Deliver integrate verified synthesis across ask surfaces as one implementation-s
 ### Approach
 - Build verified Ask on Context Capsules rather than full-document prefixes, preserving raw Ask mode as an explicit compatibility choice during rollout. Compose Capsule build/freshness through `buildContextCapsule` and `verifyContextCapsuleRuntime` so Ask does not recreate input normalization, runtime fingerprint derivation, compiler wiring, or verification wiring.
 - Return answer, per-claim verdicts, exact support/conflict spans, gaps, coverage, abstention, and degraded capability through one result contract. Derive degradation from the Capsule's requested/attempted/outcome `retrieval.capabilityStates`, not from ambiguous capability booleans or the mere absence of a fallback.
+- Reuse the existing Ask `RetrievalTraceSession` instead of starting a second synthesis trace. Retain citation provenance through `CITATION_TRACE_METADATA` and `processAnswerResultWithTrace`; use `answerTraceTerminalStatus` so generated/verified output with no retained citations is `partial`, setup failures are `failed`, and aborts are `cancelled`.
+- Keep trace identity transport-only across CLI stderr, SDK non-enumerable `RETRIEVAL_TRACE_METADATA`, MCP `_meta.gno.retrievalTrace.traceId`, and REST `X-GNO-Trace-ID`. If retention eviction makes `session.metadata()` unavailable, verified Ask still returns its real result but emits no dead trace identity.
 - Use the same defaults/thresholds and readable rendering across CLI, REST, MCP, SDK, and Web.
 
 ### Investigation targets
@@ -33,8 +35,10 @@ Deliver integrate verified synthesis across ask surfaces as one implementation-s
 - [ ] Below-threshold support yields explicit abstention instead of an unsupported answer.
 - [ ] Contradiction and missing evidence remain distinct in JSON and readable output.
 - [ ] Verified Ask preserves the normalized Capsule retrieval request for reproducibility, distinguishes `not_requested` from attempted `unavailable`, and uses each surface's canonical effective index so freshness verification fails closed on an index mismatch.
+- [ ] Verified Ask extends one boundary-owned trace with only exact retained claim/citation spans, preserves final versus planner/source/graph provenance, and emits the same terminal outcome and transport-only trace identity rules on every surface.
 <!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.5 introduced buildContextCapsule and verifyContextCapsuleRuntime as the shared surface composition boundary -->
 <!-- Updated by plan-sync (cross-spec): fn-98-context-capsule-mvp.5 review fixes made retrieval request, capability outcome, and runtime-index authority explicit -->
+<!-- Updated by plan-sync (cross-spec): fn-100-private-retrieval-learning-loop.2 froze Ask trace ownership, citation provenance, terminal outcomes, and dead-identity suppression -->
 
 
 ## Done summary
