@@ -28,6 +28,7 @@ export const productionCapsuleProjectionFixture = (taskId: string): string => {
       usedTokens: 100,
       usedBytes: 400,
       estimator: "unicode_conservative",
+      tokenizerFingerprint: null,
     },
     retrieval: {
       depthPolicy: "fast",
@@ -47,14 +48,23 @@ export const productionCapsuleProjectionFixture = (taskId: string): string => {
       },
       fallbacks: [],
     },
+    guidance: {
+      evidenceTrust: "untrusted_data",
+      instructionBoundary: "hard_delimited",
+      configuredContexts: [],
+    },
     evidence: [
       {
         uri: "gno://c001/d001.md",
+        title: null,
+        heading: null,
         sourceHash: ZERO_HASH,
         mirrorHash: ZERO_HASH,
         startLine: 2,
         endLine: 2,
         passageHash,
+        contextIds: [],
+        egress: "unavailable",
         text,
       },
     ],

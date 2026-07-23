@@ -123,12 +123,19 @@ field is present. The compact keys and tuple positions are part of that
 versioned contract:
 
 - `v`: projection version; `id`: Capsule identity.
-- `b`: requested tokens, requested bytes, used tokens, used bytes.
+- `b`: requested tokens, requested bytes, used tokens, used bytes, estimator,
+  tokenizer fingerprint or `null`.
 - `r`: depth policy, index fingerprint, config fingerprint, retrieval
   fingerprint, embedding-model fingerprint or `null`, rerank-model fingerprint
   or `null`, enabled capability names, fallbacks.
 - `e[]`: URI, start line, end line, source hash, mirror hash, passage hash,
-  exact extractive text.
+  exact extractive text, title, heading, configured-context IDs, egress
+  classification. Title/heading are nullable; egress is explicit even when the
+  policy is unavailable.
+- `g`: evidence trust (`untrusted_data`), instruction boundary
+  (`hard_delimited`), then configured-guidance tuples containing context ID,
+  scope type, scope key, and exact guidance text. Evidence `contextIds` bind
+  each passage to these entries.
 - `c`: covered facets, then `[facet, gapCode]` pairs.
 - `o`: exact total omissions, then sparse `[reason, count]` pairs. An absent
   reason has count zero.

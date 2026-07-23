@@ -96,6 +96,7 @@ const validateReplayPayload = (
     const budget = parsed.b;
     const retrieval = parsed.r;
     const evidence = parsed.e;
+    const guidance = parsed.g;
     const coverage = parsed.c;
     const omissions = parsed.o;
     const hash = (value: unknown): boolean =>
@@ -128,13 +129,15 @@ const validateReplayPayload = (
       parsed.v === CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION &&
       hash(parsed.id) &&
       Array.isArray(budget) &&
-      budget.length === 4 &&
+      budget.length === 6 &&
       budget
         .slice(0, 2)
         .every(
           (value) => typeof value === "number" && Number.isFinite(value)
         ) &&
-      budget.slice(2).every(nullableNumber) &&
+      budget.slice(2, 4).every(nullableNumber) &&
+      typeof budget[4] === "string" &&
+      (budget[5] === null || hash(budget[5])) &&
       Array.isArray(retrieval) &&
       retrieval.length === 8 &&
       typeof retrieval[0] === "string" &&
@@ -150,7 +153,7 @@ const validateReplayPayload = (
       evidence.every(
         (item) =>
           Array.isArray(item) &&
-          item.length === 7 &&
+          item.length === 11 &&
           typeof item[0] === "string" &&
           typeof item[1] === "number" &&
           Number.isInteger(item[1]) &&
@@ -159,7 +162,32 @@ const validateReplayPayload = (
           hash(item[3]) &&
           hash(item[4]) &&
           hash(item[5]) &&
-          typeof item[6] === "string"
+          typeof item[6] === "string" &&
+          (item[7] === null || typeof item[7] === "string") &&
+          (item[8] === null || typeof item[8] === "string") &&
+          Array.isArray(item[9]) &&
+          item[9].every(hash) &&
+          [
+            "local_only",
+            "lan",
+            "remote",
+            "unclassified",
+            "unavailable",
+          ].includes(item[10] as string)
+      ) &&
+      Array.isArray(guidance) &&
+      guidance.length === 3 &&
+      guidance[0] === "untrusted_data" &&
+      guidance[1] === "hard_delimited" &&
+      Array.isArray(guidance[2]) &&
+      guidance[2].every(
+        (item) =>
+          Array.isArray(item) &&
+          item.length === 4 &&
+          hash(item[0]) &&
+          ["global", "collection", "prefix"].includes(item[1] as string) &&
+          typeof item[2] === "string" &&
+          typeof item[3] === "string"
       ) &&
       Array.isArray(coverage) &&
       coverage.length === 2 &&

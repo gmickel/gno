@@ -7,11 +7,22 @@ export const CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION =
 
 export interface ContextAgentProjectionEvidence {
   uri: string;
+  title: string | null;
+  heading: string | null;
   sourceHash: string;
   mirrorHash: string;
   startLine: number;
   endLine: number;
   passageHash: string;
+  contextIds: readonly string[];
+  egress: "local_only" | "lan" | "remote" | "unclassified" | "unavailable";
+  text: string;
+}
+
+export interface ContextAgentProjectionGuidance {
+  contextId: string;
+  scopeType: "global" | "collection" | "prefix";
+  scopeKey: string;
   text: string;
 }
 
@@ -34,6 +45,12 @@ export interface ContextAgentProjectionSource {
     usedTokens: number | null;
     usedBytes: number | null;
     estimator: string;
+    tokenizerFingerprint: string | null;
+  };
+  guidance: {
+    evidenceTrust: "untrusted_data";
+    instructionBoundary: "hard_delimited";
+    configuredContexts: readonly ContextAgentProjectionGuidance[];
   };
   retrieval: {
     depthPolicy: string;
@@ -76,6 +93,17 @@ type EvidenceTuple = readonly [
   mirrorHash: string,
   passageHash: string,
   text: string,
+  title: string | null,
+  heading: string | null,
+  contextIds: readonly string[],
+  egress: ContextAgentProjectionEvidence["egress"],
+];
+
+type GuidanceTuple = readonly [
+  contextId: string,
+  scopeType: ContextAgentProjectionGuidance["scopeType"],
+  scopeKey: string,
+  text: string,
 ];
 
 export interface ContextAgentProjection {
@@ -83,8 +111,15 @@ export interface ContextAgentProjection {
   v: typeof CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION;
   /** Capsule identity. */
   id: string;
-  /** Tuple order: requested tokens/bytes, used tokens/bytes. */
-  b: readonly [number, number, number | null, number | null];
+  /** Tuple order: requested tokens/bytes, used tokens/bytes, estimator, tokenizer fingerprint. */
+  b: readonly [
+    number,
+    number,
+    number | null,
+    number | null,
+    string,
+    string | null,
+  ];
   /** Tuple order: depth; index/config/retrieval/embedding/rerank identities; capabilities; fallbacks. */
   r: readonly [
     string,
@@ -98,6 +133,8 @@ export interface ContextAgentProjection {
   ];
   /** Tuple order is declared by EvidenceTuple above and spec/mcp.md. */
   e: EvidenceTuple[];
+  /** Tuple order: evidence trust, instruction boundary, configured guidance tuples. */
+  g: readonly ["untrusted_data", "hard_delimited", GuidanceTuple[]];
   /** Tuple order: covered facets, then [facet, gap code] pairs. */
   c: readonly [
     readonly string[],
@@ -145,6 +182,8 @@ const projection = (
       source.budget.requestedBytes,
       source.budget.usedTokens,
       source.budget.usedBytes,
+      source.budget.estimator,
+      source.budget.tokenizerFingerprint,
     ],
     r: [
       source.retrieval.depthPolicy,
@@ -164,7 +203,21 @@ const projection = (
       item.mirrorHash,
       item.passageHash,
       item.text,
+      item.title,
+      item.heading,
+      item.contextIds,
+      item.egress,
     ]),
+    g: [
+      source.guidance.evidenceTrust,
+      source.guidance.instructionBoundary,
+      source.guidance.configuredContexts.map((context) => [
+        context.contextId,
+        context.scopeType,
+        context.scopeKey,
+        context.text,
+      ]),
+    ],
     c: [
       source.coverage.coveredFacets,
       source.coverage.gaps.map((gap) => [gap.facet, gap.code]),
@@ -191,6 +244,7 @@ export const projectContextCapsuleForAgent = (
     usedTokens: capsule.budget.usedTokens,
     usedBytes: capsule.budget.usedBytes,
     estimator: capsule.budget.estimator,
+    tokenizerFingerprint: capsule.budget.tokenizerFingerprint,
   },
   retrieval: {
     depthPolicy: capsule.retrieval.depthPolicy,
@@ -204,13 +258,22 @@ export const projectContextCapsuleForAgent = (
       (fallback) => `${fallback.capability}:${fallback.code}`
     ),
   },
+  guidance: {
+    evidenceTrust: capsule.guidance.evidenceTrust,
+    instructionBoundary: capsule.guidance.instructionBoundary,
+    configuredContexts: capsule.guidance.configuredContexts,
+  },
   evidence: capsule.evidence.map((item) => ({
     uri: item.uri,
+    title: item.title,
+    heading: item.heading,
     sourceHash: item.sourceHash,
     mirrorHash: item.mirrorHash,
     startLine: item.startLine,
     endLine: item.endLine,
     passageHash: item.passageHash,
+    contextIds: item.contextIds,
+    egress: item.egress,
     text: item.text,
   })),
   coverage: {

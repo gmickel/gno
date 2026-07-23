@@ -10,26 +10,80 @@ import {
 describe("Context Capsule MCP model ownership", () => {
   test("attempts every cleanup and suppresses cleanup failures", async () => {
     const calls: string[] = [];
-    await disposeContextModelOwners([
-      {
-        async dispose() {
-          calls.push("embed");
-          throw new Error("embed cleanup failed");
+    await disposeContextModelOwners(
+      [
+        {
+          async dispose() {
+            calls.push("embed");
+            throw new Error("embed cleanup failed");
+          },
         },
-      },
-      {
-        async dispose() {
-          calls.push("rerank");
+        {
+          async dispose() {
+            calls.push("rerank");
+          },
         },
-      },
+      ],
       {
         async dispose() {
           calls.push("manager");
           throw new Error("manager cleanup failed");
         },
-      },
-    ]);
+      }
+    );
     expect(calls).toEqual(["embed", "rerank", "manager"]);
+  });
+
+  test("waits for every port cleanup before disposing the model manager", async () => {
+    const calls: string[] = [];
+    let releaseEmbed!: () => void;
+    let releaseRerank!: () => void;
+    const embedSettled = new Promise<void>((resolve) => {
+      releaseEmbed = resolve;
+    });
+    const rerankSettled = new Promise<void>((resolve) => {
+      releaseRerank = resolve;
+    });
+    const cleanup = disposeContextModelOwners(
+      [
+        {
+          async dispose() {
+            calls.push("embed:start");
+            await embedSettled;
+            calls.push("embed:end");
+          },
+        },
+        {
+          async dispose() {
+            calls.push("rerank:start");
+            await rerankSettled;
+            calls.push("rerank:end");
+          },
+        },
+      ],
+      {
+        async dispose() {
+          calls.push("manager");
+        },
+      }
+    );
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(calls).toEqual(["embed:start", "rerank:start"]);
+    releaseEmbed();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(calls).not.toContain("manager");
+    releaseRerank();
+    await cleanup;
+    expect(calls).toEqual([
+      "embed:start",
+      "rerank:start",
+      "embed:end",
+      "rerank:end",
+      "manager",
+    ]);
   });
 
   test("takes ownership before embedding init and cleans partial construction", async () => {

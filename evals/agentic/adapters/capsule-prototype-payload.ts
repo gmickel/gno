@@ -84,6 +84,7 @@ const projectionSource = (
       usedTokens: null,
       usedBytes: null,
       estimator: "model_visible_utf8",
+      tokenizerFingerprint: null,
     },
     retrieval: {
       depthPolicy: "fast",
@@ -108,13 +109,22 @@ const projectionSource = (
       },
       fallbacks: [],
     },
+    guidance: {
+      evidenceTrust: "untrusted_data",
+      instructionBoundary: "hard_delimited",
+      configuredContexts: [],
+    },
     evidence: selection.evidence.map((item) => ({
       uri: item.uri,
+      title: null,
+      heading: null,
       sourceHash: item.sourceHash,
       mirrorHash: item.sourceHash,
       startLine: item.startLine,
       endLine: item.endLine,
       passageHash: item.spanHash,
+      contextIds: [],
+      egress: "unavailable",
       text: item.text,
     })),
     coverage: {

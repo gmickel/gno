@@ -86,21 +86,15 @@ interface McpModelPortFactory {
 }
 
 export const disposeContextModelOwners = async (
-  owners: readonly { dispose(): Promise<void> }[]
+  portOwners: readonly { dispose(): Promise<void> }[],
+  managerOwner: { dispose(): Promise<void> }
 ): Promise<void> => {
-  await Promise.allSettled(owners.map((owner) => owner.dispose()));
-};
-
-const modelOwners = (
-  factory: McpModelPortFactory,
-  ownedEmbedPort: EmbeddingPort | null,
-  rerankPort: RerankPort | null
-): { dispose(): Promise<void> }[] => {
-  const owners: { dispose(): Promise<void> }[] = [];
-  if (ownedEmbedPort) owners.push(ownedEmbedPort);
-  if (rerankPort) owners.push(rerankPort);
-  owners.push(factory);
-  return owners;
+  await Promise.allSettled(
+    portOwners.map((owner) => Promise.resolve().then(() => owner.dispose()))
+  );
+  await Promise.allSettled([
+    Promise.resolve().then(() => managerOwner.dispose()),
+  ]);
 };
 
 export const createMcpModelPorts = async (
@@ -154,13 +148,19 @@ export const createMcpModelPorts = async (
       vectorIndex,
       async dispose() {
         await disposeContextModelOwners(
-          modelOwners(factory, ownedEmbedPort, rerankPort)
+          [ownedEmbedPort, rerankPort].filter(
+            (port): port is EmbeddingPort | RerankPort => port !== null
+          ),
+          factory
         );
       },
     };
   } catch (error) {
     await disposeContextModelOwners(
-      modelOwners(factory, ownedEmbedPort, rerankPort)
+      [ownedEmbedPort, rerankPort].filter(
+        (port): port is EmbeddingPort | RerankPort => port !== null
+      ),
+      factory
     );
     throw error;
   }

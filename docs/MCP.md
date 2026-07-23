@@ -54,7 +54,11 @@ canonical Capsule remains in `structuredContent` for application clients. The
 projection retains exact spans, gaps, budget state, retrieval fingerprints,
 model identities, and exact omission totals/reason counts. Its documented
 compact tuples avoid repeating descriptive field names; absent sparse omission
-reasons mean zero. The complete omission audit remains in `structuredContent`.
+reasons mean zero. It also retains adversarially escaped title/heading metadata,
+explicit egress state, context-to-evidence bindings, and configured guidance
+under an `untrusted_data`/`hard_delimited` marker. Active-token Capsules carry
+their estimator and tokenizer fingerprint with the exact used-token count. The
+complete omission audit remains in `structuredContent`.
 Hosts that expose `structuredContent` to the model must account for it in
 addition to text; GNO's promotion benchmark targets hosts that expose the MCP
 text content and keep structured data application-side.

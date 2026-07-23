@@ -95,6 +95,10 @@ describe("Capsule prototype with production model-visible projection", () => {
           evidence.sourceHash,
           evidence.spanHash,
           evidence.text,
+          null,
+          null,
+          [],
+          "unavailable",
         ]);
       }
     }
