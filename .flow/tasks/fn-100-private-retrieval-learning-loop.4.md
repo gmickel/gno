@@ -7,14 +7,19 @@ satisfies: [R4, R5, R6]
 Deliver export qrels and replay candidate retrieval pipelines as one implementation-sized increment.
 
 **Size:** M
-**Files:** `src/core/retrieval-replay.ts`, `src/cli/commands/replay.ts`, `evals/agentic/trace-import.ts`, `test/replay/retrieval-replay.test.ts`
+**Files:** `src/core/retrieval-replay.ts`, `src/core/retrieval-trace-management.ts`, `src/core/retrieval-trace-management-types.ts`, `src/store/types.ts`, `src/store/sqlite/retrieval-trace-management-store.ts`, `src/cli/commands/replay.ts`, `evals/agentic/trace-import.ts`, `spec/output-schemas/retrieval-trace-replay.schema.json`, `test/replay/retrieval-replay.test.ts`
 
 ### Approach
 - Export deterministic fn-97-compatible task/qrel/receipt fixtures keyed to immutable source hashes without raw-document duplication.
 - Materialize each export from the aggregate manifest plus its immutable trace links; reject incomplete, conflicting, or redaction-mode-incompatible trace sets before writing artifacts.
+- Extend, rather than bypass, the shipped `RetrievalTraceManagementService` contract. Evolve `ExportRetrievalTracesInput` / `ExportRetrievalTracesResult`, `RetrievalTraceArtifact`, and `RetrievalTraceExportFormat` deliberately for qrels/replay while preserving the existing `agentic-receipt` shape; reuse `RetrievalTraceDetail` for inspection. Keep CLI/SDK/REST/MCP adapters thin over that service.
+- Treat task-3 aggregate manifests as the replay authority: `appendRetrievalTraceExportManifest` atomically stores one canonical artifact hash plus sorted, deduplicated trace membership; `getRetrievalTraceExportManifest` must recover that exact identity before import. Never reconstruct membership from list order, individual legacy export rows, or user-supplied IDs after a manifest exists.
+- Use `RetrievalTraceManagementService.list({ limit, cursor })` only for newest-first discovery and `show(traceId, { detailLimit })` only for bounded inspection. `RetrievalTraceDetail.totals` and `.truncated` are mandatory disclosure; replay/export materialization must use a complete manifest-bound read path and must never interpret truncated detail as a complete trace.
+- Convert only explicit append-only judgments emitted by `label`: `relevant`, `irrelevant`, and `missing_expected`. Resolve corrections deterministically from the latest judgment for the same evidence target; duplicate retries remain duplicates. Opened/cited/pinned presence may be exported as outcome evidence but absence is never an implicit negative. `missing_expected` remains content-free and may identify only a safe `gno://` URI, docid, or immutable source hash.
 - Import task-2 evidence without flattening provenance: final rank is distinct from planner retrieval rank, and each exact span retains canonical `gno://` URI, docid, source/mirror/passage hashes, sequence, source list, graph-expansion flag, and complete line range. The non-enumerable `SEARCH_RESULT_PLANNER_METADATA` and `CITATION_TRACE_METADATA` seams are runtime inputs, never serialized fixture fields themselves.
 - Preserve pipeline truth from `SEARCH_RESULTS_TRACE_METADATA`: vector-only runs never acquire a lexical capability; hybrid degradation exports explicit capability outcome/reason and sorted fallback codes. Preserve replay-complete filters, including canonical sorted `collections`, query modes, temporal/tag/category/author scope, graph intent, candidate limits, and URI prefix.
 - Replay only persisted receipts. Disabled tracing, record caps below the four-record minimum lifecycle, or retention-evicted sessions produce no synthetic baseline/candidate case. Keep `completed`, `partial`, `failed`, `cancelled`, and still-open/continuable receipts distinct; never convert missing citations or setup failure into irrelevance.
+- Deletion and purge invalidate replay inputs truthfully. A cascaded-away trace or manifest link returns a stable missing/unreplayable state; it never becomes an empty successful case. Preserve physical purge status (`completed`, `wal_busy`, or `failed`) separately from logical trace deletion.
 - Replay baseline and candidate pipeline configurations against unchanged sources, reporting rank, coverage, evidence outcomes, stale/missing state, and fingerprints.
 - Require a human promotion decision; replay can recommend but never mutate boosts, prompts, models, config, or files.
 
@@ -34,12 +39,15 @@ Deliver export qrels and replay candidate retrieval pipelines as one implementat
 ## Acceptance
 - [ ] Export is canonical, references source hashes, and is directly consumable by fn-97 fixtures.
 - [ ] Aggregate export identity and membership are deterministic; missing/conflicting trace links fail closed.
+- [ ] Qrels/replay extends the task-3 management service and aggregate-manifest store APIs; it does not create a second trace/export persistence path.
 - [ ] Replay compares baseline/candidate outcomes and discloses stale/missing/unreplayable traces.
 - [ ] No ranking/config/user-file mutation occurs even when a candidate wins.
 - [ ] Export/replay fixtures retain final-rank versus planner-rank semantics, exact cited/opened spans, normalized filters, capability outcomes, fallback codes, terminal outcome, and pipeline/model/config/index fingerprints.
 - [ ] Missing or retention-evicted receipts fail closed rather than being reported as successfully persisted empty runs.
+- [ ] Discovery pagination remains stable and opaque, bounded detail cannot be mistaken for complete replay input, and every qrels label is traceable to an explicit stored judgment.
 
 <!-- Updated by plan-sync: fn-100-private-retrieval-learning-loop.2 froze evidence, filter, capability, terminal, and retention semantics for replay -->
+<!-- Updated by plan-sync: fn-100-private-retrieval-learning-loop.3 shipped the management service, aggregate manifests, explicit-label semantics, pagination, and truthful purge receipts -->
 
 
 ## Done summary
