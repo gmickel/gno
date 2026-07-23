@@ -27,6 +27,7 @@ import {
   planMoveRefactor,
   planRenameRefactor,
 } from "../../core/file-refactors";
+import { recordContentMutation } from "../../core/mutation-generations";
 import { defaultSyncService, withContentTypeRules } from "../../ingestion";
 import { runTool, type ToolResult } from "./index";
 
@@ -210,11 +211,12 @@ export function handleRenameNote(
         const currentPath = join(collection.path, doc.relPath);
         const nextPath = join(collection.path, plan.nextRelPath);
         await renameFilePath(currentPath, nextPath);
-        await defaultSyncService.syncCollection(
+        const syncResult = await defaultSyncService.syncCollection(
           collection,
           ctx.store,
           withContentTypeRules({ runUpdateCmd: false }, ctx.config)
         );
+        recordContentMutation(syncResult, ctx.markContentMutation);
         return {
           uri: plan.nextUri,
           relPath: plan.nextRelPath,
@@ -255,11 +257,12 @@ export function handleMoveNote(
         const nextPath = join(collection.path, plan.nextRelPath);
         await mkdir(dirname(nextPath), { recursive: true });
         await renameFilePath(currentPath, nextPath);
-        await defaultSyncService.syncCollection(
+        const syncResult = await defaultSyncService.syncCollection(
           collection,
           ctx.store,
           withContentTypeRules({ runUpdateCmd: false }, ctx.config)
         );
+        recordContentMutation(syncResult, ctx.markContentMutation);
         return {
           uri: plan.nextUri,
           relPath: plan.nextRelPath,
@@ -308,11 +311,12 @@ export function handleDuplicateNote(
         const nextPath = join(collection.path, plan.nextRelPath);
         await mkdir(dirname(nextPath), { recursive: true });
         await copyFilePath(currentPath, nextPath);
-        await defaultSyncService.syncCollection(
+        const syncResult = await defaultSyncService.syncCollection(
           collection,
           ctx.store,
           withContentTypeRules({ runUpdateCmd: false }, ctx.config)
         );
+        recordContentMutation(syncResult, ctx.markContentMutation);
         return {
           uri: plan.nextUri,
           relPath: plan.nextRelPath,

@@ -33,7 +33,7 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
   const clients: Client[] = [];
   try {
     await waitForStatus(baseUrl, "serve");
-    const before = await validateStatusSurfaces(baseUrl, "serve", [
+    await validateStatusSurfaces(baseUrl, "serve", [
       input.cwd,
       input.env.GNO_DATA_DIR ?? "",
       "package-smoke-secret",
@@ -98,14 +98,72 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
       input.env.GNO_DATA_DIR ?? "",
       "package-smoke-secret",
     ]);
-    if (
-      after.transport.activeSessions < 2 ||
-      after.models.loadedModels !== before.models.loadedModels ||
-      after.models.loadAttempts !== before.models.loadAttempts ||
-      after.models.loadSuccesses !== before.models.loadSuccesses
-    ) {
-      throw new Error(
-        "Packed clients did not reuse one warm resident lifecycle"
+    if (after.transport.activeSessions < 2) {
+      throw new Error("Packed clients did not share one resident transport");
+    }
+
+    if (input.embeddingModelPath) {
+      const semanticBefore = await validateResidentStatusSurface(
+        baseUrl,
+        "serve",
+        [input.cwd, input.env.GNO_DATA_DIR ?? "", "package-smoke-secret"]
+      );
+      const vsearch = {
+        name: "gno_vsearch",
+        arguments: { query: "Package smoke", collection: "package-smoke" },
+      };
+      const semanticResults = await Promise.all([
+        first.client.callTool(vsearch),
+        second.client.callTool(vsearch),
+        first.client.callTool(vsearch),
+        second.client.callTool(vsearch),
+      ]);
+      if (
+        semanticResults.some((result) => result.isError === true) ||
+        !semanticResults.every(
+          (result) =>
+            JSON.stringify(result) === JSON.stringify(semanticResults[0])
+        )
+      ) {
+        throw new Error(
+          "Packed model-backed calls failed or returned different results"
+        );
+      }
+      const semanticAfter = await validateResidentStatusSurface(
+        baseUrl,
+        "serve",
+        [input.cwd, input.env.GNO_DATA_DIR ?? "", "package-smoke-secret"]
+      );
+      const acquired =
+        semanticAfter.models.leaseAcquisitions -
+        semanticBefore.models.leaseAcquisitions;
+      const released =
+        semanticAfter.models.leaseReleases -
+        semanticBefore.models.leaseReleases;
+      if (
+        semanticBefore.models.loadedModels !== 1 ||
+        semanticBefore.models.loadAttempts !== 1 ||
+        semanticBefore.models.loadSuccesses !== 1 ||
+        semanticAfter.models.loadedModels !==
+          semanticBefore.models.loadedModels ||
+        semanticAfter.models.loadAttempts !==
+          semanticBefore.models.loadAttempts ||
+        semanticAfter.models.loadSuccesses !==
+          semanticBefore.models.loadSuccesses ||
+        acquired !== semanticResults.length ||
+        released !== acquired ||
+        semanticAfter.models.activeLeases !== 0
+      ) {
+        throw new Error(
+          `Packed model-backed warm reuse failed: ${JSON.stringify({
+            before: semanticBefore.models,
+            after: semanticAfter.models,
+          })}`
+        );
+      }
+    } else {
+      console.warn(
+        "Packed model-backed warm reuse SKIPPED: no explicit compatible cached GGUF was available in this offline environment."
       );
     }
 

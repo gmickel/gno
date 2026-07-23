@@ -79,7 +79,7 @@ describe("EmbedScheduler", () => {
     expect(state.running).toBe(false);
     expect(state.nextRunAt).toBeUndefined();
 
-    scheduler.dispose();
+    void scheduler.dispose();
   });
 
   test("notifySyncComplete adds docIds to pending count", () => {
@@ -96,7 +96,7 @@ describe("EmbedScheduler", () => {
     const state = scheduler.getState();
     expect(state.pendingDocCount).toBe(2);
 
-    scheduler.dispose();
+    void scheduler.dispose();
   });
 
   test("notifySyncComplete accumulates counts", () => {
@@ -115,7 +115,7 @@ describe("EmbedScheduler", () => {
     // Now counts rather than deduplicates
     expect(state.pendingDocCount).toBe(4);
 
-    scheduler.dispose();
+    void scheduler.dispose();
   });
 
   test("triggerNow returns result immediately", async () => {
@@ -138,7 +138,7 @@ describe("EmbedScheduler", () => {
     const state = scheduler.getState();
     expect(state.pendingDocCount).toBe(0);
 
-    scheduler.dispose();
+    await scheduler.dispose();
   });
 
   test("triggerNow returns null without embedPort", async () => {
@@ -152,7 +152,7 @@ describe("EmbedScheduler", () => {
     const result = await scheduler.triggerNow();
     expect(result).toBeNull();
 
-    scheduler.dispose();
+    await scheduler.dispose();
   });
 
   test("notifySyncComplete does nothing without embedPort", () => {
@@ -168,7 +168,7 @@ describe("EmbedScheduler", () => {
     const state = scheduler.getState();
     expect(state.pendingDocCount).toBe(0);
 
-    scheduler.dispose();
+    void scheduler.dispose();
   });
 
   test("dispose clears timer", () => {
@@ -181,7 +181,7 @@ describe("EmbedScheduler", () => {
     });
 
     scheduler.notifySyncComplete(["doc1", "doc2"]);
-    scheduler.dispose();
+    void scheduler.dispose();
 
     // After dispose, notifySyncComplete should be no-op
     scheduler.notifySyncComplete(["doc3"]);
@@ -205,7 +205,7 @@ describe("EmbedScheduler", () => {
     expect(state.nextRunAt).toBeDefined();
     expect(state.nextRunAt).toBeGreaterThan(Date.now());
 
-    scheduler.dispose();
+    void scheduler.dispose();
   });
 
   test("getters are called at execution time (survives context reload)", async () => {
@@ -230,7 +230,7 @@ describe("EmbedScheduler", () => {
     expect(result).not.toBeNull();
     expect(result?.embedded).toBe(0);
 
-    scheduler.dispose();
+    await scheduler.dispose();
   });
 
   test("notify during running schedules rerun (Critical #2 regression)", async () => {
@@ -306,6 +306,44 @@ describe("EmbedScheduler", () => {
     expect(postRunState.pendingDocCount).toBe(2);
     expect(postRunState.nextRunAt).toBeDefined(); // Rerun scheduled
 
-    scheduler.dispose();
+    await scheduler.dispose();
+  });
+
+  test("dispose waits for an active embedding run to settle", async () => {
+    let finishEmbed: (() => void) | undefined;
+    let markStarted: (() => void) | undefined;
+    const embedStarted = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    const embedFinished = new Promise<void>((resolve) => {
+      finishEmbed = resolve;
+    });
+    const scheduler = createEmbedScheduler({
+      db: createMockDb(),
+      getEmbedPort: () => createMockEmbedPort(),
+      getVectorIndex: () => createMockVectorIndex(),
+      getModelUri: () => "test-model",
+      embedBacklogFn: (async () => {
+        markStarted?.();
+        await embedFinished;
+        return {
+          ok: true,
+          value: { embedded: 1, errors: 0 },
+        };
+      }) as never,
+    });
+
+    const run = scheduler.triggerNow();
+    await embedStarted;
+    let disposed = false;
+    const disposal = scheduler.dispose().then(() => {
+      disposed = true;
+    });
+    await Promise.resolve();
+    expect(disposed).toBe(false);
+
+    finishEmbed?.();
+    await Promise.all([run, disposal]);
+    expect(disposed).toBe(true);
   });
 });

@@ -104,6 +104,11 @@ describe("gno_capture MCP", () => {
   });
 
   test("returns a provenance receipt with legacy MCP fields", async () => {
+    let contentGeneration = 0;
+    const ctx = toolContext(true);
+    ctx.markContentMutation = () => {
+      contentGeneration += 1;
+    };
     const result = await handleCapture(
       {
         collection: "notes",
@@ -118,7 +123,7 @@ describe("gno_capture MCP", () => {
           observedAt: "2026-06-04T12:00:00Z",
         },
       },
-      toolContext(true)
+      ctx
     );
 
     expect(result.isError).toBeUndefined();
@@ -149,6 +154,7 @@ describe("gno_capture MCP", () => {
     expect(written).toContain("source:");
     expect(written).toContain('url: "https://example.com/source"');
     expect(result.content[0]?.text).toContain("Content hash:");
+    expect(contentGeneration).toBe(1);
   });
 
   test("supports open_existing through shared collision planning", async () => {

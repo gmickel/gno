@@ -35,6 +35,8 @@ export interface ModelsPullOptions {
   force?: boolean;
   /** Progress callback for UI (omit to disable progress) */
   onProgress?: (type: ModelType, progress: DownloadProgress) => void;
+  /** Stop before the next model and suppress subsequent work. */
+  signal?: AbortSignal;
 }
 
 export interface ModelPullResult {
@@ -106,6 +108,7 @@ export async function modelsPull(
   let skipped = 0;
 
   for (const type of types) {
+    if (options.signal?.aborted) break;
     const uri =
       type === "expand" ? (preset.expand ?? preset.gen) : preset[type];
 
@@ -135,6 +138,7 @@ export async function modelsPull(
       },
       options.force
     );
+    if (options.signal?.aborted) break;
 
     if (result.ok) {
       results.push({

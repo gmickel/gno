@@ -8,6 +8,7 @@ import type { ToolContext } from "../server";
 
 import { MCP_ERRORS } from "../../core/errors";
 import { withWriteLock } from "../../core/file-lock";
+import { recordIndexMutation } from "../../core/mutation-generations";
 import { resolveModelUri } from "../../llm/registry";
 import { runTool, type ToolResult } from "./index";
 
@@ -81,6 +82,7 @@ export function handleClearCollectionEmbeddings(
         if (!result.ok) {
           throw new Error(`${result.error.code}: ${result.error.message}`);
         }
+        recordIndexMutation(result.value.deletedVectors, ctx.markIndexMutation);
 
         return {
           ...result.value,

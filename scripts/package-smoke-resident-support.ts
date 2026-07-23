@@ -23,6 +23,9 @@ export interface ResidentStatus {
   listenerPort: number;
   transport: { activeSessions: number };
   models: {
+    activeLeases: number;
+    leaseAcquisitions: number;
+    leaseReleases: number;
     loadedModels: number;
     loadAttempts: number;
     loadSuccesses: number;
@@ -40,6 +43,7 @@ export interface ResidentSmokeInput {
   cwd: string;
   env: Record<string, string>;
   runCommand: CommandRunner;
+  embeddingModelPath?: string;
 }
 
 export const JSON_HEADERS = {

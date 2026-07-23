@@ -81,6 +81,7 @@ import {
 import {
   hasContentMutation,
   recordContentMutation,
+  recordIndexMutation,
 } from "../../core/mutation-generations";
 import {
   resolveNoteCreatePlan,
@@ -156,6 +157,23 @@ export interface ContextHolder {
   jobManager?: JobManager;
   markContentMutation?: () => void;
   markIndexMutation?: () => void;
+  startBackgroundWork?: (
+    operation: (signal: AbortSignal) => Promise<void>
+  ) => boolean;
+}
+
+async function syncResidentCollection(
+  ctxHolder: ContextHolder,
+  collection: Collection,
+  store: SqliteAdapter,
+  options: Parameters<typeof defaultSyncService.syncCollection>[2],
+  syncCollection: typeof defaultSyncService.syncCollection = defaultSyncService.syncCollection.bind(
+    defaultSyncService
+  )
+): ReturnType<typeof defaultSyncService.syncCollection> {
+  const result = await syncCollection(collection, store, options);
+  recordContentMutation(result, ctxHolder.markContentMutation);
+  return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1008,7 +1026,8 @@ export async function handleCreateCollection(
   const jobResult = await startJob(
     "add",
     async (): Promise<SyncResult> => {
-      const result = await defaultSyncService.syncCollection(
+      const result = await syncResidentCollection(
+        ctxHolder,
         collection,
         store,
         withContentTypeRules(
@@ -1119,7 +1138,6 @@ export async function handleDeleteCollection(
     const status = statusMap[syncResult.code] ?? 500;
     return errorResponse(syncResult.code, syncResult.error, status);
   }
-
   return jsonResponse({
     success: true,
     collection: name,
@@ -1250,6 +1268,7 @@ export async function handleClearCollectionEmbeddings(
     const status = result.error.code === "INVALID_INPUT" ? 400 : 500;
     return errorResponse(result.error.code, result.error.message, status);
   }
+  recordIndexMutation(result.value.deletedVectors, ctxHolder.markIndexMutation);
 
   return jsonResponse({
     success: true,
@@ -1953,10 +1972,12 @@ export async function handleRenameDoc(
     const nextUri = `gno://${collection.name}/${nextRelPath}`;
     let warning: string | undefined;
     try {
-      await syncCollection(
+      await syncResidentCollection(
+        ctxHolder,
         collection,
         store,
-        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
+        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+        syncCollection
       );
     } catch {
       warning =
@@ -2175,10 +2196,12 @@ export async function handleTrashDoc(
     }
     let warning: string | undefined;
     try {
-      await syncCollection(
+      await syncResidentCollection(
+        ctxHolder,
         collection,
         store,
-        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
+        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+        syncCollection
       );
     } catch {
       warning =
@@ -2298,7 +2321,8 @@ export async function handleMoveDoc(
     await renameFilePath(fullPath, nextFullPath);
     let warning: string | undefined;
     try {
-      await defaultSyncService.syncCollection(
+      await syncResidentCollection(
+        ctxHolder,
         collection,
         store,
         withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
@@ -2421,7 +2445,8 @@ export async function handleDuplicateDoc(
     await copyFilePath(fullPath, nextFullPath);
     let warning: string | undefined;
     try {
-      await defaultSyncService.syncCollection(
+      await syncResidentCollection(
+        ctxHolder,
         collection,
         store,
         withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
@@ -2570,7 +2595,10 @@ export async function handleUpdateDoc(
   ctxHolder: ContextHolder,
   store: SqliteAdapter,
   docId: string,
-  req: Request
+  req: Request,
+  deps?: {
+    syncCollection?: typeof defaultSyncService.syncCollection;
+  }
 ): Promise<Response> {
   let body: UpdateDocRequestBody;
   try {
@@ -2753,10 +2781,12 @@ export async function handleUpdateDoc(
       const jobResult = await startJob(
         "sync",
         async (): Promise<SyncResult> => {
-          const result = await defaultSyncService.syncCollection(
+          const result = await syncResidentCollection(
+            ctxHolder,
             collection,
             store,
-            withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
+            withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+            deps?.syncCollection
           );
           // Notify scheduler after sync completes
           ctxHolder.scheduler?.notifySyncComplete([doc.docid]);
@@ -2934,7 +2964,10 @@ export async function handleCreateEditableCopy(
 export async function handleCreateCapture(
   ctxHolder: ContextHolder,
   store: SqliteAdapter,
-  req: Request
+  req: Request,
+  deps?: {
+    syncCollection?: typeof defaultSyncService.syncCollection;
+  }
 ): Promise<Response> {
   let body: CreateCaptureRequestBody;
   try {
@@ -3025,10 +3058,12 @@ export async function handleCreateCapture(
     const jobResult = await startJob(
       "sync",
       async (): Promise<SyncResult> => {
-        const result = await defaultSyncService.syncCollection(
+        const result = await syncResidentCollection(
+          ctxHolder,
           collection,
           store,
-          withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
+          withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+          deps?.syncCollection
         );
         ctxHolder.scheduler?.notifySyncComplete([plan.relPath]);
         ctxHolder.eventBus?.emit({
@@ -3090,7 +3125,10 @@ export async function handleCreateCapture(
 export async function handleCreateDoc(
   ctxHolder: ContextHolder,
   store: SqliteAdapter,
-  req: Request
+  req: Request,
+  deps?: {
+    syncCollection?: typeof defaultSyncService.syncCollection;
+  }
 ): Promise<Response> {
   let body: CreateDocRequestBody;
   try {
@@ -3265,10 +3303,12 @@ export async function handleCreateDoc(
     const jobResult = await startJob(
       "sync",
       async (): Promise<SyncResult> => {
-        const result = await defaultSyncService.syncCollection(
+        const result = await syncResidentCollection(
+          ctxHolder,
           collection,
           store,
-          withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
+          withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+          deps?.syncCollection
         );
         // Notify scheduler after sync completes (use gnoUri as docid placeholder)
         // The sync will create a proper docid, but we don't have it here yet
@@ -4177,7 +4217,13 @@ export function handleModelStatus(): Response {
  * Start downloading models for current preset.
  * Returns immediately; poll /api/models/status for progress.
  */
-export function handleModelPull(ctxHolder: ContextHolder): Response {
+export function handleModelPull(
+  ctxHolder: ContextHolder,
+  deps?: {
+    modelsPullFn?: typeof modelsPull;
+    reloadServerContextFn?: typeof reloadServerContext;
+  }
+): Response {
   // Don't start if already downloading
   if (downloadState.active) {
     return errorResponse("CONFLICT", "Download already in progress", 409);
@@ -4188,17 +4234,20 @@ export function handleModelPull(ctxHolder: ContextHolder): Response {
   downloadState.active = true;
   downloadState.startedAt = Date.now();
 
-  // Run download in background (don't await)
-  // Pass current config so it uses the active preset from UI
-  modelsPull({
-    config: ctxHolder.config,
-    all: true,
-    onProgress: (type, progress) => {
-      downloadState.currentType = type;
-      downloadState.progress = progress;
-    },
-  })
-    .then(async (result) => {
+  const operation = async (signal: AbortSignal): Promise<void> => {
+    try {
+      const result = await (deps?.modelsPullFn ?? modelsPull)({
+        config: ctxHolder.config,
+        all: true,
+        signal,
+        onProgress: (type, progress) => {
+          if (signal.aborted) return;
+          downloadState.currentType = type;
+          downloadState.progress = progress;
+        },
+      });
+      if (signal.aborted) return;
+
       // Track results
       for (const r of result.results) {
         if (r.ok) {
@@ -4216,35 +4265,39 @@ export function handleModelPull(ctxHolder: ContextHolder): Response {
       // Reload context to pick up new models
       console.log("Models downloaded, reloading context...");
       try {
-        ctxHolder.current = await reloadServerContext(
-          ctxHolder.current,
-          ctxHolder.config
-        );
+        ctxHolder.current = await (
+          deps?.reloadServerContextFn ?? reloadServerContext
+        )(ctxHolder.current, ctxHolder.config);
+        if (signal.aborted) return;
         console.log("Context reloaded");
         if (ctxHolder.scheduler) {
-          void ctxHolder.scheduler.triggerNow().catch((error) => {
-            console.error(
-              "Failed to trigger embedding after model download:",
-              error
-            );
-          });
+          await ctxHolder.scheduler.triggerNow();
         }
       } catch (e) {
         console.error("Failed to reload context:", e);
       }
-
-      downloadState.active = false;
-      downloadState.currentType = null;
-      downloadState.progress = null;
-    })
-    .catch((e) => {
+    } catch (e) {
       console.error("Model download failed:", e);
-      downloadState.active = false;
       downloadState.failed.push({
         type: downloadState.currentType ?? "embed",
         error: e instanceof Error ? e.message : String(e),
       });
-    });
+    } finally {
+      downloadState.active = false;
+      downloadState.currentType = null;
+      downloadState.progress = null;
+    }
+  };
+
+  const started = ctxHolder.startBackgroundWork?.(operation) ?? false;
+  if (!started) {
+    resetDownloadState();
+    return errorResponse(
+      "UNAVAILABLE",
+      "Resident runtime is shutting down",
+      503
+    );
+  }
 
   return jsonResponse({
     started: true,

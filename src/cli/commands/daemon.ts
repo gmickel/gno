@@ -219,10 +219,8 @@ export async function daemon(
       error: error instanceof Error ? error.message : String(error),
     };
   } finally {
-    await Promise.allSettled([
-      server?.stop(true),
-      gateway?.close(),
-      runtime.dispose(),
-    ]);
+    await Promise.allSettled([server?.stop(true)]);
+    await Promise.allSettled([gateway?.close()]);
+    await Promise.allSettled([runtime.dispose()]);
   }
 }

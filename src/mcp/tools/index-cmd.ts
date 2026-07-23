@@ -139,6 +139,7 @@ export function handleIndex(
                     ctx.store,
                     options
                   );
+              recordContentMutation(syncResult, ctx.markContentMutation);
 
               // Phase 2: Embed
               const llm = new LlmAdapter(ctx.config);
@@ -191,7 +192,6 @@ export function handleIndex(
                 if (!backlogResult.ok) {
                   throw new Error(backlogResult.error.message);
                 }
-                recordContentMutation(syncResult, ctx.markContentMutation);
                 recordIndexMutation(
                   backlogResult.value.embedded,
                   ctx.markIndexMutation

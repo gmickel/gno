@@ -257,4 +257,28 @@ describe("ModelManager", () => {
       inflightLoads: 0,
     });
   });
+
+  test("disposeAll waits until every active request lease is released", async () => {
+    const { ModelManager } =
+      await import("../../src/llm/nodeLlamaCpp/lifecycle");
+    const manager = new ModelManager({
+      activePreset: "slim",
+      presets: [],
+      loadTimeout: 60_000,
+      inferenceTimeout: 30_000,
+      expandContextSize: 2_048,
+      warmModelTtl: 300_000,
+    });
+    const lease = manager.acquireLease();
+    let disposed = false;
+    const disposal = manager.disposeAll().then(() => {
+      disposed = true;
+    });
+
+    await Promise.resolve();
+    expect(disposed).toBe(false);
+    lease.release();
+    await disposal;
+    expect(disposed).toBe(true);
+  });
 });

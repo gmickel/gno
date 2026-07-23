@@ -1,8 +1,10 @@
 // node:fs/promises: temp structure and cleanup have no Bun-native equivalent.
 import { mkdir, mkdtemp } from "node:fs/promises";
 // node:os: tmpdir has no Bun-native equivalent.
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+// node:url: pathToFileURL has no Bun-native equivalent.
+import { pathToFileURL } from "node:url";
 
 import { safeRm } from "../test/helpers/cleanup";
 import { verifyPackedMcpInstall } from "./package-smoke-mcp";
@@ -65,6 +67,58 @@ interface NpmPackResult {
 
 const rootDir = resolve(import.meta.dir, "..");
 const preserveTemp = process.env.GNO_PACKAGE_SMOKE_KEEP_TEMP === "1";
+
+async function findCachedEmbeddingModel(): Promise<string | undefined> {
+  const candidates = [
+    process.env.GNO_PACKAGE_SMOKE_EMBED_MODEL,
+    join(
+      homedir(),
+      ".cache",
+      "qmd",
+      "models",
+      "hf_ggml-org_embeddinggemma-300M-Q8_0.gguf"
+    ),
+  ].filter((candidate): candidate is string => Boolean(candidate));
+  for (const candidate of candidates) {
+    const file = Bun.file(candidate);
+    if (!(await file.exists())) continue;
+    const magic = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+    if (
+      magic[0] === 0x47 &&
+      magic[1] === 0x47 &&
+      magic[2] === 0x55 &&
+      magic[3] === 0x46
+    ) {
+      return resolve(candidate);
+    }
+  }
+  return undefined;
+}
+
+async function configurePackedEmbeddingModel(
+  configPath: string,
+  modelPath: string
+): Promise<void> {
+  const config = Bun.YAML.parse(await Bun.file(configPath).text()) as Record<
+    string,
+    unknown
+  >;
+  const modelUri = pathToFileURL(modelPath).href;
+  config.models = {
+    activePreset: "package-smoke-local",
+    presets: [
+      {
+        id: "package-smoke-local",
+        name: "Package Smoke Local",
+        embed: modelUri,
+        rerank: modelUri,
+        expand: modelUri,
+        gen: modelUri,
+      },
+    ],
+  };
+  await Bun.write(configPath, Bun.YAML.stringify(config));
+}
 
 function formatCommand(cmd: string[]): string {
   return cmd
@@ -305,6 +359,7 @@ function assertNoDoctorErrors(result: DoctorResult): void {
 }
 
 async function main(): Promise<void> {
+  const embeddingModelPath = await findCachedEmbeddingModel();
   const tempRoot = await mkdtemp(join(tmpdir(), "gno-package-smoke-"));
   const packDir = join(tempRoot, "pack");
   const installPrefix = join(tempRoot, "prefix");
@@ -372,12 +427,19 @@ async function main(): Promise<void> {
       tempRoot,
       env
     );
+    if (embeddingModelPath) {
+      await configurePackedEmbeddingModel(
+        join(env.GNO_CONFIG_DIR, "index.yml"),
+        embeddingModelPath
+      );
+    }
     runCommand([gnoBin, "update", "--yes"], tempRoot, env);
     await verifyPackedResidentGateway({
       gnoBin,
       cwd: tempRoot,
       env,
       runCommand,
+      embeddingModelPath,
     });
 
     // Status is a passive report: a successfully generated report exits zero

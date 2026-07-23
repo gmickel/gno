@@ -340,6 +340,7 @@ describe("POST /api/collections/:name/embeddings/clear", () => {
 
   test("clears stale embeddings for a collection", async () => {
     const store = createMockStore();
+    let indexGeneration = 0;
     const ctxHolder = createMockContextHolder({
       collections: [
         {
@@ -351,6 +352,9 @@ describe("POST /api/collections/:name/embeddings/clear", () => {
         },
       ],
     });
+    ctxHolder.markIndexMutation = () => {
+      indexGeneration += 1;
+    };
 
     const req = new Request(
       "http://localhost/api/collections/docs/embeddings/clear",
@@ -378,6 +382,7 @@ describe("POST /api/collections/:name/embeddings/clear", () => {
     expect(body.stats.mode).toBe("stale");
     expect(body.stats.deletedVectors).toBe(2);
     expect(body.stats.protectedSharedVectors).toBe(1);
+    expect(indexGeneration).toBe(1);
   });
 
   test("rejects invalid mode", async () => {

@@ -48,6 +48,7 @@ import {
 } from "./context";
 import { createEmbedScheduler } from "./embed-scheduler";
 import { AdmissionController, ReaderGate } from "./resident-admission";
+import { ResidentBackgroundWork } from "./resident-background-work";
 import { buildResidentStatusSnapshot } from "./resident-status";
 import { CollectionWatchService as DefaultCollectionWatchService } from "./watch-service";
 
@@ -108,6 +109,9 @@ export interface ResidentRuntime {
   withModelLease<T>(operation: () => Promise<T>): Promise<T>;
   markContentMutation(): void;
   markIndexMutation(): void;
+  startBackgroundWork(
+    operation: (signal: AbortSignal) => Promise<void>
+  ): boolean;
   openSession(): () => void;
   syncAll(options?: {
     gitPull?: boolean;
@@ -305,6 +309,9 @@ export async function startResidentRuntime(
   let shutdownState: ResidentStatus["shutdown"]["state"] = "none";
   let admissionState: ResidentStatus["admission"]["state"] = "accepting";
   let disposed = false;
+  const backgroundWork = new ResidentBackgroundWork(
+    () => !disposed && admission.accepting
+  );
 
   const mcpContext = createToolContext({
     store,
@@ -374,6 +381,9 @@ export async function startResidentRuntime(
     },
     markIndexMutation() {
       generations.index += 1;
+    },
+    startBackgroundWork(operation) {
+      return backgroundWork.start(operation);
     },
     openSession() {
       return () => undefined;
@@ -455,25 +465,26 @@ export async function startResidentRuntime(
         options.shutdownAbortSettleMs ?? DEFAULT_SHUTDOWN_DEADLINE_MS
       );
       if (deadlineReached) shutdownState = "deadline";
+      await backgroundWork.cancelAndDrain();
       await jobManager.shutdown().catch(() => undefined);
       await Promise.allSettled([
         Promise.resolve().then(() => watchService.dispose()),
         Promise.resolve().then(() => options.eventBus?.close()),
-        Promise.resolve().then(() => scheduler.dispose()),
-        Promise.resolve().then(() =>
-          (deps.disposeServerContext ?? disposeServerContext)(ctxHolder.current)
-        ),
       ]);
+      await Promise.allSettled([scheduler.dispose()]);
       await Promise.allSettled([
-        modelManager.disposeAll(),
-        store.close(),
-        ownerLock.release(),
+        (deps.disposeServerContext ?? disposeServerContext)(ctxHolder.current),
       ]);
+      await Promise.allSettled([modelManager.disposeAll()]);
+      await Promise.allSettled([store.close()]);
+      await Promise.allSettled([ownerLock.release()]);
       admissionState = "closed";
       transportStatusProvider = null;
       listenerPort = null;
     },
   };
+  ctxHolder.startBackgroundWork = (operation) =>
+    runtime.startBackgroundWork(operation);
   mcpContext.getResidentStatus = () => runtime.getStatus();
   return { success: true, runtime };
 }

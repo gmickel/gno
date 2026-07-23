@@ -264,6 +264,21 @@ describe("ResidentRuntime", () => {
       },
       { once: true }
     );
+    expect(
+      result.runtime.startBackgroundWork(
+        (signal) =>
+          new Promise<void>((resolve) => {
+            signal.addEventListener(
+              "abort",
+              () => {
+                calls.push("background");
+                resolve();
+              },
+              { once: true }
+            );
+          })
+      )
+    ).toBe(true);
     const closeSession = result.runtime.openSession();
     // HttpMcpSessionStore is the sole active-session counter. The runtime
     // session hook intentionally contributes no duplicate accounting.
@@ -273,6 +288,12 @@ describe("ResidentRuntime", () => {
 
     expect(calls.indexOf("handler")).toBeLessThan(calls.indexOf("context"));
     expect(calls.indexOf("handler")).toBeLessThan(calls.indexOf("store"));
+    expect(calls.indexOf("background")).toBeLessThan(
+      calls.indexOf("scheduler")
+    );
+    expect(calls.indexOf("scheduler")).toBeLessThan(calls.indexOf("context"));
+    expect(calls.indexOf("context")).toBeLessThan(calls.indexOf("models"));
+    expect(calls.indexOf("models")).toBeLessThan(calls.indexOf("store"));
     expect(request?.signal.aborted).toBe(true);
     expect(result.runtime.admitRequest()).toBeNull();
     expect(result.runtime.activeRequests).toBe(0);

@@ -149,6 +149,7 @@ export class ModelManager {
     new Map();
   private readonly inflightLoads: Map<string, Promise<LlmResult<LoadedModel>>> =
     new Map();
+  private readonly leaseDrainWaiters = new Set<() => void>();
   private readonly config: ModelConfig;
   private activeLeases = 0;
   private leaseAcquisitions = 0;
@@ -395,6 +396,8 @@ export class ModelManager {
         this.activeLeases = Math.max(0, this.activeLeases - 1);
         this.leaseReleases += 1;
         if (this.activeLeases === 0) {
+          for (const resolve of this.leaseDrainWaiters) resolve();
+          this.leaseDrainWaiters.clear();
           for (const uri of this.models.keys()) this.setDisposalTimer(uri);
         }
       },
@@ -455,6 +458,11 @@ export class ModelManager {
    * Dispose all loaded models.
    */
   async disposeAll(): Promise<void> {
+    if (this.activeLeases > 0) {
+      await new Promise<void>((resolve) => this.leaseDrainWaiters.add(resolve));
+    }
+    await Promise.allSettled(this.inflightLoads.values());
+
     // Clear all timers
     for (const timer of this.disposalTimers.values()) {
       clearTimeout(timer);

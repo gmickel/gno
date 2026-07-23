@@ -4,6 +4,10 @@ import { resolve } from "node:path";
 
 import { ENV_CONFIG_DIR } from "../../src/app/constants";
 import { getConfigPaths } from "../../src/config";
+import {
+  AdmissionController,
+  ReaderGate,
+} from "../../src/serve/resident-admission";
 import { startServer } from "../../src/serve/server";
 
 interface CapturedServeOptions {
@@ -162,4 +166,101 @@ test("serve rejects non-loopback binding before opening the shared Web/REST list
   expect(dispose).toHaveBeenCalledTimes(1);
   expect(createMcpHttpGateway).toHaveBeenCalledTimes(0);
   expect(serve).toHaveBeenCalledTimes(0);
+});
+
+test("live document reads settle on shutdown before resident resources close", async () => {
+  let capturedOptions:
+    | {
+        routes: Record<
+          string,
+          { GET: (request: Request) => Promise<Response> }
+        >;
+      }
+    | undefined;
+  let routePromise: Promise<Response> | undefined;
+  let handlerStarted: (() => void) | undefined;
+  const started = new Promise<void>((resolve) => {
+    handlerStarted = resolve;
+  });
+  const admission = new AdmissionController();
+  const readerGate = new ReaderGate(1, 1);
+  const ordering: string[] = [];
+  let admittedSignal: AbortSignal | undefined;
+  const runtime = {
+    actualConfigPath: "/tmp/config/index.yml",
+    config: { collections: [] },
+    store: {},
+    ctxHolder: { current: {}, config: { collections: [] } },
+    readerGate,
+    admitRequest: (signal?: AbortSignal) => {
+      const handle = admission.admit(signal);
+      admittedSignal = handle?.signal;
+      return handle;
+    },
+    withModelLease: async <T>(operation: () => Promise<T>) => operation(),
+    setListenerPort: () => undefined,
+    dispose: async () => {
+      await admission.closeAndDrain(0, 100);
+      ordering.push("resources-closed");
+    },
+  };
+
+  const result = await startServer(
+    { port: 3210 },
+    {
+      startBackgroundRuntime: (async () => ({
+        success: true as const,
+        runtime,
+      })) as never,
+      createMcpHttpGateway: (async () => ({
+        route: async () => new Response("ok"),
+        close: async () => {
+          ordering.push("gateway-closed");
+        },
+        security: {},
+        transport: {},
+      })) as never,
+      serve: ((options: unknown) => {
+        capturedOptions = options as typeof capturedOptions;
+        return {
+          port: 3210,
+          stop: async () => {
+            ordering.push("server-stopped");
+          },
+        } as never;
+      }) as never,
+      handleDocs: (async () => {
+        handlerStarted?.();
+        await new Promise<void>((resolve) => {
+          admittedSignal?.addEventListener(
+            "abort",
+            () => {
+              ordering.push("handler-settled");
+              resolve();
+            },
+            { once: true }
+          );
+        });
+        return Response.json({ docs: [] });
+      }) as never,
+      waitForShutdown: async () => {
+        const route = capturedOptions?.routes["/api/docs"];
+        expect(route).toBeDefined();
+        routePromise = route?.GET(
+          new Request("http://127.0.0.1:3210/api/docs")
+        );
+        await started;
+      },
+    }
+  );
+
+  const response = await routePromise;
+  expect(result).toEqual({ success: true });
+  expect(response?.status).toBe(503);
+  expect(ordering).toEqual([
+    "server-stopped",
+    "gateway-closed",
+    "handler-settled",
+    "resources-closed",
+  ]);
 });

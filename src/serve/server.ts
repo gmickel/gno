@@ -97,6 +97,7 @@ interface StartServerDependencies {
   createMcpHttpGateway?: typeof createMcpHttpGateway;
   serve?: typeof Bun.serve;
   handleInstallConnector?: typeof handleInstallConnector;
+  handleDocs?: typeof handleDocs;
   waitForShutdown?: (signal: AbortSignal) => Promise<void>;
 }
 
@@ -286,9 +287,11 @@ export async function startServer(
           },
         },
         "/api/connectors": {
-          GET: async () =>
+          GET: async (req: Request) =>
             withSecurityHeaders(
-              await handleConnectors(ctxHolder.config),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleConnectors(ctxHolder.config)
+              ),
               isDev
             ),
         },
@@ -366,7 +369,12 @@ export async function startServer(
         "/api/docs": {
           GET: async (req: Request) => {
             const url = new URL(req.url);
-            return withSecurityHeaders(await handleDocs(store, url), isDev);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                (dependencies.handleDocs ?? handleDocs)(store, url)
+              ),
+              isDev
+            );
           },
           POST: async (req: Request) => {
             if (!isRequestAllowed(req, port)) {
@@ -382,7 +390,9 @@ export async function startServer(
           GET: async (req: Request) => {
             const url = new URL(req.url);
             return withSecurityHeaders(
-              await handleDocsAutocomplete(store, url),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDocsAutocomplete(store, url)
+              ),
               isDev
             );
           },
@@ -403,8 +413,13 @@ export async function startServer(
           },
         },
         "/api/browse/tree": {
-          GET: async () =>
-            withSecurityHeaders(await handleBrowseTree(store), isDev),
+          GET: async (req: Request) =>
+            withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleBrowseTree(store)
+              ),
+              isDev
+            ),
         },
         "/api/docs/:id/deactivate": {
           POST: async (req: Request) => {
@@ -548,7 +563,9 @@ export async function startServer(
           GET: async (req: Request) => {
             const url = new URL(req.url);
             return withSecurityHeaders(
-              await handleDocAsset(store, ctxHolder.config, url),
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleDocAsset(store, ctxHolder.config, url)
+              ),
               isDev
             );
           },
@@ -671,11 +688,16 @@ export async function startServer(
           GET: () => withSecurityHeaders(handleModelStatus(), isDev),
         },
         "/api/models/pull": {
-          POST: (req: Request) => {
+          POST: async (req: Request) => {
             if (!isRequestAllowed(req, port)) {
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
-            return withSecurityHeaders(handleModelPull(ctxHolder), isDev);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleModelPull(ctxHolder)
+              ),
+              isDev
+            );
           },
         },
         "/api/jobs/active": {
@@ -837,7 +859,8 @@ export async function startServer(
     });
   } catch (e) {
     removeShutdownHandlers();
-    await Promise.allSettled([gateway.close(), runtime.dispose()]);
+    await Promise.allSettled([gateway.close()]);
+    await Promise.allSettled([runtime.dispose()]);
     return {
       success: false,
       error: e instanceof Error ? e.message : String(e),
@@ -865,7 +888,8 @@ export async function startServer(
   try {
     await server.stop(true);
   } finally {
-    await Promise.allSettled([gateway.close(), runtime.dispose()]);
+    await Promise.allSettled([gateway.close()]);
+    await Promise.allSettled([runtime.dispose()]);
   }
   return { success: true };
 }

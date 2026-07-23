@@ -467,6 +467,7 @@ describe("document lifecycle API", () => {
   });
 
   test("captures a note with provenance receipt", async () => {
+    let contentGeneration = 0;
     const ctxHolder = createMockContextHolder({
       collections: [
         {
@@ -478,6 +479,9 @@ describe("document lifecycle API", () => {
         },
       ],
     });
+    ctxHolder.markContentMutation = () => {
+      contentGeneration += 1;
+    };
     const store = {
       listDocuments: async () => ({ ok: true as const, value: [] }),
       getDocument: async () => ({ ok: true as const, value: null }),
@@ -494,7 +498,20 @@ describe("document lifecycle API", () => {
       }),
     });
 
-    const res = await handleCreateCapture(ctxHolder, store as never, req);
+    const res = await handleCreateCapture(ctxHolder, store as never, req, {
+      syncCollection: async () => ({
+        collection: "notes",
+        filesProcessed: 1,
+        filesAdded: 1,
+        filesUpdated: 0,
+        filesUnchanged: 0,
+        filesErrored: 0,
+        filesSkipped: 0,
+        filesMarkedInactive: 0,
+        durationMs: 1,
+        errors: [],
+      }),
+    });
     expect(res.status).toBe(202);
     const body = (await res.json()) as {
       relPath: string;
@@ -512,6 +529,7 @@ describe("document lifecycle API", () => {
     expect(content).toContain("Captured from API");
     expect(content).toContain("source:");
     await Bun.sleep(20);
+    expect(contentGeneration).toBe(1);
   });
 
   test("rejects invalid capture runtime shapes", async () => {

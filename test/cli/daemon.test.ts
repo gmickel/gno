@@ -44,6 +44,7 @@ describe("daemon command", () => {
   test("runs initial sync by default and disposes on stop signal", async () => {
     const controller = new AbortController();
     const logs: string[] = [];
+    const cleanupOrder: string[] = [];
     const syncAll = mock(async () => ({
       syncResult: {
         collections: [
@@ -69,7 +70,9 @@ describe("daemon command", () => {
       },
       embedResult: { embedded: 3, errors: 0 },
     }));
-    const dispose = mock(async () => undefined);
+    const dispose = mock(async () => {
+      cleanupOrder.push("runtime");
+    });
 
     setTimeout(() => {
       controller.abort();
@@ -80,7 +83,20 @@ describe("daemon command", () => {
         signal: controller.signal,
       },
       {
-        ...gatewayDeps(),
+        createMcpHttpGateway: (async () => ({
+          route: async () => new Response("ok"),
+          close: async () => {
+            cleanupOrder.push("gateway");
+          },
+          security: {},
+          transport: {},
+        })) as never,
+        serve: (() => ({
+          port: 3000,
+          stop: async () => {
+            cleanupOrder.push("server");
+          },
+        })) as never,
         startBackgroundRuntime: async () => ({
           success: true,
           runtime: {
@@ -136,6 +152,7 @@ describe("daemon command", () => {
       true
     );
     expect(logs.some((line) => line.includes("embed: 3 embedded"))).toBe(true);
+    expect(cleanupOrder).toEqual(["server", "gateway", "runtime"]);
   });
 
   test("skips initial sync when requested", async () => {

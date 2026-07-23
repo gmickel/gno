@@ -210,6 +210,9 @@ export function handleCapture(
             serverInstanceId: ctx.serverInstanceId,
           }) as McpCaptureResult;
         }
+        if (syncResult.status === "added" || syncResult.status === "updated") {
+          ctx.markContentMutation?.();
+        }
 
         let docid = syncResult.docid;
         let documentId: number | undefined;
