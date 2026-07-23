@@ -16,6 +16,32 @@ const indentedJson = (value: unknown): string[] =>
     .split("\n")
     .map((line) => `    ${line}`);
 
+const longestRun = (value: string, character: "`" | "~"): number => {
+  let longest = 0;
+  let current = 0;
+  for (const codePoint of value) {
+    if (codePoint === character) {
+      current += 1;
+      longest = Math.max(longest, current);
+    } else {
+      current = 0;
+    }
+  }
+  return longest;
+};
+
+const untrustedFence = (value: string): string => {
+  const backtickLength = Math.max(3, longestRun(value, "`") + 1);
+  const tildeLength = Math.max(3, longestRun(value, "~") + 1);
+  const character = backtickLength <= tildeLength ? "`" : "~";
+  return character.repeat(Math.min(backtickLength, tildeLength));
+};
+
+const untrustedBlock = (label: string, value: string): string[] => {
+  const fence = untrustedFence(value);
+  return [`${fence}${label}`, value, fence];
+};
+
 const capabilityLines = (capsule: ContextCapsuleV1): string[] =>
   Object.entries(capsule.retrieval.capabilityStates).flatMap(
     ([capability, state]) => [
@@ -52,37 +78,40 @@ const configuredContextLines = (
 const evidenceBlock = (
   capsule: ContextCapsuleV1,
   item: ContextCapsuleV1["evidence"][number]
-): string[] => [
-  `## Evidence ${item.selectionRank}`,
-  "",
-  `- Evidence ID: \`${item.evidenceId}\``,
-  `- URI: \`${item.uri}\``,
-  `- Docid: \`${item.docid}\``,
-  `- Collection: \`${item.collection}\``,
-  `- Lines: ${item.startLine}-${item.endLine}`,
-  `- Retrieval rank: ${item.retrievalRank}`,
-  `- Selection rank: ${item.selectionRank}`,
-  `- Modified: ${nullable(item.modifiedAt)}`,
-  `- Document date: ${nullable(item.documentDate)}`,
-  `- Observed: ${nullable(item.observedAt)}`,
-  `- Facets: ${item.facets.length > 0 ? item.facets.join(", ") : "none"}`,
-  `- Trust: ${item.trust}`,
-  `- Egress: ${item.egress}`,
-  `- Source hash: \`${item.sourceHash}\``,
-  `- Mirror hash: \`${item.mirrorHash}\``,
-  `- Passage hash: \`${item.passageHash}\``,
-  "",
-  `<!-- GNO_UNTRUSTED_METADATA_START ${item.evidenceId} -->`,
-  `    {"title":${json(item.title)},"heading":${json(item.heading)}}`,
-  "    configuredContexts:",
-  ...configuredContextLines(capsule, item.contextIds),
-  `<!-- GNO_UNTRUSTED_METADATA_END ${item.evidenceId} -->`,
-  "",
-  `<!-- GNO_EVIDENCE_TEXT_START ${item.evidenceId} -->`,
-  item.text,
-  `<!-- GNO_EVIDENCE_TEXT_END ${item.evidenceId} -->`,
-  "",
-];
+): string[] => {
+  const metadata = [
+    `{"title":${json(item.title)},"heading":${json(item.heading)}}`,
+    "configuredContexts:",
+    ...configuredContextLines(capsule, item.contextIds).map((line) =>
+      line.startsWith("    ") ? line.slice(4) : line
+    ),
+  ].join("\n");
+  return [
+    `## Evidence ${item.selectionRank}`,
+    "",
+    `- Evidence ID: \`${item.evidenceId}\``,
+    `- URI: \`${item.uri}\``,
+    `- Docid: \`${item.docid}\``,
+    `- Collection: \`${item.collection}\``,
+    `- Lines: ${item.startLine}-${item.endLine}`,
+    `- Retrieval rank: ${item.retrievalRank}`,
+    `- Selection rank: ${item.selectionRank}`,
+    `- Modified: ${nullable(item.modifiedAt)}`,
+    `- Document date: ${nullable(item.documentDate)}`,
+    `- Observed: ${nullable(item.observedAt)}`,
+    `- Facets: ${item.facets.length > 0 ? item.facets.join(", ") : "none"}`,
+    `- Trust: ${item.trust}`,
+    `- Egress: ${item.egress}`,
+    `- Source hash: \`${item.sourceHash}\``,
+    `- Mirror hash: \`${item.mirrorHash}\``,
+    `- Passage hash: \`${item.passageHash}\``,
+    "",
+    ...untrustedBlock(`gno-untrusted-metadata-${item.evidenceId}`, metadata),
+    "",
+    ...untrustedBlock(`gno-untrusted-evidence-${item.evidenceId}`, item.text),
+    "",
+  ];
+};
 
 const omissionLines = (capsule: ContextCapsuleV1): string[] => [
   `- Total: ${capsule.omissions.total}`,
@@ -155,9 +184,10 @@ export const formatContextCapsuleMarkdown = (
     "",
     "## Canonical manifest",
     "",
-    "<!-- GNO_UNTRUSTED_MANIFEST_START -->",
-    ...indentedJson(JSON.parse(canonicalContextCapsuleJson(capsule))),
-    "<!-- GNO_UNTRUSTED_MANIFEST_END -->",
+    ...untrustedBlock(
+      "gno-untrusted-manifest-json",
+      JSON.stringify(JSON.parse(canonicalContextCapsuleJson(capsule)), null, 2)
+    ),
     "",
   ];
   return lines.join("\n");
@@ -205,11 +235,14 @@ export const formatContextCapsuleVerificationMarkdown = (
     ]),
     "## Canonical receipt",
     "",
-    "<!-- GNO_UNTRUSTED_RECEIPT_START -->",
-    ...indentedJson(
-      JSON.parse(canonicalContextCapsuleVerificationJson(receipt))
+    ...untrustedBlock(
+      "gno-untrusted-receipt-json",
+      JSON.stringify(
+        JSON.parse(canonicalContextCapsuleVerificationJson(receipt)),
+        null,
+        2
+      )
     ),
-    "<!-- GNO_UNTRUSTED_RECEIPT_END -->",
     "",
   ];
   return lines.join("\n");

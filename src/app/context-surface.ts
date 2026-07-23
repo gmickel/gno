@@ -63,6 +63,42 @@ export interface ParsedContextVerifySurfaceInput {
   format: ContextSurfaceFormat;
 }
 
+const CONTEXT_SURFACE_ERROR_MESSAGES = {
+  capsule_mutated_during_verify:
+    "The Context Capsule changed during verification.",
+  chunk_coordinate_mismatch:
+    "Indexed evidence coordinates do not match the source.",
+  chunk_load_failed: "Context Capsule evidence chunks could not be loaded.",
+  collection_load_failed: "Context Capsule collections could not be loaded.",
+  content_load_failed: "Context Capsule source content could not be loaded.",
+  context_changed_during_compile:
+    "Configured context changed during compilation.",
+  context_changed_during_verify:
+    "Configured context changed during verification.",
+  context_load_failed: "Configured context could not be loaded.",
+  document_load_failed: "Context Capsule documents could not be loaded.",
+  identity_mismatch: "The Context Capsule identity does not match its content.",
+  index_changed_during_compile: "The index changed during compilation.",
+  index_changed_during_verify: "The index changed during verification.",
+  index_snapshot_failed: "The index snapshot could not be loaded.",
+  index_snapshot_mismatch:
+    "Indexed evidence does not match the captured snapshot.",
+  invalid_budget: "The Context Capsule budget is invalid.",
+  invalid_filter: "A Context Capsule filter is invalid.",
+  invalid_goal: "The Context Capsule goal is invalid.",
+  invalid_input: "The Context Capsule request is invalid.",
+  invalid_uri: "The Context Capsule URI is invalid.",
+  no_evidence: "No in-scope evidence was available for the Context Capsule.",
+  retrieval_failed: "Context Capsule retrieval failed.",
+  runtime_error: "The Context Capsule request failed.",
+  stored_provenance_mismatch:
+    "Stored evidence provenance does not match the source.",
+  tokenizer_unavailable: "The required tokenizer is unavailable.",
+} as const;
+
+export type ContextSurfaceErrorCode =
+  keyof typeof CONTEXT_SURFACE_ERROR_MESSAGES;
+
 const invalidInput = (error: z.ZodError): ContextCapsuleContractError =>
   new ContextCapsuleContractError(
     "invalid_input",
@@ -94,13 +130,16 @@ export const parseContextVerifySurfaceInput = (
 
 export const contextSurfaceError = (
   error: unknown
-): { code: string; message: string } => ({
-  code:
+): { code: ContextSurfaceErrorCode; message: string } => {
+  const candidate =
     error !== null &&
     typeof error === "object" &&
     "code" in error &&
     typeof error.code === "string"
       ? error.code
-      : "runtime_error",
-  message: error instanceof Error ? error.message : String(error),
-});
+      : "runtime_error";
+  const code = Object.hasOwn(CONTEXT_SURFACE_ERROR_MESSAGES, candidate)
+    ? (candidate as ContextSurfaceErrorCode)
+    : "runtime_error";
+  return { code, message: CONTEXT_SURFACE_ERROR_MESSAGES[code] };
+};

@@ -19,6 +19,7 @@ import {
   parseContextBuildSurfaceInput,
   parseContextVerifySurfaceInput,
 } from "../app/context-surface";
+import { ContextCapsuleContractError } from "../core/context-capsule";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
 const MARKDOWN_HEADERS = {
@@ -29,9 +30,7 @@ const parseJsonBody = async (request: Request): Promise<unknown> => {
   try {
     return await request.json();
   } catch {
-    throw Object.assign(new Error("Invalid JSON body"), {
-      code: "invalid_input",
-    });
+    throw new ContextCapsuleContractError("invalid_input", "Invalid JSON body");
   }
 };
 

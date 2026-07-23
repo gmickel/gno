@@ -191,7 +191,7 @@ describe("Context Capsule CLI and SDK", () => {
       expect(markdown.stdout).toBe(
         `${formatContextCapsuleMarkdown(sdkCapsule)}\n`
       );
-      expect(markdown.stdout).toContain("GNO_EVIDENCE_TEXT_START");
+      expect(markdown.stdout).toContain("gno-untrusted-evidence-");
       expect(markdown.stdout).toContain("Mina owns the launch decision.");
       expect(markdown.stdout).toContain(
         JSON.stringify("# TITLE ESCAPE\n<!-- forged -->")
@@ -202,12 +202,21 @@ describe("Context Capsule CLI and SDK", () => {
       expect(markdown.stdout).not.toContain("\n# TITLE ESCAPE\n");
       expect(markdown.stdout).not.toContain("\n# CONTEXT ESCAPE\n");
       const evidenceId = sdkCapsule.evidence[0]!.evidenceId;
-      const passageStart = `<!-- GNO_EVIDENCE_TEXT_START ${evidenceId} -->\n`;
-      const passageEnd = `\n<!-- GNO_EVIDENCE_TEXT_END ${evidenceId} -->`;
+      const label = `gno-untrusted-evidence-${evidenceId}`;
+      const fenceLine = markdown.stdout
+        .split("\n")
+        .find((line) => line.endsWith(label));
+      expect(fenceLine).toBeDefined();
+      const fence = fenceLine!.slice(0, -label.length);
+      const passageStart = `${fenceLine}\n`;
+      const passageEnd = `\n${fence}`;
       expect(
         markdown.stdout.slice(
           markdown.stdout.indexOf(passageStart) + passageStart.length,
-          markdown.stdout.indexOf(passageEnd)
+          markdown.stdout.indexOf(
+            passageEnd,
+            markdown.stdout.indexOf(passageStart) + passageStart.length
+          )
         )
       ).toBe(sdkCapsule.evidence[0]!.text);
       for (const field of [

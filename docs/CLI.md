@@ -664,10 +664,11 @@ reported as `not_requested`, not as an availability failure. Unknown requested
 collections fail validation before retrieval.
 
 JSON is deterministic and machine-readable. Markdown is a readable projection
-of the same Capsule with untrusted passages explicitly delimited. Indexed
-title, heading, and configured-context text is JSON-escaped inside explicit
-untrusted metadata boundaries; passage bytes stay exact inside evidence-text
-sentinels. The full canonical manifest is included as an indented safe block.
+of the same Capsule with untrusted passages explicitly delimited. Each passage,
+metadata object, and canonical manifest uses a collision-resistant Markdown
+fence whose width and character are derived from that block, so source text
+cannot forge a closing boundary. Indexed title, heading, and configured-context
+text remains JSON-escaped; passage bytes remain exact.
 Use
 `--output <file>` for explicit file output; GNO never saves Capsules implicitly.
 Progress stays on stderr, leaving stdout or the output file clean.

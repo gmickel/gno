@@ -1226,12 +1226,14 @@ same canonical retrieval semantics as `gno query`. `--collection` is
 repeatable.
 
 JSON is the canonical V1 payload. Markdown is a readable projection of that
-same payload and hard-delimits each untrusted evidence passage. Indexed title,
-heading, and configured-context metadata is JSON-escaped inside explicit
-untrusted-data boundaries; exact passage bytes remain between evidence-text
-sentinels. The Markdown also includes a safe indented canonical manifest, so
-budgets, normalized retrieval requests, capability attempts/outcomes,
-fingerprints, snapshots, fallbacks, omissions, and truncation remain auditable.
+same payload and hard-delimits each untrusted evidence passage. Passage,
+metadata, manifest, and verification-receipt blocks use deterministic
+collision-resistant Markdown fences: the fence character and width are derived
+from the complete block, so indexed text cannot forge a closing boundary.
+Indexed title, heading, and configured-context metadata remains JSON-escaped;
+exact passage bytes remain unchanged inside the fence. Budgets, normalized
+retrieval requests, capability attempts/outcomes, fingerprints, snapshots,
+fallbacks, omissions, and truncation remain auditable.
 Invalid goals,
 budgets, filters, URI/index combinations, or output paths exit 1. Snapshot,
 retrieval, provenance, and store failures exit 2 with no partial Capsule.

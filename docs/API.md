@@ -1820,11 +1820,16 @@ model setup.
 
 JSON responses are the canonical Capsule bytes. `format: "md"` returns the
 shared readable Markdown projection (`text/markdown`) with exact passage bytes
-inside hard evidence sentinels and the complete canonical manifest. Indexed
-title, heading, and configured-context values remain escaped untrusted data.
+inside collision-resistant Markdown fences and the complete canonical
+manifest. Fence width and character are derived from each untrusted block, so
+source text cannot forge a closing boundary. Indexed title, heading, and
+configured-context values remain escaped untrusted data in separate fenced
+blocks.
 
 Errors use `{ "error": { "code": "...", "message": "..." } }` and preserve
 the public Context runtime, Capsule, evidence, and verifier code taxonomy.
+Messages come from a fixed public catalog; internal error text, paths, causes,
+and stack traces are never returned.
 Input/filter/budget/identity errors return `400`; no evidence returns `404`;
 source, index, context, mutation, or stored-provenance conflicts return `409`;
 an unavailable tokenizer returns `503`; retrieval, load, snapshot, and unknown

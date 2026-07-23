@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { contextSurfaceError } from "../../src/app/context-surface";
 import {
   CONTEXT_REST_ERROR_STATUS,
   contextRestStatusForCode,
@@ -41,5 +42,31 @@ describe("Context Capsule REST error status contract", () => {
   test("keeps the public map exhaustive and fails closed for unknown codes", () => {
     expect(CONTEXT_REST_ERROR_STATUS).toEqual(expected);
     expect(contextRestStatusForCode("future_unclassified_error")).toBe(500);
+  });
+
+  test("never exposes internal error or stack-derived text", () => {
+    const secret = "/private/runtime/path.ts:42 API_KEY=not-public";
+    const unknown = new Error(secret);
+    unknown.stack = `Error: ${secret}\n    at privateFrame (${secret})`;
+    expect(contextSurfaceError(unknown)).toEqual({
+      code: "runtime_error",
+      message: "The Context Capsule request failed.",
+    });
+    expect(
+      contextSurfaceError(
+        Object.assign(new Error(secret), { code: "invalid_input" })
+      )
+    ).toEqual({
+      code: "invalid_input",
+      message: "The Context Capsule request is invalid.",
+    });
+    expect(
+      contextSurfaceError(
+        Object.assign(new Error(secret), { code: "future_code" })
+      )
+    ).toEqual({
+      code: "runtime_error",
+      message: "The Context Capsule request failed.",
+    });
   });
 });
