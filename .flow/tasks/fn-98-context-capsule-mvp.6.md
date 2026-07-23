@@ -60,6 +60,6 @@ Deliver complete rest mcp parity promotion proof and documentation as one implem
 ## Done summary
 Exposed deterministic Context Capsule build and verification over REST and MCP through the shared runtime, with strict closed inputs, canonical JSON/Markdown parity, public error preservation, and active-index authority. Added adversarial cross-surface tests, passed and froze the agentic promotion proof (36.44% less context, 48.94% fewer calls, 100% Capsule task success/linkage), refreshed installed skill guidance, and committed hosted gno.sh documentation as c0274ed.
 ## Evidence
-- Commits: d9dbd0434608df53ad5e3573c23ee67902d7eec8, ccf0fe1259d68a5ec5f25409aa6825fff108af1d, 06ec8ad7239b2194cc92db7572c3fad2167bea6e
-- Tests: bun run prerelease, bun run eval:agentic -- --write, bun test test/context test/eval/agentic/capsule-prototype.test.ts test/eval/agentic/capsule-selection.test.ts test/eval/agentic/runner.test.ts test/core/context-compiler-selection.test.ts test/spec/schemas, uv run python -c source-skill autoresearch (48/48), gno.sh: bun run typecheck, gno.sh: bun run test -- --run src/lib/public-truth-content.test.ts, gno.sh: bun run build
+- Commits:
+- Tests:
 - PRs:
