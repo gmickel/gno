@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.22.0] - 2026-07-24
+
+### Added
+
+- Added a deterministic, public-only agent projection to publish exports with
+  a versioned manifest, sorted Markdown documents, exact line locators, content
+  hashes, stable projection revisions, and Capsule-compatible evidence
+  identities.
+- Added a reproducible three-way Context Capsule outcome demo comparing a
+  lexical-only baseline, current GNO MCP primitives, and an evaluation-only
+  Capsule prototype. The committed JSON and Markdown receipts disclose the
+  pinned task, corpus, model, lifecycle, calls, context, latency, evidence,
+  limitations, and selection method.
+- Added a publishing guide covering export, upload, visibility, agent access,
+  encrypted export, privacy boundaries, and verification.
+
+### Fixed
+
+- Hardened V1 publish artifacts with closed runtime validation and schema
+  projection for visibility, source type, slugs, titles, home-note membership,
+  unique notes, metadata, and public URL boundaries.
+- Hardened encrypted V2 artifacts with closed validation for route and source
+  identity, opaque tokens, base64 ciphertext and key material, KDF iterations,
+  timestamps, visibility, and extension-field removal without inspecting
+  encrypted content.
+- Bound the outcome demo to exact source and artifact revisions, recomputed all
+  displayed metrics from the delivered Capsule payload, and made its
+  single-task, cold-lifecycle, evaluation-only limitations explicit.
+
+### Security
+
+- Public exports now omit unpublished notes, local collection paths, source
+  URIs, raw frontmatter, secrets, local-path metadata, credential-bearing URLs,
+  and private or local network targets. Secret-link and invite-only exports
+  cannot carry agent manifests; encrypted artifacts remain ciphertext-only.
+
 ## [1.21.0] - 2026-07-23
 
 ### Added
@@ -1655,7 +1691,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.21.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.22.0...HEAD
+[1.22.0]: https://github.com/gmickel/gno/compare/v1.21.0...v1.22.0
 [1.21.0]: https://github.com/gmickel/gno/compare/v1.20.0...v1.21.0
 [1.20.0]: https://github.com/gmickel/gno/compare/v1.19.0...v1.20.0
 [1.19.0]: https://github.com/gmickel/gno/compare/v1.18.0...v1.19.0
