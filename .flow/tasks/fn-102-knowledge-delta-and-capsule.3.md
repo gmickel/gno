@@ -32,9 +32,10 @@ Deliver expose changes diff and impact through shared read surfaces as one imple
 
 
 ## Done summary
-TBD
+Implemented stable metadata-only changes and structural diff contracts plus bounded, cycle-safe inbound impact analysis. Exposed equivalent CLI, REST, MCP, and SDK read surfaces with JSON schemas, readable summaries, retention disclosure, deterministic evidence paths, documentation, and real cross-surface parity tests.
 
+Required Quick gates and the full Bun suite pass. Supplemental typecheck/docs verification remain red only on inherited untouched issues: the existing package-smoke ReadableStream async-iterator type error and the pre-existing 1.20.0 package versus 1.19.0 README/site version mismatch.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: e4a1672fd9f192600611703c648cb4db62d397dc
+- Tests: bun test test/changes test/spec/schemas/knowledge-delta.test.ts, bun test test/store/change-journal* test/changes, bun run lint:check, .flow/bin/flowctl validate --spec fn-102-knowledge-delta-and-capsule --json, bun test (2818 pass, 1 skip, 0 fail), bun src/index.ts changes --help && bun src/index.ts diff --help && bun src/index.ts impact --help, bun run typecheck (inherited failure: scripts/package-smoke-model.ts ReadableStream async iterator; path unchanged from base), bun run docs:verify (inherited failure: pre-existing package 1.20.0 vs README/site 1.19.0; paths unchanged from base)
 - PRs:
