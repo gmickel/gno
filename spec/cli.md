@@ -211,6 +211,12 @@ Semantic and connector stages remain independent; passive status never starts a
 model runtime or connector process. `gno status` still exits 0 when activation
 is unhealthy so scripts can inspect the structured state.
 
+JSON output also includes `resident` using
+`gno://schemas/resident-status@1.0`. Direct `gno status` is intentionally
+truthful about its lifecycle: `mode:"direct-cli"`, `resident:false`, no
+listener, and zero resident counters. It does not imply attachment to a live
+`serve` or `daemon`.
+
 Local activation fingerprints use active-document identifiers and source/mirror
 hashes plus schema, tokenizer, and owned FTS synchronization metadata. Passive
 status never selects or compares stored markdown or FTS bodies. On a receipt
@@ -2595,11 +2601,13 @@ Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one
   before the CLI exits; the CLI bootstrap does not race the command's handler
 - Sets CSP header: `default-src 'self'; script-src 'self'`
 - Health check at `/api/health` returns `{ok:true}`
+- Safe lifecycle status at `/api/resident/status` and the `resident` member of
+  `/api/status` derive from the same `resident-status@1.0` snapshot
 - Mounts stateful Streamable HTTP MCP at `/mcp` only after the fail-closed
   actual-peer, Host, Origin, bearer, body, rate, request, queue, and session
   boundary initializes
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON (`{pid, port, cmd:"serve", version, started_at}`), prints `{pid, url}` on stdout, exits 0
-- On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json). Liveness via `process.kill(pid, 0)`; stale pid-files (ESRCH) are reported as `running:false`
+- On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json). Liveness via `process.kill(pid, 0)`; stale pid-files (ESRCH) are reported as `running:false`. Live status best-effort reads the same redacted `resident-status@1.0` snapshot from the recorded listener.
 - On `--stop`: sends SIGTERM, polls every 100ms for up to 10s, falls back to SIGKILL, polls 2s more, unlinks pid-file if the process cleaned up after itself
 - **Windows**: `--detach` is unsupported and returns a `VALIDATION` error pointing to WSL. `--status` / `--stop` / `--pid-file` / `--log-file` remain parseable but have nothing to manage.
 
@@ -2673,8 +2681,10 @@ Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one
 - Triggers embedding after initial sync completes
 - Runs in the foreground until `SIGINT` / `SIGTERM`
 - Starts a headless `/mcp` Streamable HTTP listener; it does not serve the Web UI
+- Exposes the same safe REST lifecycle snapshot at `/api/resident/status` and
+  the same resident-aware app status at `/api/status`
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON including the MCP gateway `port`, prints `{pid}` on stdout, exits 0
-- On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json), including the MCP gateway port
+- On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json), including the MCP gateway port and a best-effort copy of the live redacted resident snapshot
 - On `--stop`: SIGTERM → 10s poll → SIGKILL → 2s poll; the daemon's own signal handler unlinks the pid-file, `--stop` unlinks as fallback
 - **Windows**: `--detach` is unsupported and returns a `VALIDATION` error pointing to WSL.
 

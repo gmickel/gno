@@ -107,6 +107,16 @@ function createDeps(calls: string[] = []): ResidentRuntimeDeps {
       }) as never,
     modelManagerFactory: () =>
       ({
+        getLifecycleStats: () => ({
+          activeLeases: 0,
+          leaseAcquisitions: 2,
+          leaseReleases: 2,
+          loadedModels: 1,
+          loadAttempts: 1,
+          loadSuccesses: 1,
+          loadFailures: 0,
+          inflightLoads: 0,
+        }),
         disposeAll: async () => {
           calls.push("models");
         },
@@ -143,6 +153,31 @@ describe("ResidentRuntime", () => {
     expect(runtime.generations).toEqual({ content: 1, index: 1 });
     await runtime.syncAll({ triggerEmbed: false });
     expect(runtime.generations).toEqual({ content: 2, index: 1 });
+    runtime.setListenerPort(3210);
+    runtime.setTransportStatusProvider(() => ({
+      activeRequests: 1,
+      activeSessions: 2,
+      queuedRequests: 1,
+      maxConcurrentRequests: 8,
+      maxQueuedRequests: 4,
+      maxSessions: 16,
+    }));
+    expect(runtime.getStatus()).toMatchObject({
+      mode: "serve",
+      listenerPort: 3210,
+      transport: {
+        activeRequests: 1,
+        activeSessions: 2,
+        queuedRequests: 1,
+      },
+      models: {
+        loadedModels: 1,
+        loadAttempts: 1,
+        leaseAcquisitions: 2,
+        leaseReleases: 2,
+      },
+      generations: { content: 2, index: 1 },
+    });
     await runtime.dispose();
   });
 
@@ -179,7 +214,10 @@ describe("ResidentRuntime", () => {
     const request = result.runtime.admitRequest();
     expect(request).not.toBeNull();
     const closeSession = result.runtime.openSession();
-    expect(result.runtime.activeSessions).toBe(1);
+    // HttpMcpSessionStore is the sole active-session counter. The runtime
+    // session hook intentionally contributes no duplicate accounting.
+    expect(result.runtime.activeSessions).toBe(0);
+    closeSession();
     await result.runtime.dispose();
 
     expect(request?.signal.aborted).toBe(true);

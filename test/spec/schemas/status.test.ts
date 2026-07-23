@@ -19,6 +19,37 @@ const pendingStage = {
   code: "semantic_not_checked",
 } as const;
 
+const resident = {
+  schemaVersion: "1.0",
+  mode: "serve",
+  resident: true,
+  uptimeSeconds: 60,
+  listenerPort: 3000,
+  admission: { state: "accepting", activeRequests: 0 },
+  shutdown: { state: "none" },
+  transport: {
+    activeRequests: 0,
+    activeSessions: 0,
+    queuedRequests: 0,
+    maxConcurrentRequests: 64,
+    maxQueuedRequests: 16,
+    maxSessions: 32,
+  },
+  readers: { active: 0, queued: 0, limit: 8, maxQueued: 64 },
+  models: {
+    activeLeases: 0,
+    leaseAcquisitions: 1,
+    leaseReleases: 1,
+    loadedModels: 1,
+    loadAttempts: 1,
+    loadSuccesses: 1,
+    loadFailures: 0,
+    inflightLoads: 0,
+  },
+  jobs: { active: 0, recent: 1, failed: 0 },
+  generations: { content: 2, index: 1 },
+} as const;
+
 describe("status schema", () => {
   let schema: object;
 
@@ -36,6 +67,7 @@ describe("status schema", () => {
 
     test("validates minimal status", () => {
       const status = {
+        resident,
         indexName: "default",
         collections: [],
         totalDocuments: 0,
@@ -129,6 +161,7 @@ describe("status schema", () => {
 
     test("validates status with single collection", () => {
       const status = {
+        resident,
         indexName: "test",
         collections: [
           {
@@ -230,6 +263,7 @@ describe("status schema", () => {
 
     test("validates unhealthy status", () => {
       const status = {
+        resident,
         indexName: "default",
         collections: [],
         totalDocuments: 0,

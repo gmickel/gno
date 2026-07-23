@@ -11,7 +11,19 @@ const mockGetLlama = mock(async (_options?: unknown) => ({
 }));
 
 void mock.module("node:os", () => ({
+  arch: () => "arm64",
+  homedir: () => process.env.HOME ?? "/tmp",
+  hostname: () => "localhost",
   platform: () => mockPlatformValue,
+  totalmem: () => 16 * 1024 * 1024 * 1024,
+  tmpdir: () => "/tmp",
+  userInfo: () => ({
+    gid: 501,
+    homedir: "/tmp",
+    shell: "/bin/zsh",
+    uid: 501,
+    username: "test",
+  }),
 }));
 
 void mock.module("node-llama-cpp", () => ({
@@ -178,5 +190,71 @@ describe("ModelManager", () => {
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toBe("Backend init timeout after 1ms");
     }
+  });
+
+  test("counts one physical load across warm reuse", async () => {
+    const { ModelManager } =
+      await import("../../src/llm/nodeLlamaCpp/lifecycle");
+    const manager = new ModelManager({
+      activePreset: "slim",
+      presets: [],
+      loadTimeout: 60_000,
+      inferenceTimeout: 30_000,
+      expandContextSize: 2_048,
+      warmModelTtl: 300_000,
+    });
+
+    const first = await manager.loadModel(
+      "/tmp/model.gguf",
+      "test:model",
+      "embed"
+    );
+    const second = await manager.loadModel(
+      "/tmp/model.gguf",
+      "test:model",
+      "embed"
+    );
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    expect(manager.getLifecycleStats()).toMatchObject({
+      loadedModels: 1,
+      loadAttempts: 1,
+      loadSuccesses: 1,
+      loadFailures: 0,
+      inflightLoads: 0,
+    });
+  });
+
+  test("counts model failures without leaving an inflight load", async () => {
+    mockGetLlama.mockImplementationOnce(async () => ({
+      loadModel: mock(async () => {
+        throw new Error("model load failed");
+      }),
+    }));
+    const { ModelManager } =
+      await import("../../src/llm/nodeLlamaCpp/lifecycle");
+    const manager = new ModelManager({
+      activePreset: "slim",
+      presets: [],
+      loadTimeout: 60_000,
+      inferenceTimeout: 30_000,
+      expandContextSize: 2_048,
+      warmModelTtl: 300_000,
+    });
+
+    const result = await manager.loadModel(
+      "/tmp/broken.gguf",
+      "test:broken",
+      "rerank"
+    );
+    expect(result.ok).toBe(false);
+    expect(manager.getLifecycleStats()).toMatchObject({
+      loadedModels: 0,
+      loadAttempts: 1,
+      loadSuccesses: 0,
+      loadFailures: 1,
+      inflightLoads: 0,
+    });
   });
 });

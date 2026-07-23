@@ -110,6 +110,10 @@ export class HttpMcpSessionStore {
     return this.#sessions.size;
   }
 
+  get maxSessions(): number {
+    return this.#maxSessions;
+  }
+
   get capacityAvailable(): boolean {
     return (
       !this.#closed &&

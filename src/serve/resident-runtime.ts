@@ -8,9 +8,11 @@ import type { WriteLockHandle } from "../core/file-lock";
 import type { SyncResult } from "../ingestion";
 import type { ModelManager } from "../llm/nodeLlamaCpp/lifecycle";
 import type { ToolContext } from "../mcp/context";
+import type { HttpMcpTransportStatus } from "../mcp/http-transport";
 import type { DocumentEventBus } from "./doc-events";
 import type { EmbedResult, EmbedScheduler } from "./embed-scheduler";
 import type { ContextHolder } from "./routes/api";
+import type { ResidentStatus } from "./status-model";
 import type {
   CollectionWatchCallbacks,
   CollectionWatchService,
@@ -44,9 +46,10 @@ import {
   type ServerContext,
 } from "./context";
 import { createEmbedScheduler } from "./embed-scheduler";
+import { AdmissionController, ReaderGate } from "./resident-admission";
+import { buildResidentStatusSnapshot } from "./resident-status";
 import { CollectionWatchService as DefaultCollectionWatchService } from "./watch-service";
 
-const DEFAULT_READER_LIMIT = 8;
 const DEFAULT_SHUTDOWN_DEADLINE_MS = 5_000;
 const OWNER_LOCK_TIMEOUT_MS = 0;
 
@@ -61,6 +64,7 @@ export interface ResidentRuntimeOptions {
   eventBus?: DocumentEventBus | null;
   watchCallbacks?: CollectionWatchCallbacks;
   readerLimit?: number;
+  readerQueueLimit?: number;
   shutdownDeadlineMs?: number;
 }
 
@@ -93,6 +97,11 @@ export interface ResidentRuntime {
   readonly activeRequests: number;
   readonly activeSessions: number;
   readonly isShuttingDown: boolean;
+  getStatus(): ResidentStatus;
+  setListenerPort(port: number | null): void;
+  setTransportStatusProvider(
+    provider: (() => HttpMcpTransportStatus) | null
+  ): void;
   admitRequest(signal?: AbortSignal): ResidentRequestHandle | null;
   openSession(): () => void;
   syncAll(options?: {
@@ -106,93 +115,6 @@ export interface ResidentRuntime {
 export type ResidentRuntimeResult =
   | { success: true; runtime: ResidentRuntime }
   | { success: false; error: string };
-
-export class ReaderGate {
-  readonly #limit: number;
-  #active = 0;
-  readonly #queue: Array<() => void> = [];
-
-  constructor(limit = DEFAULT_READER_LIMIT) {
-    this.#limit = Math.max(1, Math.floor(limit));
-  }
-
-  get active(): number {
-    return this.#active;
-  }
-
-  async acquire(): Promise<() => void> {
-    if (this.#active >= this.#limit) {
-      await new Promise<void>((resolve) => this.#queue.push(resolve));
-    }
-    this.#active += 1;
-    let released = false;
-    return () => {
-      if (released) return;
-      released = true;
-      this.#active -= 1;
-      this.#queue.shift()?.();
-    };
-  }
-}
-
-class AdmissionController {
-  #accepting = true;
-  readonly #requests = new Map<string, AbortController>();
-  readonly #drainWaiters = new Set<() => void>();
-
-  get active(): number {
-    return this.#requests.size;
-  }
-
-  get accepting(): boolean {
-    return this.#accepting;
-  }
-
-  admit(parentSignal?: AbortSignal): ResidentRequestHandle | null {
-    if (!this.#accepting) return null;
-    const id = crypto.randomUUID();
-    const controller = new AbortController();
-    const abortFromParent = (): void => controller.abort(parentSignal?.reason);
-    parentSignal?.addEventListener("abort", abortFromParent, { once: true });
-    if (parentSignal?.aborted) abortFromParent();
-    this.#requests.set(id, controller);
-    let finished = false;
-    return {
-      id,
-      signal: controller.signal,
-      finish: () => {
-        if (finished) return;
-        finished = true;
-        parentSignal?.removeEventListener("abort", abortFromParent);
-        this.#requests.delete(id);
-        if (this.#requests.size === 0) {
-          for (const waiter of this.#drainWaiters) waiter();
-          this.#drainWaiters.clear();
-        }
-      },
-    };
-  }
-
-  async closeAndDrain(deadlineMs: number): Promise<void> {
-    this.#accepting = false;
-    if (this.#requests.size === 0) return;
-
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    await Promise.race([
-      new Promise<void>((resolve) => this.#drainWaiters.add(resolve)),
-      new Promise<void>((resolve) => {
-        timeout = setTimeout(resolve, Math.max(0, deadlineMs));
-      }),
-    ]);
-    if (timeout) clearTimeout(timeout);
-
-    for (const controller of this.#requests.values()) {
-      controller.abort(new Error("Resident runtime is shutting down"));
-    }
-    this.#requests.clear();
-    this.#drainWaiters.clear();
-  }
-}
 
 export type ResidentRuntimeDeps = {
   isInitialized?: typeof isInitialized;
@@ -349,9 +271,16 @@ export async function startResidentRuntime(
     deps.modelManagerFactory?.(initialConfig) ??
     getModelManager(getModelConfig(initialConfig));
   const admission = new AdmissionController();
-  const readerGate = new ReaderGate(options.readerLimit);
+  const readerGate = new ReaderGate(
+    options.readerLimit,
+    options.readerQueueLimit
+  );
   const generations: ResidentGeneration = { content: 0, index: 0 };
-  let sessions = 0;
+  const startedAt = Date.now();
+  let listenerPort: number | null = null;
+  let transportStatusProvider: (() => HttpMcpTransportStatus) | null = null;
+  let shutdownState: ResidentStatus["shutdown"]["state"] = "none";
+  let admissionState: ResidentStatus["admission"]["state"] = "accepting";
   let disposed = false;
 
   const mcpContext = createToolContext({
@@ -396,21 +325,55 @@ export async function startResidentRuntime(
       return admission.active;
     },
     get activeSessions() {
-      return sessions;
+      return transportStatusProvider?.().activeSessions ?? 0;
     },
     get isShuttingDown() {
       return disposed || !admission.accepting;
     },
     admitRequest: (signal) => admission.admit(signal),
     openSession() {
-      if (!admission.accepting) return () => undefined;
-      sessions += 1;
-      let closed = false;
-      return () => {
-        if (closed) return;
-        closed = true;
-        sessions = Math.max(0, sessions - 1);
+      return () => undefined;
+    },
+    getStatus() {
+      const transport = transportStatusProvider?.() ?? {
+        activeRequests: 0,
+        activeSessions: 0,
+        queuedRequests: 0,
+        maxConcurrentRequests: 0,
+        maxQueuedRequests: 0,
+        maxSessions: 0,
       };
+      const jobs = jobManager.listJobs(100);
+      return buildResidentStatusSnapshot({
+        mode: options.mode ?? "serve",
+        startedAt,
+        listenerPort,
+        admission: {
+          state: admissionState,
+          activeRequests: admission.active,
+        },
+        shutdown: { state: shutdownState },
+        transport,
+        readers: {
+          active: readerGate.active,
+          queued: readerGate.queued,
+          limit: readerGate.limit,
+          maxQueued: readerGate.maxQueued,
+        },
+        models: modelManager.getLifecycleStats(),
+        jobs: {
+          active: jobs.active.length,
+          recent: jobs.recent.length,
+          failed: jobs.recent.filter((job) => job.status === "failed").length,
+        },
+        generations: { ...generations },
+      });
+    },
+    setListenerPort(port) {
+      listenerPort = port;
+    },
+    setTransportStatusProvider(provider) {
+      transportStatusProvider = provider;
     },
     async syncAll(syncOptions = {}) {
       const config = ctxHolder.config;
@@ -442,10 +405,12 @@ export async function startResidentRuntime(
     async dispose() {
       if (disposed) return;
       disposed = true;
-      await admission.closeAndDrain(
+      admissionState = "draining";
+      shutdownState = "graceful";
+      const deadlineReached = await admission.closeAndDrain(
         options.shutdownDeadlineMs ?? DEFAULT_SHUTDOWN_DEADLINE_MS
       );
-      sessions = 0;
+      if (deadlineReached) shutdownState = "deadline";
       await jobManager.shutdown().catch(() => undefined);
       await Promise.allSettled([
         Promise.resolve().then(() => watchService.dispose()),
@@ -460,7 +425,11 @@ export async function startResidentRuntime(
         store.close(),
         ownerLock.release(),
       ]);
+      admissionState = "closed";
+      transportStatusProvider = null;
+      listenerPort = null;
     },
   };
+  mcpContext.getResidentStatus = () => runtime.getStatus();
   return { success: true, runtime };
 }

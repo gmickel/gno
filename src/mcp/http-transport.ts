@@ -34,6 +34,15 @@ export interface HttpMcpRequestContext {
   parsedBody?: unknown;
 }
 
+export interface HttpMcpTransportStatus {
+  activeRequests: number;
+  activeSessions: number;
+  queuedRequests: number;
+  maxConcurrentRequests: number;
+  maxQueuedRequests: number;
+  maxSessions: number;
+}
+
 function jsonRpcError(
   status: number,
   code: number,
@@ -168,6 +177,17 @@ export class HttpMcpTransport {
 
   get queuedRequests(): number {
     return this.#capacityWaiters.length;
+  }
+
+  getStatus(): HttpMcpTransportStatus {
+    return {
+      activeRequests: this.activeRequests,
+      activeSessions: this.activeSessions,
+      queuedRequests: this.queuedRequests,
+      maxConcurrentRequests: this.#maxConcurrentRequests,
+      maxQueuedRequests: this.#maxQueuedRequests,
+      maxSessions: this.#sessions.maxSessions,
+    };
   }
 
   async handleRequest(

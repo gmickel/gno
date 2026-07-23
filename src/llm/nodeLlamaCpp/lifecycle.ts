@@ -44,6 +44,10 @@ export interface ModelLifecycleStats {
   leaseAcquisitions: number;
   leaseReleases: number;
   loadedModels: number;
+  loadAttempts: number;
+  loadSuccesses: number;
+  loadFailures: number;
+  inflightLoads: number;
 }
 
 let invalidGpuModeWarned = false;
@@ -149,6 +153,9 @@ export class ModelManager {
   private activeLeases = 0;
   private leaseAcquisitions = 0;
   private leaseReleases = 0;
+  private loadAttempts = 0;
+  private loadSuccesses = 0;
+  private loadFailures = 0;
 
   constructor(config: ModelConfig) {
     this.config = config;
@@ -277,6 +284,7 @@ export class ModelManager {
     uri: string,
     type: ModelType
   ): Promise<LlmResult<LoadedModel>> {
+    this.loadAttempts += 1;
     const timeoutMs = this.config.loadTimeout;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let timedOut = false;
@@ -313,6 +321,7 @@ export class ModelManager {
 
       this.models.set(uri, cachedModel);
       this.setDisposalTimer(uri);
+      this.loadSuccesses += 1;
 
       return {
         ok: true,
@@ -324,6 +333,7 @@ export class ModelManager {
         },
       };
     } catch (e) {
+      this.loadFailures += 1;
       // Clear timeout on error
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -397,6 +407,10 @@ export class ModelManager {
       leaseAcquisitions: this.leaseAcquisitions,
       leaseReleases: this.leaseReleases,
       loadedModels: this.models.size,
+      loadAttempts: this.loadAttempts,
+      loadSuccesses: this.loadSuccesses,
+      loadFailures: this.loadFailures,
+      inflightLoads: this.inflightLoads.size,
     };
   }
 

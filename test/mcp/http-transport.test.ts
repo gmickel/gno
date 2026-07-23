@@ -9,6 +9,7 @@ import type { ToolContext } from "../../src/mcp/context";
 import type { HttpMcpTransportRuntime } from "../../src/mcp/http-transport";
 
 import { HttpMcpTransport } from "../../src/mcp/http-transport";
+import { createStandaloneResidentStatus } from "../../src/serve/resident-status";
 import { startServer } from "../../src/serve/server";
 
 const MCP_URL = "http://127.0.0.1:3210/mcp";
@@ -17,7 +18,6 @@ const PROTOCOL_VERSION = "2025-11-25";
 
 interface TestRuntime extends HttpMcpTransportRuntime {
   readonly admitted: number;
-  readonly sessions: number;
   beginShutdown(): void;
 }
 
@@ -40,20 +40,17 @@ function createToolContext(): ToolContext {
     writeLockPath: "/tmp/gno-http-test/.lock",
     enableWrite: false,
     isShuttingDown: () => false,
+    getResidentStatus: () => createStandaloneResidentStatus("stdio"),
   };
 }
 
 function createRuntime(): TestRuntime {
   let admitted = 0;
-  let sessions = 0;
   let shuttingDown = false;
   return {
     mcpContext: createToolContext(),
     get admitted() {
       return admitted;
-    },
-    get sessions() {
-      return sessions;
     },
     get isShuttingDown() {
       return shuttingDown;
@@ -76,13 +73,7 @@ function createRuntime(): TestRuntime {
       };
     },
     openSession() {
-      sessions += 1;
-      let closed = false;
-      return () => {
-        if (closed) return;
-        closed = true;
-        sessions -= 1;
-      };
+      return () => undefined;
     },
   };
 }
@@ -176,6 +167,9 @@ describe("stateful Web Standard MCP transport", () => {
   test("isolates two concurrent client sessions over one resident runtime", async () => {
     const runtime = createRuntime();
     let serversCreated = 0;
+    let sharedStoreCalls = 0;
+    let warmModelLoads = 0;
+    let modelWarm = false;
     const transport = new HttpMcpTransport(runtime, {
       createServer: () => {
         serversCreated += 1;
@@ -184,10 +178,17 @@ describe("stateful Web Standard MCP transport", () => {
         server.registerTool(
           "session-counter",
           { inputSchema: {} },
-          async () => ({
-            content: [{ type: "text", text: String(++calls) }],
-            structuredContent: { calls },
-          })
+          async () => {
+            sharedStoreCalls += 1;
+            if (!modelWarm) {
+              modelWarm = true;
+              warmModelLoads += 1;
+            }
+            return {
+              content: [{ type: "text", text: String(++calls) }],
+              structuredContent: { calls },
+            };
+          }
         );
         return server;
       },
@@ -207,8 +208,15 @@ describe("stateful Web Standard MCP transport", () => {
     expect(resultA.structuredContent).toEqual({ calls: 1 });
     expect(resultB.structuredContent).toEqual({ calls: 1 });
     expect(serversCreated).toBe(2);
+    expect(sharedStoreCalls).toBe(2);
+    expect(warmModelLoads).toBe(1);
     expect(transport.activeSessions).toBe(2);
-    expect(runtime.sessions).toBe(2);
+    expect(transport.getStatus()).toMatchObject({
+      activeSessions: 2,
+      maxConcurrentRequests: 64,
+      maxQueuedRequests: 0,
+      maxSessions: 32,
+    });
   });
 
   test("handles GET, DELETE, protocol versions, and terminated sessions", async () => {
@@ -237,7 +245,6 @@ describe("stateful Web Standard MCP transport", () => {
     const terminated = await transport.handleRequest(deleteRequest(sessionId));
     expect(terminated.status).toBe(200);
     expect(transport.activeSessions).toBe(0);
-    expect(runtime.sessions).toBe(0);
     expect((await transport.handleRequest(getRequest(sessionId))).status).toBe(
       404
     );

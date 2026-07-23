@@ -33,6 +33,7 @@ import type {
 import type { DocumentEventBus } from "../doc-events";
 import type { EmbedScheduler } from "../embed-scheduler";
 import type { StartJobError } from "../jobs";
+import type { ResidentStatus } from "../status-model";
 import type { CollectionWatchService } from "../watch-service";
 
 import { modelsPull } from "../../cli/commands/models/pull";
@@ -815,6 +816,12 @@ export async function handleStatus(
       500
     );
   }
+}
+
+export function handleResidentStatus(
+  getStatus: () => ResidentStatus
+): Response {
+  return jsonResponse(getStatus());
 }
 
 /**

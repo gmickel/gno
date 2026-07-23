@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/resident-status@1.0",
+  "title": "GNO Resident Status",
+  "description": "Safe lifecycle projection shared by resident and standalone status surfaces",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "mode",
+    "resident",
+    "uptimeSeconds",
+    "listenerPort",
+    "admission",
+    "shutdown",
+    "transport",
+    "readers",
+    "models",
+    "jobs",
+    "generations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "mode": {
+      "type": "string",
+      "enum": ["serve", "daemon", "stdio", "direct-cli"]
+    },
+    "resident": { "type": "boolean" },
+    "uptimeSeconds": { "type": ["integer", "null"], "minimum": 0 },
+    "listenerPort": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "admission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "activeRequests"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["accepting", "draining", "closed"]
+        },
+        "activeRequests": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "shutdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["none", "graceful", "deadline"]
+        }
+      }
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "activeRequests",
+        "activeSessions",
+        "queuedRequests",
+        "maxConcurrentRequests",
+        "maxQueuedRequests",
+        "maxSessions"
+      ],
+      "properties": {
+        "activeRequests": { "type": "integer", "minimum": 0 },
+        "activeSessions": { "type": "integer", "minimum": 0 },
+        "queuedRequests": { "type": "integer", "minimum": 0 },
+        "maxConcurrentRequests": { "type": "integer", "minimum": 0 },
+        "maxQueuedRequests": { "type": "integer", "minimum": 0 },
+        "maxSessions": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "readers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active", "queued", "limit", "maxQueued"],
+      "properties": {
+        "active": { "type": "integer", "minimum": 0 },
+        "queued": { "type": "integer", "minimum": 0 },
+        "limit": { "type": "integer", "minimum": 0 },
+        "maxQueued": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "models": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "activeLeases",
+        "leaseAcquisitions",
+        "leaseReleases",
+        "loadedModels",
+        "loadAttempts",
+        "loadSuccesses",
+        "loadFailures",
+        "inflightLoads"
+      ],
+      "properties": {
+        "activeLeases": { "type": "integer", "minimum": 0 },
+        "leaseAcquisitions": { "type": "integer", "minimum": 0 },
+        "leaseReleases": { "type": "integer", "minimum": 0 },
+        "loadedModels": { "type": "integer", "minimum": 0 },
+        "loadAttempts": { "type": "integer", "minimum": 0 },
+        "loadSuccesses": { "type": "integer", "minimum": 0 },
+        "loadFailures": { "type": "integer", "minimum": 0 },
+        "inflightLoads": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "jobs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active", "recent", "failed"],
+      "properties": {
+        "active": { "type": "integer", "minimum": 0 },
+        "recent": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "generations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content", "index"],
+      "properties": {
+        "content": { "type": "integer", "minimum": 0 },
+        "index": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "resident": { "const": true } },
+        "required": ["resident"]
+      },
+      "then": {
+        "properties": {
+          "mode": { "enum": ["serve", "daemon"] },
+          "uptimeSeconds": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "else": {
+        "properties": {
+          "mode": { "enum": ["stdio", "direct-cli"] },
+          "uptimeSeconds": { "type": "null" },
+          "listenerPort": { "type": "null" }
+        }
+      }
+    }
+  ]
+}

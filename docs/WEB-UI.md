@@ -85,7 +85,8 @@ runtime, and SQLite handles to close before the process exits.
 Navigate to `http://localhost:3000`. The dashboard now handles both first-run setup and ongoing health:
 
 - **First-run checklist**: Add folders, review preset, and finish the first sync
-- **Health Center**: Real status for folders, indexing, models, and disk
+- **Health Center**: Real status for folders, indexing, models, disk, and the
+  shared resident lifecycle (listener, sessions, requests, queues, and models)
 - **Document count**: Total indexed documents
 - **Chunk count**: Text segments for search
 - **Quick Capture**: Create new notes instantly

@@ -55,6 +55,7 @@ import {
   handleQuery,
   handleQueryDiagnose,
   handleRefactorPlan,
+  handleResidentStatus,
   handleRenameDoc,
   handleRevealDoc,
   handleSearch,
@@ -248,7 +249,22 @@ export async function startServer(
         },
         "/api/status": {
           GET: async () =>
-            withSecurityHeaders(await handleStatus(ctxHolder.current), isDev),
+            withSecurityHeaders(
+              await handleStatus(ctxHolder.current, {
+                getResidentStatus: () =>
+                  (runtime as ResidentRuntime).getStatus(),
+              }),
+              isDev
+            ),
+        },
+        "/api/resident/status": {
+          GET: () =>
+            withSecurityHeaders(
+              handleResidentStatus(() =>
+                (runtime as ResidentRuntime).getStatus()
+              ),
+              isDev
+            ),
         },
         "/api/collections": {
           GET: async () =>
@@ -787,6 +803,7 @@ export async function startServer(
       error: e instanceof Error ? e.message : String(e),
     };
   }
+  (runtime as Partial<ResidentRuntime>).setListenerPort?.(server.port ?? port);
 
   console.log(
     `GNO server running at http://${gatewayConfig.host}:${server.port}`

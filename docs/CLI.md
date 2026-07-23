@@ -1064,6 +1064,10 @@ Semantic availability is separate: unknown resident capability is
 explicit verification receipts. `connectorProjection.truncated` means omitted
 target/collection pairs have no result and overall health is degraded.
 
+JSON output includes a safe `resident-status@1.0` lifecycle projection. A
+direct `gno status` invocation reports `mode:"direct-cli"` and
+`resident:false`; it does not pretend to be attached to a live server.
+
 ### gno doctor
 
 Check system health.
@@ -1178,7 +1182,7 @@ Both `gno daemon` and `gno serve` ship with a symmetric set of management flags 
 
 **`--status` exit codes:**
 
-- `0` — a live matching process was found; stdout carries the [process-status payload](../spec/output-schemas/process-status.schema.json) (terminal table without `--json`, JSON object with `--json`).
+- `0` — a live matching process was found; stdout carries the [process-status payload](../spec/output-schemas/process-status.schema.json) (terminal table without `--json`, JSON object with `--json`). JSON includes a best-effort copy of the live listener's redacted resident snapshot.
 - `3` (`NOT_RUNNING`) — no live matching process. **The stdout payload is still emitted in JSON mode** so machine consumers always get the schema-shaped result; the `NOT_RUNNING` envelope only appears on stderr in JSON mode (and not at all in terminal mode).
 
 **`--stop` exit codes:**
@@ -1287,7 +1291,8 @@ Options:
 **API Endpoints:**
 
 - `GET /api/health` - Health check
-- `GET /api/status` - Index status plus onboarding and health-center state
+- `GET /api/status` - Index status, onboarding, health center, and resident lifecycle
+- `GET /api/resident/status` - Safe resident-only counters and lifecycle state
 - `GET /api/collections` - List collections
 - `GET /api/docs` - List documents (paginated: `?limit=20&offset=0&collection=name`)
 - `GET /api/doc` - Get document content (`?uri=gno://collection/path`)

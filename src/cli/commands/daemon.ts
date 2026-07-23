@@ -8,6 +8,7 @@ import {
   resolveHttpGatewayConfig,
 } from "../../mcp/http-security";
 import { startBackgroundRuntime } from "../../serve/background-runtime";
+import { handleResidentStatus, handleStatus } from "../../serve/routes/api";
 import { createMcpHttpGateway } from "../../serve/routes/mcp";
 
 export interface DaemonOptions extends HttpGatewayOverrides {
@@ -137,8 +138,25 @@ export async function daemon(
       port: gatewayConfig.port,
       hostname: gatewayConfig.host,
       development: false,
-      routes: { "/mcp": gateway.route },
+      routes: {
+        "/mcp": gateway.route,
+        "/api/status": {
+          GET: () =>
+            handleStatus(runtime.ctxHolder.current, {
+              getResidentStatus: () => (runtime as ResidentRuntime).getStatus(),
+            }),
+        },
+        "/api/resident/status": {
+          GET: () =>
+            handleResidentStatus(() =>
+              (runtime as ResidentRuntime).getStatus()
+            ),
+        },
+      },
     });
+    (runtime as Partial<ResidentRuntime>).setListenerPort?.(
+      server.port ?? gatewayConfig.port
+    );
     if (!options.quiet) {
       logger.log(
         `GNO daemon started for index "${options.index ?? "default"}" using ${runtime.config.collections.length} collection${runtime.config.collections.length === 1 ? "" : "s"}.`

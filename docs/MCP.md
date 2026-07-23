@@ -194,6 +194,11 @@ peer, allowlist, path, token, Authorization header, query, or document content:
 shutdown/credential/runtime unavailability. See
 [`mcp-http-error`](../spec/output-schemas/mcp-http-error.schema.json).
 
+`GET /api/resident/status` exposes the same redacted lifecycle snapshot used by
+the Web/Desktop Health Center, `gno_status`, and detached process status:
+mode, uptime, listener port, admission/shutdown state, session/request/queue
+counts, model lease/load counters, job counts, and content/index generations.
+
 ## Job Session Lifetime
 
 Jobs are stored in memory and tied to the MCP server process:
@@ -1064,6 +1069,10 @@ into one `gno_multi_get` call per index.
 Check index health.
 
 Returns collection counts, document totals, and health status.
+
+The structured response also includes `resident-status@1.0`. HTTP clients see
+the shared serve/daemon lifecycle. Stdio reports `mode:"stdio"`,
+`resident:false`, and no listener.
 
 ### gno_capture
 

@@ -89,6 +89,10 @@ gno daemon --detach --pid-file /tmp/gd.pid --log-file /tmp/gd.log
 `--status` always emits the schema-shaped payload on stdout, even when it exits 3. `--stop` is silent when there is nothing to stop — script against the exit
 code, not stderr text.
 
+For a live daemon, JSON status best-effort includes the same redacted resident
+snapshot available at `GET /api/resident/status`; no paths, tokens, queries,
+document content, or caller identities enter that nested lifecycle object.
+
 ### `--json` Gating
 
 `--json` is only defined for `--status`. Combining it with `--detach`, `--stop`,

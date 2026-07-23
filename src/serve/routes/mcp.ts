@@ -41,6 +41,9 @@ export async function createMcpHttpGateway(
     onCredentialsChanged: () => transport.invalidateAuthenticatedSessions(),
   });
   await security.initialize();
+  (runtime as Partial<ResidentRuntime>).setTransportStatusProvider?.(() =>
+    transport.getStatus()
+  );
 
   const route: McpHttpRoute = async (request, server) => {
     const authorization = await security.authorize(request, server);
@@ -58,6 +61,9 @@ export async function createMcpHttpGateway(
     route,
     security,
     transport,
-    close: () => transport.close(),
+    close: async () => {
+      await transport.close();
+      (runtime as Partial<ResidentRuntime>).setTransportStatusProvider?.(null);
+    },
   };
 }

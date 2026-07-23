@@ -13,6 +13,7 @@ async function loadAllSchemas(): Promise<void> {
   }
 
   const schemaFiles = [
+    "resident-status",
     "search-result",
     "search-results",
     "status",

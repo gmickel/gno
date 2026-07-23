@@ -810,6 +810,12 @@ return `isError: true`; callers must split the batch by index.
 
 Get index status and health information.
 
+`structuredContent.resident` uses
+`gno://schemas/resident-status@1.0`. HTTP sessions observe the shared
+serve/daemon runtime counters. Stdio remains a standalone lifecycle and reports
+`mode:"stdio"`, `resident:false`, no listener, and zero resident transport
+counters; it never claims attachment to another process.
+
 **Input Schema:**
 
 ```json

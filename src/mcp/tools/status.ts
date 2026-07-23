@@ -8,6 +8,7 @@ import type { IndexStatus } from "../../store/types";
 import type { ToolContext } from "../server";
 
 import { resolveModelUri } from "../../llm/registry";
+import { createStandaloneResidentStatus } from "../../serve/resident-status";
 import { runTool, type ToolResult } from "./index";
 
 type StatusInput = Record<string, never>;
@@ -22,6 +23,14 @@ function formatStatus(status: IndexStatus): string {
   lines.push(`Config: ${status.configPath}`);
   lines.push(`Database: ${status.dbPath}`);
   lines.push(`Health: ${status.healthy ? "OK" : "DEGRADED"}`);
+  if ("resident" in status) {
+    const resident = status.resident as NonNullable<
+      ReturnType<NonNullable<ToolContext["getResidentStatus"]>>
+    >;
+    lines.push(
+      `Runtime: ${resident.mode}${resident.resident ? ` (${resident.transport.activeSessions} sessions)` : " (standalone)"}`
+    );
+  }
   lines.push("");
 
   if (status.collections.length === 0) {
@@ -78,6 +87,8 @@ export function handleStatus(
       return {
         ...result.value,
         configPath: ctx.actualConfigPath,
+        resident:
+          ctx.getResidentStatus?.() ?? createStandaloneResidentStatus("stdio"),
       };
     },
     formatStatus

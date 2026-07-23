@@ -19,9 +19,13 @@
     "onboarding",
     "health",
     "background",
-    "bootstrap"
+    "bootstrap",
+    "resident"
   ],
   "properties": {
+    "resident": {
+      "$ref": "gno://schemas/resident-status@1.0"
+    },
     "indexName": {
       "type": "string",
       "description": "Name of the index"

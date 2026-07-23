@@ -6,9 +6,11 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import type { Collection, Config } from "../config/types";
 import type { JobManager } from "../core/job-manager";
+import type { ResidentStatus } from "../serve/status-model";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 
 import { MCP_SERVER_NAME, VERSION } from "../app/constants";
+import { createStandaloneResidentStatus } from "../serve/resident-status";
 import { registerResources } from "./resources/index";
 import { registerTools } from "./tools/index";
 
@@ -57,6 +59,7 @@ export interface ToolContext {
   writeLockPath: string;
   enableWrite: boolean;
   isShuttingDown: () => boolean;
+  getResidentStatus?: () => ResidentStatus;
   runWithSnapshot?<T>(operation: () => Promise<T>): Promise<T>;
 }
 
@@ -72,6 +75,7 @@ export interface CreateToolContextOptions {
   writeLockPath: string;
   enableWrite: boolean;
   isShuttingDown: () => boolean;
+  getResidentStatus?: () => ResidentStatus;
 }
 
 /**
@@ -114,6 +118,9 @@ export function createToolContext(
     writeLockPath: options.writeLockPath,
     enableWrite: options.enableWrite,
     isShuttingDown: options.isShuttingDown,
+    getResidentStatus:
+      options.getResidentStatus ??
+      (() => createStandaloneResidentStatus("stdio")),
     runWithSnapshot<T>(operation: () => Promise<T>): Promise<T> {
       const config = options.getConfig();
       return requestSnapshot.run(

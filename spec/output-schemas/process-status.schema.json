@@ -12,6 +12,7 @@
     "version",
     "started_at",
     "uptime_seconds",
+    "resident",
     "pid_file",
     "log_file",
     "log_size_bytes"
@@ -50,6 +51,13 @@
       "type": ["integer", "null"],
       "minimum": 0,
       "description": "Seconds since started_at, computed at status-read time; null when not running"
+    },
+    "resident": {
+      "anyOf": [
+        { "$ref": "gno://schemas/resident-status@1.0" },
+        { "type": "null" }
+      ],
+      "description": "Live safe resident lifecycle snapshot, or null when unavailable."
     },
     "pid_file": {
       "type": "string",
