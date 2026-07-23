@@ -830,7 +830,7 @@ export async function runTool<T>(
   // Sequential execution via mutex
   const release = await ctx.toolMutex.acquire();
   try {
-    const data = await fn();
+    const data = await (ctx.runWithSnapshot?.(fn) ?? fn());
     return {
       content: [{ type: "text", text: formatText(data) }],
       structuredContent: data as { [x: string]: unknown },
@@ -870,7 +870,7 @@ export async function runToolNoMutex<T>(
   }
 
   try {
-    const data = await fn();
+    const data = await (ctx.runWithSnapshot?.(fn) ?? fn());
     return {
       content: [{ type: "text", text: formatText(data) }],
       structuredContent: data as { [x: string]: unknown },

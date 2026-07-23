@@ -152,6 +152,7 @@ export async function startServer(
   const runtimeResult = await (
     dependencies.startBackgroundRuntime ?? startBackgroundRuntime
   )({
+    mode: "serve",
     configPath: options.configPath,
     index: options.index,
     requireCollections: false,
@@ -599,13 +600,17 @@ export async function startServer(
           },
         },
         "/api/jobs/active": {
-          GET: () => withSecurityHeaders(handleActiveJob(), isDev),
+          GET: () =>
+            withSecurityHeaders(handleActiveJob(ctxHolder.jobManager), isDev),
         },
         "/api/jobs/:id": {
           GET: (req: Request) => {
             const url = new URL(req.url);
             const id = decodeURIComponent(url.pathname.split("/").pop() || "");
-            return withSecurityHeaders(handleJob(id), isDev);
+            return withSecurityHeaders(
+              handleJob(id, ctxHolder.jobManager),
+              isDev
+            );
           },
         },
         "/api/embed": {

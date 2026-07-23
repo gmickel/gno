@@ -152,7 +152,7 @@ export function handleAddCollection(
                   gitPull: args.gitPull ?? false,
                   runUpdateCmd: false,
                 },
-                ctx.config
+                mutationResult.config
               )
             );
 

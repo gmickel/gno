@@ -35,6 +35,17 @@ interface CachedModel {
   loadedAt: number;
 }
 
+export interface ModelLease {
+  release(): void;
+}
+
+export interface ModelLifecycleStats {
+  activeLeases: number;
+  leaseAcquisitions: number;
+  leaseReleases: number;
+  loadedModels: number;
+}
+
 let invalidGpuModeWarned = false;
 let invalidBuildModeWarned = false;
 let gpuFallbackWarned = false;
@@ -135,6 +146,9 @@ export class ModelManager {
   private readonly inflightLoads: Map<string, Promise<LlmResult<LoadedModel>>> =
     new Map();
   private readonly config: ModelConfig;
+  private activeLeases = 0;
+  private leaseAcquisitions = 0;
+  private leaseReleases = 0;
 
   constructor(config: ModelConfig) {
     this.config = config;
@@ -356,6 +370,36 @@ export class ModelManager {
     return model;
   }
 
+  /** Keep warm models alive while one request owns model-backed ports. */
+  acquireLease(): ModelLease {
+    this.activeLeases += 1;
+    this.leaseAcquisitions += 1;
+    for (const timer of this.disposalTimers.values()) clearTimeout(timer);
+    this.disposalTimers.clear();
+
+    let released = false;
+    return {
+      release: () => {
+        if (released) return;
+        released = true;
+        this.activeLeases = Math.max(0, this.activeLeases - 1);
+        this.leaseReleases += 1;
+        if (this.activeLeases === 0) {
+          for (const uri of this.models.keys()) this.setDisposalTimer(uri);
+        }
+      },
+    };
+  }
+
+  getLifecycleStats(): ModelLifecycleStats {
+    return {
+      activeLeases: this.activeLeases,
+      leaseAcquisitions: this.leaseAcquisitions,
+      leaseReleases: this.leaseReleases,
+      loadedModels: this.models.size,
+    };
+  }
+
   /**
    * Check if a model is loaded.
    */
@@ -367,6 +411,10 @@ export class ModelManager {
    * Dispose a specific model.
    */
   async dispose(uri: string): Promise<void> {
+    if (this.activeLeases > 0) {
+      this.resetDisposalTimer(uri);
+      return;
+    }
     const cached = this.models.get(uri);
     if (!cached) {
       return;
@@ -429,6 +477,7 @@ export class ModelManager {
   // ───────────────────────────────────────────────────────────────────────────
 
   private setDisposalTimer(uri: string): void {
+    if (this.activeLeases > 0) return;
     const timer = setTimeout(() => {
       this.dispose(uri).catch(() => {
         // Ignore disposal errors in timer callback

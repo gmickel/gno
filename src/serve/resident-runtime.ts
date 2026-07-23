@@ -1,0 +1,466 @@
+/** Single-process ownership boundary shared by serve and daemon surfaces. */
+
+// node:path resolve/dirname/join have no Bun path utility equivalents.
+import { dirname, join, resolve } from "node:path";
+
+import type { Config } from "../config/types";
+import type { WriteLockHandle } from "../core/file-lock";
+import type { SyncResult } from "../ingestion";
+import type { ModelManager } from "../llm/nodeLlamaCpp/lifecycle";
+import type { ToolContext } from "../mcp/context";
+import type { DocumentEventBus } from "./doc-events";
+import type { EmbedResult, EmbedScheduler } from "./embed-scheduler";
+import type { ContextHolder } from "./routes/api";
+import type {
+  CollectionWatchCallbacks,
+  CollectionWatchService,
+} from "./watch-service";
+
+import { DEFAULT_INDEX_NAME, getIndexDbPath } from "../app/constants";
+import {
+  canonicalizeIndexName,
+  INDEX_NAME_REQUIREMENTS,
+  isValidIndexName,
+} from "../app/index-name";
+import {
+  ensureDirectories,
+  formatConfigWarnings,
+  getConfigPaths,
+  isInitialized,
+  loadConfig,
+} from "../config";
+import { acquireWriteLock } from "../core/file-lock";
+import { JobManager } from "../core/job-manager";
+import { defaultSyncService, withContentTypeRules } from "../ingestion";
+import { getModelManager } from "../llm/nodeLlamaCpp/lifecycle";
+import { getModelConfig } from "../llm/registry";
+import { getActivePreset } from "../llm/registry";
+import { createToolContext, Mutex } from "../mcp/context";
+import { SqliteAdapter } from "../store/sqlite/adapter";
+import {
+  createServerContext,
+  type CreateServerContextOptions,
+  disposeServerContext,
+  type ServerContext,
+} from "./context";
+import { createEmbedScheduler } from "./embed-scheduler";
+import { CollectionWatchService as DefaultCollectionWatchService } from "./watch-service";
+
+const DEFAULT_READER_LIMIT = 8;
+const DEFAULT_SHUTDOWN_DEADLINE_MS = 5_000;
+const OWNER_LOCK_TIMEOUT_MS = 0;
+
+export type ResidentMode = "serve" | "daemon";
+
+export interface ResidentRuntimeOptions {
+  configPath?: string;
+  index?: string;
+  mode?: ResidentMode;
+  requireCollections?: boolean;
+  offline?: boolean;
+  eventBus?: DocumentEventBus | null;
+  watchCallbacks?: CollectionWatchCallbacks;
+  readerLimit?: number;
+  shutdownDeadlineMs?: number;
+}
+
+export interface ResidentGeneration {
+  content: number;
+  index: number;
+}
+
+export interface ResidentRequestHandle {
+  id: string;
+  signal: AbortSignal;
+  finish(): void;
+}
+
+export interface ResidentRuntime {
+  readonly mode: ResidentMode;
+  readonly store: SqliteAdapter;
+  readonly config: Config;
+  readonly actualConfigPath: string;
+  readonly ctxHolder: ContextHolder;
+  readonly scheduler: EmbedScheduler;
+  readonly eventBus: DocumentEventBus | null;
+  readonly watchService: CollectionWatchService;
+  readonly toolMutex: Mutex;
+  readonly readerGate: ReaderGate;
+  readonly jobManager: JobManager;
+  readonly modelManager: ModelManager;
+  readonly mcpContext: ToolContext;
+  readonly generations: ResidentGeneration;
+  readonly activeRequests: number;
+  readonly activeSessions: number;
+  readonly isShuttingDown: boolean;
+  admitRequest(signal?: AbortSignal): ResidentRequestHandle | null;
+  openSession(): () => void;
+  syncAll(options?: {
+    gitPull?: boolean;
+    runUpdateCmd?: boolean;
+    triggerEmbed?: boolean;
+  }): Promise<{ syncResult: SyncResult; embedResult: EmbedResult | null }>;
+  dispose(): Promise<void>;
+}
+
+export type ResidentRuntimeResult =
+  | { success: true; runtime: ResidentRuntime }
+  | { success: false; error: string };
+
+export class ReaderGate {
+  readonly #limit: number;
+  #active = 0;
+  readonly #queue: Array<() => void> = [];
+
+  constructor(limit = DEFAULT_READER_LIMIT) {
+    this.#limit = Math.max(1, Math.floor(limit));
+  }
+
+  get active(): number {
+    return this.#active;
+  }
+
+  async acquire(): Promise<() => void> {
+    if (this.#active >= this.#limit) {
+      await new Promise<void>((resolve) => this.#queue.push(resolve));
+    }
+    this.#active += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.#active -= 1;
+      this.#queue.shift()?.();
+    };
+  }
+}
+
+class AdmissionController {
+  #accepting = true;
+  readonly #requests = new Map<string, AbortController>();
+  readonly #drainWaiters = new Set<() => void>();
+
+  get active(): number {
+    return this.#requests.size;
+  }
+
+  get accepting(): boolean {
+    return this.#accepting;
+  }
+
+  admit(parentSignal?: AbortSignal): ResidentRequestHandle | null {
+    if (!this.#accepting) return null;
+    const id = crypto.randomUUID();
+    const controller = new AbortController();
+    const abortFromParent = (): void => controller.abort(parentSignal?.reason);
+    parentSignal?.addEventListener("abort", abortFromParent, { once: true });
+    if (parentSignal?.aborted) abortFromParent();
+    this.#requests.set(id, controller);
+    let finished = false;
+    return {
+      id,
+      signal: controller.signal,
+      finish: () => {
+        if (finished) return;
+        finished = true;
+        parentSignal?.removeEventListener("abort", abortFromParent);
+        this.#requests.delete(id);
+        if (this.#requests.size === 0) {
+          for (const waiter of this.#drainWaiters) waiter();
+          this.#drainWaiters.clear();
+        }
+      },
+    };
+  }
+
+  async closeAndDrain(deadlineMs: number): Promise<void> {
+    this.#accepting = false;
+    if (this.#requests.size === 0) return;
+
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([
+      new Promise<void>((resolve) => this.#drainWaiters.add(resolve)),
+      new Promise<void>((resolve) => {
+        timeout = setTimeout(resolve, Math.max(0, deadlineMs));
+      }),
+    ]);
+    if (timeout) clearTimeout(timeout);
+
+    for (const controller of this.#requests.values()) {
+      controller.abort(new Error("Resident runtime is shutting down"));
+    }
+    this.#requests.clear();
+    this.#drainWaiters.clear();
+  }
+}
+
+export type ResidentRuntimeDeps = {
+  isInitialized?: typeof isInitialized;
+  loadConfig?: typeof loadConfig;
+  getConfigPaths?: typeof getConfigPaths;
+  ensureDirectories?: typeof ensureDirectories;
+  acquireOwnerLock?: (
+    path: string,
+    timeoutMs: number
+  ) => Promise<WriteLockHandle | null>;
+  storeFactory?: () => SqliteAdapter;
+  createServerContext?: (
+    store: SqliteAdapter,
+    config: Config,
+    options?: CreateServerContextOptions
+  ) => Promise<ServerContext>;
+  disposeServerContext?: (ctx: ServerContext) => Promise<void>;
+  createEmbedScheduler?: typeof createEmbedScheduler;
+  syncAllService?: typeof defaultSyncService.syncAll;
+  watchServiceFactory?: (options: {
+    collections: Config["collections"];
+    store: SqliteAdapter;
+    scheduler: EmbedScheduler | null;
+    eventBus?: DocumentEventBus | null;
+    callbacks?: CollectionWatchCallbacks;
+    syncOptions?: Parameters<typeof withContentTypeRules>[0];
+  }) => CollectionWatchService;
+  modelManagerFactory?: (config: Config) => ModelManager;
+};
+
+export async function startResidentRuntime(
+  options: ResidentRuntimeOptions = {},
+  deps: ResidentRuntimeDeps = {}
+): Promise<ResidentRuntimeResult> {
+  if (options.index !== undefined && !isValidIndexName(options.index)) {
+    return {
+      success: false,
+      error: `Invalid index name: ${INDEX_NAME_REQUIREMENTS}.`,
+    };
+  }
+
+  const initialized = await (deps.isInitialized ?? isInitialized)(
+    options.configPath
+  );
+  if (!initialized)
+    return { success: false, error: "GNO not initialized. Run: gno init" };
+
+  const configResult = await (deps.loadConfig ?? loadConfig)(
+    options.configPath
+  );
+  if (!configResult.ok)
+    return { success: false, error: configResult.error.message };
+  for (const warning of formatConfigWarnings(configResult.warnings))
+    console.warn(warning);
+  const initialConfig = configResult.value;
+  if (options.requireCollections && initialConfig.collections.length === 0) {
+    return {
+      success: false,
+      error: "No collections configured. Run: gno collection add <path>",
+    };
+  }
+
+  await (deps.ensureDirectories ?? ensureDirectories)();
+  const dbPath = getIndexDbPath(options.index);
+  const ownerLockPath = join(dirname(dbPath), ".resident-owner.lock");
+  const ownerLock = await (deps.acquireOwnerLock ?? acquireWriteLock)(
+    ownerLockPath,
+    OWNER_LOCK_TIMEOUT_MS
+  );
+  if (!ownerLock) {
+    return {
+      success: false,
+      error: `Resident runtime already active for index "${canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME)}". Stop the owning gno serve or gno daemon process and retry.`,
+    };
+  }
+
+  const store = deps.storeFactory?.() ?? new SqliteAdapter();
+  const paths = (deps.getConfigPaths ?? getConfigPaths)();
+  const actualConfigPath = resolve(options.configPath ?? paths.configFile);
+  store.setConfigPath(actualConfigPath);
+  const openResult = await store.open(dbPath, initialConfig.ftsTokenizer);
+  if (!openResult.ok) {
+    await ownerLock.release();
+    return { success: false, error: openResult.error.message };
+  }
+
+  const failStartup = async (error: string): Promise<ResidentRuntimeResult> => {
+    await Promise.allSettled([store.close(), ownerLock.release()]);
+    return { success: false, error };
+  };
+  const syncCollections = await store.syncCollections(
+    initialConfig.collections
+  );
+  if (!syncCollections.ok) return failStartup(syncCollections.error.message);
+  const syncContexts = await store.syncContexts(initialConfig.contexts ?? []);
+  if (!syncContexts.ok) return failStartup(syncContexts.error.message);
+
+  let ctx: ServerContext;
+  try {
+    ctx = await (deps.createServerContext ?? createServerContext)(
+      store,
+      initialConfig,
+      {
+        offline: options.offline ?? false,
+        indexName: options.index,
+      }
+    );
+  } catch (error) {
+    return failStartup(error instanceof Error ? error.message : String(error));
+  }
+
+  const ctxHolder: ContextHolder = {
+    current: ctx,
+    config: initialConfig,
+    scheduler: null,
+    eventBus: options.eventBus ?? null,
+    watchService: null,
+  };
+  const scheduler = (deps.createEmbedScheduler ?? createEmbedScheduler)({
+    db: store.getRawDb(),
+    getEmbedPort: () => ctxHolder.current.embedPort,
+    getVectorIndex: () => ctxHolder.current.vectorIndex,
+    getModelUri: () => getActivePreset(ctxHolder.config).embed,
+  });
+  ctxHolder.scheduler = scheduler;
+  ctxHolder.current.scheduler = scheduler;
+  ctxHolder.current.eventBus = options.eventBus ?? null;
+
+  const watchService = (
+    deps.watchServiceFactory ??
+    ((watchOptions) => new DefaultCollectionWatchService(watchOptions))
+  )({
+    collections: initialConfig.collections,
+    store,
+    scheduler,
+    eventBus: options.eventBus ?? null,
+    callbacks: options.watchCallbacks,
+    syncOptions: withContentTypeRules({}, initialConfig),
+  });
+  watchService.start();
+  ctxHolder.watchService = watchService;
+  ctxHolder.current.watchService = watchService;
+
+  const toolMutex = new Mutex();
+  const serverInstanceId = crypto.randomUUID();
+  const writeLockPath = join(dirname(dbPath), ".mcp-write.lock");
+  const jobManager = new JobManager({
+    lockPath: writeLockPath,
+    serverInstanceId,
+    toolMutex,
+  });
+  ctxHolder.jobManager = jobManager;
+  const modelManager =
+    deps.modelManagerFactory?.(initialConfig) ??
+    getModelManager(getModelConfig(initialConfig));
+  const admission = new AdmissionController();
+  const readerGate = new ReaderGate(options.readerLimit);
+  const generations: ResidentGeneration = { content: 0, index: 0 };
+  let sessions = 0;
+  let disposed = false;
+
+  const mcpContext = createToolContext({
+    store,
+    getConfig: () => ctxHolder.config,
+    setConfig: (config) => {
+      ctxHolder.config = config;
+      ctxHolder.current = { ...ctxHolder.current, config };
+      ctxHolder.watchService?.updateCollections(
+        config.collections,
+        withContentTypeRules({}, config)
+      );
+    },
+    actualConfigPath,
+    indexName: canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME),
+    toolMutex,
+    jobManager,
+    serverInstanceId,
+    writeLockPath,
+    enableWrite: false,
+    isShuttingDown: () => disposed || !admission.accepting,
+  });
+
+  const runtime: ResidentRuntime = {
+    mode: options.mode ?? "serve",
+    store,
+    get config() {
+      return ctxHolder.config;
+    },
+    actualConfigPath,
+    ctxHolder,
+    scheduler,
+    eventBus: options.eventBus ?? null,
+    watchService,
+    toolMutex,
+    readerGate,
+    jobManager,
+    modelManager,
+    mcpContext,
+    generations,
+    get activeRequests() {
+      return admission.active;
+    },
+    get activeSessions() {
+      return sessions;
+    },
+    get isShuttingDown() {
+      return disposed || !admission.accepting;
+    },
+    admitRequest: (signal) => admission.admit(signal),
+    openSession() {
+      if (!admission.accepting) return () => undefined;
+      sessions += 1;
+      let closed = false;
+      return () => {
+        if (closed) return;
+        closed = true;
+        sessions = Math.max(0, sessions - 1);
+      };
+    },
+    async syncAll(syncOptions = {}) {
+      const config = ctxHolder.config;
+      const syncAllService = deps.syncAllService
+        ? (...args: Parameters<typeof defaultSyncService.syncAll>) =>
+            deps.syncAllService!(...args)
+        : defaultSyncService.syncAll.bind(defaultSyncService);
+      const syncResult = await syncAllService(
+        config.collections,
+        store,
+        withContentTypeRules(
+          {
+            gitPull: syncOptions.gitPull,
+            runUpdateCmd: syncOptions.runUpdateCmd,
+          },
+          config
+        )
+      );
+      if (syncResult.totalFilesAdded > 0 || syncResult.totalFilesUpdated > 0) {
+        generations.content += 1;
+      }
+      const embedResult =
+        syncOptions.triggerEmbed === false
+          ? null
+          : await scheduler.triggerNow();
+      if (embedResult && embedResult.embedded > 0) generations.index += 1;
+      return { syncResult, embedResult };
+    },
+    async dispose() {
+      if (disposed) return;
+      disposed = true;
+      await admission.closeAndDrain(
+        options.shutdownDeadlineMs ?? DEFAULT_SHUTDOWN_DEADLINE_MS
+      );
+      sessions = 0;
+      await jobManager.shutdown().catch(() => undefined);
+      await Promise.allSettled([
+        Promise.resolve().then(() => watchService.dispose()),
+        Promise.resolve().then(() => options.eventBus?.close()),
+        Promise.resolve().then(() => scheduler.dispose()),
+        Promise.resolve().then(() =>
+          (deps.disposeServerContext ?? disposeServerContext)(ctxHolder.current)
+        ),
+      ]);
+      await Promise.allSettled([
+        modelManager.disposeAll(),
+        store.close(),
+        ownerLock.release(),
+      ]);
+    },
+  };
+  return { success: true, runtime };
+}

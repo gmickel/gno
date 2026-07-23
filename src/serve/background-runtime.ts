@@ -1,46 +1,20 @@
-// node:path resolve has no Bun equivalent for canonical process-relative paths.
-import { resolve } from "node:path";
+/** Backwards-compatible entrypoint for the shared resident runtime. */
 
 import type { Config } from "../config/types";
 import type { SyncResult } from "../ingestion";
-import type { DocumentEventBus } from "./doc-events";
+import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { EmbedResult, EmbedScheduler } from "./embed-scheduler";
 import type { ContextHolder } from "./routes/api";
-import type {
-  CollectionWatchCallbacks,
-  CollectionWatchService,
-} from "./watch-service";
+import type { CollectionWatchService } from "./watch-service";
 
-import { getIndexDbPath } from "../app/constants";
-import { INDEX_NAME_REQUIREMENTS, isValidIndexName } from "../app/index-name";
 import {
-  ensureDirectories,
-  formatConfigWarnings,
-  getConfigPaths,
-  isInitialized,
-  loadConfig,
-} from "../config";
-import { defaultSyncService } from "../ingestion";
-import { withContentTypeRules } from "../ingestion";
-import { getActivePreset } from "../llm/registry";
-import { SqliteAdapter } from "../store/sqlite/adapter";
-import {
-  createServerContext,
-  type CreateServerContextOptions,
-  disposeServerContext,
-  type ServerContext,
-} from "./context";
-import { createEmbedScheduler } from "./embed-scheduler";
-import { CollectionWatchService as DefaultCollectionWatchService } from "./watch-service";
+  startResidentRuntime,
+  type ResidentRuntimeDeps,
+  type ResidentRuntimeOptions,
+} from "./resident-runtime";
 
-export interface BackgroundRuntimeOptions {
-  configPath?: string;
-  index?: string;
-  requireCollections?: boolean;
-  offline?: boolean;
-  eventBus?: DocumentEventBus | null;
-  watchCallbacks?: CollectionWatchCallbacks;
-}
+export type BackgroundRuntimeOptions = ResidentRuntimeOptions;
+export type BackgroundRuntimeDeps = ResidentRuntimeDeps;
 
 export interface BackgroundRuntime {
   store: SqliteAdapter;
@@ -48,16 +22,13 @@ export interface BackgroundRuntime {
   actualConfigPath: string;
   ctxHolder: ContextHolder;
   scheduler: EmbedScheduler;
-  eventBus: DocumentEventBus | null;
+  eventBus: import("./doc-events").DocumentEventBus | null;
   watchService: CollectionWatchService;
   syncAll(options?: {
     gitPull?: boolean;
     runUpdateCmd?: boolean;
     triggerEmbed?: boolean;
-  }): Promise<{
-    syncResult: SyncResult;
-    embedResult: EmbedResult | null;
-  }>;
+  }): Promise<{ syncResult: SyncResult; embedResult: EmbedResult | null }>;
   dispose(): Promise<void>;
 }
 
@@ -65,180 +36,9 @@ export type BackgroundRuntimeResult =
   | { success: true; runtime: BackgroundRuntime }
   | { success: false; error: string };
 
-type BackgroundRuntimeDeps = {
-  isInitialized?: typeof isInitialized;
-  loadConfig?: typeof loadConfig;
-  getConfigPaths?: typeof getConfigPaths;
-  ensureDirectories?: typeof ensureDirectories;
-  storeFactory?: () => SqliteAdapter;
-  createServerContext?: (
-    store: SqliteAdapter,
-    config: Config,
-    options?: CreateServerContextOptions
-  ) => Promise<ServerContext>;
-  disposeServerContext?: (ctx: ServerContext) => Promise<void>;
-  createEmbedScheduler?: typeof createEmbedScheduler;
-  syncAllService?: typeof defaultSyncService.syncAll;
-  watchServiceFactory?: (options: {
-    collections: Config["collections"];
-    store: SqliteAdapter;
-    scheduler: EmbedScheduler | null;
-    eventBus?: DocumentEventBus | null;
-    callbacks?: CollectionWatchCallbacks;
-    syncOptions?: Parameters<typeof withContentTypeRules>[0];
-  }) => CollectionWatchService;
-};
-
 export async function startBackgroundRuntime(
   options: BackgroundRuntimeOptions = {},
   deps: BackgroundRuntimeDeps = {}
 ): Promise<BackgroundRuntimeResult> {
-  if (options.index !== undefined && !isValidIndexName(options.index)) {
-    return {
-      success: false,
-      error: `Invalid index name: ${INDEX_NAME_REQUIREMENTS}.`,
-    };
-  }
-  const syncAllService = deps.syncAllService
-    ? (...args: Parameters<typeof defaultSyncService.syncAll>) =>
-        deps.syncAllService!(...args)
-    : defaultSyncService.syncAll.bind(defaultSyncService);
-  const initialized = await (deps.isInitialized ?? isInitialized)(
-    options.configPath
-  );
-  if (!initialized) {
-    return { success: false, error: "GNO not initialized. Run: gno init" };
-  }
-
-  const configResult = await (deps.loadConfig ?? loadConfig)(
-    options.configPath
-  );
-  if (!configResult.ok) {
-    return { success: false, error: configResult.error.message };
-  }
-  for (const warning of formatConfigWarnings(configResult.warnings)) {
-    console.warn(warning);
-  }
-  const config = configResult.value;
-
-  if (options.requireCollections && config.collections.length === 0) {
-    return {
-      success: false,
-      error: "No collections configured. Run: gno collection add <path>",
-    };
-  }
-
-  await (deps.ensureDirectories ?? ensureDirectories)();
-
-  const store = deps.storeFactory ? deps.storeFactory() : new SqliteAdapter();
-  const dbPath = getIndexDbPath(options.index);
-  const paths = (deps.getConfigPaths ?? getConfigPaths)();
-  const actualConfigPath = resolve(options.configPath ?? paths.configFile);
-  store.setConfigPath(actualConfigPath);
-
-  const openResult = await store.open(dbPath, config.ftsTokenizer);
-  if (!openResult.ok) {
-    return { success: false, error: openResult.error.message };
-  }
-
-  const syncCollResult = await store.syncCollections(config.collections);
-  if (!syncCollResult.ok) {
-    await store.close();
-    return { success: false, error: syncCollResult.error.message };
-  }
-  const syncCtxResult = await store.syncContexts(config.contexts ?? []);
-  if (!syncCtxResult.ok) {
-    await store.close();
-    return { success: false, error: syncCtxResult.error.message };
-  }
-
-  const ctx = await (deps.createServerContext ?? createServerContext)(
-    store,
-    config,
-    {
-      offline: options.offline ?? false,
-      indexName: options.index,
-    }
-  );
-
-  const ctxHolder: ContextHolder = {
-    current: ctx,
-    config,
-    scheduler: null,
-    eventBus: options.eventBus ?? null,
-    watchService: null,
-  };
-
-  const scheduler = (deps.createEmbedScheduler ?? createEmbedScheduler)({
-    db: store.getRawDb(),
-    getEmbedPort: () => ctxHolder.current.embedPort,
-    getVectorIndex: () => ctxHolder.current.vectorIndex,
-    getModelUri: () => getActivePreset(ctxHolder.config).embed,
-  });
-  ctxHolder.scheduler = scheduler;
-  ctxHolder.current.scheduler = scheduler;
-  ctxHolder.current.eventBus = options.eventBus ?? null;
-
-  const watchService = (
-    deps.watchServiceFactory ??
-    ((watchOptions) => new DefaultCollectionWatchService(watchOptions))
-  )({
-    collections: config.collections,
-    store,
-    scheduler,
-    eventBus: options.eventBus ?? null,
-    callbacks: options.watchCallbacks,
-    syncOptions: withContentTypeRules({}, config),
-  });
-  watchService.start();
-  ctxHolder.watchService = watchService;
-  ctxHolder.current.watchService = watchService;
-
-  let disposed = false;
-
-  return {
-    success: true,
-    runtime: {
-      store,
-      config,
-      actualConfigPath,
-      ctxHolder,
-      scheduler,
-      eventBus: options.eventBus ?? null,
-      watchService,
-      async syncAll(syncOptions = {}) {
-        const syncResult = await syncAllService(
-          config.collections,
-          store,
-          withContentTypeRules(
-            {
-              gitPull: syncOptions.gitPull,
-              runUpdateCmd: syncOptions.runUpdateCmd,
-            },
-            config
-          )
-        );
-
-        let embedResult: EmbedResult | null = null;
-        if (syncOptions.triggerEmbed !== false) {
-          embedResult = await scheduler.triggerNow();
-        }
-
-        return { syncResult, embedResult };
-      },
-      async dispose() {
-        if (disposed) {
-          return;
-        }
-        disposed = true;
-        await Promise.resolve(watchService.dispose());
-        options.eventBus?.close();
-        scheduler.dispose();
-        await (deps.disposeServerContext ?? disposeServerContext)(
-          ctxHolder.current
-        );
-        await store.close();
-      },
-    },
-  };
+  return startResidentRuntime(options, deps);
 }

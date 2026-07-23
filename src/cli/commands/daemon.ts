@@ -79,6 +79,7 @@ export async function daemon(
   const runtimeResult: BackgroundRuntimeResult = await (
     deps.startBackgroundRuntime ?? startBackgroundRuntime
   )({
+    mode: "daemon",
     configPath: options.configPath,
     index: options.index,
     requireCollections: true,

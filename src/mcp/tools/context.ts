@@ -1,5 +1,6 @@
 /** MCP Context Capsule tools over the shared application runtime. */
 
+import type { ModelLease } from "../../llm/nodeLlamaCpp/lifecycle";
 import type { EmbeddingPort, RerankPort } from "../../llm/types";
 import type { VectorIndexPort } from "../../store/vector";
 import type { ToolContext } from "../server";
@@ -64,7 +65,8 @@ const runContextTool = async (
   }
   const release = await context.toolMutex.acquire();
   try {
-    return asToolResult(await operation());
+    const data = await (context.runWithSnapshot?.(operation) ?? operation());
+    return asToolResult(data);
   } catch (error) {
     return asToolError(error);
   } finally {
@@ -82,19 +84,17 @@ interface McpModelPorts {
 interface McpModelPortFactory {
   createEmbeddingPort: LlmAdapter["createEmbeddingPort"];
   createRerankPort: LlmAdapter["createRerankPort"];
-  dispose: LlmAdapter["dispose"];
+  acquireModelLease?: LlmAdapter["acquireModelLease"];
 }
 
 export const disposeContextModelOwners = async (
   portOwners: readonly { dispose(): Promise<void> }[],
-  managerOwner: { dispose(): Promise<void> }
+  lease?: ModelLease
 ): Promise<void> => {
   await Promise.allSettled(
     portOwners.map((owner) => Promise.resolve().then(() => owner.dispose()))
   );
-  await Promise.allSettled([
-    Promise.resolve().then(() => managerOwner.dispose()),
-  ]);
+  lease?.release();
 };
 
 export const createMcpModelPorts = async (
@@ -104,6 +104,7 @@ export const createMcpModelPorts = async (
 ): Promise<McpModelPorts> => {
   const llm = new LlmAdapter(context.config);
   const factory = factoryOverride ?? llm;
+  const lease = factory.acquireModelLease?.();
   const policy = resolveDownloadPolicy(process.env, {});
   const progress = createNonTtyProgressRenderer();
   const embedUri = resolveModelUri(
@@ -151,7 +152,7 @@ export const createMcpModelPorts = async (
           [ownedEmbedPort, rerankPort].filter(
             (port): port is EmbeddingPort | RerankPort => port !== null
           ),
-          factory
+          lease
         );
       },
     };
@@ -160,7 +161,7 @@ export const createMcpModelPorts = async (
       [ownedEmbedPort, rerankPort].filter(
         (port): port is EmbeddingPort | RerankPort => port !== null
       ),
-      factory
+      lease
     );
     throw error;
   }
