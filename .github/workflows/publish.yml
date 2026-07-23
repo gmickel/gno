@@ -69,6 +69,10 @@ jobs:
         env:
           CI: "true"
 
+      - name: Test packed resident gateway (macOS)
+        if: matrix.os == 'macos-latest'
+        run: bun run test:package
+
   package-windows-desktop:
     needs: test
     runs-on: windows-latest

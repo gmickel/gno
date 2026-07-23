@@ -114,6 +114,11 @@ token and mode `0600` on POSIX. Authentication and mutation authorization are
 separate: `enableWrite` must be true before HTTP write tools are registered or
 dispatched. CLI gateway flags override config values for one invocation.
 
+Upgrading from a stdio-only setup requires no client-config migration:
+`gno mcp` remains supported. Start `gno serve` or `gno daemon` only for clients
+that can use the resident URL `http://127.0.0.1:3000/mcp`. Stop any resident
+owner for the same data directory before switching between serve and daemon.
+
 ## Collections
 
 Collections define what gets indexed.

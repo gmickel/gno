@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "gno://schemas/resident-status@1.0",
   "title": "GNO Resident Status",
-  "description": "Safe lifecycle projection shared by resident and standalone status surfaces",
+  "description": "Redacted lifecycle projection shared by resident and standalone status surfaces; excludes paths, tokens, queries, content, and caller identity",
   "type": "object",
   "additionalProperties": false,
   "required": [

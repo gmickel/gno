@@ -1192,6 +1192,12 @@ describe("SqliteAdapter", () => {
       expect(result.value.totalDocuments).toBe(1);
       expect(result.value.activeDocuments).toBe(1);
       expect(result.value.totalChunks).toBe(1);
+      expect(result.value.lastUpdatedAt).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+      );
+      expect(Number.isNaN(Date.parse(result.value.lastUpdatedAt ?? ""))).toBe(
+        false
+      );
       // All chunks are in embedding backlog (no vectors yet)
       expect(result.value.embeddingBacklog).toBe(1);
       expect(result.value.collections).toHaveLength(1);

@@ -1237,10 +1237,13 @@ Options:
 - Foreground: stays in the foreground until `SIGINT` / `SIGTERM`
 - Detached: parent prints `PID <pid>` and exits 0; child writes to `{data}/daemon.log` (or `--log-file`) in append mode
 - Hosts `/mcp` without the Web UI or browser REST routes
+- Hosts only the safe `GET /api/status` and `GET /api/resident/status`
+  lifecycle projections alongside `/mcp`
 
 **Notes:**
 
-- Avoid running `gno daemon` and `gno serve` against the same index at the same time until explicit cross-process coordination exists.
+- Serve and daemon are mutually exclusive resident modes for one data
+  directory. A second owner fails startup with the current owner hint.
 - For normie/local UI usage, prefer the desktop app or `gno serve`.
 
 **Managing the daemon:**
@@ -1301,8 +1304,8 @@ Options:
 
 **Security:**
 
-- Binds to literal `127.0.0.1` by default; non-loopback requires a restrictive
-  bearer-token file and exact Host/Origin allowlists
+- Binds to literal `127.0.0.1` and remains loopback-only even when MCP token
+  settings are present
 - `gno serve` rejects non-loopback hosts because Web and REST share the
   listener; use `gno daemon` for authenticated non-loopback MCP
 - Content Security Policy headers

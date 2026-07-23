@@ -94,7 +94,7 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
 
 <!-- public-truth:current-version -->
 
-> Current release: **v1.16.0** — see [CHANGELOG.md](./CHANGELOG.md)
+> Current release: **v1.17.0** — see [CHANGELOG.md](./CHANGELOG.md)
 
 <!-- /public-truth -->
 
@@ -104,6 +104,11 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
   Web/Desktop dashboard now share a per-folder lexical retrieval proof. Local
   semantic readiness remains independent, and installed MCP targets can run an
   explicit read-only retrieval smoke from Connectors.
+- **One resident gateway**: `gno serve` and `gno daemon` now host stateful
+  Streamable HTTP MCP at `/mcp` from the same long-lived runtime as their
+  watcher, jobs, stores, and models. The packed npm smoke proves two-client
+  parity, warm reuse, redacted lifecycle status, fail-closed security, restart,
+  and shutdown.
 - **Second-brain capture**: `gno capture`, REST `/api/capture`, SDK
   `client.capture()`, MCP `gno_capture`, and Web UI Quick Capture write
   provenance-rich notes from text, stdin, or files, including typed presets for

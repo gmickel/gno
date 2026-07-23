@@ -199,6 +199,35 @@ the Web/Desktop Health Center, `gno_status`, and detached process status:
 mode, uptime, listener port, admission/shutdown state, session/request/queue
 counts, model lease/load counters, job counts, and content/index generations.
 
+### Resident client example
+
+Point Streamable HTTP clients at:
+
+```text
+http://127.0.0.1:3000/mcp
+```
+
+Start one resident owner, then connect as many isolated clients as the
+configured session limit allows:
+
+```bash
+gno serve
+# or, without the browser:
+gno daemon --no-sync-on-start
+```
+
+Each HTTP session owns its SDK server/transport state. Stores, jobs, watcher,
+model leases, and generation counters remain resident and shared. Resumable
+event delivery is not advertised in this release.
+
+### Migrating from stdio-only MCP
+
+Existing `gno mcp install` entries remain valid and continue to launch stdio.
+No forced migration: use stdio for clients that manage local subprocesses, or
+configure the resident `/mcp` URL for clients that support Streamable HTTP.
+Do not run `serve` and `daemon` together against one data directory; the second
+owner fails startup instead of opening a competing store/model lifecycle.
+
 ## Job Session Lifetime
 
 Jobs are stored in memory and tied to the MCP server process:

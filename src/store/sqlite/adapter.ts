@@ -4249,7 +4249,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       // Last updated (max updated_at from documents)
       const lastUpdatedRow = db
         .query<{ last_updated: string | null }, []>(
-          "SELECT MAX(updated_at) as last_updated FROM documents"
+          "SELECT strftime('%Y-%m-%dT%H:%M:%fZ', MAX(updated_at)) as last_updated FROM documents"
         )
         .get();
 

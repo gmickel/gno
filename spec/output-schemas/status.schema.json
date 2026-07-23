@@ -99,7 +99,7 @@
     },
     "lastUpdated": {
       "type": ["string", "null"],
-      "description": "Last index update time (ISO 8601)",
+      "description": "Last index update time as an RFC 3339 UTC timestamp",
       "format": "date-time"
     },
     "healthy": {

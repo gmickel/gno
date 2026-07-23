@@ -2592,7 +2592,9 @@ gno serve --stop
 
 `--detach`, `--status`, and `--stop` are mutually exclusive. Passing more than one produces a `VALIDATION` error (exit 1).
 
-Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one serve instance per `GNO_DATA_DIR`; double-start is blocked.
+Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one
+resident owner (`serve` or `daemon`) may use a `GNO_DATA_DIR`; any second start
+is blocked.
 
 **Behavior:**
 
@@ -2670,7 +2672,9 @@ gno daemon --stop
 
 `--detach`, `--status`, and `--stop` are mutually exclusive. Passing more than one produces a `VALIDATION` error (exit 1).
 
-Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one daemon instance per `GNO_DATA_DIR`; double-start is blocked.
+Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one
+resident owner (`serve` or `daemon`) may use a `GNO_DATA_DIR`; any second start
+is blocked.
 
 **Behavior:**
 
@@ -2687,6 +2691,13 @@ Default paths live under `resolveDirs().data` (honours `GNO_DATA_DIR`). Only one
 - On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json), including the MCP gateway port and a best-effort copy of the live redacted resident snapshot
 - On `--stop`: SIGTERM → 10s poll → SIGKILL → 2s poll; the daemon's own signal handler unlinks the pid-file, `--stop` unlinks as fallback
 - **Windows**: `--detach` is unsupported and returns a `VALIDATION` error pointing to WSL.
+
+**Packaged conformance:** `bun run test:package` installs the generated npm
+tarball and exercises the shipped binary. It covers concurrent HTTP MCP clients,
+stdio parity, resident reuse, redacted lifecycle schemas, boundary rejection,
+bearer rotation and session binding, daemon-only authenticated non-loopback
+binding, and detached restart/shutdown. Windows artifact jobs provide the final
+platform-specific detach and interrupt-exit sweep.
 
 **Exit Codes:**
 

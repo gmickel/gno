@@ -106,6 +106,18 @@ redacted statuses: 401 (authentication), 403 (peer/Host/Origin/write), 413
 POST body, 120 requests/minute per actual peer, 64 active requests, 16 queued
 requests, 32 sessions, and a five-minute idle session timeout.
 
+### Packaged gateway conformance
+
+`bun run test:package` installs the generated npm tarball into an isolated
+environment and exercises the shipped binary. It proves two concurrent HTTP
+MCP clients plus one stdio client observe equivalent tools, resources, and
+search results; repeated HTTP calls reuse the same resident store and model
+lifecycle. The same run validates the redacted status schemas, Host/Origin,
+body-size, bearer-token, token-rotation, session-identity, and write-authorization
+boundaries, daemon-only authenticated non-loopback binding, and detached
+restart/shutdown behavior. Windows package and binary artifact jobs remain the
+final platform-specific sweep for detach rejection and known interrupt exits.
+
 ## Collection Name Rules
 
 Collection names are case-insensitive on input and normalized to lowercase in responses.

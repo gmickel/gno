@@ -44,6 +44,9 @@ jobs:
         env:
           CI: "true"
 
+      - name: Test packed resident gateway
+        run: bun run test:package
+
   test-windows:
     if: |
       github.event_name == 'push' ||

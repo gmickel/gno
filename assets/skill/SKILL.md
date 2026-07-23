@@ -72,7 +72,7 @@ Recipe rules:
 | **Tags**     | `tags`, `tags add`, `tags rm`                                    | Organize and filter documents                          |
 | **Context**  | `context add/list/rm/check/build/verify`                         | Configure guidance or compile/verify evidence Capsules |
 | **Models**   | `models list/use/pull/clear/path`                                | Manage local AI models                                 |
-| **Serve**    | `serve`                                                          | Web UI for browsing and searching                      |
+| **Serve**    | `serve`, `daemon`                                                | One resident Web/headless gateway and watcher          |
 | **Publish**  | `publish export`                                                 | Export gno.sh publish artifacts                        |
 | **MCP**      | `mcp`, `mcp install/uninstall/status`                            | AI assistant integration                               |
 | **Skill**    | `skill install/uninstall/show/paths`                             | Install skill for AI agents                            |
@@ -155,11 +155,27 @@ gno multi-get gno://work/doc1.md gno://work/doc2.md
 # Search, get full content of top result
 gno query "auth" --json | jq -r '.results[0].uri' | xargs gno get
 
+# Exclude documents containing a term
+gno search "deployment" --exclude staging
+
 # Get all results
 gno search "error handling" --json | jq -r '.results[].uri' | xargs gno multi-get
 ```
 
+When the user wants a synthesized answer instead of ranked evidence:
+
+```bash
+gno ask "What changed in the deployment process?" --answer
+```
+
 ## MCP Retrieval Strategy
+
+For a long-lived client that supports Streamable HTTP, start one resident owner
+with `gno serve` or `gno daemon` and connect to
+`http://127.0.0.1:3000/mcp`. Existing installed stdio entries remain valid.
+Serve is always loopback-only. Only daemon accepts an explicit non-loopback bind,
+and only with a restrictive bearer-token file plus exact Host/Origin allowlists.
+Authentication never enables writes by itself.
 
 When using GNO through MCP, prefer this retrieval order:
 

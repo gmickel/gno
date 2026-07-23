@@ -57,7 +57,7 @@
         { "$ref": "gno://schemas/resident-status@1.0" },
         { "type": "null" }
       ],
-      "description": "Live safe resident lifecycle snapshot, or null when unavailable."
+      "description": "Best-effort live redacted resident lifecycle snapshot, or null when unavailable."
     },
     "pid_file": {
       "type": "string",

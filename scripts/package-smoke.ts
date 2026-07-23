@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 
 import { safeRm } from "../test/helpers/cleanup";
 import { verifyPackedMcpInstall } from "./package-smoke-mcp";
+import { verifyPackedResidentGateway } from "./package-smoke-resident";
 
 interface CommandResult {
   stdout: string;
@@ -372,6 +373,12 @@ async function main(): Promise<void> {
       env
     );
     runCommand([gnoBin, "update", "--yes"], tempRoot, env);
+    await verifyPackedResidentGateway({
+      gnoBin,
+      cwd: tempRoot,
+      env,
+      runCommand,
+    });
 
     // Status is a passive report: a successfully generated report exits zero
     // even when its structured health is degraded. This fixture proves the

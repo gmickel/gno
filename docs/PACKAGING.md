@@ -187,6 +187,19 @@ CLI package proof:
 - runs packaged `gno --version`, `gno --help`, and `gno doctor --json`
 - asserts the packaged doctor JSON includes the `embedding-fingerprint` check
   and its `embeddingFingerprint` payload
+- starts the installed `gno serve` and `gno daemon` entrypoints in production
+  mode and proves two isolated HTTP MCP clients, stdio/HTTP contract parity,
+  repeated-call resident reuse, and clean restart/shutdown
+- schema-validates the redacted `resident-status@1.0`, app `status@1.0`, and
+  detached `process-status@1.0` projections from the installed package
+- rejects hostile Host/Origin, oversized bodies, missing/wrong/rotated tokens,
+  write attempts under read-only auth, `serve` non-loopback binds, and
+  unauthenticated daemon non-loopback binds
+
+The packed resident lane runs on Ubuntu and macOS CI. Native Windows
+`--detach` remains unsupported, and Bun's Windows signal path may report exit
+130 during foreground shutdown; the Windows desktop artifact/runtime jobs
+remain part of the consolidated release sweep rather than a per-feature gate.
 
 Desktop-specific proof:
 
