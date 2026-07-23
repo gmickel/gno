@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.0] - 2026-07-23
+
+### Added
+
+- Added one exclusive resident runtime per data directory, shared by Web, REST,
+  jobs, watchers, models, and a Streamable HTTP MCP gateway. Independent MCP
+  clients now reuse one warm store and model lifecycle while retaining isolated
+  sessions, cancellation, and configuration snapshots.
+- Added `resident-status@1.0` across CLI, MCP, REST, Web/Desktop, and detached
+  process status, with bounded admission, session, queue, model lease/load, job,
+  and content/index generation metrics.
+- Added packed installed-binary conformance for two HTTP clients, stdio parity,
+  restart and shutdown, plus real semantic warm-model reuse. Release CI now
+  provisions a revision- and SHA-pinned embedding model so this proof cannot
+  silently skip.
+
+### Fixed
+
+- Made forced shutdown reject new work, cancel and await admitted requests,
+  drain background embedding and model downloads, close MCP sessions, then
+  dispose models, SQLite, and the resident ownership lock in order.
+- Routed resident REST reads through bounded admission, tracked content/index
+  generations across every ingestion, removal, capture, and embedding path,
+  and made fresh-index timestamps valid RFC 3339 UTC values.
+
+### Security
+
+- Added actual-peer, exact Host and Origin, bearer-token, body, rate, queue,
+  session, and write-authorization enforcement before HTTP MCP parsing or SDK
+  dispatch. HTTP MCP remains read-only unless writes are explicitly enabled.
+- Kept non-loopback daemon access limited to the secured MCP and redacted
+  resident-status surfaces; path-bearing local status is never exposed there.
+
 ## [1.17.0] - 2026-07-23
 
 ### Added
@@ -1543,7 +1576,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.17.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.18.0...HEAD
+[1.18.0]: https://github.com/gmickel/gno/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/gmickel/gno/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/gmickel/gno/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/gmickel/gno/compare/v1.14.0...v1.15.0
