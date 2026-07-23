@@ -44,6 +44,7 @@ export const contextBuildSurfaceSchema = z
     safetyMarginTokens: nonnegativeInteger.optional(),
     safetyMarginBytes: nonnegativeInteger.optional(),
     depthPolicy: z.enum(["fast", "balanced", "thorough"]).optional(),
+    projectHints: z.array(z.string()).max(16).optional(),
     format: z.enum(["json", "md"]).optional(),
   })
   .strict();
@@ -60,6 +61,7 @@ export type ContextSurfaceFormat = "json" | "md";
 export interface ParsedContextBuildSurfaceInput {
   input: ContextCapsuleBuildInput;
   format: ContextSurfaceFormat;
+  projectHints?: string[];
 }
 
 export interface ParsedContextVerifySurfaceInput {
@@ -117,8 +119,8 @@ export const parseContextBuildSurfaceInput = (
 ): ParsedContextBuildSurfaceInput => {
   const parsed = contextBuildSurfaceSchema.safeParse(value);
   if (!parsed.success) throw invalidInput(parsed.error);
-  const { format = "json", ...input } = parsed.data;
-  return { input: { ...input, indexName }, format };
+  const { format = "json", projectHints, ...input } = parsed.data;
+  return { input: { ...input, indexName }, format, projectHints };
 };
 
 export const parseContextVerifySurfaceInput = (

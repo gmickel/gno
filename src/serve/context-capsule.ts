@@ -21,6 +21,10 @@ import {
   parseContextVerifySurfaceInput,
 } from "../app/context-surface";
 import { ContextCapsuleContractError } from "../core/context-capsule";
+import {
+  ProjectAffinityInputError,
+  resolveRemoteProjectAffinity,
+} from "../core/project-affinity-surface";
 import { startRetrievalTraceRequest } from "../core/retrieval-trace-request";
 import { withRetrievalTraceHeader } from "./retrieval-trace";
 
@@ -85,7 +89,7 @@ export const handleContextBuild = async (
 ): Promise<Response> => {
   let traceSession: RetrievalTraceSession | null = null;
   try {
-    const { input, format } = parseContextBuildSurfaceInput(
+    const { input, format, projectHints } = parseContextBuildSurfaceInput(
       await parseJsonBody(request),
       context.indexName
     );
@@ -94,6 +98,18 @@ export const handleContextBuild = async (
       context.indexName,
       context.config.collections.map((collection) => collection.name)
     );
+    let projectAffinity;
+    try {
+      projectAffinity = await resolveRemoteProjectAffinity(
+        context.config,
+        projectHints
+      );
+    } catch (error) {
+      if (error instanceof ProjectAffinityInputError) {
+        throw new ContextCapsuleContractError("invalid_input", error.message);
+      }
+      throw error;
+    }
     const started = await startRetrievalTraceRequest({
       store: context.store,
       config: context.config,
@@ -137,6 +153,7 @@ export const handleContextBuild = async (
       vectorIndex: context.vectorIndex,
       embedPort: context.embedPort,
       rerankPort: context.rerankPort,
+      projectAffinity,
       traceSession: traceSession ?? undefined,
     });
     const finished = await traceSession?.finish(

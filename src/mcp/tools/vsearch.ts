@@ -12,6 +12,7 @@ import type { ToolContext } from "../server";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
+import { resolveRemoteProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
   retrievalTraceFilters,
@@ -34,6 +35,7 @@ import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
 interface VsearchInput {
   query: string;
+  projectHints?: string[];
   collection?: string;
   limit?: number;
   minScore?: number;
@@ -135,6 +137,10 @@ export function handleVsearch(
         undefined,
         args.collection
       );
+      const projectAffinity = await resolveRemoteProjectAffinity(
+        ctx.config,
+        args.projectHints
+      );
       const options = {
         limit: args.limit ?? 5,
         minScore: args.minScore,
@@ -147,6 +153,7 @@ export function handleVsearch(
         author: args.author,
         tagsAll: normalizeTagFilters(args.tagsAll),
         tagsAny: normalizeTagFilters(args.tagsAny),
+        projectAffinity,
       };
       let traceSession: RetrievalTraceSession | undefined;
       const traceStart = await startRetrievalTraceRequest({

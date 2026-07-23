@@ -38,6 +38,7 @@ import type {
   GnoQueryOptions,
   GnoRefactorNoteResult,
   GnoRenameNoteOptions,
+  GnoSearchOptions,
   GnoUpdateOptions,
   GnoVectorSearchOptions,
   KnowledgeChangesResult,
@@ -97,6 +98,10 @@ import {
 } from "../core/knowledge-delta";
 import { resolveNoteCreatePlan } from "../core/note-creation";
 import { resolveNotePreset } from "../core/note-presets";
+import {
+  ProjectAffinityInputError,
+  resolveRemoteProjectAffinity,
+} from "../core/project-affinity-surface";
 import { RetrievalTraceManagementService } from "../core/retrieval-trace-management";
 import {
   finishRetrievalTraceAfterError,
@@ -159,6 +164,20 @@ interface RuntimePorts {
   rerankPort: RerankPort | null;
   vectorIndex: VectorIndexPort | null;
 }
+
+const resolveSdkProjectAffinity = async (
+  config: Config,
+  projectHints: readonly string[] | undefined
+) => {
+  try {
+    return await resolveRemoteProjectAffinity(config, projectHints);
+  } catch (error) {
+    if (error instanceof ProjectAffinityInputError) {
+      throw sdkError("VALIDATION", error.message);
+    }
+    throw error;
+  }
+};
 
 function unwrapStore<T>(
   result: StoreResult<T>,
@@ -471,17 +490,22 @@ class GnoClientImpl implements GnoClient {
 
   async search(
     query: string,
-    options: import("../pipeline/types").SearchOptions = {}
+    options: GnoSearchOptions = {}
   ): Promise<SearchResults> {
     this.assertOpen();
     let traceSession: RetrievalTraceSession | null = null;
     try {
+      const { projectHints, ...searchOptions } = options;
+      const projectAffinity = await resolveSdkProjectAffinity(
+        this.config,
+        projectHints
+      );
       traceSession = unwrapStore(
         await startRetrievalTraceRequest({
           store: this.store,
           config: this.config,
           query,
-          filters: retrievalTraceFilters(options),
+          filters: retrievalTraceFilters(searchOptions),
           pipeline: "bm25",
           indexName: this.indexName,
         })
@@ -490,7 +514,8 @@ class GnoClientImpl implements GnoClient {
         this.decorateSearchResults(
           unwrapStore(
             await searchBm25(this.store, query, {
-              ...options,
+              ...searchOptions,
+              projectAffinity,
               traceSession: traceSession ?? undefined,
             })
           )
@@ -513,6 +538,11 @@ class GnoClientImpl implements GnoClient {
     let traceSession: RetrievalTraceSession | null = null;
 
     try {
+      const { projectHints, ...searchOptions } = options;
+      const projectAffinity = await resolveSdkProjectAffinity(
+        this.config,
+        projectHints
+      );
       const embedUri = resolveModelUri(
         this.config,
         "embed",
@@ -524,7 +554,7 @@ class GnoClientImpl implements GnoClient {
           store: this.store,
           config: this.config,
           query,
-          filters: retrievalTraceFilters(options),
+          filters: retrievalTraceFilters(searchOptions),
           pipeline: "vector",
           indexName: this.indexName,
           modelUris: [embedUri],
@@ -564,7 +594,11 @@ class GnoClientImpl implements GnoClient {
               },
               query,
               new Float32Array(queryEmbedResult.value),
-              { ...options, traceSession: traceSession ?? undefined }
+              {
+                ...searchOptions,
+                projectAffinity,
+                traceSession: traceSession ?? undefined,
+              }
             )
           )
         ),
@@ -628,12 +662,17 @@ class GnoClientImpl implements GnoClient {
     let traceSession: RetrievalTraceSession | null = null;
 
     try {
+      const { projectHints, ...queryOptions } = options;
+      const projectAffinity = await resolveSdkProjectAffinity(
+        this.config,
+        projectHints
+      );
       traceSession = unwrapStore(
         await startRetrievalTraceRequest({
           store: this.store,
           config: this.config,
           query,
-          filters: retrievalTraceFilters(options),
+          filters: retrievalTraceFilters(queryOptions),
           pipeline: "hybrid",
           indexName: this.indexName,
           modelUris: [embedUri, expandUri, rerankUri].filter(
@@ -664,7 +703,11 @@ class GnoClientImpl implements GnoClient {
                 rerankPort: ports.rerankPort,
               },
               query,
-              { ...options, traceSession: traceSession ?? undefined }
+              {
+                ...queryOptions,
+                projectAffinity,
+                traceSession: traceSession ?? undefined,
+              }
             )
           )
         ),
@@ -739,12 +782,17 @@ class GnoClientImpl implements GnoClient {
     let traceSession: RetrievalTraceSession | null = null;
 
     try {
+      const { projectHints, ...askOptions } = options;
+      const projectAffinity = await resolveSdkProjectAffinity(
+        this.config,
+        projectHints
+      );
       traceSession = unwrapStore(
         await startRetrievalTraceRequest({
           store: this.store,
           config: this.config,
           query,
-          filters: retrievalTraceFilters(options),
+          filters: retrievalTraceFilters(askOptions),
           pipeline: "ask",
           indexName: this.indexName,
           modelUris: [embedUri, expandUri, answerUri, rerankUri].filter(
@@ -777,16 +825,21 @@ class GnoClientImpl implements GnoClient {
       }
 
       if (verificationRequested && ports.answerPort) {
-        const verified = await buildVerifiedAsk(query, options, {
-          store: this.store,
-          config: this.config,
-          indexName: this.indexName,
-          vectorIndex: ports.vectorIndex,
-          embedPort: ports.embedPort,
-          rerankPort: ports.rerankPort,
-          genPort: ports.answerPort,
-          traceSession: traceSession ?? undefined,
-        });
+        const verified = await buildVerifiedAsk(
+          query,
+          { ...askOptions, projectAffinity },
+          {
+            store: this.store,
+            config: this.config,
+            indexName: this.indexName,
+            vectorIndex: ports.vectorIndex,
+            embedPort: ports.embedPort,
+            rerankPort: ports.rerankPort,
+            genPort: ports.answerPort,
+            projectAffinity,
+            traceSession: traceSession ?? undefined,
+          }
+        );
         if (traceSession) {
           unwrapStore(
             await traceSession.finish(
@@ -831,6 +884,7 @@ class GnoClientImpl implements GnoClient {
             noRerank: options.noRerank,
             candidateLimit: options.candidateLimit,
             queryLanguageHint: options.queryLanguageHint,
+            projectAffinity,
             traceSession: traceSession ?? undefined,
           }
         )
@@ -918,8 +972,9 @@ class GnoClientImpl implements GnoClient {
 
   async context(input: GnoContextInput): Promise<GnoContextResult> {
     this.assertOpen();
+    const { projectHints, ...contextInput } = input;
     validateContextCapsuleBuildInput(
-      { ...input, indexName: this.indexName },
+      { ...contextInput, indexName: this.indexName },
       this.indexName,
       this.config.collections.map((collection) => collection.name)
     );
@@ -935,6 +990,10 @@ class GnoClientImpl implements GnoClient {
     let ports: RuntimePorts | null = null;
     let traceSession: RetrievalTraceSession | null = null;
     try {
+      const projectAffinity = await resolveSdkProjectAffinity(
+        this.config,
+        projectHints
+      );
       traceSession = unwrapStore(
         await startRetrievalTraceRequest({
           store: this.store,
@@ -968,7 +1027,7 @@ class GnoClientImpl implements GnoClient {
         collection,
       });
       const capsule = await buildContextCapsule(
-        { ...input, indexName: this.indexName },
+        { ...contextInput, indexName: this.indexName },
         {
           store: this.store,
           config: this.config,
@@ -976,6 +1035,7 @@ class GnoClientImpl implements GnoClient {
           vectorIndex: ports.vectorIndex,
           embedPort: ports.embedPort,
           rerankPort: ports.rerankPort,
+          projectAffinity,
           traceSession: traceSession ?? undefined,
         }
       );

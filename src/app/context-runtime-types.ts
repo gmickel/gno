@@ -4,6 +4,7 @@ import type { ContextEvidenceCompilerDeps } from "../core/context-evidence";
 import type { ContextVerifierDeps } from "../core/context-verifier";
 import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { EmbeddingPort, RerankPort } from "../llm/types";
+import type { ProjectAffinityScoringInput } from "../pipeline/project-affinity";
 import type { QueryModeInput } from "../pipeline/types";
 import type { StorePort } from "../store/types";
 import type { VectorIndexPort } from "../store/vector";
@@ -50,6 +51,8 @@ export interface ContextCapsuleRuntimeDeps {
   countTokens?: (accountingJson: string) => number;
   tokenizerFingerprint?: string | null;
   resolveCurrentRanks?: ContextVerifierDeps["resolveCurrentRanks"];
+  /** Trusted, already-resolved project affinity; never accepts raw inputs. */
+  projectAffinity?: ProjectAffinityScoringInput;
   /** Optional non-canonical receipt session owned by the calling surface. */
   traceSession?: RetrievalTraceSession;
 }

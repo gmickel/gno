@@ -5,12 +5,14 @@
  * @module src/cli/commands/search
  */
 
+import type { CliProjectAffinityRequest } from "../../core/project-affinity-surface";
 import type {
   RetrievalTraceSession,
   RetrievalTraceSurfaceMetadata,
 } from "../../core/retrieval-trace-session";
 import type { SearchOptions, SearchResults } from "../../pipeline/types";
 
+import { resolveCliProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
   startRetrievalTraceRequest,
@@ -26,24 +28,25 @@ import { decorateSearchResultsForIndex, initStore } from "./shared";
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type SearchCommandOptions = SearchOptions & {
-  /** Override config path */
-  configPath?: string;
-  /** Index name */
-  indexName?: string;
-  /** Output as JSON */
-  json?: boolean;
-  /** Output as Markdown */
-  md?: boolean;
-  /** Output as CSV */
-  csv?: boolean;
-  /** Output as XML */
-  xml?: boolean;
-  /** Output files only */
-  files?: boolean;
-  /** Terminal hyperlink policy */
-  terminalLinks?: FormatOptions["terminalLinks"];
-};
+export type SearchCommandOptions = Omit<SearchOptions, "projectAffinity"> &
+  CliProjectAffinityRequest & {
+    /** Override config path */
+    configPath?: string;
+    /** Index name */
+    indexName?: string;
+    /** Output as JSON */
+    json?: boolean;
+    /** Output as Markdown */
+    md?: boolean;
+    /** Output as CSV */
+    csv?: boolean;
+    /** Output as XML */
+    xml?: boolean;
+    /** Output files only */
+    files?: boolean;
+    /** Terminal hyperlink policy */
+    terminalLinks?: FormatOptions["terminalLinks"];
+  };
 
 export type SearchResult =
   | {
@@ -84,6 +87,12 @@ export async function search(
   let traceSession: RetrievalTraceSession | undefined;
 
   try {
+    const { projectAffinityDisabled, projectRoots, ...searchOptions } = options;
+    const projectAffinity = await resolveCliProjectAffinity(config, {
+      cwd: process.cwd(),
+      disabled: projectAffinityDisabled,
+      projectRoots,
+    });
     const started = await startRetrievalTraceRequest({
       store,
       config,
@@ -109,8 +118,9 @@ export async function search(
     if (!started.ok) return { success: false, error: started.error.message };
     traceSession = started.value ?? undefined;
     const result = await searchBm25(store, query, {
-      ...options,
+      ...searchOptions,
       limit,
+      projectAffinity,
       traceSession,
     });
 

@@ -103,6 +103,51 @@ describe("POST /api/query", () => {
     expect(body.error.message).toContain("exclude");
   });
 
+  test("keeps remote project hints zero-effect, private, and bounded", async () => {
+    const makeRequest = (projectHints: string[]): Request =>
+      new Request("http://localhost/api/query", {
+        method: "POST",
+        body: JSON.stringify({
+          query: "performance",
+          noExpand: true,
+          noRerank: true,
+          projectHints,
+        }),
+      });
+
+    const baseline = await handleQuery(baseContext as never, makeRequest([]));
+    const hinted = await handleQuery(
+      baseContext as never,
+      makeRequest([" private/rest-project "])
+    );
+    expect(hinted.status).toBe(200);
+    expect(await hinted.json()).toEqual(await baseline.json());
+
+    const malformed = await handleQuery(
+      baseContext as never,
+      makeRequest([" private/rest-project ", " "])
+    );
+    expect(malformed.status).toBe(400);
+    const malformedBody = (await malformed.json()) as {
+      error: { message: string };
+    };
+    expect(malformedBody.error.message).toContain(
+      "must not contain empty values"
+    );
+    expect(malformedBody.error.message).not.toContain("private/rest-project");
+
+    const tooMany = await handleQuery(
+      baseContext as never,
+      makeRequest(Array.from({ length: 17 }, (_, index) => `private-${index}`))
+    );
+    expect(tooMany.status).toBe(400);
+    const tooManyBody = (await tooMany.json()) as {
+      error: { message: string };
+    };
+    expect(tooManyBody.error.message).toContain("at most 16");
+    expect(tooManyBody.error.message).not.toContain("private-0");
+  });
+
   test("rejects candidateLimit below 1", async () => {
     const req = new Request("http://localhost/api/query", {
       method: "POST",
