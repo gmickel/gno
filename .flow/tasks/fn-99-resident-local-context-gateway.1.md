@@ -34,9 +34,8 @@ One process may host many transports and sessions; shared ownership never means 
 - [ ] Repeated model-backed calls retain one warm lifecycle and release every request lease exactly once.
 
 ## Done summary
-TBD
-
+Added the single resident ownership boundary used by serve and daemon, including owner locking, shared jobs/MCP context, request admission, generations, lease-safe warm models, and fail-complete shutdown. Replaced global async SQLite transaction depth with request-bound nesting and serialized outer writers, with focused lifecycle and concurrency regressions.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 81918e6c9b20c2c38bad57b5b6520d2ed1e63b50
+- Tests: bun run typecheck, bun test test/mcp test/serve test/store, bun run smoke:serve-shutdown, bun run test:package, bun run lint:check, .flow/bin/flowctl validate --spec fn-99-resident-local-context-gateway --json
 - PRs:
