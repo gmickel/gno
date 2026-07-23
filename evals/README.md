@@ -101,7 +101,10 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
   promotion. The gate derives typed outcomes from exact final answers, checks
   raw/verified lane semantics and every answer/receipt/artifact fingerprint,
   recomputes scores against the fn-97 oracle, and refuses dirty-checkout
-  generation.
+  generation. The exact 22 task IDs and two expected-missing exclusions are
+  frozen independently of generated artifacts. Supported answers must match the
+  complete one-claim/one-citation grammar; trailing prose fails even when all
+  fingerprints are resealed.
 - `--adapter`, `--task`, and `--lifecycle` accept unique CSV filters;
   `--agent fixture|local-model` selects the one-trial deterministic or pinned
   three-trial cached-model lane. `--timeout-ms` bounds lifecycle operations.

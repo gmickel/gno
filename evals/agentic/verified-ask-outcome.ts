@@ -28,6 +28,8 @@ import {
 import {
   encodeVerifiedAskClaim,
   evaluateVerifiedAskPromotion,
+  VERIFIED_ASK_COMPATIBLE_TASK_IDS,
+  VERIFIED_ASK_EXCLUDED_TASKS,
   scoreVerifiedAskReceipt,
   VERIFIED_ASK_AGENT_ID,
   VERIFIED_ASK_BENCHMARK_ID,
@@ -47,6 +49,9 @@ export {
   encodeVerifiedAskClaim,
   evaluateVerifiedAskPromotion,
   renderVerifiedAskPromotionMarkdown,
+  VERIFIED_ASK_COMPATIBLE_TASK_IDS,
+  VERIFIED_ASK_EXCLUDED_TASKS,
+  verifiedAskArtifactFingerprint,
   validateVerifiedAskPromotionArtifact,
 } from "./verified-ask-promotion";
 
@@ -361,12 +366,15 @@ export const runVerifiedAskOutcomeBenchmark = async (
       receipts.push(verifiedReceipt);
       scores.push(scoreVerifiedAskReceipt(verifiedReceipt, oracle));
     }
+    const compatibleTaskIds = receipts
+      .filter(({ lane }) => lane === "raw_ask")
+      .map(({ taskId }) => taskId)
+      .sort();
     if (
       canonicalFingerprint(excludedTasks) !==
-        canonicalFingerprint([
-          { taskId: "t234cd5e", reason: "expected_missing_evidence" },
-          { taskId: "t345de6f", reason: "expected_missing_evidence" },
-        ]) ||
+        canonicalFingerprint(VERIFIED_ASK_EXCLUDED_TASKS) ||
+      canonicalFingerprint(compatibleTaskIds) !==
+        canonicalFingerprint(VERIFIED_ASK_COMPATIBLE_TASK_IDS) ||
       receipts.length !== 44 ||
       scores.length !== 44
     )

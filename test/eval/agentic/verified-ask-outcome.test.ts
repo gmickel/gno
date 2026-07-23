@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import type { VerifiedAskOutcomeReceipt } from "../../../evals/agentic/verified-ask-outcome";
+import type {
+  VerifiedAskOutcomeReceipt,
+  VerifiedAskPromotionArtifact,
+} from "../../../evals/agentic/verified-ask-outcome";
 
 import { canonicalFingerprint } from "../../../evals/agentic/canonical";
 import { loadAgenticFixture } from "../../../evals/agentic/fixture-db";
@@ -8,6 +11,7 @@ import {
   encodeVerifiedAskClaim,
   evaluateVerifiedAskPromotion,
   runVerifiedAskOutcomeBenchmark,
+  verifiedAskArtifactFingerprint,
   validateVerifiedAskPromotionArtifact,
 } from "../../../evals/agentic/verified-ask-outcome";
 
@@ -17,6 +21,11 @@ const reseal = (receipt: VerifiedAskOutcomeReceipt): void => {
   receipt.answerFingerprint = canonicalFingerprint(receipt.answer);
   const { canonicalFingerprint: _old, ...canonical } = receipt;
   receipt.canonicalFingerprint = canonicalFingerprint(canonical);
+};
+
+const resealArtifact = (artifact: VerifiedAskPromotionArtifact): void => {
+  const { canonicalFingerprint: _old, ...projection } = artifact;
+  artifact.canonicalFingerprint = verifiedAskArtifactFingerprint(projection);
 };
 
 const setup = async () => {
@@ -181,5 +190,53 @@ describe("verified Ask outcome promotion", () => {
     }
     expect(dirtyError).toBeInstanceOf(Error);
     expect((dirtyError as Error).message).toContain("clean Git checkout");
+  });
+
+  test("rejects a complete removed pair even after promotion and artifact resealing", async () => {
+    const { artifact, fixture } = await setup();
+    const removedTaskId = "t012ab3c";
+    artifact.receipts = artifact.receipts.filter(
+      ({ taskId }) => taskId !== removedTaskId
+    );
+    artifact.scores = artifact.scores.filter(
+      ({ taskId }) => taskId !== removedTaskId
+    );
+    artifact.promotion = evaluateVerifiedAskPromotion(
+      artifact.receipts,
+      artifact.scores,
+      fixture.oracles
+    );
+    resealArtifact(artifact);
+
+    expect(artifact.promotion.pairCount).toBe(0);
+    expect(artifact.promotion.failures).toContain(
+      "compatible_task_set_mismatch:raw_ask"
+    );
+    expect(
+      validateVerifiedAskPromotionArtifact(artifact, fixture.oracles)
+    ).toContain("artifact_cohort_contract_mismatch");
+  });
+
+  test("rejects trailing unsupported prose after every fingerprint is resealed", async () => {
+    const { artifact, fixture } = await setup();
+    const verified = artifact.receipts.find(
+      (receipt) => receipt.lane === "verified_ask" && !receipt.abstained
+    )!;
+    verified.answer += " Bogus unsupported sentence.";
+    reseal(verified);
+    artifact.promotion = evaluateVerifiedAskPromotion(
+      artifact.receipts,
+      artifact.scores,
+      fixture.oracles
+    );
+    resealArtifact(artifact);
+
+    expect(artifact.promotion.pairCount).toBe(0);
+    expect(artifact.promotion.failures).toContainEqual(
+      expect.stringContaining("answer_claim_unparseable:verified_ask")
+    );
+    expect(
+      validateVerifiedAskPromotionArtifact(artifact, fixture.oracles)
+    ).toContain("artifact_promotion_failed");
   });
 });

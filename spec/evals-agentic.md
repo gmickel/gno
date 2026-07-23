@@ -494,6 +494,20 @@ outcome lane. It excludes only the two declared expected-missing/abstention
 tasks. Every included task must contain exactly one required substantive claim;
 missing, duplicate, extra, or mismatched pairs fail closed.
 
+The compatible cohort is an independent frozen contract, not inferred from the
+artifact under validation:
+
+```text
+t012ab3c t0a1b2c3 t123bc4d t1b2c3d4 t2c3d4e5 t3d4e5f6
+t456ef70 t4e5f607 t567f081 t5f60718 t6071829 t6780192
+t718293a t7891a03 t8293a4b t93a4b5c ta4b5c6d tb5c6d7e
+tc6d7e8f td7e8f90 te8f901a tf901a2b
+```
+
+The exact exclusions are `t234cd5e` and `t345de6f`, both with reason
+`expected_missing_evidence`. Removing or replacing a complete receipt/score
+pair and resealing every derived fingerprint still fails validation.
+
 The baseline executes the production raw Ask path:
 `searchHybrid` → `generateGroundedAnswer` → `processAnswerResult`. The candidate
 executes production `buildVerifiedAsk`. Each pair shares the immutable native
@@ -524,8 +538,12 @@ outcome remain bound. The evaluator parses the typed claim from the exact final
 product answer and scores it against the independent fn-97 oracle; it
 recomputes receipt, answer, score, and artifact fingerprints rather than
 trusting harness-assigned claim or score fields. Raw and verified lane semantics
-are validated independently. Authoritative generation refuses a dirty Git
-checkout and records the exact clean source commit.
+are validated independently. A supported final answer is exactly one encoded
+typed claim followed by its lane citation (`[1].` or one
+`[evidence:<sha256>].`); prefixes, extra claims, and trailing prose are invalid.
+An abstention must equal the production abstention text and contain no
+citations. Authoritative generation refuses a dirty Git checkout and records
+the exact clean source commit.
 
 ## Commands
 

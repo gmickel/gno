@@ -1,7 +1,22 @@
-import type { ClaimValue, HiddenOracle, NormalizerId } from "./types";
+import type { HiddenOracle } from "./types";
 
 import { CLAIM_ABSTENTION_TEXT } from "../../src/pipeline/claim-verification";
 import { canonicalFingerprint, canonicalJson } from "./canonical";
+import {
+  encodeVerifiedAskClaim,
+  exactTaskIdSetMatches,
+  parseVerifiedAskClaimAnswer,
+  VERIFIED_ASK_COMPATIBLE_TASK_IDS,
+  VERIFIED_ASK_EXCLUDED_TASKS,
+  verifiedAskClaimValuesMatch,
+} from "./verified-ask-contract";
+
+export {
+  encodeVerifiedAskClaim,
+  VERIFIED_ASK_COMPATIBLE_TASK_IDS,
+  VERIFIED_ASK_EXCLUDED_TASKS,
+  verifiedAskClaimValuesMatch,
+} from "./verified-ask-contract";
 
 export const VERIFIED_ASK_BENCHMARK_ID = "verified-ask-outcome@1" as const;
 export const VERIFIED_ASK_AGENT_ID = "fixture-answer-agent-v1" as const;
@@ -80,96 +95,6 @@ export interface VerifiedAskPromotionArtifact {
 const SHA256 = /^[a-f0-9]{64}$/;
 const GIT_SHA = /^[a-f0-9]{40}$/;
 
-const normalizeScalar = (
-  value: string | number | boolean,
-  normalizer: NormalizerId
-): string | number | boolean => {
-  if (typeof value !== "string") return value;
-  if (normalizer === "trim-lower-v1") return value.trim().toLowerCase();
-  if (normalizer === "identifier-v1")
-    return value.trim().toUpperCase().replace(/\s+/g, "");
-  if (normalizer === "iso-date-v1") {
-    const timestamp = Date.parse(value);
-    return Number.isNaN(timestamp)
-      ? value
-      : new Date(timestamp).toISOString().slice(0, 10);
-  }
-  return value;
-};
-
-const normalizedValue = (
-  value: ClaimValue,
-  normalizer: NormalizerId
-): unknown => {
-  if (value.type !== "string[]")
-    return normalizeScalar(value.value, normalizer);
-  const values = value.value.map((item) =>
-    String(normalizeScalar(item, normalizer))
-  );
-  return normalizer === "string-set-v1" ? [...values].sort() : values;
-};
-
-export const verifiedAskClaimValuesMatch = (
-  actual: ClaimValue,
-  expected: ClaimValue,
-  normalizer: NormalizerId
-): boolean =>
-  actual.type === expected.type &&
-  canonicalJson(normalizedValue(actual, normalizer)) ===
-    canonicalJson(normalizedValue(expected, normalizer));
-
-export const encodeVerifiedAskClaim = (
-  claimKey: string,
-  value: ClaimValue
-): string =>
-  `claim ${claimKey} value ${encodeURIComponent(canonicalJson(value))}`;
-
-const validClaimValue = (
-  value: unknown,
-  expectedType: ClaimValue["type"]
-): value is ClaimValue => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const record = value as Record<string, unknown>;
-  if (
-    Object.keys(record).sort().join(",") !== "type,value" ||
-    record.type !== expectedType
-  )
-    return false;
-  if (expectedType === "number") return typeof record.value === "number";
-  if (expectedType === "boolean") return typeof record.value === "boolean";
-  if (expectedType === "string[]")
-    return (
-      Array.isArray(record.value) &&
-      record.value.every((item) => typeof item === "string")
-    );
-  return typeof record.value === "string";
-};
-
-const claimFromAnswer = (
-  receipt: VerifiedAskOutcomeReceipt,
-  oracle: HiddenOracle
-): ClaimValue | null => {
-  if (receipt.abstained) return null;
-  const expected = oracle.claims[0];
-  if (!expected) return null;
-  const prefix = `claim ${expected.claimKey} value `;
-  if (
-    receipt.answer.indexOf(prefix) < 0 ||
-    receipt.answer.indexOf(prefix) !== receipt.answer.lastIndexOf(prefix)
-  )
-    return null;
-  const encoded = receipt.answer
-    .slice(receipt.answer.indexOf(prefix) + prefix.length)
-    .split(/\s/u)[0];
-  if (!encoded) return null;
-  try {
-    const parsed: unknown = JSON.parse(decodeURIComponent(encoded));
-    return validClaimValue(parsed, expected.expectedValue.type) ? parsed : null;
-  } catch {
-    return null;
-  }
-};
-
 const identityKey = (
   value: Pick<
     VerifiedAskOutcomeReceipt | VerifiedAskOutcomeScore,
@@ -183,7 +108,10 @@ export const scoreVerifiedAskReceipt = (
   oracle: HiddenOracle
 ): VerifiedAskOutcomeScore => {
   const expected = oracle.claims[0];
-  const actual = claimFromAnswer(receipt, oracle);
+  const actual = receipt.abstained
+    ? null
+    : (parseVerifiedAskClaimAnswer(receipt.answer, receipt.lane, oracle)
+        ?.value ?? null);
   if (!expected) throw new Error(`Oracle claim missing for ${receipt.taskId}`);
   const accurate =
     actual !== null &&
@@ -246,17 +174,19 @@ const receiptIssues = (
     issues.push("receipt_fingerprint_mismatch");
   if (canonicalFingerprint(receipt.answer) !== receipt.answerFingerprint)
     issues.push("answer_fingerprint_mismatch");
-  const claim = claimFromAnswer(receipt, oracle);
+  const claim = receipt.abstained
+    ? null
+    : parseVerifiedAskClaimAnswer(receipt.answer, receipt.lane, oracle);
   if (!receipt.abstained && !claim) issues.push("answer_claim_unparseable");
   if (receipt.lane === "raw_ask") {
     if (
       receipt.verification.requested ||
       receipt.verification.answerStatus !== "raw" ||
       receipt.abstained ||
-      receipt.citations.length === 0 ||
+      receipt.citations.length !== 1 ||
       receipt.citations.some((citation) => citation.evidenceId !== null) ||
-      !receipt.answer.includes("[1]") ||
-      receipt.answer.includes("[evidence:")
+      !claim ||
+      claim.evidenceId !== null
     )
       issues.push("raw_lane_semantics_invalid");
   } else if (
@@ -274,14 +204,11 @@ const receiptIssues = (
       issues.push("verified_abstention_invalid");
   } else if (
     receipt.abstained ||
-    receipt.citations.length === 0 ||
-    receipt.citations.some(
-      (citation) =>
-        !citation.evidenceId ||
-        !SHA256.test(citation.evidenceId) ||
-        !receipt.answer.includes(`[evidence:${citation.evidenceId}]`)
-    ) ||
-    receipt.answer.includes("[1]")
+    receipt.citations.length !== 1 ||
+    !claim ||
+    !claim.evidenceId ||
+    !SHA256.test(claim.evidenceId) ||
+    receipt.citations[0]?.evidenceId !== claim.evidenceId
   ) {
     issues.push("verified_answer_invalid");
   }
@@ -303,6 +230,32 @@ export const evaluateVerifiedAskPromotion = (
   oracles: ReadonlyMap<string, HiddenOracle>
 ): VerifiedAskPromotionArtifact["promotion"] => {
   const failures: string[] = [];
+  for (const lane of VERIFIED_ASK_LANES) {
+    const laneReceipts = receipts.filter((receipt) => receipt.lane === lane);
+    const laneScores = scores.filter((score) => score.lane === lane);
+    if (
+      laneReceipts.length !== VERIFIED_ASK_COMPATIBLE_TASK_IDS.length ||
+      laneScores.length !== VERIFIED_ASK_COMPATIBLE_TASK_IDS.length ||
+      !exactTaskIdSetMatches(laneReceipts.map(({ taskId }) => taskId)) ||
+      !exactTaskIdSetMatches(laneScores.map(({ taskId }) => taskId))
+    )
+      failures.push(`compatible_task_set_mismatch:${lane}`);
+  }
+  if (
+    receipts.some(
+      ({ trialId, seed, agentId }) =>
+        trialId !== VERIFIED_ASK_TRIAL_ID ||
+        seed !== VERIFIED_ASK_SEED ||
+        agentId !== VERIFIED_ASK_AGENT_ID
+    ) ||
+    scores.some(
+      ({ trialId, seed, agentId }) =>
+        trialId !== VERIFIED_ASK_TRIAL_ID ||
+        seed !== VERIFIED_ASK_SEED ||
+        agentId !== VERIFIED_ASK_AGENT_ID
+    )
+  )
+    failures.push("benchmark_identity_contract_mismatch");
   const receiptMaps = new Map(
     VERIFIED_ASK_LANES.map((lane) => [
       lane,
@@ -459,6 +412,27 @@ export const validateVerifiedAskPromotionArtifact = (
     )
   )
     failures.push("artifact_identity_mismatch");
+  if (
+    canonicalJson(artifact.excludedTasks) !==
+      canonicalJson(VERIFIED_ASK_EXCLUDED_TASKS) ||
+    artifact.receipts.length !== VERIFIED_ASK_COMPATIBLE_TASK_IDS.length * 2 ||
+    artifact.scores.length !== VERIFIED_ASK_COMPATIBLE_TASK_IDS.length * 2 ||
+    !VERIFIED_ASK_LANES.every((lane) => {
+      const receiptTaskIds = artifact.receipts
+        .filter((receipt) => receipt.lane === lane)
+        .map(({ taskId }) => taskId);
+      const scoreTaskIds = artifact.scores
+        .filter((score) => score.lane === lane)
+        .map(({ taskId }) => taskId);
+      return (
+        receiptTaskIds.length === VERIFIED_ASK_COMPATIBLE_TASK_IDS.length &&
+        scoreTaskIds.length === VERIFIED_ASK_COMPATIBLE_TASK_IDS.length &&
+        exactTaskIdSetMatches(receiptTaskIds) &&
+        exactTaskIdSetMatches(scoreTaskIds)
+      );
+    })
+  )
+    failures.push("artifact_cohort_contract_mismatch");
   const promotion = evaluateVerifiedAskPromotion(
     artifact.receipts,
     artifact.scores,
@@ -466,6 +440,7 @@ export const validateVerifiedAskPromotionArtifact = (
   );
   if (canonicalJson(promotion) !== canonicalJson(artifact.promotion))
     failures.push("artifact_promotion_mismatch");
+  if (!promotion.passed) failures.push("artifact_promotion_failed");
   return failures;
 };
 
