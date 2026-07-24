@@ -741,6 +741,7 @@ export async function searchHybrid(
           scoreContentTypeBoost(
             normalizedScore,
             document.contentType ?? undefined,
+            document.contentTypeSource,
             document.relPath,
             document.collection,
             contentTypeRules,
@@ -1081,6 +1082,7 @@ export async function searchHybrid(
       const scored = scoreContentTypeBoost(
         scoringBaseScore,
         doc.contentType ?? undefined,
+        doc.contentTypeSource,
         doc.relPath,
         doc.collection,
         contentTypeRules,

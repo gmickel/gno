@@ -114,6 +114,7 @@ export function hasAuxiliaryRanking(
 export function scoreContentTypeBoost(
   baseScore: number,
   contentType: string | undefined,
+  contentTypeSource: string | null | undefined,
   relativePath: string,
   collection: string,
   rules: readonly NormalizedContentTypeRule[] | undefined,
@@ -123,8 +124,13 @@ export function scoreContentTypeBoost(
     score: number;
   } = { kind: "normalized", score: baseScore }
 ): AuxiliaryScoreResult {
+  const configuredId =
+    contentTypeSource === "frontmatter-type" ||
+    contentTypeSource === "frontmatter"
+      ? contentType
+      : undefined;
   const resolution = resolveContentTypeRule(
-    contentType,
+    configuredId,
     relativePath,
     rules ? [...rules] : []
   );
@@ -210,6 +216,7 @@ export function applyContentTypeBoost(
   collection: string,
   rules: readonly NormalizedContentTypeRule[] | undefined,
   projectAffinity: ProjectAffinityScoringInput | undefined,
+  contentTypeSource?: string | null,
   raw?: {
     kind: ProjectAffinityScoreMetadata["rawScoreKind"];
     score: number;
@@ -218,6 +225,7 @@ export function applyContentTypeBoost(
   const scored = scoreContentTypeBoost(
     result.score,
     result.contentType,
+    contentTypeSource,
     result.source.relPath,
     collection,
     rules,

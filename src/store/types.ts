@@ -569,6 +569,7 @@ export interface FtsResult {
   sourceSize?: number;
   sourceHash?: string;
   contentType?: string;
+  contentTypeSource?: string;
   categories?: string[];
 }
 

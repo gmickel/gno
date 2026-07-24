@@ -134,6 +134,7 @@ describe("bounded content-type scoring", () => {
     const scored = scoreContentTypeBoost(
       0.5,
       "decision",
+      "frontmatter-type",
       "other.md",
       "project",
       rules,
@@ -163,7 +164,8 @@ describe("bounded content-type scoring", () => {
       result(0.6, "archive", "decisions/record.md"),
       "project",
       rules,
-      undefined
+      undefined,
+      "frontmatter-type"
     );
     expect(configured.score).toBeCloseTo(0.55);
     expect(getContentTypeBoostMetadata(configured)?.ruleSource).toBe(
@@ -178,12 +180,49 @@ describe("bounded content-type scoring", () => {
         input,
         "project",
         rules,
-        undefined
+        undefined,
+        "frontmatter-type"
       );
       expect(returned).toBe(input);
       expect(returned.score).toBe(0.6);
       expect(getContentTypeBoostMetadata(returned)).toBeUndefined();
     }
+  });
+
+  test("does not treat an inferred built-in type as a configured rule id", () => {
+    const overlappingRules: NormalizedContentTypeRule[] = [
+      {
+        id: "code",
+        preset: "blank",
+        prefixes: ["important/"],
+        searchBoost: 2,
+      },
+    ];
+    const inferred = result(0.5, "code", "src/foo.ts");
+    const prefixed = result(0.5, "code", "important/foo.ts");
+
+    applyContentTypeBoost(
+      inferred,
+      "project",
+      overlappingRules,
+      undefined,
+      "path-ext"
+    );
+    applyContentTypeBoost(
+      prefixed,
+      "project",
+      overlappingRules,
+      undefined,
+      "path-ext"
+    );
+
+    expect(inferred.score).toBe(0.5);
+    expect(getContentTypeBoostMetadata(inferred)).toBeUndefined();
+    expect(getContentTypeBoostMetadata(prefixed)).toMatchObject({
+      contentType: "code",
+      ruleSource: "prefix",
+      finalScore: 0.55,
+    });
   });
 
   test("keeps metadata internal while explain exposes score composition", () => {
@@ -192,6 +231,7 @@ describe("bounded content-type scoring", () => {
       "project",
       rules,
       { resolution: affinityResolution },
+      "frontmatter-type",
       { kind: "bm25", score: -7 }
     );
     const contentTypeBoost = getContentTypeBoostMetadata(boosted);
@@ -216,7 +256,13 @@ describe("bounded content-type scoring", () => {
   test("preserves retrieval order when final scores tie", () => {
     const first = result(0.5, "decision", "first.md");
     const second = result(0.55, "neutral", "second.md");
-    applyContentTypeBoost(first, "project", rules, undefined);
+    applyContentTypeBoost(
+      first,
+      "project",
+      rules,
+      undefined,
+      "frontmatter-type"
+    );
     const tied = [first, second];
     sortByFinalScoreStable(tied);
     expect(tied.map((entry) => entry.source.relPath)).toEqual([

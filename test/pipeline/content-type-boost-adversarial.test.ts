@@ -68,7 +68,13 @@ describe("content-type search boost adversarial promotion gates", () => {
     const stuffed = result("decisions/keyword-stuffed.md", 0.4, "decision");
 
     for (const candidate of [relevant, close, strong, stuffed]) {
-      applyContentTypeBoost(candidate, "notes", rules, undefined);
+      applyContentTypeBoost(
+        candidate,
+        "notes",
+        rules,
+        undefined,
+        candidate.contentType ? "frontmatter-type" : undefined
+      );
     }
     const promoted = [close, relevant];
     sortByFinalScoreStable(promoted);
@@ -89,7 +95,13 @@ describe("content-type search boost adversarial promotion gates", () => {
   test("keeps ties stable and configured metadata wins over a conflicting prefix", () => {
     const boosted = result("decisions/first.md", 0.5, "decision");
     const neutral = result("notes/second.md", 0.55);
-    applyContentTypeBoost(boosted, "notes", rules, undefined);
+    applyContentTypeBoost(
+      boosted,
+      "notes",
+      rules,
+      undefined,
+      "frontmatter-type"
+    );
     const tied = [boosted, neutral];
     sortByFinalScoreStable(tied);
     expect(tied.map((candidate) => candidate.source.relPath)).toEqual([
@@ -102,7 +114,13 @@ describe("content-type search boost adversarial promotion gates", () => {
       0.7,
       "archive"
     );
-    applyContentTypeBoost(conflicting, "notes", rules, undefined);
+    applyContentTypeBoost(
+      conflicting,
+      "notes",
+      rules,
+      undefined,
+      "frontmatter-type"
+    );
     expect(conflicting.score).toBeCloseTo(0.65);
     expect(getContentTypeBoostMetadata(conflicting)).toMatchObject({
       contentType: "archive",
@@ -113,10 +131,16 @@ describe("content-type search boost adversarial promotion gates", () => {
 
   test("composes with affinity only once under the shared auxiliary cap", () => {
     const candidate = result("decisions/combined.md", 0.5, "decision");
-    applyContentTypeBoost(candidate, "notes", rules, {
-      resolution: affinity,
-      contribution: 0.08,
-    });
+    applyContentTypeBoost(
+      candidate,
+      "notes",
+      rules,
+      {
+        resolution: affinity,
+        contribution: 0.08,
+      },
+      "frontmatter-type"
+    );
     expect(getContentTypeBoostMetadata(candidate)).toMatchObject({
       rawContribution: 0.05,
       combinedAuxiliaryRequested: 0.08,

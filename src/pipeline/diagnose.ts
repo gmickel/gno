@@ -317,6 +317,7 @@ export async function diagnoseQueryTarget(
     ? scoreContentTypeBoost(
         lastMatched.score,
         doc.contentType ?? undefined,
+        doc.contentTypeSource,
         doc.relPath,
         doc.collection,
         rules,

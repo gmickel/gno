@@ -222,7 +222,11 @@ export async function searchBm25(
   const results: SearchResult[] = [];
   const scoringByResult = new WeakMap<
     SearchResult,
-    { collection: string; rawScore: number }
+    {
+      collection: string;
+      contentTypeSource?: string;
+      rawScore: number;
+    }
   >();
 
   // Pre-fetch all chunks in one batch query (eliminates N+1)
@@ -318,6 +322,7 @@ export async function searchBm25(
     if (fts.collection) {
       scoringByResult.set(result, {
         collection: fts.collection,
+        contentTypeSource: fts.contentTypeSource,
         rawScore: fts.score,
       });
     }
@@ -358,6 +363,7 @@ export async function searchBm25(
       if (fts.collection) {
         scoringByResult.set(result, {
           collection: fts.collection,
+          contentTypeSource: fts.contentTypeSource,
           rawScore: fts.score,
         });
       }
@@ -377,6 +383,7 @@ export async function searchBm25(
           scoring.collection,
           options.contentTypeRules,
           options.projectAffinity,
+          scoring.contentTypeSource,
           { kind: "bm25", score: scoring.rawScore }
         );
       }

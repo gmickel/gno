@@ -2186,6 +2186,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           d.source_size,
           d.source_hash,
           d.content_type,
+          d.content_type_source,
           d.categories
         FROM fts_matches fm
         JOIN documents d ON d.id = fm.rowid AND d.active = 1
@@ -2212,6 +2213,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         source_size: number | null;
         source_hash: string | null;
         content_type: string | null;
+        content_type_source: string | null;
         categories: string | null;
       }
 
@@ -2250,6 +2252,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           sourceSize: r.source_size ?? undefined,
           sourceHash: r.source_hash ?? undefined,
           contentType: r.content_type ?? undefined,
+          contentTypeSource: r.content_type_source ?? undefined,
           categories: parseCategoriesJson(r.categories) ?? undefined,
         }))
       );

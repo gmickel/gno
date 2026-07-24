@@ -270,6 +270,7 @@ export async function searchVectorWithEmbedding(
         doc.collection,
         contentTypeRules,
         options.projectAffinity,
+        doc.contentTypeSource,
         { kind: "vector_distance", score: vec.distance }
       );
       if (scoredResult.score < minScore) continue;
@@ -370,6 +371,7 @@ export async function searchVectorWithEmbedding(
         doc.collection,
         contentTypeRules,
         options.projectAffinity,
+        doc.contentTypeSource,
         { kind: "vector_distance", score: rawDistance }
       );
       results.push(
@@ -501,6 +503,7 @@ interface DocumentInfo {
   relPath: string;
   author: string | null;
   contentType: string | null;
+  contentTypeSource: string | null;
   categories: string[] | null;
   sourceHash: string;
   sourceMime: string;
@@ -641,6 +644,7 @@ async function buildDocumentMap(
       relPath: doc.relPath,
       author: doc.author ?? null,
       contentType: doc.contentType ?? null,
+      contentTypeSource: doc.contentTypeSource ?? null,
       categories: doc.categories ?? null,
       sourceHash: doc.sourceHash,
       sourceMime: doc.sourceMime,
