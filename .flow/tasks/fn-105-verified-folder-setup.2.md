@@ -105,9 +105,28 @@ gno setup <folder>
 - [ ] Focused tests, lint/typecheck, full suite, Flow validation, and fresh inherited implementation review pass.
 
 ## Done summary
-TBD
+# fn-105.2 completion
 
+Implemented `gno setup <folder>` as a standalone verified lexical setup command with a detached one-shot semantic handoff.
+
+- Exit 0 requires the unchanged completed `FolderSetupReceipt@1.0`, ready activation, and a non-empty exact result URI.
+- Repeatable literal `--exclude`; no CSV interpretation.
+- Only `--authorize-secret-risk` authorizes likely secrets. Global `--yes`, JSON, non-TTY, decline, and EOF fail closed.
+- Missing installation bootstraps without independently adding the folder; `setupFolder` remains the sole lexical transaction.
+- Closed `setup-command-result@1.0` and `setup-semantic@1.0` schemas.
+- Private atomic semantic receipts, stable source identity, live/dead/concurrent job control, offline propagation, foreground remediation, and detached collection-scoped worker.
+- `--no-semantic` always records skipped and never starts work; a pre-existing live worker remains identity-safe and prevents duplicate spawning.
+- Partial embedding and vector-sync failures record failed rather than completed.
+- CLI spec, user docs, completion, schema validation, and regression tests updated.
+
+Fresh independent review: SHIP after resolving live-receipt overwrite, disabled-state transitions, transient disposition fingerprinting, and repeated-disabled PID preservation.
+
+Final gates:
+
+- Focused: 19 pass, 0 fail, 96 assertions.
+- Full: 2,943 pass, 1 expected Windows skip, 0 fail, 23,578 assertions across 366 files.
+- Lint, formatting, typecheck, docs verification, Flow validation, and diff check: green.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 721cf77
+- Tests: bun test test/cli/setup.test.ts test/cli/setup-semantic.test.ts (19 pass, 0 fail, 96 assertions), bun test (2943 pass, 1 expected Windows skip, 0 fail, 23578 assertions, 366 files), bun run lint:check (0 warnings, 0 errors; formatting clean), bun run typecheck (pass), bun run docs:verify (13 pass, 0 fail, 2 model-cache skips), .flow/bin/flowctl validate --spec fn-105 --json (valid, 0 errors, 0 warnings), git diff --check (pass), fresh inherited review (SHIP)
 - PRs:
