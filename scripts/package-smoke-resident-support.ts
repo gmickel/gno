@@ -68,6 +68,14 @@ export const JSON_HEADERS = {
 };
 const START_TIMEOUT_MS = 15_000;
 
+export function isExpectedResidentShutdownExit(
+  platform: NodeJS.Platform,
+  exitCode: number
+): boolean {
+  if (platform === "win32") return exitCode === 130;
+  return exitCode === 143;
+}
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -164,15 +172,18 @@ export async function stopResident(
     residentProcess.stdout,
     residentProcess.stderr,
   ]);
-  const windowsSignalExit = process.platform === "win32" && exitCode === 130;
-  if (exitCode !== 0 && !windowsSignalExit) {
+  const expectedSignalExit = isExpectedResidentShutdownExit(
+    process.platform,
+    exitCode
+  );
+  if (exitCode !== 0 && !expectedSignalExit) {
     throw new Error(
       `${label} exited ${exitCode}\nstdout:\n${stdout}\nstderr:\n${stderr}`
     );
   }
-  if (windowsSignalExit) {
+  if (expectedSignalExit) {
     console.warn(
-      "Packed resident shutdown observed Bun's known Windows SIGINT/exit-130 limitation."
+      `Packed resident shutdown completed with platform signal exit ${exitCode}.`
     );
   }
 }
