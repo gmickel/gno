@@ -481,6 +481,20 @@ describe("setup project-profile integration", () => {
       retainApply: false,
     },
     {
+      label: "truncated success receipt",
+      outcome: {
+        ...successfulApplyOutcome("profiled"),
+        result: {
+          ...successfulApplyOutcome("profiled").result,
+          receipt: {
+            status: "applied",
+            resources: [{ kind: "collection", id: "profiled" }],
+          },
+        },
+      } as ProjectProfileApplyCommandOutcome,
+      retainApply: false,
+    },
+    {
       label: "collection absent from persisted config",
       outcome: successfulApplyOutcome("missing"),
       retainApply: true,

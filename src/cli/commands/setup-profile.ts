@@ -18,6 +18,7 @@ import type {
 import type { SetupCommandOptions, SetupCommandOutcome } from "./setup";
 
 import { loadConfig } from "../../config";
+import { isProjectProfileApplyReceipt } from "../../core/project-profile-apply-validation";
 import { runProjectProfileCommand } from "./profile";
 import { SETUP_COMMAND_SCHEMA_VERSION } from "./setup";
 
@@ -100,7 +101,7 @@ export function profileApplySucceeded(
   }
   const receipt = outcome.result.receipt;
   if (
-    !receipt ||
+    !isProjectProfileApplyReceipt(receipt) ||
     receipt.status !== outcome.result.status ||
     outcome.result.applied !== (outcome.result.status === "applied")
   ) {
