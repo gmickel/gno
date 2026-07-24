@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/setup-command-result@1.0",
+  "title": "GNO Setup Command Result",
+  "description": "Closed standalone setup result with separate lexical and semantic projections.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "lexical", "semantic"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "status": { "enum": ["completed", "failed"] },
+    "lexical": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receipt", "error"],
+      "properties": {
+        "receipt": {
+          "oneOf": [
+            { "$ref": "gno://schemas/setup-receipt@1.0" },
+            { "type": "null" }
+          ]
+        },
+        "error": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["code", "message", "remediation"],
+              "properties": {
+                "code": { "type": "string", "minLength": 1 },
+                "message": { "type": "string", "minLength": 1 },
+                "remediation": { "type": "string", "minLength": 1 }
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "semantic": {
+      "oneOf": [
+        { "$ref": "gno://schemas/setup-semantic@1.0" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "completed" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "lexical": {
+            "type": "object",
+            "properties": {
+              "receipt": {
+                "allOf": [
+                  { "$ref": "gno://schemas/setup-receipt@1.0" },
+                  {
+                    "type": "object",
+                    "properties": { "status": { "const": "completed" } },
+                    "required": ["status"]
+                  }
+                ]
+              },
+              "error": { "type": "null" }
+            }
+          },
+          "semantic": { "$ref": "gno://schemas/setup-semantic@1.0" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "failed" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "lexical": {
+            "type": "object",
+            "properties": {
+              "error": { "type": "object" }
+            }
+          },
+          "semantic": { "type": "null" }
+        }
+      }
+    }
+  ]
+}

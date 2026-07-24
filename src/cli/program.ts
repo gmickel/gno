@@ -1346,6 +1346,59 @@ function wireOnboardingCommands(program: Command): void {
       }
     );
 
+  // setup - Verify a folder is lexically retrievable, then hand off semantics
+  program
+    .command("setup <folder>")
+    .description("Add and verify a folder with a real lexical retrieval")
+    .option("-n, --name <name>", "collection name")
+    .option(
+      "--exclude <pattern>",
+      "literal exclusion pattern (repeatable)",
+      collectRepeatableValue,
+      []
+    )
+    .option(
+      "--authorize-secret-risk",
+      "explicitly authorize indexing likely secret files"
+    )
+    .option("--no-semantic", "skip background semantic indexing")
+    .option("--json", "JSON output")
+    .action(async (folder: string, cmdOpts: Record<string, unknown>) => {
+      const globals = getGlobals();
+      const json = Boolean(cmdOpts.json) || globals.json;
+      const { formatSetupResult, setup } = await import("./commands/setup");
+      const exclusions = cmdOpts.exclude as string[];
+      const outcome = await setup({
+        folder,
+        name: cmdOpts.name as string | undefined,
+        exclude: exclusions.length > 0 ? exclusions : undefined,
+        authorizeSecretRisk: Boolean(cmdOpts.authorizeSecretRisk),
+        semantic: cmdOpts.semantic !== false,
+        indexName: globals.index,
+        configPath: globals.config,
+        offline: globals.offline,
+        yes: globals.yes,
+        json,
+        quiet: globals.quiet,
+        progress: (stage) => {
+          process.stderr.write(`setup: ${stage}\n`);
+        },
+      });
+      const output = formatSetupResult(outcome.result, { json });
+      if (json || outcome.exitCode === 0) {
+        process.stdout.write(`${output}\n`);
+      } else {
+        process.stderr.write(`${output}\n`);
+      }
+      if (outcome.exitCode !== 0) {
+        throw new CliError(
+          outcome.exitCode === 1 ? "VALIDATION" : "RUNTIME",
+          outcome.result.lexical.error?.message ?? "Setup failed",
+          { silent: true }
+        );
+      }
+    });
+
   // index - Index collections
   program
     .command("index [collection]")
@@ -2398,6 +2451,7 @@ function wireManagementCommands(program: Command): void {
           yes: globals.yes,
           json: format === "json",
           verbose: globals.verbose,
+          offline: globals.offline,
         };
         const result = await embed(opts);
 

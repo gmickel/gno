@@ -64,6 +64,7 @@ equivalent files fail closed as ambiguous.
 | ------------------ | ------ | ------- | ----- | ---- | ----- | -------- |
 | status             | yes    | no      | no    | yes  | no    | terminal |
 | init               | no     | no      | no    | no   | no    | terminal |
+| setup              | yes    | no      | no    | no   | no    | terminal |
 | collection add     | no     | no      | no    | no   | no    | terminal |
 | collection list    | yes    | no      | no    | yes  | no    | terminal |
 | collection remove  | no     | no      | no    | no   | no    | terminal |
@@ -350,6 +351,70 @@ warns and drops unknown preset references, dedupes exact duplicate prefixes,
 retains overlapping prefixes, and sorts rules longest-prefix-first. `searchBoost`
 is accepted but currently no-op. `graphHints` is active: ordered hints type
 projected wiki/markdown edges and surface in graph traversal/diagnose metadata.
+
+---
+
+### gno setup
+
+Add or reuse one folder collection, build its lexical index, and prove a real
+corpus-derived retrieval before reporting success. Semantic indexing is handed
+to one standalone background worker and never delays lexical success.
+
+**Synopsis:**
+
+```bash
+gno setup <folder> [-n|--name <name>] [--exclude <pattern>]...
+  [--authorize-secret-risk] [--no-semantic] [--json]
+```
+
+**Options:**
+
+| Option                    | Type       | Default       | Description                                                                  |
+| ------------------------- | ---------- | ------------- | ---------------------------------------------------------------------------- |
+| `-n, --name <name>`       | string     | dirname       | Requested collection name; exact-root reruns reuse the configured collection |
+| `--exclude <pattern>`     | repeatable | core defaults | One literal exclusion per occurrence; never CSV                              |
+| `--authorize-secret-risk` | boolean    | false         | Explicitly authorize likely credentials, private keys, or env files          |
+| `--no-semantic`           | boolean    | false         | Prove lexical retrieval but record semantic work as skipped                  |
+| `--json`                  | boolean    | false         | Emit one `setup-command-result@1.0` object                                   |
+
+Omitting `--exclude` preserves the core create defaults or the filters already
+configured for an exact-root rerun. An empty occurrence is invalid. Global
+`--yes` accepts safe defaults only; it never authorizes secret risk. Only an
+interactive terminal may ask one default-No question after the lexical core
+returns `secret_risk`. JSON, `--yes`, non-TTY, decline, and EOF fail closed.
+
+The command bootstraps missing config/data/database state without adding the
+folder through `init`, then runs the folder setup transaction. Success requires
+a completed `FolderSetupReceipt@1.0`, `activation.ready=true`, and a non-empty
+exact `activation.evidence.resultUri`. Terminal stage progress uses stderr;
+`--quiet` suppresses progress but not the final result. JSON writes exactly one
+canonical result to stdout on both success and domain failure, with no progress.
+
+After lexical proof, the command records one private atomic
+`setup-semantic@1.0` receipt per canonical index/folder and starts one detached,
+collection-scoped Bun worker. A matching live worker is reused; a dead worker is
+replaced; and a live worker with an older identity remains authoritative until
+it exits so its completion receipt cannot be stranded. A later setup rerun may
+then schedule the new identity. The worker uses the normal model
+download/offline policy, records `completed` only when embedding and vector
+synchronization finish without errors, and exits. Spawn, download, partial
+embedding, and vector-sync failures retain an exact foreground
+`gno ... embed <collection>` remediation and never change proven lexical exit 0.
+Direct setup never contacts a resident, MCP, or Web runtime.
+
+**Structured schemas:**
+
+- [`setup-command-result@1.0`](./output-schemas/setup-command-result.schema.json)
+- [`setup-semantic@1.0`](./output-schemas/setup-semantic-receipt.schema.json)
+- [`FolderSetupReceipt@1.0`](./output-schemas/setup-receipt.schema.json)
+
+**Exit Codes:**
+
+- 0: Lexical setup completed with a real exact result URI; semantic state may
+  be scheduled, running, pending, completed, or skipped
+- 1: Invalid/safe-input rejection, collection/filter/index disagreement,
+  secret-risk refusal, or declined confirmation
+- 2: Config, receipt, IO, store, indexing, proof, or internal invariant failure
 
 ---
 

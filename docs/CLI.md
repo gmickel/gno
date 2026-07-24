@@ -37,6 +37,7 @@ never raw roots.
 | Command          | Description                       |
 | ---------------- | --------------------------------- |
 | `gno init`       | Initialize config and database    |
+| `gno setup`      | Add a folder and prove retrieval  |
 | `gno index`      | Full index (sync + embed)         |
 | `gno update`     | Sync files from disk (no embed)   |
 | `gno embed`      | Generate embeddings only          |
@@ -111,6 +112,50 @@ when set, otherwise 30 seconds.
 
 **Output format flags** (`--json`, `--files`, `--csv`, `--md`, `--xml`) are per-command.
 See [spec/cli.md](../spec/cli.md#output-format-support-matrix) for which commands support which formats.
+
+## Verified Folder Setup
+
+`gno setup` is the fastest safe path from a local folder to a proven searchable
+collection:
+
+```bash
+gno setup ~/notes
+gno setup ~/notes --name notes --exclude .env --exclude private
+gno --offline setup ~/notes
+gno setup ~/notes --no-semantic
+gno setup ~/notes --json
+```
+
+The command creates or reuses the collection, synchronizes the lexical index,
+and runs a corpus-derived BM25 query. It reports success only when that query
+returns an exact `gno://` result URI. Rerunning the same canonical folder is
+idempotent: it reuses the collection and resumes from the durable local setup
+receipt.
+
+`--exclude` is repeatable and literal; it is not a comma-separated list. If GNO
+finds likely env files, credentials, or private keys, terminal use asks once
+with a default of No. `--authorize-secret-risk` is the only pre-authorization.
+`--yes`, JSON mode, non-terminal input, decline, and EOF never authorize likely
+secrets.
+
+After lexical proof, semantic indexing starts in a detached one-shot process.
+The command returns immediately without starting or contacting `gno serve`,
+`gno daemon`, MCP, or another resident process. Its private receipt records
+scheduled/running/completed/failed/pending/skipped state and the exact
+foreground fallback command. A live worker remains authoritative until it
+exits, even when a rerun requests different semantic options, so its completion
+receipt cannot be stranded. Model download, partial embedding, vector-sync, or
+worker-launch failures do not invalidate proven lexical search:
+
+```bash
+# Printed in the setup result when background semantic work needs attention
+gno --index default --config /path/to/index.yml embed notes
+```
+
+Use `--no-semantic` to record semantic work as skipped. Use `--json` for one
+closed `setup-command-result@1.0` object on stdout; progress is suppressed.
+Terminal progress is stderr-only, and `--quiet` suppresses it while preserving
+the final result.
 
 ## Search Commands
 
