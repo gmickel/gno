@@ -10,28 +10,43 @@ Get from local folders to hybrid search, workspace browsing, and AI answers in u
 
 > **Prerequisites**: See [Installation](INSTALLATION.md) for setup. Run `gno doctor` to verify.
 
-## 1. Initialize with Your Notes
+## 1. Set Up and Prove Your Notes
 
 ```bash
-# Initialize GNO with your notes folder
-gno init ~/notes --name notes
+# Create or reuse the collection, index it, and prove an exact BM25 result
+gno setup ~/notes --name notes
 
-# Or initialize with a specific pattern
-gno init ~/Documents --name docs --pattern "**/*.md"
+# Do not start semantic work yet
+gno setup ~/Documents --name docs --no-semantic
+
+# Install supported agent handoffs after lexical proof
+gno setup ~/notes --name notes --connector codex-skill
 ```
 
-This creates your config and sets up the first collection.
+Setup returns only after a corpus-derived query resolves to an exact `gno://`
+URI. Reruns reuse the canonical folder and receipt without duplicating config
+or content. Semantic indexing is a separate one-shot process and never blocks
+lexical success. Use `--no-semantic` for a truthful skipped receipt; run the
+printed `gno ... embed <collection>` command to resume in the foreground.
+
+Connector IDs are `claude-code-skill`, `claude-desktop-mcp`, `cursor-mcp`,
+`codex-skill`, `opencode-skill`, `openclaw-skill`, and `hermes-skill`.
+Repeat `--connector` to select more than one. MCP targets receive a bounded
+retrieval proof; skill targets report `target_runtime_unverifiable` because
+setup cannot execute an agent runtime. Connector follow-up may return
+`completed_with_actions` while keeping exit 0 and lexical success intact.
 
 Prefer a guided UI first? Start `gno serve`, open `http://localhost:3000`, then use the first-run checklist to add a folder, choose a preset, and start indexing without touching more CLI commands.
 
-## 2. Index Your Documents
+## 2. Finish Semantic Indexing
 
 ```bash
-# Full index: ingest files + generate embeddings
-gno index
+# Run the foreground fallback printed by setup, or embed all pending chunks
+gno embed
 ```
 
-This runs both BM25 (keyword) and vector indexing. GNO indexes Markdown, PDF, DOCX, XLSX, PPTX, and plain text.
+Lexical indexing is already complete when setup exits. Embedding adds vector
+retrieval. GNO indexes Markdown, PDF, DOCX, XLSX, PPTX, and plain text.
 
 Password-protected PDFs and XLSX files are reported as per-file errors and do
 not stop the rest of indexing.
@@ -54,7 +69,7 @@ already usable.
 Need immediate local search without waiting for model downloads?
 
 ```bash
-gno index --no-embed
+gno setup ~/notes --name notes --no-semantic
 gno status
 ```
 
@@ -272,8 +287,7 @@ without opening the Web UI.
 
 ```bash
 # Setup
-gno init ~/notes --name notes
-gno index
+gno setup ~/notes --name notes
 
 # Search (CLI)
 gno search "meeting notes"
@@ -290,6 +304,13 @@ gno get abc123
 # AI answer
 gno ask "summarize the authentication discussion" --answer
 ```
+
+`gno setup --json` uses `setup-command-result@1.0` without connectors and
+`setup-activation-result@1.0` with them. The latter wraps the unchanged setup
+result; connector failures/skips stay separate. Canonical private receipts live
+under the configured data directory in `setup-receipts/<index>/` and
+`setup-semantic/<index>/`. Direct setup never discovers, contacts, or queues
+through a resident process.
 
 ## Next Steps
 

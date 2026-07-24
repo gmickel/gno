@@ -10,6 +10,7 @@ import { safeRm } from "../test/helpers/cleanup";
 import { verifyPackedMcpInstall } from "./package-smoke-mcp";
 import { resolvePackageSmokeEmbeddingModel } from "./package-smoke-model";
 import { verifyPackedResidentGateway } from "./package-smoke-resident";
+import { verifyPackedFolderSetup } from "./package-smoke-setup";
 
 interface CommandResult {
   stdout: string;
@@ -181,7 +182,18 @@ async function verifyTarballContents(tarballPath: string): Promise<void> {
     "package/src/sdk/index.ts",
     "package/src/embed/retry.ts",
     "package/src/core/runtime-entrypoint.ts",
+    "package/src/core/folder-setup.ts",
+    "package/src/core/setup-activation.ts",
+    "package/src/core/setup-receipt.ts",
+    "package/src/cli/commands/setup.ts",
+    "package/src/cli/commands/setup-activation.ts",
+    "package/src/cli/commands/setup-semantic.ts",
+    "package/src/cli/setup-semantic-worker.ts",
     "package/src/serve/public/globals.built.css",
+    "package/spec/output-schemas/setup-receipt.schema.json",
+    "package/spec/output-schemas/setup-command-result.schema.json",
+    "package/spec/output-schemas/setup-semantic-receipt.schema.json",
+    "package/spec/output-schemas/setup-activation-result.schema.json",
     "package/THIRD_PARTY_NOTICES.md",
   ]) {
     assertTarEntry(entries, requiredFile);
@@ -360,8 +372,6 @@ async function main(): Promise<void> {
     await mkdir(homeDir, { recursive: true });
     await mkdir(notesDir, { recursive: true });
     await Bun.write(npmUserConfig, "");
-    await Bun.write(join(notesDir, "hello.md"), "# Hello\n\nPackage smoke.\n");
-
     const pack = runCommand(
       ["npm", "pack", "--json", "--pack-destination", packDir],
       rootDir,
@@ -389,6 +399,13 @@ async function main(): Promise<void> {
     const gnoBin = join(installPrefix, "bin", "gno");
     runCommand([gnoBin, "--version"], tempRoot, env);
     runCommand([gnoBin, "--help"], tempRoot, env);
+    await verifyPackedFolderSetup({
+      gnoBin,
+      cwd: tempRoot,
+      env,
+      fixtureDir: notesDir,
+      runCommand,
+    });
     await verifyPackedMcpInstall({
       gnoBin,
       installPrefix,
@@ -396,11 +413,6 @@ async function main(): Promise<void> {
       env,
       runCommand,
     });
-    runCommand(
-      [gnoBin, "init", notesDir, "--name", "package-smoke"],
-      tempRoot,
-      env
-    );
     if (embeddingModelPath) {
       await configurePackedEmbeddingModel(
         join(env.GNO_CONFIG_DIR, "index.yml"),

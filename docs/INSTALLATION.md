@@ -19,21 +19,47 @@ curl -fsSL https://bun.sh/install | bash
 # Install GNO
 bun install -g @gmickel/gno
 
-# Verify installation
-gno doctor
-gno status --json
+# Set up a real folder and prove an exact local lexical result
+gno setup ~/notes --name notes
 ```
 
-Verification includes a local corpus-derived lexical retrieval proof once a
-collection has been indexed. `activation.usable` means at least one configured
-collection passed; `activation.healthy` means every configured collection
-passed. Semantic models may remain pending without blocking lexical search.
+`gno setup` bootstraps an empty installation, creates or reuses one collection,
+indexes it, and closes only after a corpus-derived BM25 probe returns an exact
+`gno://` result. Rerun the same command safely. Semantic work is a separate
+one-shot process; `--no-semantic` records skipped state without starting one.
+The printed foreground `gno ... embed <collection>` command resumes work.
+
+Optionally select agent handoffs after lexical proof:
+
+```bash
+gno setup ~/notes --name notes \
+  --connector cursor-mcp \
+  --connector codex-skill
+```
+
+Supported IDs: `claude-code-skill`, `claude-desktop-mcp`, `cursor-mcp`,
+`codex-skill`, `opencode-skill`, `openclaw-skill`, and `hermes-skill`.
+Repeated IDs dedupe. Existing config is reused without overwrite; malformed
+config is preserved and reported as `completed_with_actions`. MCP targets run a
+bounded retrieval smoke. Skill execution remains
+`target_runtime_unverifiable`.
 
 Release packages are smoke-tested with `bun run test:package`, which installs
-the packed npm tarball into isolated temp paths and verifies packaged
-`gno --version`, `gno --help`, `gno doctor --json`, and the production resident
-gateway before publish. The gateway proof covers two clients, stdio/HTTP
+the packed npm tarball into isolated temp paths. It verifies `gno setup`
+first-run and idempotent rerun behavior, exact lexical evidence, private
+receipts, all seven connector IDs, no-semantic ownership, and the production
+resident gateway. The gateway proof still covers two clients, stdio/HTTP
 parity, safe lifecycle status, security rejection, restart, and shutdown.
+
+Without connector flags, JSON remains `setup-command-result@1.0`. With
+connectors it becomes `setup-activation-result@1.0`, wrapping the unchanged
+setup result plus bounded connector state. Argument or lexical failure keeps
+the original nonzero exit code, emits `connectors: []`, and runs no connector
+action. After lexical proof, connector failures/skips keep exit 0 and report
+`completed_with_actions`.
+
+Setup is always a direct standalone transaction. It never discovers, attaches
+to, or enqueues work through `gno serve`, `gno daemon`, Web, or MCP.
 
 If you want a guided setup after install, run `gno serve` and open `http://localhost:3000`. The first-run dashboard can add a folder, explain health, show bootstrap/runtime status, and trigger model downloads without more terminal work.
 

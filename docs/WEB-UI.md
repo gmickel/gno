@@ -465,6 +465,13 @@ The dashboard also shows a **Bootstrap & Storage** section for first-run explain
 
 This is the user-facing source of truth for “what will download?”, “where does it live?”, and “why is this preset still incomplete?”.
 
+The terminal fast path is `gno setup <folder>`. It performs a direct,
+receipt-backed lexical transaction and can schedule one-shot semantic work or
+install explicit connectors. Web/Desktop onboarding continues to use the
+resident collection and job APIs; it does not proxy the CLI transaction or
+claim its private setup receipts. Both paths share retrieval-proof semantics,
+but lifecycle ownership remains explicit.
+
 ### Recents and Favorites
 
 Navigation is no longer only a hidden keyboard trick.
@@ -488,6 +495,11 @@ The **Connectors** page gives one place to:
   client config
 - distinguish installed Skill files from client execution: skill runtimes stay
   unverifiable until the owning client provides a safe verification hook
+
+CLI setup supports the seven IDs listed in [CLI](CLI.md#verified-folder-setup).
+Its MCP proof and `target_runtime_unverifiable` skill result are separate from
+these Web-triggered install/verify actions.
+
 - understand the default mode in plain language:
   - read/search by default
   - write-capable MCP remains an advanced opt-in path

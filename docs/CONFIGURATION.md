@@ -219,6 +219,35 @@ for all local trace rows. Only a purge receipt with
 `physicalCleanup: completed` proves WAL truncation; exported artifacts and
 external backups remain outside the purge boundary.
 
+## Verified Folder Setup State
+
+`gno setup <folder>` is the preferred first activation path. It may create the
+default config, but the transaction itself stays direct and standalone: it
+does not discover or attach to a resident listener. Its fixed lexical stages
+are `preflight`, `config_saved`, `store_synced`, `lexical_indexed`,
+`lexical_proved`, and `completed`.
+
+Private state lives outside the indexed folder:
+
+```text
+<dataDir>/setup-receipts/<index>/<folder-fingerprint>.json
+<dataDir>/setup-semantic/<index>/<folder-fingerprint>.json
+<dataDir>/setup-semantic/<index>/<folder-fingerprint>.log
+```
+
+The closed `FolderSetupReceipt@1.0` contains no semantic-worker or connector
+fields. `setup-command-result@1.0` composes it with `setup-semantic@1.0`;
+`setup-activation-result@1.0` wraps that unchanged result only when explicit
+connectors are selected. Stable semantic source identity ignores timestamps,
+stage tokens, and created/reused disposition, but changes with material
+folder, index, or activation evidence. `--no-semantic` starts no new work; a
+live one-shot worker keeps ownership of its canonical receipt and PID.
+
+Connector setup never overwrites an existing entry. Malformed configuration is
+preserved for repair. Connector failures or unverifiable skill runtimes report
+`completed_with_actions` after lexical proof without rolling back the
+collection.
+
 ## Collections
 
 Collections define what gets indexed.

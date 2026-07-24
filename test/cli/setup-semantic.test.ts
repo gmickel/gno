@@ -276,20 +276,73 @@ describe("setup semantic handoff", () => {
     expect(enabledSpawns).toBe(1);
   });
 
-  test("semantic source identity ignores created versus reused disposition", async () => {
+  test("semantic source identity ignores transient receipt state", async () => {
     const root = await tempRoot("stable-disposition");
     const created = completedSetupReceipt(root);
     const reused: FolderSetupReceipt = {
       ...created,
+      generatedAt: "2026-07-24T11:00:00.000Z",
       collection: {
         ...created.collection,
         disposition: "reused",
       },
+      stages: {
+        preflight: stage(),
+        config_saved: stage(),
+        store_synced: stage(),
+        lexical_indexed: stage(),
+        lexical_proved: stage(),
+        completed: stage(),
+      },
+      activation: created.activation
+        ? {
+            ...created.activation,
+            generatedAt: "2026-07-24T11:00:00.000Z",
+            stages: {
+              ...created.activation.stages,
+              index: {
+                ...created.activation.stages.index,
+                startedAt: "2026-07-24T11:00:00.000Z",
+                completedAt: "2026-07-24T11:00:00.001Z",
+                latencyMs: 1,
+              },
+            },
+          }
+        : null,
     };
 
     expect(setupSemanticSourceFingerprint(reused)).toBe(
       setupSemanticSourceFingerprint(created)
     );
+  });
+
+  test("semantic source identity changes for material lexical evidence", async () => {
+    const root = await tempRoot("material-identity");
+    const baseline = completedSetupReceipt(root);
+    if (!baseline.activation) {
+      throw new Error("Expected completed setup activation");
+    }
+    const changedIndex: FolderSetupReceipt = {
+      ...baseline,
+      fingerprints: {
+        ...baseline.fingerprints,
+        index: setupFingerprint("different-index"),
+      },
+    };
+    const changedEvidence: FolderSetupReceipt = {
+      ...baseline,
+      activation: {
+        ...baseline.activation,
+        evidence: {
+          ...baseline.activation.evidence,
+          resultSourceHash: setupFingerprint("different-source"),
+        },
+      },
+    };
+
+    const identity = setupSemanticSourceFingerprint(baseline);
+    expect(setupSemanticSourceFingerprint(changedIndex)).not.toBe(identity);
+    expect(setupSemanticSourceFingerprint(changedEvidence)).not.toBe(identity);
   });
 
   test("schedules once and reuses a matching live worker concurrently", async () => {

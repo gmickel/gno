@@ -289,6 +289,26 @@ Jobs are stored in memory and tied to the MCP server process:
 
 ## Quick Install
 
+For a new corpus, prove retrieval and install the selected handoff directly:
+
+```bash
+gno setup ~/notes --name notes --connector cursor-mcp
+gno setup ~/notes --name notes --connector codex-skill
+```
+
+Repeat `--connector` for multiple targets. Supported setup IDs are
+`claude-code-skill`, `claude-desktop-mcp`, `cursor-mcp`, `codex-skill`,
+`opencode-skill`, `openclaw-skill`, and `hermes-skill`. MCP targets run a
+bounded retrieval smoke after lexical proof. Skill targets are installed but
+report `target_runtime_unverifiable`; setup cannot execute the agent runtime.
+Existing entries are reused without overwrite, and malformed files are
+preserved.
+
+Setup may install an MCP command a client launches later, but setup itself
+never starts, contacts, or attaches to stdio MCP or resident `/mcp`.
+Connector follow-up can return `completed_with_actions` with exit 0 while
+lexical setup remains proven.
+
 Use the CLI to install GNO as an MCP server:
 
 ```bash

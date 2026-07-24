@@ -285,6 +285,22 @@ readiness. Connector proof is active only behind an explicit user action; all
 ordinary health/status reads load bounded persisted projections and never start
 a client process.
 
+### Verified setup transaction
+
+`gno setup` owns a short-lived store directly. It never consults resident
+process status, attaches to `/mcp`, or enqueues through Web/daemon state. The
+lexical transaction persists one closed `FolderSetupReceipt@1.0` across six
+ordered stages and succeeds only after a corpus-derived query returns an exact
+source URI.
+
+Semantic work is composition, not another lexical stage. A detached one-shot
+process owns `setup-semantic@1.0`, embeds one collection, updates its private
+receipt, and exits. Connector composition is separate again: after lexical
+proof the CLI opens its own store, installs only explicitly requested targets,
+and verifies MCP targets with a bounded read. Store lifecycle and connector
+failures reduce to bounded per-target results and cannot replace lexical
+success.
+
 Embedding inputs are clamped to the active local model context when tokenizer
 metadata is available. Chunking remains the first guardrail; the runtime clamp
 keeps pathological direct inputs from reaching native inference oversized.
