@@ -345,7 +345,6 @@ function assertNoDoctorErrors(result: DoctorResult): void {
 }
 
 async function main(): Promise<void> {
-  const embeddingModelPath = await resolvePackageSmokeEmbeddingModel();
   const tempRoot = await mkdtemp(join(tmpdir(), "gno-package-smoke-"));
   const packDir = join(tempRoot, "pack");
   const installPrefix = join(tempRoot, "prefix");
@@ -401,11 +400,21 @@ async function main(): Promise<void> {
     runCommand([gnoBin, "--help"], tempRoot, env);
     await verifyPackedFolderSetup({
       gnoBin,
+      packageRoot: join(
+        runCommand(
+          ["npm", "root", "--global", "--prefix", installPrefix],
+          tempRoot,
+          env
+        ).stdout.trim(),
+        "@gmickel",
+        "gno"
+      ),
       cwd: tempRoot,
       env,
       fixtureDir: notesDir,
       runCommand,
     });
+    const embeddingModelPath = await resolvePackageSmokeEmbeddingModel();
     await verifyPackedMcpInstall({
       gnoBin,
       installPrefix,
@@ -424,6 +433,7 @@ async function main(): Promise<void> {
       gnoBin,
       cwd: tempRoot,
       env,
+      fixtureDir: notesDir,
       runCommand,
       embeddingModelPath,
     });

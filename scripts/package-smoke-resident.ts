@@ -14,6 +14,7 @@ import {
   isRecord,
   JSON_HEADERS,
   parseJsonObject,
+  proveResidentUnaffectedByDirectSetup,
   type ResidentSmokeInput,
   runExpectedFailure,
   spawnResident,
@@ -33,6 +34,7 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
   const clients: Client[] = [];
   try {
     await waitForStatus(baseUrl, "serve");
+    await proveResidentUnaffectedByDirectSetup(input, baseUrl);
     await validateStatusSurfaces(baseUrl, "serve", [
       input.cwd,
       input.env.GNO_DATA_DIR ?? "",

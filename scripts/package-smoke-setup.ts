@@ -3,6 +3,11 @@
 import { join } from "node:path";
 
 import { assertValid, loadSchema } from "../test/spec/schemas/validator";
+import {
+  snapshotInstalledConnectorBytes,
+  verifyInstalledSetupContractsInChild,
+} from "./package-smoke-setup-contract";
+import { verifyPackedSetupFailures } from "./package-smoke-setup-failures";
 
 interface CommandResult {
   stdout: string;
@@ -11,6 +16,7 @@ interface CommandResult {
 
 export interface PackedSetupSmokeOptions {
   gnoBin: string;
+  packageRoot: string;
   cwd: string;
   env: Record<string, string>;
   fixtureDir: string;
@@ -98,10 +104,6 @@ interface SetupActivationResult {
   connectors: ConnectorResult[];
 }
 
-interface RawCommandResult extends CommandResult {
-  exitCode: number;
-}
-
 const CONNECTOR_IDS = [
   "claude-code-skill",
   "claude-desktop-mcp",
@@ -132,24 +134,6 @@ function parseJson<T>(stdout: string, label: string): T {
       }\n${stdout}`
     );
   }
-}
-
-function runAllowFailure(
-  command: string[],
-  cwd: string,
-  env: Record<string, string>
-): RawCommandResult {
-  const result = Bun.spawnSync(command, {
-    cwd,
-    env: { ...process.env, ...env },
-    stderr: "pipe",
-    stdout: "pipe",
-  });
-  return {
-    exitCode: result.exitCode,
-    stdout: result.stdout?.toString() ?? "",
-    stderr: result.stderr?.toString() ?? "",
-  };
 }
 
 function requireCompletedSetup(
@@ -244,40 +228,6 @@ function assertConnectorProjection(
   }
 }
 
-async function proveInvalidConnectorHasNoSideEffects(
-  options: PackedSetupSmokeOptions
-): Promise<void> {
-  const configPath = join(options.env.GNO_CONFIG_DIR ?? "", "index.yml");
-  const result = runAllowFailure(
-    [
-      options.gnoBin,
-      "setup",
-      options.fixtureDir,
-      "--connector",
-      "invalid-connector",
-      "--no-semantic",
-      "--json",
-    ],
-    options.cwd,
-    options.env
-  );
-  const parsed = parseJson<SetupActivationResult>(
-    result.stdout,
-    "invalid packed setup"
-  );
-  if (
-    result.exitCode !== 1 ||
-    parsed.status !== "failed" ||
-    parsed.connectors.length !== 0 ||
-    parsed.setup.lexical.receipt !== null ||
-    (await Bun.file(configPath).exists())
-  ) {
-    throw new Error(
-      `Invalid packed connector caused setup side effects:\n${result.stdout}`
-    );
-  }
-}
-
 async function proveMalformedConfigPreservation(
   options: PackedSetupSmokeOptions
 ): Promise<void> {
@@ -353,7 +303,7 @@ export async function verifyPackedFolderSetup(
     `# Package setup proof\n\nThe exact corpus token is ${CORPUS_TOKEN}.\n`
   );
 
-  await proveInvalidConnectorHasNoSideEffects(options);
+  await verifyPackedSetupFailures(options);
 
   const firstResult = parseJson<SetupCommandResult>(
     options.runCommand(
@@ -418,6 +368,13 @@ export async function verifyPackedFolderSetup(
   );
   assertLexicalProof(activatedSetup.lexical, "first connector setup");
   assertConnectorProjection(activated, "installed");
+  const connectorBytes = await snapshotInstalledConnectorBytes(
+    options.packageRoot,
+    {
+      cwd: options.cwd,
+      homeDir: options.env.HOME ?? "",
+    }
+  );
   if (
     activatedSetup.lexical.collection.disposition !== "reused" ||
     activatedSetup.semantic.status !== "skipped" ||
@@ -469,6 +426,23 @@ export async function verifyPackedFolderSetup(
       );
     }
   }
+  const rerunConnectorBytes = await snapshotInstalledConnectorBytes(
+    options.packageRoot,
+    {
+      cwd: options.cwd,
+      homeDir: options.env.HOME ?? "",
+    }
+  );
+  if (!Bun.deepEquals(rerunConnectorBytes, connectorBytes, true)) {
+    throw new Error("Packed connector rerun changed installed bytes");
+  }
 
   await proveMalformedConfigPreservation(options);
+  await verifyInstalledSetupContractsInChild({
+    packageRoot: options.packageRoot,
+    fixtureDir: options.fixtureDir,
+    configPath: first.lexical.paths.config,
+    dataDir: options.env.GNO_DATA_DIR ?? "",
+    lexicalReceipt: first.lexical as never,
+  });
 }

@@ -21,7 +21,17 @@ export interface ResidentStatus {
   mode: "serve" | "daemon";
   resident: true;
   listenerPort: number;
-  transport: { activeSessions: number };
+  admission: { state: string; activeRequests: number };
+  shutdown: { state: string };
+  transport: {
+    activeRequests: number;
+    activeSessions: number;
+    queuedRequests: number;
+    maxConcurrentRequests: number;
+    maxQueuedRequests: number;
+    maxSessions: number;
+  };
+  readers: { active: number; queued: number; limit: number; maxQueued: number };
   models: {
     activeLeases: number;
     leaseAcquisitions: number;
@@ -29,7 +39,11 @@ export interface ResidentStatus {
     loadedModels: number;
     loadAttempts: number;
     loadSuccesses: number;
+    loadFailures: number;
+    inflightLoads: number;
   };
+  jobs: { active: number; recent: number; failed: number };
+  generations: { content: number; index: number };
 }
 
 export interface RunningProcess {
@@ -42,6 +56,7 @@ export interface ResidentSmokeInput {
   gnoBin: string;
   cwd: string;
   env: Record<string, string>;
+  fixtureDir: string;
   runCommand: CommandRunner;
   embeddingModelPath?: string;
 }
@@ -257,6 +272,72 @@ export async function validateResidentStatusSurface(
     }
   }
   return resident as unknown as ResidentStatus;
+}
+
+function residentOwnershipState(status: ResidentStatus): object {
+  return {
+    admission: status.admission,
+    shutdown: status.shutdown,
+    transport: status.transport,
+    readers: status.readers,
+    models: status.models,
+    jobs: status.jobs,
+    generations: status.generations,
+  };
+}
+
+export async function proveResidentUnaffectedByDirectSetup(
+  input: ResidentSmokeInput,
+  baseUrl: string
+): Promise<void> {
+  const forbidden = [
+    input.cwd,
+    input.env.GNO_DATA_DIR ?? "",
+    "package-smoke-secret",
+  ];
+  const before = await validateResidentStatusSurface(
+    baseUrl,
+    "serve",
+    forbidden
+  );
+  const result = parseJsonObject(
+    input.runCommand(
+      [
+        input.gnoBin,
+        "setup",
+        input.fixtureDir,
+        "--name",
+        "package-smoke",
+        "--no-semantic",
+        "--json",
+      ],
+      input.cwd,
+      input.env
+    ).stdout,
+    "resident-running direct setup"
+  );
+  assertValid(result, await loadSchema("setup-command-result"));
+  if (
+    result.status !== "completed" ||
+    !isRecord(result.semantic) ||
+    result.semantic.status !== "skipped" ||
+    result.semantic.pid !== null
+  ) {
+    throw new Error("Direct setup did not remain standalone beside a resident");
+  }
+  const after = await validateResidentStatusSurface(
+    baseUrl,
+    "serve",
+    forbidden
+  );
+  if (
+    JSON.stringify(residentOwnershipState(after)) !==
+    JSON.stringify(residentOwnershipState(before))
+  ) {
+    throw new Error(
+      "Direct setup attached to or enqueued work in the resident runtime"
+    );
+  }
 }
 
 export async function createHttpClient(
