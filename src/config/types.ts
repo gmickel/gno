@@ -385,6 +385,10 @@ export const CONTENT_TYPE_GRAPH_HINTS = [
 
 export type ContentTypeGraphHint = (typeof CONTENT_TYPE_GRAPH_HINTS)[number];
 
+export const CONTENT_TYPE_SEARCH_BOOST_MIN = 0.5;
+export const CONTENT_TYPE_SEARCH_BOOST_NEUTRAL = 1;
+export const CONTENT_TYPE_SEARCH_BOOST_MAX = 2;
+
 export const ContentTypeSchema = z.object({
   /** Stable content type identifier */
   id: z.string().min(1),
@@ -394,8 +398,13 @@ export const ContentTypeSchema = z.object({
   preset: z.string().min(1),
   /** Reserved for fn-84 typed graph hints; accepted but no-op in fn-83 */
   graphHints: z.array(z.string().min(1)).optional(),
-  /** Reserved for future ranking; accepted but no-op in fn-83 */
-  searchBoost: z.number().finite().optional(),
+  /** Bounded soft ranking factor; normalized to 1.0 when omitted */
+  searchBoost: z
+    .number()
+    .finite()
+    .min(CONTENT_TYPE_SEARCH_BOOST_MIN)
+    .max(CONTENT_TYPE_SEARCH_BOOST_MAX)
+    .optional(),
   /** Marks time-oriented content types; accepted but no-op in fn-83 */
   temporal: z.boolean().optional(),
 });

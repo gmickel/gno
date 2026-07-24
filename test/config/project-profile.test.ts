@@ -297,6 +297,32 @@ describe("project profile schema", () => {
     expect(validateJsonSchema(tooManyRules)).toBe(false);
   });
 
+  test("keeps bounded searchBoost validation in Zod and Draft-07 parity", () => {
+    for (const searchBoost of [0.5, 1, 2]) {
+      const candidate = {
+        schemaVersion: "1.0",
+        collection: { name: "notes" },
+        contentTypes: {
+          people: { prefixes: ["people"], preset: "person", searchBoost },
+        },
+      };
+      expect(ProjectProfileSchema.safeParse(candidate).success).toBe(true);
+      expect(validateJsonSchema(candidate)).toBe(true);
+    }
+
+    for (const searchBoost of [0.49, 2.01]) {
+      const candidate = {
+        schemaVersion: "1.0",
+        collection: { name: "notes" },
+        contentTypes: {
+          people: { prefixes: ["people"], preset: "person", searchBoost },
+        },
+      };
+      expect(ProjectProfileSchema.safeParse(candidate).success).toBe(false);
+      expect(validateJsonSchema(candidate)).toBe(false);
+    }
+  });
+
   test("accepts multiple brace-free include entries with exact schema parity", () => {
     const candidate = {
       schemaVersion: "1.0",
@@ -384,6 +410,7 @@ describe("project profile compiler", () => {
       prefixes: ["people"],
       preset: "person",
       graphHints: ["mentions", "works_at"],
+      searchBoost: 1,
     });
   });
 

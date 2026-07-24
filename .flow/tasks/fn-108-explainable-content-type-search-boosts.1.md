@@ -35,9 +35,15 @@ Deliver normalize bound and fingerprint searchboost configuration as one impleme
 
 
 ## Done summary
-TBD
+Defined the bounded content-type search-boost contract and made it part of normalized rule identity.
 
+Key outcomes:
+- Search boosts accept only finite values from 0.5 through 2.0 and normalize omitted values to neutral 1.0.
+- Omitted and explicit-neutral boosts retain the legacy content-type fingerprint; non-neutral semantic changes invalidate the fingerprint deterministically.
+- One shared resolver selects an exact configured type before longest-prefix fallback, never stacks rules, and ignores arbitrary category text.
+- Main config and project-profile Zod/Draft-07 validation enforce the same numeric range.
+- Existing ingestion now uses the shared canonical rule resolver.
 ## Evidence
 - Commits:
-- Tests:
+- Tests: bun run lint:check (0 errors), bun test focused content-type/profile/ingestion/graph/diagnose suite (124 passed, 0 failed), git diff --check
 - PRs:

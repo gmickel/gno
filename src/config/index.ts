@@ -6,6 +6,7 @@
 
 export { createDefaultConfig } from "./defaults";
 export {
+  type ContentTypeRuleResolution,
   type ConfigWarning,
   fingerprintContentTypeRules,
   formatConfigWarning,
@@ -13,6 +14,7 @@ export {
   normalizeConfigContentTypes,
   normalizeContentTypes,
   type NormalizedContentTypeRule,
+  resolveContentTypeRule,
   writeConfigWarningsToStderr,
 } from "./content-types";
 // Loading
@@ -47,6 +49,9 @@ export {
 // Types and schemas
 export {
   CONFIG_VERSION,
+  CONTENT_TYPE_SEARCH_BOOST_MAX,
+  CONTENT_TYPE_SEARCH_BOOST_MIN,
+  CONTENT_TYPE_SEARCH_BOOST_NEUTRAL,
   type Collection,
   CollectionSchema,
   type Config,

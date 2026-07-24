@@ -270,7 +270,9 @@
           }
         },
         "searchBoost": {
-          "type": "number"
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2
         },
         "temporal": {
           "type": "boolean"

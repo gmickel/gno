@@ -52,7 +52,12 @@ describe("SyncService tag extraction", () => {
 
   test("frontmatter type maps to canonical content type only for configured ids", () => {
     const rules: NormalizedContentTypeRule[] = [
-      { id: "person", prefixes: ["people/"], preset: "person" },
+      {
+        id: "person",
+        prefixes: ["people/"],
+        preset: "person",
+        searchBoost: 1,
+      },
     ];
 
     const configured = extractDocumentMetadata(
@@ -78,7 +83,12 @@ describe("SyncService tag extraction", () => {
 
   test("normalizes quoted frontmatter type and categories", () => {
     const rules: NormalizedContentTypeRule[] = [
-      { id: "person", prefixes: ["people/"], preset: "person" },
+      {
+        id: "person",
+        prefixes: ["people/"],
+        preset: "person",
+        searchBoost: 1,
+      },
     ];
 
     const metadata = extractDocumentMetadata(
@@ -115,7 +125,12 @@ describe("SyncService tag extraction", () => {
 
   test("configured prefix wins before path heuristics", () => {
     const rules: NormalizedContentTypeRule[] = [
-      { id: "person", prefixes: ["people/"], preset: "person" },
+      {
+        id: "person",
+        prefixes: ["people/"],
+        preset: "person",
+        searchBoost: 1,
+      },
     ];
 
     const metadata = extractDocumentMetadata(
@@ -282,7 +297,12 @@ This is #work related.
 
     const result = await syncService.syncCollection(collection, adapter, {
       contentTypeRules: [
-        { id: "person", prefixes: ["people/"], preset: "person" },
+        {
+          id: "person",
+          prefixes: ["people/"],
+          preset: "person",
+          searchBoost: 1,
+        },
       ],
     });
 

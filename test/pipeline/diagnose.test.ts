@@ -120,6 +120,7 @@ describe("diagnoseQueryTarget", () => {
           prefixes: [],
           preset: "source-summary",
           graphHints: ["works_at"],
+          searchBoost: 1,
         },
       ],
       projectAffinity: {

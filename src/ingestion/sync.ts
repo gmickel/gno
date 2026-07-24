@@ -33,7 +33,7 @@ import type {
   WalkerPort,
 } from "./types";
 
-import { fingerprintContentTypeRules } from "../config";
+import { fingerprintContentTypeRules, resolveContentTypeRule } from "../config";
 import { getDefaultMimeDetector, type MimeDetector } from "../converters/mime";
 import {
   type ConversionPipeline,
@@ -401,18 +401,6 @@ function parseCategories(input: unknown): string[] {
   return [];
 }
 
-function matchPrefixContentType(
-  relPath: string,
-  rules: NormalizedContentTypeRule[]
-): string | undefined {
-  for (const rule of rules) {
-    if (rule.prefixes.some((prefix) => relPath.startsWith(prefix))) {
-      return rule.id;
-    }
-  }
-  return undefined;
-}
-
 export function extractDocumentMetadata(
   markdown: string,
   relPath: string,
@@ -421,23 +409,23 @@ export function extractDocumentMetadata(
 ): DocumentMetadata {
   const parsed = parseFrontmatter(markdown);
   const metadata = parsed.metadata;
-  const typedRules = new Map(contentTypeRules.map((rule) => [rule.id, rule]));
   const rawFrontmatterType =
     typeof metadata.type === "string"
       ? normalizeFrontmatterScalar(metadata.type)
       : "";
-  const frontmatterType = typedRules.get(rawFrontmatterType)?.id;
-  const prefixType =
-    frontmatterType === undefined
-      ? matchPrefixContentType(relPath, contentTypeRules)
-      : undefined;
+  const configuredRule = resolveContentTypeRule(
+    rawFrontmatterType,
+    relPath,
+    contentTypeRules
+  );
   const inferred = inferPathContentType(relPath, ext);
-  const contentType = frontmatterType ?? prefixType ?? inferred.contentType;
-  const contentTypeSource: ContentTypeSource = frontmatterType
-    ? "frontmatter-type"
-    : prefixType
-      ? "prefix"
-      : inferred.source;
+  const contentType = configuredRule?.rule.id ?? inferred.contentType;
+  const contentTypeSource: ContentTypeSource =
+    configuredRule?.source === "configured-id"
+      ? "frontmatter-type"
+      : configuredRule?.source === "prefix"
+        ? "prefix"
+        : inferred.source;
   const categories = new Set<string>([contentType]);
 
   const fmCategories = parseCategories(

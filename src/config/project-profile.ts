@@ -3,6 +3,8 @@ import { z } from "zod";
 import { NOTE_PRESETS } from "../core/note-presets";
 import { hasLikelySecretPath } from "../core/path-rules";
 import {
+  CONTENT_TYPE_SEARCH_BOOST_MAX,
+  CONTENT_TYPE_SEARCH_BOOST_MIN,
   isValidLanguageHint,
   PROJECT_AFFINITY_MAX_CONTRIBUTION,
 } from "./types";
@@ -284,7 +286,12 @@ export const ProjectProfileContentTypeSchema = z
         }
       })
       .optional(),
-    searchBoost: z.number().finite().optional(),
+    searchBoost: z
+      .number()
+      .finite()
+      .min(CONTENT_TYPE_SEARCH_BOOST_MIN)
+      .max(CONTENT_TYPE_SEARCH_BOOST_MAX)
+      .optional(),
     temporal: z.boolean().optional(),
   })
   .strict();

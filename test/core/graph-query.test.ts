@@ -87,6 +87,7 @@ describe("diagnoseGraphQuery", () => {
           prefixes: [],
           preset: "meeting",
           graphHints: ["attended", "mentions"],
+          searchBoost: 1,
         },
       ],
     });
