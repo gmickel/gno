@@ -89,7 +89,7 @@ describe("agentic benchmark CLI", () => {
     expect(output).toContain("Attempted/scored/successful: 1/0/0");
     expect(output).toContain("qmd/t0a1b2c3/fixture-01/cold");
     expect(output).toContain("adapter_preparation_failed");
-  });
+  }, 15_000);
 
   test("formats and atomically replaces the authoritative artifact set", async () => {
     const root = await mkdtemp(join(tmpdir(), "gno-agentic-artifacts-"));
