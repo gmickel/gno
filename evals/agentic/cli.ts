@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 
 import type { OuterAgentFactory } from "./agent";
 import type { LoadedAgenticFixture } from "./fixture-db";
+import type { ProjectAffinityPromotionArtifact } from "./project-affinity-promotion";
 import type { BenchmarkArtifacts } from "./report-artifacts";
 import type { CapsuleReplayRecord } from "./types";
 import type { VerifiedAskPromotionArtifact } from "./verified-ask-outcome";
@@ -14,6 +15,7 @@ import { AGENTIC_CLI_HELP, parseAgenticCliOptions } from "./cli-options";
 import { FixtureAgentFactory } from "./fixture-agent";
 import { AGENTIC_FIXTURE_ROOT, loadAgenticFixture } from "./fixture-db";
 import { LocalModelAgentFactory } from "./local-model-agent";
+import { runProjectAffinityOutcomeBenchmark } from "./project-affinity-outcome";
 import {
   createAgenticAdapterFactories,
   DEFAULT_AGENTIC_ADAPTER_IDS,
@@ -92,6 +94,22 @@ export const writeBenchmarkArtifacts = async (
             ] as const,
           ]
         : []),
+      ...(artifacts.projectAffinityPromotionJson
+        ? [
+            [
+              "project-affinity-promotion.json",
+              artifacts.projectAffinityPromotionJson,
+            ] as const,
+          ]
+        : []),
+      ...(artifacts.projectAffinityPromotionMarkdown
+        ? [
+            [
+              "project-affinity-promotion.md",
+              artifacts.projectAffinityPromotionMarkdown,
+            ] as const,
+          ]
+        : []),
     ] as const;
     const paths = entries.map(([name]) => join(staging, name));
     await Promise.all(
@@ -135,6 +153,9 @@ export interface AgenticCliDependencies {
   runVerifiedAskBenchmark: (
     fixture: LoadedAgenticFixture
   ) => Promise<VerifiedAskPromotionArtifact>;
+  runProjectAffinityBenchmark: (
+    fixture: LoadedAgenticFixture
+  ) => Promise<ProjectAffinityPromotionArtifact>;
   writeArtifacts: typeof writeBenchmarkArtifacts;
   stdout: Pick<typeof process.stdout, "write">;
   stderr: Pick<typeof process.stderr, "write">;
@@ -148,6 +169,7 @@ const defaultDependencies: AgenticCliDependencies = {
       : new LocalModelAgentFactory(),
   runBenchmark: runAgenticBenchmark,
   runVerifiedAskBenchmark: runVerifiedAskOutcomeBenchmark,
+  runProjectAffinityBenchmark: runProjectAffinityOutcomeBenchmark,
   writeArtifacts: writeBenchmarkArtifacts,
   stdout: process.stdout,
   stderr: process.stderr,
@@ -236,11 +258,18 @@ export const runAgenticCli = async (
     const verifiedAskPromotion = authoritativeFixtureLane
       ? await dependencies.runVerifiedAskBenchmark(fixture)
       : undefined;
+    const projectAffinityPromotion = authoritativeFixtureLane
+      ? await dependencies.runProjectAffinityBenchmark(fixture)
+      : undefined;
     dependencies.stdout.write(renderBenchmarkMarkdown(report));
     if (options.write && lane)
       await dependencies.writeArtifacts(
         lane,
-        createBenchmarkArtifacts(report, verifiedAskPromotion)
+        createBenchmarkArtifacts(
+          report,
+          verifiedAskPromotion,
+          projectAffinityPromotion
+        )
       );
     if (
       report.receipts.some(
@@ -250,6 +279,8 @@ export const runAgenticCli = async (
       return 2;
     if (report.promotion && !report.promotion.passed) return 1;
     if (verifiedAskPromotion && !verifiedAskPromotion.promotion.passed)
+      return 1;
+    if (projectAffinityPromotion && !projectAffinityPromotion.gates.passed)
       return 1;
     return 0;
   } catch (error) {

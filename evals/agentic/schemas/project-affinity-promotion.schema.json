@@ -1,0 +1,239 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/evals/agentic/project-affinity-promotion@1.0",
+  "title": "ProjectAffinityPromotionArtifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "benchmarkId",
+    "canonicalFingerprint",
+    "fixture",
+    "methodology",
+    "limitations",
+    "targets",
+    "gates"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "benchmarkId": { "const": "project-affinity-promotion@1" },
+    "canonicalFingerprint": { "$ref": "#/definitions/hash" },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixtureVersion",
+        "fixtureFingerprint",
+        "corpusFingerprint",
+        "bindingFingerprint",
+        "bindings"
+      ],
+      "properties": {
+        "fixtureVersion": { "type": "string", "minLength": 1 },
+        "fixtureFingerprint": { "$ref": "#/definitions/hash" },
+        "corpusFingerprint": { "$ref": "#/definitions/hash" },
+        "bindingFingerprint": { "$ref": "#/definitions/hash" },
+        "bindings": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/definitions/binding" }
+        }
+      }
+    },
+    "methodology": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/definitions/target" }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "passed",
+        "failures",
+        "targetCorrectTop1",
+        "evidenceAccuracyLoss",
+        "evidenceCoverageLoss",
+        "multilingualLoss",
+        "filterHard",
+        "zeroLanesExact",
+        "auxiliaryReceiptsValid",
+        "structuralCallsBounded"
+      ],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "failures": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "targetCorrectTop1": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["disabled", "enabled", "required"],
+          "properties": {
+            "disabled": { "type": "integer", "minimum": 0, "maximum": 2 },
+            "enabled": { "type": "integer", "minimum": 0, "maximum": 2 },
+            "required": { "const": 2 }
+          }
+        },
+        "evidenceAccuracyLoss": { "type": "number", "minimum": 0 },
+        "evidenceCoverageLoss": { "type": "number", "minimum": 0 },
+        "multilingualLoss": { "type": "number", "minimum": 0 },
+        "filterHard": { "type": "boolean" },
+        "zeroLanesExact": { "type": "boolean" },
+        "auxiliaryReceiptsValid": { "type": "boolean" },
+        "structuralCallsBounded": { "type": "boolean" }
+      }
+    }
+  },
+  "definitions": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sourceHash",
+        "startLine",
+        "endLine",
+        "spanHash",
+        "sourceHashProvenance",
+        "spanHashProvenance"
+      ],
+      "properties": {
+        "uri": { "type": "string", "pattern": "^gno://" },
+        "sourceHash": { "$ref": "#/definitions/hash" },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "spanHash": { "$ref": "#/definitions/hash" },
+        "sourceHashProvenance": {
+          "enum": ["harness_observed", "backend_provided"]
+        },
+        "spanHashProvenance": {
+          "enum": ["harness_observed", "backend_provided"]
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "taskId",
+        "taskSha256",
+        "oracleSha256",
+        "corpus",
+        "requiredEvidence"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "taskId": { "type": "string", "pattern": "^t[0-9a-f]{7}$" },
+        "taskSha256": { "$ref": "#/definitions/hash" },
+        "oracleSha256": { "$ref": "#/definitions/hash" },
+        "corpus": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["collection", "relPath", "sourceHash"],
+            "properties": {
+              "collection": { "type": "string", "minLength": 1 },
+              "relPath": { "type": "string", "minLength": 1 },
+              "sourceHash": { "$ref": "#/definitions/hash" }
+            }
+          }
+        },
+        "requiredEvidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/evidence" }
+        }
+      }
+    },
+    "rankedEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rank",
+        "uri",
+        "score",
+        "baseScore",
+        "matched",
+        "affinityRequested",
+        "affinityApplied",
+        "collectionAlias",
+        "rootAlias"
+      ],
+      "properties": {
+        "rank": { "type": "integer", "minimum": 1 },
+        "uri": { "type": "string", "pattern": "^gno://" },
+        "score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "baseScore": { "type": "number", "minimum": 0, "maximum": 1 },
+        "matched": { "type": "boolean" },
+        "affinityRequested": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.03
+        },
+        "affinityApplied": { "type": "number", "minimum": 0, "maximum": 0.03 },
+        "collectionAlias": {
+          "oneOf": [
+            { "type": "string", "pattern": "^collection_[a-f0-9]{12}$" },
+            { "type": "null" }
+          ]
+        },
+        "rootAlias": {
+          "oneOf": [
+            { "type": "string", "pattern": "^root_[a-f0-9]{12}$" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "taskId",
+        "query",
+        "targetUri",
+        "requiredEvidenceRetained",
+        "disabled",
+        "enabled"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "taskId": { "type": "string", "pattern": "^t[0-9a-f]{7}$" },
+        "query": { "type": "string", "minLength": 1 },
+        "targetUri": { "type": "string", "pattern": "^gno://" },
+        "requiredEvidenceRetained": { "type": "boolean" },
+        "disabled": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/definitions/rankedEntry" }
+        },
+        "enabled": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/definitions/rankedEntry" }
+        }
+      }
+    }
+  }
+}

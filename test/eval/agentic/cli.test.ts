@@ -101,6 +101,8 @@ describe("agentic benchmark CLI", () => {
       reportMarkdown: "# Report\n",
       verifiedAskPromotionJson: '{"value":1}\n',
       verifiedAskPromotionMarkdown: "# Verified Ask\n",
+      projectAffinityPromotionJson: '{"value":1}\n',
+      projectAffinityPromotionMarkdown: "# Project affinity\n",
     };
     try {
       await writeBenchmarkArtifacts(target, artifacts);
@@ -126,6 +128,12 @@ describe("agentic benchmark CLI", () => {
       ).toBeTrue();
       expect(
         await Bun.file(join(target, "verified-ask-promotion.md")).exists()
+      ).toBeTrue();
+      expect(
+        await Bun.file(join(target, "project-affinity-promotion.json")).exists()
+      ).toBeTrue();
+      expect(
+        await Bun.file(join(target, "project-affinity-promotion.md")).exists()
       ).toBeTrue();
     } finally {
       await rm(root, { recursive: true, force: true });
