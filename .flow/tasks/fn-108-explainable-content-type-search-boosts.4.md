@@ -74,6 +74,6 @@ and the 68-page production build are green. Merge/deploy follows GNO landing.
 No macOS or Windows client artifacts were awaited, per roadmap execution
 policy.
 ## Evidence
-- Commits: 440db11
-- Tests: bun run lint:check, bun test, bun run docs:verify, bun run eval:agentic -- --write, bun test test/pipeline/content-type-boost-adversarial.test.ts test/eval/agentic/cli.test.ts test/eval/agentic/baseline.test.ts, .flow/bin/flowctl validate --spec fn-108-explainable-content-type-search-boosts --json, gno.sh: bun run typecheck && bun test && bun run build
+- Commits:
+- Tests:
 - PRs:

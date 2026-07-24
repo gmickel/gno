@@ -624,10 +624,13 @@ candidate. One canonical configured type wins: a configured frontmatter `type`
 ID takes precedence, otherwise longest-prefix matching applies. Boosts never
 stack and arbitrary categories cannot trigger them. Factors map linearly onto
 a contribution from `-0.05` through `+0.05`; project affinity and all other
-auxiliary signals share the final `±0.08` cap. The contribution is applied to
-the lane's normalized or blended relevance score before final cutoff/order,
-with scores clamped to `0..1`. Collection, tag, date, category, author, and
-exclude filters remain hard.
+auxiliary signals share the final `±0.08` cap. BM25 and vector apply the
+contribution after score normalization and before their existing cutoff/order;
+hybrid applies it to normalized fusion before rerank blending, so rerank and
+lexical top-hit protection remain the final ordering authority. Content-type
+rules do not widen retrieval or disable `minScore`. Scores stay clamped to
+`0..1`; collection, tag, date, category, author, and exclude filters remain
+hard.
 
 Use `gno query --explain` or `gno ask --explain` to inspect raw/base score,
 configured factor, requested/capped contribution, combined auxiliary cap, final

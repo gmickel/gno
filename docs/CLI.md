@@ -321,7 +321,8 @@ gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 - **Chunk-level reranking**: Best chunk per doc (4K max) for 25× faster reranking
 - **Lexical top-hit protection**: Preserves original BM25 #1 exact hits against rerank-only demotion
 - **Bounded content-type ranking**: One configured `searchBoost` contributes at
-  most `±0.05` and composes with project affinity under the shared `±0.08` cap
+  most `±0.05`, composes with project affinity under the shared `±0.08` cap,
+  and enters hybrid scoring before rerank blending without widening candidates
 
 Additional options:
 

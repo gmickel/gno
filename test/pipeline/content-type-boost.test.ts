@@ -252,7 +252,7 @@ describe("bounded content-type scoring", () => {
 
     expect(searched.ok).toBe(true);
     if (!searched.ok) return;
-    expect(requestedLimit).toBe(3);
+    expect(requestedLimit).toBe(1);
     expect(searched.value.results.map((entry) => entry.docid)).toEqual([
       "#strong00",
     ]);

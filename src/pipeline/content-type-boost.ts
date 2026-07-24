@@ -43,6 +43,11 @@ export interface ContentTypeBoostScoreMetadata {
   rulesFingerprint: string;
 }
 
+export interface AuxiliaryScoreResult {
+  contentTypeBoost?: ContentTypeBoostScoreMetadata;
+  projectAffinity: ProjectAffinityScoreMetadata;
+}
+
 export const SEARCH_RESULT_CONTENT_TYPE_BOOST_METADATA = Symbol(
   "gno.searchResultContentTypeBoostMetadata"
 );
@@ -117,10 +122,7 @@ export function scoreContentTypeBoost(
     kind: ProjectAffinityScoreMetadata["rawScoreKind"];
     score: number;
   } = { kind: "normalized", score: baseScore }
-): {
-  contentTypeBoost?: ContentTypeBoostScoreMetadata;
-  projectAffinity: ProjectAffinityScoreMetadata;
-} {
+): AuxiliaryScoreResult {
   const resolution = resolveContentTypeRule(
     contentType,
     relativePath,
@@ -172,6 +174,37 @@ export function scoreContentTypeBoost(
   };
 }
 
+export function attachAuxiliaryScoreMetadata(
+  result: SearchResult,
+  scored: AuxiliaryScoreResult,
+  finalScore: number,
+  includeProjectAffinity = false
+): SearchResult {
+  const projectAffinity = {
+    ...scored.projectAffinity,
+    finalBlendedScore: finalScore,
+    finalScore,
+  };
+  result.score = finalScore;
+  if (includeProjectAffinity) {
+    Object.defineProperty(result, SEARCH_RESULT_AFFINITY_METADATA, {
+      configurable: true,
+      enumerable: false,
+      value: projectAffinity,
+      writable: true,
+    });
+  }
+  if (scored.contentTypeBoost) {
+    Object.defineProperty(result, SEARCH_RESULT_CONTENT_TYPE_BOOST_METADATA, {
+      configurable: true,
+      enumerable: false,
+      value: { ...scored.contentTypeBoost, finalScore },
+      writable: true,
+    });
+  }
+  return result;
+}
+
 export function applyContentTypeBoost(
   result: SearchResult,
   collection: string,
@@ -193,25 +226,12 @@ export function applyContentTypeBoost(
   );
   const affinityActive = hasProjectAffinity(projectAffinity);
   if (!(scored.contentTypeBoost || affinityActive)) return result;
-
-  result.score = scored.projectAffinity.finalScore;
-  if (affinityActive) {
-    Object.defineProperty(result, SEARCH_RESULT_AFFINITY_METADATA, {
-      configurable: true,
-      enumerable: false,
-      value: scored.projectAffinity,
-      writable: true,
-    });
-  }
-  if (scored.contentTypeBoost) {
-    Object.defineProperty(result, SEARCH_RESULT_CONTENT_TYPE_BOOST_METADATA, {
-      configurable: true,
-      enumerable: false,
-      value: scored.contentTypeBoost,
-      writable: true,
-    });
-  }
-  return result;
+  return attachAuxiliaryScoreMetadata(
+    result,
+    scored,
+    scored.projectAffinity.finalScore,
+    affinityActive
+  );
 }
 
 export function getContentTypeBoostMetadata(

@@ -9,25 +9,28 @@ cwd or explicit roots, discovers repository/worktree roots, and matches them to
 configured collection paths with realpath-safe segment containment. SDK, REST,
 MCP, and browser inputs remain opaque/untrusted and resolve to zero matches.
 
-After each pipeline's base relevance is final—and before document cutoff/order—
-one matched collection can request `+0.03`. Overlapping or duplicate roots do
-not stack. All auxiliary signals use the order-independent shared formula
-`clamp(sum, -0.08, 0.08)` before the final score is clamped to `0..1`.
-Candidate breadth requested and returned are each bounded to at most `3×` the
-output limit; complete StorePort call receipts enforce per-method maxima and
-reject unexpected calls. Existing hard filters run unchanged. Explain uses
-deterministic aliases, not absolute roots. Diagnose emits those closed redacted
-fields only in affinity-bearing v1.1 output; zero-affinity requests preserve
-exact legacy v1.0 bytes and omit `affinity`.
+After BM25/vector normalization or hybrid fusion normalization—and before
+hybrid rerank blending—one matched collection can request `+0.03`. Overlapping
+or duplicate roots do not stack. All auxiliary signals use the order-independent
+shared formula `clamp(sum, -0.08, 0.08)` before the final score is clamped to
+`0..1`. Project affinity may request a candidate breadth bounded to at most
+`3×` the output limit; content-type boosts alone never widen candidate
+generation or defer `minScore`. Complete StorePort call receipts enforce
+per-method maxima and reject unexpected calls. Existing hard filters run
+unchanged. Explain uses deterministic aliases, not absolute roots. Diagnose
+emits those closed redacted fields only in affinity-bearing v1.1 output;
+zero-affinity requests preserve exact legacy v1.0 bytes and omit `affinity`.
 
 Configured content-type ranking enters the same seam. One canonical rule is
 resolved from configured type ID before longest-prefix matching;
 `searchBoost: 0.5..2` maps linearly to `-0.05..+0.05`. It composes
 order-independently with affinity under the shared cap, cannot create a
-candidate, and runs only after hard document filters. Explain carries the full
-score receipt and live ranking fingerprint. Diagnose uses v1.2 only when this
-component is active. Search-boost-only config changes affect live ranking but
-not persisted metadata derivation, so they do not trigger conversion or vector
+candidate, and runs only after hard document filters. Hybrid feeds the composed
+score into rerank blending; its final order and lexical top-hit guard remain
+authoritative. Explain carries the full score receipt and live ranking
+fingerprint. Diagnose uses v1.2 only when this component is active.
+Search-boost-only config changes affect live ranking but not persisted metadata
+derivation, so they do not trigger conversion or vector
 rebuilds.
 
 ## System Overview

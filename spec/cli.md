@@ -439,7 +439,10 @@ retains overlapping prefixes, and sorts rules longest-prefix-first. `searchBoost
 defaults to neutral `1`, accepts `0.5..2`, and maps one canonical configured
 type to a bounded `-0.05..+0.05` ranking contribution. A frontmatter type ID
 wins over longest-prefix matching; boosts never stack, cannot create
-candidates, and share the final `±0.08` auxiliary cap with project affinity.
+candidates, never widen retrieval or defer `minScore`, and share the final
+`±0.08` auxiliary cap with project affinity. Hybrid applies the composed score
+to normalized fusion before rerank blending; rerank order and lexical top-hit
+protection remain authoritative.
 `graphHints` is active: ordered hints type
 projected wiki/markdown edges and surface in graph traversal/diagnose metadata.
 

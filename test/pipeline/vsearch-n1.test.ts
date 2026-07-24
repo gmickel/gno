@@ -5,6 +5,7 @@
 
 import { describe, expect, test } from "bun:test";
 
+import type { NormalizedContentTypeRule } from "../../src/config/content-types";
 import type { Config } from "../../src/config/types";
 import type { EmbeddingPort } from "../../src/llm/types";
 import type {
@@ -76,6 +77,77 @@ const TEST_COLLECTIONS: CollectionRow[] = [
 ];
 
 describe("searchVectorWithEmbedding N+1 guard", () => {
+  test("content-type boosts neither oversample nor rescue below-minScore neighbors", async () => {
+    let capturedLimit: number | undefined;
+    let capturedMinScore: number | undefined;
+    const boostedDoc: DocumentRow = {
+      ...makeDoc(1, "boosted"),
+      contentType: "decision",
+    };
+    const store: Partial<StorePort> = {
+      getDocumentsByMirrorHashes: async () => ({
+        ok: true as const,
+        value: [boostedDoc],
+      }),
+      getCollections: async () => ({
+        ok: true as const,
+        value: TEST_COLLECTIONS,
+      }),
+      getChunksBatch: async () => ({
+        ok: true as const,
+        value: new Map([["boosted", [makeChunk("boosted", 0)]]]),
+      }),
+    };
+    const vectorIndex: VectorIndexPort = {
+      searchAvailable: true,
+      model: "test-model",
+      dimensions: 3,
+      vecDirty: false,
+      upsertVectors: async () => ({ ok: true, value: undefined }),
+      deleteVectorsForMirror: async () => ({ ok: true, value: undefined }),
+      searchNearest: async (_embedding, limit, options) => {
+        capturedLimit = limit;
+        capturedMinScore = options?.minScore;
+        return {
+          ok: true as const,
+          value: [{ mirrorHash: "boosted", seq: 0, distance: 1.5 }],
+        };
+      },
+      rebuildVecIndex: async () => ({ ok: true, value: undefined }),
+      syncVecIndex: async () => ({ ok: true, value: { added: 0, removed: 0 } }),
+    };
+    const contentTypeRules: NormalizedContentTypeRule[] = [
+      {
+        id: "decision",
+        preset: "decision-note",
+        prefixes: [],
+        searchBoost: 2,
+      },
+    ];
+
+    const result = await searchVectorWithEmbedding(
+      {
+        store: store as StorePort,
+        vectorIndex,
+        embedPort: {} as EmbeddingPort,
+        config: {} as Config,
+      },
+      "query",
+      new Float32Array([0.1, 0.2, 0.3]),
+      {
+        contentTypeRules,
+        limit: 1,
+        minScore: 0.3,
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(capturedLimit).toBe(1);
+    expect(capturedMinScore).toBe(0.3);
+    expect(result.value.results).toEqual([]);
+  });
+
   test("oversamples a bounded pool before affinity reorders output", async () => {
     let requestedLimit: number | undefined;
     const hashes = ["best", "second", "project", "fourth", "fifth", "sixth"];

@@ -23,6 +23,7 @@ import {
 import { formatQueryForEmbedding } from "./contextual";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { selectBestChunkForSteering } from "./intent";
+import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import { attachSearchResultContexts } from "./result-context";
 import {
@@ -95,9 +96,10 @@ export async function searchVectorWithEmbedding(
     options.projectAffinity,
     contentTypeRules
   );
+  const projectAffinityActive = hasProjectAffinity(options.projectAffinity);
   const recencySort = shouldSortByRecency(query);
   const retrievalLimit =
-    recencySort || auxiliaryRankingActive ? limit * 3 : limit;
+    recencySort || projectAffinityActive ? limit * 3 : limit;
   const temporalRange = resolveTemporalRange(
     query,
     options.since,
@@ -118,7 +120,7 @@ export async function searchVectorWithEmbedding(
     queryEmbedding,
     retrievalLimit,
     {
-      minScore: auxiliaryRankingActive ? undefined : minScore,
+      minScore: projectAffinityActive ? undefined : minScore,
       allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     }
   );
@@ -177,7 +179,7 @@ export async function searchVectorWithEmbedding(
 
   for (const vec of vecResults) {
     const baseScore = normalizeVectorScore(vec.distance);
-    if (!auxiliaryRankingActive && baseScore < minScore) {
+    if (!projectAffinityActive && baseScore < minScore) {
       continue;
     }
 

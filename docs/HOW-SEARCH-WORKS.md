@@ -22,13 +22,16 @@ The diagram below shows how your query flows through GNO's search system:
 
 **Stage 3: RRF Fusion** → Results are merged using Reciprocal Rank Fusion. Original query gets 2× weight. Top-ranked documents get tiered bonuses.
 
-**Stage 4: Reranking** → Top candidates rescored by Qwen3-Reranker using best chunk per document (4K chars).
-
-**Stage 5: Bounded auxiliary ranking** → After a lane's normalized or blended
-relevance score is final, a configured content type can contribute
+**Stage 4: Bounded auxiliary ranking** → After BM25/vector normalization or
+hybrid fusion normalization, a configured content type can contribute
 `-0.05..+0.05` and a trusted local CLI project match can contribute up to
-`+0.03` before document cutoff and ordering. Signals compose once under a
-shared `±0.08` cap; filters remain hard, and scores stay clamped to `0..1`.
+`+0.03`. Signals compose once under a shared `±0.08` cap; filters remain hard,
+and scores stay clamped to `0..1`.
+
+**Stage 5: Reranking** → Hybrid candidates are rescored by Qwen3-Reranker using
+the best chunk per document (4K chars). Auxiliary scoring enters its fusion
+side before blending; rerank and lexical top-hit protection remain the final
+ordering authority.
 
 `contentTypes[].searchBoost` accepts factors from `0.5` to `2`; omitted or `1`
 is exactly neutral. A canonical configured frontmatter type wins over
@@ -105,9 +108,19 @@ absent signals preserve exact v1.0 bytes.
                                 │
                                 ▼
 ┌───────────────────────────────────────────────────────────────┐
-│  STAGE 4: RERANKING (Qwen3-Reranker)                          │
+│  STAGE 4: BOUNDED AUXILIARY RANKING                           │
+│                                                               │
+│  Content type: -0.05..+0.05                                  │
+│  Trusted local project affinity: up to +0.03                  │
+│  Shared cap: ±0.08; hard filters already applied              │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────┐
+│  STAGE 5: RERANKING (Qwen3-Reranker)                          │
 │                                                               │
 │  Best chunk per document passed to cross-encoder (4K chars).  │
+│  Auxiliary score is part of the fusion side of the blend.     │
 │                                                               │
 │  Position-aware blending:                                     │
 │    1-3: 75% fusion / 25% rerank                               │
@@ -116,14 +129,6 @@ absent signals preserve exact v1.0 bytes.
 │                                                               │
 │  Guardrail: preserve original BM25 #1 exact hit as top result │
 └───────────────────────────────┬───────────────────────────────┘
-                                │
-                                ▼
-┌───────────────────────────────────────────────────────────────┐
-│  STAGE 5: BOUNDED AUXILIARY RANKING                           │
-│                                                               │
-│  Content type: -0.05..+0.05                                  │
-│  Trusted local project affinity: up to +0.03                  │
-│  Shared cap: ±0.08; hard filters already applied              │
 └───────────────────────────────┬───────────────────────────────┘
                                 │
                                 ▼

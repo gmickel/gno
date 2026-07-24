@@ -25,6 +25,7 @@ import {
 } from "./content-type-boost";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { selectBestChunkForSteering } from "./intent";
+import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import { attachSearchResultContexts } from "./result-context";
 import {
@@ -169,9 +170,10 @@ export async function searchBm25(
     options.projectAffinity,
     options.contentTypeRules
   );
+  const projectAffinityActive = hasProjectAffinity(options.projectAffinity);
   const recencySort = shouldSortByRecency(query);
   const retrievalLimit =
-    recencySort || auxiliaryRankingActive ? limit * 3 : limit;
+    recencySort || projectAffinityActive ? limit * 3 : limit;
   const temporalRange = resolveTemporalRange(
     query,
     options.since,

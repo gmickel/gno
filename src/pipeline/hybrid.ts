@@ -7,7 +7,7 @@
 
 import type { Config } from "../config/types";
 import type { EmbeddingPort, GenerationPort, RerankPort } from "../llm/types";
-import type { StorePort } from "../store/types";
+import type { DocumentRow, StorePort } from "../store/types";
 import type { VectorIndexPort } from "../store/vector/types";
 import type {
   ExpansionResult,
@@ -25,8 +25,9 @@ import { embedTextsWithRecovery } from "../embed/batch";
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
 import {
-  applyContentTypeBoost,
+  attachAuxiliaryScoreMetadata,
   hasAuxiliaryRanking,
+  scoreContentTypeBoost,
   sortByFinalScoreStable,
 } from "./content-type-boost";
 import { formatQueryForEmbedding } from "./contextual";
@@ -47,6 +48,7 @@ import { evaluateDocumentChunkFilters } from "./filters";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
 import { selectBestChunkForSteering } from "./intent";
+import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import {
   buildExpansionFromQueryModes,
@@ -695,6 +697,67 @@ export async function searchHybrid(
     explainFusion(pipelineConfig.rrf.k, fusedCandidates.length)
   );
 
+  // Auxiliary scores enter after fusion normalization and before rerank
+  // blending. The reranker therefore remains the final ordering authority,
+  // including its lexical top-hit guardrail.
+  let prefetchedDocuments: DocumentRow[] | undefined;
+  const auxiliaryBaseScores = new Map<string, number>();
+  const preRerankAdjustedCandidates = new Set<string>();
+  let adjustNormalizedFusionScore:
+    | ((
+        candidate: (typeof fusedCandidates)[number],
+        normalizedScore: number
+      ) => number)
+    | undefined;
+  if (auxiliaryRankingActive) {
+    const prefetchedDocumentsResult = await store.getDocumentsByMirrorHashes(
+      [...new Set(fusedCandidates.map((candidate) => candidate.mirrorHash))],
+      {
+        collection: options.collection,
+        activeOnly: true,
+      }
+    );
+    if (!prefetchedDocumentsResult.ok) {
+      return err("QUERY_FAILED", prefetchedDocumentsResult.error.message);
+    }
+    prefetchedDocuments = prefetchedDocumentsResult.value;
+    const scoringDocumentsByHash = new Map<string, DocumentRow[]>();
+    for (const document of [...prefetchedDocuments].sort((left, right) => {
+      if (left.uri !== right.uri) return left.uri.localeCompare(right.uri);
+      return left.docid.localeCompare(right.docid);
+    })) {
+      if (!document.mirrorHash) continue;
+      const documents = scoringDocumentsByHash.get(document.mirrorHash) ?? [];
+      documents.push(document);
+      scoringDocumentsByHash.set(document.mirrorHash, documents);
+    }
+    adjustNormalizedFusionScore = (candidate, normalizedScore) => {
+      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}`;
+      auxiliaryBaseScores.set(candidateKey, normalizedScore);
+      const documents = scoringDocumentsByHash.get(candidate.mirrorHash);
+      if (!documents?.length) return normalizedScore;
+      const projectedScores = documents.map(
+        (document) =>
+          scoreContentTypeBoost(
+            normalizedScore,
+            document.contentType ?? undefined,
+            document.relPath,
+            document.collection,
+            contentTypeRules,
+            options.projectAffinity,
+            { kind: "hybrid_blended", score: normalizedScore }
+          ).projectAffinity.finalScore
+      );
+      const agreedScore = projectedScores[0] ?? normalizedScore;
+      const projectionsAgree = projectedScores.every(
+        (score) => Math.abs(score - agreedScore) < 1e-9
+      );
+      if (!projectionsAgree) return normalizedScore;
+      preRerankAdjustedCandidates.add(candidateKey);
+      return agreedScore;
+    };
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // 4. Reranking
   // ─────────────────────────────────────────────────────────────────────────
@@ -707,6 +770,7 @@ export async function searchHybrid(
       maxCandidates: candidateLimit,
       blendingSchedule: pipelineConfig.blendingSchedule,
       intent: options.intent,
+      adjustNormalizedFusionScore,
     }
   );
   if (rerankResult.fallbackReason === "disabled") {
@@ -749,30 +813,31 @@ export async function searchHybrid(
   const neededHashes = new Set(filteredCandidates.map((c) => c.mirrorHash));
 
   // Fetch only needed documents and collections.
-  const docsResult = await store.getDocumentsByMirrorHashes([...neededHashes], {
-    collection: options.collection,
-    activeOnly: true,
-  });
+  let documents = prefetchedDocuments;
+  if (!documents) {
+    const docsResult = await store.getDocumentsByMirrorHashes(
+      [...neededHashes],
+      {
+        collection: options.collection,
+        activeOnly: true,
+      }
+    );
+    if (!docsResult.ok) {
+      return err("QUERY_FAILED", docsResult.error.message);
+    }
+    documents = docsResult.value;
+  }
   const collectionsResult = await store.getCollections();
 
-  if (!docsResult.ok) {
-    return err("QUERY_FAILED", docsResult.error.message);
-  }
-
   // Build lookup maps.
-  const docsByMirrorHash = new Map<
-    string,
-    (typeof docsResult.value)[number][]
-  >();
-  const addDocument = (doc: (typeof docsResult.value)[number]): void => {
+  const docsByMirrorHash = new Map<string, DocumentRow[]>();
+  const addDocument = (doc: DocumentRow): void => {
     if (!doc.mirrorHash) return;
     const docs = docsByMirrorHash.get(doc.mirrorHash) ?? [];
     docs.push(doc);
     docsByMirrorHash.set(doc.mirrorHash, docs);
   };
-  const matchesMetadataFilters = (
-    doc: (typeof docsResult.value)[number]
-  ): boolean => {
+  const matchesMetadataFilters = (doc: DocumentRow): boolean => {
     const relPathPrefix = options.retrievalScope?.relPathPrefix;
     if (
       relPathPrefix !== undefined &&
@@ -808,9 +873,9 @@ export async function searchHybrid(
   // Collect doc IDs that need tag filtering
   const needsTagFilter = options.tagsAll?.length || options.tagsAny?.length;
   const docIdsForTagCheck: number[] = [];
-  const candidateDocs: (typeof docsResult.value)[number][] = [];
+  const candidateDocs: DocumentRow[] = [];
 
-  for (const doc of docsResult.value) {
+  for (const doc of documents) {
     if (!doc.mirrorHash) {
       continue;
     }
@@ -974,40 +1039,61 @@ export async function searchHybrid(
       if (options.full && !auxiliaryRankingActive) {
         seenDocids.add(doc.docid);
       }
-      const scoredResult = applyContentTypeBoost(
-        {
-          docid: doc.docid,
-          score: candidate.blendedScore,
-          uri: doc.uri,
-          title: doc.title ?? undefined,
-          contentType: doc.contentType ?? undefined,
-          categories: doc.categories ?? undefined,
-          line: snippetChunk.startLine,
-          snippet,
-          snippetLanguage: chunk.language ?? undefined,
-          snippetRange,
-          source: {
-            relPath: doc.relPath,
-            absPath: collectionPath
-              ? `${collectionPath}/${doc.relPath}`
-              : undefined,
-            mime: doc.sourceMime,
-            ext: doc.sourceExt,
-            modifiedAt: doc.sourceMtime,
-            documentDate: doc.frontmatterDate ?? undefined,
-            sizeBytes: doc.sourceSize,
-            sourceHash: doc.sourceHash,
-          },
-          conversion: {
-            mirrorHash: candidate.mirrorHash,
-            converterId: doc.converterId ?? undefined,
-            converterVersion: doc.converterVersion ?? undefined,
-          },
+      const baseResult: SearchResult = {
+        docid: doc.docid,
+        score: candidate.blendedScore,
+        uri: doc.uri,
+        title: doc.title ?? undefined,
+        contentType: doc.contentType ?? undefined,
+        categories: doc.categories ?? undefined,
+        line: snippetChunk.startLine,
+        snippet,
+        snippetLanguage: chunk.language ?? undefined,
+        snippetRange,
+        source: {
+          relPath: doc.relPath,
+          absPath: collectionPath
+            ? `${collectionPath}/${doc.relPath}`
+            : undefined,
+          mime: doc.sourceMime,
+          ext: doc.sourceExt,
+          modifiedAt: doc.sourceMtime,
+          documentDate: doc.frontmatterDate ?? undefined,
+          sizeBytes: doc.sourceSize,
+          sourceHash: doc.sourceHash,
         },
+        conversion: {
+          mirrorHash: candidate.mirrorHash,
+          converterId: doc.converterId ?? undefined,
+          converterVersion: doc.converterVersion ?? undefined,
+        },
+      };
+      const auxiliaryBaseScore =
+        auxiliaryBaseScores.get(`${candidate.mirrorHash}:${candidate.seq}`) ??
+        candidate.blendedScore;
+      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}`;
+      const composedBeforeRerank =
+        preRerankAdjustedCandidates.has(candidateKey);
+      const scoringBaseScore =
+        rerankResult.reranked && !composedBeforeRerank
+          ? candidate.blendedScore
+          : auxiliaryBaseScore;
+      const scored = scoreContentTypeBoost(
+        scoringBaseScore,
+        doc.contentType ?? undefined,
+        doc.relPath,
         doc.collection,
         contentTypeRules,
         options.projectAffinity,
-        { kind: "hybrid_blended", score: candidate.blendedScore }
+        { kind: "hybrid_blended", score: scoringBaseScore }
+      );
+      const scoredResult = attachAuxiliaryScoreMetadata(
+        baseResult,
+        scored,
+        rerankResult.reranked && composedBeforeRerank
+          ? candidate.blendedScore
+          : scored.projectAffinity.finalScore,
+        hasProjectAffinity(options.projectAffinity)
       );
       if (scoredResult.score < minScore) continue;
       results.push(
@@ -1060,7 +1146,7 @@ export async function searchHybrid(
       }
       return b.score - a.score;
     });
-  } else if (auxiliaryRankingActive) {
+  } else if (auxiliaryRankingActive && !rerankResult.reranked) {
     sortByFinalScoreStable(dedupedResults);
   }
 
