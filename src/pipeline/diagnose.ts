@@ -14,16 +14,23 @@ import type {
   QueryDiagnoseTraceCandidate,
 } from "./types";
 
-import { fingerprintContentTypeRules } from "../config";
+import {
+  fingerprintContentTypeMetadataRules,
+  normalizeContentTypes,
+} from "../config";
 import { resolveDocRef } from "../core/ref-parser";
 import { err, ok } from "../store/types";
+import {
+  getContentTypeBoostMetadata,
+  scoreContentTypeBoost,
+  type ContentTypeBoostScoreMetadata,
+} from "./content-type-boost";
 import { evaluateQueryTargetFilters } from "./filters";
 import { searchHybrid } from "./hybrid";
 import {
   getProjectAffinityMetadata,
   type ProjectAffinityScoringInput,
   type ProjectAffinityScoreMetadata,
-  scoreProjectAffinity,
 } from "./project-affinity";
 
 export type QueryDiagnoseTargetStatus =
@@ -52,7 +59,7 @@ export interface QueryDiagnoseStage {
 }
 
 export interface QueryDiagnoseResult {
-  schemaVersion: "1.0" | "1.1";
+  schemaVersion: "1.0" | "1.1" | "1.2";
   query: string;
   target: {
     ref: string;
@@ -72,6 +79,7 @@ export interface QueryDiagnoseResult {
   };
   stages: QueryDiagnoseStage[];
   affinity?: ProjectAffinityScoreMetadata;
+  contentTypeBoost?: ContentTypeBoostScoreMetadata;
   chunk: {
     seq: number | null;
     startLine: number | null;
@@ -182,9 +190,12 @@ export async function diagnoseQueryTarget(
   }
 
   const doc = resolved.doc;
-  const rules = options.contentTypeRules ?? [];
+  const rules =
+    options.contentTypeRules ??
+    normalizeContentTypes(deps.config.contentTypes ?? []).rules;
   const expectedFingerprint =
-    options.contentTypeRulesFingerprint ?? fingerprintContentTypeRules(rules);
+    options.contentTypeRulesFingerprint ??
+    fingerprintContentTypeMetadataRules(rules);
   const fingerprintMatches = doc.contentTypeRulesFingerprint
     ? doc.contentTypeRulesFingerprint === expectedFingerprint
     : null;
@@ -302,16 +313,24 @@ export async function diagnoseQueryTarget(
       (candidate) =>
         candidate.mirrorHash === doc.mirrorHash && targetSeqs.has(candidate.seq)
     );
+  const fallbackScore = lastMatched
+    ? scoreContentTypeBoost(
+        lastMatched.score,
+        doc.contentType ?? undefined,
+        doc.contentTypeSource,
+        doc.relPath,
+        doc.collection,
+        rules,
+        options.projectAffinity,
+        { kind: "hybrid_blended", score: lastMatched.score }
+      )
+    : undefined;
   const affinity =
     (targetResult ? getProjectAffinityMetadata(targetResult) : undefined) ??
-    (lastMatched && options.projectAffinity
-      ? scoreProjectAffinity(
-          lastMatched.score,
-          doc.collection,
-          options.projectAffinity,
-          { kind: "hybrid_blended", score: lastMatched.score }
-        )
-      : null);
+    (options.projectAffinity ? fallbackScore?.projectAffinity : undefined);
+  const contentTypeBoost =
+    (targetResult ? getContentTypeBoostMetadata(targetResult) : undefined) ??
+    fallbackScore?.contentTypeBoost;
 
   const baseResult: QueryDiagnoseResult = {
     ...buildBaseResult(query, options.target, "diagnosed", doc, {
@@ -335,13 +354,21 @@ export async function diagnoseQueryTarget(
       queryModes: searchResult.value.meta.queryModes,
     },
   };
-  return ok(
+  const trustedAffinity =
     affinity && hasTrustedProjectAffinityInput(options.projectAffinity)
-      ? {
-          ...baseResult,
-          schemaVersion: "1.1",
-          affinity,
-        }
+      ? affinity
+      : undefined;
+  if (contentTypeBoost) {
+    return ok({
+      ...baseResult,
+      schemaVersion: "1.2",
+      ...(trustedAffinity ? { affinity: trustedAffinity } : {}),
+      contentTypeBoost,
+    });
+  }
+  return ok(
+    trustedAffinity
+      ? { ...baseResult, schemaVersion: "1.1", affinity: trustedAffinity }
       : baseResult
   );
 }

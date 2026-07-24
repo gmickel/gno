@@ -7,6 +7,7 @@
 import type { IndexStatus } from "../../store/types";
 import type { ToolContext } from "../server";
 
+import { buildContentTypeBoostStatus } from "../../config/content-types";
 import { resolveModelUri } from "../../llm/registry";
 import { createStandaloneResidentStatus } from "../../serve/resident-status";
 import { runTool, type ToolResult } from "./index";
@@ -87,6 +88,9 @@ export function handleStatus(
       return {
         ...result.value,
         configPath: ctx.actualConfigPath,
+        contentTypeBoost: buildContentTypeBoostStatus(
+          ctx.config.contentTypes ?? []
+        ),
         resident:
           ctx.getResidentStatus?.() ?? createStandaloneResidentStatus("stdio"),
       };

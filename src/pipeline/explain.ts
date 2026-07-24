@@ -14,6 +14,8 @@ import type {
   SearchResult,
 } from "./types";
 
+import { getContentTypeBoostMetadata } from "./content-type-boost";
+import { getProjectAffinityMetadata } from "./project-affinity";
 import { SEARCH_RESULT_PLANNER_METADATA } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,7 +41,8 @@ export function formatResultExplain(results: ExplainResult[]): string {
       r.bm25Score !== undefined ||
       r.vecScore !== undefined ||
       r.rerankScore !== undefined ||
-      r.projectAffinity !== undefined
+      r.projectAffinity !== undefined ||
+      r.contentTypeBoost !== undefined
     ) {
       msg += " (";
       if (r.fusionScore !== undefined) {
@@ -68,6 +71,12 @@ export function formatResultExplain(results: ExplainResult[]): string {
           msg += ", ";
         }
         msg += `raw=${r.projectAffinity.rawScoreKind}:${r.projectAffinity.rawScore.toFixed(3)}, base=${r.projectAffinity.baseScore.toFixed(3)}, affinity=${r.projectAffinity.affinityApplied.toFixed(3)}/${r.projectAffinity.affinityRequested.toFixed(3)}, auxiliary=${r.projectAffinity.combinedAuxiliaryApplied.toFixed(3)}/${r.projectAffinity.combinedAuxiliaryCap.toFixed(3)}, collection=${r.projectAffinity.collectionAlias}, root=${r.projectAffinity.rootAlias}, source=${r.projectAffinity.source}, final=${r.projectAffinity.finalScore.toFixed(3)}`;
+      }
+      if (r.contentTypeBoost) {
+        if (msg.at(-1) !== "(") {
+          msg += ", ";
+        }
+        msg += `contentType=${r.contentTypeBoost.contentType}, factor=${r.contentTypeBoost.configuredFactor.toFixed(3)}, rawBoost=${r.contentTypeBoost.rawContribution.toFixed(3)}, cappedBoost=${r.contentTypeBoost.cappedContribution.toFixed(3)}, auxiliary=${r.contentTypeBoost.combinedAuxiliaryApplied.toFixed(3)}/${r.contentTypeBoost.combinedAuxiliaryCap.toFixed(3)}, source=${r.contentTypeBoost.ruleSource}, final=${r.contentTypeBoost.finalScore.toFixed(3)}`;
       }
       msg += ")";
     }
@@ -227,7 +236,11 @@ export function buildExplainResults(
           entry.mirrorHash === result.conversion?.mirrorHash &&
           entry.seq === (planner?.retrievalSeq ?? planner?.seq)
       );
-      return buildExplainResult(result.docid, result.score, index, candidate);
+      return {
+        ...buildExplainResult(result.docid, result.score, index, candidate),
+        projectAffinity: getProjectAffinityMetadata(result),
+        contentTypeBoost: getContentTypeBoostMetadata(result),
+      };
     });
   }
   return candidates.slice(0, 20).map((candidate, index) => {

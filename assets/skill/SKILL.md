@@ -122,6 +122,7 @@ Recipe rules:
 --line-numbers        Include line numbers
 --project-root <path> Trusted local root; repeatable and replaces cwd affinity
 --no-project-affinity Disable trusted local project-aware ranking
+--explain            Include retrieval scoring details
 ```
 
 CLI searches use explicit `--project-root`, the nearest valid compiled project
@@ -136,6 +137,13 @@ overwrites the user's global `projectAffinity` default, so one repository
 cannot change another repository's fallback. Explain/diagnose identify this
 trusted source as `project_profile`; contexts, content types, source metadata,
 and document fields never become project identity.
+
+Configured `contentTypes[].searchBoost` is a separate local ranking signal.
+`1` is neutral; `0.5..2` maps to a bounded `-0.05..+0.05` contribution, and
+all auxiliary signals share `±0.08`. It cannot create candidates or bypass hard
+filters. Use `gno query --explain`, `gno ask --explain`, or
+`gno query diagnose` when the ranking effect matters; normal output omits the
+boost receipt.
 
 Do not treat MCP/SDK/REST `projectHints` as paths. They are opaque, untrusted,
 limited to 16, never trigger filesystem probing, and currently produce zero

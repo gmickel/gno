@@ -1,8 +1,10 @@
+import type { ContentTypeBoostPromotionArtifact } from "./content-type-boost-promotion";
 import type { ProjectAffinityPromotionArtifact } from "./project-affinity-promotion";
 import type { BenchmarkReport } from "./types";
 import type { VerifiedAskPromotionArtifact } from "./verified-ask-outcome";
 
 import { canonicalJson } from "./canonical";
+import { renderContentTypeBoostPromotionMarkdown } from "./content-type-boost-promotion";
 import { renderProjectAffinityPromotionMarkdown } from "./project-affinity-promotion";
 import { benchmarkCanonicalProjection } from "./report";
 import { renderVerifiedAskPromotionMarkdown } from "./verified-ask-outcome";
@@ -187,12 +189,15 @@ export interface BenchmarkArtifacts {
   verifiedAskPromotionMarkdown?: string;
   projectAffinityPromotionJson?: string;
   projectAffinityPromotionMarkdown?: string;
+  contentTypeBoostPromotionJson?: string;
+  contentTypeBoostPromotionMarkdown?: string;
 }
 
 export const createBenchmarkArtifacts = (
   report: BenchmarkReport,
   verifiedAskPromotion?: VerifiedAskPromotionArtifact,
-  projectAffinityPromotion?: ProjectAffinityPromotionArtifact
+  projectAffinityPromotion?: ProjectAffinityPromotionArtifact,
+  contentTypeBoostPromotion?: ContentTypeBoostPromotionArtifact
 ): BenchmarkArtifacts => {
   const projectedReport: BenchmarkReport = {
     ...report,
@@ -238,6 +243,15 @@ export const createBenchmarkArtifacts = (
           ),
           projectAffinityPromotionMarkdown:
             renderProjectAffinityPromotionMarkdown(projectAffinityPromotion),
+        }
+      : {}),
+    ...(contentTypeBoostPromotion
+      ? {
+          contentTypeBoostPromotionJson: stablePrettyJson(
+            contentTypeBoostPromotion
+          ),
+          contentTypeBoostPromotionMarkdown:
+            renderContentTypeBoostPromotionMarkdown(contentTypeBoostPromotion),
         }
       : {}),
   };

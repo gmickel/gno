@@ -11,6 +11,7 @@ import type {
   HybridSearchOptions,
   QueryModeInput,
   SearchMeta,
+  SearchExplain,
   SearchResult,
   SearchResults,
 } from "../pipeline/types";
@@ -113,6 +114,8 @@ export interface ContextCompilerInput {
   limits: ContextBudgetLimits;
   /** One caller-owned, successfully loaded context snapshot for this plan. */
   contextSnapshot: ContextRow[];
+  /** Internal non-canonical retrieval explanation request. */
+  explain?: boolean;
 }
 
 export interface ContextRetrievalPlan {
@@ -159,6 +162,8 @@ export interface ContextEvidencePlan<
   uriPrefix: string | null;
   retrieval: ContextRetrievalPlan;
   configuredContexts: ContextConfiguredGuidance[];
+  /** Non-canonical scoring sidecar; never included in Capsule projection. */
+  explain?: SearchExplain;
 }
 
 const compareCodeUnits = (left: string, right: string): number => {
@@ -365,6 +370,7 @@ export const planContextEvidence = async <T, P>(
         limit: resultLimit === undefined ? undefined : Math.max(1, resultLimit),
         candidateLimit:
           rerankLimit === undefined ? undefined : Math.max(1, rerankLimit),
+        explain: input.explain,
       })
     );
   }
@@ -393,6 +399,33 @@ export const planContextEvidence = async <T, P>(
     .slice(0, input.limit ?? decoratedResults.length)
     .map(({ result }) => result)
     .sort(compareSearchResults);
+  const explainByResult = new Map<string, SearchExplain["results"][number]>();
+  for (const response of responses) {
+    for (const [index, result] of response.results.entries()) {
+      const detail = response.meta.explain?.results[index];
+      if (detail) explainByResult.set(`${result.docid}\0${result.uri}`, detail);
+    }
+  }
+  const explain = input.explain
+    ? {
+        lines: responses.flatMap(
+          (response) => response.meta.explain?.lines ?? []
+        ),
+        results: results.flatMap((result) => {
+          const detail = explainByResult.get(`${result.docid}\0${result.uri}`);
+          const retrievalRank = plannerMeta(result)?.retrievalRank;
+          return detail
+            ? [
+                {
+                  ...detail,
+                  rank: retrievalRank ?? detail.rank,
+                  score: result.score,
+                },
+              ]
+            : [];
+        }),
+      }
+    : undefined;
   const uriPrefix =
     input.uriPrefix === null || input.uriPrefix === undefined
       ? null
@@ -528,5 +561,9 @@ export const planContextEvidence = async <T, P>(
     projectCanonical: (state) =>
       deps.projectCanonical({ ...baseDraft, selection: state }),
   });
-  return { ...baseDraft, ...selection };
+  return {
+    ...baseDraft,
+    ...selection,
+    ...(explain ? { explain } : {}),
+  };
 };

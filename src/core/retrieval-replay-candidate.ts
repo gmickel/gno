@@ -12,6 +12,7 @@ import type { RetrievalQrelsCase } from "./retrieval-qrels";
 import type { RetrievalReplayCandidate } from "./retrieval-replay-types";
 
 import { parseUri } from "../app/constants";
+import { normalizeContentTypes } from "../config";
 import { searchHybrid } from "../pipeline/hybrid";
 import { searchBm25 } from "../pipeline/search";
 import { SEARCH_RESULTS_TRACE_METADATA } from "../pipeline/types";
@@ -145,7 +146,11 @@ const runCandidateOnce = async (
   options: HybridSearchOptions
 ): Promise<StoreResult<SearchResults>> => {
   if (candidate.type === "bm25") {
-    return searchBm25(deps.store, source.query.text, options);
+    return searchBm25(deps.store, source.query.text, {
+      ...options,
+      contentTypeRules: normalizeContentTypes(deps.config.contentTypes ?? [])
+        .rules,
+    });
   }
   if (candidate.type === "vector") {
     if (!(deps.vectorIndex && deps.embedPort)) {

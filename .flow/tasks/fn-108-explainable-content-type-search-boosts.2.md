@@ -38,9 +38,37 @@ Deliver apply one capped boost across retrieval and explain output as one implem
 
 
 ## Done summary
-TBD
+Implemented one shared bounded content-type ranking signal across BM25, vector,
+and hybrid retrieval.
 
+- Added monotonic factor-to-contribution scoring capped at +/-0.05.
+- Composed content-type scoring with project affinity under the existing
+  combined +/-0.08 auxiliary cap.
+- Applied scoring only after normalized/blended relevance exists, before final
+  cutoff and ordering; candidate generation and filters remain unchanged.
+- Added stable tie ordering and exact neutral/missing-rule no-op behavior.
+- Added non-enumerable scoring metadata plus explain and diagnose projections
+  for base/raw/factor/contribution/combined/final values.
+- Refreshed the closed project-affinity provenance receipt because
+  `src/pipeline/vsearch.ts` is part of that benchmark's implementation
+  fingerprint; the authoritative agentic benchmark remains green.
+
+Implementation commit: `8fad413`
+
+Verification:
+
+- `bun run lint:check`
+- `bun test test/config/content-types* test/pipeline/content-type-boost*`
+- `bun test test/eval/agentic/baseline.test.ts test/config/content-types* test/pipeline/content-type-boost* test/pipeline/diagnose.test.ts`
+- `bun run eval:agentic`
+- `.flow/bin/flowctl validate --spec fn-108-explainable-content-type-search-boosts --json`
+
+Baseline note: the first pre-edit focused command was red because the
+task-owned `test/pipeline/content-type-boost*` target did not exist. The first
+full-suite run later isolated one expected provenance mismatch after changing
+`vsearch.ts`; refreshing the receipt fixed it, and the focused authoritative
+baseline plus the full agentic benchmark passed.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 8fad413
+- Tests: bun run lint:check, bun test test/config/content-types* test/pipeline/content-type-boost*, bun test test/eval/agentic/baseline.test.ts test/config/content-types* test/pipeline/content-type-boost* test/pipeline/diagnose.test.ts, bun run eval:agentic, .flow/bin/flowctl validate --spec fn-108-explainable-content-type-search-boosts --json
 - PRs:

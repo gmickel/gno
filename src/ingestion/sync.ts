@@ -33,7 +33,10 @@ import type {
   WalkerPort,
 } from "./types";
 
-import { fingerprintContentTypeRules } from "../config";
+import {
+  fingerprintContentTypeMetadataRules,
+  resolveContentTypeRule,
+} from "../config";
 import { getDefaultMimeDetector, type MimeDetector } from "../converters/mime";
 import {
   type ConversionPipeline,
@@ -80,7 +83,8 @@ const MAX_CONCURRENCY = 16;
  * Documents with ingestVersion < INGEST_VERSION will be re-processed.
  */
 export const INGEST_VERSION = 6;
-const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT = fingerprintContentTypeRules([]);
+const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT =
+  fingerprintContentTypeMetadataRules([]);
 const RELATION_EDGE_TYPE_PATTERN = /^[a-z][a-z0-9_]*$/;
 const PROJECTION_YIELD_INTERVAL = 25;
 const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
@@ -401,18 +405,6 @@ function parseCategories(input: unknown): string[] {
   return [];
 }
 
-function matchPrefixContentType(
-  relPath: string,
-  rules: NormalizedContentTypeRule[]
-): string | undefined {
-  for (const rule of rules) {
-    if (rule.prefixes.some((prefix) => relPath.startsWith(prefix))) {
-      return rule.id;
-    }
-  }
-  return undefined;
-}
-
 export function extractDocumentMetadata(
   markdown: string,
   relPath: string,
@@ -421,23 +413,23 @@ export function extractDocumentMetadata(
 ): DocumentMetadata {
   const parsed = parseFrontmatter(markdown);
   const metadata = parsed.metadata;
-  const typedRules = new Map(contentTypeRules.map((rule) => [rule.id, rule]));
   const rawFrontmatterType =
     typeof metadata.type === "string"
       ? normalizeFrontmatterScalar(metadata.type)
       : "";
-  const frontmatterType = typedRules.get(rawFrontmatterType)?.id;
-  const prefixType =
-    frontmatterType === undefined
-      ? matchPrefixContentType(relPath, contentTypeRules)
-      : undefined;
+  const configuredRule = resolveContentTypeRule(
+    rawFrontmatterType,
+    relPath,
+    contentTypeRules
+  );
   const inferred = inferPathContentType(relPath, ext);
-  const contentType = frontmatterType ?? prefixType ?? inferred.contentType;
-  const contentTypeSource: ContentTypeSource = frontmatterType
-    ? "frontmatter-type"
-    : prefixType
-      ? "prefix"
-      : inferred.source;
+  const contentType = configuredRule?.rule.id ?? inferred.contentType;
+  const contentTypeSource: ContentTypeSource =
+    configuredRule?.source === "configured-id"
+      ? "frontmatter-type"
+      : configuredRule?.source === "prefix"
+        ? "prefix"
+        : inferred.source;
   const categories = new Set<string>([contentType]);
 
   const fmCategories = parseCategories(
@@ -679,7 +671,7 @@ export class SyncService {
       const contentTypeRules = options.contentTypeRules ?? [];
       const contentTypeRulesFingerprint =
         options.contentTypeRulesFingerprint ??
-        fingerprintContentTypeRules(contentTypeRules);
+        fingerprintContentTypeMetadataRules(contentTypeRules);
 
       // 4. Check existing doc for skip/repair decision
       const existingResult = await store.getDocument(
@@ -1066,7 +1058,7 @@ export class SyncService {
       contentTypeRules: options.contentTypeRules ?? [],
       contentTypeRulesFingerprint:
         options.contentTypeRulesFingerprint ??
-        fingerprintContentTypeRules(options.contentTypeRules ?? []),
+        fingerprintContentTypeMetadataRules(options.contentTypeRules ?? []),
     };
     const results: FileSyncResult[] = [];
     const projectionSourceIds = new Set<number>();
@@ -1411,7 +1403,7 @@ export class SyncService {
       contentTypeRules: options.contentTypeRules ?? [],
       contentTypeRulesFingerprint:
         options.contentTypeRulesFingerprint ??
-        fingerprintContentTypeRules(options.contentTypeRules ?? []),
+        fingerprintContentTypeMetadataRules(options.contentTypeRules ?? []),
     };
     const errors: Array<{ relPath: string; code: string; message: string }> =
       [];

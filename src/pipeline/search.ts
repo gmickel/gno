@@ -18,9 +18,14 @@ import type {
 import { getContentBatch } from "../store/content-batch";
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
+import {
+  applyContentTypeBoost,
+  hasAuxiliaryRanking,
+  sortByFinalScoreStable,
+} from "./content-type-boost";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { selectBestChunkForSteering } from "./intent";
-import { applyProjectAffinity, hasProjectAffinity } from "./project-affinity";
+import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import { attachSearchResultContexts } from "./result-context";
 import {
@@ -161,9 +166,14 @@ export async function searchBm25(
   const traceStartedAt = options.traceSession ? performance.now() : 0;
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
-  const affinityActive = hasProjectAffinity(options.projectAffinity);
+  const auxiliaryRankingActive = hasAuxiliaryRanking(
+    options.projectAffinity,
+    options.contentTypeRules
+  );
+  const projectAffinityActive = hasProjectAffinity(options.projectAffinity);
   const recencySort = shouldSortByRecency(query);
-  const retrievalLimit = recencySort || affinityActive ? limit * 3 : limit;
+  const retrievalLimit =
+    recencySort || projectAffinityActive ? limit * 3 : limit;
   const temporalRange = resolveTemporalRange(
     query,
     options.since,
@@ -212,7 +222,11 @@ export async function searchBm25(
   const results: SearchResult[] = [];
   const scoringByResult = new WeakMap<
     SearchResult,
-    { collection: string; rawScore: number }
+    {
+      collection: string;
+      contentTypeSource?: string;
+      rawScore: number;
+    }
   >();
 
   // Pre-fetch all chunks in one batch query (eliminates N+1)
@@ -289,7 +303,7 @@ export async function searchBm25(
     // For --full, de-dupe by docid (keep best scoring chunk per doc)
     // Raw BM25: smaller (more negative) is better
     if (options.full) {
-      if (affinityActive) {
+      if (auxiliaryRankingActive) {
         fullAffinityEntries.push({ fts, chunk, score: fts.score });
         continue;
       }
@@ -308,6 +322,7 @@ export async function searchBm25(
     if (fts.collection) {
       scoringByResult.set(result, {
         collection: fts.collection,
+        contentTypeSource: fts.contentTypeSource,
         rawScore: fts.score,
       });
     }
@@ -318,7 +333,7 @@ export async function searchBm25(
   if (options.full) {
     // Sort by raw BM25 score (smaller = better) before building results
     const sortedEntries = (
-      affinityActive ? fullAffinityEntries : [...bestByDocid.values()]
+      auxiliaryRankingActive ? fullAffinityEntries : [...bestByDocid.values()]
     ).sort((a, b) => a.score - b.score);
     const fullContentResult = await getContentBatch(
       store,
@@ -348,6 +363,7 @@ export async function searchBm25(
       if (fts.collection) {
         scoringByResult.set(result, {
           collection: fts.collection,
+          contentTypeSource: fts.contentTypeSource,
           rawScore: fts.score,
         });
       }
@@ -358,14 +374,16 @@ export async function searchBm25(
   // Normalize scores to 0-1 range (batch min-max)
   normalizeBm25Scores(results);
 
-  if (affinityActive) {
+  if (auxiliaryRankingActive) {
     for (const result of results) {
       const scoring = scoringByResult.get(result);
       if (scoring) {
-        applyProjectAffinity(
+        applyContentTypeBoost(
           result,
           scoring.collection,
+          options.contentTypeRules,
           options.projectAffinity,
+          scoring.contentTypeSource,
           { kind: "bm25", score: scoring.rawScore }
         );
       }
@@ -373,7 +391,7 @@ export async function searchBm25(
   }
 
   const dedupedResults =
-    options.full && affinityActive
+    options.full && auxiliaryRankingActive
       ? dedupeFullResultsByDocid(results)
       : results;
 
@@ -398,8 +416,8 @@ export async function searchBm25(
       }
       return b.score - a.score;
     });
-  } else if (affinityActive) {
-    filteredResults.sort((a, b) => b.score - a.score);
+  } else if (auxiliaryRankingActive) {
+    sortByFinalScoreStable(filteredResults);
   }
 
   const finalResults = filteredResults.slice(0, limit);

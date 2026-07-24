@@ -11,13 +11,19 @@ import type { StorePort } from "../store/types";
 import type { VectorIndexPort } from "../store/vector/types";
 import type { SearchOptions, SearchResult, SearchResults } from "./types";
 
+import { normalizeContentTypes } from "../config/content-types";
 import { getContentBatch } from "../store/content-batch";
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
+import {
+  applyContentTypeBoost,
+  hasAuxiliaryRanking,
+  sortByFinalScoreStable,
+} from "./content-type-boost";
 import { formatQueryForEmbedding } from "./contextual";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { selectBestChunkForSteering } from "./intent";
-import { applyProjectAffinity, hasProjectAffinity } from "./project-affinity";
+import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import { attachSearchResultContexts } from "./result-context";
 import {
@@ -83,9 +89,17 @@ export async function searchVectorWithEmbedding(
   const { store, vectorIndex } = deps;
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
-  const affinityActive = hasProjectAffinity(options.projectAffinity);
+  const contentTypeRules =
+    options.contentTypeRules ??
+    normalizeContentTypes(deps.config.contentTypes ?? []).rules;
+  const auxiliaryRankingActive = hasAuxiliaryRanking(
+    options.projectAffinity,
+    contentTypeRules
+  );
+  const projectAffinityActive = hasProjectAffinity(options.projectAffinity);
   const recencySort = shouldSortByRecency(query);
-  const retrievalLimit = recencySort || affinityActive ? limit * 3 : limit;
+  const retrievalLimit =
+    recencySort || projectAffinityActive ? limit * 3 : limit;
   const temporalRange = resolveTemporalRange(
     query,
     options.since,
@@ -106,7 +120,7 @@ export async function searchVectorWithEmbedding(
     queryEmbedding,
     retrievalLimit,
     {
-      minScore: affinityActive ? undefined : minScore,
+      minScore: projectAffinityActive ? undefined : minScore,
       allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     }
   );
@@ -165,7 +179,7 @@ export async function searchVectorWithEmbedding(
 
   for (const vec of vecResults) {
     const baseScore = normalizeVectorScore(vec.distance);
-    if (!affinityActive && baseScore < minScore) {
+    if (!projectAffinityActive && baseScore < minScore) {
       continue;
     }
 
@@ -196,7 +210,7 @@ export async function searchVectorWithEmbedding(
     if (!matchingDocs || matchingDocs.length === 0) {
       continue;
     }
-    const docs = affinityActive ? matchingDocs : [matchingDocs.at(-1)!];
+    const docs = auxiliaryRankingActive ? matchingDocs : [matchingDocs.at(-1)!];
     for (const doc of docs) {
       const collectionPath = collectionPaths.get(doc.collection);
       const excluded =
@@ -218,7 +232,7 @@ export async function searchVectorWithEmbedding(
         continue;
       }
 
-      const scoredResult = applyProjectAffinity(
+      const scoredResult = applyContentTypeBoost(
         {
           docid: doc.docid,
           score: baseScore,
@@ -254,7 +268,9 @@ export async function searchVectorWithEmbedding(
             : undefined,
         },
         doc.collection,
+        contentTypeRules,
         options.projectAffinity,
+        doc.contentTypeSource,
         { kind: "vector_distance", score: vec.distance }
       );
       if (scoredResult.score < minScore) continue;
@@ -317,7 +333,7 @@ export async function searchVectorWithEmbedding(
 
       const collectionPath = collectionPaths.get(doc.collection);
 
-      const result = applyProjectAffinity(
+      const result = applyContentTypeBoost(
         {
           docid: doc.docid,
           score,
@@ -353,7 +369,9 @@ export async function searchVectorWithEmbedding(
             : undefined,
         },
         doc.collection,
+        contentTypeRules,
         options.projectAffinity,
+        doc.contentTypeSource,
         { kind: "vector_distance", score: rawDistance }
       );
       results.push(
@@ -390,8 +408,8 @@ export async function searchVectorWithEmbedding(
       }
       return b.score - a.score;
     });
-  } else if (affinityActive) {
-    results.sort((a, b) => b.score - a.score);
+  } else if (auxiliaryRankingActive) {
+    sortByFinalScoreStable(results);
   }
 
   const finalResults = results.slice(0, limit);
@@ -485,6 +503,7 @@ interface DocumentInfo {
   relPath: string;
   author: string | null;
   contentType: string | null;
+  contentTypeSource: string | null;
   categories: string[] | null;
   sourceHash: string;
   sourceMime: string;
@@ -625,6 +644,7 @@ async function buildDocumentMap(
       relPath: doc.relPath,
       author: doc.author ?? null,
       contentType: doc.contentType ?? null,
+      contentTypeSource: doc.contentTypeSource ?? null,
       categories: doc.categories ?? null,
       sourceHash: doc.sourceHash,
       sourceMime: doc.sourceMime,

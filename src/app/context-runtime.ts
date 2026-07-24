@@ -4,6 +4,7 @@ import type {
   ContextCapsuleV1,
   ContextCapsuleVerification,
 } from "../core/context-capsule";
+import type { SearchExplain } from "../pipeline/types";
 import type {
   ContextCapsuleBuildInput,
   ContextCapsuleRuntimeDeps,
@@ -35,6 +36,19 @@ export type {
   ContextRuntimeErrorCode,
 } from "./context-runtime-types";
 export { ContextRuntimeError } from "./context-runtime-types";
+
+export const CONTEXT_CAPSULE_EXPLAIN_METADATA = Symbol(
+  "gno.contextCapsuleExplainMetadata"
+);
+
+export const getContextCapsuleExplain = (
+  capsule: ContextCapsuleV1
+): SearchExplain | undefined =>
+  (
+    capsule as ContextCapsuleV1 & {
+      [CONTEXT_CAPSULE_EXPLAIN_METADATA]?: SearchExplain;
+    }
+  )[CONTEXT_CAPSULE_EXPLAIN_METADATA];
 
 /** Build one strict Capsule through the shared compiler composition. */
 export const buildContextCapsule = async (
@@ -72,6 +86,7 @@ export const buildContextCapsule = async (
       limit: normalized.limit,
       candidateLimit: normalized.candidateLimit,
       temporalNow: now,
+      explain: deps.explain,
       limits: {
         requestedBytes: normalized.budgetBytes,
         requestedTokens: normalized.budgetTokens,
@@ -132,6 +147,17 @@ export const buildContextCapsule = async (
       "retrieval_failed",
       `Trace recording failed: ${traceResult.error.message}`,
       traceResult.error.cause
+    );
+  }
+  if (plan.explain) {
+    Object.defineProperty(
+      plan.projection.value,
+      CONTEXT_CAPSULE_EXPLAIN_METADATA,
+      {
+        configurable: true,
+        enumerable: false,
+        value: plan.explain,
+      }
     );
   }
   return plan.projection.value;

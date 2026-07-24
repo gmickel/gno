@@ -140,6 +140,46 @@ describe("ask schema", () => {
       };
       expect(assertValid(response, schema)).toBe(true);
     });
+
+    test("validates optional retrieval boost explain payload", () => {
+      const response = {
+        query: "launch decision",
+        mode: "hybrid",
+        results: [],
+        meta: {
+          expanded: false,
+          reranked: false,
+          vectorsUsed: false,
+          explain: {
+            lines: [{ stage: "fusion", message: "bounded scoring" }],
+            results: [
+              {
+                rank: 1,
+                docid: "#abc123",
+                score: 0.55,
+                contentTypeBoost: {
+                  baseScore: 0.5,
+                  cappedContribution: 0.05,
+                  combinedAuxiliaryApplied: 0.05,
+                  combinedAuxiliaryCap: 0.08,
+                  combinedAuxiliaryRequested: 0.05,
+                  configuredFactor: 2,
+                  contentType: "decision",
+                  finalScore: 0.55,
+                  rawContribution: 0.05,
+                  rawScore: 0.5,
+                  rawScoreKind: "hybrid_blended",
+                  ruleSource: "configured-id",
+                  rulesFingerprint: "a".repeat(64),
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      expect(assertValid(response, schema)).toBe(true);
+    });
   });
 
   describe("invalid inputs", () => {

@@ -55,6 +55,8 @@ export interface ContextCapsuleRuntimeDeps {
   projectAffinity?: ProjectAffinityScoringInput;
   /** Optional non-canonical receipt session owned by the calling surface. */
   traceSession?: RetrievalTraceSession;
+  /** Internal non-canonical retrieval explanation request. */
+  explain?: boolean;
 }
 
 export type ContextRuntimeErrorCode =

@@ -16,7 +16,7 @@ import type {
 import type { HybridSearchOptions, SearchResults } from "../../pipeline/types";
 
 import {
-  fingerprintContentTypeRules,
+  fingerprintContentTypeMetadataRules,
   normalizeContentTypes,
 } from "../../config";
 import { resolveCliProjectAffinity } from "../../core/project-affinity-surface";
@@ -48,7 +48,10 @@ import { decorateSearchResultsForIndex, initStore } from "./shared";
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type QueryCommandOptions = Omit<HybridSearchOptions, "projectAffinity"> &
+export type QueryCommandOptions = Omit<
+  HybridSearchOptions,
+  "contentTypeRules" | "projectAffinity"
+> &
   CliProjectAffinityRequest & {
     /** Override config path */
     configPath?: string;
@@ -439,7 +442,7 @@ export async function queryDiagnose(
       projectAffinity,
       contentTypeRules,
       contentTypeRulesFingerprint:
-        fingerprintContentTypeRules(contentTypeRules),
+        fingerprintContentTypeMetadataRules(contentTypeRules),
     });
 
     if (!result.ok) {

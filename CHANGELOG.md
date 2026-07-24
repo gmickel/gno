@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Activated `contentTypes[].searchBoost` as one explainable, query-agnostic
+  ranking prior: factors from `0.5` to `2` map to at most `-0.05` to `+0.05`,
+  compose with project affinity under the shared `±0.08` cap, and remain
+  visible only through opt-in explain, diagnose, and redacted status receipts.
+
 ## [1.26.0] - 2026-07-24
 
 ### Added

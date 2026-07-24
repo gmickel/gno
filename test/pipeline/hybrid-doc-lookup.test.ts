@@ -16,9 +16,13 @@ import type {
   StorePort,
 } from "../../src/store/types";
 
+import { getContentTypeBoostMetadata } from "../../src/pipeline/content-type-boost";
 import { searchHybrid } from "../../src/pipeline/hybrid";
 import { getProjectAffinityMetadata } from "../../src/pipeline/project-affinity";
-import { SEARCH_RESULT_PLANNER_METADATA } from "../../src/pipeline/types";
+import {
+  DEFAULT_PIPELINE_CONFIG,
+  SEARCH_RESULT_PLANNER_METADATA,
+} from "../../src/pipeline/types";
 
 const NOW = "2026-02-22T00:00:00.000Z";
 
@@ -30,11 +34,13 @@ const makeDoc = (
     frontmatterDate?: string | null;
     categories?: string[];
     author?: string;
+    contentType?: string;
+    relPath?: string;
   }
 ): DocumentRow => ({
   id,
   collection: "notes",
-  relPath: `${mirrorHash}.md`,
+  relPath: metadata?.relPath ?? `${mirrorHash}.md`,
   sourceHash: `source_${mirrorHash}`,
   sourceMime: "text/markdown",
   sourceExt: ".md",
@@ -57,6 +63,7 @@ const makeDoc = (
   frontmatterDate: metadata?.frontmatterDate ?? null,
   categories: metadata?.categories ?? null,
   author: metadata?.author ?? null,
+  contentType: metadata?.contentType ?? null,
 });
 
 const makeChunk = (
@@ -225,6 +232,240 @@ const TEST_COLLECTIONS: CollectionRow[] = [
 ];
 
 describe("searchHybrid targeted document lookup", () => {
+  test("refreshes planner ranks after auxiliary ordering for Capsule consumers", async () => {
+    const plain = makeDoc(1, "plain");
+    const decision = makeDoc(2, "decision", {
+      contentType: "decision",
+      relPath: "decisions/decision.md",
+    });
+    const store: Partial<StorePort> = {
+      searchFts: async () => ({
+        ok: true as const,
+        value: [
+          { ...makeFtsResult("plain", 0), score: -5 },
+          { ...makeFtsResult("decision", 0), score: -4.8 },
+        ],
+      }),
+      getDocumentsByMirrorHashes: async () => ({
+        ok: true as const,
+        value: [plain, decision],
+      }),
+      getCollections: async () => ({
+        ok: true as const,
+        value: TEST_COLLECTIONS,
+      }),
+      getChunksBatch: async () => ({
+        ok: true as const,
+        value: new Map([
+          ["plain", [makeChunk("plain", 0)]],
+          ["decision", [makeChunk("decision", 0)]],
+        ]),
+      }),
+    };
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {
+          contentTypes: [
+            {
+              id: "decision",
+              prefixes: ["decisions/"],
+              preset: "decision-note",
+              searchBoost: 2,
+            },
+          ],
+        } as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "shared evidence",
+      { noExpand: true, noRerank: true, limit: 2 }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(
+      result.value.results.map(
+        (entry) => entry[SEARCH_RESULT_PLANNER_METADATA]?.retrievalRank
+      )
+    ).toEqual([1, 2]);
+  });
+
+  test("keeps rerank lexical-top protection authoritative over content-type boost ordering", async () => {
+    const plain = makeDoc(1, "plain");
+    const decision = makeDoc(2, "decision", {
+      contentType: "decision",
+      relPath: "decisions/decision.md",
+    });
+    const store: Partial<StorePort> = {
+      searchFts: async () => ({
+        ok: true as const,
+        value: [
+          { ...makeFtsResult("plain", 0), score: -5 },
+          { ...makeFtsResult("decision", 0), score: -4.8 },
+        ],
+      }),
+      getDocumentsByMirrorHashes: async () => ({
+        ok: true as const,
+        value: [plain, decision],
+      }),
+      getCollections: async () => ({
+        ok: true as const,
+        value: TEST_COLLECTIONS,
+      }),
+      getChunksBatch: async () => ({
+        ok: true as const,
+        value: new Map([
+          ["plain", [makeChunk("plain", 0)]],
+          ["decision", [makeChunk("decision", 0)]],
+        ]),
+      }),
+    };
+    const rerankPort: RerankPort = {
+      modelUri: "test:rerank",
+      rerank: async () => ({
+        ok: true as const,
+        value: [
+          { index: 0, score: 0, rank: 2 },
+          { index: 1, score: 1, rank: 1 },
+        ],
+      }),
+      dispose: async () => {},
+    };
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {
+          contentTypes: [
+            {
+              id: "decision",
+              prefixes: ["decisions/"],
+              preset: "decision-note",
+              searchBoost: 2,
+            },
+          ],
+        } as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort,
+        pipelineConfig: {
+          ...DEFAULT_PIPELINE_CONFIG,
+          blendingSchedule: [
+            {
+              maxRank: Number.POSITIVE_INFINITY,
+              fusionWeight: 0.1,
+              rerankWeight: 0.9,
+            },
+          ],
+        },
+      },
+      "exact lexical query",
+      { noExpand: true, limit: 2 }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.meta.reranked).toBe(true);
+    expect(result.value.results.map((entry) => entry.docid)).toEqual([
+      "#plain",
+      "#decision",
+    ]);
+    expect(result.value.results[1]?.score).toBeGreaterThan(
+      result.value.results[0]?.score ?? 1
+    );
+  });
+
+  test("does not leak reranked content-type boosts across shared-mirror documents", async () => {
+    const other = makeDoc(1, "other");
+    const plainCopy = makeDoc(2, "shared");
+    const boostedCopy: DocumentRow = {
+      ...makeDoc(3, "shared", {
+        contentType: "decision",
+        relPath: "decisions/shared.md",
+      }),
+      collection: "archive",
+      docid: "#archive-shared",
+      uri: "gno://archive/decisions/shared.md",
+    };
+    const store: Partial<StorePort> = {
+      searchFts: async () => ({
+        ok: true as const,
+        value: [
+          { ...makeFtsResult("other", 0), score: -5 },
+          { ...makeFtsResult("shared", 0), score: -4.8 },
+        ],
+      }),
+      getDocumentsByMirrorHashes: async () => ({
+        ok: true as const,
+        value: [other, plainCopy, boostedCopy],
+      }),
+      getCollections: async () => ({
+        ok: true as const,
+        value: TEST_COLLECTIONS,
+      }),
+      getChunksBatch: async () => ({
+        ok: true as const,
+        value: new Map([
+          ["other", [makeChunk("other", 0)]],
+          ["shared", [makeChunk("shared", 0)]],
+        ]),
+      }),
+    };
+    const rerankPort: RerankPort = {
+      modelUri: "test:rerank",
+      rerank: async () => ({
+        ok: true as const,
+        value: [
+          { index: 0, score: 1, rank: 1 },
+          { index: 1, score: 1, rank: 2 },
+        ],
+      }),
+      dispose: async () => {},
+    };
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {
+          contentTypes: [
+            {
+              id: "decision",
+              prefixes: ["decisions/"],
+              preset: "decision-note",
+              searchBoost: 2,
+            },
+          ],
+        } as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort,
+      },
+      "shared evidence",
+      { noExpand: true, limit: 3 }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const plain = result.value.results.find(
+      (entry) => entry.docid === plainCopy.docid
+    );
+    const boosted = result.value.results.find(
+      (entry) => entry.docid === boostedCopy.docid
+    );
+    expect(plain).toBeDefined();
+    expect(boosted).toBeDefined();
+    if (!(plain && boosted)) return;
+    expect(getContentTypeBoostMetadata(plain)).toBeUndefined();
+    expect(getContentTypeBoostMetadata(boosted)?.contentType).toBe("decision");
+    expect(boosted.score - plain.score).toBeCloseTo(0.05, 10);
+  });
+
   test("full mode scores shared-mirror copies before docid deduplication", async () => {
     const sharedHash = "shared-full";
     const bestDoc = makeDoc(3, "best-full", {
@@ -525,7 +766,7 @@ describe("searchHybrid targeted document lookup", () => {
       result.value.results.map(
         (item) => item[SEARCH_RESULT_PLANNER_METADATA]?.retrievalRank
       )
-    ).toEqual([1, 1]);
+    ).toEqual([1, 2]);
     expect(JSON.stringify(result.value.results)).not.toContain("retrievalRank");
   });
 

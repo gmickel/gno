@@ -1,0 +1,283 @@
+{
+  "benchmarkId": "content-type-boost-promotion@1",
+  "canonicalFingerprint": "1dd57efa9a372c12dd2c4813a2bf70518ec43db28ed4bcd3a4191045d595de59",
+  "gates": {
+    "evidenceAccuracyLoss": 0,
+    "evidenceCoverageLoss": 0,
+    "exactNoOpReceipts": true,
+    "failures": [],
+    "passed": true
+  },
+  "limitations": [
+    "The fn-97 corpus has no configured content-type rules, so this lane proves backward-compatible zero-regression behavior rather than active-rule quality gains.",
+    "The active-rule suite uses controlled scores to isolate the bounded ranking contract; it does not claim general retrieval superiority.",
+    "Egress policy is not yet an available retrieval capability; no egress-bypass claim is made."
+  ],
+  "methodology": [
+    "The authoritative fn-97 24-task production retrieval receipts are replayed through the shipped content-type ranking seam with no configured rules.",
+    "Each before/after receipt freezes ordered result URIs and required-evidence retention; all hashes must remain byte-identical.",
+    "Active positive, negative, tie, keyword-stuffing, filter, conflicting-metadata, and affinity-composition behavior is gated separately by deterministic adversarial tests."
+  ],
+  "metrics": {
+    "evidenceAccuracy": {
+      "baseline": 24,
+      "candidate": 24,
+      "loss": 0
+    },
+    "evidenceCoverage": {
+      "baseline": 25,
+      "candidate": 25,
+      "loss": 0
+    },
+    "taskCount": 24
+  },
+  "receipts": [
+    {
+      "baselineHash": "2ebf11ec116f0fab9015dc0caf34506e51738321da045cfd7beca5ffbfd826e9",
+      "baselineUris": ["gno://c011/d001.md"],
+      "candidateHash": "2ebf11ec116f0fab9015dc0caf34506e51738321da045cfd7beca5ffbfd826e9",
+      "candidateUris": ["gno://c011/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t012ab3c"
+    },
+    {
+      "baselineHash": "ccd9ddc4c5d314941482459f53d5a57909f39595dc580dfa09994cea62e768e9",
+      "baselineUris": ["gno://c001/d001.md", "gno://c001/d002.md"],
+      "candidateHash": "ccd9ddc4c5d314941482459f53d5a57909f39595dc580dfa09994cea62e768e9",
+      "candidateUris": ["gno://c001/d001.md", "gno://c001/d002.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t0a1b2c3"
+    },
+    {
+      "baselineHash": "1f65afce04d3bf015cb0e5801d172ce3c5801a836d11fe803b7958989f86ae8f",
+      "baselineUris": ["gno://c012/d001.md"],
+      "candidateHash": "1f65afce04d3bf015cb0e5801d172ce3c5801a836d11fe803b7958989f86ae8f",
+      "candidateUris": ["gno://c012/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t123bc4d"
+    },
+    {
+      "baselineHash": "e3b0e542b8a87db6bc1150956464ff65beb6b54e330b475e3e6e2a9c61ab5843",
+      "baselineUris": ["gno://c002/d001.md"],
+      "candidateHash": "e3b0e542b8a87db6bc1150956464ff65beb6b54e330b475e3e6e2a9c61ab5843",
+      "candidateUris": ["gno://c002/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t1b2c3d4"
+    },
+    {
+      "baselineHash": "8ff1d09e5024719ade7b322c755c38fe637fddefc8c599756e68838fd2f22ac4",
+      "baselineUris": ["gno://c013/d001.md"],
+      "candidateHash": "8ff1d09e5024719ade7b322c755c38fe637fddefc8c599756e68838fd2f22ac4",
+      "candidateUris": ["gno://c013/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 0,
+      "requiredEvidenceRetained": true,
+      "taskId": "t234cd5e"
+    },
+    {
+      "baselineHash": "f6ad208027e6dfff3945e4ddffd823911c226aac720caade06be816b6ae8402f",
+      "baselineUris": ["gno://c003/d001.md", "gno://c003/d002.md"],
+      "candidateHash": "f6ad208027e6dfff3945e4ddffd823911c226aac720caade06be816b6ae8402f",
+      "candidateUris": ["gno://c003/d001.md", "gno://c003/d002.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t2c3d4e5"
+    },
+    {
+      "baselineHash": "dabc46f58a4f7a9f560a68af6f63ce010cbb231784cc41c7010f7c7054598e95",
+      "baselineUris": ["gno://c014/d001.md"],
+      "candidateHash": "dabc46f58a4f7a9f560a68af6f63ce010cbb231784cc41c7010f7c7054598e95",
+      "candidateUris": ["gno://c014/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 0,
+      "requiredEvidenceRetained": true,
+      "taskId": "t345de6f"
+    },
+    {
+      "baselineHash": "0ffd9237242732ef5b23d02134b18276d3f0c34531441b45b0f62374c8b2a97e",
+      "baselineUris": ["gno://c004/d001.md", "gno://c004/d002.md"],
+      "candidateHash": "0ffd9237242732ef5b23d02134b18276d3f0c34531441b45b0f62374c8b2a97e",
+      "candidateUris": ["gno://c004/d001.md", "gno://c004/d002.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t3d4e5f6"
+    },
+    {
+      "baselineHash": "e49eabb0282371d74e71ceb2d4548a6c64e3e607693ee2bd003c3cd0841d8e4a",
+      "baselineUris": ["gno://c015/d001.md"],
+      "candidateHash": "e49eabb0282371d74e71ceb2d4548a6c64e3e607693ee2bd003c3cd0841d8e4a",
+      "candidateUris": ["gno://c015/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t456ef70"
+    },
+    {
+      "baselineHash": "2a0898158d4d7cccf2dd0b840e5b5431b19f1497e3af00c11b25236f68ed4a48",
+      "baselineUris": ["gno://c005/d001.md", "gno://c005/d002.md"],
+      "candidateHash": "2a0898158d4d7cccf2dd0b840e5b5431b19f1497e3af00c11b25236f68ed4a48",
+      "candidateUris": ["gno://c005/d001.md", "gno://c005/d002.md"],
+      "equal": true,
+      "requiredEvidenceCount": 2,
+      "requiredEvidenceRetained": true,
+      "taskId": "t4e5f607"
+    },
+    {
+      "baselineHash": "7b16a63bd8742650666ee1bacb5277ba6326708fed96bf2817427033676f92bd",
+      "baselineUris": ["gno://c016/d001.md"],
+      "candidateHash": "7b16a63bd8742650666ee1bacb5277ba6326708fed96bf2817427033676f92bd",
+      "candidateUris": ["gno://c016/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t567f081"
+    },
+    {
+      "baselineHash": "7e0226d78110641ad62d2687c0ce48087df8665fcb6c394b257f32dd591b5bd9",
+      "baselineUris": ["gno://c006/d001.md", "gno://c006/d002.md"],
+      "candidateHash": "7e0226d78110641ad62d2687c0ce48087df8665fcb6c394b257f32dd591b5bd9",
+      "candidateUris": ["gno://c006/d001.md", "gno://c006/d002.md"],
+      "equal": true,
+      "requiredEvidenceCount": 2,
+      "requiredEvidenceRetained": true,
+      "taskId": "t5f60718"
+    },
+    {
+      "baselineHash": "11be88fcfa6f74f88ae674da527f0210d171beaa762331b196de9953a34600e0",
+      "baselineUris": ["gno://c007/d001.md"],
+      "candidateHash": "11be88fcfa6f74f88ae674da527f0210d171beaa762331b196de9953a34600e0",
+      "candidateUris": ["gno://c007/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t6071829"
+    },
+    {
+      "baselineHash": "439970ca234575f5012bdc8794407e975683a0651c57f605d625dbb6babe005b",
+      "baselineUris": ["gno://c017/d001.md", "gno://c017/d002.md"],
+      "candidateHash": "439970ca234575f5012bdc8794407e975683a0651c57f605d625dbb6babe005b",
+      "candidateUris": ["gno://c017/d001.md", "gno://c017/d002.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t6780192"
+    },
+    {
+      "baselineHash": "9042069af758df19f7fe94854ade68a2c2a563d5555d4d71ca501318c332acde",
+      "baselineUris": ["gno://c008/d001.md"],
+      "candidateHash": "9042069af758df19f7fe94854ade68a2c2a563d5555d4d71ca501318c332acde",
+      "candidateUris": ["gno://c008/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t718293a"
+    },
+    {
+      "baselineHash": "093e5eda0304a7e35c93115b5fe2490f37a0ea64d7696d77103e9d07ea03e3c0",
+      "baselineUris": ["gno://c018/d001.md"],
+      "candidateHash": "093e5eda0304a7e35c93115b5fe2490f37a0ea64d7696d77103e9d07ea03e3c0",
+      "candidateUris": ["gno://c018/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t7891a03"
+    },
+    {
+      "baselineHash": "cf41cdeb02f3714db7e8686017eb7501d39da31b482ff9807aaa79a4f473abcb",
+      "baselineUris": ["gno://c009/d001.md", "gno://c009/d002.md"],
+      "candidateHash": "cf41cdeb02f3714db7e8686017eb7501d39da31b482ff9807aaa79a4f473abcb",
+      "candidateUris": ["gno://c009/d001.md", "gno://c009/d002.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "t8293a4b"
+    },
+    {
+      "baselineHash": "1afbe78f253149e944a4675d3808037bd9f2ad07a413bd995eead22219a6079a",
+      "baselineUris": ["gno://c00a/d001.md", "gno://c00a/d002.md"],
+      "candidateHash": "1afbe78f253149e944a4675d3808037bd9f2ad07a413bd995eead22219a6079a",
+      "candidateUris": ["gno://c00a/d001.md", "gno://c00a/d002.md"],
+      "equal": true,
+      "requiredEvidenceCount": 2,
+      "requiredEvidenceRetained": true,
+      "taskId": "t93a4b5c"
+    },
+    {
+      "baselineHash": "5b90f97a022e2a6e868a6587ae0af0c2fb3244aed52b4c1bbed79a8d68d9550b",
+      "baselineUris": ["gno://c00b/d001.md"],
+      "candidateHash": "5b90f97a022e2a6e868a6587ae0af0c2fb3244aed52b4c1bbed79a8d68d9550b",
+      "candidateUris": ["gno://c00b/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "ta4b5c6d"
+    },
+    {
+      "baselineHash": "3f38e3ba9ac8458d1ee20c921eab4a581cd5e072ea58b6d5fd23ff49dd5cb8f8",
+      "baselineUris": ["gno://c00c/d001.md"],
+      "candidateHash": "3f38e3ba9ac8458d1ee20c921eab4a581cd5e072ea58b6d5fd23ff49dd5cb8f8",
+      "candidateUris": ["gno://c00c/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "tb5c6d7e"
+    },
+    {
+      "baselineHash": "3c8cede841541c00392ee9e601d0f704191a1b57846e3dc357ecb7bce36c13e6",
+      "baselineUris": ["gno://c00d/d001.md"],
+      "candidateHash": "3c8cede841541c00392ee9e601d0f704191a1b57846e3dc357ecb7bce36c13e6",
+      "candidateUris": ["gno://c00d/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "tc6d7e8f"
+    },
+    {
+      "baselineHash": "e4f319479442ebcf2fb0498bf772d361ee7e2a557612f71d5d56d7fc1387f41d",
+      "baselineUris": ["gno://c00e/d001.md"],
+      "candidateHash": "e4f319479442ebcf2fb0498bf772d361ee7e2a557612f71d5d56d7fc1387f41d",
+      "candidateUris": ["gno://c00e/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "td7e8f90"
+    },
+    {
+      "baselineHash": "269187bf884f7650666aeb31b23262db3013e995151ca774e053e49ee32d70ae",
+      "baselineUris": ["gno://c00f/d001.md"],
+      "candidateHash": "269187bf884f7650666aeb31b23262db3013e995151ca774e053e49ee32d70ae",
+      "candidateUris": ["gno://c00f/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "te8f901a"
+    },
+    {
+      "baselineHash": "172dba6e1f2fc8e8e89e923429ba15a148ab6b3233948c627cc71008690a89d5",
+      "baselineUris": ["gno://c010/d001.md"],
+      "candidateHash": "172dba6e1f2fc8e8e89e923429ba15a148ab6b3233948c627cc71008690a89d5",
+      "candidateUris": ["gno://c010/d001.md"],
+      "equal": true,
+      "requiredEvidenceCount": 1,
+      "requiredEvidenceRetained": true,
+      "taskId": "tf901a2b"
+    }
+  ],
+  "rulesFingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "schemaVersion": "1.0",
+  "source": {
+    "benchmarkId": "project-affinity-promotion@1",
+    "canonicalFingerprint": "dd695b13d036c6d60cb7a8ae461f332f5ac85cd0768d164352a809caec43415d",
+    "taskCount": 24
+  }
+}

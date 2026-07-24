@@ -149,7 +149,8 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
   remote fetch, store listing, or Firefox parity is claimed.
 - **Schema-lite content types**: optional `contentTypes` rules map configured
   frontmatter `type` values or path prefixes to canonical `contentType` metadata
-  in JSON search/query results
+  in JSON search/query results and can apply one bounded, explainable
+  `searchBoost` without bypassing hard filters
 - **Publish to [gno.sh](https://gno.sh/publish)**: new `gno publish export` CLI and Web UI action produce a self-contained artifact you upload to the hosted reader — public, secret, invite-only, or locally encrypted before upload
 - **Retrieval Quality Upgrade**: stronger BM25 lexical handling, code-aware chunking, terminal result hyperlinks, and per-collection model overrides
 - **Code Embedding Benchmarks**: new benchmark workflow across canonical, real-GNO, and pinned OSS slices for comparing alternate embedding models

@@ -120,6 +120,7 @@ describe("diagnoseQueryTarget", () => {
           prefixes: [],
           preset: "source-summary",
           graphHints: ["works_at"],
+          searchBoost: 1,
         },
       ],
       projectAffinity: {
@@ -165,6 +166,60 @@ describe("diagnoseQueryTarget", () => {
       status: "active",
       sourceCount: 1,
       present: true,
+    });
+  });
+
+  test("reports bounded content-type scoring without affinity", async () => {
+    const target = await setupDocument(
+      "decisions/search.md",
+      "bounded search boost evidence",
+      [
+        {
+          seq: 0,
+          pos: 0,
+          text: "bounded search boost evidence",
+          startLine: 1,
+          endLine: 1,
+          language: "en",
+        },
+      ],
+      {
+        contentType: "decision",
+        contentTypeSource: "frontmatter",
+      }
+    );
+
+    const result = await diagnoseQueryTarget(
+      deps(),
+      "bounded search boost evidence",
+      {
+        target: target.uri,
+        noExpand: true,
+        noRerank: true,
+        contentTypeRules: [
+          {
+            id: "decision",
+            prefixes: ["decisions/"],
+            preset: "decision-note",
+            searchBoost: 2,
+          },
+        ],
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.schemaVersion).toBe("1.2");
+    expect(result.value.affinity).toBeUndefined();
+    expect(result.value.contentTypeBoost).toMatchObject({
+      baseScore: 1,
+      configuredFactor: 2,
+      rawContribution: 0.05,
+      cappedContribution: 0.05,
+      combinedAuxiliaryRequested: 0.05,
+      combinedAuxiliaryApplied: 0.05,
+      finalScore: 1,
+      ruleSource: "configured-id",
     });
   });
 

@@ -1,3 +1,4 @@
+import type { ContentTypeBoostStatus } from "../config/content-types";
 import type { ActivationStatus } from "../core/activation-status";
 
 export type HealthCheckStatus = "ok" | "warn" | "error";
@@ -196,6 +197,7 @@ export interface AppStatusResponse {
     hybrid: boolean;
     answer: boolean;
   };
+  contentTypeBoost: ContentTypeBoostStatus;
   activation: ActivationStatus;
   onboarding: OnboardingState;
   health: HealthCenterState;

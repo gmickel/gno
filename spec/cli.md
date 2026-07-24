@@ -436,7 +436,14 @@ Zod validates `id`, `prefixes`, `preset`, `graphHints`, `searchBoost`, and
 `temporal`, while `preset` remains a permissive string. Post-parse normalization
 warns and drops unknown preset references, dedupes exact duplicate prefixes,
 retains overlapping prefixes, and sorts rules longest-prefix-first. `searchBoost`
-is accepted but currently no-op. `graphHints` is active: ordered hints type
+defaults to neutral `1`, accepts `0.5..2`, and maps one canonical configured
+type to a bounded `-0.05..+0.05` ranking contribution. A frontmatter type ID
+wins over longest-prefix matching; boosts never stack, cannot create
+candidates, never widen retrieval or defer `minScore`, and share the final
+`±0.08` auxiliary cap with project affinity. Hybrid applies the composed score
+to normalized fusion before rerank blending; rerank order and lexical top-hit
+protection remain authoritative.
+`graphHints` is active: ordered hints type
 projected wiki/markdown edges and surface in graph traversal/diagnose metadata.
 
 ---
@@ -1203,7 +1210,7 @@ Human-friendly query with citations-first output and optional grounded answer.
 **Synopsis:**
 
 ```bash
-gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--query-mode <mode:text>]... [-C <num>] [--answer|--verify] [--no-answer] [--max-answer-tokens <n>] [--context-budget-tokens <n>] [--context-budget-bytes <n>] [--min-score <score>] [--graph] [--no-expand] [--no-rerank] [--show-sources] [--json|--md]
+gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--query-mode <mode:text>]... [-C <num>] [--answer|--verify] [--no-answer] [--max-answer-tokens <n>] [--context-budget-tokens <n>] [--context-budget-bytes <n>] [--min-score <score>] [--graph] [--no-expand] [--no-rerank] [--explain] [--show-sources] [--json|--md]
 ```
 
 **Options:**
@@ -1228,6 +1235,7 @@ gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [
 | `-C, --candidate-limit`   | integer  | 20      | Max candidates passed to reranking                                                 |
 | `--no-expand`             | boolean  | false   | Disable query expansion                                                            |
 | `--no-rerank`             | boolean  | false   | Disable cross-encoder reranking                                                    |
+| `--explain`               | boolean  | false   | Include retrieval scoring details; prints to stderr outside structured output      |
 | `--show-sources`          | boolean  | false   | Show all retrieved sources (not just cited)                                        |
 | `--project-root`          | string[] | cwd     | Trusted project root; repeatable, replaces default cwd/repository affinity         |
 | `--no-project-affinity`   | boolean  | false   | Disable project-aware soft ranking; invalid with `--project-root`                  |
@@ -1238,6 +1246,11 @@ See [Output Schemas](./output-schemas/ask.schema.json)
 Notes:
 
 - `meta.answerContext` is optional explain payload for answer source selection.
+- `meta.explain` is present only with `--explain`. Its optional
+  `contentTypeBoost` result component contains the raw/base score, configured
+  factor, capped and combined contributions, final score, rule source, and full
+  ranking-rules fingerprint. Verified Ask attaches this as a non-canonical
+  sidecar; Capsule identity and bytes do not change.
 - `--verify` implies answer generation and cannot be combined with
   `--no-answer`. The JSON result adds the closed Capsule, freshness receipt,
   four-state per-claim verdicts (`supported`, `contradicted`, `insufficient`,

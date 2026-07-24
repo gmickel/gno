@@ -8,6 +8,7 @@ import type { NotePresetId } from "../core/note-presets";
 import type { Config, ContentTypeConfig } from "./types";
 
 import { NOTE_PRESETS } from "../core/note-presets";
+import { CONTENT_TYPE_SEARCH_BOOST_NEUTRAL } from "./types";
 
 export type ConfigWarningCode =
   | "UNKNOWN_CONTENT_TYPE_PRESET"
@@ -21,6 +22,7 @@ export interface ConfigWarning {
 
 export interface NormalizedContentTypeRule extends ContentTypeConfig {
   preset: NotePresetId;
+  searchBoost: number;
 }
 
 export interface ContentTypeNormalizationResult {
@@ -31,6 +33,14 @@ export interface ContentTypeNormalizationResult {
 export interface ConfigNormalizationResult {
   config: Config;
   warnings: ConfigWarning[];
+}
+
+export interface ContentTypeBoostStatus {
+  rulesFingerprint: string;
+  rules: Array<{
+    id: string;
+    searchBoost: number;
+  }>;
 }
 
 const NOTE_PRESET_IDS = new Set<NotePresetId>(
@@ -46,6 +56,10 @@ function normalizeGraphHint(value: string): string {
 
 function isNotePresetId(value: string): value is NotePresetId {
   return NOTE_PRESET_IDS.has(value as NotePresetId);
+}
+
+function normalizeSearchBoost(value: number | undefined): number {
+  return value ?? CONTENT_TYPE_SEARCH_BOOST_NEUTRAL;
 }
 
 export function normalizeContentTypes(
@@ -89,6 +103,7 @@ export function normalizeContentTypes(
         graphHints: contentType.graphHints
           ? contentType.graphHints.map(normalizeGraphHint).filter(Boolean)
           : undefined,
+        searchBoost: normalizeSearchBoost(contentType.searchBoost),
       });
       continue;
     }
@@ -100,6 +115,7 @@ export function normalizeContentTypes(
       graphHints: contentType.graphHints
         ? contentType.graphHints.map(normalizeGraphHint).filter(Boolean)
         : undefined,
+      searchBoost: normalizeSearchBoost(contentType.searchBoost),
     });
   }
 
@@ -110,6 +126,34 @@ export function normalizeContentTypes(
   });
 
   return { rules, warnings };
+}
+
+export interface ContentTypeRuleResolution {
+  rule: NormalizedContentTypeRule;
+  source: "configured-id" | "prefix";
+}
+
+/**
+ * Resolve one canonical configured rule. A configured frontmatter type wins;
+ * otherwise normalized rule order provides longest-prefix matching. Arbitrary
+ * category text is intentionally not an input and boosts never stack.
+ */
+export function resolveContentTypeRule(
+  configuredId: string | undefined,
+  relativePath: string,
+  rules: NormalizedContentTypeRule[]
+): ContentTypeRuleResolution | undefined {
+  if (configuredId) {
+    const configuredRule = rules.find((rule) => rule.id === configuredId);
+    if (configuredRule) {
+      return { rule: configuredRule, source: "configured-id" };
+    }
+  }
+
+  const prefixRule = rules.find((rule) =>
+    rule.prefixes.some((prefix) => relativePath.startsWith(prefix))
+  );
+  return prefixRule ? { rule: prefixRule, source: "prefix" } : undefined;
 }
 
 export function normalizeConfigContentTypes(
@@ -126,6 +170,44 @@ export function normalizeConfigContentTypes(
 }
 
 export function fingerprintContentTypeRules(
+  rules: NormalizedContentTypeRule[]
+): string {
+  const canonical = rules.map((rule) => {
+    const base = {
+      id: rule.id,
+      preset: rule.preset,
+      prefixes: rule.prefixes,
+      graphHints: rule.graphHints ?? [],
+    };
+    return rule.searchBoost === CONTENT_TYPE_SEARCH_BOOST_NEUTRAL
+      ? base
+      : { ...base, searchBoost: rule.searchBoost };
+  });
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(JSON.stringify(canonical));
+  return hasher.digest("hex");
+}
+
+/**
+ * Redacted live-ranking projection for status surfaces. Prefixes remain local
+ * configuration details; rule IDs and factors are enough to audit behavior.
+ */
+export function buildContentTypeBoostStatus(
+  contentTypes: ContentTypeConfig[]
+): ContentTypeBoostStatus {
+  const { rules } = normalizeContentTypes(contentTypes);
+  return {
+    rulesFingerprint: fingerprintContentTypeRules(rules),
+    rules: rules.map(({ id, searchBoost }) => ({ id, searchBoost })),
+  };
+}
+
+/**
+ * Fingerprint only fields that derive persisted document metadata.
+ * Search boosts are evaluated from live config at query time, so changing one
+ * must not force content conversion or vector rebuilds.
+ */
+export function fingerprintContentTypeMetadataRules(
   rules: NormalizedContentTypeRule[]
 ): string {
   const canonical = rules.map((rule) => ({

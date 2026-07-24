@@ -166,7 +166,78 @@
             "type": "string"
           }
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "contentTypeBoost": {
+      "type": "object",
+      "required": [
+        "baseScore",
+        "cappedContribution",
+        "combinedAuxiliaryApplied",
+        "combinedAuxiliaryCap",
+        "combinedAuxiliaryRequested",
+        "configuredFactor",
+        "contentType",
+        "finalScore",
+        "rawContribution",
+        "rawScore",
+        "rawScoreKind",
+        "ruleSource",
+        "rulesFingerprint"
+      ],
+      "properties": {
+        "baseScore": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cappedContribution": {
+          "type": "number",
+          "minimum": -0.05,
+          "maximum": 0.05
+        },
+        "combinedAuxiliaryApplied": {
+          "type": "number",
+          "minimum": -0.08,
+          "maximum": 0.08
+        },
+        "combinedAuxiliaryCap": { "type": "number", "const": 0.08 },
+        "combinedAuxiliaryRequested": { "type": "number" },
+        "configuredFactor": { "type": "number", "minimum": 0.5, "maximum": 2 },
+        "contentType": { "type": "string" },
+        "finalScore": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rawContribution": { "type": "number" },
+        "rawScore": { "type": "number" },
+        "rawScoreKind": {
+          "type": "string",
+          "enum": ["bm25", "hybrid_blended", "normalized", "vector_distance"]
+        },
+        "ruleSource": { "type": "string", "enum": ["configured-id", "prefix"] },
+        "rulesFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "explainLine": {
+      "type": "object",
+      "required": ["stage", "message"],
+      "properties": {
+        "stage": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "explainResult": {
+      "type": "object",
+      "required": ["rank", "docid", "score"],
+      "properties": {
+        "rank": { "type": "integer", "minimum": 1 },
+        "docid": { "type": "string", "pattern": "^#[a-f0-9]{6,8}$" },
+        "score": { "type": "number" },
+        "fusionScore": { "type": "number" },
+        "bm25Score": { "type": "number" },
+        "vecScore": { "type": "number" },
+        "rerankScore": { "type": "number" },
+        "projectAffinity": { "type": "object" },
+        "contentTypeBoost": { "$ref": "#/$defs/contentTypeBoost" }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -331,6 +402,21 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "Tags ANY filter applied (if any)"
+        },
+        "explain": {
+          "type": "object",
+          "required": ["lines", "results"],
+          "properties": {
+            "lines": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/explainLine" }
+            },
+            "results": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/explainResult" }
+            }
+          },
+          "additionalProperties": false
         }
       }
     }

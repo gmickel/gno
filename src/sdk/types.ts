@@ -8,6 +8,7 @@ import type {
   ContextCapsuleBuildInput,
   ContextRuntimeErrorCode,
 } from "../app/context-runtime";
+import type { ContentTypeBoostStatus } from "../config/content-types";
 import type { Config } from "../config/types";
 import type { CaptureInput, CaptureReceipt } from "../core/capture";
 import type {
@@ -102,15 +103,27 @@ export interface GnoProjectHintOptions {
   projectHints?: string[];
 }
 
-export type GnoSearchOptions = Omit<SearchOptions, "projectAffinity"> &
+export type GnoSearchOptions = Omit<
+  SearchOptions,
+  "contentTypeRules" | "projectAffinity"
+> &
   GnoProjectHintOptions;
-export type GnoQueryOptions = Omit<HybridSearchOptions, "projectAffinity"> &
+export type GnoQueryOptions = Omit<
+  HybridSearchOptions,
+  "contentTypeRules" | "projectAffinity"
+> &
   GnoModelOverrides &
   GnoProjectHintOptions;
-export type GnoAskOptions = Omit<AskOptions, "projectAffinity"> &
+export type GnoAskOptions = Omit<
+  AskOptions,
+  "contentTypeRules" | "projectAffinity"
+> &
   GnoModelOverrides &
   GnoProjectHintOptions;
-export type GnoVectorSearchOptions = Omit<SearchOptions, "projectAffinity"> &
+export type GnoVectorSearchOptions = Omit<
+  SearchOptions,
+  "contentTypeRules" | "projectAffinity"
+> &
   GnoProjectHintOptions & {
     model?: string;
   };
@@ -118,6 +131,9 @@ export type GnoVectorSearchOptions = Omit<SearchOptions, "projectAffinity"> &
 export type GnoContextInput = Omit<ContextCapsuleBuildInput, "indexName"> &
   GnoProjectHintOptions;
 export type GnoContextResult = ContextCapsuleV1;
+export type GnoIndexStatus = IndexStatus & {
+  contentTypeBoost: ContentTypeBoostStatus;
+};
 export type GnoContextVerificationResult = ContextCapsuleVerification;
 export type GnoContextErrorCode =
   | ContextRuntimeErrorCode
@@ -268,7 +284,7 @@ export interface GnoClient {
     ref: string,
     options?: KnowledgeImpactInput
   ): Promise<KnowledgeImpactResult>;
-  status(): Promise<IndexStatus>;
+  status(): Promise<GnoIndexStatus>;
   listRetrievalTraces(
     options?: RetrievalTraceListRequest
   ): Promise<RetrievalTraceListResult>;

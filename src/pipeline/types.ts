@@ -5,6 +5,7 @@
  * @module src/pipeline/types
  */
 
+import type { NormalizedContentTypeRule } from "../config/content-types";
 import type {
   ContextCapsuleV1,
   ContextCapsuleVerification,
@@ -13,6 +14,7 @@ import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { StoreResult } from "../store/types";
 import type { ClaimVerificationResult } from "./claim-verification";
 import type { SemanticVerificationCapability } from "./claim-verifier";
+import type { ContentTypeBoostScoreMetadata } from "./content-type-boost";
 import type {
   ProjectAffinityScoreMetadata,
   ProjectAffinityScoringInput,
@@ -132,10 +134,7 @@ export interface SearchMeta {
   /** Explicit exclusion terms applied */
   exclude?: string[];
   /** Explain data (when --explain is used) */
-  explain?: {
-    lines: ExplainLine[];
-    results: ExplainResult[];
-  };
+  explain?: SearchExplain;
   /** Internal diagnose trace, only populated when diagnoseTrace is enabled */
   trace?: QueryDiagnoseTrace;
 }
@@ -172,6 +171,8 @@ export interface SearchOptions {
   traceSession?: RetrievalTraceSession;
   /** Trusted, already-resolved project affinity; never accepts raw roots. */
   projectAffinity?: ProjectAffinityScoringInput;
+  /** Internal normalized rules used by bounded content-type scoring. */
+  contentTypeRules?: NormalizedContentTypeRule[];
   /** Max results */
   limit?: number;
   /** Min score threshold (0-1) */
@@ -459,6 +460,8 @@ export interface AskMeta {
   answerGenerated?: boolean;
   totalResults?: number;
   answerContext?: AnswerContextExplain;
+  /** Optional retrieval scoring explanation; absent from normal output. */
+  explain?: SearchExplain;
   verificationRequested?: boolean;
   abstained?: boolean;
 }
@@ -545,4 +548,10 @@ export interface ExplainResult {
   vecScore?: number;
   rerankScore?: number;
   projectAffinity?: ProjectAffinityScoreMetadata;
+  contentTypeBoost?: ContentTypeBoostScoreMetadata;
+}
+
+export interface SearchExplain {
+  lines: ExplainLine[];
+  results: ExplainResult[];
 }

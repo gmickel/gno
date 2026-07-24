@@ -3,9 +3,9 @@
   "demoId": "context-capsule-demo@1",
   "sourceBenchmark": {
     "benchmarkId": "agentic-retrieval@1",
-    "canonicalFingerprint": "ce05f9d8d3dfc4dbd80a97a34881f464453a8445178a68a812a69d3171910566",
+    "canonicalFingerprint": "95bfa90ee63a6ed117dd3d1ab3e61fac715cbacda0a8269ed8c6a63270d61156",
     "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
-    "runGitCommit": "3c8ac2c76ff04346b2a8d9f2deaa8354406595fb",
+    "runGitCommit": "1ab4ac05a72e0d20ed502e0df6873e28b292e32c",
     "reportPath": "evals/fixtures/agentic-retrieval/baseline/fixture-agent/report.json",
     "selection": {
       "rule": "cold_gno_failure_capsule_success",
@@ -64,14 +64,14 @@
     "environment": {
       "agentId": "fixture-agent-v1",
       "architecture": "arm64",
-      "bunVersion": "1.3.5",
+      "bunVersion": "1.3.14",
       "fixtureVersion": "2026-07-22.1",
       "git": {
-        "commit": "3c8ac2c76ff04346b2a8d9f2deaa8354406595fb",
+        "commit": "1ab4ac05a72e0d20ed502e0df6873e28b292e32c",
         "dirty": false,
         "unavailableReason": null
       },
-      "packageVersion": "1.19.0",
+      "packageVersion": "1.26.0",
       "platform": "darwin",
       "trials": [
         {
@@ -91,7 +91,7 @@
       "prompt": "23223825ac5c619622506cbbeb9f2be7e0ac11b85d45a2cb47b2d3171f9717b9",
       "tools": "962605265a83834284686f2f41838c358bd1c2d67632efcdfb0897abdb58f484",
       "model": "92815c3fa6427900bc6c79dce30c89b8df2f6c8509ea0975e8c5b35f6d948c90",
-      "runtime": "22a187520e286d27564996d0ed8295808984fe97187200f394125133b59b47e0",
+      "runtime": "095405754b7a98d27b73ef33958e4fcf47b0f5bc17f3c97db1add0373d030393",
       "index": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a"
     }
   },
@@ -321,7 +321,7 @@
             "index": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
             "model": "92815c3fa6427900bc6c79dce30c89b8df2f6c8509ea0975e8c5b35f6d948c90",
             "prompt": "23223825ac5c619622506cbbeb9f2be7e0ac11b85d45a2cb47b2d3171f9717b9",
-            "runtime": "22a187520e286d27564996d0ed8295808984fe97187200f394125133b59b47e0",
+            "runtime": "095405754b7a98d27b73ef33958e4fcf47b0f5bc17f3c97db1add0373d030393",
             "tools": "962605265a83834284686f2f41838c358bd1c2d67632efcdfb0897abdb58f484"
           },
           "lifecycle": "cold",
@@ -341,16 +341,16 @@
             "peakRssBytes": null,
             "unavailableReason": "peak RSS not sampled"
           },
-          "recordedAt": "2026-07-23T13:43:30.555Z",
+          "recordedAt": "2026-07-24T21:00:09.650Z",
           "tempPaths": ["<temp>", "<temp>"],
           "timings": {
             "driver": {
               "unavailableReason": null,
-              "valueMs": 0.046
+              "valueMs": 0.042
             },
             "endToEnd": {
               "unavailableReason": null,
-              "valueMs": 1.283
+              "valueMs": 2.013
             },
             "modelLoad": {
               "unavailableReason": "one or more model-load components unavailable",
@@ -358,15 +358,15 @@
             },
             "preparation": {
               "unavailableReason": null,
-              "valueMs": 46.376
+              "valueMs": 112.202
             },
             "startup": {
               "unavailableReason": null,
-              "valueMs": 0.435
+              "valueMs": 0.85
             },
             "tool": {
               "unavailableReason": null,
-              "valueMs": 0.502
+              "valueMs": 0.735
             }
           }
         },
@@ -411,7 +411,7 @@
         "tokenUnavailableReason": "The benchmark did not have one pinned comparable tokenizer.",
         "endToEnd": {
           "unavailableReason": null,
-          "valueMs": 1.283
+          "valueMs": 2.013
         },
         "stopOutcome": "complete: INC-1042"
       }
@@ -566,7 +566,7 @@
             "index": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
             "model": "92815c3fa6427900bc6c79dce30c89b8df2f6c8509ea0975e8c5b35f6d948c90",
             "prompt": "23223825ac5c619622506cbbeb9f2be7e0ac11b85d45a2cb47b2d3171f9717b9",
-            "runtime": "22a187520e286d27564996d0ed8295808984fe97187200f394125133b59b47e0",
+            "runtime": "095405754b7a98d27b73ef33958e4fcf47b0f5bc17f3c97db1add0373d030393",
             "tools": "962605265a83834284686f2f41838c358bd1c2d67632efcdfb0897abdb58f484"
           },
           "lifecycle": "cold",
@@ -579,21 +579,21 @@
           "trialId": "fixture-01"
         },
         "observations": {
-          "diagnostics": ["GNO MCP 1.19.0 pid=1772"],
+          "diagnostics": ["GNO MCP 1.26.0 pid=79510"],
           "process": {
             "peakRssBytes": null,
             "unavailableReason": "peak RSS not sampled"
           },
-          "recordedAt": "2026-07-23T13:42:34.144Z",
+          "recordedAt": "2026-07-24T20:59:01.419Z",
           "tempPaths": ["<temp>"],
           "timings": {
             "driver": {
               "unavailableReason": null,
-              "valueMs": 0.2
+              "valueMs": 1.32
             },
             "endToEnd": {
               "unavailableReason": null,
-              "valueMs": 1375.758
+              "valueMs": 3008.01
             },
             "modelLoad": {
               "unavailableReason": "one or more model-load components unavailable",
@@ -601,15 +601,15 @@
             },
             "preparation": {
               "unavailableReason": null,
-              "valueMs": 4031.011
+              "valueMs": 5135.453
             },
             "startup": {
               "unavailableReason": null,
-              "valueMs": 120.19
+              "valueMs": 416.585
             },
             "tool": {
               "unavailableReason": null,
-              "valueMs": 1249.233
+              "valueMs": 2558.297
             }
           }
         },
@@ -654,7 +654,7 @@
         "tokenUnavailableReason": "The benchmark did not have one pinned comparable tokenizer.",
         "endToEnd": {
           "unavailableReason": null,
-          "valueMs": 1375.758
+          "valueMs": 3008.01
         },
         "stopOutcome": "complete: INC-1042"
       }
@@ -773,7 +773,7 @@
             "index": "9c4a65f08850a70ff6d2ec6fe069b4cd38c9cbf3481583afd76a74264cf0591a",
             "model": "92815c3fa6427900bc6c79dce30c89b8df2f6c8509ea0975e8c5b35f6d948c90",
             "prompt": "23223825ac5c619622506cbbeb9f2be7e0ac11b85d45a2cb47b2d3171f9717b9",
-            "runtime": "22a187520e286d27564996d0ed8295808984fe97187200f394125133b59b47e0",
+            "runtime": "095405754b7a98d27b73ef33958e4fcf47b0f5bc17f3c97db1add0373d030393",
             "tools": "962605265a83834284686f2f41838c358bd1c2d67632efcdfb0897abdb58f484"
           },
           "lifecycle": "cold",
@@ -793,16 +793,16 @@
             "peakRssBytes": null,
             "unavailableReason": "peak RSS not sampled"
           },
-          "recordedAt": "2026-07-23T13:42:25.903Z",
+          "recordedAt": "2026-07-24T20:58:50.655Z",
           "tempPaths": ["<temp>", "<temp>"],
           "timings": {
             "driver": {
               "unavailableReason": null,
-              "valueMs": 0.076
+              "valueMs": 0.155
             },
             "endToEnd": {
               "unavailableReason": null,
-              "valueMs": 2.191
+              "valueMs": 3.809
             },
             "modelLoad": {
               "unavailableReason": "one or more model-load components unavailable",
@@ -810,15 +810,15 @@
             },
             "preparation": {
               "unavailableReason": null,
-              "valueMs": 494.841
+              "valueMs": 730.465
             },
             "startup": {
               "unavailableReason": null,
-              "valueMs": 0.529
+              "valueMs": 0.99
             },
             "tool": {
               "unavailableReason": null,
-              "valueMs": 1.295
+              "valueMs": 2.077
             }
           }
         },
@@ -863,7 +863,7 @@
         "tokenUnavailableReason": "The benchmark did not have one pinned comparable tokenizer.",
         "endToEnd": {
           "unavailableReason": null,
-          "valueMs": 2.191
+          "valueMs": 3.809
         },
         "stopOutcome": "complete: INC-4827"
       }
@@ -949,8 +949,8 @@
   "verifiedAsk": {
     "proofKind": "answer_enforcement",
     "benchmarkId": "verified-ask-outcome@1",
-    "canonicalFingerprint": "53931a6ad5717a707e2a486d47fafb988960b0e0f45f201c5875d1104034ee28",
-    "runGitCommit": "3c8ac2c76ff04346b2a8d9f2deaa8354406595fb",
+    "canonicalFingerprint": "abcd681a0cf9dcb28fa00db1b484a83907987f25e99d4fd4f95166b1a33d92cc",
+    "runGitCommit": "1ab4ac05a72e0d20ed502e0df6873e28b292e32c",
     "artifactPath": "evals/fixtures/agentic-retrieval/baseline/fixture-agent/verified-ask-promotion.json",
     "pairCount": 22,
     "excludedTasks": [
@@ -971,5 +971,5 @@
       "unsupportedSubstantiveClaimReduction": 1
     }
   },
-  "canonicalFingerprint": "bb5c059572017e71a126233dfdeb38e547c4d87013882c833d45570da578d85f"
+  "canonicalFingerprint": "7ec58f3b11dfe6bfe912c9d9714298cc6f3b2ea35b427ec1d8736bb8b8976a49"
 }

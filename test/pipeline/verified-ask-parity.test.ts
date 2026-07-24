@@ -86,10 +86,18 @@ const verificationProjection = (result: AskResult) => {
       verification: result.verification,
     })
   ) as {
+    meta?: {
+      explain?: { lines?: Array<{ stage?: string; message?: string }> };
+    };
     verification?: { semantic?: { durationMs?: number } };
   };
   if (plain.verification?.semantic) {
     delete plain.verification.semantic.durationMs;
+  }
+  for (const line of plain.meta?.explain?.lines ?? []) {
+    if (line.stage === "timing") {
+      line.message = "<timing>";
+    }
   }
   return plain;
 };
@@ -108,6 +116,14 @@ describe("verified Ask cross-surface parity", () => {
     );
     config = {
       ...createDefaultConfig(),
+      contentTypes: [
+        {
+          id: "decision",
+          preset: "decision-note",
+          prefixes: ["decision.md"],
+          searchBoost: 1.25,
+        },
+      ],
       collections: [
         {
           name: "notes",
@@ -154,7 +170,7 @@ describe("verified Ask cross-surface parity", () => {
   test("executes one canonical verified contract through REST, SDK, and MCP", async () => {
     const reference = await buildVerifiedAsk(
       "Mina",
-      { verify: true, collection: "notes", noRerank: true },
+      { verify: true, collection: "notes", noRerank: true, explain: true },
       {
         store,
         config,
@@ -187,6 +203,7 @@ describe("verified Ask cross-surface parity", () => {
           verify: true,
           collection: "notes",
           noRerank: true,
+          explain: true,
         }),
       })
     );
@@ -197,6 +214,7 @@ describe("verified Ask cross-surface parity", () => {
       verify: true,
       collection: "notes",
       noRerank: true,
+      explain: true,
     });
 
     const context = {
@@ -219,6 +237,7 @@ describe("verified Ask cross-surface parity", () => {
         collection: "notes",
         limit: 5,
         noRerank: true,
+        explain: true,
       },
       context,
       { modelPortFactory: modelFactory() }
@@ -234,6 +253,13 @@ describe("verified Ask cross-surface parity", () => {
         limit: 5,
         rerankRequested: false,
       });
+      expect(actual.meta.explain?.results[0]?.contentTypeBoost).toMatchObject({
+        configuredFactor: 1.25,
+        contentType: "decision",
+      });
+      expect(JSON.stringify(actual.verification?.capsule)).not.toContain(
+        "contentTypeBoost"
+      );
     }
 
     const traceIds = [

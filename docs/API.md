@@ -460,6 +460,10 @@ Returns index statistics plus first-run onboarding, health-center state, backgro
     "hybrid": true,
     "answer": true
   },
+  "contentTypeBoost": {
+    "rulesFingerprint": "<sha256>",
+    "rules": [{ "id": "meeting", "searchBoost": 1.15 }]
+  },
   "onboarding": {
     "ready": false,
     "stage": "indexing",
@@ -564,6 +568,10 @@ independent. Connector entries are fingerprint-current persisted receipts only.
 If `connectorProjection.truncated` is true, omitted pairs have no claimed result
 and health remains degraded. Status may perform a bounded local lexical proof on
 a receipt miss, but it never starts connector children or remote inference.
+
+`contentTypeBoost` is the live ranking configuration shared with CLI, MCP, and
+SDK status. It exposes only rule IDs, normalized factors, and the full ranking
+fingerprint; configured path prefixes remain private.
 
 `activePreset.name`, `bootstrap.models.estimatedFootprint`, and the footprint
 text inside `bootstrap.models.summary` preserve legacy approximate labels from
@@ -2197,6 +2205,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
   ],
   "noExpand": false,
   "noRerank": false,
+  "explain": true,
   "graph": false,
   "tagsAll": "backend",
   "tagsAny": "auth,security"
@@ -2220,6 +2229,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 | `queryModes`     | array   | —       | Optional structured mode entries (`term`, `intent`, `hyde`)                                                                      |
 | `noExpand`       | boolean | false   | Disable query expansion                                                                                                          |
 | `noRerank`       | boolean | false   | Disable cross-encoder reranking                                                                                                  |
+| `explain`        | boolean | false   | Include per-result retrieval scoring details                                                                                     |
 | `graph`          | boolean | false   | Enable bounded one-hop graph neighbor expansion                                                                                  |
 | `noGraph`        | boolean | false   | Compatibility no-op unless `graph` is also true                                                                                  |
 | `tagsAll`        | string  | —       | Comma-separated tags (must have ALL)                                                                                             |
@@ -2274,6 +2284,11 @@ existing shapes. They also preserve optional configured `context` guidance and
 the exact source `uri`/`docid`; grounded Ask delimits that trusted guidance from
 untrusted retrieved document content.
 
+With `explain: true`, `meta.explain.results[].contentTypeBoost` is present for
+non-neutral configured types. It records the raw/base score, configured factor,
+bounded contribution, shared auxiliary cap, final score, rule source, and full
+ranking-rules fingerprint. Normal responses retain their previous shape.
+
 **Example**:
 
 ```bash
@@ -2314,11 +2329,12 @@ Explains why a named target document does or does not appear in a query result. 
 
 **Response**: `query-diagnose.schema.json`.
 
-REST project hints are opaque and untrusted. Responses therefore preserve the
-exact closed `schemaVersion: "1.0"` shape and omit `affinity`, whether
-`projectHints` are absent or supplied. The current schema also defines a closed
-`schemaVersion: "1.1"` affinity branch for trusted local CLI diagnose output;
-the unchanged legacy contract remains in `query-diagnose-v1.schema.json`.
+REST project hints are opaque and untrusted. Without active content-type boost
+metadata, responses preserve the exact closed `schemaVersion: "1.0"` shape and
+omit `affinity`, whether `projectHints` are absent or supplied. The current
+schema also defines a closed v1.1 affinity branch for trusted local CLI output
+and v1.2 when `contentTypeBoost` is active. The unchanged legacy contract
+remains in `query-diagnose-v1.schema.json`.
 
 Top-level fields:
 
@@ -2327,6 +2343,7 @@ Top-level fields:
 - `target` - Resolved target metadata, status, filters, and graph hints
 - `stages` - BM25/vector/fusion/graph/rerank survival, rank, score, and drop reason
 - `affinity` - v1.1 only; required closed/redacted trusted-local match metadata
+- `contentTypeBoost` - v1.2 only; complete bounded boost score receipt
 - `chunk` - Target chunk and line range when diagnosed
 - `meta` - Retrieval mode, vector/rerank usage, and result count
 
@@ -2375,6 +2392,7 @@ Get an AI-generated answer with citations from your documents.
   "contextBudgetBytes": 48000,
   "noExpand": false,
   "noRerank": false,
+  "explain": true,
   "tagsAll": "backend",
   "tagsAny": "auth,security"
 }
@@ -2400,12 +2418,16 @@ Get an AI-generated answer with citations from your documents.
 | `contextBudgetBytes`  | number  | preset  | Verified Capsule byte budget                                                      |
 | `noExpand`            | boolean | false   | Disable query expansion                                                           |
 | `noRerank`            | boolean | false   | Disable cross-encoder reranking                                                   |
+| `explain`             | boolean | false   | Include per-result retrieval scoring details under `meta.explain`                 |
 | `tagsAll`             | string  | —       | Comma-separated tags (must have ALL)                                              |
 | `tagsAny`             | string  | —       | Comma-separated tags (must have ANY)                                              |
 
 **Compatibility notes:**
 
 - Existing `/api/ask` payloads remain valid.
+- `explain: true` uses the same search explain contract. Verified Ask attaches
+  it beside the verification result; canonical Capsule bytes and identity stay
+  unchanged.
 - `verify: true` is explicit opt-in. It generates only from a closed Context
   Capsule and returns a verified answer only at 100% substantive-claim support;
   otherwise `answer` is withheld and `verification.claims.abstained` is true.

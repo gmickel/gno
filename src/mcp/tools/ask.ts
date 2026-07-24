@@ -50,6 +50,7 @@ export const askInputSchema = z
     graph: z.boolean().optional(),
     noGraph: z.boolean().optional(),
     noRerank: z.boolean().optional(),
+    explain: z.boolean().optional(),
     maxAnswerTokens: z.number().int().positive().optional(),
     contextBudgetTokens: z.number().int().positive().optional(),
     contextBudgetBytes: z.number().int().positive().optional(),

@@ -562,6 +562,10 @@ export const queryInputSchema = z.object({
     .boolean()
     .optional()
     .describe("Enable bounded one-hop graph neighbor expansion"),
+  explain: z
+    .boolean()
+    .optional()
+    .describe("Include deterministic stage and per-result scoring metadata"),
   tagsAll: z.array(z.string()).optional().describe("Require ALL of these tags"),
   tagsAny: z.array(z.string()).optional().describe("Require ANY of these tags"),
 });

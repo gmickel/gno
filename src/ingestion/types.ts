@@ -135,7 +135,7 @@ export interface SyncOptions {
   concurrency?: number;
   /** Normalized content type rules from config.contentTypes. */
   contentTypeRules?: NormalizedContentTypeRule[];
-  /** Stable hash of the normalized content type rules, used for re-derivation. */
+  /** Stable hash of metadata-affecting rules, used for re-derivation. */
   contentTypeRulesFingerprint?: string;
   /** Internal orchestration flag: defer graph projection to an outer sync. */
   projectTypedEdges?: boolean;

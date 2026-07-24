@@ -82,6 +82,11 @@ function statusResult(): StatusResult {
       connectors: [],
       connectorProjection: { total: 0, projected: 0, truncated: false },
     },
+    contentTypeBoost: {
+      rulesFingerprint:
+        "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      rules: [],
+    },
   };
 }
 
@@ -89,9 +94,13 @@ describe("gno status activation output", () => {
   test("keeps legacy fields and makes lexical failure visibly degraded", () => {
     const result = statusResult();
     const json = JSON.parse(formatStatus(result, { json: true }));
+    if (!result.success) {
+      throw new Error("Expected successful status fixture");
+    }
     expect(json.indexName).toBe("default");
     expect(json.healthy).toBe(false);
     expect(json.activation).toMatchObject({ usable: false, healthy: false });
+    expect(json.contentTypeBoost).toEqual(result.contentTypeBoost);
 
     const terminal = formatStatus(result, {});
     expect(terminal).toContain("Health: DEGRADED");

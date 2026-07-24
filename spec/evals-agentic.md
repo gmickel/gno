@@ -26,6 +26,7 @@ evals/agentic/
   project-affinity-outcome.ts
   project-affinity-promotion.ts
   project-affinity-runtime.ts
+  content-type-boost-promotion.ts
   verified-ask-outcome.ts
   verified-ask-promotion.ts
   demos/context-capsule.ts
@@ -102,6 +103,22 @@ rebinds fixture identities, recomputes summaries/gates/fingerprint from those
 receipts, and compares the committed artifact with a fresh deterministic
 production run. The controlled synthetic lane isolates the score seam and makes
 no general workload superiority claim.
+
+## Separate content-type boost promotion
+
+The authoritative lane also writes
+`content-type-boost-promotion.json` and `.md`. These 24 before/after receipts
+project the fn-97 production retrieval rankings through the shipped
+content-type ranking seam with no configured rules. Every ordered URI and
+required-evidence receipt must remain byte-identical, with zero accuracy and
+coverage loss. This is backward-compatibility evidence for existing configs,
+not an active-rule quality claim.
+
+Active positive/negative factors, keyword stuffing, deterministic ties,
+configured-ID versus prefix conflicts, filter isolation, and project-affinity
+composition are gated separately by the deterministic adversarial pipeline
+suite. Egress policy is not yet an available retrieval capability, so the
+artifact makes no egress-enforcement claim.
 
 The first fixture version contains 24 original synthetic tasks and 34 Markdown
 documents under the MIT license. It covers exact identifiers, ambiguity,

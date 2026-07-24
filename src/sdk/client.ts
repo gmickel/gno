@@ -11,7 +11,7 @@ import type { Config } from "../config/types";
 import type { DownloadPolicy } from "../llm/policy";
 import type { EmbeddingPort, GenerationPort, RerankPort } from "../llm/types";
 import type { AskResult, SearchResults } from "../pipeline/types";
-import type { IndexStatus, StoreResult } from "../store/types";
+import type { StoreResult } from "../store/types";
 import type { VectorIndexPort } from "../store/vector";
 import type {
   GnoAskOptions,
@@ -32,6 +32,7 @@ import type {
   GnoGetOptions,
   GnoIndexOptions,
   GnoIndexResult,
+  GnoIndexStatus,
   GnoListOptions,
   GnoMoveNoteOptions,
   GnoMultiGetOptions,
@@ -65,9 +66,11 @@ import {
 } from "../app/index-name";
 import { buildVerifiedAsk } from "../app/verified-ask";
 import {
+  buildContentTypeBoostStatus,
   ConfigSchema,
   loadConfig,
   normalizeConfigContentTypes,
+  normalizeContentTypes,
 } from "../config";
 import {
   buildCaptureReceipt,
@@ -516,6 +519,9 @@ class GnoClientImpl implements GnoClient {
             await searchBm25(this.store, query, {
               ...searchOptions,
               projectAffinity,
+              contentTypeRules: normalizeContentTypes(
+                this.config.contentTypes ?? []
+              ).rules,
               traceSession: traceSession ?? undefined,
             })
           )
@@ -883,6 +889,7 @@ class GnoClientImpl implements GnoClient {
             noExpand: options.noExpand,
             noRerank: options.noRerank,
             candidateLimit: options.candidateLimit,
+            explain: options.explain,
             queryLanguageHint: options.queryLanguageHint,
             projectAffinity,
             traceSession: traceSession ?? undefined,
@@ -945,6 +952,9 @@ class GnoClientImpl implements GnoClient {
           answerGenerated,
           totalResults: searchResult.results.length,
           answerContext,
+          ...(options.explain && searchResult.meta.explain
+            ? { explain: searchResult.meta.explain }
+            : {}),
         },
       };
       if (answerRequested && traceSession) {
@@ -1169,13 +1179,19 @@ class GnoClientImpl implements GnoClient {
     );
   }
 
-  async status(): Promise<IndexStatus> {
+  async status(): Promise<GnoIndexStatus> {
     this.assertOpen();
-    return unwrapStore(
+    const status = unwrapStore(
       await this.store.getStatus({
         embedModel: resolveModelUri(this.config, "embed"),
       })
     );
+    return {
+      ...status,
+      contentTypeBoost: buildContentTypeBoostStatus(
+        this.config.contentTypes ?? []
+      ),
+    };
   }
 
   async listRetrievalTraces(

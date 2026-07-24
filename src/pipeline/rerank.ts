@@ -26,6 +26,11 @@ export interface RerankOptions {
   blendingSchedule?: BlendingTier[];
   /** Optional disambiguating context for reranking */
   intent?: string;
+  /** Apply bounded auxiliary scoring after fusion normalization, before blend. */
+  adjustNormalizedFusionScore?: (
+    candidate: FusionCandidate,
+    normalizedScore: number
+  ) => number;
 }
 
 export interface RerankResult {
@@ -184,15 +189,41 @@ export async function rerankCandidates(
     const v = (score - minFusionAll) / fusionRangeAll;
     return Math.max(0, Math.min(1, v));
   };
+  const adjustedFusionScore = (candidate: FusionCandidate): number => {
+    const normalized = normalizeFusionScore(candidate.fusionScore);
+    const adjusted = options.adjustNormalizedFusionScore?.(
+      candidate,
+      normalized
+    );
+    return adjusted === undefined
+      ? normalized
+      : Math.max(0, Math.min(1, adjusted));
+  };
+  const sortAdjustedCandidates = (
+    adjustedCandidates: RerankedCandidate[]
+  ): RerankedCandidate[] => {
+    if (!options.adjustNormalizedFusionScore) {
+      return adjustedCandidates;
+    }
+    return adjustedCandidates.sort(
+      (left, right) =>
+        right.blendedScore - left.blendedScore ||
+        `${left.mirrorHash}:${left.seq}`.localeCompare(
+          `${right.mirrorHash}:${right.seq}`
+        )
+    );
+  };
 
   // No reranker: return candidates with normalized fusion scores
   if (!rerankPort) {
     return {
-      candidates: candidates.map((c) => ({
-        ...c,
-        rerankScore: null,
-        blendedScore: normalizeFusionScore(c.fusionScore),
-      })),
+      candidates: sortAdjustedCandidates(
+        candidates.map((c) => ({
+          ...c,
+          rerankScore: null,
+          blendedScore: adjustedFusionScore(c),
+        }))
+      ),
       reranked: false,
       fallbackReason: "disabled",
     };
@@ -239,11 +270,13 @@ export async function rerankCandidates(
 
   if (!rerankResult.ok) {
     return {
-      candidates: candidates.map((c) => ({
-        ...c,
-        rerankScore: null,
-        blendedScore: normalizeFusionScore(c.fusionScore),
-      })),
+      candidates: sortAdjustedCandidates(
+        candidates.map((c) => ({
+          ...c,
+          rerankScore: null,
+          blendedScore: adjustedFusionScore(c),
+        }))
+      ),
       reranked: false,
       fallbackReason: "error",
     };
@@ -277,7 +310,7 @@ export async function rerankCandidates(
       rerankScore !== null ? normalizeRerankScore(rerankScore) : null;
 
     const position = i + 1;
-    const normalizedFusion = normalizeFusionScore(c.fusionScore);
+    const normalizedFusion = adjustedFusionScore(c);
     const blendedScore =
       normalizedRerankScore !== null
         ? blend(normalizedFusion, normalizedRerankScore, position, schedule)
@@ -292,10 +325,7 @@ export async function rerankCandidates(
     ...remaining.map((c) => ({
       ...c,
       rerankScore: null,
-      blendedScore: Math.max(
-        0,
-        Math.min(1, normalizeFusionScore(c.fusionScore) * 0.5)
-      ),
+      blendedScore: Math.max(0, Math.min(1, adjustedFusionScore(c) * 0.5)),
     })),
   ];
 

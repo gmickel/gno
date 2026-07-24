@@ -7,7 +7,7 @@
 
 import type { Config } from "../config/types";
 import type { EmbeddingPort, GenerationPort, RerankPort } from "../llm/types";
-import type { StorePort } from "../store/types";
+import type { DocumentRow, StorePort } from "../store/types";
 import type { VectorIndexPort } from "../store/vector/types";
 import type {
   ExpansionResult,
@@ -20,9 +20,16 @@ import type {
   SearchResults,
 } from "./types";
 
+import { normalizeContentTypes } from "../config/content-types";
 import { embedTextsWithRecovery } from "../embed/batch";
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
+import {
+  attachAuxiliaryScoreMetadata,
+  hasAuxiliaryRanking,
+  scoreContentTypeBoost,
+  sortByFinalScoreStable,
+} from "./content-type-boost";
 import { formatQueryForEmbedding } from "./contextual";
 import { expandQuery } from "./expansion";
 import {
@@ -41,11 +48,7 @@ import { evaluateDocumentChunkFilters } from "./filters";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
 import { selectBestChunkForSteering } from "./intent";
-import {
-  applyProjectAffinity,
-  getProjectAffinityMetadata,
-  hasProjectAffinity,
-} from "./project-affinity";
+import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import {
   buildExpansionFromQueryModes,
@@ -63,7 +66,10 @@ import {
   attachSearchResultPlannerMetadata,
   attachSearchResultsTraceMetadata,
 } from "./trace-metadata";
-import { DEFAULT_PIPELINE_CONFIG } from "./types";
+import {
+  DEFAULT_PIPELINE_CONFIG,
+  SEARCH_RESULT_PLANNER_METADATA,
+} from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dependencies
@@ -306,7 +312,13 @@ export async function searchHybrid(
   const runStartedAt = performance.now();
   const { store, vectorIndex, embedPort, expandPort, rerankPort } = deps;
   const pipelineConfig = deps.pipelineConfig ?? DEFAULT_PIPELINE_CONFIG;
-  const affinityActive = hasProjectAffinity(options.projectAffinity);
+  const contentTypeRules =
+    options.contentTypeRules ??
+    normalizeContentTypes(deps.config.contentTypes ?? []).rules;
+  const auxiliaryRankingActive = hasAuxiliaryRanking(
+    options.projectAffinity,
+    contentTypeRules
+  );
 
   const limit = options.limit ?? 20;
   const recencySort = shouldSortByRecency(query);
@@ -685,6 +697,68 @@ export async function searchHybrid(
     explainFusion(pipelineConfig.rrf.k, fusedCandidates.length)
   );
 
+  // Auxiliary scores enter after fusion normalization and before rerank
+  // blending. The reranker therefore remains the final ordering authority,
+  // including its lexical top-hit guardrail.
+  let prefetchedDocuments: DocumentRow[] | undefined;
+  const auxiliaryBaseScores = new Map<string, number>();
+  const preRerankAdjustedCandidates = new Set<string>();
+  let adjustNormalizedFusionScore:
+    | ((
+        candidate: (typeof fusedCandidates)[number],
+        normalizedScore: number
+      ) => number)
+    | undefined;
+  if (auxiliaryRankingActive) {
+    const prefetchedDocumentsResult = await store.getDocumentsByMirrorHashes(
+      [...new Set(fusedCandidates.map((candidate) => candidate.mirrorHash))],
+      {
+        collection: options.collection,
+        activeOnly: true,
+      }
+    );
+    if (!prefetchedDocumentsResult.ok) {
+      return err("QUERY_FAILED", prefetchedDocumentsResult.error.message);
+    }
+    prefetchedDocuments = prefetchedDocumentsResult.value;
+    const scoringDocumentsByHash = new Map<string, DocumentRow[]>();
+    for (const document of [...prefetchedDocuments].sort((left, right) => {
+      if (left.uri !== right.uri) return left.uri.localeCompare(right.uri);
+      return left.docid.localeCompare(right.docid);
+    })) {
+      if (!document.mirrorHash) continue;
+      const documents = scoringDocumentsByHash.get(document.mirrorHash) ?? [];
+      documents.push(document);
+      scoringDocumentsByHash.set(document.mirrorHash, documents);
+    }
+    adjustNormalizedFusionScore = (candidate, normalizedScore) => {
+      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}`;
+      auxiliaryBaseScores.set(candidateKey, normalizedScore);
+      const documents = scoringDocumentsByHash.get(candidate.mirrorHash);
+      if (!documents?.length) return normalizedScore;
+      const projectedScores = documents.map(
+        (document) =>
+          scoreContentTypeBoost(
+            normalizedScore,
+            document.contentType ?? undefined,
+            document.contentTypeSource,
+            document.relPath,
+            document.collection,
+            contentTypeRules,
+            options.projectAffinity,
+            { kind: "hybrid_blended", score: normalizedScore }
+          ).projectAffinity.finalScore
+      );
+      const agreedScore = projectedScores[0] ?? normalizedScore;
+      const projectionsAgree = projectedScores.every(
+        (score) => Math.abs(score - agreedScore) < 1e-9
+      );
+      if (!projectionsAgree) return normalizedScore;
+      preRerankAdjustedCandidates.add(candidateKey);
+      return agreedScore;
+    };
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // 4. Reranking
   // ─────────────────────────────────────────────────────────────────────────
@@ -697,6 +771,7 @@ export async function searchHybrid(
       maxCandidates: candidateLimit,
       blendingSchedule: pipelineConfig.blendingSchedule,
       intent: options.intent,
+      adjustNormalizedFusionScore,
     }
   );
   if (rerankResult.fallbackReason === "disabled") {
@@ -725,7 +800,7 @@ export async function searchHybrid(
   // ─────────────────────────────────────────────────────────────────────────
   const minScore = options.minScore ?? 0;
   const filteredCandidates =
-    minScore > 0 && !affinityActive
+    minScore > 0 && !auxiliaryRankingActive
       ? rerankResult.candidates.filter((c) => c.blendedScore >= minScore)
       : rerankResult.candidates;
 
@@ -739,30 +814,31 @@ export async function searchHybrid(
   const neededHashes = new Set(filteredCandidates.map((c) => c.mirrorHash));
 
   // Fetch only needed documents and collections.
-  const docsResult = await store.getDocumentsByMirrorHashes([...neededHashes], {
-    collection: options.collection,
-    activeOnly: true,
-  });
+  let documents = prefetchedDocuments;
+  if (!documents) {
+    const docsResult = await store.getDocumentsByMirrorHashes(
+      [...neededHashes],
+      {
+        collection: options.collection,
+        activeOnly: true,
+      }
+    );
+    if (!docsResult.ok) {
+      return err("QUERY_FAILED", docsResult.error.message);
+    }
+    documents = docsResult.value;
+  }
   const collectionsResult = await store.getCollections();
 
-  if (!docsResult.ok) {
-    return err("QUERY_FAILED", docsResult.error.message);
-  }
-
   // Build lookup maps.
-  const docsByMirrorHash = new Map<
-    string,
-    (typeof docsResult.value)[number][]
-  >();
-  const addDocument = (doc: (typeof docsResult.value)[number]): void => {
+  const docsByMirrorHash = new Map<string, DocumentRow[]>();
+  const addDocument = (doc: DocumentRow): void => {
     if (!doc.mirrorHash) return;
     const docs = docsByMirrorHash.get(doc.mirrorHash) ?? [];
     docs.push(doc);
     docsByMirrorHash.set(doc.mirrorHash, docs);
   };
-  const matchesMetadataFilters = (
-    doc: (typeof docsResult.value)[number]
-  ): boolean => {
+  const matchesMetadataFilters = (doc: DocumentRow): boolean => {
     const relPathPrefix = options.retrievalScope?.relPathPrefix;
     if (
       relPathPrefix !== undefined &&
@@ -798,9 +874,9 @@ export async function searchHybrid(
   // Collect doc IDs that need tag filtering
   const needsTagFilter = options.tagsAll?.length || options.tagsAny?.length;
   const docIdsForTagCheck: number[] = [];
-  const candidateDocs: (typeof docsResult.value)[number][] = [];
+  const candidateDocs: DocumentRow[] = [];
 
-  for (const doc of docsResult.value) {
+  for (const doc of documents) {
     if (!doc.mirrorHash) {
       continue;
     }
@@ -881,7 +957,7 @@ export async function searchHybrid(
   // Iterate until we have enough results (don't slice early - deduping may skip candidates)
   for (const [candidateIndex, candidate] of filteredCandidates.entries()) {
     // Stop when we have enough results
-    if (!affinityActive && results.length >= assemblyLimit) {
+    if (!auxiliaryRankingActive && results.length >= assemblyLimit) {
       break;
     }
 
@@ -945,7 +1021,7 @@ export async function searchHybrid(
     }
 
     for (const doc of candidateDocs) {
-      if (!affinityActive && results.length >= assemblyLimit) break;
+      if (!auxiliaryRankingActive && results.length >= assemblyLimit) break;
       const filterEval = evaluateDocumentChunkFilters(
         query,
         doc,
@@ -954,49 +1030,72 @@ export async function searchHybrid(
       );
       if (
         !filterEval.matches ||
-        (options.full && !affinityActive && seenDocids.has(doc.docid))
+        (options.full && !auxiliaryRankingActive && seenDocids.has(doc.docid))
       ) {
         continue;
       }
       const docidKey = `${candidate.mirrorHash}:${candidate.seq}`;
       if (!docidMap.has(docidKey)) docidMap.set(docidKey, doc.docid);
       const collectionPath = collectionPaths.get(doc.collection);
-      if (options.full && !affinityActive) {
+      if (options.full && !auxiliaryRankingActive) {
         seenDocids.add(doc.docid);
       }
-      const scoredResult = applyProjectAffinity(
-        {
-          docid: doc.docid,
-          score: candidate.blendedScore,
-          uri: doc.uri,
-          title: doc.title ?? undefined,
-          contentType: doc.contentType ?? undefined,
-          categories: doc.categories ?? undefined,
-          line: snippetChunk.startLine,
-          snippet,
-          snippetLanguage: chunk.language ?? undefined,
-          snippetRange,
-          source: {
-            relPath: doc.relPath,
-            absPath: collectionPath
-              ? `${collectionPath}/${doc.relPath}`
-              : undefined,
-            mime: doc.sourceMime,
-            ext: doc.sourceExt,
-            modifiedAt: doc.sourceMtime,
-            documentDate: doc.frontmatterDate ?? undefined,
-            sizeBytes: doc.sourceSize,
-            sourceHash: doc.sourceHash,
-          },
-          conversion: {
-            mirrorHash: candidate.mirrorHash,
-            converterId: doc.converterId ?? undefined,
-            converterVersion: doc.converterVersion ?? undefined,
-          },
+      const baseResult: SearchResult = {
+        docid: doc.docid,
+        score: candidate.blendedScore,
+        uri: doc.uri,
+        title: doc.title ?? undefined,
+        contentType: doc.contentType ?? undefined,
+        categories: doc.categories ?? undefined,
+        line: snippetChunk.startLine,
+        snippet,
+        snippetLanguage: chunk.language ?? undefined,
+        snippetRange,
+        source: {
+          relPath: doc.relPath,
+          absPath: collectionPath
+            ? `${collectionPath}/${doc.relPath}`
+            : undefined,
+          mime: doc.sourceMime,
+          ext: doc.sourceExt,
+          modifiedAt: doc.sourceMtime,
+          documentDate: doc.frontmatterDate ?? undefined,
+          sizeBytes: doc.sourceSize,
+          sourceHash: doc.sourceHash,
         },
+        conversion: {
+          mirrorHash: candidate.mirrorHash,
+          converterId: doc.converterId ?? undefined,
+          converterVersion: doc.converterVersion ?? undefined,
+        },
+      };
+      const auxiliaryBaseScore =
+        auxiliaryBaseScores.get(`${candidate.mirrorHash}:${candidate.seq}`) ??
+        candidate.blendedScore;
+      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}`;
+      const composedBeforeRerank =
+        preRerankAdjustedCandidates.has(candidateKey);
+      const scoringBaseScore =
+        rerankResult.reranked && !composedBeforeRerank
+          ? candidate.blendedScore
+          : auxiliaryBaseScore;
+      const scored = scoreContentTypeBoost(
+        scoringBaseScore,
+        doc.contentType ?? undefined,
+        doc.contentTypeSource,
+        doc.relPath,
         doc.collection,
+        contentTypeRules,
         options.projectAffinity,
-        { kind: "hybrid_blended", score: candidate.blendedScore }
+        { kind: "hybrid_blended", score: scoringBaseScore }
+      );
+      const scoredResult = attachAuxiliaryScoreMetadata(
+        baseResult,
+        scored,
+        rerankResult.reranked && composedBeforeRerank
+          ? candidate.blendedScore
+          : scored.projectAffinity.finalScore,
+        hasProjectAffinity(options.projectAffinity)
       );
       if (scoredResult.score < minScore) continue;
       results.push(
@@ -1004,7 +1103,7 @@ export async function searchHybrid(
           retrievalRank: candidateIndex + 1,
           mirrorHash: candidate.mirrorHash,
           seq: snippetChunk.seq,
-          ...(affinityActive && snippetChunk.seq !== candidate.seq
+          ...(auxiliaryRankingActive && snippetChunk.seq !== candidate.seq
             ? { retrievalSeq: candidate.seq }
             : {}),
           sources: [...candidate.sources].sort(),
@@ -1030,7 +1129,7 @@ export async function searchHybrid(
   // 7. Return results
   // ─────────────────────────────────────────────────────────────────────────
   const dedupedResults =
-    options.full && affinityActive
+    options.full && auxiliaryRankingActive
       ? dedupeFullResultsByDocid(results)
       : results;
 
@@ -1049,23 +1148,20 @@ export async function searchHybrid(
       }
       return b.score - a.score;
     });
-  } else if (affinityActive) {
-    dedupedResults.sort((a, b) => b.score - a.score);
+  } else if (auxiliaryRankingActive && !rerankResult.reranked) {
+    sortByFinalScoreStable(dedupedResults);
   }
 
   const finalResults = dedupedResults.slice(0, limit);
+  for (const [index, result] of finalResults.entries()) {
+    const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
+    if (metadata) metadata.retrievalRank = index + 1;
+  }
   const explainData = options.explain
     ? {
         lines: explainLines,
-        results: affinityActive
-          ? buildExplainResults(filteredCandidates, docidMap, finalResults).map(
-              (result, index) => ({
-                ...result,
-                projectAffinity: getProjectAffinityMetadata(
-                  finalResults[index]!
-                ),
-              })
-            )
+        results: auxiliaryRankingActive
+          ? buildExplainResults(filteredCandidates, docidMap, finalResults)
           : buildExplainResults(filteredCandidates.slice(0, limit), docidMap),
       }
     : undefined;

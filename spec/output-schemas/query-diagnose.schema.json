@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "gno://schemas/query-diagnose@1.1",
+  "$id": "gno://schemas/query-diagnose@1.2",
   "title": "GNO Query Diagnose",
   "type": "object",
   "required": ["schemaVersion", "query", "target", "stages", "chunk", "meta"],
   "properties": {
-    "schemaVersion": { "type": "string", "enum": ["1.0", "1.1"] },
+    "schemaVersion": { "type": "string", "enum": ["1.0", "1.1", "1.2"] },
     "query": { "type": "string" },
     "target": {
       "type": "object",
@@ -160,6 +160,51 @@
       },
       "additionalProperties": false
     },
+    "contentTypeBoost": {
+      "type": "object",
+      "required": [
+        "baseScore",
+        "cappedContribution",
+        "combinedAuxiliaryApplied",
+        "combinedAuxiliaryCap",
+        "combinedAuxiliaryRequested",
+        "configuredFactor",
+        "contentType",
+        "finalScore",
+        "rawContribution",
+        "rawScore",
+        "rawScoreKind",
+        "ruleSource",
+        "rulesFingerprint"
+      ],
+      "properties": {
+        "baseScore": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cappedContribution": {
+          "type": "number",
+          "minimum": -0.05,
+          "maximum": 0.05
+        },
+        "combinedAuxiliaryApplied": {
+          "type": "number",
+          "minimum": -0.08,
+          "maximum": 0.08
+        },
+        "combinedAuxiliaryCap": { "type": "number", "const": 0.08 },
+        "combinedAuxiliaryRequested": { "type": "number" },
+        "configuredFactor": { "type": "number", "minimum": 0.5, "maximum": 2 },
+        "contentType": { "type": "string" },
+        "finalScore": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rawContribution": { "type": "number" },
+        "rawScore": { "type": "number" },
+        "rawScoreKind": {
+          "type": "string",
+          "enum": ["bm25", "hybrid_blended", "normalized", "vector_distance"]
+        },
+        "ruleSource": { "type": "string", "enum": ["configured-id", "prefix"] },
+        "rulesFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
     "chunk": {
       "type": "object",
       "required": ["seq", "startLine", "endLine", "language"],
@@ -199,7 +244,9 @@
         "properties": { "schemaVersion": { "const": "1.0" } },
         "required": ["schemaVersion"]
       },
-      "then": { "properties": { "affinity": false } }
+      "then": {
+        "properties": { "affinity": false, "contentTypeBoost": false }
+      }
     },
     {
       "if": {
@@ -207,8 +254,18 @@
         "required": ["schemaVersion"]
       },
       "then": {
-        "properties": { "affinity": {} },
+        "properties": { "affinity": {}, "contentTypeBoost": false },
         "required": ["affinity"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "schemaVersion": { "const": "1.2" } },
+        "required": ["schemaVersion"]
+      },
+      "then": {
+        "properties": { "contentTypeBoost": {} },
+        "required": ["contentTypeBoost"]
       }
     }
   ],

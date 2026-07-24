@@ -531,6 +531,7 @@ relations:
         prefixes: [],
         preset: "meeting",
         graphHints: ["attended", "mentions"],
+        searchBoost: 1,
       },
     ];
     await writeFile(
@@ -583,6 +584,7 @@ See [[Person]].
         prefixes: [],
         preset: "meeting",
         graphHints: ["mentions"],
+        searchBoost: 1,
       },
     ];
     await writeFile(
@@ -639,6 +641,7 @@ See [[Person]].
           prefixes: [],
           preset: "meeting",
           graphHints: ["mentions"],
+          searchBoost: 1,
         },
       ],
     });
@@ -649,6 +652,7 @@ See [[Person]].
           prefixes: [],
           preset: "meeting",
           graphHints: ["attended"],
+          searchBoost: 1,
         },
       ],
     });
@@ -687,6 +691,7 @@ See [[Person]].
         prefixes: [],
         preset: "meeting",
         graphHints: ["attended"],
+        searchBoost: 1,
       },
     ];
     await writeFile(

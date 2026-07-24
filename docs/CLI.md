@@ -320,6 +320,9 @@ gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 - **Graph-aware expansion**: Adds capped one-hop neighbors from top seeds; explicit links outrank inferred, ambiguous, and similarity edges
 - **Chunk-level reranking**: Best chunk per doc (4K max) for 25× faster reranking
 - **Lexical top-hit protection**: Preserves original BM25 #1 exact hits against rerank-only demotion
+- **Bounded content-type ranking**: One configured `searchBoost` contributes at
+  most `±0.05`, composes with project affinity under the shared `±0.08` cap,
+  and enters hybrid scoring before rerank blending without widening candidates
 
 Additional options:
 
@@ -346,12 +349,14 @@ Additional options:
 `gno query diagnose "<query>" --target <doc>` runs the query with an opt-in
 trace and reports whether the target document appears at each retrieval stage.
 The JSON payload uses the closed `query-diagnose.schema.json` contract.
-Requests without trusted local affinity metadata retain the exact legacy
-`schemaVersion: "1.0"` shape and omit `affinity`; the unchanged closed v1
-contract remains available as `query-diagnose-v1.schema.json`. When a trusted
+Requests without active auxiliary metadata retain the exact legacy
+`schemaVersion: "1.0"` shape; the unchanged closed v1 contract remains
+available as `query-diagnose-v1.schema.json`. When a trusted
 cwd or `--project-root` is resolved, the payload uses `schemaVersion: "1.1"`
 and requires closed, redacted `affinity` metadata, including `matched: false`
-when the trusted root does not match the target collection. The payload also
+when the trusted root does not match the target collection. An active
+content-type boost uses v1.2 and adds the complete bounded score receipt and
+full ranking-rules fingerprint. The payload also
 includes `target.status`
 (`not_found|inactive|no_indexed_content|filtered_out|diagnosed`), per-stage
 `present/rank/score/survived/dropReason`, typed metadata, graph hints, and the
@@ -390,6 +395,8 @@ The `--explain` flag outputs:
 - `skipped_strong` indicator if expansion was skipped
 - Rerank scores (if enabled)
 - Final blended scores
+- Content-type factor, raw/capped contribution, shared auxiliary cap, final
+  score, rule source, and ranking fingerprint when active
 - Per-stage timing breakdown (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`)
 - Fallback/counter summary (`fallbacks=...`, cache counters for expansion/rerank)
 
@@ -426,6 +433,7 @@ Search and optionally generate an AI answer. Combines retrieval with optional LL
 gno ask "what is the project goal"
 gno ask "summarize the auth discussion" --answer
 gno ask "summarize the auth discussion" --verify
+gno ask "summarize the auth discussion" --verify --explain
 gno ask "explain the auth flow" --answer --show-sources
 gno ask "explain the auth flow" --verify --show-sources
 gno ask "quick lookup" --fast            # Fastest retrieval
@@ -473,6 +481,8 @@ Options:
 - `--thorough` - Enable query expansion (slower, better recall)
 - `--intent <text>` - Disambiguating context for ambiguous questions without searching on that text
 - `--exclude <values>` - Hard-prune docs containing any comma-separated term in title/path/body
+- `--explain` - Include the same retrieval scoring component used by query;
+  structured output places it under `meta.explain`
 - `--query-mode <mode:text>` - Structured expansion hints; repeat for multiple entries. Modes: `term`, `intent`, `hyde`
 - Multi-line structured query documents are also supported. See [Structured Query Syntax](./SYNTAX.md).
 - `-C, --candidate-limit <n>` - Max candidates passed to reranking (default: 20)
@@ -1401,6 +1411,10 @@ target/collection pairs have no result and overall health is degraded.
 JSON output includes a safe `resident-status@1.0` lifecycle projection. A
 direct `gno status` invocation reports `mode:"direct-cli"` and
 `resident:false`; it does not pretend to be attached to a live server.
+
+Status also projects `contentTypeBoost.rules` as redacted rule IDs and effective
+factors plus the full `rulesFingerprint`. Configured path prefixes are never
+included. The same projection is available from REST, MCP, and SDK status.
 
 ### gno doctor
 

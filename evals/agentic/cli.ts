@@ -12,6 +12,7 @@ import type { VerifiedAskPromotionArtifact } from "./verified-ask-outcome";
 
 import { AgenticHarnessError } from "./adapter";
 import { AGENTIC_CLI_HELP, parseAgenticCliOptions } from "./cli-options";
+import { buildContentTypeBoostPromotion } from "./content-type-boost-promotion";
 import { FixtureAgentFactory } from "./fixture-agent";
 import { AGENTIC_FIXTURE_ROOT, loadAgenticFixture } from "./fixture-db";
 import { LocalModelAgentFactory } from "./local-model-agent";
@@ -107,6 +108,22 @@ export const writeBenchmarkArtifacts = async (
             [
               "project-affinity-promotion.md",
               artifacts.projectAffinityPromotionMarkdown,
+            ] as const,
+          ]
+        : []),
+      ...(artifacts.contentTypeBoostPromotionJson
+        ? [
+            [
+              "content-type-boost-promotion.json",
+              artifacts.contentTypeBoostPromotionJson,
+            ] as const,
+          ]
+        : []),
+      ...(artifacts.contentTypeBoostPromotionMarkdown
+        ? [
+            [
+              "content-type-boost-promotion.md",
+              artifacts.contentTypeBoostPromotionMarkdown,
             ] as const,
           ]
         : []),
@@ -261,6 +278,9 @@ export const runAgenticCli = async (
     const projectAffinityPromotion = authoritativeFixtureLane
       ? await dependencies.runProjectAffinityBenchmark(fixture)
       : undefined;
+    const contentTypeBoostPromotion = projectAffinityPromotion
+      ? buildContentTypeBoostPromotion(projectAffinityPromotion)
+      : undefined;
     dependencies.stdout.write(renderBenchmarkMarkdown(report));
     if (options.write && lane)
       await dependencies.writeArtifacts(
@@ -268,7 +288,8 @@ export const runAgenticCli = async (
         createBenchmarkArtifacts(
           report,
           verifiedAskPromotion,
-          projectAffinityPromotion
+          projectAffinityPromotion,
+          contentTypeBoostPromotion
         )
       );
     if (
@@ -281,6 +302,8 @@ export const runAgenticCli = async (
     if (verifiedAskPromotion && !verifiedAskPromotion.promotion.passed)
       return 1;
     if (projectAffinityPromotion && !projectAffinityPromotion.gates.passed)
+      return 1;
+    if (contentTypeBoostPromotion && !contentTypeBoostPromotion.gates.passed)
       return 1;
     return 0;
   } catch (error) {

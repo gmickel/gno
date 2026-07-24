@@ -89,11 +89,32 @@ describe("query-diagnose schema", () => {
         source: "project_profile",
       },
     };
+    const boostedResponse = {
+      ...response,
+      schemaVersion: "1.2",
+      contentTypeBoost: {
+        baseScore: 0.5,
+        cappedContribution: 0.05,
+        combinedAuxiliaryApplied: 0.05,
+        combinedAuxiliaryCap: 0.08,
+        combinedAuxiliaryRequested: 0.05,
+        configuredFactor: 2,
+        contentType: "person",
+        finalScore: 0.55,
+        rawContribution: 0.05,
+        rawScore: -4.2,
+        rawScoreKind: "bm25",
+        ruleSource: "configured-id",
+        rulesFingerprint: "a".repeat(64),
+      },
+    };
 
     expect(assertValid(response, schema)).toBe(true);
     expect(assertValid(response, legacySchema)).toBe(true);
     expect(assertValid(affinityResponse, schema)).toBe(true);
+    expect(assertValid(boostedResponse, schema)).toBe(true);
     expect(assertInvalid(affinityResponse, legacySchema)).toBe(true);
+    expect(assertInvalid(boostedResponse, legacySchema)).toBe(true);
     expect(
       assertInvalid(
         { ...response, affinity: affinityResponse.affinity },
@@ -106,6 +127,15 @@ describe("query-diagnose schema", () => {
     expect(assertInvalid({ ...affinityResponse, affinity: null }, schema)).toBe(
       true
     );
+    expect(
+      assertInvalid({ ...boostedResponse, contentTypeBoost: undefined }, schema)
+    ).toBe(true);
+    expect(
+      assertInvalid(
+        { ...response, contentTypeBoost: boostedResponse.contentTypeBoost },
+        schema
+      )
+    ).toBe(true);
     expect(assertInvalid({ ...response, unexpected: true }, schema)).toBe(true);
     expect(
       assertInvalid(

@@ -48,7 +48,10 @@ export { formatAsk } from "./ask-format";
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type AskCommandOptions = Omit<AskOptions, "projectAffinity"> &
+export type AskCommandOptions = Omit<
+  AskOptions,
+  "contentTypeRules" | "projectAffinity"
+> &
   CliProjectAffinityRequest & {
     /** Override config path */
     configPath?: string;
@@ -318,6 +321,7 @@ export async function ask(
       noExpand: options.noExpand,
       noRerank: options.noRerank,
       candidateLimit: options.candidateLimit,
+      explain: options.explain,
       projectAffinity,
       traceSession,
     });
@@ -397,6 +401,9 @@ export async function ask(
         answerGenerated,
         totalResults: results.length,
         answerContext,
+        ...(options.explain && searchResult.value.meta.explain
+          ? { explain: searchResult.value.meta.explain }
+          : {}),
       },
     };
 
