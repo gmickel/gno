@@ -10,13 +10,22 @@
 import type { Config, ProjectAffinityInput } from "../config/types";
 import type { ProjectAffinityScoringInput } from "../pipeline/project-affinity";
 
+import { PROJECT_AFFINITY_MAX_CONTRIBUTION } from "../config/types";
 import { resolveProjectAffinity } from "./project-affinity";
+import { compileProjectProfileYaml } from "./project-profile";
+import { discoverProjectProfile } from "./project-profile-discovery";
 
 export const MAX_PROJECT_AFFINITY_INPUTS = 16;
 
 export interface CliProjectAffinityRequest {
   projectAffinityDisabled?: boolean;
   projectRoots?: string[];
+}
+
+export interface ProjectProfileAffinityDefaults {
+  contribution: number;
+  enabled: boolean;
+  profileRoot: string;
 }
 
 export class ProjectAffinityInputError extends Error {
@@ -66,12 +75,54 @@ const scoringInput = async (
   }),
 });
 
+/**
+ * Resolve only the nearest trusted local profile's compiled affinity defaults.
+ * Invalid/missing profiles are a fallback signal, not a retrieval failure.
+ * Profile content never supplies identity: discovery's canonical profile root
+ * is the sole project root.
+ */
+export const resolveProjectProfileAffinityDefaults = async (
+  cwd: string,
+  config: Config
+): Promise<ProjectProfileAffinityDefaults | null> => {
+  const discovery = await discoverProjectProfile({
+    channel: "local",
+    cwd,
+  });
+  if (
+    discovery.summary.status !== "found" ||
+    !discovery.profilePath ||
+    !discovery.profileRoot
+  ) {
+    return null;
+  }
+
+  try {
+    const profileYaml = await Bun.file(discovery.profilePath).text();
+    const compiled = await compileProjectProfileYaml(profileYaml, {
+      profileRoot: discovery.profileRoot,
+      config,
+    });
+    if (!compiled.ok) return null;
+    return {
+      ...compiled.value.desiredState.affinityDefaults,
+      profileRoot: discovery.profileRoot,
+    };
+  } catch {
+    return null;
+  }
+};
+
 export const resolveCliProjectAffinity = async (
   config: Config,
   options: {
     cwd: string;
     disabled?: boolean;
     projectRoots?: readonly string[];
+    resolveProfileDefaults?: (
+      cwd: string,
+      config: Config
+    ) => Promise<ProjectProfileAffinityDefaults | null>;
   }
 ): Promise<ProjectAffinityScoringInput | undefined> => {
   const projectRoots = normalizeProjectAffinityValues(
@@ -83,16 +134,60 @@ export const resolveCliProjectAffinity = async (
       "--no-project-affinity cannot be combined with --project-root"
     );
   }
-  if (options.disabled || config.projectAffinity?.enabled === false) return;
+  if (options.disabled) return;
 
-  const roots =
-    projectRoots.length > 0
-      ? projectRoots.map((path) => ({
+  if (projectRoots.length > 0) {
+    return scoringInput(
+      {
+        roots: projectRoots.map((path) => ({
           path,
           source: "cli_explicit" as const,
-        }))
-      : [{ path: options.cwd, source: "cli_cwd" as const }];
-  return scoringInput({ roots }, config, "local");
+        })),
+      },
+      {
+        ...config,
+        projectAffinity: {
+          enabled: true,
+          contribution:
+            config.projectAffinity?.contribution ??
+            PROJECT_AFFINITY_MAX_CONTRIBUTION,
+        },
+      },
+      "local"
+    );
+  }
+
+  const profileDefaults = await (
+    options.resolveProfileDefaults ?? resolveProjectProfileAffinityDefaults
+  )(options.cwd, config);
+  if (profileDefaults) {
+    if (!profileDefaults.enabled) return;
+    return scoringInput(
+      {
+        roots: [
+          {
+            path: profileDefaults.profileRoot,
+            source: "project_profile",
+          },
+        ],
+      },
+      {
+        ...config,
+        projectAffinity: {
+          enabled: profileDefaults.enabled,
+          contribution: profileDefaults.contribution,
+        },
+      },
+      "local"
+    );
+  }
+
+  if (config.projectAffinity?.enabled === false) return;
+  return scoringInput(
+    { roots: [{ path: options.cwd, source: "cli_cwd" }] },
+    config,
+    "local"
+  );
 };
 
 export const resolveRemoteProjectAffinity = async (

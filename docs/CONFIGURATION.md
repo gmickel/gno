@@ -97,12 +97,18 @@ trusted local CLI signal globally; callers can also use
 `--no-project-affinity` per request. `projectAffinity.contribution` defaults to
 `0.03` and must stay within `0..0.03`.
 
-Only canonicalized local CLI cwd/`--project-root` values can match configured
-collection paths. Explicit roots replace the cwd-derived root, and
-overlapping/duplicate roots never stack. SDK, REST, MCP, and Web UI
+Only canonicalized local CLI roots can match configured collection paths.
+Explicit `--project-root` values replace profile/cwd inference. When no
+explicit root is supplied, the nearest valid `.gno/index.yml` contributes its
+compiled, request-local `affinityDefaults`; otherwise the user config applies
+to the cwd-derived root. Profile defaults never overwrite this user default,
+and source metadata/content types never become project identity.
+Overlapping/duplicate roots never stack. SDK, REST, MCP, and Web UI
 `projectHints` are opaque/untrusted (maximum 16) and deliberately produce zero
 affinity without filesystem probing. All auxiliary contributions share the
 `±0.08` cap; collection/tag/date/exclude/egress filters remain hard.
+
+See [Project-Local Retrieval Profiles](guides/project-profiles.md).
 
 ## Resident HTTP MCP Gateway
 

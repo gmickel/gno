@@ -125,6 +125,7 @@ gno --offline setup ~/notes
 gno setup ~/notes --no-semantic
 gno setup ~/notes --connector codex-skill
 gno setup ~/notes --connector cursor-mcp --connector codex-skill
+gno setup . --apply-profile
 gno setup ~/notes --json
 ```
 
@@ -133,6 +134,15 @@ and runs a corpus-derived BM25 query. It reports success only when that query
 returns an exact `gno://` result URI. Rerunning the same canonical folder is
 idempotent: it reuses the collection and resumes from the durable local setup
 receipt.
+
+Setup checks for the nearest `.gno/index.yml` before its folder transaction.
+Plain setup prints profile preview/apply guidance but never applies it
+implicitly. `--apply-profile` explicitly uses the lock-safe, create/update-only
+profile apply path, then proves the profile-declared collection root and name.
+Nested invocations do not create a duplicate subdirectory collection. Missing
+or invalid profiles keep ordinary setup usable and are reported as optional
+follow-up. See
+[Project-Local Retrieval Profiles](guides/project-profiles.md).
 
 `--exclude` is repeatable and literal; it is not a comma-separated list. If GNO
 finds likely env files, credentials, or private keys, terminal use asks once
@@ -159,6 +169,9 @@ closed result on stdout; progress is suppressed. Without `--connector`, the
 payload remains the unchanged `setup-command-result@1.0`. With one or more
 explicit connector IDs, it is `setup-activation-result@1.0`, containing the
 unchanged setup result plus bounded per-target install and verification state.
+With `--apply-profile`, the outer `setup-profile-result@1.0` adds the closed
+profile check/apply state around the unchanged setup result and connector list.
+An absent/invalid profile uses `completed_with_actions` and `apply: null`.
 Connector-mode argument or lexical failure still uses that outer schema with
 `status: failed` and an empty connector list; the nested setup result and exit
 code remain unchanged, and no connector action runs.

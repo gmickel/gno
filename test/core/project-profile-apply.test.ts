@@ -149,6 +149,16 @@ describe("applyProjectProfile", () => {
       scopeKey: "notes:",
       text: "Project context.",
     });
+    expect(config.projectAffinity).toEqual({
+      enabled: true,
+      contribution: 0.03,
+    });
+    expect(first.ok && first.receipt.resources).toContainEqual({
+      kind: "project_affinity",
+      id: "profile",
+      disposition: "skipped",
+      pendingIndexing: false,
+    });
     expect(store.collectionSyncs).toHaveLength(3);
     expect(store.contextSyncs).toHaveLength(3);
   });

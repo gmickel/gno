@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/setup-profile-result@1.0",
+  "title": "GNO Setup Profile Result",
+  "description": "Closed opt-in project-profile apply composition around verified setup and optional connectors.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "profile", "setup", "connectors"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "status": {
+      "enum": ["completed", "completed_with_actions", "failed"]
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check", "apply"],
+      "properties": {
+        "check": {
+          "allOf": [
+            { "$ref": "gno://schemas/project-profile-command@1.0" },
+            {
+              "type": "object",
+              "properties": { "command": { "const": "check" } },
+              "required": ["command"]
+            }
+          ]
+        },
+        "apply": {
+          "oneOf": [
+            { "$ref": "gno://schemas/project-profile-apply@1.0" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "setup": { "$ref": "gno://schemas/setup-command-result@1.0" },
+    "connectors": {
+      "$ref": "gno://schemas/setup-activation-result@1.0#/properties/connectors"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "completed" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "profile": {
+            "type": "object",
+            "properties": {
+              "check": {
+                "type": "object",
+                "properties": { "status": { "const": "valid" } }
+              },
+              "apply": {
+                "type": "object",
+                "properties": {
+                  "status": { "enum": ["applied", "unchanged"] }
+                }
+              }
+            }
+          },
+          "setup": {
+            "type": "object",
+            "properties": { "status": { "const": "completed" } }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "failed" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "setup": {
+            "type": "object",
+            "properties": { "status": { "const": "failed" } }
+          }
+        }
+      }
+    }
+  ]
+}

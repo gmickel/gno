@@ -178,6 +178,7 @@ async function verifyTarballContents(
     "package/src/core/setup-receipt.ts",
     "package/src/cli/commands/setup.ts",
     "package/src/cli/commands/setup-activation.ts",
+    "package/src/cli/commands/setup-profile.ts",
     "package/src/cli/commands/setup-semantic.ts",
     "package/src/cli/setup-semantic-worker.ts",
     "package/src/serve/public/globals.built.css",
@@ -185,6 +186,7 @@ async function verifyTarballContents(
     "package/spec/output-schemas/setup-command-result.schema.json",
     "package/spec/output-schemas/setup-semantic-receipt.schema.json",
     "package/spec/output-schemas/setup-activation-result.schema.json",
+    "package/spec/output-schemas/setup-profile-result.schema.json",
     "package/THIRD_PARTY_NOTICES.md",
   ]) {
     assertTarEntry(entries, requiredFile);

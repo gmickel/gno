@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 // node:fs/promises provides temporary-directory lifecycle helpers with no Bun equivalent.
-import { mkdir, mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 // node:os provides the platform temporary directory with no Bun equivalent.
 import { tmpdir } from "node:os";
 // node:path provides path composition with no Bun equivalent.
@@ -202,6 +202,127 @@ describe("project affinity surface parity", () => {
     expect(explicitAffinity?.resolution.roots[0]?.source).toBe("cli_explicit");
   });
 
+  test("uses nearest compiled profile defaults between explicit roots and user defaults", async () => {
+    const root = await tempDirectory();
+    const project = join(root, "project");
+    const nestedCwd = join(project, "src");
+    const explicit = join(root, "explicit");
+    await mkdir(join(project, ".git"), { recursive: true });
+    await mkdir(join(project, ".gno"), { recursive: true });
+    await mkdir(nestedCwd, { recursive: true });
+    await mkdir(explicit, { recursive: true });
+    await writeFile(
+      join(project, ".gno", "index.yml"),
+      [
+        'schemaVersion: "1.0"',
+        "collection: { name: project, root: . }",
+        "contentTypes:",
+        "  - id: unrelated",
+        "    prefixes: [other]",
+        "    preset: person",
+        "affinityDefaults: { enabled: true, contribution: 0.02 }",
+        "",
+      ].join("\n")
+    );
+
+    const config = createDefaultConfig();
+    config.projectAffinity = { enabled: true, contribution: 0.01 };
+    config.collections = [
+      {
+        name: "project",
+        path: project,
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      },
+    ];
+
+    const profileAffinity = await resolveCliProjectAffinity(config, {
+      cwd: nestedCwd,
+    });
+    expect(profileAffinity?.contribution).toBe(0.02);
+    expect(profileAffinity?.resolution.matches[0]?.source).toBe(
+      "project_profile"
+    );
+
+    let profileLookups = 0;
+    config.projectAffinity = { enabled: false, contribution: 0.01 };
+    const explicitAffinity = await resolveCliProjectAffinity(config, {
+      cwd: nestedCwd,
+      projectRoots: [explicit],
+      resolveProfileDefaults: async () => {
+        profileLookups += 1;
+        return {
+          enabled: true,
+          contribution: 0.03,
+          profileRoot: project,
+        };
+      },
+    });
+    expect(profileLookups).toBe(0);
+    expect(explicitAffinity?.contribution).toBe(0.01);
+    expect(explicitAffinity?.resolution.roots[0]?.source).toBe("cli_explicit");
+  });
+
+  test("isolates profile defaults across profile and no-profile repositories", async () => {
+    const root = await tempDirectory();
+    const projects = {
+      alpha: join(root, "alpha"),
+      beta: join(root, "beta"),
+      plain: join(root, "plain"),
+    };
+    for (const project of Object.values(projects)) {
+      await mkdir(join(project, ".git"), { recursive: true });
+      await mkdir(join(project, "src"), { recursive: true });
+    }
+    for (const [name, contribution] of [
+      ["alpha", 0.02],
+      ["beta", 0.025],
+    ] as const) {
+      await mkdir(join(projects[name], ".gno"), { recursive: true });
+      await writeFile(
+        join(projects[name], ".gno", "index.yml"),
+        [
+          'schemaVersion: "1.0"',
+          `collection: { name: ${name}, root: . }`,
+          `affinityDefaults: { enabled: true, contribution: ${contribution} }`,
+          "",
+        ].join("\n")
+      );
+    }
+
+    const config = createDefaultConfig();
+    config.projectAffinity = { enabled: true, contribution: 0.005 };
+    config.collections = Object.entries(projects).map(([name, path]) => ({
+      name,
+      path,
+      pattern: "**/*",
+      include: [],
+      exclude: [],
+    }));
+
+    const alpha = await resolveCliProjectAffinity(config, {
+      cwd: join(projects.alpha, "src"),
+    });
+    const plain = await resolveCliProjectAffinity(config, {
+      cwd: join(projects.plain, "src"),
+    });
+    const beta = await resolveCliProjectAffinity(config, {
+      cwd: join(projects.beta, "src"),
+    });
+
+    expect(alpha?.contribution).toBe(0.02);
+    expect(alpha?.resolution.roots[0]?.source).toBe("project_profile");
+    expect(plain?.contribution).toBe(0.005);
+    expect(plain?.resolution.roots[0]?.source).toBe("cli_cwd");
+    expect(beta?.contribution).toBe(0.025);
+    expect(beta?.resolution.roots[0]?.source).toBe("project_profile");
+    expect(config.projectAffinity).toEqual({
+      enabled: true,
+      contribution: 0.005,
+    });
+  });
+
   test("keeps absent, disabled, and invalid controls deterministic", async () => {
     const config = createDefaultConfig();
     const configDisabled = createDefaultConfig();
@@ -241,6 +362,41 @@ describe("project affinity surface parity", () => {
     expect(() =>
       normalizeProjectAffinityValues(["   "], "project hints")
     ).toThrow("must not contain empty values");
+  });
+
+  test("profile enablement overrides the user default without defeating request disable", async () => {
+    const project = await tempDirectory();
+    const config = createDefaultConfig();
+    config.projectAffinity = { enabled: false, contribution: 0.01 };
+    config.collections = [
+      {
+        name: "project",
+        path: project,
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      },
+    ];
+    const enabledByProfile = await resolveCliProjectAffinity(config, {
+      cwd: project,
+      resolveProfileDefaults: async () => ({
+        enabled: true,
+        contribution: 0.02,
+        profileRoot: project,
+      }),
+    });
+    expect(enabledByProfile?.contribution).toBe(0.02);
+    expect(
+      await resolveCliProjectAffinity(config, {
+        cwd: project,
+        disabled: true,
+        resolveProfileDefaults: async () => ({
+          enabled: true,
+          contribution: 0.02,
+          profileRoot: project,
+        }),
+      })
+    ).toBeUndefined();
   });
 
   test("MCP search handler keeps remote hints zero-effect, private, and bounded", async () => {

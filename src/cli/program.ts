@@ -1438,13 +1438,20 @@ function wireOnboardingCommands(program: Command): void {
       collectRepeatableValue,
       []
     )
+    .option(
+      "--apply-profile",
+      "apply a valid project profile before lexical setup"
+    )
     .option("--no-semantic", "skip background semantic indexing")
     .option("--json", "JSON output")
     .action(async (folder: string, cmdOpts: Record<string, unknown>) => {
       const globals = getGlobals();
       const json = Boolean(cmdOpts.json) || globals.json;
-      const { formatSetupOutputResult, setupWithActivation } =
-        await import("./commands/setup-activation");
+      const {
+        formatSetupOutputResult,
+        formatSetupProfileAdvisory,
+        setupWithActivation,
+      } = await import("./commands/setup-activation");
       const exclusions = cmdOpts.exclude as string[];
       const outcome = await setupWithActivation({
         folder,
@@ -1452,6 +1459,7 @@ function wireOnboardingCommands(program: Command): void {
         exclude: exclusions.length > 0 ? exclusions : undefined,
         authorizeSecretRisk: Boolean(cmdOpts.authorizeSecretRisk),
         connectorIds: cmdOpts.connector as string[],
+        applyProfile: Boolean(cmdOpts.applyProfile),
         semantic: cmdOpts.semantic !== false,
         indexName: globals.index,
         configPath: globals.config,
@@ -1462,13 +1470,16 @@ function wireOnboardingCommands(program: Command): void {
         progress: (stage) => {
           process.stderr.write(`setup: ${stage}\n`);
         },
-        discoverProfileAdvisory: async ({ folder: verifiedFolder }) => {
-          const { discoverProjectProfile } =
-            await import("../core/project-profile-discovery");
-          await discoverProjectProfile({
-            channel: "local",
-            cwd: verifiedFolder,
+        onProfileAdvisory: (profile) => {
+          if (json || globals.quiet) return;
+          const advisory = formatSetupProfileAdvisory(profile, {
+            applyRequested: Boolean(cmdOpts.applyProfile),
           });
+          if (advisory) process.stderr.write(`${advisory}\n`);
+        },
+        onProfileApply: (profile) => {
+          if (json || globals.quiet) return;
+          process.stderr.write(`setup: project profile ${profile.status}\n`);
         },
       });
       const output = formatSetupOutputResult(outcome.result, { json });

@@ -5,11 +5,10 @@ import type {
   SetupConnectorState,
 } from "../../core/setup-activation";
 import type { SqliteAdapter } from "../../store/sqlite/adapter";
-import type {
-  SetupCommandOptions,
-  SetupCommandOutcome,
-  SetupCommandResult,
-} from "./setup";
+import type { ProjectProfileCommandResult } from "./profile";
+import type { ProjectProfileApplyCommandResult } from "./profile-apply";
+import type { SetupCommandOutcome, SetupCommandResult } from "./setup";
+import type { SetupProfileIntegrationOptions } from "./setup-profile";
 
 import { getIndexDbPath } from "../../app/constants";
 import { getConfigPaths, loadConfig, toAbsolutePath } from "../../config";
@@ -31,6 +30,13 @@ import {
   SETUP_COMMAND_SCHEMA_VERSION,
   setup,
 } from "./setup";
+import {
+  applySetupProfile,
+  inspectSetupProfile,
+  setupOptionsAfterProfileApply,
+} from "./setup-profile";
+
+export { formatSetupProfileAdvisory } from "./setup-profile";
 
 export interface SetupActivationResult {
   schemaVersion: typeof SETUP_ACTIVATION_SCHEMA_VERSION;
@@ -39,26 +45,38 @@ export interface SetupActivationResult {
   connectors: SetupConnectorResult[];
 }
 
-export type SetupOutputResult = SetupCommandResult | SetupActivationResult;
+export interface SetupProfileResult {
+  schemaVersion: "1.0";
+  status: "completed" | "completed_with_actions" | "failed";
+  profile: {
+    check: ProjectProfileCommandResult;
+    apply: ProjectProfileApplyCommandResult | null;
+  };
+  setup: SetupCommandResult;
+  connectors: SetupConnectorResult[];
+}
+
+export type SetupOutputResult =
+  | SetupCommandResult
+  | SetupActivationResult
+  | SetupProfileResult;
 
 export interface SetupOutputOutcome {
   result: SetupOutputResult;
   exitCode: 0 | 1 | 2;
 }
 
-export interface SetupProfileAdvisoryInput {
-  folder: string;
-  collection: string;
+function isComposedSetupResult(
+  result: SetupOutputResult
+): result is SetupActivationResult | SetupProfileResult {
+  return "setup" in result;
 }
 
-export interface SetupActivationCommandOptions extends SetupCommandOptions {
+export interface SetupActivationCommandOptions extends SetupProfileIntegrationOptions {
   connectorIds?: string[];
   connectorWorkspace?: { cwd?: string; homeDir?: string };
   connectorDeps?: SetupConnectorCompositionDeps;
   createActivationStore?: () => SqliteAdapter;
-  discoverProfileAdvisory?: (
-    input: SetupProfileAdvisoryInput
-  ) => Promise<unknown>;
 }
 
 function dedupeConnectorIds(connectorIds: string[]): string[] {
@@ -158,18 +176,37 @@ function defaultConnectorDeps(
   };
 }
 
-async function discoverProfileAdvisory(
-  discover: SetupActivationCommandOptions["discoverProfileAdvisory"],
-  input: SetupProfileAdvisoryInput
-): Promise<void> {
-  if (!discover) {
-    return;
-  }
-  try {
-    await discover(input);
-  } catch {
-    // Advisory discovery cannot mutate or fail verified setup.
-  }
+function withProfileResult(
+  outcome: SetupOutputOutcome,
+  requested: boolean,
+  check: ProjectProfileCommandResult | null,
+  applied: ProjectProfileApplyCommandResult | null
+): SetupOutputOutcome {
+  if (!requested || !check) return outcome;
+  const setupResult = isComposedSetupResult(outcome.result)
+    ? outcome.result.setup
+    : outcome.result;
+  const connectors = isComposedSetupResult(outcome.result)
+    ? outcome.result.connectors
+    : [];
+  const profileCompleted =
+    applied?.status === "applied" || applied?.status === "unchanged";
+  return {
+    exitCode: outcome.exitCode,
+    result: {
+      schemaVersion: "1.0",
+      status:
+        setupResult.status === "failed"
+          ? "failed"
+          : outcome.result.status === "completed_with_actions" ||
+              !profileCompleted
+            ? "completed_with_actions"
+            : "completed",
+      profile: { check, apply: applied },
+      setup: setupResult,
+      connectors,
+    },
+  };
 }
 
 function withUnavailableConnectors(
@@ -220,17 +257,34 @@ export async function setupWithActivation(
     connectorWorkspace: _connectorWorkspace,
     connectorDeps: _connectorDeps,
     createActivationStore: _createActivationStore,
-    discoverProfileAdvisory: _discoverProfileAdvisory,
+    applyProfile: _applyProfile,
+    inspectProfileAdvisory: _inspectProfileAdvisory,
+    applyProfileAdvisory: _applyProfileAdvisory,
+    onProfileAdvisory: _onProfileAdvisory,
+    onProfileApply: _onProfileApply,
     ...setupOptions
   } = options;
-  const setupOutcome = await setup(setupOptions);
+  const profileCheck = await inspectSetupProfile(options);
+  const profileApply = await applySetupProfile(options, profileCheck);
+  const effectiveSetupOptions = await setupOptionsAfterProfileApply(
+    setupOptions,
+    profileApply
+  );
+  const setupOutcome = await setup(effectiveSetupOptions);
   if (
     setupOutcome.exitCode !== 0 ||
     setupOutcome.result.status !== "completed"
   ) {
-    return definitions.length > 0
-      ? failedSetupActivationOutcome(setupOutcome)
-      : setupOutcome;
+    const failed =
+      definitions.length > 0
+        ? failedSetupActivationOutcome(setupOutcome)
+        : setupOutcome;
+    return withProfileResult(
+      failed,
+      Boolean(options.applyProfile),
+      profileCheck,
+      profileApply
+    );
   }
 
   const lexicalReceipt = setupOutcome.result.lexical.receipt;
@@ -240,15 +294,21 @@ export async function setupWithActivation(
     !collection ||
     !lexicalSuccessIsProven(lexicalReceipt)
   ) {
-    return setupOutcome;
+    return withProfileResult(
+      setupOutcome,
+      Boolean(options.applyProfile),
+      profileCheck,
+      profileApply
+    );
   }
 
-  await discoverProfileAdvisory(options.discoverProfileAdvisory, {
-    folder: lexicalReceipt.input.folder,
-    collection,
-  });
   if (definitions.length === 0) {
-    return setupOutcome;
+    return withProfileResult(
+      setupOutcome,
+      Boolean(options.applyProfile),
+      profileCheck,
+      profileApply
+    );
   }
 
   let store: SqliteAdapter | null = null;
@@ -258,7 +318,12 @@ export async function setupWithActivation(
     const indexName = options.indexName ?? "default";
     const configResult = await loadConfig(configPath);
     if (!configResult.ok) {
-      return withUnavailableConnectors(setupOutcome.result, definitions);
+      return withProfileResult(
+        withUnavailableConnectors(setupOutcome.result, definitions),
+        Boolean(options.applyProfile),
+        profileCheck,
+        profileApply
+      );
     }
 
     store =
@@ -270,7 +335,12 @@ export async function setupWithActivation(
       configResult.value.ftsTokenizer
     );
     if (!opened.ok) {
-      return withUnavailableConnectors(setupOutcome.result, definitions);
+      return withProfileResult(
+        withUnavailableConnectors(setupOutcome.result, definitions),
+        Boolean(options.applyProfile),
+        profileCheck,
+        profileApply
+      );
     }
 
     const composition = await composeSetupConnectors({
@@ -283,26 +353,30 @@ export async function setupWithActivation(
         options.connectorDeps ??
         defaultConnectorDeps(options.connectorWorkspace),
     });
-    return {
-      result: {
-        schemaVersion: SETUP_ACTIVATION_SCHEMA_VERSION,
-        status: composition.status,
-        setup: setupOutcome.result,
-        connectors: composition.connectors,
+    return withProfileResult(
+      {
+        result: {
+          schemaVersion: SETUP_ACTIVATION_SCHEMA_VERSION,
+          status: composition.status,
+          setup: setupOutcome.result,
+          connectors: composition.connectors,
+        },
+        exitCode: 0,
       },
-      exitCode: 0,
-    };
+      Boolean(options.applyProfile),
+      profileCheck,
+      profileApply
+    );
   } catch {
-    return withUnavailableConnectors(setupOutcome.result, definitions);
+    return withProfileResult(
+      withUnavailableConnectors(setupOutcome.result, definitions),
+      Boolean(options.applyProfile),
+      profileCheck,
+      profileApply
+    );
   } finally {
     await closeActivationStore(store);
   }
-}
-
-function isSetupActivationResult(
-  result: SetupOutputResult
-): result is SetupActivationResult {
-  return "setup" in result;
 }
 
 export function formatSetupOutputResult(
@@ -312,7 +386,7 @@ export function formatSetupOutputResult(
   if (options.json) {
     return JSON.stringify(result, null, 2);
   }
-  if (!isSetupActivationResult(result)) {
+  if (!isComposedSetupResult(result)) {
     return formatSetupResult(result, options);
   }
   const setupOutput = formatSetupResult(result.setup, options);

@@ -123,7 +123,6 @@ export function applyProjectProfileDesiredState(
     collections,
     contexts,
     contentTypes,
-    projectAffinity: desired.affinityDefaults,
   };
 }
 
@@ -208,13 +207,8 @@ export function buildProjectProfileResources(
 
   resources.push({
     kind: "project_affinity",
-    id: "default",
-    disposition: canonicalProfileStateEqual(
-      before.projectAffinity,
-      after.projectAffinity
-    )
-      ? "reused"
-      : "updated",
+    id: "profile",
+    disposition: "skipped",
     pendingIndexing: false,
   });
   for (const capability of desired.recommendedCapabilities) {

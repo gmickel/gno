@@ -18,9 +18,10 @@
 GNO is a local knowledge engine for notes, code, PDFs, Office docs, meeting transcripts, and reference material. It gives you fast keyword search, semantic retrieval, grounded answers with citations, wiki-style linking, and a real workspace UI, while keeping the whole stack local by default.
 
 CLI retrieval also uses the current repository/workspace as a transparent soft
-ranking signal. A trusted local cwd or repeatable `--project-root` can add at
-most `+0.03` to matching collection results; `--no-project-affinity` disables
-it, and explicit roots replace cwd inference. It never overrides collection,
+ranking signal. A trusted explicit `--project-root`, nearest valid
+`.gno/index.yml`, or local cwd can add at most `+0.03` to matching collection
+results, in that precedence order; `--no-project-affinity` disables it. Profile
+defaults stay project-local and never overwrite the user default. It never overrides collection,
 tag, date, exclude, or egress filters. SDK, REST, and MCP `projectHints` are
 opaque, untrusted, limited to 16, and intentionally have zero ranking effect:
 those surfaces never probe caller or server filesystem paths. Trusted local
@@ -52,6 +53,10 @@ bun install -g @gmickel/gno
 
 # Prove the first folder immediately; semantic work continues independently
 gno setup ~/notes --name notes
+
+# In a repository with .gno/index.yml: preview, apply, and prove its collection
+gno profile diff
+gno setup . --apply-profile
 
 # Add more collections with the granular commands
 gno collection add ~/work/docs --name work-docs --pattern "**/*.{md,pdf,docx}"
@@ -194,6 +199,7 @@ Model guides:
 - [Code Embeddings](./docs/guides/code-embeddings.md)
 - [Per-Collection Models](./docs/guides/per-collection-models.md)
 - [Bring Your Own Models](./docs/guides/bring-your-own-models.md)
+- [Project-Local Retrieval Profiles](./docs/guides/project-profiles.md)
 
 ### Fine-Tuned Model Quick Use
 

@@ -182,6 +182,10 @@ collection root is repaired in place without deleting its collection or index
 identity. Model preset aliases resolve to collection-local model overrides.
 Apply synchronizes the config projection but does not index documents; changed
 collections appear in `pendingIndexing`.
+`affinityDefaults` remains profile-scoped and is compiled at trusted local
+retrieval time; apply does not overwrite the user config `projectAffinity`
+default. Its apply resource is therefore `project_affinity/profile/skipped`,
+while the nearest valid profile can still supply request-local affinity.
 
 The deterministic JSON result uses
 [`project-profile-apply@1.0`](./output-schemas/project-profile-apply.schema.json).
@@ -198,9 +202,11 @@ applies resume from fresh config state and converge idempotently.
   profile/config validation failed, including runtime-path overlap
 - `2`: unexpected local I/O, lock, receipt, or index-store failure
 
-`gno setup` may call the same local discovery function after proven lexical
-setup. This advisory seam is optional, read-only, non-fatal, and does not alter
-the existing setup receipt.
+`gno setup` calls the same local `check` composition before its folder
+transaction. Inspection is read-only and non-fatal. Plain setup prints bounded
+preview/apply guidance but preserves the existing setup result contract.
+Explicit `--apply-profile` runs the same lock-safe apply path before lexical
+setup and emits `setup-profile-result@1.0`.
 
 ### gno status
 
@@ -442,7 +448,7 @@ to one standalone background worker and never delays lexical success.
 ```bash
 gno setup <folder> [-n|--name <name>] [--exclude <pattern>]...
   [--authorize-secret-risk] [--connector <id>]...
-  [--no-semantic] [--json]
+  [--apply-profile] [--no-semantic] [--json]
 ```
 
 **Options:**
@@ -453,6 +459,7 @@ gno setup <folder> [-n|--name <name>] [--exclude <pattern>]...
 | `--exclude <pattern>`     | repeatable | core defaults | One literal exclusion per occurrence; never CSV                              |
 | `--authorize-secret-risk` | boolean    | false         | Explicitly authorize likely credentials, private keys, or env files          |
 | `--connector <id>`        | repeatable | none          | Install or reuse and verify one supported connector after lexical proof      |
+| `--apply-profile`         | boolean    | false         | Apply a valid discovered project profile before lexical setup                |
 | `--no-semantic`           | boolean    | false         | Prove lexical retrieval but record semantic work as skipped                  |
 | `--json`                  | boolean    | false         | Emit one closed setup result object                                          |
 
@@ -468,6 +475,27 @@ a completed `FolderSetupReceipt@1.0`, `activation.ready=true`, and a non-empty
 exact `activation.evidence.resultUri`. Terminal stage progress uses stderr;
 `--quiet` suppresses progress but not the final result. JSON writes exactly one
 canonical result to stdout on both success and domain failure, with no progress.
+
+Before the folder transaction, setup performs the same local read-only
+`gno profile check` composition from the supplied folder. Missing and invalid
+profiles remain optional and never block ordinary setup. Terminal output shows
+a valid profile fingerprint plus `profile diff`/`--apply-profile` guidance, or
+an invalid-profile diagnostic, before setup mutates local state.
+
+`--apply-profile` is explicit. When the check is valid, setup runs the existing
+cross-process lock-safe, create/update-only `profile apply` path first, then
+uses the applied profile collection's canonical root, name, and filters for
+lexical setup. A nested folder invocation therefore indexes the declared
+profile root rather than creating a duplicate subdirectory collection. The
+profile never deletes omitted resources or overwrites the user-level
+`projectAffinity` default.
+
+Opt-in JSON uses
+[`setup-profile-result@1.0`](./output-schemas/setup-profile-result.schema.json)
+and includes the closed `profile.check`, nullable `profile.apply`, unchanged
+setup result, and connectors. A missing/invalid profile keeps setup usable and
+returns `completed_with_actions` with `profile.apply: null`. Without
+`--apply-profile`, the existing setup/activation JSON bytes remain unchanged.
 
 After lexical proof, the command records one private atomic
 `setup-semantic@1.0` receipt per canonical index/folder and starts one detached,
@@ -507,6 +535,7 @@ second connector fingerprint or cache.
 
 - [`setup-command-result@1.0`](./output-schemas/setup-command-result.schema.json)
 - [`setup-activation-result@1.0`](./output-schemas/setup-activation-result.schema.json)
+- [`setup-profile-result@1.0`](./output-schemas/setup-profile-result.schema.json)
 - [`setup-semantic@1.0`](./output-schemas/setup-semantic-receipt.schema.json)
 - [`FolderSetupReceipt@1.0`](./output-schemas/setup-receipt.schema.json)
 

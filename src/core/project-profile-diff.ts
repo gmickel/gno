@@ -246,19 +246,6 @@ export async function buildProjectProfileDiff(
       summary: "Update normalized content type rules.",
     });
   }
-  const currentAffinity = config.projectAffinity ?? {
-    enabled: true,
-    contribution: 0.03,
-  };
-  if (!canonicalEqual(currentAffinity, desiredState.affinityDefaults)) {
-    changes.push({
-      action: "update",
-      field: "projectAffinity",
-      destructive: false,
-      summary: "Update bounded project-affinity defaults.",
-    });
-  }
-
   changes.sort(
     (left, right) =>
       compareCodeUnits(left.field, right.field) ||

@@ -123,6 +123,7 @@ export const TrustedProjectRootSourceSchema = z.enum([
   "cli_cwd",
   "cli_explicit",
   "cli_worktree",
+  "project_profile",
 ]);
 export type TrustedProjectRootSource = z.infer<
   typeof TrustedProjectRootSourceSchema

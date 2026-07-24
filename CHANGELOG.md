@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added portable project-local retrieval profiles with explicit
+  `gno setup --apply-profile`, nearest-profile affinity precedence, request-local
+  defaults, closed JSON contracts, and clean-machine portability coverage.
+
 ## [1.25.1] - 2026-07-24
 
 ### Fixed
