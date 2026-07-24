@@ -317,6 +317,43 @@ export function residentOwnershipState(status: ResidentStatus): object {
   };
 }
 
+/**
+ * Accept settled warm reuse even after a recovered prior load failure
+ * (e.g. loadAttempts=2, loadSuccesses=1, loadFailures=1, loadedModels=1).
+ * Reject unloaded/unsuccessful pre-state, inconsistent counters, new loads
+ * during reuse, unbalanced leases, or leftover active/inflight state.
+ */
+export function isValidPackedWarmModelReuse(
+  before: ResidentStatus["models"],
+  after: ResidentStatus["models"],
+  expectedLeaseCount: number
+): boolean {
+  const beforeSettled =
+    before.loadedModels === 1 &&
+    before.loadSuccesses >= 1 &&
+    before.loadAttempts === before.loadSuccesses + before.loadFailures &&
+    before.activeLeases === 0 &&
+    before.leaseAcquisitions === before.leaseReleases &&
+    before.inflightLoads === 0;
+  if (!beforeSettled) {
+    return false;
+  }
+
+  const acquired = after.leaseAcquisitions - before.leaseAcquisitions;
+  const released = after.leaseReleases - before.leaseReleases;
+  return (
+    after.loadedModels === before.loadedModels &&
+    after.loadAttempts === before.loadAttempts &&
+    after.loadSuccesses === before.loadSuccesses &&
+    after.loadFailures === before.loadFailures &&
+    acquired === expectedLeaseCount &&
+    released === acquired &&
+    after.activeLeases === 0 &&
+    after.leaseAcquisitions === after.leaseReleases &&
+    after.inflightLoads === 0
+  );
+}
+
 export async function proveResidentUnaffectedByDirectSetup(
   input: ResidentSmokeInput,
   baseUrl: string
