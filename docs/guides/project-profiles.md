@@ -50,7 +50,7 @@ contexts:
   - file: AGENTS.md
   - text: Prefer primary project decisions.
 contentTypes:
-  - id: people
+  people:
     prefixes: [people]
     preset: person
     graphHints: [works_at, mentions]
@@ -66,9 +66,13 @@ Absolute paths, traversal, environment expansion, runtime database/model/lock
 paths, secret fields, arbitrary hooks, and symlink escapes fail validation.
 Windows-reserved names, trailing dots/spaces, unbalanced or negated globs, and
 likely secret context paths such as `.env`, private keys, and credentials also
-fail validation. Context files must be regular UTF-8 files no larger than
-64 KiB; `.gno/index.yml` is bounded at 1 MiB. `.gno` is always excluded from
-the declared collection.
+fail validation, including when a safe-looking context symlink resolves to a
+secret filename inside the repository. Context files must be regular UTF-8
+files no larger than 64 KiB; `.gno/index.yml` is bounded at 1 MiB. `.gno` is
+always excluded from the declared collection.
+
+`contentTypes` is keyed by content type ID. Map keys make IDs structurally
+unique in both the YAML contract and runtime validation.
 
 Profile excludes are real Bun globs when they contain glob metacharacters;
 plain components retain directory-component matching. Multiple include globs,
@@ -146,9 +150,11 @@ Machine-local state stays under the configured user directories:
 ```
 
 Profile apply fails before mutation if config, database, data, cache, receipt,
-lock, or file-backed selected model paths overlap the project root. Config
-writers share one canonical target-derived lock, including symlink aliases, so
-setup, profile apply, MCP, and resident Web mutations cannot overwrite each
-other. Read-only profile commands never repair or mutate model-cache metadata.
+lock, or file-backed selected model paths overlap the project root. GNO user
+config writers share one canonical target-derived lock, including existing and
+dangling symlink aliases, so CLI setup/init/collection/context/model changes,
+profile apply, MCP, and resident Web mutations cannot overwrite each other.
+Host application config files edited by MCP install/uninstall are separate
+targets. Read-only profile commands never repair or mutate model-cache metadata.
 Never commit generated databases, models, cache files, locks, receipts, or
 credentials.

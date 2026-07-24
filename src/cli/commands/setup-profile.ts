@@ -114,6 +114,7 @@ export async function setupOptionsAfterProfileApply(
     folder: collection.path,
     name: options.name ?? collection.name,
     exclude: options.exclude,
+    additiveStoreProjection: true,
   };
 }
 

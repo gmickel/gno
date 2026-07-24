@@ -65,6 +65,8 @@ export interface SetupCommandOptions {
   yes?: boolean;
   json?: boolean;
   quiet?: boolean;
+  /** Internal composition flag used after an additive project-profile apply. */
+  additiveStoreProjection?: boolean;
   stdinIsTTY?: boolean;
   stderrIsTTY?: boolean;
   progress?: (stage: SetupStageName, receipt: FolderSetupReceipt) => void;
@@ -297,6 +299,7 @@ async function executeSetup(
       name: options.name,
       exclude: options.exclude,
       secretRiskAuthorized: authorized,
+      additiveStoreProjection: options.additiveStoreProjection,
       receiptWriter,
     });
 

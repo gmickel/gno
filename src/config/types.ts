@@ -5,6 +5,8 @@
  * @module src/config/types
  */
 
+// node:path provides platform-correct absolute-path validation; Bun has no path utilities.
+import { isAbsolute } from "node:path";
 import { z } from "zod";
 
 import { URI_PREFIX } from "../app/constants";
@@ -183,6 +185,26 @@ export const ProjectAffinityConfigSchema = z.object({
     .default(PROJECT_AFFINITY_MAX_CONTRIBUTION),
 });
 export type ProjectAffinityConfig = z.infer<typeof ProjectAffinityConfigSchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Local Project Profile Bindings
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SHA256_HEX_REGEX = /^[a-f0-9]{64}$/;
+
+/**
+ * Machine-local provenance for a project profile projected into this config.
+ * Apply canonicalizes `path`; the schema rejects relative paths and malformed
+ * fingerprints without making the tracked profile machine-specific.
+ */
+export const ProjectProfileBindingSchema = z.object({
+  path: z.string().min(1).refine(isAbsolute, {
+    message: "Project profile binding path must be absolute",
+  }),
+  fingerprint: z.string().regex(SHA256_HEX_REGEX),
+  collection: z.string().regex(COLLECTION_NAME_REGEX),
+});
+export type ProjectProfileBinding = z.infer<typeof ProjectProfileBindingSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Context Schema
@@ -414,6 +436,25 @@ export const ConfigSchema = z.object({
 
   /** Bounded project-aware retrieval affinity. */
   projectAffinity: ProjectAffinityConfigSchema.optional(),
+
+  /** Machine-local, timestamp-free project profile provenance. */
+  projectProfileBindings: z
+    .array(ProjectProfileBindingSchema)
+    .max(256)
+    .superRefine((bindings, ctx) => {
+      const paths = new Set<string>();
+      for (const [index, binding] of bindings.entries()) {
+        if (paths.has(binding.path)) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Project profile binding paths must be unique",
+            path: [index, "path"],
+          });
+        }
+        paths.add(binding.path);
+      }
+    })
+    .optional(),
 });
 
 export type Config = Omit<z.infer<typeof ConfigSchema>, "contentTypes"> & {

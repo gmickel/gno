@@ -7,8 +7,10 @@ import { tmpdir } from "node:os";
 // node:path has no Bun path utilities.
 import { join } from "node:path";
 
+import { getIndexDbPath } from "../../src/app/constants";
 import { runCli } from "../../src/cli/run";
-import { loadConfig } from "../../src/config";
+import { createDefaultConfig, loadConfig, saveConfig } from "../../src/config";
+import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 import { assertValid, loadSchema } from "../spec/schemas/validator";
 
@@ -90,7 +92,7 @@ describe("setup project-profile integration", () => {
         "contexts:",
         "  - text: Prefer profile evidence.",
         "contentTypes:",
-        "  - id: people",
+        "  people:",
         "    prefixes: [people]",
         "    preset: person",
         "affinityDefaults: { enabled: true, contribution: 0.01 }",
@@ -150,6 +152,103 @@ describe("setup project-profile integration", () => {
     expect(await readdir(join(project, ".gno"))).toEqual(["index.yml"]);
   });
 
+  test("preserves DB-only recovery state through profile apply and full setup", async () => {
+    const { root, project, nested } = await createHarness("recovery");
+    await writeFile(
+      join(project, ".gno", "index.yml"),
+      [
+        'schemaVersion: "1.0"',
+        "collection:",
+        "  name: profiled",
+        "  root: docs",
+        '  include: ["**/*.md"]',
+        "contexts:",
+        "  - text: Profile context.",
+        "contentTypes: {}",
+        "",
+      ].join("\n")
+    );
+    const initialConfig = createDefaultConfig();
+    expect((await saveConfig(initialConfig)).ok).toBe(true);
+    await mkdir(join(root, "runtime", "data"), { recursive: true });
+
+    const seeded = new SqliteAdapter();
+    expect(
+      (await seeded.open(getIndexDbPath(), initialConfig.ftsTokenizer)).ok
+    ).toBe(true);
+    expect(
+      (
+        await seeded.syncCollections([
+          {
+            name: "recovery",
+            path: join(root, "recovery"),
+            pattern: "**/*",
+            include: [],
+            exclude: [],
+          },
+        ])
+      ).ok
+    ).toBe(true);
+    expect(
+      (
+        await seeded.syncContexts([
+          {
+            scopeType: "collection",
+            scopeKey: "recovery:",
+            text: "Recovery context",
+          },
+        ])
+      ).ok
+    ).toBe(true);
+    expect(
+      (
+        await seeded.upsertDocument({
+          collection: "recovery",
+          relPath: "evidence.md",
+          sourceHash: "a".repeat(64),
+          sourceMime: "text/markdown",
+          sourceExt: ".md",
+          sourceSize: 24,
+          sourceMtime: "2026-07-24T00:00:00.000Z",
+          title: "Recovery evidence",
+          mirrorHash: "b".repeat(64),
+          converterId: "native/markdown",
+          converterVersion: "1.0.0",
+          contentTypeSource: "default",
+        })
+      ).ok
+    ).toBe(true);
+    await seeded.close();
+
+    const result = await cli(
+      "setup",
+      nested,
+      "--apply-profile",
+      "--no-semantic",
+      "--json"
+    );
+    expect(result.code).toBe(0);
+
+    const verified = new SqliteAdapter();
+    expect(
+      (await verified.open(getIndexDbPath(), initialConfig.ftsTokenizer)).ok
+    ).toBe(true);
+    const collections = await verified.getCollections();
+    expect(
+      collections.ok && collections.value.map((item) => item.name).sort()
+    ).toEqual(["profiled", "recovery"]);
+    const contexts = await verified.getContexts();
+    expect(contexts.ok && contexts.value).toContainEqual(
+      expect.objectContaining({
+        scopeKey: "recovery:",
+        text: "Recovery context",
+      })
+    );
+    const documents = await verified.listDocuments("recovery");
+    expect(documents.ok && documents.value).toHaveLength(1);
+    await verified.close();
+  });
+
   test("keeps invalid and absent profiles usable with truthful action status", async () => {
     const invalid = await createHarness("invalid");
     await writeFile(
@@ -207,7 +306,7 @@ describe("setup project-profile integration", () => {
         "  root: docs",
         '  include: ["**/*.md"]',
         "contexts: []",
-        "contentTypes: []",
+        "contentTypes: {}",
         "affinityDefaults: { enabled: true, contribution: 0.01 }",
         "",
       ].join("\n")

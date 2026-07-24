@@ -4,11 +4,12 @@
  * @module src/core/project-profile-apply-state
  */
 
-import type { Config } from "../config/types";
+import type { Config, ProjectProfileBinding } from "../config/types";
 import type { ProjectProfileDesiredState } from "./project-profile";
 import type { ProjectProfileDiff } from "./project-profile-diff";
 
 import { getPreset } from "../llm/registry";
+import { normalizePersistedContextText } from "./context-identity";
 import {
   canonicalProjectProfileJson,
   projectProfileIncludePattern,
@@ -26,6 +27,7 @@ export interface ProjectProfileApplyResource {
     | "collection"
     | "content_type"
     | "contexts"
+    | "profile_binding"
     | "project_affinity"
     | "stale_mapping";
   id: string;
@@ -60,7 +62,8 @@ const collectionModels = (
 export function applyProjectProfileDesiredState(
   config: Config,
   desired: ProjectProfileDesiredState,
-  collectionRoot: string
+  collectionRoot: string,
+  profileBinding: ProjectProfileBinding
 ): Config {
   const existingIndex = config.collections.findIndex(
     (collection) => collection.name === desired.collection.name
@@ -98,16 +101,17 @@ export function applyProjectProfileDesiredState(
           context.scopeType === "collection" &&
           context.scopeKey === `${desired.collection.name}:`
       )
-      .map((context) => context.text)
+      .map((context) => normalizePersistedContextText(context.text))
   );
   for (const context of desired.contexts) {
-    if (!configuredContexts.has(context.text)) {
+    const normalizedText = normalizePersistedContextText(context.text);
+    if (!configuredContexts.has(normalizedText)) {
       contexts.push({
         scopeType: context.scopeType,
         scopeKey: context.scopeKey,
-        text: context.text,
+        text: normalizedText,
       });
-      configuredContexts.add(context.text);
+      configuredContexts.add(normalizedText);
     }
   }
 
@@ -118,11 +122,22 @@ export function applyProjectProfileDesiredState(
     else contentTypes.push(desiredRule);
   }
 
+  const projectProfileBindings = [...(config.projectProfileBindings ?? [])];
+  const bindingIndex = projectProfileBindings.findIndex(
+    (binding) => binding.path === profileBinding.path
+  );
+  if (bindingIndex >= 0) projectProfileBindings[bindingIndex] = profileBinding;
+  else projectProfileBindings.push(profileBinding);
+  projectProfileBindings.sort((left, right) =>
+    compareCodeUnits(left.path, right.path)
+  );
+
   return {
     ...config,
     collections,
     contexts,
     contentTypes,
+    projectProfileBindings,
   };
 }
 
@@ -130,7 +145,8 @@ export function buildProjectProfileResources(
   before: Config,
   after: Config,
   diff: ProjectProfileDiff,
-  desired: ProjectProfileDesiredState
+  desired: ProjectProfileDesiredState,
+  profileBinding: ProjectProfileBinding
 ): ProjectProfileApplyResource[] {
   const resources: ProjectProfileApplyResource[] = [];
   const beforeCollection = before.collections.find(
@@ -160,10 +176,11 @@ export function buildProjectProfileResources(
           context.scopeType === "collection" &&
           context.scopeKey === `${desired.collection.name}:`
       )
-      .map((context) => context.text)
+      .map((context) => normalizePersistedContextText(context.text))
   );
   const missingContexts = desired.contexts.filter(
-    (context) => !beforeContextTexts.has(context.text)
+    (context) =>
+      !beforeContextTexts.has(normalizePersistedContextText(context.text))
   );
   resources.push({
     kind: "contexts",
@@ -204,6 +221,21 @@ export function buildProjectProfileResources(
       pendingIndexing: false,
     });
   }
+
+  resources.push({
+    kind: "profile_binding",
+    id: profileBinding.collection,
+    disposition: (() => {
+      const previous = before.projectProfileBindings?.find(
+        (binding) => binding.path === profileBinding.path
+      );
+      if (!previous) return "created";
+      return canonicalProfileStateEqual(previous, profileBinding)
+        ? "reused"
+        : "updated";
+    })(),
+    pendingIndexing: false,
+  });
 
   resources.push({
     kind: "project_affinity",

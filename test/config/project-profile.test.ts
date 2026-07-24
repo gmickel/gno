@@ -42,7 +42,7 @@ contexts:
   - file: AGENTS.md
   - text: Prefer primary sources.
 contentTypes:
-  - id: people
+  people:
     prefixes: [people]
     preset: person
     graphHints: [works_at, mentions]
@@ -166,6 +166,19 @@ describe("project profile schema", () => {
       { collection: { name: "notes", include: ["docs/{safe,../private}/**"] } },
     ],
     [
+      "POSIX absolute brace alternative",
+      { collection: { name: "notes", include: ["docs/{safe,/etc}/**"] } },
+    ],
+    [
+      "nested Windows absolute brace alternative",
+      {
+        collection: {
+          name: "notes",
+          include: ["docs/{safe,{nested,C:\\private}}/**"],
+        },
+      },
+    ],
+    [
       "Windows reserved name",
       { collection: { name: "notes", root: "docs/CON" } },
     ],
@@ -186,6 +199,22 @@ describe("project profile schema", () => {
       { collection: { name: "notes", root: "docs/name " } },
     ],
     [
+      "Windows reserved name in brace alternative",
+      { collection: { name: "notes", include: ["docs/{safe,CON}/**"] } },
+    ],
+    [
+      "Windows reserved extension in brace alternative",
+      { collection: { name: "notes", include: ["docs/{safe,aux.txt}/**"] } },
+    ],
+    [
+      "Windows trailing dot in brace alternative",
+      { collection: { name: "notes", include: ["docs/{safe,name.}/**"] } },
+    ],
+    [
+      "Windows trailing space in brace alternative",
+      { collection: { name: "notes", include: ["docs/{safe,name }/**"] } },
+    ],
+    [
       "secret context path",
       {
         collection: { name: "notes" },
@@ -198,22 +227,45 @@ describe("project profile schema", () => {
     expect(validateJsonSchema(candidate)).toBe(false);
   });
 
-  test("rejects duplicate content-type IDs even when the rules differ", () => {
+  test("keys content-type rules by their structurally unique IDs", () => {
     const candidate = {
       schemaVersion: "1.0",
       collection: { name: "notes" },
-      contentTypes: [
-        { id: "people", prefixes: ["people"], preset: "person" },
-        { id: "people", prefixes: ["team"], preset: "meeting" },
-      ],
+      contentTypes: {
+        people: { prefixes: ["people"], preset: "person" },
+        meetings: { prefixes: ["team"], preset: "meeting" },
+      },
     };
-    const result = ProjectProfileSchema.safeParse(candidate);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues).toContainEqual(
-        expect.objectContaining({ path: ["contentTypes", 1, "id"] })
-      );
-    }
+    expect(ProjectProfileSchema.safeParse(candidate).success).toBe(true);
+    expect(validateJsonSchema(candidate)).toBe(true);
+
+    const legacyArray = {
+      ...candidate,
+      contentTypes: [{ id: "people", prefixes: ["people"], preset: "person" }],
+    };
+    expect(ProjectProfileSchema.safeParse(legacyArray).success).toBe(false);
+    expect(validateJsonSchema(legacyArray)).toBe(false);
+
+    const invalidId = {
+      ...candidate,
+      contentTypes: {
+        "People Notes": { prefixes: ["people"], preset: "person" },
+      },
+    };
+    expect(ProjectProfileSchema.safeParse(invalidId).success).toBe(false);
+    expect(validateJsonSchema(invalidId)).toBe(false);
+
+    const tooManyRules = {
+      ...candidate,
+      contentTypes: Object.fromEntries(
+        Array.from({ length: 65 }, (_, index) => [
+          `type-${index}`,
+          { prefixes: [`type-${index}`], preset: "project-note" },
+        ])
+      ),
+    };
+    expect(ProjectProfileSchema.safeParse(tooManyRules).success).toBe(false);
+    expect(validateJsonSchema(tooManyRules)).toBe(false);
   });
 
   test("escapes outer union commas while preserving nested brace globs", () => {
@@ -263,6 +315,12 @@ describe("project profile compiler", () => {
         }),
       })
     );
+    expect(first.value.desiredState.contentTypes).toContainEqual({
+      id: "people",
+      prefixes: ["people"],
+      preset: "person",
+      graphHints: ["mentions", "works_at"],
+    });
   });
 
   test("uses the versioned domain and exact context file bytes", async () => {
@@ -365,6 +423,34 @@ contexts:
       });
     }
   });
+
+  test.each([
+    [".env", "guidance.txt"],
+    ["credentials.json", "account.txt"],
+    ["id_ed25519", "key-guidance.txt"],
+  ])(
+    "rejects a safe-looking context symlink resolving to secret target %s",
+    async (secretName, linkName) => {
+      const root = await makeRoot(`secret-symlink-${linkName}`);
+      await Bun.write(join(root, secretName), "private\n");
+      await symlink(secretName, join(root, linkName));
+
+      const result = await compile(
+        `schemaVersion: "1.0"\ncollection: { name: notes }\ncontexts:\n  - file: "${linkName}"\n`,
+        root
+      );
+
+      expect(result).toMatchObject({
+        ok: false,
+        diagnostics: [
+          expect.objectContaining({
+            code: "UNSAFE_PATH",
+            path: "contexts[0].file",
+          }),
+        ],
+      });
+    }
+  );
 
   test("accepts a regular UTF-8 context at the exact byte limit", async () => {
     const root = await makeRoot("context-limit");

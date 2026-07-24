@@ -90,6 +90,13 @@ retrievalTraces:
   enabled: false
 ```
 
+Project-profile apply also maintains optional `projectProfileBindings` entries
+in this local config. Each timestamp-free entry binds a canonical absolute
+`.gno/index.yml` path to its SHA-256 fingerprint and projected collection.
+These machine-local provenance records are written under the shared config
+lock; they are never copied into the tracked profile or exposed by public
+profile receipts.
+
 ## Project affinity
 
 `projectAffinity.enabled` defaults to `true` and controls only the fallback

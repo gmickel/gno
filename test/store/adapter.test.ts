@@ -385,6 +385,147 @@ describe("SqliteAdapter", () => {
     });
   });
 
+  describe("additive config projection", () => {
+    beforeEach(async () => {
+      await adapter.open(dbPath, "unicode61");
+    });
+
+    test("is idempotent, repairs desired rows, and preserves unrelated state", async () => {
+      const desiredCollection: Collection = {
+        name: "project",
+        path: "/workspace/project",
+        pattern: "**/*.md",
+        include: [".md"],
+        exclude: [".git"],
+        updateCmd: "git pull --ff-only",
+        languageHint: "en",
+      };
+      const unrelatedCollection: Collection = {
+        name: "recovery",
+        path: "/recovery",
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      };
+      const desiredContext: Context = {
+        scopeType: "collection",
+        scopeKey: "project:",
+        text: "Project guidance",
+      };
+      const unrelatedContext: Context = {
+        scopeType: "global",
+        scopeKey: "/",
+        text: "Recovery guidance",
+      };
+
+      expect(
+        (
+          await adapter.upsertCollections([
+            desiredCollection,
+            unrelatedCollection,
+          ])
+        ).ok
+      ).toBe(true);
+      expect(
+        (await adapter.upsertContexts([desiredContext, unrelatedContext])).ok
+      ).toBe(true);
+
+      const sentinelTimestamp = "2000-01-01 00:00:00";
+      const db = adapter.getRawDb();
+      db.run("UPDATE collections SET synced_at = ?", [sentinelTimestamp]);
+      db.run("UPDATE contexts SET synced_at = ?", [sentinelTimestamp]);
+      const generationBeforeNoOp = adapter.getContextGeneration();
+
+      expect((await adapter.upsertCollections([desiredCollection])).ok).toBe(
+        true
+      );
+      expect(
+        (await adapter.upsertContexts([desiredContext, desiredContext])).ok
+      ).toBe(true);
+
+      const unchangedCollections = await adapter.getCollections();
+      const unchangedContexts = await adapter.getContexts();
+      expect(unchangedCollections.ok).toBe(true);
+      expect(unchangedContexts.ok).toBe(true);
+      if (!(unchangedCollections.ok && unchangedContexts.ok)) return;
+      expect(
+        unchangedCollections.value.find(
+          (collection) => collection.name === desiredCollection.name
+        )?.syncedAt
+      ).toBe(sentinelTimestamp);
+      expect(
+        unchangedContexts.value.find(
+          (context) =>
+            context.scopeType === desiredContext.scopeType &&
+            context.scopeKey === desiredContext.scopeKey &&
+            context.text === desiredContext.text
+        )?.syncedAt
+      ).toBe(sentinelTimestamp);
+      expect(adapter.getContextGeneration()).toBe(generationBeforeNoOp);
+
+      db.run(
+        "UPDATE collections SET path = ?, pattern = ?, include = ?, exclude = ?, update_cmd = NULL, language_hint = NULL WHERE name = ?",
+        [
+          "/corrupt",
+          "*.txt",
+          JSON.stringify([".txt"]),
+          JSON.stringify(["tmp"]),
+          desiredCollection.name,
+        ]
+      );
+      db.run(
+        "DELETE FROM contexts WHERE scope_type = ? AND scope_key = ? AND text = ?",
+        [desiredContext.scopeType, desiredContext.scopeKey, desiredContext.text]
+      );
+
+      expect((await adapter.upsertCollections([desiredCollection])).ok).toBe(
+        true
+      );
+      expect((await adapter.upsertContexts([desiredContext])).ok).toBe(true);
+
+      const repairedCollections = await adapter.getCollections();
+      const repairedContexts = await adapter.getContexts();
+      expect(repairedCollections.ok).toBe(true);
+      expect(repairedContexts.ok).toBe(true);
+      if (!(repairedCollections.ok && repairedContexts.ok)) return;
+
+      const repairedCollection = repairedCollections.value.find(
+        (collection) => collection.name === desiredCollection.name
+      );
+      expect(repairedCollection).toMatchObject({
+        path: desiredCollection.path,
+        pattern: desiredCollection.pattern,
+        include: desiredCollection.include,
+        exclude: desiredCollection.exclude,
+        updateCmd: desiredCollection.updateCmd,
+        languageHint: desiredCollection.languageHint,
+      });
+      expect(repairedCollection?.syncedAt).not.toBe(sentinelTimestamp);
+      expect(
+        repairedCollections.value.some(
+          (collection) => collection.name === unrelatedCollection.name
+        )
+      ).toBe(true);
+      expect(
+        repairedContexts.value.some(
+          (context) =>
+            context.scopeType === desiredContext.scopeType &&
+            context.scopeKey === desiredContext.scopeKey &&
+            context.text === desiredContext.text
+        )
+      ).toBe(true);
+      expect(
+        repairedContexts.value.find(
+          (context) =>
+            context.scopeType === unrelatedContext.scopeType &&
+            context.scopeKey === unrelatedContext.scopeKey &&
+            context.text === unrelatedContext.text
+        )?.syncedAt
+      ).toBe(sentinelTimestamp);
+      expect(adapter.getContextGeneration()).toBe(generationBeforeNoOp + 1);
+    });
+  });
+
   describe("documents", () => {
     beforeEach(async () => {
       await adapter.open(dbPath, "unicode61");

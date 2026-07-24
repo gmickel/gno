@@ -54,11 +54,116 @@ const globStructureIssue = (value: string): string | null => {
   return null;
 };
 
+const MAX_GLOB_ALTERNATIVE_EXPANSIONS = 256;
+
+const globAlternativeIssue = (
+  value: string,
+  expansionBudget = MAX_GLOB_ALTERNATIVE_EXPANSIONS
+): { issue: string | null; expansions: number } => {
+  const opening = value.indexOf("{");
+  if (opening === -1) return { issue: null, expansions: 1 };
+
+  let depth = 0;
+  let closing = -1;
+  for (let index = opening; index < value.length; index += 1) {
+    const character = value[index];
+    if (character === "{") depth += 1;
+    else if (character === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        closing = index;
+        break;
+      }
+    }
+  }
+  if (closing === -1) return { issue: null, expansions: 1 };
+
+  const body = value.slice(opening + 1, closing);
+  const alternatives: string[] = [];
+  let alternative = "";
+  depth = 0;
+  for (const character of body) {
+    if (character === "{") depth += 1;
+    else if (character === "}") depth -= 1;
+    if (character === "," && depth === 0) {
+      alternatives.push(alternative);
+      alternative = "";
+    } else {
+      alternative += character;
+    }
+  }
+  alternatives.push(alternative);
+
+  let expansions = 0;
+  for (const branch of alternatives) {
+    if (
+      branch.startsWith("/") ||
+      branch.startsWith("\\") ||
+      WINDOWS_UNC_PATH_PATTERN.test(branch) ||
+      WINDOWS_DRIVE_PATH_PATTERN.test(branch) ||
+      branch.startsWith("~")
+    ) {
+      return {
+        issue: "contains an absolute or platform-rooted brace alternative",
+        expansions: 0,
+      };
+    }
+    const normalizedBranch = branch.replaceAll("\\", "/");
+    if (
+      normalizedBranch.split("/").includes("..") ||
+      GLOB_TRAVERSAL_PATTERN.test(normalizedBranch)
+    ) {
+      return {
+        issue: "contains traversal in a brace alternative",
+        expansions: 0,
+      };
+    }
+    const branchWindowsIssue = windowsComponentIssue(normalizedBranch, true);
+    if (branchWindowsIssue) {
+      return { issue: branchWindowsIssue, expansions: 0 };
+    }
+
+    const expanded = `${value.slice(0, opening)}${branch}${value.slice(closing + 1)}`;
+    const nested = globAlternativeIssue(expanded, expansionBudget - expansions);
+    if (nested.issue) return nested;
+    expansions += nested.expansions;
+    if (expansions > expansionBudget) {
+      return {
+        issue: `expands to more than ${MAX_GLOB_ALTERNATIVE_EXPANSIONS} alternatives`,
+        expansions,
+      };
+    }
+  }
+  return { issue: null, expansions };
+};
+
 const windowsComponentIssue = (
   normalized: string,
   allowGlob: boolean
 ): string | null => {
-  for (const component of normalized.split("/")) {
+  const components: string[] = [];
+  let component = "";
+  let braceDepth = 0;
+  const pushComponent = (): void => {
+    if (component !== "") components.push(component);
+    component = "";
+  };
+  for (const character of normalized) {
+    const isBraceSeparator =
+      character === "{" ||
+      character === "}" ||
+      (character === "," && braceDepth > 0);
+    if (character === "/" || isBraceSeparator) {
+      pushComponent();
+      if (character === "{") braceDepth += 1;
+      else if (character === "}") braceDepth -= 1;
+      continue;
+    }
+    component += character;
+  }
+  pushComponent();
+
+  for (const component of components) {
     if (component === "." || component === "") continue;
     let hasControlCharacter = false;
     for (const character of component) {
@@ -119,6 +224,8 @@ const portablePathIssue = (
   if (options.allowGlob) {
     const globIssue = globStructureIssue(normalized);
     if (globIssue) return globIssue;
+    const alternativeIssue = globAlternativeIssue(normalized).issue;
+    if (alternativeIssue) return alternativeIssue;
   }
   if (!options.allowRuntimeExclusion && RUNTIME_PATH_PATTERN.test(normalized)) {
     return "must not reference GNO runtime state";
@@ -225,7 +332,6 @@ export const ProjectProfileContextSchema = z.union([
 
 export const ProjectProfileContentTypeSchema = z
   .object({
-    id: z.string().regex(REFERENCE_PATTERN),
     prefixes: z
       .array(portablePathSchema())
       .min(1)
@@ -303,7 +409,20 @@ export const ProjectProfileSchema = z
         }
       })
       .default([]),
-    contentTypes: z.array(ProjectProfileContentTypeSchema).max(64).default([]),
+    contentTypes: z
+      .record(
+        z.string().regex(REFERENCE_PATTERN),
+        ProjectProfileContentTypeSchema
+      )
+      .superRefine((rules, context) => {
+        if (Object.keys(rules).length > 64) {
+          context.addIssue({
+            code: "custom",
+            message: "Too many content type rules; maximum is 64",
+          });
+        }
+      })
+      .default({}),
     affinityDefaults: ProjectProfileAffinityDefaultsSchema.default({
       enabled: true,
       contribution: PROJECT_AFFINITY_MAX_CONTRIBUTION,
@@ -326,20 +445,7 @@ export const ProjectProfileSchema = z
       })
       .default([]),
   })
-  .strict()
-  .superRefine((profile, context) => {
-    const seenIds = new Set<string>();
-    for (const [index, contentType] of profile.contentTypes.entries()) {
-      if (seenIds.has(contentType.id)) {
-        context.addIssue({
-          code: "custom",
-          path: ["contentTypes", index, "id"],
-          message: `Duplicate content type id "${contentType.id}"`,
-        });
-      }
-      seenIds.add(contentType.id);
-    }
-  });
+  .strict();
 
 export type ProjectProfile = z.infer<typeof ProjectProfileSchema>;
 export type ProjectProfileContentType = z.infer<

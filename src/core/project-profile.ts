@@ -15,6 +15,8 @@ import {
 import { parseModelUri } from "../llm/cache";
 import { getPreset } from "../llm/registry";
 import { canonicalOperationalPath } from "./config-write-lock";
+import { normalizePersistedContextText } from "./context-identity";
+import { hasLikelySecretPath } from "./path-rules";
 import {
   canonicalProjectProfileJson,
   compareCodeUnits,
@@ -37,6 +39,7 @@ export type ProjectProfileDiagnosticCode =
   | "CONTEXT_FILE_NOT_REGULAR"
   | "CONTEXT_FILE_TOO_LARGE"
   | "CONTEXT_FILE_UNREADABLE"
+  | "CONTEXT_TEXT_EMPTY"
   | "INVALID_PROFILE"
   | "MIGRATION_REQUIRED"
   | "MODEL_CACHE_CHECK_FAILED"
@@ -296,10 +299,20 @@ export async function compileProjectProfileYaml(
   const contextFiles: ResolvedProjectProfilePaths["contextFiles"] = [];
   for (const [index, context] of profile.contexts.entries()) {
     if ("text" in context) {
+      const normalizedText = normalizePersistedContextText(context.text);
+      if (!normalizedText) {
+        diagnostics.push({
+          code: "CONTEXT_TEXT_EMPTY",
+          severity: "error",
+          path: `contexts[${index}].text`,
+          message: "Context text must not be empty after normalization.",
+        });
+        continue;
+      }
       contexts.push({
         scopeType: "collection",
         scopeKey: `${profile.collection.name}:`,
-        text: context.text,
+        text: normalizedText,
         source: { kind: "inline", sha256: sha256(context.text) },
       });
       continue;
@@ -312,6 +325,19 @@ export async function compileProjectProfileYaml(
     );
     if (!resolved.ok) {
       diagnostics.push(resolved.diagnostic);
+      continue;
+    }
+    const resolvedLogicalPath = normalizeLogicalPath(
+      relative(profileRoot, resolved.absolutePath)
+    );
+    if (hasLikelySecretPath(resolvedLogicalPath)) {
+      diagnostics.push({
+        code: "UNSAFE_PATH",
+        severity: "error",
+        path: `contexts[${index}].file`,
+        message:
+          "Context input resolves to a likely credential or secret file.",
+      });
       continue;
     }
     if (!resolved.metadata.isFile()) {
@@ -370,10 +396,20 @@ export async function compileProjectProfileYaml(
       continue;
     }
     const logicalPath = normalizeLogicalPath(context.file);
+    const normalizedText = normalizePersistedContextText(text);
+    if (!normalizedText) {
+      diagnostics.push({
+        code: "CONTEXT_TEXT_EMPTY",
+        severity: "error",
+        path: `contexts[${index}].file`,
+        message: "Context file must not be empty after normalization.",
+      });
+      continue;
+    }
     contexts.push({
       scopeType: "collection",
       scopeKey: `${profile.collection.name}:`,
-      text,
+      text: normalizedText,
       source: { kind: "file", path: logicalPath, sha256: sha256(bytes) },
     });
     contextFiles.push({
@@ -390,7 +426,7 @@ export async function compileProjectProfileYaml(
   }
 
   const normalizedContentTypes = normalizeContentTypes(
-    profile.contentTypes
+    Object.entries(profile.contentTypes).map(([id, rule]) => ({ id, ...rule }))
   ).rules.map((rule) => ({
     id: rule.id,
     prefixes: sortedUnique(rule.prefixes.map(normalizeLogicalPath)),

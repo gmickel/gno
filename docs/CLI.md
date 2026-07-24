@@ -836,6 +836,10 @@ gno context add "notes:" "Personal notes and journal entries"
 gno context add "gno://notes/projects" "Active project documentation"
 ```
 
+One scope may carry multiple distinct context texts. Re-adding the same text
+after BOM, newline, Unicode, and surrounding-whitespace normalization is
+rejected as a duplicate.
+
 Matching contexts appear in structured retrieval output; they guide agents and
 grounded answers but are not searched and do not boost ranking. Multiple scopes
 compose from global to most-specific prefix. Results without a match omit the
@@ -970,7 +974,12 @@ verification.
 
 ```bash
 gno context rm "/"
+gno context rm "/" "Global search context"
 ```
+
+Scope-only removal remains convenient when exactly one context matches. When a
+scope has multiple texts, pass the exact text; an ambiguous removal changes
+nothing.
 
 ## Model Commands
 

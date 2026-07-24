@@ -3,43 +3,43 @@
  */
 
 import { removeCollection } from "../../../collection";
-import { loadConfig, saveConfig } from "../../../config";
+import { applyConfigFileChange } from "../../../core/config-mutation";
 import { CliError } from "../../errors";
 
-export async function collectionRemove(name: string): Promise<void> {
-  // Load config
-  const configResult = await loadConfig();
-  if (!configResult.ok) {
-    throw new CliError(
-      "RUNTIME",
-      `Failed to load config: ${configResult.error.message}`
-    );
-  }
+export async function collectionRemove(
+  name: string,
+  options: { configPath?: string } = {}
+): Promise<void> {
+  const mutation = await applyConfigFileChange(
+    { configPath: options.configPath },
+    (config) => {
+      const result = removeCollection(config, { name });
+      return result.ok
+        ? {
+            ok: true as const,
+            config: result.config,
+            value: result.collection,
+          }
+        : {
+            ok: false as const,
+            error: result.message,
+            code: result.code,
+          };
+    }
+  );
 
-  // Remove collection using shared module
-  const result = removeCollection(configResult.value, { name });
-
-  if (!result.ok) {
+  if (!mutation.ok) {
     // Map collection error codes to CLI error codes
     const cliCode =
-      result.code === "VALIDATION" ||
-      result.code === "NOT_FOUND" ||
-      result.code === "HAS_REFERENCES"
+      mutation.code === "VALIDATION" ||
+      mutation.code === "NOT_FOUND" ||
+      mutation.code === "HAS_REFERENCES"
         ? "VALIDATION"
         : "RUNTIME";
-    throw new CliError(cliCode, result.message);
-  }
-
-  // Save config
-  const saveResult = await saveConfig(result.config);
-  if (!saveResult.ok) {
-    throw new CliError(
-      "RUNTIME",
-      `Failed to save config: ${saveResult.error.message}`
-    );
+    throw new CliError(cliCode, mutation.error);
   }
 
   process.stdout.write(
-    `Collection "${result.collection.name}" removed successfully\n`
+    `Collection "${mutation.value?.name}" removed successfully\n`
   );
 }

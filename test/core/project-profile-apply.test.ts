@@ -34,7 +34,7 @@ collection:
 contexts:
   - text: Project context.
 contentTypes:
-  - id: people
+  people:
     prefixes: [people]
     preset: person
 affinityDefaults:
@@ -126,7 +126,9 @@ describe("applyProjectProfile", () => {
     };
 
     const first = await applyProjectProfile(options);
+    const configBytesAfterFirst = await Bun.file(fixture.configPath).text();
     const second = await applyProjectProfile(options);
+    const configBytesAfterSecond = await Bun.file(fixture.configPath).text();
     const third = await applyProjectProfile(options);
 
     expect(first.ok && first.receipt.status).toBe("applied");
@@ -135,6 +137,7 @@ describe("applyProjectProfile", () => {
     expect(third.ok).toBe(true);
     if (!(second.ok && third.ok)) return;
     expect(third.receipt).toEqual(second.receipt);
+    expect(configBytesAfterSecond).toBe(configBytesAfterFirst);
     expect(second.ok && second.receipt.diff.status).toBe("in_sync");
     expect(second.ok && second.receipt.pendingIndexing).toEqual([]);
     expect(first.ok && first.receiptPath.startsWith(fixture.dataDir)).toBe(
@@ -159,9 +162,22 @@ describe("applyProjectProfile", () => {
       scopeKey: "notes:",
       text: "Project context.",
     });
+    expect(config.projectProfileBindings).toEqual([
+      {
+        path: fixture.profilePath,
+        fingerprint: first.ok ? first.receipt.profile.fingerprint : "",
+        collection: "notes",
+      },
+    ]);
     expect(config.projectAffinity).toEqual({
       enabled: true,
       contribution: 0.03,
+    });
+    expect(first.ok && first.receipt.resources).toContainEqual({
+      kind: "profile_binding",
+      id: "notes",
+      disposition: "created",
+      pendingIndexing: false,
     });
     expect(first.ok && first.receipt.resources).toContainEqual({
       kind: "project_affinity",
@@ -242,6 +258,7 @@ describe("applyProjectProfile", () => {
       store: store.store,
     });
     expect(reduced.ok).toBe(true);
+    expect(reduced.ok && reduced.receipt.status).toBe("applied");
     const afterRemoval = await readConfig(fixture.configPath);
     expect(afterRemoval.collections.map((item) => item.name).sort()).toEqual([
       "archive",
@@ -250,6 +267,65 @@ describe("applyProjectProfile", () => {
     ]);
     expect(afterRemoval.contexts).toEqual(saved.contexts);
     expect(afterRemoval.contentTypes).toEqual(saved.contentTypes);
+    expect(afterRemoval.projectProfileBindings).toEqual([
+      {
+        path: fixture.profilePath,
+        fingerprint: reduced.ok ? reduced.receipt.profile.fingerprint : "",
+        collection: "notes",
+      },
+    ]);
+    const unchangedReduced = await applyProjectProfile({
+      profileYaml:
+        'schemaVersion: "1.0"\ncollection: { name: notes, root: . }\n',
+      profileRoot: fixture.project,
+      configPath: fixture.configPath,
+      dataDir: fixture.dataDir,
+      store: store.store,
+    });
+    expect(unchangedReduced.ok && unchangedReduced.receipt.status).toBe(
+      "unchanged"
+    );
+  });
+
+  test("rebinds a renamed profile without deleting its previous collection", async () => {
+    const fixture = await createFixture("rename-binding");
+    const store = createStoreProbe();
+    const first = await applyProjectProfile({
+      profileYaml: PROFILE,
+      profileRoot: fixture.project,
+      configPath: fixture.configPath,
+      dataDir: fixture.dataDir,
+      store: store.store,
+    });
+    expect(first.ok).toBe(true);
+
+    const renamedYaml = PROFILE.replace("name: notes", "name: team-notes");
+    const renamed = await applyProjectProfile({
+      profileYaml: renamedYaml,
+      profileRoot: fixture.project,
+      configPath: fixture.configPath,
+      dataDir: fixture.dataDir,
+      store: store.store,
+    });
+    expect(renamed.ok && renamed.receipt.status).toBe("applied");
+    if (!renamed.ok) return;
+    expect(renamed.receipt.resources).toContainEqual({
+      kind: "profile_binding",
+      id: "team-notes",
+      disposition: "updated",
+      pendingIndexing: false,
+    });
+    const saved = await readConfig(fixture.configPath);
+    expect(
+      saved.collections.map((collection) => collection.name).sort()
+    ).toEqual(["notes", "team-notes"]);
+    expect(saved.projectProfileBindings).toEqual([
+      {
+        path: fixture.profilePath,
+        fingerprint: renamed.receipt.profile.fingerprint,
+        collection: "team-notes",
+      },
+    ]);
   });
 
   test("additively projects into a real store without deleting DB-only indexed state", async () => {

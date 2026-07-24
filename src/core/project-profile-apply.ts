@@ -35,6 +35,7 @@ import {
   canonicalProfileStateEqual,
 } from "./project-profile-apply-state";
 import { buildProjectProfileDiff } from "./project-profile-diff";
+import { PROJECT_PROFILE_RELATIVE_PATH } from "./project-profile-discovery";
 
 export type {
   ProjectProfileApplyDisposition,
@@ -83,6 +84,8 @@ export type ProjectProfileApplyResult =
 export interface ProjectProfileApplyOptions {
   profileYaml: string;
   profileRoot: string;
+  /** Canonical discovered source when available; otherwise derived from root. */
+  profilePath?: string;
   configPath: string;
   dataDir: string;
   store: SqliteAdapter;
@@ -174,6 +177,23 @@ const mutationFailure = (
 export async function applyProjectProfile(
   options: ProjectProfileApplyOptions
 ): Promise<ProjectProfileApplyResult> {
+  let canonicalProfilePath: string;
+  try {
+    canonicalProfilePath = await realpath(
+      options.profilePath ??
+        join(options.profileRoot, PROJECT_PROFILE_RELATIVE_PATH)
+    );
+  } catch {
+    return {
+      ok: false,
+      error: {
+        code: "PROFILE_INVALID",
+        message: "The selected project profile identity could not be resolved.",
+        remediation:
+          "Repair .gno/index.yml or select an exact readable project root.",
+      },
+    };
+  }
   const runtimeDir = join(options.dataDir, "project-profiles");
   const receiptPath = join(runtimeDir, "apply-receipt.json");
   const lockPath = await getConfigWriteLockPath(options.configPath);
@@ -265,13 +285,24 @@ export async function applyProjectProfile(
         const built = await buildProjectProfileDiff({
           desiredState: compiled.value.desiredState,
           expectedCollectionRoot: compiled.value.resolvedPaths.collectionRoot,
+          profileBinding: {
+            path: canonicalProfilePath,
+            fingerprint: compiled.value.fingerprint,
+            collection: compiled.value.desiredState.collection.name,
+          },
           config,
           canonicalizePath: options.canonicalizePath ?? realpath,
         });
+        const profileBinding = {
+          path: canonicalProfilePath,
+          fingerprint: compiled.value.fingerprint,
+          collection: compiled.value.desiredState.collection.name,
+        };
         const nextConfig = applyProjectProfileDesiredState(
           config,
           compiled.value.desiredState,
-          compiled.value.resolvedPaths.collectionRoot
+          compiled.value.resolvedPaths.collectionRoot,
+          profileBinding
         );
         projection = {
           collectionName: compiled.value.desiredState.collection.name,
@@ -285,7 +316,8 @@ export async function applyProjectProfile(
           config,
           nextConfig,
           built.diff,
-          compiled.value.desiredState
+          compiled.value.desiredState,
+          profileBinding
         );
         const pendingIndexing = resources.some(
           (resource) => resource.pendingIndexing

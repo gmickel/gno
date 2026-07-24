@@ -2,90 +2,72 @@
  * gno collection rename - Rename a collection
  */
 
-import {
-  CollectionSchema,
-  getCollectionFromScope,
-  loadConfig,
-  saveConfig,
-} from "../../../config";
+import { CollectionSchema, getCollectionFromScope } from "../../../config";
+import { applyConfigFileChange } from "../../../core/config-mutation";
 import { CliError } from "../../errors";
 
 export async function collectionRename(
   oldName: string,
-  newName: string
+  newName: string,
+  options: { configPath?: string } = {}
 ): Promise<void> {
   const oldCollectionName = oldName.toLowerCase();
   const newCollectionName = newName.toLowerCase();
 
-  // Load config
-  const result = await loadConfig();
-  if (!result.ok) {
-    throw new CliError(
-      "RUNTIME",
-      `Failed to load config: ${result.error.message}`
-    );
-  }
-
-  const config = result.value;
-
-  // Find old collection
-  const collection = config.collections.find(
-    (c) => c.name === oldCollectionName
-  );
-  if (!collection) {
-    throw new CliError(
-      "VALIDATION",
-      `Collection "${oldCollectionName}" not found`
-    );
-  }
-
-  // Check if new name already exists
-  const existingNew = config.collections.find(
-    (c) => c.name === newCollectionName
-  );
-  if (existingNew) {
-    throw new CliError(
-      "VALIDATION",
-      `Collection "${newCollectionName}" already exists`
-    );
-  }
-
-  // Validate new name
-  const testCollection = { ...collection, name: newCollectionName };
-  const validation = CollectionSchema.safeParse(testCollection);
-  if (!validation.success) {
-    throw new CliError(
-      "VALIDATION",
-      `Invalid collection name: ${validation.error.issues[0]?.message ?? "unknown error"}`
-    );
-  }
-
-  // Rename collection
-  collection.name = newCollectionName;
-
-  // Update contexts that reference this collection
-  for (const context of config.contexts) {
-    const collFromScope = getCollectionFromScope(context.scopeKey);
-    if (collFromScope === oldCollectionName) {
-      // Update scope key
-      if (context.scopeType === "collection") {
-        context.scopeKey = `${newCollectionName}:`;
-      } else if (context.scopeType === "prefix") {
-        // Replace collection name in URI
-        context.scopeKey = context.scopeKey.replace(
-          `gno://${oldCollectionName}/`,
-          `gno://${newCollectionName}/`
-        );
+  const mutation = await applyConfigFileChange(
+    { configPath: options.configPath },
+    (config) => {
+      const collection = config.collections.find(
+        (item) => item.name === oldCollectionName
+      );
+      if (!collection) {
+        return {
+          ok: false as const,
+          error: `Collection "${oldCollectionName}" not found`,
+          code: "NOT_FOUND",
+        };
       }
+      if (config.collections.some((item) => item.name === newCollectionName)) {
+        return {
+          ok: false as const,
+          error: `Collection "${newCollectionName}" already exists`,
+          code: "DUPLICATE",
+        };
+      }
+      const validation = CollectionSchema.safeParse({
+        ...collection,
+        name: newCollectionName,
+      });
+      if (!validation.success) {
+        return {
+          ok: false as const,
+          error: `Invalid collection name: ${validation.error.issues[0]?.message ?? "unknown error"}`,
+          code: "VALIDATION",
+        };
+      }
+      collection.name = newCollectionName;
+      for (const context of config.contexts) {
+        if (getCollectionFromScope(context.scopeKey) !== oldCollectionName) {
+          continue;
+        }
+        if (context.scopeType === "collection") {
+          context.scopeKey = `${newCollectionName}:`;
+        } else if (context.scopeType === "prefix") {
+          context.scopeKey = context.scopeKey.replace(
+            `gno://${oldCollectionName}/`,
+            `gno://${newCollectionName}/`
+          );
+        }
+      }
+      return { ok: true as const, config };
     }
-  }
-
-  // Save config
-  const saveResult = await saveConfig(config);
-  if (!saveResult.ok) {
+  );
+  if (!mutation.ok) {
     throw new CliError(
-      "RUNTIME",
-      `Failed to save config: ${saveResult.error.message}`
+      ["NOT_FOUND", "DUPLICATE", "VALIDATION"].includes(mutation.code)
+        ? "VALIDATION"
+        : "RUNTIME",
+      mutation.error
     );
   }
 

@@ -217,7 +217,7 @@ describe("project affinity surface parity", () => {
         'schemaVersion: "1.0"',
         "collection: { name: project, root: . }",
         "contentTypes:",
-        "  - id: unrelated",
+        "  unrelated:",
         "    prefixes: [other]",
         "    preset: person",
         "affinityDefaults: { enabled: true, contribution: 0.02 }",

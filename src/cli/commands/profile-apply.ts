@@ -237,6 +237,7 @@ export async function runProjectProfileApplyCommand(
     const applied = await applyProjectProfile({
       profileYaml,
       profileRoot: discovery.profileRoot,
+      profilePath: discovery.profilePath,
       configPath,
       dataDir,
       store,

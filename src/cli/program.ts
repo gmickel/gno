@@ -1391,6 +1391,7 @@ function wireOnboardingCommands(program: Command): void {
             | undefined,
           language: cmdOpts.language as string | undefined,
           yes: globals.yes,
+          configPath: globals.config,
         });
 
         if (!result.success) {
@@ -2048,6 +2049,7 @@ function wireManagementCommands(program: Command): void {
         include: cmdOpts.include as string | undefined,
         exclude: cmdOpts.exclude as string | undefined,
         update: cmdOpts.update as string | undefined,
+        configPath: getGlobals().config,
       });
     });
 
@@ -2072,7 +2074,7 @@ function wireManagementCommands(program: Command): void {
     .description("Remove a collection")
     .action(async (name: string) => {
       const { collectionRemove } = await import("./commands/collection");
-      await collectionRemove(name);
+      await collectionRemove(name, { configPath: getGlobals().config });
     });
 
   collectionCmd
@@ -2080,7 +2082,9 @@ function wireManagementCommands(program: Command): void {
     .description("Rename a collection")
     .action(async (oldName: string, newName: string) => {
       const { collectionRename } = await import("./commands/collection");
-      await collectionRename(oldName, newName);
+      await collectionRename(oldName, newName, {
+        configPath: getGlobals().config,
+      });
     });
 
   collectionCmd
@@ -2107,9 +2111,11 @@ function wireManagementCommands(program: Command): void {
     .description("Add context metadata for a scope")
     .action(async (scope: string, text: string) => {
       const { contextAdd } = await import("./commands/context");
-      const exitCode = await contextAdd(scope, text);
+      const exitCode = await contextAdd(scope, text, {
+        configPath: getGlobals().config,
+      });
       if (exitCode !== 0) {
-        throw new CliError("RUNTIME", "Failed to add context");
+        throw new CliError("VALIDATION", "Failed to add context");
       }
     });
 
@@ -2391,11 +2397,16 @@ function wireManagementCommands(program: Command): void {
     });
 
   contextCmd
-    .command("rm <uri>")
+    .command("rm <scope> [text]")
     .description("Remove context item")
-    .action(async (uri: string) => {
+    .action(async (scope: string, text?: string) => {
       const { contextRm } = await import("./commands/context");
-      await contextRm(uri);
+      const exitCode = await contextRm(scope, text, {
+        configPath: getGlobals().config,
+      });
+      if (exitCode !== 0) {
+        throw new CliError("VALIDATION", "Failed to remove context");
+      }
     });
 
   // models subcommands

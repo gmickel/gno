@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 // node:fs/promises provides temporary-directory and fixture creation APIs with
 // no Bun structural equivalent.
-import { mkdir, mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath } from "node:fs/promises";
 // node:os has no Bun temporary-directory helper.
 import { tmpdir } from "node:os";
 // node:path has no Bun path utilities.
@@ -10,6 +10,7 @@ import { join } from "node:path";
 import type { Config } from "../../src/config/types";
 import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
+import { ConfigSchema } from "../../src/config";
 import { loadConfigFromPath } from "../../src/config/loader";
 import { applyProjectProfile } from "../../src/core/project-profile-apply";
 import { safeRm } from "../helpers/cleanup";
@@ -32,7 +33,7 @@ const profileYaml = (separator: "/" | "\\"): string => {
     `  - file: "${guidance.replaceAll("\\", "\\\\")}"`,
     "  - text: Prefer exact evidence.",
     "contentTypes:",
-    "  - id: people",
+    "  people:",
     `    prefixes: ["${prefix.replaceAll("\\", "\\\\")}"]`,
     "    preset: person",
     "affinityDefaults: { enabled: true, contribution: 0.02 }",
@@ -91,6 +92,10 @@ function portableConfig(config: Config): unknown {
       ...collection,
       path: "$PROJECT_ROOT/docs",
     })),
+    projectProfileBindings: config.projectProfileBindings?.map((binding) => ({
+      ...binding,
+      path: "$PROJECT_ROOT/.gno/index.yml",
+    })),
   };
 }
 
@@ -99,6 +104,50 @@ afterEach(async () => {
 });
 
 describe("project profile clean-machine portability", () => {
+  test("validates local binding provenance without timestamps", () => {
+    const base = {
+      ...ConfigSchema.parse({
+        version: "1.0",
+        collections: [],
+        contexts: [],
+        contentTypes: [],
+      }),
+      projectProfileBindings: [
+        {
+          path: join(tmpdir(), "project", ".gno", "index.yml"),
+          fingerprint: "a".repeat(64),
+          collection: "notes",
+        },
+      ],
+    };
+    expect(ConfigSchema.safeParse(base).success).toBe(true);
+    expect(
+      ConfigSchema.safeParse({
+        ...base,
+        projectProfileBindings: [
+          { ...base.projectProfileBindings[0], path: ".gno/index.yml" },
+        ],
+      }).success
+    ).toBe(false);
+    expect(
+      ConfigSchema.safeParse({
+        ...base,
+        projectProfileBindings: [
+          { ...base.projectProfileBindings[0], fingerprint: "not-a-sha256" },
+        ],
+      }).success
+    ).toBe(false);
+    expect(
+      ConfigSchema.safeParse({
+        ...base,
+        projectProfileBindings: [
+          base.projectProfileBindings[0],
+          base.projectProfileBindings[0],
+        ],
+      }).success
+    ).toBe(false);
+  });
+
   test("reproduces identical semantics under POSIX and Windows-shaped roots", async () => {
     const root = await mkdtemp(join(tmpdir(), "gno-profile-portability-"));
     createdRoots.push(root);
@@ -116,6 +165,16 @@ describe("project profile clean-machine portability", () => {
     expect(posix.applied.receipt).toEqual(windows.applied.receipt);
 
     for (const fixture of [posix, windows]) {
+      expect(fixture.config.projectProfileBindings).toEqual([
+        {
+          path: await realpath(join(fixture.project, ".gno", "index.yml")),
+          fingerprint: fixture.applied.receipt.profile.fingerprint,
+          collection: "portable",
+        },
+      ]);
+      const publicReceipt = JSON.stringify(fixture.applied.receipt);
+      expect(publicReceipt).not.toContain(fixture.project);
+      expect(publicReceipt).not.toContain(".gno/index.yml");
       const trackedFiles = [
         ...(await Array.fromAsync(
           new Bun.Glob("**/*").scan({

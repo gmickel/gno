@@ -347,6 +347,11 @@ export async function runProjectProfileCommand(
     const built = await buildProjectProfileDiff({
       desiredState: compiled.value.desiredState,
       expectedCollectionRoot: compiled.value.resolvedPaths.collectionRoot,
+      profileBinding: {
+        path: discovery.profilePath,
+        fingerprint: compiled.value.fingerprint,
+        collection: compiled.value.desiredState.collection.name,
+      },
       config: configResult.config,
       canonicalizePath: options.canonicalizePath ?? realpath,
     });

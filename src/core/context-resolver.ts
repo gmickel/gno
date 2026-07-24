@@ -1,9 +1,7 @@
 import type { ContextRow, StorePort } from "../store/types";
 
 import { parseUri } from "../app/constants";
-
-const CARRIAGE_RETURN_PATTERN = /\r\n?/g;
-const BYTE_ORDER_MARK_PATTERN = /^\uFEFF/u;
+import { normalizePersistedContextText } from "./context-identity";
 
 export interface ContextDocumentIdentity {
   collection: string;
@@ -73,14 +71,6 @@ function normalizeIdentity(
   return { collection, relPath };
 }
 
-function normalizeText(text: string): string {
-  return text
-    .replace(BYTE_ORDER_MARK_PATTERN, "")
-    .replace(CARRIAGE_RETURN_PATTERN, "\n")
-    .normalize("NFC")
-    .trim();
-}
-
 function byteKey(text: string): string {
   return [...new TextEncoder().encode(text)].join(",");
 }
@@ -95,7 +85,7 @@ function normalizeContext(
   context: ContextRow,
   identity: NormalizedIdentity
 ): MatchingContext | null {
-  const text = normalizeText(context.text);
+  const text = normalizePersistedContextText(context.text);
   if (!text) {
     return null;
   }

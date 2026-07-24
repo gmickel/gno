@@ -89,7 +89,7 @@ export async function verifyPackedProjectProfile(
       '    - "private/**"',
       "contexts:",
       "  - text: Packed project profile context.",
-      "contentTypes: []",
+      "contentTypes: {}",
       "affinityDefaults:",
       "  enabled: true",
       "  contribution: 0.02",

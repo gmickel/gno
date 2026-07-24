@@ -5,10 +5,11 @@
  * @module src/core/project-profile-diff
  */
 
-import type { Config } from "../config/types";
+import type { Config, ProjectProfileBinding } from "../config/types";
 import type { ProjectProfileDesiredState } from "./project-profile";
 
 import { getPreset } from "../llm/registry";
+import { normalizePersistedContextText } from "./context-identity";
 import {
   canonicalProjectProfileJson,
   projectProfileIncludePattern,
@@ -44,6 +45,7 @@ export interface ProjectProfileDiffDiagnostic {
 export interface BuildProjectProfileDiffOptions {
   desiredState: ProjectProfileDesiredState;
   expectedCollectionRoot: string;
+  profileBinding: ProjectProfileBinding;
   config: Config;
   canonicalizePath: (path: string) => Promise<string>;
 }
@@ -65,9 +67,11 @@ const hasEveryProfileContext = (
           context.scopeType === "collection" &&
           context.scopeKey === `${desiredState.collection.name}:`
       )
-      .map((context) => context.text)
+      .map((context) => normalizePersistedContextText(context.text))
   );
-  return desiredState.contexts.every((context) => configured.has(context.text));
+  return desiredState.contexts.every((context) =>
+    configured.has(normalizePersistedContextText(context.text))
+  );
 };
 
 const desiredCollectionRules = (
@@ -148,6 +152,25 @@ export async function buildProjectProfileDiff(
     canonicalizePath
   );
   const targetRoot = canonicalPaths.get(collectionName);
+  const currentBinding = config.projectProfileBindings?.find(
+    (binding) => binding.path === options.profileBinding.path
+  );
+
+  if (!currentBinding) {
+    changes.push({
+      action: "add",
+      field: "projectProfileBindings",
+      destructive: false,
+      summary: "Record local provenance for the selected project profile.",
+    });
+  } else if (!canonicalEqual(currentBinding, options.profileBinding)) {
+    changes.push({
+      action: "update",
+      field: "projectProfileBindings",
+      destructive: false,
+      summary: "Update local provenance for the selected project profile.",
+    });
+  }
 
   if (!target) {
     changes.push({

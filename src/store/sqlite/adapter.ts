@@ -641,6 +641,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           update_cmd = excluded.update_cmd,
           language_hint = excluded.language_hint,
           synced_at = datetime('now')
+        WHERE collections.path IS NOT excluded.path
+          OR collections.pattern IS NOT excluded.pattern
+          OR collections.include IS NOT excluded.include
+          OR collections.exclude IS NOT excluded.exclude
+          OR collections.update_cmd IS NOT excluded.update_cmd
+          OR collections.language_hint IS NOT excluded.language_hint
       `);
       const transaction = db.transaction(() => {
         for (const collection of collections) {
@@ -708,16 +714,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const stmt = db.prepare(`
         INSERT INTO contexts (scope_type, scope_key, text, synced_at)
         VALUES (?, ?, ?, datetime('now'))
-        ON CONFLICT(scope_type, scope_key, text) DO UPDATE SET
-          synced_at = excluded.synced_at
+        ON CONFLICT(scope_type, scope_key, text) DO NOTHING
       `);
+      let inserted = 0;
       const transaction = db.transaction(() => {
         for (const context of contexts) {
-          stmt.run(context.scopeType, context.scopeKey, context.text);
+          inserted += stmt.run(
+            context.scopeType,
+            context.scopeKey,
+            context.text
+          ).changes;
         }
       });
       transaction();
-      this.contextGeneration += 1;
+      if (inserted > 0) this.contextGeneration += 1;
       return ok(undefined);
     } catch (cause) {
       return err(

@@ -484,6 +484,42 @@ describe("project profile check/show/diff", () => {
     );
   });
 
+  test("fails closed for dangling discovered and explicit profile symlinks", async () => {
+    const root = await makeRoot("dangling-profile");
+    await mkdir(join(root, ".git"));
+    await mkdir(join(root, ".gno"));
+    const discoveredPath = join(root, PROJECT_PROFILE_RELATIVE_PATH);
+    await symlink("missing.yml", discoveredPath);
+    const configPath = join(root, "runtime", "config", "index.yml");
+    const dataDir = join(root, "runtime", "data");
+
+    const discovered = await runProjectProfileCommand({
+      command: "check",
+      path: root,
+      configPath,
+    });
+    expect(discovered.exitCode).toBe(2);
+    expect(discovered.result).toMatchObject({
+      discovery: { profile: null },
+      diagnostics: [
+        expect.objectContaining({ code: "PROFILE_DISCOVERY_FAILED" }),
+      ],
+    });
+
+    const explicit = await runProjectProfileCommand({
+      command: "check",
+      path: discoveredPath,
+      configPath,
+    });
+    expect(explicit.exitCode).toBe(1);
+    expect(explicit.result).toMatchObject({
+      discovery: { profile: null },
+      diagnostics: [expect.objectContaining({ code: "PROFILE_NOT_FOUND" })],
+    });
+    expect(await Bun.file(configPath).exists()).toBe(false);
+    expect(await Bun.file(dataDir).exists()).toBe(false);
+  });
+
   test("diff exposes stale repair/removal choices without applying either", async () => {
     const root = await makeRoot("stale");
     await writeProfile(root);

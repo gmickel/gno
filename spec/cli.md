@@ -179,7 +179,11 @@ profile. It can initialize a missing user config. Omitted collections,
 collection-scoped contexts, and content-type rules remain untouched; stale
 same-path collections are reported as skipped and retained. A stale same-name
 collection root is repaired in place without deleting its collection or index
-identity. Model preset aliases resolve to collection-local model overrides.
+identity. Apply also updates a timestamp-free `projectProfileBindings` record
+in the local user config with the canonical absolute profile path, profile
+fingerprint, and projected collection. The public `profile_binding` resource
+receipt identifies only the collection and never exposes that local path.
+Model preset aliases resolve to collection-local model overrides.
 Apply synchronizes the config projection but does not index documents; changed
 collections appear in `pendingIndexing`.
 `affinityDefaults` remains profile-scoped and is compiled at trusted local
@@ -1451,6 +1455,10 @@ retrieval results and is used as trusted guidance during grounded answer
 generation. Matching scopes compose once in this order: global, collection,
 then path prefixes from broadest to most specific. Context guides interpretation;
 it is not searched and does not change ranking.
+Multiple distinct normalized texts may share one scope. The persisted identity
+is `(scopeType, canonicalScopeKey, normalizedText)`. Text normalization removes
+a leading BOM, converts CRLF/CR to LF, applies NFC, and trims surrounding
+whitespace; an exact normalized duplicate is rejected.
 
 **Synopsis:**
 
@@ -1524,18 +1532,20 @@ gno context check [--json|--md]
 
 ### gno context rm
 
-Remove a context.
+Remove a context. Scope-only removal succeeds only when exactly one record
+matches. If multiple texts share the scope, the caller MUST pass exact text;
+ambiguous removal fails without mutation.
 
 **Synopsis:**
 
 ```bash
-gno context rm <scope>
+gno context rm <scope> [text]
 ```
 
 **Exit Codes:**
 
 - 0: Success
-- 1: Scope not found
+- 1: Invalid/not-found scope, text not found, or ambiguous scope-only removal
 
 ---
 

@@ -67,6 +67,8 @@ export {
   getCollectionFromScope,
   isValidLanguageHint,
   parseScope,
+  type ProjectProfileBinding,
+  ProjectProfileBindingSchema,
   type ScopeType,
   ScopeTypeSchema,
 } from "./types";

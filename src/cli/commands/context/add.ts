@@ -6,7 +6,9 @@
  * @module src/cli/commands/context/add
  */
 
-import { loadConfig, parseScope, saveConfig } from "../../../config";
+import { parseScope } from "../../../config";
+import { applyConfigFileChange } from "../../../core/config-mutation";
+import { normalizePersistedContextText } from "../../../core/context-identity";
 
 /**
  * Exit codes
@@ -21,7 +23,11 @@ const EXIT_VALIDATION = 1;
  * @param text - Context description text
  * @returns Exit code
  */
-export async function contextAdd(scope: string, text: string): Promise<number> {
+export async function contextAdd(
+  scope: string,
+  text: string,
+  options: { configPath?: string } = {}
+): Promise<number> {
   // Parse scope
   const parsed = parseScope(scope);
   if (!parsed) {
@@ -32,33 +38,38 @@ export async function contextAdd(scope: string, text: string): Promise<number> {
     return EXIT_VALIDATION;
   }
 
-  // Load config
-  const configResult = await loadConfig();
-  if (!configResult.ok) {
-    console.error(`Error: ${configResult.error.message}`);
+  const normalizedText = normalizePersistedContextText(text);
+  if (!normalizedText) {
+    console.error("Error: Context text must not be empty");
     return EXIT_VALIDATION;
   }
 
-  const config = configResult.value;
-
-  // Check for duplicate scope
-  const existing = config.contexts.find((ctx) => ctx.scopeKey === parsed.key);
-  if (existing) {
-    console.error(`Error: Context for scope "${scope}" already exists`);
-    return EXIT_VALIDATION;
-  }
-
-  // Add context
-  config.contexts.push({
-    scopeType: parsed.type,
-    scopeKey: parsed.key,
-    text,
-  });
-
-  // Save config
-  const saveResult = await saveConfig(config);
-  if (!saveResult.ok) {
-    console.error(`Error: ${saveResult.error.message}`);
+  const mutation = await applyConfigFileChange(
+    { configPath: options.configPath },
+    (config) => {
+      const duplicate = config.contexts.some(
+        (context) =>
+          context.scopeType === parsed.type &&
+          context.scopeKey === parsed.key &&
+          normalizePersistedContextText(context.text) === normalizedText
+      );
+      if (duplicate) {
+        return {
+          ok: false as const,
+          error: `Context for scope "${scope}" with that text already exists`,
+          code: "DUPLICATE",
+        };
+      }
+      config.contexts.push({
+        scopeType: parsed.type,
+        scopeKey: parsed.key,
+        text: normalizedText,
+      });
+      return { ok: true as const, config };
+    }
+  );
+  if (!mutation.ok) {
+    console.error(`Error: ${mutation.error}`);
     return EXIT_VALIDATION;
   }
 
