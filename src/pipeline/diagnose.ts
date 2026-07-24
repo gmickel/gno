@@ -14,16 +14,20 @@ import type {
   QueryDiagnoseTraceCandidate,
 } from "./types";
 
-import { fingerprintContentTypeRules } from "../config";
+import { fingerprintContentTypeRules, normalizeContentTypes } from "../config";
 import { resolveDocRef } from "../core/ref-parser";
 import { err, ok } from "../store/types";
+import {
+  getContentTypeBoostMetadata,
+  scoreContentTypeBoost,
+  type ContentTypeBoostScoreMetadata,
+} from "./content-type-boost";
 import { evaluateQueryTargetFilters } from "./filters";
 import { searchHybrid } from "./hybrid";
 import {
   getProjectAffinityMetadata,
   type ProjectAffinityScoringInput,
   type ProjectAffinityScoreMetadata,
-  scoreProjectAffinity,
 } from "./project-affinity";
 
 export type QueryDiagnoseTargetStatus =
@@ -72,6 +76,7 @@ export interface QueryDiagnoseResult {
   };
   stages: QueryDiagnoseStage[];
   affinity?: ProjectAffinityScoreMetadata;
+  contentTypeBoost?: ContentTypeBoostScoreMetadata;
   chunk: {
     seq: number | null;
     startLine: number | null;
@@ -182,7 +187,9 @@ export async function diagnoseQueryTarget(
   }
 
   const doc = resolved.doc;
-  const rules = options.contentTypeRules ?? [];
+  const rules =
+    options.contentTypeRules ??
+    normalizeContentTypes(deps.config.contentTypes ?? []).rules;
   const expectedFingerprint =
     options.contentTypeRulesFingerprint ?? fingerprintContentTypeRules(rules);
   const fingerprintMatches = doc.contentTypeRulesFingerprint
@@ -302,16 +309,23 @@ export async function diagnoseQueryTarget(
       (candidate) =>
         candidate.mirrorHash === doc.mirrorHash && targetSeqs.has(candidate.seq)
     );
+  const fallbackScore = lastMatched
+    ? scoreContentTypeBoost(
+        lastMatched.score,
+        doc.contentType ?? undefined,
+        doc.relPath,
+        doc.collection,
+        rules,
+        options.projectAffinity,
+        { kind: "hybrid_blended", score: lastMatched.score }
+      )
+    : undefined;
   const affinity =
     (targetResult ? getProjectAffinityMetadata(targetResult) : undefined) ??
-    (lastMatched && options.projectAffinity
-      ? scoreProjectAffinity(
-          lastMatched.score,
-          doc.collection,
-          options.projectAffinity,
-          { kind: "hybrid_blended", score: lastMatched.score }
-        )
-      : null);
+    (options.projectAffinity ? fallbackScore?.projectAffinity : undefined);
+  const contentTypeBoost =
+    (targetResult ? getContentTypeBoostMetadata(targetResult) : undefined) ??
+    fallbackScore?.contentTypeBoost;
 
   const baseResult: QueryDiagnoseResult = {
     ...buildBaseResult(query, options.target, "diagnosed", doc, {
@@ -335,12 +349,17 @@ export async function diagnoseQueryTarget(
       queryModes: searchResult.value.meta.queryModes,
     },
   };
-  return ok(
+  const trustedAffinity =
     affinity && hasTrustedProjectAffinityInput(options.projectAffinity)
+      ? affinity
+      : undefined;
+  return ok(
+    trustedAffinity || contentTypeBoost
       ? {
           ...baseResult,
           schemaVersion: "1.1",
-          affinity,
+          ...(trustedAffinity ? { affinity: trustedAffinity } : {}),
+          ...(contentTypeBoost ? { contentTypeBoost } : {}),
         }
       : baseResult
   );

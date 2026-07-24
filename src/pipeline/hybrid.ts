@@ -20,9 +20,15 @@ import type {
   SearchResults,
 } from "./types";
 
+import { normalizeContentTypes } from "../config/content-types";
 import { embedTextsWithRecovery } from "../embed/batch";
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
+import {
+  applyContentTypeBoost,
+  hasAuxiliaryRanking,
+  sortByFinalScoreStable,
+} from "./content-type-boost";
 import { formatQueryForEmbedding } from "./contextual";
 import { expandQuery } from "./expansion";
 import {
@@ -41,11 +47,6 @@ import { evaluateDocumentChunkFilters } from "./filters";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
 import { selectBestChunkForSteering } from "./intent";
-import {
-  applyProjectAffinity,
-  getProjectAffinityMetadata,
-  hasProjectAffinity,
-} from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import {
   buildExpansionFromQueryModes,
@@ -306,7 +307,13 @@ export async function searchHybrid(
   const runStartedAt = performance.now();
   const { store, vectorIndex, embedPort, expandPort, rerankPort } = deps;
   const pipelineConfig = deps.pipelineConfig ?? DEFAULT_PIPELINE_CONFIG;
-  const affinityActive = hasProjectAffinity(options.projectAffinity);
+  const contentTypeRules =
+    options.contentTypeRules ??
+    normalizeContentTypes(deps.config.contentTypes ?? []).rules;
+  const auxiliaryRankingActive = hasAuxiliaryRanking(
+    options.projectAffinity,
+    contentTypeRules
+  );
 
   const limit = options.limit ?? 20;
   const recencySort = shouldSortByRecency(query);
@@ -725,7 +732,7 @@ export async function searchHybrid(
   // ─────────────────────────────────────────────────────────────────────────
   const minScore = options.minScore ?? 0;
   const filteredCandidates =
-    minScore > 0 && !affinityActive
+    minScore > 0 && !auxiliaryRankingActive
       ? rerankResult.candidates.filter((c) => c.blendedScore >= minScore)
       : rerankResult.candidates;
 
@@ -881,7 +888,7 @@ export async function searchHybrid(
   // Iterate until we have enough results (don't slice early - deduping may skip candidates)
   for (const [candidateIndex, candidate] of filteredCandidates.entries()) {
     // Stop when we have enough results
-    if (!affinityActive && results.length >= assemblyLimit) {
+    if (!auxiliaryRankingActive && results.length >= assemblyLimit) {
       break;
     }
 
@@ -945,7 +952,7 @@ export async function searchHybrid(
     }
 
     for (const doc of candidateDocs) {
-      if (!affinityActive && results.length >= assemblyLimit) break;
+      if (!auxiliaryRankingActive && results.length >= assemblyLimit) break;
       const filterEval = evaluateDocumentChunkFilters(
         query,
         doc,
@@ -954,17 +961,17 @@ export async function searchHybrid(
       );
       if (
         !filterEval.matches ||
-        (options.full && !affinityActive && seenDocids.has(doc.docid))
+        (options.full && !auxiliaryRankingActive && seenDocids.has(doc.docid))
       ) {
         continue;
       }
       const docidKey = `${candidate.mirrorHash}:${candidate.seq}`;
       if (!docidMap.has(docidKey)) docidMap.set(docidKey, doc.docid);
       const collectionPath = collectionPaths.get(doc.collection);
-      if (options.full && !affinityActive) {
+      if (options.full && !auxiliaryRankingActive) {
         seenDocids.add(doc.docid);
       }
-      const scoredResult = applyProjectAffinity(
+      const scoredResult = applyContentTypeBoost(
         {
           docid: doc.docid,
           score: candidate.blendedScore,
@@ -995,6 +1002,7 @@ export async function searchHybrid(
           },
         },
         doc.collection,
+        contentTypeRules,
         options.projectAffinity,
         { kind: "hybrid_blended", score: candidate.blendedScore }
       );
@@ -1004,7 +1012,7 @@ export async function searchHybrid(
           retrievalRank: candidateIndex + 1,
           mirrorHash: candidate.mirrorHash,
           seq: snippetChunk.seq,
-          ...(affinityActive && snippetChunk.seq !== candidate.seq
+          ...(auxiliaryRankingActive && snippetChunk.seq !== candidate.seq
             ? { retrievalSeq: candidate.seq }
             : {}),
           sources: [...candidate.sources].sort(),
@@ -1030,7 +1038,7 @@ export async function searchHybrid(
   // 7. Return results
   // ─────────────────────────────────────────────────────────────────────────
   const dedupedResults =
-    options.full && affinityActive
+    options.full && auxiliaryRankingActive
       ? dedupeFullResultsByDocid(results)
       : results;
 
@@ -1049,23 +1057,16 @@ export async function searchHybrid(
       }
       return b.score - a.score;
     });
-  } else if (affinityActive) {
-    dedupedResults.sort((a, b) => b.score - a.score);
+  } else if (auxiliaryRankingActive) {
+    sortByFinalScoreStable(dedupedResults);
   }
 
   const finalResults = dedupedResults.slice(0, limit);
   const explainData = options.explain
     ? {
         lines: explainLines,
-        results: affinityActive
-          ? buildExplainResults(filteredCandidates, docidMap, finalResults).map(
-              (result, index) => ({
-                ...result,
-                projectAffinity: getProjectAffinityMetadata(
-                  finalResults[index]!
-                ),
-              })
-            )
+        results: auxiliaryRankingActive
+          ? buildExplainResults(filteredCandidates, docidMap, finalResults)
           : buildExplainResults(filteredCandidates.slice(0, limit), docidMap),
       }
     : undefined;
