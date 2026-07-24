@@ -13,6 +13,7 @@ import {
   createHttpClient,
   freeLoopbackPort,
   isRecord,
+  isValidPackedWarmModelReuse,
   JSON_HEADERS,
   parseJsonObject,
   proveResidentUnaffectedByDirectSetup,
@@ -135,25 +136,12 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
         "serve",
         [input.cwd, input.env.GNO_DATA_DIR ?? "", "package-smoke-secret"]
       );
-      const acquired =
-        semanticAfter.models.leaseAcquisitions -
-        semanticBefore.models.leaseAcquisitions;
-      const released =
-        semanticAfter.models.leaseReleases -
-        semanticBefore.models.leaseReleases;
       if (
-        semanticBefore.models.loadedModels !== 1 ||
-        semanticBefore.models.loadAttempts !== 1 ||
-        semanticBefore.models.loadSuccesses !== 1 ||
-        semanticAfter.models.loadedModels !==
-          semanticBefore.models.loadedModels ||
-        semanticAfter.models.loadAttempts !==
-          semanticBefore.models.loadAttempts ||
-        semanticAfter.models.loadSuccesses !==
-          semanticBefore.models.loadSuccesses ||
-        acquired !== semanticResults.length ||
-        released !== acquired ||
-        semanticAfter.models.activeLeases !== 0
+        !isValidPackedWarmModelReuse(
+          semanticBefore.models,
+          semanticAfter.models,
+          semanticResults.length
+        )
       ) {
         throw new Error(
           `Packed model-backed warm reuse failed: ${JSON.stringify({
