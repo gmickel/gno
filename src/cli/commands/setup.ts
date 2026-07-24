@@ -172,7 +172,7 @@ export async function terminalSecretConfirmation(
   }
 }
 
-function lexicalSuccessIsProven(receipt: FolderSetupReceipt): boolean {
+export function lexicalSuccessIsProven(receipt: FolderSetupReceipt): boolean {
   const resultUri = receipt.activation?.evidence.resultUri;
   return (
     receipt.status === "completed" &&

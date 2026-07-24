@@ -1,0 +1,456 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/setup-activation-result@1.0",
+  "title": "GNO Setup Activation Result",
+  "description": "Closed connector onboarding composition beside an unchanged verified setup result.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "setup", "connectors"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "status": { "enum": ["completed", "completed_with_actions", "failed"] },
+    "setup": { "$ref": "gno://schemas/setup-command-result@1.0" },
+    "connectors": {
+      "type": "array",
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "connectorId",
+          "kind",
+          "target",
+          "scope",
+          "installation",
+          "verification",
+          "code",
+          "remediation",
+          "receipt"
+        ],
+        "properties": {
+          "connectorId": {
+            "enum": [
+              "claude-code-skill",
+              "claude-desktop-mcp",
+              "cursor-mcp",
+              "codex-skill",
+              "opencode-skill",
+              "openclaw-skill",
+              "hermes-skill"
+            ]
+          },
+          "kind": { "enum": ["skill", "mcp"] },
+          "target": {
+            "enum": [
+              "claude",
+              "claude-desktop",
+              "cursor",
+              "codex",
+              "opencode",
+              "openclaw",
+              "hermes"
+            ]
+          },
+          "scope": { "const": "user" },
+          "installation": {
+            "enum": ["installed", "reused", "failed"]
+          },
+          "verification": {
+            "enum": ["passed", "failed", "skipped", "not_run"]
+          },
+          "code": {
+            "enum": [
+              "connector_verified",
+              "connector_configuration_unavailable",
+              "connector_install_failed",
+              "connector_verification_failed",
+              "connector_not_configured",
+              "connector_probe_unavailable",
+              "connector_unsupported_config",
+              "connector_start_failed",
+              "connector_timeout",
+              "connector_missing_tools",
+              "connector_status_failed",
+              "connector_search_failed",
+              "connector_result_mismatch",
+              "target_runtime_unverifiable"
+            ]
+          },
+          "remediation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "receipt": {
+            "oneOf": [
+              {
+                "$ref": "gno://schemas/activation-verification@1.0"
+              },
+              { "type": "null" }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "connectorId": { "const": "claude-code-skill" }
+              },
+              "required": ["connectorId"]
+            },
+            "then": {
+              "properties": {
+                "kind": { "const": "skill" },
+                "target": { "const": "claude" }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "connectorId": { "const": "claude-desktop-mcp" }
+              },
+              "required": ["connectorId"]
+            },
+            "then": {
+              "properties": {
+                "kind": { "const": "mcp" },
+                "target": { "const": "claude-desktop" }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": { "connectorId": { "const": "cursor-mcp" } },
+              "required": ["connectorId"]
+            },
+            "then": {
+              "properties": {
+                "kind": { "const": "mcp" },
+                "target": { "const": "cursor" }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": { "connectorId": { "const": "codex-skill" } },
+              "required": ["connectorId"]
+            },
+            "then": {
+              "properties": {
+                "kind": { "const": "skill" },
+                "target": { "const": "codex" }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "connectorId": { "const": "opencode-skill" }
+              },
+              "required": ["connectorId"]
+            },
+            "then": {
+              "properties": {
+                "kind": { "const": "skill" },
+                "target": { "const": "opencode" }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "connectorId": { "const": "openclaw-skill" }
+              },
+              "required": ["connectorId"]
+            },
+            "then": {
+              "properties": {
+                "kind": { "const": "skill" },
+                "target": { "const": "openclaw" }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": { "connectorId": { "const": "hermes-skill" } },
+              "required": ["connectorId"]
+            },
+            "then": {
+              "properties": {
+                "kind": { "const": "skill" },
+                "target": { "const": "hermes" }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "verification": { "const": "passed" }
+              },
+              "required": ["verification"]
+            },
+            "then": {
+              "properties": {
+                "installation": { "enum": ["installed", "reused"] },
+                "code": { "const": "connector_verified" },
+                "receipt": {
+                  "allOf": [
+                    { "$ref": "gno://schemas/activation-verification@1.0" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "stages": {
+                          "type": "object",
+                          "properties": {
+                            "connector": {
+                              "type": "object",
+                              "properties": {
+                                "status": { "const": "passed" }
+                              },
+                              "required": ["status"]
+                            }
+                          },
+                          "required": ["connector"]
+                        }
+                      },
+                      "required": ["stages"]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "verification": { "const": "skipped" }
+              },
+              "required": ["verification"]
+            },
+            "then": {
+              "properties": {
+                "installation": { "enum": ["installed", "reused"] },
+                "code": {
+                  "enum": [
+                    "connector_not_configured",
+                    "connector_probe_unavailable",
+                    "target_runtime_unverifiable"
+                  ]
+                },
+                "receipt": {
+                  "allOf": [
+                    { "$ref": "gno://schemas/activation-verification@1.0" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "stages": {
+                          "type": "object",
+                          "properties": {
+                            "connector": {
+                              "type": "object",
+                              "properties": {
+                                "status": { "const": "skipped" }
+                              },
+                              "required": ["status"]
+                            }
+                          },
+                          "required": ["connector"]
+                        }
+                      },
+                      "required": ["stages"]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "verification": { "const": "failed" }
+              },
+              "required": ["verification"]
+            },
+            "then": {
+              "properties": {
+                "installation": { "enum": ["installed", "reused"] },
+                "code": {
+                  "enum": [
+                    "connector_verification_failed",
+                    "connector_probe_unavailable",
+                    "connector_unsupported_config",
+                    "connector_start_failed",
+                    "connector_timeout",
+                    "connector_missing_tools",
+                    "connector_status_failed",
+                    "connector_search_failed",
+                    "connector_result_mismatch"
+                  ]
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "receipt": { "type": "object" }
+                    },
+                    "required": ["receipt"]
+                  },
+                  "then": {
+                    "properties": {
+                      "receipt": {
+                        "allOf": [
+                          {
+                            "$ref": "gno://schemas/activation-verification@1.0"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "stages": {
+                                "type": "object",
+                                "properties": {
+                                  "connector": {
+                                    "type": "object",
+                                    "properties": {
+                                      "status": { "const": "failed" }
+                                    },
+                                    "required": ["status"]
+                                  }
+                                },
+                                "required": ["connector"]
+                              }
+                            },
+                            "required": ["stages"]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "else": {
+                    "properties": {
+                      "code": { "const": "connector_verification_failed" }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "verification": { "const": "not_run" }
+              },
+              "required": ["verification"]
+            },
+            "then": {
+              "properties": {
+                "installation": { "const": "failed" },
+                "code": {
+                  "enum": [
+                    "connector_configuration_unavailable",
+                    "connector_install_failed",
+                    "connector_verification_failed"
+                  ]
+                },
+                "receipt": { "type": "null" }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "completed" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "setup": {
+            "allOf": [
+              { "$ref": "gno://schemas/setup-command-result@1.0" },
+              {
+                "type": "object",
+                "properties": { "status": { "const": "completed" } },
+                "required": ["status"]
+              }
+            ]
+          },
+          "connectors": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "verification": { "const": "passed" },
+                "code": { "const": "connector_verified" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": { "const": "completed_with_actions" }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "setup": {
+            "allOf": [
+              { "$ref": "gno://schemas/setup-command-result@1.0" },
+              {
+                "type": "object",
+                "properties": { "status": { "const": "completed" } },
+                "required": ["status"]
+              }
+            ]
+          },
+          "connectors": {
+            "type": "array",
+            "minItems": 1,
+            "contains": {
+              "type": "object",
+              "properties": {
+                "verification": {
+                  "enum": ["failed", "skipped", "not_run"]
+                }
+              },
+              "required": ["verification"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "failed" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "setup": {
+            "allOf": [
+              { "$ref": "gno://schemas/setup-command-result@1.0" },
+              {
+                "type": "object",
+                "properties": { "status": { "const": "failed" } },
+                "required": ["status"]
+              }
+            ]
+          },
+          "connectors": {
+            "type": "array",
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ]
+}

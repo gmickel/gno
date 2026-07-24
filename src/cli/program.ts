@@ -1361,18 +1361,26 @@ function wireOnboardingCommands(program: Command): void {
       "--authorize-secret-risk",
       "explicitly authorize indexing likely secret files"
     )
+    .option(
+      "--connector <id>",
+      "install and verify one connector (repeatable)",
+      collectRepeatableValue,
+      []
+    )
     .option("--no-semantic", "skip background semantic indexing")
     .option("--json", "JSON output")
     .action(async (folder: string, cmdOpts: Record<string, unknown>) => {
       const globals = getGlobals();
       const json = Boolean(cmdOpts.json) || globals.json;
-      const { formatSetupResult, setup } = await import("./commands/setup");
+      const { formatSetupOutputResult, setupWithActivation } =
+        await import("./commands/setup-activation");
       const exclusions = cmdOpts.exclude as string[];
-      const outcome = await setup({
+      const outcome = await setupWithActivation({
         folder,
         name: cmdOpts.name as string | undefined,
         exclude: exclusions.length > 0 ? exclusions : undefined,
         authorizeSecretRisk: Boolean(cmdOpts.authorizeSecretRisk),
+        connectorIds: cmdOpts.connector as string[],
         semantic: cmdOpts.semantic !== false,
         indexName: globals.index,
         configPath: globals.config,
@@ -1384,16 +1392,18 @@ function wireOnboardingCommands(program: Command): void {
           process.stderr.write(`setup: ${stage}\n`);
         },
       });
-      const output = formatSetupResult(outcome.result, { json });
+      const output = formatSetupOutputResult(outcome.result, { json });
       if (json || outcome.exitCode === 0) {
         process.stdout.write(`${output}\n`);
       } else {
         process.stderr.write(`${output}\n`);
       }
       if (outcome.exitCode !== 0) {
+        const setupResult =
+          "setup" in outcome.result ? outcome.result.setup : outcome.result;
         throw new CliError(
           outcome.exitCode === 1 ? "VALIDATION" : "RUNTIME",
-          outcome.result.lexical.error?.message ?? "Setup failed",
+          setupResult.lexical.error?.message ?? "Setup failed",
           { silent: true }
         );
       }

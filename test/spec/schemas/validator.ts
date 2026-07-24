@@ -35,6 +35,7 @@ async function loadAllSchemas(): Promise<void> {
     "setup-receipt",
     "setup-semantic-receipt",
     "setup-command-result",
+    "setup-activation-result",
     "context-capsule-v1",
     "context-capsule-verification",
     "saved-capsule-registration",

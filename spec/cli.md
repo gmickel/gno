@@ -364,7 +364,8 @@ to one standalone background worker and never delays lexical success.
 
 ```bash
 gno setup <folder> [-n|--name <name>] [--exclude <pattern>]...
-  [--authorize-secret-risk] [--no-semantic] [--json]
+  [--authorize-secret-risk] [--connector <id>]...
+  [--no-semantic] [--json]
 ```
 
 **Options:**
@@ -374,8 +375,9 @@ gno setup <folder> [-n|--name <name>] [--exclude <pattern>]...
 | `-n, --name <name>`       | string     | dirname       | Requested collection name; exact-root reruns reuse the configured collection |
 | `--exclude <pattern>`     | repeatable | core defaults | One literal exclusion per occurrence; never CSV                              |
 | `--authorize-secret-risk` | boolean    | false         | Explicitly authorize likely credentials, private keys, or env files          |
+| `--connector <id>`        | repeatable | none          | Install or reuse and verify one supported connector after lexical proof      |
 | `--no-semantic`           | boolean    | false         | Prove lexical retrieval but record semantic work as skipped                  |
-| `--json`                  | boolean    | false         | Emit one `setup-command-result@1.0` object                                   |
+| `--json`                  | boolean    | false         | Emit one closed setup result object                                          |
 
 Omitting `--exclude` preserves the core create defaults or the filters already
 configured for an exact-root rerun. An empty occurrence is invalid. Global
@@ -402,16 +404,40 @@ embedding, and vector-sync failures retain an exact foreground
 `gno ... embed <collection>` remediation and never change proven lexical exit 0.
 Direct setup never contacts a resident, MCP, or Web runtime.
 
+`--connector` is explicit and repeatable; omission performs no connector
+inspection, installation, or verification. Supported IDs are
+`claude-code-skill`, `claude-desktop-mcp`, `cursor-mcp`, `codex-skill`,
+`opencode-skill`, `openclaw-skill`, and `hermes-skill`. Exact duplicates dedupe
+in first-seen order. Unknown IDs fail before setup side effects.
+Any connector-mode JSON invocation emits `setup-activation-result@1.0`.
+Argument or lexical failure uses outer `status: failed`, nests the unchanged
+failed setup result, and keeps `connectors: []`; it retains the original setup
+exit code and performs no connector action.
+
+After proven lexical success and after the lexical store closes, the direct CLI
+opens a new standalone store for connector composition. Missing targets use the
+existing read-only installer; existing entries are reused without overwrite.
+Malformed or unreadable entries are preserved. MCP targets run the shipped
+bounded read-only activation smoke. Skill targets install but return
+`skipped/target_runtime_unverifiable` because they expose no safe runtime hook.
+Connector failures or skips do not roll back lexical success: the command exits
+0 with `completed_with_actions` and bounded per-target remediation. No raw child
+output or client config path is serialized. Reruns delegate passed-receipt reuse
+and recoverable retry to the shipped activation verifier; setup introduces no
+second connector fingerprint or cache.
+
 **Structured schemas:**
 
 - [`setup-command-result@1.0`](./output-schemas/setup-command-result.schema.json)
+- [`setup-activation-result@1.0`](./output-schemas/setup-activation-result.schema.json)
 - [`setup-semantic@1.0`](./output-schemas/setup-semantic-receipt.schema.json)
 - [`FolderSetupReceipt@1.0`](./output-schemas/setup-receipt.schema.json)
 
 **Exit Codes:**
 
 - 0: Lexical setup completed with a real exact result URI; semantic state may
-  be scheduled, running, pending, completed, or skipped
+  be scheduled, running, pending, completed, or skipped; requested connector
+  actions may require bounded follow-up
 - 1: Invalid/safe-input rejection, collection/filter/index disagreement,
   secret-risk refusal, or declined confirmation
 - 2: Config, receipt, IO, store, indexing, proof, or internal invariant failure

@@ -123,6 +123,8 @@ gno setup ~/notes
 gno setup ~/notes --name notes --exclude .env --exclude private
 gno --offline setup ~/notes
 gno setup ~/notes --no-semantic
+gno setup ~/notes --connector codex-skill
+gno setup ~/notes --connector cursor-mcp --connector codex-skill
 gno setup ~/notes --json
 ```
 
@@ -153,7 +155,24 @@ gno --index default --config /path/to/index.yml embed notes
 ```
 
 Use `--no-semantic` to record semantic work as skipped. Use `--json` for one
-closed `setup-command-result@1.0` object on stdout; progress is suppressed.
+closed result on stdout; progress is suppressed. Without `--connector`, the
+payload remains the unchanged `setup-command-result@1.0`. With one or more
+explicit connector IDs, it is `setup-activation-result@1.0`, containing the
+unchanged setup result plus bounded per-target install and verification state.
+Connector-mode argument or lexical failure still uses that outer schema with
+`status: failed` and an empty connector list; the nested setup result and exit
+code remain unchanged, and no connector action runs.
+
+Supported connector IDs are `claude-code-skill`, `claude-desktop-mcp`,
+`cursor-mcp`, `codex-skill`, `opencode-skill`, `openclaw-skill`, and
+`hermes-skill`. Exact repeats dedupe. Existing entries are reused without
+overwrite; missing entries use the read-only installer only after lexical
+success. MCP targets run a bounded retrieval smoke. Skill targets report
+`target_runtime_unverifiable`, because setup cannot safely execute the host
+agent runtime. Connector follow-up keeps lexical setup successful and exit 0,
+with `completed_with_actions` and bounded remediation. Direct setup remains
+standalone and never attaches to a resident runtime.
+
 Terminal progress is stderr-only, and `--quiet` suppresses it while preserving
 the final result.
 
