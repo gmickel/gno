@@ -63,9 +63,46 @@ Prove the complete verified-setup contract from source and packed installation, 
 - [ ] Repo docs, skill, Web/Desktop handoff, and gno.sh use the same exact flags, connector IDs, output-schema split, exit semantics, receipt boundaries, safe secret-risk behavior, and honest distinctions among lexical success, semantic pending/skipped/live ownership, connector verification, and `completed_with_actions`.
 - [ ] Full prerelease, package smoke, skill eval, gno.sh deploy, service, and revision checks pass.
 ## Done summary
-TBD
+Implemented end-to-end package proof, documentation, evaluator coverage, and
+fail-closed test isolation for verified folder setup.
 
+- Packed/global-installed proof covers first-run and idempotent rerun behavior,
+  exact corpus-derived lexical URI, persisted closed receipt parity, stable
+  semantic source identity, `--no-semantic` process ownership, all seven
+  connector IDs, deterministic dedupe, install/reuse and receipt reuse,
+  malformed-config preservation, bounded recovery, and package file presence.
+- Every packed subprocess now receives one explicit allowlisted environment.
+  HOME/XDG, GNO, npm, temp, APPDATA/LOCALAPPDATA/USERPROFILE, and all five
+  skill-directory overrides are temp-rooted. Symlink-aware containment runs
+  before installed imports, stores, connector writes, or byte snapshots.
+- Connector snapshots run in a strict child; adversarial Codex skill and
+  Windows AppData overrides cannot escape. A read-only real-user sentinel hashes
+  config, DB/WAL/SHM, and setup receipts before/after package smoke.
+- The one protected package smoke passed with real-user SHA/stat/count state
+  unchanged. It preceded the final stricter connector-environment patch; that
+  delta was validated by six focused adversarial tests and the full non-package
+  suite, not by a second package-smoke run.
+- The earlier unsafe installed-contract child did delete indexed rows in the
+  real default DB. Preserved forensic evidence remains at
+  `/Users/gordon/Library/Application Support/gno/recovery/2026-07-24-package-smoke-incident.SXNCwI`.
+  Reindex recovery restored 24 collections and 1,515 active documents; config
+  parity, SQLite `quick_check`, and representative lexical retrievals passed.
+- A second read-only audit found no connector incident: all five host skill
+  targets predated the smoke window with identical bytes, all resolved MCP
+  configs had no package-smoke markers or smoke-window changes, and no repair
+  was needed.
+- Public README/docs, hosted gno.sh installation/docs, shipped skill, and the
+  canonical evaluator consistently use the verified `gno setup <folder>`
+  contract. Canonical autoresearch passed 47/47.
+- Final implementation review and full-spec completion review both returned
+  SHIP with no P1/P2 findings.
+- Final exact `bun test`: 2,967 passed, one expected Windows skip, zero failed.
+  Lint, formatting, typecheck, docs verification, gno.sh gates, package proof,
+  and evaluator gates are recorded in evidence.
+
+No PR, merge, release, tag, production deploy, or client artifact wait was
+performed.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: d250d64, b10c73a, b843848, 1376488, 50dbdc8, 4f5898d, 87b8317, 8482a15, 2d0d409, ce80f72, 3068475, b1de614, c60bbc9, e656627, 81b6e7b, 1251a14, 010be68
+- Tests: bun test test/cli/setup-semantic.test.ts test/cli/setup-activation-command.test.ts test/cli/setup-activation-lifecycle.test.ts test/core/folder-setup.test.ts test/core/folder-setup-safety.test.ts test/core/file-lock.test.ts test/spec/schemas/setup-activation-result.test.ts, bun test (final: 2967 pass, 1 expected Windows skip, 0 fail), bun run lint:check, bun run typecheck, bun run docs:verify, bun run test:package (one protected run; real-user SHA/stat/count sentinel unchanged; intentionally not repeated after stricter connector-env patch), bun test test/scripts/package-smoke-isolation.test.ts (6 pass, 0 fail), bun test test/cli/concurrency.test.ts, GNO recovery: 24 collections, 1515 active documents, exact config parity, PRAGMA quick_check=ok, representative lexical retrievals, Host connector audit: no smoke-window writes or package-smoke markers across five skill targets and all resolved MCP paths, mise exec uv@0.11.30 -- uv run eval.py, bun run src/index.ts skill install --scope user --force --target all, gno.sh: bun run check && bun run typecheck && bun test && bun run build, .flow/bin/flowctl validate --spec fn-105 --json, /tmp/impl-review-receipt-fn-105.4.json: SHIP, /tmp/completion-review-receipt-fn-105.json: SHIP
 - PRs:
