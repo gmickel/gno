@@ -65,6 +65,9 @@ equivalent files fail closed as ambiguous.
 | status             | yes    | no      | no    | yes  | no    | terminal |
 | init               | no     | no      | no    | no   | no    | terminal |
 | setup              | yes    | no      | no    | no   | no    | terminal |
+| profile check      | yes    | no      | no    | no   | no    | terminal |
+| profile show       | yes    | no      | no    | no   | no    | terminal |
+| profile diff       | yes    | no      | no    | no   | no    | terminal |
 | collection add     | no     | no      | no    | no   | no    | terminal |
 | collection list    | yes    | no      | no    | yes  | no    | terminal |
 | collection remove  | no     | no      | no    | no   | no    | terminal |
@@ -124,6 +127,60 @@ equivalent files fail closed as ambiguous.
 ---
 
 ## Commands
+
+### gno profile
+
+Inspect a repository-owned `.gno/index.yml` retrieval profile without changing
+the user config, index database, model cache, or tracked files.
+
+**Synopsis:**
+
+```bash
+gno profile check [path] [--json]
+gno profile show [path] [--json]
+gno profile diff [path] [--json]
+```
+
+With no path, discovery starts at the canonical current directory and walks
+upward. Each directory is checked before its parent, so the nearest nested
+profile wins and any ancestor profile is reported as shadowed; profiles are
+never merged. Discovery stops after checking the first Git root (`.git` may be a
+directory or a worktree file), before crossing a filesystem device boundary,
+or at the filesystem root. This gives a nested repository precedence over its
+parent repository and lets a monorepo subtree intentionally shadow the root
+profile.
+
+An explicit directory path is an exact profile-root override: only
+`<path>/.gno/index.yml` is considered. An explicit
+`<path>/.gno/index.yml` file selects that exact profile. Explicit overrides do
+not fall back to ancestors. The profile file and its `.gno` path must resolve
+inside the selected canonical profile root; symlink escapes fail closed.
+Remote callers cannot enable discovery or cause filesystem probes.
+
+`check` validates discovery, schema, referenced paths, local preset aliases,
+and, with global `--offline`, exact cache availability without downloading.
+`show` returns the same receipt plus normalized portable desired state. `diff`
+compares that desired state with the selected user config. It reports stale
+same-name/path mappings and explicit repair/removal choices but never applies
+either choice. A missing user config is treated as empty desired-state input;
+an unreadable or invalid config is an actionable validation diagnostic.
+
+All three JSON forms use
+[`project-profile-command@1.0`](./output-schemas/project-profile-command.schema.json).
+Receipts contain no absolute profile, config, database, cache, or model paths,
+no timestamps, and no model URIs. Diagnostics and changes are canonically
+ordered, so identical local state produces byte-identical JSON.
+
+**Exit Codes:**
+
+- `0`: profile found and valid (`diff` may still report changes)
+- `1`: profile missing, ambiguous discovery could not be resolved safely, or
+  profile/config validation failed
+- `2`: unexpected local I/O failure
+
+`gno setup` may call the same local discovery function after proven lexical
+setup. This advisory seam is optional, read-only, non-fatal, and does not alter
+the existing setup receipt.
 
 ### gno status
 

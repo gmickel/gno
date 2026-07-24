@@ -1291,6 +1291,48 @@ function wireSearchCommands(program: Command): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function wireOnboardingCommands(program: Command): void {
+  const profileCmd = program
+    .command("profile")
+    .description("Inspect a project-local retrieval profile");
+
+  const wireProfileRead = (
+    command: "check" | "show" | "diff",
+    description: string
+  ): void => {
+    profileCmd
+      .command(`${command} [path]`)
+      .description(description)
+      .option("--json", "JSON output")
+      .action(
+        async (path: string | undefined, cmdOpts: Record<string, unknown>) => {
+          const globals = getGlobals();
+          const json = Boolean(cmdOpts.json) || globals.json;
+          const { formatProjectProfileResult, runProjectProfileCommand } =
+            await import("./commands/profile");
+          const outcome = await runProjectProfileCommand({
+            command,
+            path,
+            configPath: globals.config,
+            offline: globals.offline,
+          });
+          process.stdout.write(
+            `${formatProjectProfileResult(outcome.result, { json })}\n`
+          );
+          if (outcome.exitCode !== 0) {
+            throw new CliError(
+              outcome.exitCode === 1 ? "VALIDATION" : "RUNTIME",
+              "Project profile inspection failed",
+              { silent: true }
+            );
+          }
+        }
+      );
+  };
+
+  wireProfileRead("check", "Validate a project-local retrieval profile");
+  wireProfileRead("show", "Show normalized project-local retrieval state");
+  wireProfileRead("diff", "Compare a project profile with local config");
+
   // init - Initialize GNO
   program
     .command("init [path]")
@@ -1390,6 +1432,14 @@ function wireOnboardingCommands(program: Command): void {
         quiet: globals.quiet,
         progress: (stage) => {
           process.stderr.write(`setup: ${stage}\n`);
+        },
+        discoverProfileAdvisory: async ({ folder: verifiedFolder }) => {
+          const { discoverProjectProfile } =
+            await import("../core/project-profile-discovery");
+          await discoverProjectProfile({
+            channel: "local",
+            cwd: verifiedFolder,
+          });
         },
       });
       const output = formatSetupOutputResult(outcome.result, { json });

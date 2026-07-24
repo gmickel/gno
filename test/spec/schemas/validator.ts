@@ -44,6 +44,7 @@ async function loadAllSchemas(): Promise<void> {
     "setup-semantic-receipt",
     "setup-command-result",
     "setup-activation-result",
+    "project-profile-command",
     "context-capsule-v1",
     "context-capsule-verification",
     "saved-capsule-registration",
