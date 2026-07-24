@@ -1679,6 +1679,18 @@ with a `jobId` because the REST API syncs asynchronously; poll
 `/api/jobs/:id` for completion. `embed.status` is `not_requested` unless a
 separate embed job completes.
 
+Receipts produced by the browser-clip flow may also include normalized
+`source.canonicalUrl`, `source.site`, `source.publishedAt`, and a closed
+`source.browserClip` provenance object. That object records the extraction mode,
+exact selection when applicable, extraction and final-body hashes, deterministic
+clip and preview digests, browser metadata, capture time, and bounded extraction
+warnings. Existing capture requests and receipts remain compatible.
+
+For browser clips, `open_existing` succeeds only when the stored
+`clipIdentity` matches. Missing or different stored provenance returns
+`collisionPolicyResult: "conflict"` and does not write. Use
+`create_with_suffix` when the intended outcome is a distinct captured note.
+
 ```json
 {
   "uri": "gno://notes/inbox/2026-06-04/capture-abc123.md",

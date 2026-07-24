@@ -1101,6 +1101,16 @@ Create a new document in a collection (write-enabled).
 - Capture writes structured `source:` frontmatter with `kind`, `capturedAt`,
   and optional `url`, `uri`, `docid`, `mime`, `ext`, `author`, `observedAt`,
   `externalId`, and `title`
+- Browser-clip receipts MAY additionally carry normalized `canonicalUrl`,
+  `site`, `publishedAt`, and closed `browserClip` provenance as defined by
+  `browser-clip.schema.json`; existing `gno_capture` inputs remain compatible
+- Browser provenance preserves exact selection separately from canonical final
+  Markdown and includes extraction/final hashes, deterministic clip/preview
+  digests, normalized dates/URLs, browser metadata, server capture time, and
+  bounded warnings
+- Browser `open_existing` MUST require a matching stored `clipIdentity`;
+  missing or different provenance returns `collisionPolicyResult: "conflict"`
+  without writing, while `create_with_suffix` creates a distinct note
 - Tags are validated and normalized to lowercase
 - For Markdown files, tags are added to frontmatter
 - For non-Markdown files, tags are stored as user-source in the database

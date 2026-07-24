@@ -1167,6 +1167,18 @@ Capture writes structured `source:` frontmatter and returns the shared
 [`capture-receipt`](./output-schemas/capture-receipt.schema.json). `--source-date`
 maps to `source.observedAt`; `--source-id` maps to `source.externalId`.
 
+Browser-clip receipts MAY extend `source` with `canonicalUrl`, `site`,
+`publishedAt`, and the closed
+[`browser-clip`](./output-schemas/browser-clip.schema.json) provenance object.
+The provenance preserves exact selection text separately from canonical final
+Markdown and carries extraction/final hashes, deterministic identity and
+preview digests, normalized dates/URLs, browser metadata, server capture time,
+and bounded warnings. Existing capture inputs and receipts remain compatible.
+For browser provenance, `open_existing` MUST open only when the stored
+`clipIdentity` matches; missing or different provenance MUST return
+`collisionPolicyResult: "conflict"` without writing. `create_with_suffix`
+creates a distinct note.
+
 **Path and Collision Rules:**
 
 - Explicit `--path` wins.

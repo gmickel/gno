@@ -1,0 +1,359 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/browser-clip@1.0",
+  "title": "GNO Browser Clip Payload",
+  "description": "Closed local browser-clip request. Reader extraction is a constrained semantic AST; raw HTML is not accepted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "mode",
+    "sourceUrl",
+    "canonicalUrl",
+    "title",
+    "author",
+    "site",
+    "publishedAt",
+    "observedAt",
+    "browser",
+    "extraction",
+    "destination",
+    "tags",
+    "note"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "mode": { "enum": ["selection", "reader"] },
+    "sourceUrl": { "$ref": "#/definitions/httpUrl" },
+    "canonicalUrl": {
+      "oneOf": [{ "$ref": "#/definitions/httpUrl" }, { "type": "null" }]
+    },
+    "title": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "author": { "type": ["string", "null"], "maxLength": 1024 },
+    "site": { "type": ["string", "null"], "maxLength": 1024 },
+    "publishedAt": {
+      "oneOf": [
+        { "type": "string", "format": "date" },
+        { "type": "string", "format": "date-time" },
+        { "type": "null" }
+      ]
+    },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "browser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "platform"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "version": { "type": ["string", "null"], "maxLength": 128 },
+        "platform": { "type": ["string", "null"], "maxLength": 128 }
+      }
+    },
+    "extraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visibility",
+        "authenticated",
+        "extractorVersion",
+        "warnings"
+      ],
+      "properties": {
+        "visibility": { "const": "user_visible" },
+        "authenticated": { "type": "boolean" },
+        "extractorVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/warningCode" }
+        }
+      }
+    },
+    "destination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collection", "relPath", "folderPath", "collisionPolicy"],
+      "properties": {
+        "collection": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "relPath": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "folderPath": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "collisionPolicy": {
+          "enum": ["error", "open_existing", "create_with_suffix"]
+        }
+      },
+      "not": {
+        "properties": {
+          "relPath": { "type": "string" },
+          "folderPath": { "type": "string" }
+        },
+        "required": ["relPath", "folderPath"]
+      }
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 128,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    },
+    "note": { "type": ["string", "null"], "maxLength": 32768 },
+    "selection": { "$ref": "#/definitions/selection" },
+    "reader": { "$ref": "#/definitions/reader" }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "mode": { "const": "selection" },
+        "selection": {}
+      },
+      "required": ["selection"],
+      "not": { "properties": { "reader": {} }, "required": ["reader"] }
+    },
+    {
+      "properties": {
+        "mode": { "const": "reader" },
+        "reader": {}
+      },
+      "required": ["reader"],
+      "not": {
+        "properties": { "selection": {} },
+        "required": ["selection"]
+      }
+    }
+  ],
+  "definitions": {
+    "httpUrl": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 4096,
+      "pattern": "^https?://"
+    },
+    "warningCode": {
+      "enum": [
+        "authenticated_visible_content",
+        "canonical_url_differs",
+        "edited_content",
+        "line_endings_normalized",
+        "reader_partial",
+        "selection_truncated",
+        "spa_snapshot",
+        "unicode_normalized"
+      ]
+    },
+    "inline": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "text"],
+          "properties": {
+            "type": { "const": "text" },
+            "text": { "type": "string", "minLength": 1, "maxLength": 32768 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "text", "href"],
+          "properties": {
+            "type": { "const": "link" },
+            "text": { "type": "string", "minLength": 1, "maxLength": 32768 },
+            "href": { "$ref": "#/definitions/httpUrl" }
+          }
+        }
+      ]
+    },
+    "inlineContent": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": { "$ref": "#/definitions/inline" }
+    },
+    "readerBlock": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "content"],
+          "properties": {
+            "type": { "const": "paragraph" },
+            "content": { "$ref": "#/definitions/inlineContent" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "level", "content"],
+          "properties": {
+            "type": { "const": "heading" },
+            "level": { "type": "integer", "minimum": 1, "maximum": 6 },
+            "content": { "$ref": "#/definitions/inlineContent" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "content"],
+          "properties": {
+            "type": { "const": "quote" },
+            "content": { "$ref": "#/definitions/inlineContent" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "ordered", "items"],
+          "properties": {
+            "type": { "const": "list" },
+            "ordered": { "type": "boolean" },
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 256,
+              "items": { "$ref": "#/definitions/inlineContent" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "language", "text"],
+          "properties": {
+            "type": { "const": "code" },
+            "language": {
+              "type": ["string", "null"],
+              "pattern": "^[A-Za-z0-9_+-]{1,32}$"
+            },
+            "text": { "type": "string", "maxLength": 131072 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": { "type": { "const": "horizontal_rule" } }
+        }
+      ]
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exactText", "editedMarkdown"],
+      "properties": {
+        "exactText": { "type": "string", "minLength": 1, "maxLength": 524288 },
+        "editedMarkdown": { "type": ["string", "null"], "maxLength": 524288 }
+      }
+    },
+    "reader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blocks", "editedMarkdown"],
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": { "$ref": "#/definitions/readerBlock" }
+        },
+        "editedMarkdown": { "type": ["string", "null"], "maxLength": 524288 }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "mode",
+        "sourceUrl",
+        "canonicalUrl",
+        "title",
+        "author",
+        "site",
+        "publishedAt",
+        "observedAt",
+        "capturedAt",
+        "extractionHash",
+        "finalBodyHash",
+        "clipIdentity",
+        "previewDigest",
+        "exactSelection",
+        "extractionWarnings",
+        "browser"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "1.0" },
+        "mode": { "enum": ["selection", "reader"] },
+        "sourceUrl": { "$ref": "#/definitions/httpUrl" },
+        "canonicalUrl": {
+          "oneOf": [{ "$ref": "#/definitions/httpUrl" }, { "type": "null" }]
+        },
+        "title": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "author": { "type": ["string", "null"], "maxLength": 1024 },
+        "site": { "type": ["string", "null"], "maxLength": 1024 },
+        "publishedAt": {
+          "oneOf": [
+            { "type": "string", "format": "date" },
+            { "type": "string", "format": "date-time" },
+            { "type": "null" }
+          ]
+        },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "capturedAt": { "type": "string", "format": "date-time" },
+        "extractionHash": { "$ref": "#/definitions/sha256" },
+        "finalBodyHash": { "$ref": "#/definitions/sha256" },
+        "clipIdentity": { "$ref": "#/definitions/sha256" },
+        "previewDigest": { "$ref": "#/definitions/sha256" },
+        "exactSelection": { "type": ["string", "null"], "maxLength": 524288 },
+        "extractionWarnings": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/warningCode" }
+        },
+        "browser": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version", "platform"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "version": { "type": ["string", "null"], "maxLength": 128 },
+            "platform": { "type": ["string", "null"], "maxLength": 128 }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "selection" } } },
+          "then": {
+            "properties": {
+              "exactSelection": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "reader" } } },
+          "then": { "properties": { "exactSelection": { "type": "null" } } }
+        }
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

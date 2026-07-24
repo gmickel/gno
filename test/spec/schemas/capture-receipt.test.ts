@@ -30,6 +30,30 @@ const VALID_RECEIPT = {
   collisionPolicyResult: "created",
 };
 
+const browserClipProvenance = {
+  schemaVersion: "1.0",
+  mode: "selection",
+  sourceUrl: "https://example.com/article",
+  canonicalUrl: "https://example.com/article",
+  title: "Example",
+  author: null,
+  site: "Example",
+  publishedAt: "2026-07-23",
+  observedAt: "2026-07-24T08:00:00.000Z",
+  capturedAt: "2026-07-24T08:01:00.000Z",
+  extractionHash: "1".repeat(64),
+  finalBodyHash: "2".repeat(64),
+  clipIdentity: "3".repeat(64),
+  previewDigest: "4".repeat(64),
+  exactSelection: "Exact selection",
+  extractionWarnings: ["edited_content"],
+  browser: {
+    name: "Chromium",
+    version: "140",
+    platform: "macOS",
+  },
+};
+
 describe("capture-receipt schema", () => {
   let schema: object;
 
@@ -56,5 +80,60 @@ describe("capture-receipt schema", () => {
         schema
       )
     ).toBe(true);
+  });
+
+  test("validates browser provenance and explicit provenance conflict", () => {
+    expect(
+      assertValid(
+        {
+          ...VALID_RECEIPT,
+          created: false,
+          openedExisting: false,
+          collisionPolicyResult: "conflict",
+          source: {
+            ...VALID_RECEIPT.source,
+            canonicalUrl: "https://example.com/article",
+            site: "Example",
+            publishedAt: "2026-07-23",
+            browserClip: browserClipProvenance,
+          },
+        },
+        schema
+      )
+    ).toBeTrue();
+  });
+
+  test("rejects malformed browser provenance without affecting legacy receipts", () => {
+    expect(assertValid(VALID_RECEIPT, schema)).toBeTrue();
+    expect(
+      assertInvalid(
+        {
+          ...VALID_RECEIPT,
+          source: {
+            ...VALID_RECEIPT.source,
+            browserClip: {
+              ...browserClipProvenance,
+              extractionHash: "not-a-hash",
+            },
+          },
+        },
+        schema
+      )
+    ).toBeTrue();
+    expect(
+      assertInvalid(
+        {
+          ...VALID_RECEIPT,
+          source: {
+            ...VALID_RECEIPT.source,
+            browserClip: {
+              ...browserClipProvenance,
+              mode: "reader",
+            },
+          },
+        },
+        schema
+      )
+    ).toBeTrue();
   });
 });

@@ -89,9 +89,20 @@
         "mime": { "type": "string" },
         "ext": { "type": "string" },
         "author": { "type": "string" },
+        "canonicalUrl": { "type": "string", "format": "uri" },
+        "site": { "type": "string" },
+        "publishedAt": {
+          "oneOf": [
+            { "type": "string", "format": "date" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
         "observedAt": { "type": "string", "format": "date-time" },
         "capturedAt": { "type": "string", "format": "date-time" },
-        "externalId": { "type": "string" }
+        "externalId": { "type": "string" },
+        "browserClip": {
+          "$ref": "gno://schemas/browser-clip@1.0#/definitions/provenance"
+        }
       }
     },
     "tags": {

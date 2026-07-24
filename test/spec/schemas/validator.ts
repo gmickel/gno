@@ -23,6 +23,7 @@ async function loadAllSchemas(): Promise<void> {
     "ask",
     "error",
     "capture-receipt",
+    "browser-clip",
     "mcp-capture-result",
     "mcp-add-collection-result",
     "mcp-sync-result",

@@ -21,6 +21,11 @@ export async function writeCapturePlanFile(
   plan: CapturePlan,
   absPath: string
 ): Promise<void> {
+  if (plan.provenanceConflict) {
+    throw new Error(
+      "Existing capture has different provenance. Use create_with_suffix or a different destination."
+    );
+  }
   try {
     if (plan.overwrite) {
       await atomicWrite(absPath, plan.content);
