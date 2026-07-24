@@ -28,7 +28,7 @@ function runFailure(
 ): { exitCode: number; stdout: string } {
   const result = Bun.spawnSync(command, {
     cwd: options.cwd,
-    env: { ...process.env, ...options.env },
+    env: options.env,
     stderr: "pipe",
     stdout: "pipe",
   });

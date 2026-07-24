@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 
 import { safeRm } from "../test/helpers/cleanup";
 import { configurePackedEmbeddingModel } from "./package-smoke-config";
+import { buildPackageSmokeProcessEnv } from "./package-smoke-isolation";
 import { verifyPackedMcpInstall } from "./package-smoke-mcp";
 import { resolvePackageSmokeEmbeddingModel } from "./package-smoke-model";
 import { verifyPackedResidentGateway } from "./package-smoke-resident";
@@ -86,7 +87,7 @@ function runCommand(
 ): CommandResult {
   const result = Bun.spawnSync(cmd, {
     cwd,
-    env: { ...process.env, ...env },
+    env,
     stderr: "pipe",
     stdout: "pipe",
   });
@@ -139,13 +140,16 @@ function assertTarPrefix(entries: string[], path: string): void {
   }
 }
 
-async function verifyTarballContents(tarballPath: string): Promise<void> {
+async function verifyTarballContents(
+  tarballPath: string,
+  env: Record<string, string>
+): Promise<void> {
   const packageJson = (await Bun.file(
     join(rootDir, "package.json")
   ).json()) as {
     files?: string[];
   };
-  const entries = runCommand(["tar", "-tzf", tarballPath], rootDir, {})
+  const entries = runCommand(["tar", "-tzf", tarballPath], rootDir, env)
     .stdout.split("\n")
     .filter(Boolean);
 
@@ -333,19 +337,33 @@ async function main(): Promise<void> {
   const npmUserConfig = join(tempRoot, "npmrc");
   const homeDir = join(tempRoot, "home");
   const notesDir = join(tempRoot, "notes");
-  const env = {
+  const explicitEnv = {
+    APPDATA: join(tempRoot, "appdata"),
+    CLAUDE_SKILLS_DIR: join(homeDir, ".claude", "skills"),
+    CODEX_SKILLS_DIR: join(homeDir, ".codex", "skills"),
     GNO_CACHE_DIR: join(tempRoot, "gno-cache"),
     GNO_CONFIG_DIR: join(tempRoot, "gno-config"),
     GNO_DATA_DIR: join(tempRoot, "gno-data"),
     GNO_NO_AUTO_DOWNLOAD: "1",
+    GNO_SKILLS_HOME_OVERRIDE: homeDir,
+    HERMES_SKILLS_DIR: join(homeDir, ".hermes", "skills"),
     HOME: homeDir,
+    LOCALAPPDATA: join(tempRoot, "local-appdata"),
+    NO_COLOR: "1",
     npm_config_cache: npmCacheDir,
     npm_config_prefix: installPrefix,
     npm_config_userconfig: npmUserConfig,
+    OPENCODE_SKILLS_DIR: join(homeDir, ".config", "opencode", "skills"),
+    OPENCLAW_SKILLS_DIR: join(homeDir, ".openclaw", "skills"),
+    TEMP: tempRoot,
+    TMP: tempRoot,
+    TMPDIR: tempRoot,
+    USERPROFILE: homeDir,
     XDG_CACHE_HOME: join(tempRoot, "xdg-cache"),
     XDG_CONFIG_HOME: join(tempRoot, "xdg-config"),
     XDG_DATA_HOME: join(tempRoot, "xdg-data"),
   };
+  const env = await buildPackageSmokeProcessEnv(tempRoot, explicitEnv);
 
   try {
     await mkdir(packDir, { recursive: true });
@@ -359,7 +377,7 @@ async function main(): Promise<void> {
     );
     const packed = parseNpmPackOutput(pack.stdout);
     const tarballPath = join(packDir, packed.filename);
-    await verifyTarballContents(tarballPath);
+    await verifyTarballContents(tarballPath, env);
 
     runCommand(
       [
@@ -405,7 +423,7 @@ async function main(): Promise<void> {
     });
     if (embeddingModelPath) {
       await configurePackedEmbeddingModel(
-        join(env.GNO_CONFIG_DIR, "index.yml"),
+        join(explicitEnv.GNO_CONFIG_DIR, "index.yml"),
         embeddingModelPath
       );
     }

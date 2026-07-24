@@ -21,49 +21,8 @@ export interface InstalledSetupContractOptions extends InstalledSetupIsolationOp
   lexicalReceipt: FolderSetupReceipt;
 }
 
-export type ConnectorByteSnapshot = Record<string, string>;
-
 const moduleUrl = (packageRoot: string, relativePath: string): string =>
   pathToFileURL(join(packageRoot, relativePath)).href;
-
-async function fileSha256(path: string): Promise<string> {
-  return new Bun.CryptoHasher("sha256")
-    .update(await Bun.file(path).arrayBuffer())
-    .digest("hex");
-}
-
-/** Hash every installed connector byte so an idempotent rerun cannot overwrite. */
-export async function snapshotInstalledConnectorBytes(
-  packageRoot: string,
-  workspace: { cwd: string; homeDir: string }
-): Promise<ConnectorByteSnapshot> {
-  const connectors = (await import(
-    moduleUrl(packageRoot, "src/serve/connectors.ts")
-  )) as typeof import("../src/serve/connectors");
-  const statuses = await connectors.getConnectorStatuses(workspace);
-  const snapshot: ConnectorByteSnapshot = {};
-  for (const status of statuses) {
-    if (!status.installed) {
-      continue;
-    }
-    if (status.installKind === "mcp") {
-      snapshot[`${status.id}/config`] = await fileSha256(status.path);
-      continue;
-    }
-    const glob = new Bun.Glob("**/*");
-    const relativePaths = [
-      ...(await Array.fromAsync(
-        glob.scan({ cwd: status.path, onlyFiles: true })
-      )),
-    ].sort();
-    for (const relativePath of relativePaths) {
-      snapshot[`${status.id}/${relativePath}`] = await fileSha256(
-        join(status.path, relativePath)
-      );
-    }
-  }
-  return snapshot;
-}
 
 function assertNoPrivateError(
   value: unknown,

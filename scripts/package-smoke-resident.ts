@@ -51,10 +51,7 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
       command: input.gnoBin,
       args: ["mcp"],
       cwd: input.cwd,
-      env: {
-        ...input.env,
-        PATH: globalThis.process.env.PATH ?? "",
-      },
+      env: input.env,
       stderr: "pipe",
     });
     const stdioClient = new Client({

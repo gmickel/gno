@@ -133,7 +133,7 @@ export async function proveResidentUnaffectedBySemanticSetup(
     [process.execPath, import.meta.path, "semantic-setup", helperInputPath],
     {
       cwd: input.cwd,
-      env: { ...process.env, ...input.env, NODE_ENV: "production" },
+      env: { ...input.env, NODE_ENV: "production" },
       stdout: "pipe",
       stderr: "pipe",
     }

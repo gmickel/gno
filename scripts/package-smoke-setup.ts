@@ -3,10 +3,8 @@
 import { join } from "node:path";
 
 import { assertValid, loadSchema } from "../test/spec/schemas/validator";
-import {
-  snapshotInstalledConnectorBytes,
-  verifyInstalledSetupContractsInChild,
-} from "./package-smoke-setup-contract";
+import { snapshotInstalledConnectorBytes } from "./package-smoke-connector-snapshot";
+import { verifyInstalledSetupContractsInChild } from "./package-smoke-setup-contract";
 import { verifyPackedSetupFailures } from "./package-smoke-setup-failures";
 
 interface CommandResult {
@@ -344,6 +342,14 @@ export async function verifyPackedFolderSetup(
   }
 
   const allConnectorArgs = connectorArgs([...CONNECTOR_IDS, "codex-skill"]);
+  const connectorSnapshotOptions = {
+    tempRoot: options.cwd,
+    packageRoot: options.packageRoot,
+    cwd: options.cwd,
+    homeDir: options.env.HOME ?? "",
+    env: options.env,
+  };
+  await snapshotInstalledConnectorBytes(connectorSnapshotOptions);
   const activated = parseJson<SetupActivationResult>(
     options.runCommand(
       [
@@ -369,11 +375,7 @@ export async function verifyPackedFolderSetup(
   assertLexicalProof(activatedSetup.lexical, "first connector setup");
   assertConnectorProjection(activated, "installed");
   const connectorBytes = await snapshotInstalledConnectorBytes(
-    options.packageRoot,
-    {
-      cwd: options.cwd,
-      homeDir: options.env.HOME ?? "",
-    }
+    connectorSnapshotOptions
   );
   if (
     activatedSetup.lexical.collection.disposition !== "reused" ||
@@ -427,11 +429,7 @@ export async function verifyPackedFolderSetup(
     }
   }
   const rerunConnectorBytes = await snapshotInstalledConnectorBytes(
-    options.packageRoot,
-    {
-      cwd: options.cwd,
-      homeDir: options.env.HOME ?? "",
-    }
+    connectorSnapshotOptions
   );
   if (!Bun.deepEquals(rerunConnectorBytes, connectorBytes, true)) {
     throw new Error("Packed connector rerun changed installed bytes");

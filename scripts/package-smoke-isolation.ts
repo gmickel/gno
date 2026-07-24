@@ -20,6 +20,21 @@ const REQUIRED_ISOLATED_ENV_PATHS = [
   "GNO_CONFIG_DIR",
   "GNO_DATA_DIR",
   "GNO_CACHE_DIR",
+  "GNO_SKILLS_HOME_OVERRIDE",
+  "CLAUDE_SKILLS_DIR",
+  "CODEX_SKILLS_DIR",
+  "OPENCODE_SKILLS_DIR",
+  "OPENCLAW_SKILLS_DIR",
+  "HERMES_SKILLS_DIR",
+  "APPDATA",
+  "LOCALAPPDATA",
+  "USERPROFILE",
+  "TEMP",
+  "TMP",
+  "TMPDIR",
+  "npm_config_cache",
+  "npm_config_prefix",
+  "npm_config_userconfig",
 ] as const;
 
 const SAFE_PARENT_ENV_KEYS = [
@@ -35,6 +50,13 @@ const SAFE_PARENT_ENV_KEYS = [
   "WINDIR",
 ] as const;
 
+const SAFE_EXPLICIT_ENV_KEYS = [
+  "GNO_NO_AUTO_DOWNLOAD",
+  "GNO_PACKAGE_SMOKE_TEMP_ROOT",
+  "NODE_ENV",
+  "NO_COLOR",
+] as const;
+
 export interface InstalledSetupIsolationOptions {
   tempRoot: string;
   packageRoot: string;
@@ -42,6 +64,12 @@ export interface InstalledSetupIsolationOptions {
   configPath: string;
   dataDir: string;
   env: Record<string, string>;
+}
+
+type PackageSmokePathKey = (typeof REQUIRED_ISOLATED_ENV_PATHS)[number];
+
+function isPackageSmokePathKey(key: string): key is PackageSmokePathKey {
+  return (REQUIRED_ISOLATED_ENV_PATHS as readonly string[]).includes(key);
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -110,6 +138,28 @@ export async function buildInstalledSetupChildEnv(
   options: InstalledSetupIsolationOptions,
   parentEnv: Record<string, string | undefined> = process.env
 ): Promise<Record<string, string>> {
+  return buildPackageSmokeProcessEnv(
+    options.tempRoot,
+    {
+      ...options.env,
+      GNO_PACKAGE_SMOKE_TEMP_ROOT: options.tempRoot,
+      NODE_ENV: "production",
+      NO_COLOR: "1",
+    },
+    parentEnv
+  );
+}
+
+/**
+ * Build the only environment allowed to cross a package-smoke process
+ * boundary. Parent state contributes runtime discovery keys only; every
+ * writable or connector-resolving path must be explicit and temp-contained.
+ */
+export async function buildPackageSmokeProcessEnv(
+  tempRoot: string,
+  explicitEnv: Record<string, string | undefined>,
+  parentEnv: Record<string, string | undefined> = process.env
+): Promise<Record<string, string>> {
   const env: Record<string, string> = {};
   for (const key of SAFE_PARENT_ENV_KEYS) {
     const value = parentEnv[key];
@@ -119,24 +169,80 @@ export async function buildInstalledSetupChildEnv(
   }
 
   for (const key of REQUIRED_ISOLATED_ENV_PATHS) {
-    const value = options.env[key];
-    await assertPackageSmokePathContained(options.tempRoot, value ?? "", key);
+    const value = explicitEnv[key];
+    await assertPackageSmokePathContained(tempRoot, value ?? "", key);
     env[key] = value ?? "";
   }
-  if (options.env.GNO_NO_AUTO_DOWNLOAD !== "1") {
+  if (explicitEnv.GNO_NO_AUTO_DOWNLOAD !== "1") {
     throw new Error("Package smoke isolation requires GNO_NO_AUTO_DOWNLOAD=1");
   }
 
-  env.GNO_NO_AUTO_DOWNLOAD = "1";
-  env.GNO_PACKAGE_SMOKE_TEMP_ROOT = options.tempRoot;
-  env.APPDATA = join(options.tempRoot, "appdata");
-  env.LOCALAPPDATA = join(options.tempRoot, "local-appdata");
-  env.USERPROFILE = options.env.HOME ?? "";
-  env.TEMP = options.tempRoot;
-  env.TMP = options.tempRoot;
-  env.TMPDIR = options.tempRoot;
-  env.NO_COLOR = "1";
+  for (const key of SAFE_EXPLICIT_ENV_KEYS) {
+    const value = explicitEnv[key];
+    if (value) {
+      env[key] = value;
+    }
+  }
+  env.GNO_PACKAGE_SMOKE_TEMP_ROOT = tempRoot;
   return env;
+}
+
+export async function assertPackageSmokeEnvironment(
+  tempRoot: string,
+  env: Record<string, string | undefined>
+): Promise<void> {
+  if (
+    env.GNO_PACKAGE_SMOKE_TEMP_ROOT !== tempRoot ||
+    env.GNO_NO_AUTO_DOWNLOAD !== "1"
+  ) {
+    throw new Error(
+      "Package smoke isolation refused mismatched child environment"
+    );
+  }
+  for (const key of REQUIRED_ISOLATED_ENV_PATHS) {
+    await assertPackageSmokePathContained(tempRoot, env[key] ?? "", key);
+  }
+  for (const key of Object.keys(env)) {
+    if (
+      key.endsWith("_DIR") &&
+      !isPackageSmokePathKey(key) &&
+      !SAFE_PARENT_ENV_KEYS.includes(
+        key as (typeof SAFE_PARENT_ENV_KEYS)[number]
+      )
+    ) {
+      throw new Error(
+        `Package smoke isolation refused unknown path key ${key}`
+      );
+    }
+  }
+}
+
+/** Deterministic roots used by the packed connector installers. */
+export function packageSmokeConnectorPaths(
+  env: Record<string, string | undefined>,
+  runtimePlatform: NodeJS.Platform = process.platform
+): Record<string, string> {
+  const home = env.HOME ?? "";
+  return {
+    "claude-code-skill": join(env.CLAUDE_SKILLS_DIR ?? "", "gno"),
+    "codex-skill": join(env.CODEX_SKILLS_DIR ?? "", "gno"),
+    "opencode-skill": join(env.OPENCODE_SKILLS_DIR ?? "", "gno"),
+    "openclaw-skill": join(env.OPENCLAW_SKILLS_DIR ?? "", "gno"),
+    "hermes-skill": join(env.HERMES_SKILLS_DIR ?? "", "gno"),
+    "claude-desktop-mcp":
+      runtimePlatform === "win32"
+        ? join(env.APPDATA ?? "", "Claude", "claude_desktop_config.json")
+        : runtimePlatform === "darwin"
+          ? join(
+              home,
+              "Library",
+              "Application Support",
+              "Claude",
+              "claude_desktop_config.json"
+            )
+          : join(home, ".config", "Claude", "claude_desktop_config.json"),
+    "cursor-mcp": join(home, ".cursor", "mcp.json"),
+  };
 }
 
 const moduleUrl = (packageRoot: string, relativePath: string): string =>
@@ -151,14 +257,7 @@ export async function assertInstalledSetupIsolation(
   inputPath: string,
   childEnv: Record<string, string | undefined> = process.env
 ): Promise<void> {
-  if (
-    childEnv.GNO_PACKAGE_SMOKE_TEMP_ROOT !== options.tempRoot ||
-    childEnv.GNO_NO_AUTO_DOWNLOAD !== "1"
-  ) {
-    throw new Error(
-      "Package smoke isolation refused mismatched child environment"
-    );
-  }
+  await assertPackageSmokeEnvironment(options.tempRoot, childEnv);
   for (const key of REQUIRED_ISOLATED_ENV_PATHS) {
     if (childEnv[key] !== options.env[key]) {
       throw new Error(

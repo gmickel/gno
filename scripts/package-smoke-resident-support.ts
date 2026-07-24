@@ -106,7 +106,7 @@ export function spawnResident(
 ): RunningProcess {
   const child = Bun.spawn([input.gnoBin, command, ...args], {
     cwd: input.cwd,
-    env: { ...process.env, ...input.env, NODE_ENV: "production" },
+    env: { ...input.env, NODE_ENV: "production" },
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -184,7 +184,7 @@ export function runExpectedFailure(
 ): void {
   const result = Bun.spawnSync(cmd, {
     cwd: input.cwd,
-    env: { ...process.env, ...input.env, NODE_ENV: "production" },
+    env: { ...input.env, NODE_ENV: "production" },
     stdout: "pipe",
     stderr: "pipe",
   });
