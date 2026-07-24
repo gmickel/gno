@@ -60,6 +60,6 @@ Hosted gno.sh documentation was completed separately by the parent workflow.
 Skill autoresearch could not run because `uv` and an Anthropic API key were
 absent, while its Claude CLI fallback was explicitly prohibited.
 ## Evidence
-- Commits: 3ba57be
+- Commits: ec8d217
 - Tests: bun test (3109 pass, 2 expected skips, 0 fail), bun test test/project-affinity/parity.test.ts test/eval/agentic/baseline.test.ts test/cli/setup-profile-integration.test.ts test/cli/setup.test.ts (26 pass, 0 fail), bun run lint:check, bun run docs:verify (13 pass, 2 expected model-cache skips), bun run test:package, .flow/bin/flowctl validate --spec fn-107-project-local-retrieval-profiles --json
 - PRs:
