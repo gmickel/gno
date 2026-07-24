@@ -58,6 +58,13 @@ A single verified path reduces activation friction and ends with real value rath
 
 Composing existing primitives minimizes new failure modes. Lexical-first readiness separates immediate utility from heavier optional semantic setup.
 
+## Frozen fn-105.1 pilot contract
+
+The first increment is core-only. Its durable receipt is one latest canonical JSON file per canonical index identity and SHA-256 fingerprint of the folder realpath, under the local data directory's `setup-receipts/` tree. Exact-path collection matches are reused; explicit-name conflicts and nested collection overlaps fail closed; derived-name conflicts receive deterministic numeric suffixes.
+
+The core rejects missing, non-directory, unreadable, dangerous-root, unapproved secret-risk, empty, unsupported-only, and no-indexable-lexical-corpus inputs. Its frozen recovery stages are `preflight`, `config_saved`, `store_synced`, `lexical_indexed`, `lexical_proved`, and `completed`. Each side effect is bracketed by an atomic receipt update. Reruns re-derive config/store/index/proof truth and repair config-saved/store-unsynced state without duplicate collections, content, jobs, downloads, connector work, resident attachment, or remote work.
+
+Task 1 owns no CLI, semantic model work, connector verification, resident runtime integration, Web/Desktop changes, or documentation. The shipped `verifyLexicalActivation` remains the only lexical proof, fingerprint, cache, and retry authority.
 ## Implementation Plan
 
 1. `fn-105-verified-folder-setup.1` — Build the resumable setup orchestrator and receipt (**M**)
