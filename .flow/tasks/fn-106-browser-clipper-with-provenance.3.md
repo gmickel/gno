@@ -71,9 +71,8 @@ Deliver build the minimal browser extension preview workflow as one implementati
 <!-- Updated by plan-sync: fn-106.2 finalized the split-origin pairing/CSRF flow, one-time origin-bound grant, closed route schemas, and restart-safe idempotency/recovery contract. -->
 
 ## Done summary
-TBD
-
+Added a minimal Chromium Manifest V3 browser clipper with explicit user-triggered top-frame selection/Reader extraction, a visible Web UI CSRF pairing approval flow, origin-bound local-only grants, server-owned preview/provenance, edit invalidation, deterministic idempotent write recovery, closed response parsing, revocation, and actionable retry states. Hardened visible-content filtering, versioned browser capture receipts, endpoint-specific HTTP semantics, and popup recovery after service-worker or popup restart. Added deterministic Bun build, focused extension/Web UI/server regression coverage, documentation, and independent SHIP review.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: c8ebdb6
+- Tests: full bun test: 3043 pass, 1 expected Windows skip, 0 fail, 24159 assertions, focused clipper/client/UI: 38 pass, 208 assertions, post-refactor extension: 22 pass, 120 assertions, lint/format, TypeScript, build:clipper, docs:verify, diff check green, independent final review: SHIP, no P1/P2
 - PRs:

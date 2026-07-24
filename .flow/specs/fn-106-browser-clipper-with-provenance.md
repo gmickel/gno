@@ -14,14 +14,14 @@ Create a Chromium Manifest V3 extension and a shared closed browser-clip contrac
 - Reader mode carries a constrained semantic block AST, never arbitrary HTML
 - source/canonical URL, page title, author/site, published/observed/captured dates
 - capture mode, browser metadata, optional note/tags/target collection/folder
-- extraction hash, final canonical-body hash, preview digest, source hash, warnings
-- deterministic identity and explicit duplicate/collision outcome
+- `extractionHash`, `finalBodyHash`, `clipIdentity`, `previewDigest`, and warnings
+- explicit duplicate/collision outcome; browser-clip provenance has no `sourceHash`
 
 Allowed Reader blocks are paragraphs, headings, lists, quotes, code, horizontal rules, and validated links. Scripts, styles, forms, hidden/tracking content, arbitrary attributes, embeds, iframes, images, SVG, MathML, data/blob URLs, and server-side URL fetching are out of contract. The gateway validates and renders canonical Markdown; it does not trust extension-rendered HTML.
 
-Pair through the loopback resident gateway with a short-lived, one-time, visibly approved pairing code. A bounded, revocable, exact-extension-origin-bound grant is stored only as a hash. Unfinished pairing codes die on restart; valid persisted grants retain their explicit expiry/revocation state.
+Pair through the loopback resident gateway with a short-lived, one-time, visibly approved pairing code. The gateway persists only the bounded, revocable, exact-extension-origin-bound grant hash; the extension service worker retains the usable grant in protected local extension storage. Unfinished pairing codes die on restart; valid persisted grants retain their explicit expiry/revocation state.
 
-Preview and write are separate. Preview is non-mutating and server-owned. Write requires the matching preview digest and an idempotency key, replans before commit, then reuses the normal atomic capture/sync/embed receipt path.
+Preview and write are separate. Preview is non-mutating and server-owned. Write requires the matching preview digest and an idempotency key, replans before commit, then reuses the normal atomic capture/sync/embed receipt path. Browser-clipper HTTP receipts add `schemaVersion: "1.0"` and are closed at the receipt, source, and indexing-status levels.
 
 ## API Contracts
 <!-- scope: technical -->
@@ -30,7 +30,7 @@ Preview and write are separate. Preview is non-mutating and server-owned. Write 
 - Same-origin Web UI `POST /api/clipper/pair/approve` visibly approves and binds the exact extension Origin.
 - One-time `GET /api/clipper/pair/:id` returns the scoped grant once; `POST /api/clipper/revoke` revokes it.
 - `POST /api/capture/clip/preview` validates, canonicalizes, and returns the exact non-mutating preview, warnings, digest, and destination outcome.
-- `POST /api/capture/clip` accepts the versioned payload, preview digest, and idempotency key, then returns existing capture/sync/embed receipt semantics plus provenance warnings.
+- `POST /api/capture/clip` accepts the versioned payload, preview digest, and idempotency key, then returns a closed versioned capture receipt: HTTP 200 for `opened_existing`, HTTP 202 for created/suffixed/overwritten outcomes, and HTTP 409 for a valid provenance-conflict receipt. Non-receipt failures use the closed clipper error body.
 - Gateway bearer identity and `gateway.enableWrite` never authorize clipping; clipper grants never authorize MCP or general REST.
 - Clipper routes are structurally absent for non-loopback binding.
 
@@ -76,8 +76,8 @@ A constrained Reader AST is less permissive than arbitrary HTML but gives determ
 
 1. `fn-106-browser-clipper-with-provenance.1` — Define clip payload sanitization and capture provenance (**L**)
 2. `fn-106-browser-clipper-with-provenance.2` — Add secure loopback clipper pairing and capture endpoints (**L**); depends on task 1
-3. `fn-106-browser-clipper-with-provenance.3` — Build the minimal Chromium MV3 preview workflow (**M**); depends on tasks 1–2
-4. `fn-106-browser-clipper-with-provenance.4` — Package, browser-test, document, and publish the local clipper artifact (**M**); depends on task 3
+3. `fn-106-browser-clipper-with-provenance.3` — Build the minimal Chromium MV3 preview workflow and deterministic unpacked build (**M**); depends on tasks 1–2
+4. `fn-106-browser-clipper-with-provenance.4` — Package, headed-browser-test, document, and publish the local clipper artifact (**M**); depends on task 3
 
 ## Quick commands
 
