@@ -35,9 +35,8 @@ Deliver select and record the benchmark-proven lexical representation as one imp
 
 
 ## Done summary
-TBD
-
+Recorded an explicit no-ship decision bound to immutable fn-96 artifacts and every frozen quality, non-regression, cost, portability, rollback, and eligibility gate. Neither substring diagnostic clears Chinese Recall@10, zero-result, or minimum-hit thresholds; both lack production evidence. selectedRepresentation remains null, thresholds remain unchanged, and no production source/schema behavior changed.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 7f1353a7
+- Tests: bun test test/bench/cjk*.test.ts test/bench/cjk-decision.test.ts (23 pass, 0 fail, 1317 assertions), bun run lint:check, bun run bench:cjk-lexical -- --delta
 - PRs:

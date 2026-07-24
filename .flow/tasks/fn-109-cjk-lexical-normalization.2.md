@@ -32,9 +32,8 @@ Deliver add versioned lexical analyzer schema and crash-safe backfill as one imp
 
 
 ## Done summary
-TBD
-
+Not executed: task 1's frozen early-proof gate selected no representation and explicitly withheld production authorization. Adding a schema, migration, or backfill without a passing candidate would violate R1 and the spec's early proof point. No production files changed.
 ## Evidence
 - Commits:
-- Tests:
+- Tests: evals/fixtures/cjk-lexical-benchmark/candidates/2026-07-22-no-ship.json, test/bench/cjk-decision.test.ts
 - PRs:

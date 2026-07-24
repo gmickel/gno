@@ -36,9 +36,8 @@ Deliver prove promotion gates rollback packaging and truthful claims as one impl
 
 
 ## Done summary
-TBD
-
+Closed as not applicable after the early-proof no-ship result. The committed decision evaluates all frozen quality, failure-category, non-regression, cost, cross-platform, rollback, and selection gates; thresholds remain unchanged. Because no behavior shipped, there is no analyzer/version/rollback claim to package or publish and no public documentation change is warranted.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 7f1353a7
+- Tests: bun test test/bench/cjk*.test.ts test/bench/cjk-decision.test.ts (23 pass, 0 fail, 1317 assertions), bun run lint:check, bun run bench:cjk-lexical -- --delta, bun test (3212 pass, 2 expected skips, 0 fail)
 - PRs:

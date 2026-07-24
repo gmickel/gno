@@ -88,6 +88,22 @@ bun run test:package
 Task `fn-109-cjk-lexical-normalization.1` validates the core approach (fn-96 artifacts select one representation that clears per-language lift and cost gates before production schema work).
 If it fails, re-evaluate whether any production lexical change is justified before continuing with `fn-109-cjk-lexical-normalization.2`+.
 
+## Outcome — no ship
+
+The early proof point failed. The strongest committed diagnostic,
+`substring-nfc`, misses the frozen Chinese Recall@10 floor (`0.4444 <
+0.4722`), exceeds the zero-result ceiling (`0.5556 > 0.5278`), and recovers
+only two of the three required additional hits. Neither diagnostic has the
+production non-regression, index/build, cross-platform, or rollback evidence
+required for selection.
+
+The immutable decision receipt is
+`evals/fixtures/cjk-lexical-benchmark/candidates/2026-07-22-no-ship.json`.
+No representation was selected, no threshold was weakened, and no production
+source, schema, packaging, or public support claim changed. Tasks 2–4 close as
+intentionally not executed under this spec's early-proof contract. A future
+attempt requires a new candidate comparison against the same frozen gates.
+
 ## Requirement coverage
 
 | Req | Description | Task(s) | Gap justification |

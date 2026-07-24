@@ -1,0 +1,459 @@
+{
+  "schemaVersion": 1,
+  "decisionId": "fn-109-cjk-lexical-normalization-no-ship-2026-07-22",
+  "benchmark": "gno-cjk-lexical-degradation",
+  "inputs": {
+    "baseline": {
+      "artifact": "../2026-07-22.json",
+      "sha256": "b68b7f447d3fcf22d3731d5abdd0e6dba184758763f497ab39188f20134995b9",
+      "resultFingerprint": "11d865ebc56e5319587427473c668725ff7d1ec97e05234ec66bc63291858cea",
+      "configFingerprint": "fa077cfe5ce65773ff646492e0590432cad3dc80f1e355ba528abfce34518c5a",
+      "tokenizerFingerprint": "7c079447fed5ba49dcbe3c1934d41be3a99bd430852dc48ff80d990f46daba96"
+    },
+    "promotionGates": {
+      "artifact": "../promotion-gates.json",
+      "sha256": "513a9560382d192da9e9b0fe62aef7e261cc9edd176c5eae71f7857d492c79b2"
+    },
+    "qrelsLimitation": "All positive qrels use relevance 3, so nDCG measures placement of relevant documents but not distinctions among positive gain grades."
+  },
+  "gateCoverage": [
+    "quality.languages",
+    "quality.minimumAdditionalRecallHitsPerLanguage",
+    "failureCoverage",
+    "nonRegression.latinAndCode",
+    "nonRegression.identifiers",
+    "nonRegression.requiredSuites",
+    "cost.indexBytes",
+    "cost.buildMs",
+    "cost.warmQueryP95Ms",
+    "crossPlatformVariance",
+    "rollbackFeasibility",
+    "selectionEligibility"
+  ],
+  "outcome": "no-ship",
+  "selectedRepresentation": null,
+  "candidates": [
+    {
+      "id": "substring-raw",
+      "evidenceLane": "substring-raw",
+      "classification": "benchmark-diagnostic-only",
+      "eligibleForSelection": false,
+      "quality": {
+        "languages": {
+          "zh": {
+            "queryCount": 9,
+            "measured": {
+              "recallAt5": 0.4444,
+              "recallAt10": 0.4444,
+              "mrr": 0.4444,
+              "ndcgAt10": 0.4444,
+              "zeroResultRate": 0.5556
+            },
+            "minimum": {
+              "recallAt5": 0.3611,
+              "recallAt10": 0.4722,
+              "mrr": 0.377,
+              "ndcgAt10": 0.3981,
+              "zeroResultRate": 0.5278
+            },
+            "checks": {
+              "recallAt5": true,
+              "recallAt10": false,
+              "mrr": true,
+              "ndcgAt10": true,
+              "zeroResultRate": false
+            },
+            "additionalRecallHits": {
+              "measured": 2,
+              "minimum": 3,
+              "pass": false
+            },
+            "pass": false
+          },
+          "ja": {
+            "queryCount": 8,
+            "measured": {
+              "recallAt5": 0.875,
+              "recallAt10": 0.875,
+              "mrr": 0.875,
+              "ndcgAt10": 0.875,
+              "zeroResultRate": 0.125
+            },
+            "minimum": {
+              "recallAt5": 0.375,
+              "recallAt10": 0.375,
+              "mrr": 0.375,
+              "ndcgAt10": 0.375,
+              "zeroResultRate": 0.625
+            },
+            "checks": {
+              "recallAt5": true,
+              "recallAt10": true,
+              "mrr": true,
+              "ndcgAt10": true,
+              "zeroResultRate": true
+            },
+            "additionalRecallHits": {
+              "measured": 6,
+              "minimum": 2,
+              "pass": true
+            },
+            "pass": true
+          },
+          "ko": {
+            "queryCount": 8,
+            "measured": {
+              "recallAt5": 0.875,
+              "recallAt10": 0.875,
+              "mrr": 0.875,
+              "ndcgAt10": 0.875,
+              "zeroResultRate": 0.125
+            },
+            "minimum": {
+              "recallAt5": 0.75,
+              "recallAt10": 0.75,
+              "mrr": 0.75,
+              "ndcgAt10": 0.75,
+              "zeroResultRate": 0.25
+            },
+            "checks": {
+              "recallAt5": true,
+              "recallAt10": true,
+              "mrr": true,
+              "ndcgAt10": true,
+              "zeroResultRate": true
+            },
+            "additionalRecallHits": {
+              "measured": 3,
+              "minimum": 2,
+              "pass": true
+            },
+            "pass": true
+          }
+        },
+        "pass": false
+      },
+      "failureCoverage": {
+        "categories": {
+          "token-boundary": {
+            "baselineExamples": ["zh-q004"],
+            "recoveredExamples": [],
+            "pass": false
+          },
+          "normalization": {
+            "baselineExamples": ["zh-q005", "ja-q004", "ko-q004"],
+            "recoveredExamples": [],
+            "pass": false
+          },
+          "mixed-script": {
+            "baselineExamples": ["zh-q003", "ja-q003", "ko-q003"],
+            "recoveredExamples": ["ja-q003", "ko-q003"],
+            "pass": false
+          },
+          "identifier": {
+            "baselineExamples": ["zh-q002", "ja-q001", "ko-q001"],
+            "recoveredExamples": ["ja-q001", "ko-q001"],
+            "pass": false
+          },
+          "ranking": {
+            "baselineExamples": ["zh-q009"],
+            "recoveredExamples": ["zh-q009"],
+            "pass": true
+          }
+        },
+        "pass": false
+      },
+      "nonRegression": {
+        "comparison": "not-measured",
+        "latinAndCode": {
+          "maximumAbsoluteRecallAt10Loss": 0.02,
+          "maximumAbsoluteNdcgAt10Loss": 0.02,
+          "status": "not-measured",
+          "pass": false
+        },
+        "identifiers": {
+          "maximumPreviouslyPassingQueriesLost": 0,
+          "maximumNewZeroResultQueries": 0,
+          "status": "not-measured",
+          "pass": false
+        },
+        "requiredSuites": {
+          "commands": [
+            "test/store/fts-lexical-regression.test.ts",
+            "test/cli/search-fixtures.test.ts"
+          ],
+          "status": "not-run-for-diagnostic",
+          "pass": false
+        },
+        "pass": false
+      },
+      "cost": {
+        "indexBytes": {
+          "maximumRatio": 1.75,
+          "datedRunMaximumBytes": 566272,
+          "status": "not-measured",
+          "pass": false
+        },
+        "buildMs": {
+          "maximumRatio": 2,
+          "datedRunMaximumMs": 1015.68,
+          "status": "not-measured",
+          "pass": false
+        },
+        "warmQueryP95Ms": {
+          "baselineMs": 0.71,
+          "measuredMs": 0.03,
+          "measuredRatio": 0.0423,
+          "absoluteIncreaseMs": -0.68,
+          "maximumRatio": 3,
+          "maximumAbsoluteIncreaseMs": 2,
+          "status": "measured-diagnostic-only",
+          "pass": true
+        },
+        "pass": false
+      },
+      "crossPlatformVariance": {
+        "status": "not-measured",
+        "pass": false
+      },
+      "rollbackFeasibility": {
+        "status": "not-applicable-diagnostic-only",
+        "pass": false
+      },
+      "failedGates": [
+        "quality.zh.recallAt10",
+        "quality.zh.zeroResultRate",
+        "quality.zh.additionalRecallHits",
+        "failureCoverage.token-boundary",
+        "failureCoverage.normalization",
+        "failureCoverage.mixed-script",
+        "failureCoverage.identifier",
+        "nonRegression",
+        "cost.indexBytes",
+        "cost.buildMs",
+        "crossPlatformVariance",
+        "rollbackFeasibility",
+        "selectionEligibility"
+      ],
+      "passesAllRequiredGates": false
+    },
+    {
+      "id": "substring-nfc",
+      "evidenceLane": "substring-nfc",
+      "classification": "benchmark-diagnostic-only",
+      "eligibleForSelection": false,
+      "quality": {
+        "languages": {
+          "zh": {
+            "queryCount": 9,
+            "measured": {
+              "recallAt5": 0.4444,
+              "recallAt10": 0.4444,
+              "mrr": 0.4444,
+              "ndcgAt10": 0.4444,
+              "zeroResultRate": 0.5556
+            },
+            "minimum": {
+              "recallAt5": 0.3611,
+              "recallAt10": 0.4722,
+              "mrr": 0.377,
+              "ndcgAt10": 0.3981,
+              "zeroResultRate": 0.5278
+            },
+            "checks": {
+              "recallAt5": true,
+              "recallAt10": false,
+              "mrr": true,
+              "ndcgAt10": true,
+              "zeroResultRate": false
+            },
+            "additionalRecallHits": {
+              "measured": 2,
+              "minimum": 3,
+              "pass": false
+            },
+            "pass": false
+          },
+          "ja": {
+            "queryCount": 8,
+            "measured": {
+              "recallAt5": 0.875,
+              "recallAt10": 0.875,
+              "mrr": 0.875,
+              "ndcgAt10": 0.875,
+              "zeroResultRate": 0.125
+            },
+            "minimum": {
+              "recallAt5": 0.375,
+              "recallAt10": 0.375,
+              "mrr": 0.375,
+              "ndcgAt10": 0.375,
+              "zeroResultRate": 0.625
+            },
+            "checks": {
+              "recallAt5": true,
+              "recallAt10": true,
+              "mrr": true,
+              "ndcgAt10": true,
+              "zeroResultRate": true
+            },
+            "additionalRecallHits": {
+              "measured": 6,
+              "minimum": 2,
+              "pass": true
+            },
+            "pass": true
+          },
+          "ko": {
+            "queryCount": 8,
+            "measured": {
+              "recallAt5": 1,
+              "recallAt10": 1,
+              "mrr": 1,
+              "ndcgAt10": 1,
+              "zeroResultRate": 0
+            },
+            "minimum": {
+              "recallAt5": 0.75,
+              "recallAt10": 0.75,
+              "mrr": 0.75,
+              "ndcgAt10": 0.75,
+              "zeroResultRate": 0.25
+            },
+            "checks": {
+              "recallAt5": true,
+              "recallAt10": true,
+              "mrr": true,
+              "ndcgAt10": true,
+              "zeroResultRate": true
+            },
+            "additionalRecallHits": {
+              "measured": 4,
+              "minimum": 2,
+              "pass": true
+            },
+            "pass": true
+          }
+        },
+        "pass": false
+      },
+      "failureCoverage": {
+        "categories": {
+          "token-boundary": {
+            "baselineExamples": ["zh-q004"],
+            "recoveredExamples": [],
+            "pass": false
+          },
+          "normalization": {
+            "baselineExamples": ["zh-q005", "ja-q004", "ko-q004"],
+            "recoveredExamples": ["ko-q004"],
+            "pass": false
+          },
+          "mixed-script": {
+            "baselineExamples": ["zh-q003", "ja-q003", "ko-q003"],
+            "recoveredExamples": ["ja-q003", "ko-q003"],
+            "pass": false
+          },
+          "identifier": {
+            "baselineExamples": ["zh-q002", "ja-q001", "ko-q001"],
+            "recoveredExamples": ["ja-q001", "ko-q001"],
+            "pass": false
+          },
+          "ranking": {
+            "baselineExamples": ["zh-q009"],
+            "recoveredExamples": ["zh-q009"],
+            "pass": true
+          }
+        },
+        "pass": false
+      },
+      "nonRegression": {
+        "comparison": "not-measured",
+        "latinAndCode": {
+          "maximumAbsoluteRecallAt10Loss": 0.02,
+          "maximumAbsoluteNdcgAt10Loss": 0.02,
+          "status": "not-measured",
+          "pass": false
+        },
+        "identifiers": {
+          "maximumPreviouslyPassingQueriesLost": 0,
+          "maximumNewZeroResultQueries": 0,
+          "status": "not-measured",
+          "pass": false
+        },
+        "requiredSuites": {
+          "commands": [
+            "test/store/fts-lexical-regression.test.ts",
+            "test/cli/search-fixtures.test.ts"
+          ],
+          "status": "not-run-for-diagnostic",
+          "pass": false
+        },
+        "pass": false
+      },
+      "cost": {
+        "indexBytes": {
+          "maximumRatio": 1.75,
+          "datedRunMaximumBytes": 566272,
+          "status": "not-measured",
+          "pass": false
+        },
+        "buildMs": {
+          "maximumRatio": 2,
+          "datedRunMaximumMs": 1015.68,
+          "status": "not-measured",
+          "pass": false
+        },
+        "warmQueryP95Ms": {
+          "baselineMs": 0.71,
+          "measuredMs": 0.02,
+          "measuredRatio": 0.0282,
+          "absoluteIncreaseMs": -0.69,
+          "maximumRatio": 3,
+          "maximumAbsoluteIncreaseMs": 2,
+          "status": "measured-diagnostic-only",
+          "pass": true
+        },
+        "pass": false
+      },
+      "crossPlatformVariance": {
+        "status": "not-measured",
+        "pass": false
+      },
+      "rollbackFeasibility": {
+        "status": "not-applicable-diagnostic-only",
+        "pass": false
+      },
+      "failedGates": [
+        "quality.zh.recallAt10",
+        "quality.zh.zeroResultRate",
+        "quality.zh.additionalRecallHits",
+        "failureCoverage.token-boundary",
+        "failureCoverage.normalization",
+        "failureCoverage.mixed-script",
+        "failureCoverage.identifier",
+        "nonRegression",
+        "cost.indexBytes",
+        "cost.buildMs",
+        "crossPlatformVariance",
+        "rollbackFeasibility",
+        "selectionEligibility"
+      ],
+      "passesAllRequiredGates": false
+    }
+  ],
+  "decision": {
+    "reason": "No committed fn-96 representation passes every frozen gate. The strongest diagnostic, substring-nfc, misses the Chinese Recall@10 floor (0.4444 < 0.4722), Chinese zero-result ceiling (0.5556 > 0.5278), and minimum additional Chinese hit count (2 < 3). Both lanes are diagnostic-only and lack the required production non-regression, index/build cost, cross-platform, and rollback evidence.",
+    "thresholdsWeakened": false,
+    "productionChangesAuthorized": false,
+    "downstreamTasks": {
+      "execute": false,
+      "ids": [
+        "fn-109-cjk-lexical-normalization.2",
+        "fn-109-cjk-lexical-normalization.3",
+        "fn-109-cjk-lexical-normalization.4"
+      ],
+      "reason": "The fn-109 early proof point failed; production schema, analyzer, migration, packaging, and public support claims remain out of scope."
+    }
+  }
+}
