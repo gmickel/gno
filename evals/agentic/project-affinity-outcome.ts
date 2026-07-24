@@ -178,6 +178,16 @@ export const runProjectAffinityOutcomeBenchmark = async (
         },
         { caseId: `${item.caseId}:enabled`, observation: enabled.observation }
       );
+      const enabledEntries = projectAffinityEntries(enabled.output);
+      const stableRootAlias = `root_${sha256Bytes(`case\0${item.caseId}`).slice(0, 12)}`;
+      if (
+        enabledEntries.some(
+          (entry) =>
+            entry.matched && !/^root_[a-f0-9]{12}$/.test(entry.rootAlias ?? "")
+        )
+      ) {
+        throw new Error(`Runtime affinity alias invalid: ${item.caseId}`);
+      }
       targets.push({
         caseId: item.caseId,
         taskId: item.taskId,
@@ -187,7 +197,10 @@ export const runProjectAffinityOutcomeBenchmark = async (
           requiredEvidenceRetained(disabled.output, binding.requiredEvidence) &&
           requiredEvidenceRetained(enabled.output, binding.requiredEvidence),
         disabled: projectAffinityEntries(disabled.output),
-        enabled: projectAffinityEntries(enabled.output),
+        enabled: enabledEntries.map((entry) => ({
+          ...entry,
+          rootAlias: entry.matched ? stableRootAlias : null,
+        })),
       });
     }
 

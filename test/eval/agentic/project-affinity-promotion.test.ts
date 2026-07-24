@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { canonicalJson } from "../../../evals/agentic/canonical";
 import { loadAgenticFixture } from "../../../evals/agentic/fixture-db";
 import {
   bindProjectAffinityCases,
@@ -90,5 +91,13 @@ describe("project-affinity promotion cases", () => {
       evidenceCoverage: { loss: 0 },
       multilingual: { taskCount: 4, loss: 0 },
     });
+  });
+
+  test("is byte-deterministic across independent temporary indexes", async () => {
+    const fixture = await loadAgenticFixture();
+    const first = await runProjectAffinityOutcomeBenchmark(fixture);
+    const second = await runProjectAffinityOutcomeBenchmark(fixture);
+    expect(canonicalJson(second)).toBe(canonicalJson(first));
+    expect(second.canonicalFingerprint).toBe(first.canonicalFingerprint);
   });
 });
