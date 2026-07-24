@@ -1,0 +1,258 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/setup-receipt@1.0",
+  "title": "GNO Verified Folder Setup Receipt",
+  "description": "Canonical local receipt for resumable lexical-first folder setup.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "generatedAt",
+    "input",
+    "fingerprints",
+    "collection",
+    "paths",
+    "stages",
+    "pending",
+    "failure",
+    "activation"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "status": {
+      "enum": ["in_progress", "failed", "completed"]
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "folder",
+        "folderFingerprint",
+        "indexName",
+        "requestedName",
+        "excludes",
+        "secretRiskAuthorized"
+      ],
+      "properties": {
+        "folder": { "type": "string", "minLength": 1 },
+        "folderFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "indexName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "requestedName": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "excludes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "secretRiskAuthorized": { "type": "boolean" }
+      }
+    },
+    "fingerprints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "config", "index"],
+      "properties": {
+        "input": { "$ref": "#/definitions/fingerprint" },
+        "config": {
+          "oneOf": [{ "$ref": "#/definitions/fingerprint" }, { "type": "null" }]
+        },
+        "index": {
+          "oneOf": [{ "$ref": "#/definitions/fingerprint" }, { "type": "null" }]
+        }
+      }
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "path", "disposition"],
+      "properties": {
+        "name": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+        },
+        "path": { "type": "string", "minLength": 1 },
+        "disposition": {
+          "enum": ["pending", "created", "reused"]
+        }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["config", "receipt"],
+      "properties": {
+        "config": { "type": "string", "minLength": 1 },
+        "receipt": { "type": "string", "minLength": 1 }
+      }
+    },
+    "stages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preflight",
+        "config_saved",
+        "store_synced",
+        "lexical_indexed",
+        "lexical_proved",
+        "completed"
+      ],
+      "properties": {
+        "preflight": { "$ref": "#/definitions/stage" },
+        "config_saved": { "$ref": "#/definitions/stage" },
+        "store_synced": { "$ref": "#/definitions/stage" },
+        "lexical_indexed": { "$ref": "#/definitions/stage" },
+        "lexical_proved": { "$ref": "#/definitions/stage" },
+        "completed": { "$ref": "#/definitions/stage" }
+      }
+    },
+    "pending": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "failure": {
+      "oneOf": [{ "$ref": "#/definitions/failure" }, { "type": "null" }]
+    },
+    "activation": {
+      "oneOf": [
+        { "$ref": "gno://schemas/activation-verification@1.0" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "properties": { "status": { "const": "completed" } },
+        "required": ["status"]
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "failure": { "type": "null" },
+          "activation": {
+            "allOf": [
+              { "$ref": "gno://schemas/activation-verification@1.0" },
+              {
+                "type": "object",
+                "properties": { "ready": { "const": true } },
+                "required": ["ready"]
+              }
+            ]
+          },
+          "stages": {
+            "type": "object",
+            "properties": {
+              "preflight": {
+                "type": "object",
+                "properties": { "status": { "const": "passed" } }
+              },
+              "config_saved": {
+                "type": "object",
+                "properties": { "status": { "const": "passed" } }
+              },
+              "store_synced": {
+                "type": "object",
+                "properties": { "status": { "const": "passed" } }
+              },
+              "lexical_indexed": {
+                "type": "object",
+                "properties": { "status": { "const": "passed" } }
+              },
+              "lexical_proved": {
+                "type": "object",
+                "properties": { "status": { "const": "passed" } }
+              },
+              "completed": {
+                "type": "object",
+                "properties": { "status": { "const": "passed" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": { "status": { "const": "failed" } },
+        "required": ["status"]
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "failure": { "$ref": "#/definitions/failure" }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "token",
+        "startedAt",
+        "completedAt",
+        "code",
+        "remediation"
+      ],
+      "properties": {
+        "status": {
+          "enum": ["pending", "in_progress", "passed", "failed"]
+        },
+        "token": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "startedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "code": { "type": ["string", "null"] },
+        "remediation": { "type": ["string", "null"] }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "code", "message", "remediation"],
+      "properties": {
+        "stage": {
+          "enum": [
+            "preflight",
+            "config_saved",
+            "store_synced",
+            "lexical_indexed",
+            "lexical_proved",
+            "completed"
+          ]
+        },
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "remediation": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

@@ -90,6 +90,27 @@ bun upgrade
 
 ## Indexing Issues
 
+### `gno setup` completed with actions
+
+Lexical setup succeeded. Inspect `connectors[]` in
+`setup-activation-result@1.0`: MCP targets can pass a bounded retrieval proof,
+while skill targets normally report `target_runtime_unverifiable`. Repair the
+target and rerun the same command. Existing entries are reused and malformed
+config is not overwritten.
+
+`semantic.status` is independent. `pending` or `failed` keeps BM25 usable; run
+the receipt's `resumeCommand` in the foreground. `--no-semantic` starts no
+worker and records `skipped`. A previous live worker keeps its PID until exit
+instead of being replaced.
+
+Without connectors, JSON is `setup-command-result@1.0`; with one or more
+`--connector` flags it is `setup-activation-result@1.0` around the unchanged
+setup result. Argument or lexical failure keeps the original nonzero exit code,
+returns `connectors: []`, and performs no connector action. Setup receipts are
+under `setup-receipts/<index>/` and `setup-semantic/<index>/` in the configured
+data directory. Setup is direct and never uses a running serve/daemon/MCP
+process.
+
 ### Retrieval activation failed
 
 Inspect the exact collection, stage, code, and remediation:

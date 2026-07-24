@@ -68,6 +68,8 @@ export interface EmbedOptions {
   json?: boolean;
   /** Verbose error logging */
   verbose?: boolean;
+  /** Use cached models only (also used by the standalone setup worker). */
+  offline?: boolean;
 }
 
 export type EmbedResult =
@@ -469,9 +471,12 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
     }
 
     // Create LLM adapter and embedding port with auto-download
-    const globals = getGlobals();
+    let offline = options.offline;
+    if (offline === undefined) {
+      offline = getGlobals().offline;
+    }
     const policy = resolveDownloadPolicy(process.env, {
-      offline: globals.offline,
+      offline,
     });
 
     // Create progress renderer for model download (throttled to avoid spam)

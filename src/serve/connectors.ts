@@ -60,6 +60,13 @@ interface McpConnectorDefinition {
 
 type ConnectorDefinition = SkillConnectorDefinition | McpConnectorDefinition;
 
+export interface ConnectorDefinitionSummary {
+  id: string;
+  kind: "skill" | "mcp";
+  target: string;
+  scope: "user" | "project";
+}
+
 interface SkillInspection {
   installed: boolean;
   path: string;
@@ -129,7 +136,7 @@ function toSkillVerificationTarget(
   };
 }
 
-const CONNECTOR_DEFINITIONS: ConnectorDefinition[] = [
+const CONNECTOR_DEFINITIONS = [
   {
     id: "claude-code-skill",
     appName: "Claude Code",
@@ -212,7 +219,27 @@ const CONNECTOR_DEFINITIONS: ConnectorDefinition[] = [
         "Recommended default for Hermes Agent. Uses the standard ~/.hermes/skills path.",
     },
   },
-] as const;
+] as const satisfies readonly ConnectorDefinition[];
+
+export type ConnectorId = (typeof CONNECTOR_DEFINITIONS)[number]["id"];
+
+export function getConnectorDefinition(
+  id: string
+): ConnectorDefinitionSummary | null {
+  const definition = CONNECTOR_DEFINITIONS.find((entry) => entry.id === id);
+  return definition
+    ? {
+        id: definition.id,
+        kind: definition.installKind,
+        target: definition.target,
+        scope: definition.scope,
+      }
+    : null;
+}
+
+export function isConnectorId(id: string): id is ConnectorId {
+  return getConnectorDefinition(id) !== null;
+}
 
 export async function getConnectorStatuses(overrides?: {
   cwd?: string;

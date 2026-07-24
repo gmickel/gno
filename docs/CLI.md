@@ -37,6 +37,7 @@ never raw roots.
 | Command          | Description                       |
 | ---------------- | --------------------------------- |
 | `gno init`       | Initialize config and database    |
+| `gno setup`      | Add a folder and prove retrieval  |
 | `gno index`      | Full index (sync + embed)         |
 | `gno update`     | Sync files from disk (no embed)   |
 | `gno embed`      | Generate embeddings only          |
@@ -111,6 +112,69 @@ when set, otherwise 30 seconds.
 
 **Output format flags** (`--json`, `--files`, `--csv`, `--md`, `--xml`) are per-command.
 See [spec/cli.md](../spec/cli.md#output-format-support-matrix) for which commands support which formats.
+
+## Verified Folder Setup
+
+`gno setup` is the fastest safe path from a local folder to a proven searchable
+collection:
+
+```bash
+gno setup ~/notes
+gno setup ~/notes --name notes --exclude .env --exclude private
+gno --offline setup ~/notes
+gno setup ~/notes --no-semantic
+gno setup ~/notes --connector codex-skill
+gno setup ~/notes --connector cursor-mcp --connector codex-skill
+gno setup ~/notes --json
+```
+
+The command creates or reuses the collection, synchronizes the lexical index,
+and runs a corpus-derived BM25 query. It reports success only when that query
+returns an exact `gno://` result URI. Rerunning the same canonical folder is
+idempotent: it reuses the collection and resumes from the durable local setup
+receipt.
+
+`--exclude` is repeatable and literal; it is not a comma-separated list. If GNO
+finds likely env files, credentials, or private keys, terminal use asks once
+with a default of No. `--authorize-secret-risk` is the only pre-authorization.
+`--yes`, JSON mode, non-terminal input, decline, and EOF never authorize likely
+secrets.
+
+After lexical proof, semantic indexing starts in a detached one-shot process.
+The command returns immediately without starting or contacting `gno serve`,
+`gno daemon`, MCP, or another resident process. Its private receipt records
+scheduled/running/completed/failed/pending/skipped state and the exact
+foreground fallback command. A live worker remains authoritative until it
+exits, even when a rerun requests different semantic options, so its completion
+receipt cannot be stranded. Model download, partial embedding, vector-sync, or
+worker-launch failures do not invalidate proven lexical search:
+
+```bash
+# Printed in the setup result when background semantic work needs attention
+gno --index default --config /path/to/index.yml embed notes
+```
+
+Use `--no-semantic` to record semantic work as skipped. Use `--json` for one
+closed result on stdout; progress is suppressed. Without `--connector`, the
+payload remains the unchanged `setup-command-result@1.0`. With one or more
+explicit connector IDs, it is `setup-activation-result@1.0`, containing the
+unchanged setup result plus bounded per-target install and verification state.
+Connector-mode argument or lexical failure still uses that outer schema with
+`status: failed` and an empty connector list; the nested setup result and exit
+code remain unchanged, and no connector action runs.
+
+Supported connector IDs are `claude-code-skill`, `claude-desktop-mcp`,
+`cursor-mcp`, `codex-skill`, `opencode-skill`, `openclaw-skill`, and
+`hermes-skill`. Exact repeats dedupe. Existing entries are reused without
+overwrite; missing entries use the read-only installer only after lexical
+success. MCP targets run a bounded retrieval smoke. Skill targets report
+`target_runtime_unverifiable`, because setup cannot safely execute the host
+agent runtime. Connector follow-up keeps lexical setup successful and exit 0,
+with `completed_with_actions` and bounded remediation. Direct setup remains
+standalone and never attaches to a resident runtime.
+
+Terminal progress is stderr-only, and `--quiet` suppresses it while preserving
+the final result.
 
 ## Search Commands
 

@@ -50,8 +50,10 @@ Use it when:
 # Install
 bun install -g @gmickel/gno
 
-# Add a few collections
-gno init ~/notes --name notes
+# Prove the first folder immediately; semantic work continues independently
+gno setup ~/notes --name notes
+
+# Add more collections with the granular commands
 gno collection add ~/work/docs --name work-docs --pattern "**/*.{md,pdf,docx}"
 gno collection add ~/work/gno/src --name gno-code --pattern "**/*.{ts,tsx,js,jsx}"
 
@@ -60,7 +62,7 @@ gno context add "notes:" "Personal notes, journal entries, and long-form ideas"
 gno context add "work-docs:" "Architecture docs, runbooks, RFCs, meeting notes"
 gno context add "gno-code:" "Source code for the GNO application"
 
-# Index + embed
+# Sync the additional collections, then embed when you want semantic retrieval
 gno update --yes
 gno embed
 
@@ -218,8 +220,7 @@ gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
 ## Quick Start
 
 ```bash
-gno init ~/notes --name notes    # Point at your docs
-gno index                        # Build search index
+gno setup ~/notes --name notes   # Build BM25 and prove an exact local result
 gno daemon --detach              # Keep index fresh in the background (macOS/Linux)
 gno query "auth best practices"  # Hybrid search
 gno ask "summarize the API" --answer  # AI answer with citations
@@ -254,14 +255,19 @@ brew install sqlite3
 Verify the local installation and corpus-derived lexical retrieval:
 
 ```bash
-gno doctor
-gno status --json
+gno setup ~/notes --name notes
 ```
 
-`gno status` is passive with respect to models and connectors and exits 0 even
-when its structured activation state is degraded. `gno doctor` exits 2 when any
-configured folder fails the lexical proof; semantic models may still be pending
-without blocking BM25 search.
+`gno setup` returns only after BM25 finds an exact `gno://` result from the
+folder. It is safe to rerun: the same canonical folder and collection are
+reused. Semantic indexing is a separate one-shot process; `--no-semantic`
+records an explicit skip. Add repeatable `--connector <id>` flags only when you
+also want supported agent integrations installed and checked. Setup is direct
+and standalone—it never attaches to `serve`, `daemon`, Web, or MCP.
+
+Use `gno status --json` for passive state and `gno doctor` for diagnostics.
+Semantic pending and connector follow-up never invalidate proven lexical
+search.
 
 <!-- public-truth:supported-platforms -->
 

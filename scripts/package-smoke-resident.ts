@@ -8,12 +8,14 @@ import { chmod } from "node:fs/promises";
 import { join } from "node:path";
 
 import { assertValid, loadSchema } from "../test/spec/schemas/validator";
+import { proveResidentUnaffectedBySemanticSetup } from "./package-smoke-resident-setup";
 import {
   createHttpClient,
   freeLoopbackPort,
   isRecord,
   JSON_HEADERS,
   parseJsonObject,
+  proveResidentUnaffectedByDirectSetup,
   type ResidentSmokeInput,
   runExpectedFailure,
   spawnResident,
@@ -33,6 +35,8 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
   const clients: Client[] = [];
   try {
     await waitForStatus(baseUrl, "serve");
+    await proveResidentUnaffectedByDirectSetup(input, baseUrl);
+    await proveResidentUnaffectedBySemanticSetup(input, baseUrl);
     await validateStatusSurfaces(baseUrl, "serve", [
       input.cwd,
       input.env.GNO_DATA_DIR ?? "",
@@ -47,10 +51,7 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
       command: input.gnoBin,
       args: ["mcp"],
       cwd: input.cwd,
-      env: {
-        ...input.env,
-        PATH: globalThis.process.env.PATH ?? "",
-      },
+      env: input.env,
       stderr: "pipe",
     });
     const stdioClient = new Client({

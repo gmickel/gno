@@ -26,6 +26,12 @@ The GNO REST API provides programmatic access to your local knowledge index. Use
 
 All endpoints are JSON-based and run entirely on your machine.
 
+`gno setup` intentionally has no REST endpoint. It is a direct standalone CLI
+transaction with private lexical and semantic receipts and never discovers or
+attaches to this resident API. Web/Desktop onboarding uses the collection,
+sync, model, and connector endpoints below; those separate operations do not
+produce `FolderSetupReceipt@1.0` or `setup-activation-result@1.0`.
+
 ## Project hints
 
 Search, vector search, hybrid query, Ask, diagnose, and context request bodies

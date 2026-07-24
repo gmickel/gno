@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `gno setup <folder>` as the verified lexical-first activation path,
+  with idempotent collection reuse, exact corpus-derived BM25 evidence,
+  resumable private six-stage receipts, and independent one-shot semantic
+  ownership including `--no-semantic`.
+- Added repeatable explicit setup connectors for Claude Code, Claude Desktop,
+  Cursor, Codex, OpenCode, OpenClaw, and Hermes, with install-once behavior,
+  bounded MCP proof, truthful skill-runtime skips, and
+  `setup-activation-result@1.0` composition beside the unchanged setup result.
+- Extended packed-install smoke coverage across setup idempotency, receipt and
+  semantic identity, all seven connector targets, malformed-config recovery,
+  no-semantic behavior, and required setup runtime/schema files.
+
 ## [1.23.0] - 2026-07-24
 
 ### Added

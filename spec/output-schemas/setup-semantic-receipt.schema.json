@@ -1,0 +1,195 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/setup-semantic@1.0",
+  "title": "GNO Setup Semantic Handoff Receipt",
+  "description": "Privacy-bounded state for one standalone collection-scoped semantic setup worker.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "generatedAt",
+    "startedAt",
+    "completedAt",
+    "jobId",
+    "collection",
+    "indexName",
+    "folderFingerprint",
+    "pid",
+    "offline",
+    "setupReceiptFingerprint",
+    "setupReceiptPath",
+    "receiptPath",
+    "logPath",
+    "resumeCommand",
+    "counts",
+    "error"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "status": {
+      "enum": [
+        "scheduled",
+        "running",
+        "completed",
+        "failed",
+        "pending",
+        "skipped"
+      ]
+    },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "startedAt": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "completedAt": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "jobId": { "$ref": "#/definitions/fingerprint" },
+    "collection": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+    },
+    "indexName": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "folderFingerprint": { "$ref": "#/definitions/fingerprint" },
+    "pid": {
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "offline": { "type": "boolean" },
+    "setupReceiptFingerprint": { "$ref": "#/definitions/fingerprint" },
+    "setupReceiptPath": { "type": "string", "minLength": 1 },
+    "receiptPath": { "type": "string", "minLength": 1 },
+    "logPath": { "type": "string", "minLength": 1 },
+    "resumeCommand": {
+      "type": "string",
+      "pattern": "^gno .* embed "
+    },
+    "counts": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["embedded", "errors"],
+          "properties": {
+            "embedded": { "type": "integer", "minimum": 0 },
+            "errors": { "type": "integer", "minimum": 0 }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "error": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["message", "remediation"],
+          "properties": {
+            "message": { "type": "string", "minLength": 1, "maxLength": 500 },
+            "remediation": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8192
+            }
+          }
+        },
+        { "type": "null" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "scheduled" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "startedAt": { "type": "null" },
+          "completedAt": { "type": "null" },
+          "counts": { "type": "null" },
+          "error": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "running" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "pid": { "type": "integer", "minimum": 1 },
+          "startedAt": { "type": "string", "format": "date-time" },
+          "completedAt": { "type": "null" },
+          "counts": { "type": "null" },
+          "error": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "completed" } },
+        "required": ["status"]
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "pid": { "type": "null" },
+          "counts": { "type": "object" },
+          "error": { "type": "null" },
+          "completedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "failed" } },
+        "required": ["status"]
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "pid": { "type": "null" },
+          "error": { "type": "object" },
+          "completedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "pending" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "completedAt": { "type": "null" },
+          "counts": { "type": "null" },
+          "error": { "type": "object" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "skipped" } },
+        "required": ["status"]
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "counts": { "type": "null" },
+          "error": { "type": "null" },
+          "completedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

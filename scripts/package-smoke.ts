@@ -3,13 +3,18 @@ import { mkdir, mkdtemp } from "node:fs/promises";
 // node:os: tmpdir has no Bun-native equivalent.
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-// node:url: pathToFileURL has no Bun-native equivalent.
-import { pathToFileURL } from "node:url";
 
 import { safeRm } from "../test/helpers/cleanup";
+import { configurePackedEmbeddingModel } from "./package-smoke-config";
+import { buildPackageSmokeProcessEnv } from "./package-smoke-isolation";
 import { verifyPackedMcpInstall } from "./package-smoke-mcp";
 import { resolvePackageSmokeEmbeddingModel } from "./package-smoke-model";
 import { verifyPackedResidentGateway } from "./package-smoke-resident";
+import { verifyPackedFolderSetup } from "./package-smoke-setup";
+import {
+  snapshotUserGnoState,
+  verifyUserGnoStateUnchanged,
+} from "./package-smoke-user-sentinel";
 
 interface CommandResult {
   stdout: string;
@@ -69,31 +74,6 @@ interface NpmPackResult {
 const rootDir = resolve(import.meta.dir, "..");
 const preserveTemp = process.env.GNO_PACKAGE_SMOKE_KEEP_TEMP === "1";
 
-async function configurePackedEmbeddingModel(
-  configPath: string,
-  modelPath: string
-): Promise<void> {
-  const config = Bun.YAML.parse(await Bun.file(configPath).text()) as Record<
-    string,
-    unknown
-  >;
-  const modelUri = pathToFileURL(modelPath).href;
-  config.models = {
-    activePreset: "package-smoke-local",
-    presets: [
-      {
-        id: "package-smoke-local",
-        name: "Package Smoke Local",
-        embed: modelUri,
-        rerank: modelUri,
-        expand: modelUri,
-        gen: modelUri,
-      },
-    ],
-  };
-  await Bun.write(configPath, Bun.YAML.stringify(config));
-}
-
 function formatCommand(cmd: string[]): string {
   return cmd
     .map((part) => (part.includes(" ") ? JSON.stringify(part) : part))
@@ -107,7 +87,7 @@ function runCommand(
 ): CommandResult {
   const result = Bun.spawnSync(cmd, {
     cwd,
-    env: { ...process.env, ...env },
+    env,
     stderr: "pipe",
     stdout: "pipe",
   });
@@ -160,13 +140,16 @@ function assertTarPrefix(entries: string[], path: string): void {
   }
 }
 
-async function verifyTarballContents(tarballPath: string): Promise<void> {
+async function verifyTarballContents(
+  tarballPath: string,
+  env: Record<string, string>
+): Promise<void> {
   const packageJson = (await Bun.file(
     join(rootDir, "package.json")
   ).json()) as {
     files?: string[];
   };
-  const entries = runCommand(["tar", "-tzf", tarballPath], rootDir, {})
+  const entries = runCommand(["tar", "-tzf", tarballPath], rootDir, env)
     .stdout.split("\n")
     .filter(Boolean);
 
@@ -181,7 +164,18 @@ async function verifyTarballContents(tarballPath: string): Promise<void> {
     "package/src/sdk/index.ts",
     "package/src/embed/retry.ts",
     "package/src/core/runtime-entrypoint.ts",
+    "package/src/core/folder-setup.ts",
+    "package/src/core/setup-activation.ts",
+    "package/src/core/setup-receipt.ts",
+    "package/src/cli/commands/setup.ts",
+    "package/src/cli/commands/setup-activation.ts",
+    "package/src/cli/commands/setup-semantic.ts",
+    "package/src/cli/setup-semantic-worker.ts",
     "package/src/serve/public/globals.built.css",
+    "package/spec/output-schemas/setup-receipt.schema.json",
+    "package/spec/output-schemas/setup-command-result.schema.json",
+    "package/spec/output-schemas/setup-semantic-receipt.schema.json",
+    "package/spec/output-schemas/setup-activation-result.schema.json",
     "package/THIRD_PARTY_NOTICES.md",
   ]) {
     assertTarEntry(entries, requiredFile);
@@ -333,35 +327,49 @@ function assertNoDoctorErrors(result: DoctorResult): void {
 }
 
 async function main(): Promise<void> {
-  const embeddingModelPath = await resolvePackageSmokeEmbeddingModel();
+  const userStateBefore = await snapshotUserGnoState();
   const tempRoot = await mkdtemp(join(tmpdir(), "gno-package-smoke-"));
+  let completedTarballPath = "";
+  let smokeError: unknown;
   const packDir = join(tempRoot, "pack");
   const installPrefix = join(tempRoot, "prefix");
   const npmCacheDir = join(tempRoot, "npm-cache");
   const npmUserConfig = join(tempRoot, "npmrc");
   const homeDir = join(tempRoot, "home");
   const notesDir = join(tempRoot, "notes");
-  const env = {
+  const explicitEnv = {
+    APPDATA: join(tempRoot, "appdata"),
+    CLAUDE_SKILLS_DIR: join(homeDir, ".claude", "skills"),
+    CODEX_SKILLS_DIR: join(homeDir, ".codex", "skills"),
     GNO_CACHE_DIR: join(tempRoot, "gno-cache"),
     GNO_CONFIG_DIR: join(tempRoot, "gno-config"),
     GNO_DATA_DIR: join(tempRoot, "gno-data"),
     GNO_NO_AUTO_DOWNLOAD: "1",
+    GNO_SKILLS_HOME_OVERRIDE: homeDir,
+    HERMES_SKILLS_DIR: join(homeDir, ".hermes", "skills"),
     HOME: homeDir,
+    LOCALAPPDATA: join(tempRoot, "local-appdata"),
+    NO_COLOR: "1",
     npm_config_cache: npmCacheDir,
     npm_config_prefix: installPrefix,
     npm_config_userconfig: npmUserConfig,
+    OPENCODE_SKILLS_DIR: join(homeDir, ".config", "opencode", "skills"),
+    OPENCLAW_SKILLS_DIR: join(homeDir, ".openclaw", "skills"),
+    TEMP: tempRoot,
+    TMP: tempRoot,
+    TMPDIR: tempRoot,
+    USERPROFILE: homeDir,
     XDG_CACHE_HOME: join(tempRoot, "xdg-cache"),
     XDG_CONFIG_HOME: join(tempRoot, "xdg-config"),
     XDG_DATA_HOME: join(tempRoot, "xdg-data"),
   };
+  const env = await buildPackageSmokeProcessEnv(tempRoot, explicitEnv);
 
   try {
     await mkdir(packDir, { recursive: true });
     await mkdir(homeDir, { recursive: true });
     await mkdir(notesDir, { recursive: true });
     await Bun.write(npmUserConfig, "");
-    await Bun.write(join(notesDir, "hello.md"), "# Hello\n\nPackage smoke.\n");
-
     const pack = runCommand(
       ["npm", "pack", "--json", "--pack-destination", packDir],
       rootDir,
@@ -369,7 +377,7 @@ async function main(): Promise<void> {
     );
     const packed = parseNpmPackOutput(pack.stdout);
     const tarballPath = join(packDir, packed.filename);
-    await verifyTarballContents(tarballPath);
+    await verifyTarballContents(tarballPath, env);
 
     runCommand(
       [
@@ -389,6 +397,23 @@ async function main(): Promise<void> {
     const gnoBin = join(installPrefix, "bin", "gno");
     runCommand([gnoBin, "--version"], tempRoot, env);
     runCommand([gnoBin, "--help"], tempRoot, env);
+    await verifyPackedFolderSetup({
+      gnoBin,
+      packageRoot: join(
+        runCommand(
+          ["npm", "root", "--global", "--prefix", installPrefix],
+          tempRoot,
+          env
+        ).stdout.trim(),
+        "@gmickel",
+        "gno"
+      ),
+      cwd: tempRoot,
+      env,
+      fixtureDir: notesDir,
+      runCommand,
+    });
+    const embeddingModelPath = await resolvePackageSmokeEmbeddingModel();
     await verifyPackedMcpInstall({
       gnoBin,
       installPrefix,
@@ -396,22 +421,27 @@ async function main(): Promise<void> {
       env,
       runCommand,
     });
-    runCommand(
-      [gnoBin, "init", notesDir, "--name", "package-smoke"],
-      tempRoot,
-      env
-    );
     if (embeddingModelPath) {
       await configurePackedEmbeddingModel(
-        join(env.GNO_CONFIG_DIR, "index.yml"),
+        join(explicitEnv.GNO_CONFIG_DIR, "index.yml"),
         embeddingModelPath
       );
     }
     runCommand([gnoBin, "update", "--yes"], tempRoot, env);
     await verifyPackedResidentGateway({
       gnoBin,
+      packageRoot: join(
+        runCommand(
+          ["npm", "root", "--global", "--prefix", installPrefix],
+          tempRoot,
+          env
+        ).stdout.trim(),
+        "@gmickel",
+        "gno"
+      ),
       cwd: tempRoot,
       env,
+      fixtureDir: notesDir,
       runCommand,
       embeddingModelPath,
     });
@@ -440,18 +470,28 @@ async function main(): Promise<void> {
     assertEmbeddingFingerprintShape(doctor);
     assertNoDoctorErrors(doctor);
 
-    console.log(`Package smoke passed: ${tarballPath}`);
+    completedTarballPath = tarballPath;
   } catch (error) {
     console.error(`Package smoke temp root: ${tempRoot}`);
     console.error(
       "Set GNO_PACKAGE_SMOKE_KEEP_TEMP=1 to preserve temp dirs on success."
     );
-    throw error;
+    smokeError = error;
+  }
+
+  let sentinelProof: string;
+  try {
+    sentinelProof = await verifyUserGnoStateUnchanged(userStateBefore);
   } finally {
     if (!preserveTemp) {
       await safeRm(tempRoot);
     }
   }
+  if (smokeError) {
+    throw smokeError;
+  }
+  console.log(sentinelProof);
+  console.log(`Package smoke passed: ${completedTarballPath}`);
 }
 
 await main();

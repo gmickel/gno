@@ -14,6 +14,7 @@ export const SUPPORTED_SHELLS: Shell[] = ["bash", "zsh", "fish"];
  */
 const COMMANDS = [
   "init",
+  "setup",
   "index",
   "update",
   "embed",
@@ -317,6 +318,7 @@ export function getCompletionScript(shell: Shell): string {
 function getCommandDescription(cmd: string): string {
   const descriptions: Record<string, string> = {
     init: "Initialize GNO configuration",
+    setup: "Add and verify a folder",
     index: "Index files from collections",
     update: "Sync files from disk",
     embed: "Generate embeddings",
