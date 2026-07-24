@@ -68,6 +68,7 @@ import {
   ConfigSchema,
   loadConfig,
   normalizeConfigContentTypes,
+  normalizeContentTypes,
 } from "../config";
 import {
   buildCaptureReceipt,
@@ -516,6 +517,9 @@ class GnoClientImpl implements GnoClient {
             await searchBm25(this.store, query, {
               ...searchOptions,
               projectAffinity,
+              contentTypeRules: normalizeContentTypes(
+                this.config.contentTypes ?? []
+              ).rules,
               traceSession: traceSession ?? undefined,
             })
           )

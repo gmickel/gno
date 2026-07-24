@@ -33,7 +33,10 @@ import type {
   WalkerPort,
 } from "./types";
 
-import { fingerprintContentTypeRules, resolveContentTypeRule } from "../config";
+import {
+  fingerprintContentTypeMetadataRules,
+  resolveContentTypeRule,
+} from "../config";
 import { getDefaultMimeDetector, type MimeDetector } from "../converters/mime";
 import {
   type ConversionPipeline,
@@ -80,7 +83,8 @@ const MAX_CONCURRENCY = 16;
  * Documents with ingestVersion < INGEST_VERSION will be re-processed.
  */
 export const INGEST_VERSION = 6;
-const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT = fingerprintContentTypeRules([]);
+const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT =
+  fingerprintContentTypeMetadataRules([]);
 const RELATION_EDGE_TYPE_PATTERN = /^[a-z][a-z0-9_]*$/;
 const PROJECTION_YIELD_INTERVAL = 25;
 const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
@@ -667,7 +671,7 @@ export class SyncService {
       const contentTypeRules = options.contentTypeRules ?? [];
       const contentTypeRulesFingerprint =
         options.contentTypeRulesFingerprint ??
-        fingerprintContentTypeRules(contentTypeRules);
+        fingerprintContentTypeMetadataRules(contentTypeRules);
 
       // 4. Check existing doc for skip/repair decision
       const existingResult = await store.getDocument(
@@ -1054,7 +1058,7 @@ export class SyncService {
       contentTypeRules: options.contentTypeRules ?? [],
       contentTypeRulesFingerprint:
         options.contentTypeRulesFingerprint ??
-        fingerprintContentTypeRules(options.contentTypeRules ?? []),
+        fingerprintContentTypeMetadataRules(options.contentTypeRules ?? []),
     };
     const results: FileSyncResult[] = [];
     const projectionSourceIds = new Set<number>();
@@ -1399,7 +1403,7 @@ export class SyncService {
       contentTypeRules: options.contentTypeRules ?? [],
       contentTypeRulesFingerprint:
         options.contentTypeRulesFingerprint ??
-        fingerprintContentTypeRules(options.contentTypeRules ?? []),
+        fingerprintContentTypeMetadataRules(options.contentTypeRules ?? []),
     };
     const errors: Array<{ relPath: string; code: string; message: string }> =
       [];

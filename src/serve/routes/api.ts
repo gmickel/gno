@@ -45,7 +45,7 @@ import {
   updateCollection,
 } from "../../collection";
 import {
-  fingerprintContentTypeRules,
+  fingerprintContentTypeMetadataRules,
   normalizeContentTypes,
 } from "../../config";
 import { type PublicCaptureInput } from "../../core/capture";
@@ -272,6 +272,7 @@ export interface QueryRequestBody {
   noRerank?: boolean;
   noGraph?: boolean;
   graph?: boolean;
+  explain?: boolean;
   /** Comma-separated tags - filter to docs having ALL (AND) */
   tagsAll?: string;
   /** Comma-separated tags - filter to docs having ANY (OR) */
@@ -3510,7 +3511,6 @@ export async function handleSearch(
   if (body.author !== undefined && typeof body.author !== "string") {
     return errorResponse("VALIDATION", "author must be a string");
   }
-
   // Parse tag filters
   let tagsAll: string[] | undefined;
   let tagsAny: string[] | undefined;
@@ -3572,6 +3572,9 @@ export async function handleSearch(
     categories,
     author,
     projectAffinity,
+    contentTypeRules: context
+      ? normalizeContentTypes(context.config.contentTypes ?? []).rules
+      : undefined,
   };
 
   const trace = context
@@ -3679,6 +3682,9 @@ export async function handleQuery(
   if (body.author !== undefined && typeof body.author !== "string") {
     return errorResponse("VALIDATION", "author must be a string");
   }
+  if (body.explain !== undefined && typeof body.explain !== "boolean") {
+    return errorResponse("VALIDATION", "explain must be a boolean");
+  }
 
   const { queryModes, error: queryModesError } = parseQueryModesInput(
     body.queryModes
@@ -3768,6 +3774,7 @@ export async function handleQuery(
     categories,
     author,
     projectAffinity,
+    explain: body.explain,
   };
   const trace = await startRestTrace(ctx, {
     query: normalizedQuery,
@@ -3998,7 +4005,7 @@ export async function handleQueryDiagnose(
       projectAffinity,
       contentTypeRules,
       contentTypeRulesFingerprint:
-        fingerprintContentTypeRules(contentTypeRules),
+        fingerprintContentTypeMetadataRules(contentTypeRules),
     }
   );
 

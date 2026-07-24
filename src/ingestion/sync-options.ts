@@ -7,7 +7,10 @@
 import type { Config, NormalizedContentTypeRule } from "../config";
 import type { SyncOptions } from "./types";
 
-import { fingerprintContentTypeRules, normalizeContentTypes } from "../config";
+import {
+  fingerprintContentTypeMetadataRules,
+  normalizeContentTypes,
+} from "../config";
 
 export function resolveContentTypeRules(
   config?: Pick<Config, "contentTypes">
@@ -24,6 +27,7 @@ export function withContentTypeRules(
     ...options,
     contentTypeRules: rules,
     contentTypeRulesFingerprint:
-      options.contentTypeRulesFingerprint ?? fingerprintContentTypeRules(rules),
+      options.contentTypeRulesFingerprint ??
+      fingerprintContentTypeMetadataRules(rules),
   };
 }

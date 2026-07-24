@@ -209,7 +209,7 @@ describe("diagnoseQueryTarget", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.schemaVersion).toBe("1.1");
+    expect(result.value.schemaVersion).toBe("1.2");
     expect(result.value.affinity).toBeUndefined();
     expect(result.value.contentTypeBoost).toMatchObject({
       baseScore: 1,

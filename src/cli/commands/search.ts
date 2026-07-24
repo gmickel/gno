@@ -12,6 +12,7 @@ import type {
 } from "../../core/retrieval-trace-session";
 import type { SearchOptions, SearchResults } from "../../pipeline/types";
 
+import { normalizeContentTypes } from "../../config";
 import { resolveCliProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
@@ -28,7 +29,10 @@ import { decorateSearchResultsForIndex, initStore } from "./shared";
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type SearchCommandOptions = Omit<SearchOptions, "projectAffinity"> &
+export type SearchCommandOptions = Omit<
+  SearchOptions,
+  "contentTypeRules" | "projectAffinity"
+> &
   CliProjectAffinityRequest & {
     /** Override config path */
     configPath?: string;
@@ -121,6 +125,7 @@ export async function search(
       ...searchOptions,
       limit,
       projectAffinity,
+      contentTypeRules: normalizeContentTypes(config.contentTypes ?? []).rules,
       traceSession,
     });
 

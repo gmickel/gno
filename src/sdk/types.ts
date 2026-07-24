@@ -102,15 +102,27 @@ export interface GnoProjectHintOptions {
   projectHints?: string[];
 }
 
-export type GnoSearchOptions = Omit<SearchOptions, "projectAffinity"> &
+export type GnoSearchOptions = Omit<
+  SearchOptions,
+  "contentTypeRules" | "projectAffinity"
+> &
   GnoProjectHintOptions;
-export type GnoQueryOptions = Omit<HybridSearchOptions, "projectAffinity"> &
+export type GnoQueryOptions = Omit<
+  HybridSearchOptions,
+  "contentTypeRules" | "projectAffinity"
+> &
   GnoModelOverrides &
   GnoProjectHintOptions;
-export type GnoAskOptions = Omit<AskOptions, "projectAffinity"> &
+export type GnoAskOptions = Omit<
+  AskOptions,
+  "contentTypeRules" | "projectAffinity"
+> &
   GnoModelOverrides &
   GnoProjectHintOptions;
-export type GnoVectorSearchOptions = Omit<SearchOptions, "projectAffinity"> &
+export type GnoVectorSearchOptions = Omit<
+  SearchOptions,
+  "contentTypeRules" | "projectAffinity"
+> &
   GnoProjectHintOptions & {
     model?: string;
   };

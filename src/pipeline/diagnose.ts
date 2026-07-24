@@ -14,7 +14,10 @@ import type {
   QueryDiagnoseTraceCandidate,
 } from "./types";
 
-import { fingerprintContentTypeRules, normalizeContentTypes } from "../config";
+import {
+  fingerprintContentTypeMetadataRules,
+  normalizeContentTypes,
+} from "../config";
 import { resolveDocRef } from "../core/ref-parser";
 import { err, ok } from "../store/types";
 import {
@@ -56,7 +59,7 @@ export interface QueryDiagnoseStage {
 }
 
 export interface QueryDiagnoseResult {
-  schemaVersion: "1.0" | "1.1";
+  schemaVersion: "1.0" | "1.1" | "1.2";
   query: string;
   target: {
     ref: string;
@@ -191,7 +194,8 @@ export async function diagnoseQueryTarget(
     options.contentTypeRules ??
     normalizeContentTypes(deps.config.contentTypes ?? []).rules;
   const expectedFingerprint =
-    options.contentTypeRulesFingerprint ?? fingerprintContentTypeRules(rules);
+    options.contentTypeRulesFingerprint ??
+    fingerprintContentTypeMetadataRules(rules);
   const fingerprintMatches = doc.contentTypeRulesFingerprint
     ? doc.contentTypeRulesFingerprint === expectedFingerprint
     : null;
@@ -353,14 +357,17 @@ export async function diagnoseQueryTarget(
     affinity && hasTrustedProjectAffinityInput(options.projectAffinity)
       ? affinity
       : undefined;
+  if (contentTypeBoost) {
+    return ok({
+      ...baseResult,
+      schemaVersion: "1.2",
+      ...(trustedAffinity ? { affinity: trustedAffinity } : {}),
+      contentTypeBoost,
+    });
+  }
   return ok(
-    trustedAffinity || contentTypeBoost
-      ? {
-          ...baseResult,
-          schemaVersion: "1.1",
-          ...(trustedAffinity ? { affinity: trustedAffinity } : {}),
-          ...(contentTypeBoost ? { contentTypeBoost } : {}),
-        }
+    trustedAffinity
+      ? { ...baseResult, schemaVersion: "1.1", affinity: trustedAffinity }
       : baseResult
   );
 }

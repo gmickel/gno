@@ -22,7 +22,7 @@ import type { ToolContext } from "../server";
 import { decorateUriForIndex, parseUri } from "../../app/constants";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
 import {
-  fingerprintContentTypeRules,
+  fingerprintContentTypeMetadataRules,
   normalizeContentTypes,
 } from "../../config";
 import { resolveDepthPolicy } from "../../core/depth-policy";
@@ -71,6 +71,7 @@ interface QueryInput {
   graph?: boolean;
   tagsAll?: string[];
   tagsAny?: string[];
+  explain?: boolean;
 }
 
 interface QueryDiagnoseInput extends QueryInput {
@@ -260,6 +261,7 @@ export function handleQuery(
         tagsAll: normalizeTagFilters(args.tagsAll),
         tagsAny: normalizeTagFilters(args.tagsAny),
         projectAffinity,
+        explain: args.explain,
       };
 
       try {
@@ -538,7 +540,7 @@ export function handleQueryDiagnose(
           projectAffinity,
           contentTypeRules,
           contentTypeRulesFingerprint:
-            fingerprintContentTypeRules(contentTypeRules),
+            fingerprintContentTypeMetadataRules(contentTypeRules),
         });
 
         if (!result.ok) {

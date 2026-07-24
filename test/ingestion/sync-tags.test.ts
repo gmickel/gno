@@ -316,6 +316,37 @@ This is #work related.
     expect(updatedDoc.value.contentTypeRulesFingerprint).toBeTruthy();
   });
 
+  test("does not reconvert unchanged documents for a search-boost-only edit", async () => {
+    await mkdir(join(collectionDir, "people"), { recursive: true });
+    await writeFile(join(collectionDir, "people", "jane.md"), "# Jane");
+    const baseRule: NormalizedContentTypeRule = {
+      id: "person",
+      prefixes: ["people/"],
+      preset: "person",
+      searchBoost: 1,
+    };
+
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter, {
+      contentTypeRules: [baseRule],
+    });
+    const initialDoc = await adapter.getDocument("docs", "people/jane.md");
+    expect(initialDoc.ok).toBe(true);
+    if (!initialDoc.ok || !initialDoc.value) return;
+
+    const result = await syncService.syncCollection(collection, adapter, {
+      contentTypeRules: [{ ...baseRule, searchBoost: 2 }],
+    });
+    const unchangedDoc = await adapter.getDocument("docs", "people/jane.md");
+
+    expect(result.filesUnchanged).toBe(1);
+    expect(result.filesUpdated).toBe(0);
+    expect(unchangedDoc.ok).toBe(true);
+    if (!unchangedDoc.ok || !unchangedDoc.value) return;
+    expect(unchangedDoc.value.mirrorHash).toBe(initialDoc.value.mirrorHash);
+    expect(unchangedDoc.value.indexedAt).toBe(initialDoc.value.indexedAt);
+  });
+
   test("does not reprocess legacy null fingerprints for empty content type rules", async () => {
     await writeFile(join(collectionDir, "legacy.md"), "# Legacy");
 

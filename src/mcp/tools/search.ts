@@ -11,6 +11,7 @@ import type { SearchResult, SearchResults } from "../../pipeline/types";
 import type { ToolContext } from "../server";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
+import { normalizeContentTypes } from "../../config";
 import { resolveRemoteProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
@@ -133,6 +134,8 @@ export function handleSearch(
         tagsAll: normalizeTagFilters(args.tagsAll),
         tagsAny: normalizeTagFilters(args.tagsAny),
         projectAffinity,
+        contentTypeRules: normalizeContentTypes(ctx.config.contentTypes ?? [])
+          .rules,
       };
       let traceSession: RetrievalTraceSession | undefined;
       try {

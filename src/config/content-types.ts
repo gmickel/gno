@@ -180,6 +180,25 @@ export function fingerprintContentTypeRules(
   return hasher.digest("hex");
 }
 
+/**
+ * Fingerprint only fields that derive persisted document metadata.
+ * Search boosts are evaluated from live config at query time, so changing one
+ * must not force content conversion or vector rebuilds.
+ */
+export function fingerprintContentTypeMetadataRules(
+  rules: NormalizedContentTypeRule[]
+): string {
+  const canonical = rules.map((rule) => ({
+    id: rule.id,
+    preset: rule.preset,
+    prefixes: rule.prefixes,
+    graphHints: rule.graphHints ?? [],
+  }));
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(JSON.stringify(canonical));
+  return hasher.digest("hex");
+}
+
 export function formatConfigWarning(warning: ConfigWarning): string {
   return `[config] ${warning.path}: ${warning.message}`;
 }

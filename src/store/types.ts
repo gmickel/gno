@@ -119,7 +119,7 @@ export interface DocumentRow {
   active: boolean;
   /** Ingest schema version for backfill detection */
   ingestVersion: number | null;
-  /** Fingerprint of normalized content type rules used for derived metadata */
+  /** Fingerprint of metadata-affecting content type rules used for derivation. */
   contentTypeRulesFingerprint?: string | null;
 
   // Error tracking
@@ -304,7 +304,7 @@ export interface DocumentInput {
   lastErrorMessage?: string;
   /** Ingest schema version for backfill detection */
   ingestVersion?: number;
-  /** Fingerprint of normalized content type rules used for derived metadata */
+  /** Fingerprint of metadata-affecting content type rules used for derivation. */
   contentTypeRulesFingerprint?: string;
   /**
    * Change-journal metadata for a source lifecycle write. Conversion failures

@@ -83,6 +83,13 @@ describe("gno_query schema", () => {
     expect(result.data.exclude).toEqual(["reviews", "hiring"]);
   });
 
+  test("accepts optional explain output", () => {
+    const result = queryInputSchema.safeParse({ query: "test", explain: true });
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.explain).toBe(true);
+  });
+
   test("tool description nudges agent retrieval controls", () => {
     expect(MCP_TOOL_DESCRIPTIONS.query).toContain("intent");
     expect(MCP_TOOL_DESCRIPTIONS.query).toContain("queryModes");

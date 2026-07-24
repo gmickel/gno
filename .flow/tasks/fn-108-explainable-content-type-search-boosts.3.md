@@ -31,9 +31,34 @@ Deliver complete cross-surface schemas invalidation and configuration ux as one 
 
 
 ## Done summary
-TBD
+Completed cross-surface content-type boost contracts, invalidation, and
+configuration behavior.
 
+- Loaded the same normalized content-type rules for BM25 through CLI, REST,
+  MCP, SDK, and retrieval replay. Hybrid, Ask, and Capsule continue to consume
+  the shared runtime config through their existing dependency boundary.
+- Added optional REST and MCP query explain controls without changing normal
+  result JSON.
+- Added complete bounded content-type boost fields to search explain and query
+  diagnose schemas. Diagnose uses v1.2 only when the new component is present,
+  preserving v1.0 and affinity-only v1.1 contracts.
+- Split the full ranking-config fingerprint from the metadata-derivation
+  fingerprint. Search-boost edits now affect live ranking immediately without
+  reconverting source content or rebuilding vectors; type, prefix, preset, and
+  graph-hint edits still trigger metadata re-derivation.
+- Added real CLI/REST/MCP/SDK BM25 parity coverage, boost-only invalidation
+  coverage, schema coverage, and MCP input validation.
+
+Verification:
+
+- `bun run lint:check`
+- `bun test`
+- Focused content boost, diagnose, ingestion, schema, and MCP tests (50 passing)
+- `.flow/bin/flowctl validate --spec fn-108-explainable-content-type-search-boosts --json`
+
+No macOS or Windows client artifacts were awaited, per roadmap execution
+policy.
 ## Evidence
 - Commits:
-- Tests:
+- Tests: bun run lint:check, bun test, bun test ./test/pipeline/diagnose.test.ts ./test/content-type-boost/parity.test.ts ./test/ingestion/sync-tags.test.ts ./test/spec/schemas/query-diagnose.test.ts ./test/mcp/tools/query.test.ts, .flow/bin/flowctl validate --spec fn-108-explainable-content-type-search-boosts --json
 - PRs:

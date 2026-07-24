@@ -11,6 +11,7 @@ import {
   CONTENT_TYPE_SEARCH_BOOST_MIN,
   CONTENT_TYPE_SEARCH_BOOST_NEUTRAL,
   ContentTypeSchema,
+  fingerprintContentTypeMetadataRules,
   fingerprintContentTypeRules,
   normalizeConfigContentTypes,
   normalizeContentTypes,
@@ -212,6 +213,12 @@ describe("normalizeContentTypes", () => {
     );
     expect(fingerprintContentTypeRules(withSearchBoost.rules)).not.toBe(
       fingerprintContentTypeRules(base.rules)
+    );
+    expect(fingerprintContentTypeMetadataRules(withSearchBoost.rules)).toBe(
+      fingerprintContentTypeMetadataRules(base.rules)
+    );
+    expect(fingerprintContentTypeMetadataRules(withGraphHints.rules)).not.toBe(
+      fingerprintContentTypeMetadataRules(base.rules)
     );
   });
 
