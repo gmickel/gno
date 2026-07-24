@@ -42,9 +42,24 @@ Deliver integrate profiles with setup affinity docs and portability proof as one
 
 
 ## Done summary
-TBD
+Implemented setup, affinity, documentation, and portability integration for
+project-local retrieval profiles.
 
+- `gno setup` now inspects the nearest profile before mutation and supports
+  explicit `--apply-profile` composition through the existing lock-safe apply
+  path.
+- Added the closed `setup-profile-result@1.0` contract while preserving existing
+  setup JSON bytes when profile application is not requested.
+- Enforced affinity precedence: explicit CLI roots, nearest valid profile, then
+  user-config cwd defaults; profile defaults stay request-local.
+- Added clean-machine, POSIX/Windows path-shape, monorepo/worktree, no-runtime-
+  state, packed-package, schema, CLI, docs, and skill coverage.
+- Updated the authoritative project-affinity benchmark provenance.
+
+Hosted gno.sh documentation was completed separately by the parent workflow.
+Skill autoresearch could not run because `uv` and an Anthropic API key were
+absent, while its Claude CLI fallback was explicitly prohibited.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 3ba57be
+- Tests: bun test (3109 pass, 2 expected skips, 0 fail), bun test test/project-affinity/parity.test.ts test/eval/agentic/baseline.test.ts test/cli/setup-profile-integration.test.ts test/cli/setup.test.ts (26 pass, 0 fail), bun run lint:check, bun run docs:verify (13 pass, 2 expected model-cache skips), bun run test:package, .flow/bin/flowctl validate --spec fn-107-project-local-retrieval-profiles --json
 - PRs:
