@@ -1,6 +1,6 @@
 {
   "benchmarkId": "project-affinity-promotion@1",
-  "canonicalFingerprint": "ce71b7bade4f951b74d28b2b4317b33f126d2eff6a946ecde33ecf786587ed48",
+  "canonicalFingerprint": "c038d0453efd005a7474cc134fe10bea84cfbce0e15a98ffef8c132402b68f7b",
   "fixture": {
     "bindingFingerprint": "346f1f4cdca5b31bf9c56813c0aa5e24c4ce2ab6e1b0ca77d72b558a9a8b99e0",
     "bindings": [
@@ -94,6 +94,57 @@
     "All 24 tasks run with their existing hard collection; the gate requires zero URI-rank and required-evidence coverage loss.",
     "Store calls are instrumented structurally; wall-clock latency is not a gate."
   ],
+  "provenance": {
+    "implementation": {
+      "files": [
+        {
+          "path": "evals/agentic/canonical.ts",
+          "sha256": "f561a76f60e8e42a9ce26b7c933420e93cb4a8103620bb12f9ec6aff901d4442"
+        },
+        {
+          "path": "evals/agentic/project-affinity-contract.ts",
+          "sha256": "f1e256f15742a54dcfed292de95d432319214ecdb81e89f3a6a4ca9d2884a512"
+        },
+        {
+          "path": "evals/agentic/project-affinity-outcome.ts",
+          "sha256": "6487d9e01459562841d8d600ae3f5f28aa80d179432453fe1af5400037022073"
+        },
+        {
+          "path": "evals/agentic/project-affinity-promotion.ts",
+          "sha256": "5083751b2063f9cccd846b1d9bef4671535dad3e9f34d8152e44d57ea93b69d8"
+        },
+        {
+          "path": "evals/agentic/project-affinity-provenance.ts",
+          "sha256": "1c6b8844361231cab9d556b3e6dc39f1c9844a95688dcffc927eceb527da771e"
+        },
+        {
+          "path": "evals/agentic/project-affinity-runtime.ts",
+          "sha256": "df02ba0c207f50793f0d24f3f1262bba98cc2009a32fb604a61cc28d1538f2b3"
+        },
+        {
+          "path": "src/core/project-affinity-surface.ts",
+          "sha256": "4b89158f3285efc1037d9d5e60e93b18bf6a63daceb6d546d0947a74f0458bd5"
+        },
+        {
+          "path": "src/core/project-affinity.ts",
+          "sha256": "577da37b30ba41b2fd16ef9aeb19510b20d2349b6d27f1b88894b06d050adaa0"
+        },
+        {
+          "path": "src/pipeline/project-affinity.ts",
+          "sha256": "f02527b0dfe24c28a1db3e0b2b191fec86af490f632247c002fac23492b86099"
+        },
+        {
+          "path": "src/pipeline/vsearch.ts",
+          "sha256": "758a9bd0cfc09c933cc227e64720f3698f7141b11aff356eac01e7ec94998470"
+        }
+      ],
+      "fingerprint": "8c331d285247f4bca1226dbd8ff57460dd92fd6c40f83109101088853c28defa"
+    },
+    "pipeline": "searchVectorWithEmbedding",
+    "producer": "runProjectAffinityOutcomeBenchmark",
+    "store": "SqliteAdapter",
+    "vectorModel": "fixture:project-affinity-vector-v1"
+  },
   "receipts": {
     "auxiliary": [
       {
@@ -132,12 +183,360 @@
         "requested": 0.03
       }
     ],
+    "filter": {
+      "caseId": "pa-t456ef70",
+      "distractorCollection": "c115",
+      "requiredEvidenceRetained": true,
+      "resultUris": ["gno://c015/d001.md"],
+      "targetCollection": "c015"
+    },
+    "regression": [
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c011/d001.md"],
+        "taskId": "t012ab3c"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c011/d001.md"],
+        "taskId": "t012ab3c"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c001/d001.md", "gno://c001/d002.md"],
+        "taskId": "t0a1b2c3"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c001/d001.md", "gno://c001/d002.md"],
+        "taskId": "t0a1b2c3"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c012/d001.md"],
+        "taskId": "t123bc4d"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c012/d001.md"],
+        "taskId": "t123bc4d"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c002/d001.md"],
+        "taskId": "t1b2c3d4"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c002/d001.md"],
+        "taskId": "t1b2c3d4"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 0,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c013/d001.md"],
+        "taskId": "t234cd5e"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 0,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c013/d001.md"],
+        "taskId": "t234cd5e"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c003/d001.md", "gno://c003/d002.md"],
+        "taskId": "t2c3d4e5"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c003/d001.md", "gno://c003/d002.md"],
+        "taskId": "t2c3d4e5"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 0,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c014/d001.md"],
+        "taskId": "t345de6f"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 0,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c014/d001.md"],
+        "taskId": "t345de6f"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c004/d001.md", "gno://c004/d002.md"],
+        "taskId": "t3d4e5f6"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c004/d001.md", "gno://c004/d002.md"],
+        "taskId": "t3d4e5f6"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c015/d001.md"],
+        "taskId": "t456ef70"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c015/d001.md"],
+        "taskId": "t456ef70"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 2,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c005/d001.md", "gno://c005/d002.md"],
+        "taskId": "t4e5f607"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 2,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c005/d001.md", "gno://c005/d002.md"],
+        "taskId": "t4e5f607"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c016/d001.md"],
+        "taskId": "t567f081"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c016/d001.md"],
+        "taskId": "t567f081"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 2,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c006/d001.md", "gno://c006/d002.md"],
+        "taskId": "t5f60718"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 2,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c006/d001.md", "gno://c006/d002.md"],
+        "taskId": "t5f60718"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c007/d001.md"],
+        "taskId": "t6071829"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c007/d001.md"],
+        "taskId": "t6071829"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c017/d001.md", "gno://c017/d002.md"],
+        "taskId": "t6780192"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c017/d001.md", "gno://c017/d002.md"],
+        "taskId": "t6780192"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c008/d001.md"],
+        "taskId": "t718293a"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c008/d001.md"],
+        "taskId": "t718293a"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c018/d001.md"],
+        "taskId": "t7891a03"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c018/d001.md"],
+        "taskId": "t7891a03"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c009/d001.md", "gno://c009/d002.md"],
+        "taskId": "t8293a4b"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c009/d001.md", "gno://c009/d002.md"],
+        "taskId": "t8293a4b"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 2,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c00a/d001.md", "gno://c00a/d002.md"],
+        "taskId": "t93a4b5c"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 2,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c00a/d001.md", "gno://c00a/d002.md"],
+        "taskId": "t93a4b5c"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c00b/d001.md"],
+        "taskId": "ta4b5c6d"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c00b/d001.md"],
+        "taskId": "ta4b5c6d"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c00c/d001.md"],
+        "taskId": "tb5c6d7e"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c00c/d001.md"],
+        "taskId": "tb5c6d7e"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c00d/d001.md"],
+        "taskId": "tc6d7e8f"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c00d/d001.md"],
+        "taskId": "tc6d7e8f"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c00e/d001.md"],
+        "taskId": "td7e8f90"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c00e/d001.md"],
+        "taskId": "td7e8f90"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c00f/d001.md"],
+        "taskId": "te8f901a"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c00f/d001.md"],
+        "taskId": "te8f901a"
+      },
+      {
+        "lane": "disabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c010/d001.md"],
+        "taskId": "tf901a2b"
+      },
+      {
+        "lane": "enabled",
+        "requiredEvidenceCount": 1,
+        "requiredEvidenceRetained": true,
+        "resultUris": ["gno://c010/d001.md"],
+        "taskId": "tf901a2b"
+      }
+    ],
     "structural": [
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 2,
@@ -145,13 +544,17 @@
         "caseId": "pa-t456ef70:disabled",
         "maxCandidateBound": 6,
         "outputLimit": 2,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 6,
@@ -159,13 +562,17 @@
         "caseId": "pa-t456ef70:enabled",
         "maxCandidateBound": 6,
         "outputLimit": 2,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 2,
@@ -173,13 +580,17 @@
         "caseId": "pa-t567f081:disabled",
         "maxCandidateBound": 6,
         "outputLimit": 2,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 6,
@@ -187,13 +598,17 @@
         "caseId": "pa-t567f081:enabled",
         "maxCandidateBound": 6,
         "outputLimit": 2,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -201,13 +616,17 @@
         "caseId": "regression:t012ab3c:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -215,13 +634,17 @@
         "caseId": "regression:t012ab3c:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -229,13 +652,17 @@
         "caseId": "regression:t0a1b2c3:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -243,13 +670,17 @@
         "caseId": "regression:t0a1b2c3:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -257,13 +688,17 @@
         "caseId": "regression:t123bc4d:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -271,13 +706,17 @@
         "caseId": "regression:t123bc4d:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -285,13 +724,17 @@
         "caseId": "regression:t1b2c3d4:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -299,13 +742,17 @@
         "caseId": "regression:t1b2c3d4:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -313,13 +760,17 @@
         "caseId": "regression:t234cd5e:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -327,13 +778,17 @@
         "caseId": "regression:t234cd5e:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -341,13 +796,17 @@
         "caseId": "regression:t2c3d4e5:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -355,13 +814,17 @@
         "caseId": "regression:t2c3d4e5:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -369,13 +832,17 @@
         "caseId": "regression:t345de6f:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -383,13 +850,17 @@
         "caseId": "regression:t345de6f:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -397,13 +868,17 @@
         "caseId": "regression:t3d4e5f6:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -411,13 +886,17 @@
         "caseId": "regression:t3d4e5f6:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -425,13 +904,17 @@
         "caseId": "regression:t456ef70:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -439,13 +922,17 @@
         "caseId": "regression:t456ef70:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -453,13 +940,17 @@
         "caseId": "regression:t4e5f607:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -467,13 +958,17 @@
         "caseId": "regression:t4e5f607:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -481,13 +976,17 @@
         "caseId": "regression:t567f081:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -495,13 +994,17 @@
         "caseId": "regression:t567f081:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -509,13 +1012,17 @@
         "caseId": "regression:t5f60718:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -523,13 +1030,17 @@
         "caseId": "regression:t5f60718:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -537,13 +1048,17 @@
         "caseId": "regression:t6071829:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -551,13 +1066,17 @@
         "caseId": "regression:t6071829:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -565,13 +1084,17 @@
         "caseId": "regression:t6780192:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -579,13 +1102,17 @@
         "caseId": "regression:t6780192:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -593,13 +1120,17 @@
         "caseId": "regression:t718293a:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -607,13 +1138,17 @@
         "caseId": "regression:t718293a:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -621,13 +1156,17 @@
         "caseId": "regression:t7891a03:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -635,13 +1174,17 @@
         "caseId": "regression:t7891a03:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -649,13 +1192,17 @@
         "caseId": "regression:t8293a4b:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -663,13 +1210,17 @@
         "caseId": "regression:t8293a4b:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -677,13 +1228,17 @@
         "caseId": "regression:t93a4b5c:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -691,13 +1246,17 @@
         "caseId": "regression:t93a4b5c:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -705,13 +1264,17 @@
         "caseId": "regression:ta4b5c6d:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -719,13 +1282,17 @@
         "caseId": "regression:ta4b5c6d:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -733,13 +1300,17 @@
         "caseId": "regression:tb5c6d7e:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -747,13 +1318,17 @@
         "caseId": "regression:tb5c6d7e:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -761,13 +1336,17 @@
         "caseId": "regression:tc6d7e8f:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -775,13 +1354,17 @@
         "caseId": "regression:tc6d7e8f:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -789,13 +1372,17 @@
         "caseId": "regression:td7e8f90:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -803,13 +1390,17 @@
         "caseId": "regression:td7e8f90:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -817,13 +1408,17 @@
         "caseId": "regression:te8f901a:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -831,13 +1426,17 @@
         "caseId": "regression:te8f901a:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 5,
@@ -845,13 +1444,17 @@
         "caseId": "regression:tf901a2b:disabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -859,13 +1462,17 @@
         "caseId": "regression:tf901a2b:enabled",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 15,
@@ -873,13 +1480,17 @@
         "caseId": "filter:c015-vs-c115",
         "maxCandidateBound": 15,
         "outputLimit": 5,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 2,
@@ -887,13 +1498,17 @@
         "caseId": "zero:absent",
         "maxCandidateBound": 6,
         "outputLimit": 2,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 2,
@@ -901,13 +1516,17 @@
         "caseId": "zero:disabled",
         "maxCandidateBound": 6,
         "outputLimit": 2,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 2,
@@ -915,13 +1534,17 @@
         "caseId": "zero:unavailable",
         "maxCandidateBound": 6,
         "outputLimit": 2,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       },
       {
         "calls": {
           "getChunksBatch": 1,
           "getCollections": 1,
+          "getContextGeneration": 2,
+          "getContexts": 1,
           "getDocumentsByMirrorHashes": 1,
+          "getTagsBatch": 0,
           "listDocuments": 0
         },
         "candidateRequested": 2,
@@ -929,7 +1552,8 @@
         "caseId": "zero:untrusted_remote",
         "maxCandidateBound": 6,
         "outputLimit": 2,
-        "passed": true
+        "passed": true,
+        "unexpectedCalls": []
       }
     ],
     "zeroLanes": [
