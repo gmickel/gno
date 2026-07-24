@@ -20,7 +20,7 @@ social:
 logo: /assets/images/logo.png
 og_image: /assets/images/og/og-image.png
 # <!-- public-truth:current-version -->
-version: "1.25.0"
+version: "1.25.1"
 # <!-- /public-truth -->
 lang: en_US
 
