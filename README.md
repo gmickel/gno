@@ -105,12 +105,16 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
 
 <!-- public-truth:current-version -->
 
-> Current release: **v1.22.0** — see [CHANGELOG.md](./CHANGELOG.md)
+> Current release: **v1.23.0** — see [CHANGELOG.md](./CHANGELOG.md)
 
 <!-- /public-truth -->
 
 > Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
+- **Project-aware retrieval affinity**: trusted local CLI searches can use the
+  current workspace or explicit `--project-root` values as a transparent,
+  explainable `+0.03` soft ranking signal. Filters remain hard, and untrusted
+  SDK, REST, MCP, and Web hints never probe paths or affect ranking.
 - **Retrieval-proven activation**: `gno status`, `gno doctor`, REST, and the
   Web/Desktop dashboard now share a per-folder lexical retrieval proof. Local
   semantic readiness remains independent, and installed MCP targets can run an

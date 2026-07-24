@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.23.0] - 2026-07-24
+
+### Added
+
+- Added project-aware retrieval affinity across trusted local CLI query,
+  search, vector search, Ask, and Context Capsule workflows. GNO derives a
+  canonical project root from the current workspace or accepts repeatable
+  `--project-root` values, provides `--no-project-affinity`, and applies one
+  transparent soft contribution capped at `+0.03`.
+- Added bounded `projectAffinity` configuration and explainable affinity
+  metadata through the versioned `query-diagnose@1.0` contract. Trusted local
+  diagnose output uses schema version `1.1`; absent, disabled, and
+  remote/untrusted requests retain the exact legacy v1.0 projection.
+- Added a deterministic project-affinity promotion lane to the agentic
+  retrieval benchmark. The controlled project-selection cases improved top-1
+  accuracy from `0/2` to `2/2` while retaining `24/24` evidence accuracy,
+  `25/25` evidence coverage, and `4/4` multilingual completion with zero
+  regression.
+
+### Fixed
+
+- Applied affinity after each pipeline's final base relevance score and before
+  document-level cutoff, so small result limits cannot discard a qualifying
+  project match before the bounded signal is evaluated.
+- Made nested roots, worktrees, symlinks, overlapping collections, deleted
+  roots, case sensitivity, and path-segment containment deterministic without
+  stacking duplicate contributions.
+
+### Security
+
+- SDK, REST, MCP, and Web `projectHints` remain bounded opaque/untrusted
+  metadata with zero ranking effect and no filesystem probing. Affinity cannot
+  create candidates, expose unrelated absolute paths, or bypass collection,
+  tag, date, exclude, or egress filters.
+
 ## [1.22.0] - 2026-07-24
 
 ### Added
@@ -1691,7 +1726,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.22.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.23.0...HEAD
+[1.23.0]: https://github.com/gmickel/gno/compare/v1.22.0...v1.23.0
 [1.22.0]: https://github.com/gmickel/gno/compare/v1.21.0...v1.22.0
 [1.21.0]: https://github.com/gmickel/gno/compare/v1.20.0...v1.21.0
 [1.20.0]: https://github.com/gmickel/gno/compare/v1.19.0...v1.20.0
