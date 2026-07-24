@@ -14,6 +14,7 @@ import {
   launchExtensionContext,
   recordClipperWire,
 } from "./e2e-harness";
+import { exerciseClipperRecovery } from "./e2e-recovery";
 
 const enabled = process.env.GNO_CLIPPER_E2E === "1";
 const HEX_64 = /^[a-f0-9]{64}$/u;
@@ -136,7 +137,7 @@ if (!enabled) {
         );
         await activateFixtureSelection(fixturePage);
 
-        const popup = await context.newPage();
+        let popup = await context.newPage();
         const popupConsole: string[] = [];
         popup.on("console", (message) => popupConsole.push(message.text()));
         context.on("request", (request) => {
@@ -369,18 +370,14 @@ if (!enabled) {
         }
         expect(harness.fixture.canaryRequests).toEqual([]);
 
-        await harness.stopResident();
-        await popup.getByRole("button", { name: "Confirm capture" }).click();
-        await popup
-          .locator(".error")
-          .waitFor({ state: "visible", timeout: 15_000 });
-        await popup.reload();
-        await popup
-          .getByRole("button", { name: "Retry saved write" })
-          .waitFor({ state: "visible" });
-        await harness.startResident();
-        await popup.getByRole("button", { name: "Retry saved write" }).click();
-        await waitForReceipt(popup, "created");
+        popup = await exerciseClipperRecovery({
+          context,
+          extensionOrigin,
+          fixturePage,
+          harness,
+          popup,
+          records: harness.records,
+        });
         expect(
           await Bun.file(
             join(harness.collectionDir, "clips", "reader.md")

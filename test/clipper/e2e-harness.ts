@@ -14,6 +14,7 @@ export interface RecordedResponse {
   headers: Record<string, string>;
   method: string;
   requestBody: unknown;
+  responseHeaders: Record<string, string>;
   status: number;
   url: string;
 }
@@ -287,6 +288,7 @@ export const recordClipperWire = (
         headers: await request.allHeaders(),
         method: request.method(),
         requestBody: parseJson(request.postData()),
+        responseHeaders: await response.allHeaders(),
         status: response.status(),
         url: response.url(),
       });
