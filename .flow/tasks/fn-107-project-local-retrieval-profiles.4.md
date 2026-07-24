@@ -42,21 +42,22 @@ Deliver integrate profiles with setup affinity docs and portability proof as one
 
 
 ## Done summary
-Closed the fn-107 final-audit gaps across project-profile persistence, safety,
-portability, concurrency, and distribution. Multiple same-scope contexts now
-survive migration and sync; profile apply uses additive store projection and
-preserves unrelated indexed state. Every config writer shares one canonical
-target-derived cross-process lock, including symlink aliases and resident
-custom config paths.
+Closed the final fn-107 re-audit findings across contracts, configuration mutation, profile discovery/application, store projection, context identity, security validation, CLI routing, packaging, and public documentation.
 
-Profile inputs now enforce bounded regular UTF-8 files, likely-secret
-rejection, portable Windows path rules, duplicate identity checks, safe glob
-composition, real exclude globs, non-mutating offline cache probes, and complete
-config/data/cache/model/receipt/lock boundaries. Setup rejects conflicting
-profile overrides. Packed-install smoke executes check, diff, apply,
-idempotency, and setup integration. User docs, CLI/spec contracts, DB schema,
-and changelog reflect the hardened behavior.
+Key outcomes:
+- Full setup profile projection is additive, idempotent, and repairs missing profile-owned rows without deleting unrelated store state or advancing unchanged timestamps/generations.
+- All GNO-owned user config writers use a canonical target-derived cross-process lock, honor global custom config paths, preserve malformed configs, and safely resolve existing or dangling symlink aliases.
+- Project profiles use keyed content-type declarations, bounded brace-alternative validation, normalized context tuple identity, and timestamp-free local fingerprint bindings that detect removal-only edits without leaking local paths in public receipts.
+- Secret context symlink targets, dangling profile aliases, project/runtime overlaps, unsafe Windows paths, and ambiguous context removals fail closed without mutation.
+- CLI/spec/schema/package/docs and hosted gno.sh documentation now describe the hardened behavior.
+
+Validation:
+- Full GNO suite: 3,165 passed, 2 skipped, 0 failed.
+- Focused profile/config/store suite: 142 passed, 0 failed.
+- Lint/typecheck/format, docs verification, packed-package smoke, and hybrid eval all passed.
+- Hybrid eval: 88% against a 70% threshold.
+- Hosted gno.sh: check, 110 tests, and production build passed.
 ## Evidence
-- Commits: 35da435
-- Tests: bun run lint:check (0 warnings, 0 errors), bun test (3144 pass, 2 platform/opt-in skips, 0 fail), bun run test:package (packed install and user-state sentinel passed), bun scripts/docs-verify.ts (13 passed, 2 model-cache skips, 0 failed), bun run eval:hybrid (88%, 70% threshold passed)
+- Commits: a987c27
+- Tests: bun run lint:check, bun test (3165 passed, 2 skipped, 0 failed), focused fn-107 suite (142 passed, 0 failed), bun run docs:verify (13 passed, 2 skipped), bun run test:package, bun run eval:hybrid (88%, threshold 70%), gno.sh: bun run check, gno.sh: bun run test (110 passed, 5 skipped), gno.sh: bun run build
 - PRs:
