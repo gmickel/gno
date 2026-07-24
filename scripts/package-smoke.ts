@@ -3,14 +3,17 @@ import { mkdir, mkdtemp } from "node:fs/promises";
 // node:os: tmpdir has no Bun-native equivalent.
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-// node:url: pathToFileURL has no Bun-native equivalent.
-import { pathToFileURL } from "node:url";
 
 import { safeRm } from "../test/helpers/cleanup";
+import { configurePackedEmbeddingModel } from "./package-smoke-config";
 import { verifyPackedMcpInstall } from "./package-smoke-mcp";
 import { resolvePackageSmokeEmbeddingModel } from "./package-smoke-model";
 import { verifyPackedResidentGateway } from "./package-smoke-resident";
 import { verifyPackedFolderSetup } from "./package-smoke-setup";
+import {
+  snapshotUserGnoState,
+  verifyUserGnoStateUnchanged,
+} from "./package-smoke-user-sentinel";
 
 interface CommandResult {
   stdout: string;
@@ -69,31 +72,6 @@ interface NpmPackResult {
 
 const rootDir = resolve(import.meta.dir, "..");
 const preserveTemp = process.env.GNO_PACKAGE_SMOKE_KEEP_TEMP === "1";
-
-async function configurePackedEmbeddingModel(
-  configPath: string,
-  modelPath: string
-): Promise<void> {
-  const config = Bun.YAML.parse(await Bun.file(configPath).text()) as Record<
-    string,
-    unknown
-  >;
-  const modelUri = pathToFileURL(modelPath).href;
-  config.models = {
-    activePreset: "package-smoke-local",
-    presets: [
-      {
-        id: "package-smoke-local",
-        name: "Package Smoke Local",
-        embed: modelUri,
-        rerank: modelUri,
-        expand: modelUri,
-        gen: modelUri,
-      },
-    ],
-  };
-  await Bun.write(configPath, Bun.YAML.stringify(config));
-}
 
 function formatCommand(cmd: string[]): string {
   return cmd
@@ -345,7 +323,10 @@ function assertNoDoctorErrors(result: DoctorResult): void {
 }
 
 async function main(): Promise<void> {
+  const userStateBefore = await snapshotUserGnoState();
   const tempRoot = await mkdtemp(join(tmpdir(), "gno-package-smoke-"));
+  let completedTarballPath = "";
+  let smokeError: unknown;
   const packDir = join(tempRoot, "pack");
   const installPrefix = join(tempRoot, "prefix");
   const npmCacheDir = join(tempRoot, "npm-cache");
@@ -471,18 +452,28 @@ async function main(): Promise<void> {
     assertEmbeddingFingerprintShape(doctor);
     assertNoDoctorErrors(doctor);
 
-    console.log(`Package smoke passed: ${tarballPath}`);
+    completedTarballPath = tarballPath;
   } catch (error) {
     console.error(`Package smoke temp root: ${tempRoot}`);
     console.error(
       "Set GNO_PACKAGE_SMOKE_KEEP_TEMP=1 to preserve temp dirs on success."
     );
-    throw error;
+    smokeError = error;
+  }
+
+  let sentinelProof: string;
+  try {
+    sentinelProof = await verifyUserGnoStateUnchanged(userStateBefore);
   } finally {
     if (!preserveTemp) {
       await safeRm(tempRoot);
     }
   }
+  if (smokeError) {
+    throw smokeError;
+  }
+  console.log(sentinelProof);
+  console.log(`Package smoke passed: ${completedTarballPath}`);
 }
 
 await main();

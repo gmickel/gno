@@ -439,6 +439,8 @@ export async function verifyPackedFolderSetup(
 
   await proveMalformedConfigPreservation(options);
   await verifyInstalledSetupContractsInChild({
+    tempRoot: options.cwd,
+    env: options.env,
     packageRoot: options.packageRoot,
     fixtureDir: options.fixtureDir,
     configPath: first.lexical.paths.config,

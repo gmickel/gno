@@ -6,9 +6,14 @@ import { pathToFileURL } from "node:url";
 import type { FolderSetupReceipt } from "../src/core/setup-receipt";
 
 import { assertValid, loadSchema } from "../test/spec/schemas/validator";
+import {
+  assertPackageSmokePathContained,
+  buildInstalledSetupChildEnv,
+  type InstalledSetupIsolationOptions,
+} from "./package-smoke-isolation";
 import { verifyInstalledDisabledLiveOwnership } from "./package-smoke-setup-ownership";
 
-interface InstalledSetupContractOptions {
+export interface InstalledSetupContractOptions extends InstalledSetupIsolationOptions {
   packageRoot: string;
   fixtureDir: string;
   configPath: string;
@@ -424,12 +429,22 @@ export async function verifyInstalledSetupContractsInChild(
   options: InstalledSetupContractOptions
 ): Promise<void> {
   const inputPath = join(options.dataDir, "installed-contract-input.json");
+  await assertPackageSmokePathContained(
+    options.tempRoot,
+    inputPath,
+    "contract input"
+  );
   await Bun.write(inputPath, JSON.stringify(options));
+  const childEnv = await buildInstalledSetupChildEnv(options);
   const result = Bun.spawnSync(
-    [process.execPath, import.meta.path, "contract-run", inputPath],
+    [
+      process.execPath,
+      join(import.meta.dir, "package-smoke-setup-contract-runner.ts"),
+      inputPath,
+    ],
     {
       cwd: join(import.meta.dir, ".."),
-      env: process.env,
+      env: childEnv,
       stdout: "pipe",
       stderr: "pipe",
     }
@@ -448,26 +463,5 @@ export async function verifyInstalledSetupContractsInChild(
         `stderr:\n${stderr}`,
       ].join("\n")
     );
-  }
-}
-
-if (import.meta.main && process.argv[2] === "contract-run") {
-  const inputPath = process.argv[3];
-  if (!inputPath) {
-    throw new Error("Installed setup contract child requires an input path");
-  }
-  try {
-    const options = (await Bun.file(
-      inputPath
-    ).json()) as InstalledSetupContractOptions;
-    await verifyInstalledSetupContracts(options);
-    process.exit(0);
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? (error.stack ?? `${error.name}: ${error.message}`)
-        : String(error);
-    process.stderr.write(`${message}\n`);
-    process.exit(1);
   }
 }
