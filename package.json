@@ -214,14 +214,14 @@
     "happy-dom": "20.8.9",
     "lefthook": "2.1.4",
     "oxfmt": "0.28.0",
-    "oxlint": "1.43.0",
+    "oxlint": "1.75.0",
     "oxlint-tsgolint": "0.11.5",
     "pdf-lib": "1.17.1",
-    "playwright": "1.58.2",
+    "playwright": "1.61.1",
     "pptxgenjs": "4.0.1",
-    "ultracite": "7.1.5",
-    "vitest": "4.0.18",
-    "web-tree-sitter": "0.26.8"
+    "ultracite": "7.9.4",
+    "vitest": "4.1.10",
+    "web-tree-sitter": "0.26.11"
   },
   "peerDependencies": {
     "typescript": "^5"
