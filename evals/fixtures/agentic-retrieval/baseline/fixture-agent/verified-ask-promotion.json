@@ -1,9 +1,9 @@
 {
   "benchmarkId": "verified-ask-outcome@1",
-  "canonicalFingerprint": "3a15f7486682bb2b84291bd159bfbecd03747f73896c1734283be7ca3f26f049",
+  "canonicalFingerprint": "911273341dc356b350a0e64eb40bb533717dcd8108477c64293c033a6b7488da",
   "environment": {
     "git": {
-      "commit": "440db1101acbafafc96527ef3186d39cc2565e74",
+      "commit": "5eddaad679fc9b582bee6b12957fc08a3f7b1135",
       "dirty": false
     }
   },

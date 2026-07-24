@@ -1,6 +1,6 @@
 {
   "benchmarkId": "content-type-boost-promotion@1",
-  "canonicalFingerprint": "231e88929b0d28fa8c22c6cee47e14627f8826213bd8951ba6688d0aa778f496",
+  "canonicalFingerprint": "90d019a62342e8f6967c077946bafe03680b7738a05c59ac11090a16549eef8c",
   "gates": {
     "evidenceAccuracyLoss": 0,
     "evidenceCoverageLoss": 0,
@@ -277,7 +277,7 @@
   "schemaVersion": "1.0",
   "source": {
     "benchmarkId": "project-affinity-promotion@1",
-    "canonicalFingerprint": "3dc00cadf44d71212a364ae1168ca3d12d64fb621eed4b3d4f6579315679a6b9",
+    "canonicalFingerprint": "8ef982e769e5a1f54a78b1956c83bbb8d546acf3e623b456817e504786a7d273",
     "taskCount": 24
   }
 }

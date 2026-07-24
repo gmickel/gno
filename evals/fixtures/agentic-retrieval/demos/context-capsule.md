@@ -1,6 +1,6 @@
 # Context Capsule: one frozen agent outcome
 
-Canonical fingerprint: `bb5c059572017e71a126233dfdeb38e547c4d87013882c833d45570da578d85f`
+Canonical fingerprint: `26bed90052be60a1b3378aa6dfb0ab422ce716195761b0a4fa8c29c51700919f`
 
 This is one controlled exact-identifier task, not a general superiority claim.
 Selection disclosure: this is the sole cold-lifecycle current-GNO failure / Capsule success case among the authoritative 24-task cohort.
@@ -20,9 +20,9 @@ Span SHA-256: `db94cbe64c5c6c10d582eff7ff7d18fd2410bcbe8bbb1af42281bbfb7d69f320`
 
 | Lane                   | Stop outcome       | Success | Evidence coverage | Agent calls | Context bytes |      Tokens | Cold end-to-end ms |
 | ---------------------- | ------------------ | ------: | ----------------: | ----------: | ------------: | ----------: | -----------------: |
-| Lexical-only baseline  | complete: INC-1042 |       0 |                 0 |           2 |          2744 | unavailable |              1.283 |
-| Current GNO primitives | complete: INC-1042 |       0 |                 0 |           2 |          2222 | unavailable |           1375.758 |
-| Context Capsule        | complete: INC-4827 |       1 |                 1 |           1 |          1295 | unavailable |              2.191 |
+| Lexical-only baseline  | complete: INC-1042 |       0 |                 0 |           2 |          2744 | unavailable |              7.302 |
+| Current GNO primitives | complete: INC-1042 |       0 |                 0 |           2 |          2222 | unavailable |           1318.951 |
+| Context Capsule        | complete: INC-4827 |       1 |                 1 |           1 |          1295 | unavailable |              3.665 |
 
 Tokens are unavailable because this run did not use one pinned comparable tokenizer.
 Latency is the single matching cold-lifecycle observation on the recorded environment, not shipped-product latency.

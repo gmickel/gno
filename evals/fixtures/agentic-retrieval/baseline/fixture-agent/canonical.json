@@ -1,5 +1,5 @@
 {
-  "canonicalFingerprint": "2b628d162f59b803b24bddcc847ff669443980cb2a3ff19c9293db8ef265a043",
+  "canonicalFingerprint": "174ddc425adf51acccc26fabe8eadf9b42a4a1b4225f8e642d6884f1dabc419b",
   "projection": {
     "attemptedPairs": 144,
     "benchmarkId": "agentic-retrieval@1",
@@ -779,7 +779,7 @@
       "bunVersion": "1.3.14",
       "fixtureVersion": "2026-07-22.1",
       "git": {
-        "commit": "440db1101acbafafc96527ef3186d39cc2565e74",
+        "commit": "5eddaad679fc9b582bee6b12957fc08a3f7b1135",
         "dirty": false,
         "unavailableReason": null
       },
