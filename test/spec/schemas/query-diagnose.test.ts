@@ -85,6 +85,21 @@ describe("query-diagnose schema", () => {
     };
 
     expect(assertValid(response, schema)).toBe(true);
+    expect(assertValid({ ...response, affinity: null }, schema)).toBe(true);
+    expect(assertInvalid({ ...response, unexpected: true }, schema)).toBe(true);
+    expect(
+      assertInvalid(
+        {
+          ...response,
+          affinity: {
+            ...response.affinity,
+            projectRoot: "/private/project",
+          },
+        },
+        schema
+      )
+    ).toBe(true);
+    expect(JSON.stringify(response.affinity)).not.toContain("/private");
   });
 
   test("rejects missing schemaVersion", () => {

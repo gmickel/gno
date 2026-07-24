@@ -203,6 +203,11 @@ describe("project affinity surface parity", () => {
 
   test("keeps absent, disabled, and invalid controls deterministic", async () => {
     const config = createDefaultConfig();
+    const configDisabled = createDefaultConfig();
+    configDisabled.projectAffinity = {
+      contribution: 0.03,
+      enabled: false,
+    };
     expect(
       await resolveRemoteProjectAffinity(config, undefined)
     ).toBeUndefined();
@@ -211,6 +216,11 @@ describe("project affinity surface parity", () => {
       await resolveCliProjectAffinity(config, {
         cwd: "/not-probed-when-disabled",
         disabled: true,
+      })
+    ).toBeUndefined();
+    expect(
+      await resolveCliProjectAffinity(configDisabled, {
+        cwd: "/not-probed-when-config-disabled",
       })
     ).toBeUndefined();
 
@@ -264,6 +274,9 @@ describe("project affinity surface parity", () => {
     );
     expect(hinted.isError).not.toBe(true);
     expect(hinted.structuredContent).toEqual(absent.structuredContent);
+    expect(JSON.stringify(hinted.structuredContent)).toBe(
+      JSON.stringify(absent.structuredContent)
+    );
     expect(JSON.stringify(hinted)).not.toContain("private/project");
 
     const invalid = await handleSearch(

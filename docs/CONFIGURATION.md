@@ -90,6 +90,20 @@ retrievalTraces:
   enabled: false
 ```
 
+## Project affinity
+
+`projectAffinity.enabled` defaults to `true`. Set it to `false` to disable the
+trusted local CLI signal globally; callers can also use
+`--no-project-affinity` per request. `projectAffinity.contribution` defaults to
+`0.03` and must stay within `0..0.03`.
+
+Only canonicalized local CLI cwd/`--project-root` values can match configured
+collection paths. Explicit roots replace the cwd-derived root, and
+overlapping/duplicate roots never stack. SDK, REST, MCP, and Web UI
+`projectHints` are opaque/untrusted (maximum 16) and deliberately produce zero
+affinity without filesystem probing. All auxiliary contributions share the
+`±0.08` cap; collection/tag/date/exclude/egress filters remain hard.
+
 ## Resident HTTP MCP Gateway
 
 `gno serve` and `gno daemon` expose `/mcp`. The default configuration binds
