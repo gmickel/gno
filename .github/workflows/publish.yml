@@ -271,7 +271,7 @@ jobs:
 
       # Need Node.js 24+ for npm OIDC support (npm >= 11.5.1)
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
