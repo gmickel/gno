@@ -259,6 +259,26 @@ function App() {
     );
   }
 
+  if (controllerState.pending) {
+    return (
+      <main className="shell">
+        <header className="compact">
+          <div>
+            <span className="eyebrow">GNO · CLIPPER</span>
+            <h1>Recover saved capture</h1>
+          </div>
+        </header>
+        <PendingRecoveryView
+          busy={busy}
+          onDiscard={() => void discardPending()}
+          onResume={() => void resumePending()}
+          pending={controllerState.pending}
+        />
+        {error ? <p className="error">{error}</p> : null}
+      </main>
+    );
+  }
+
   return (
     <main className="shell">
       <header className="compact">
@@ -450,14 +470,6 @@ function App() {
         </section>
       ) : null}
 
-      {controllerState.pending ? (
-        <PendingRecoveryView
-          busy={busy}
-          onDiscard={() => void discardPending()}
-          onResume={() => void resumePending()}
-          pending={controllerState.pending}
-        />
-      ) : null}
       {error ? <p className="error">{error}</p> : null}
 
       <footer>

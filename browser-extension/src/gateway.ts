@@ -132,7 +132,7 @@ export class ClipperGateway {
       throw new Error("GNO gateway origin contains unsupported URL fields");
     }
     this.origin = origin;
-    this.fetcher = fetcher;
+    this.fetcher = fetcher.bind(globalThis);
   }
 
   private async request(
@@ -188,7 +188,7 @@ export class ClipperGateway {
     const { response, body } = await this.request(
       `/api/clipper/pair/${pairId}`,
       {
-        method: "GET",
+        method: "POST",
       }
     );
     const result = pairStatusSchema.safeParse(body);

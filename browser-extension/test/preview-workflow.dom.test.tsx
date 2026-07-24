@@ -76,8 +76,9 @@ describe("browser clipper preview workflow", () => {
       await import("../src/preview");
     });
     const user = userEvent.setup();
-    await screen.findByText("Capture visible context");
+    await screen.findByText("Recover saved capture");
     expect(screen.getByText("Saved write awaiting safe recovery")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Extract now" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Retry saved write" }));
     expect(await screen.findByText(receiptResponse.uri)).toBeTruthy();
     await waitFor(() =>
@@ -85,6 +86,7 @@ describe("browser clipper preview workflow", () => {
         screen.queryByText("Saved write awaiting safe recovery")
       ).toBeNull()
     );
+    await screen.findByText("Capture visible context");
     await user.click(screen.getByRole("button", { name: "Extract now" }));
     await user.type(screen.getByLabelText("Collection"), "notes");
     await user.click(screen.getByRole("button", { name: "Server preview" }));

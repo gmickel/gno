@@ -41,7 +41,7 @@ export interface ClipperSecurityConfig {
 }
 
 export type ClipperOriginPolicy =
-  | { kind: "same-origin" }
+  | { allowOriginlessSafeGet?: boolean; kind: "same-origin" }
   | { kind: "extension"; expectedOrigin?: string };
 
 export interface ClipperAdmissionPolicy {
@@ -388,7 +388,15 @@ export class ClipperSecurityBoundary {
         response: clipperSecurityErrorResponse("CLIPPER_FORBIDDEN"),
       };
     }
-    const origin = request.headers.get("origin");
+    const requestOrigin = request.headers.get("origin");
+    const origin =
+      requestOrigin ??
+      (policy.kind === "same-origin" &&
+      policy.allowOriginlessSafeGet === true &&
+      request.method === "GET" &&
+      request.headers.get("sec-fetch-site") === "same-origin"
+        ? `http://${host}`
+        : null);
     if (!origin) {
       return {
         ok: false,

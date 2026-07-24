@@ -173,7 +173,7 @@ export function createClipperRouteGateway(
 
   const csrf: ClipperRoute = async (request, server) => {
     const admitted = await security.admit(request, server, {
-      origin: { kind: "same-origin" },
+      origin: { allowOriginlessSafeGet: true, kind: "same-origin" },
     });
     if (!admitted.ok) return admitted.response;
     try {
@@ -369,8 +369,8 @@ export function createClipperRouteGateway(
         POST: approvePair,
       },
       "/api/clipper/pair/:pairId": {
-        GET: pollPair,
-        OPTIONS: preflight(["GET"]),
+        OPTIONS: preflight(["POST"]),
+        POST: pollPair,
       },
       "/api/clipper/revoke": {
         POST: revoke,

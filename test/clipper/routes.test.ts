@@ -180,10 +180,11 @@ describe("browser clipper route gateway", () => {
       )
     ).toBe(true);
 
-    const pollRoute = routes["/api/clipper/pair/:pairId"]?.GET;
+    const pollRoute = routes["/api/clipper/pair/:pairId"]?.POST;
     const poll = await pollRoute?.(
       new Request(`${LISTENER_ORIGIN}/api/clipper/pair/${started.pairId}`, {
         headers: headers(EXTENSION_ORIGIN),
+        method: "POST",
       }),
       server
     );
@@ -202,6 +203,7 @@ describe("browser clipper route gateway", () => {
     const replayedPoll = await pollRoute?.(
       new Request(`${LISTENER_ORIGIN}/api/clipper/pair/${started.pairId}`, {
         headers: headers(EXTENSION_ORIGIN),
+        method: "POST",
       }),
       server
     );

@@ -253,13 +253,20 @@ export const launchExtensionContext = async (
   return chromium.launchPersistentContext(profileDir, {
     ...options,
     args: [
-      // Playwright cannot grant LNA to chrome-extension:// opaque origins.
-      // Foreground bootstrap behavior remains covered by unit + wire assertions.
-      "--disable-features=LocalNetworkAccessChecks",
       `--disable-extensions-except=${extensionDir}`,
       `--load-extension=${extensionDir}`,
     ],
   });
+};
+
+export const grantExtensionLocalNetworkAccess = async (
+  context: BrowserContext
+): Promise<void> => {
+  // Chromium refuses an origin-scoped automation grant for the extension's
+  // opaque chrome-extension:// origin. This profile is temporary and isolated;
+  // the wire assertions below still prove the server accepts only the exact
+  // extension origin.
+  await context.grantPermissions(["local-network-access"]);
 };
 
 export const extensionIdFromWorker = async (
@@ -292,7 +299,7 @@ export const recordClipperWire = (
         status: response.status(),
         url: response.url(),
       });
-    })();
+    })().catch(() => undefined);
   });
 };
 

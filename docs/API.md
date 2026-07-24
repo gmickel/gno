@@ -125,7 +125,7 @@ are not the optional REST API token or the `/mcp` bearer token, and
 | `/api/clipper/pair/start`   | POST   | Create a five-minute extension pairing        |
 | `/api/clipper/pair/csrf`    | GET    | Read the same-origin approval CSRF token      |
 | `/api/clipper/pair/approve` | POST   | Approve the displayed code from the Web UI    |
-| `/api/clipper/pair/:id`     | GET    | Poll once for the approved capture grant      |
+| `/api/clipper/pair/:id`     | POST   | Poll once for the approved capture grant      |
 | `/api/clipper/revoke`       | POST   | Revoke the authenticated capture grant        |
 | `/api/capture/clip/preview` | POST   | Validate, normalize, and plan without writing |
 | `/api/capture/clip`         | POST   | Write an unchanged preview with idempotency   |

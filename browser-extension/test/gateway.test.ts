@@ -10,6 +10,26 @@ import {
 } from "./fixtures";
 
 describe("browser clipper loopback gateway", () => {
+  test("calls the browser fetch implementation with the global receiver", async () => {
+    const receivers = new Set<unknown>();
+    const fetcher = function (
+      this: unknown,
+      _input: string | URL | Request,
+      _init?: RequestInit
+    ): Promise<Response> {
+      receivers.add(this);
+      return Promise.resolve(jsonResponse(previewResponse));
+    };
+    const gateway = new ClipperGateway(
+      "http://127.0.0.1:3000",
+      fetcher as typeof fetch
+    );
+
+    await gateway.preview(payload, grant);
+
+    expect(receivers).toEqual(new Set([globalThis]));
+  });
+
   test("sends exact preview and capture requests without cookies", async () => {
     const requests: Request[] = [];
     const requestOptions: RequestInit[] = [];

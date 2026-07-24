@@ -3,14 +3,20 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 // node:path is required because Bun has no path utilities.
 import { join } from "node:path";
-import { chromium, type BrowserContext, type Page } from "playwright";
+import { chromium, type BrowserContext } from "playwright";
 
-import type { RecordedResponse } from "./e2e-harness";
-
+import {
+  assertFourHashes,
+  input,
+  latestJson,
+  selectValue,
+  waitForReceipt,
+} from "./e2e-assertions";
 import {
   activateFixtureSelection,
   createClipperE2EHarness,
   extensionIdFromWorker,
+  grantExtensionLocalNetworkAccess,
   launchExtensionContext,
   recordClipperWire,
 } from "./e2e-harness";
@@ -46,49 +52,6 @@ const buildExtension = async (): Promise<void> => {
     stdout: "inherit",
   });
   expect(await built.exited).toBe(0);
-};
-
-const input = (popup: Page, label: string) =>
-  popup.getByLabel(label, { exact: true });
-
-const waitForReceipt = async (popup: Page, outcome: string): Promise<void> => {
-  await popup
-    .locator(".receipt")
-    .getByText(outcome, { exact: true })
-    .waitFor({ state: "visible", timeout: 20_000 });
-};
-
-const latestJson = async (
-  records: RecordedResponse[],
-  pathname: string,
-  method: string,
-  status: number
-): Promise<RecordedResponse> => {
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    const match = records
-      .filter(
-        (record) =>
-          new URL(record.url).pathname === pathname &&
-          record.method === method &&
-          record.status === status
-      )
-      .at(-1);
-    if (match) return match;
-    await Bun.sleep(25);
-  }
-  throw new Error(`Missing ${method} ${pathname} response with HTTP ${status}`);
-};
-
-const assertFourHashes = (preview: Record<string, unknown>): void => {
-  const provenance = preview.provenance as Record<string, unknown>;
-  expect(provenance.extractionHash).toMatch(HEX_64);
-  expect(provenance.finalBodyHash).toMatch(HEX_64);
-  expect(provenance.clipIdentity).toMatch(HEX_64);
-  expect(provenance.previewDigest).toMatch(HEX_64);
-  expect((preview.preview as Record<string, unknown>).digest).toBe(
-    provenance.previewDigest
-  );
-  expect(JSON.stringify(preview)).not.toContain("sourceHash");
 };
 
 if (!enabled) {
@@ -138,35 +101,58 @@ if (!enabled) {
         await activateFixtureSelection(fixturePage);
 
         let popup = await context.newPage();
+        await grantExtensionLocalNetworkAccess(context);
         const popupConsole: string[] = [];
         popup.on("console", (message) => popupConsole.push(message.text()));
         context.on("request", (request) => {
-          if (request.url().startsWith(harness.baseUrl)) {
+          if (request.url().startsWith("http://127.0.0.1:")) {
             popupConsole.push(`request ${request.method()} ${request.url()}`);
           }
         });
         context.on("requestfailed", (request) => {
-          if (request.url().startsWith(harness.baseUrl)) {
+          if (request.url().startsWith("http://127.0.0.1:")) {
             popupConsole.push(
               `failed ${request.method()} ${request.url()} ${request.failure()?.errorText ?? ""}`
             );
           }
         });
         await popup.goto(`${extensionOrigin}/preview.html`);
-        await input(popup, "Local gateway").fill(harness.baseUrl);
+        await popup.waitForFunction(async () => {
+          const permission = await navigator.permissions.query({
+            name: "local-network-access" as PermissionName,
+          });
+          return permission.state === "granted";
+        });
+        const gatewayInput = input(popup, "Local gateway");
+        await gatewayInput.fill("");
+        await gatewayInput.pressSequentially(harness.baseUrl);
+        await gatewayInput.press("Tab");
+        expect(await gatewayInput.inputValue()).toBe(harness.baseUrl);
+        await popup.evaluate(
+          () =>
+            new Promise<void>((resolve) =>
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => resolve())
+              )
+            )
+        );
+        const pairCodeOutput = popup.locator(".pair-code");
+        const pairError = popup.locator(".error");
         await popup.getByRole("button", { name: "Pair with GNO" }).click();
         await Promise.race([
-          popup.locator(".pair-code").waitFor({ state: "visible" }),
-          popup
-            .locator(".error")
-            .waitFor({ state: "visible" })
-            .then(async () => {
-              throw new Error(
-                `${(await popup.locator(".error").textContent()) ?? "Pairing failed without an error message"} wire=${JSON.stringify(harness.records)} console=${JSON.stringify(popupConsole)}`
-              );
-            }),
+          pairCodeOutput.waitFor({ state: "visible" }),
+          pairError.waitFor({ state: "visible" }).then(async () => {
+            throw new Error(
+              `${(await pairError.textContent()) ?? "Pairing failed without an error message"} wire=${JSON.stringify(harness.records)} console=${JSON.stringify(popupConsole)} input=${await gatewayInput.inputValue()}`
+            );
+          }),
         ]);
-        const pairingCode = await popup.locator(".pair-code").textContent();
+        if (!(await pairCodeOutput.isVisible())) {
+          throw new Error(
+            `${(await pairError.textContent()) ?? "Pairing failed without an error message"} wire=${JSON.stringify(harness.records)} console=${JSON.stringify(popupConsole)}`
+          );
+        }
+        const pairingCode = await pairCodeOutput.textContent();
         expect(pairingCode).toMatch(/^\d{8}$/u);
         const approvalPage =
           context
@@ -183,17 +169,33 @@ if (!enabled) {
         await approvalPage
           .getByRole("button", { name: "Approve extension" })
           .click();
-        await approvalPage.getByText("Browser paired").waitFor({
-          state: "visible",
-        });
+        await Promise.race([
+          approvalPage.getByText("Browser paired").waitFor({
+            state: "visible",
+          }),
+          approvalPage
+            .locator('[role="alert"]')
+            .waitFor({ state: "visible" })
+            .then(async () => {
+              throw new Error(
+                `Approval failed: ${await approvalPage.locator('[role="alert"]').textContent()} wire=${JSON.stringify(harness.records)}`
+              );
+            }),
+        ]);
         expect(await approvalPage.evaluate(() => localStorage.length)).toBe(0);
         expect(await approvalPage.evaluate(() => sessionStorage.length)).toBe(
           0
         );
 
-        await popup
-          .getByRole("heading", { name: "Capture visible context" })
-          .waitFor({ state: "visible", timeout: 10_000 });
+        try {
+          await popup
+            .getByRole("heading", { name: "Capture visible context" })
+            .waitFor({ state: "visible", timeout: 10_000 });
+        } catch {
+          throw new Error(
+            `Extension did not consume the approved grant. wire=${JSON.stringify(harness.records)} console=${JSON.stringify(popupConsole)} body=${await popup.locator("body").innerText()}`
+          );
+        }
         const startResponse = await latestJson(
           harness.records,
           "/api/clipper/pair/start",
@@ -219,7 +221,9 @@ if (!enabled) {
         expect(serviceWorker).toBeDefined();
         const consumed = await serviceWorker?.evaluate(
           async ({ url }) => {
-            const response = await fetch(url);
+            const response = await fetch(url, {
+              method: "POST",
+            });
             return { body: await response.json(), status: response.status };
           },
           { url: `${harness.baseUrl}/api/clipper/pair/${pairId}` }
@@ -291,29 +295,92 @@ if (!enabled) {
         expect(createdReceiptResponse.headers.authorization).toMatch(
           /^Bearer [a-f0-9]{64}$/u
         );
-        expect(createdReceiptResponse.headers["idempotency-key"]).toBeTruthy();
+        const firstIdempotencyKey =
+          createdReceiptResponse.headers["idempotency-key"];
+        expect(firstIdempotencyKey).toBeTruthy();
         expect(createdReceipt.schemaVersion).toBe("1.0");
         expect(JSON.stringify(createdReceipt)).not.toContain("sourceHash");
 
+        await popup.getByRole("button", { name: "Confirm capture" }).click();
+        for (let attempt = 0; attempt < 200; attempt += 1) {
+          const writes = harness.records.filter(
+            (record) =>
+              new URL(record.url).pathname === "/api/capture/clip" &&
+              record.method === "POST" &&
+              record.status === 202
+          );
+          if (writes.length >= 2) break;
+          await Bun.sleep(25);
+        }
+        const createdWrites = harness.records.filter(
+          (record) =>
+            new URL(record.url).pathname === "/api/capture/clip" &&
+            record.method === "POST" &&
+            record.status === 202
+        );
+        expect(createdWrites.length).toBeGreaterThanOrEqual(2);
+        const replayedWrite = createdWrites.at(-1);
+        expect(replayedWrite?.headers["idempotency-key"]).not.toBe(
+          firstIdempotencyKey
+        );
+        expect(replayedWrite?.responseHeaders["idempotent-replay"]).toBe(
+          "true"
+        );
+        expect(replayedWrite?.body).toMatchObject({
+          collisionPolicyResult: "created",
+        });
+
+        const titleInput = input(popup, "Title");
+        await titleInput.fill("Same evidence, updated page title");
+        await titleInput.press("Tab");
+        await popup.getByRole("button", { name: "Refresh preview" }).click();
+        const openedPreviewResponse = await latestJson(
+          harness.records,
+          "/api/capture/clip/preview",
+          "POST",
+          200,
+          2
+        );
+        const openedPreview = openedPreviewResponse.body as Record<
+          string,
+          unknown
+        >;
+        expect(
+          (openedPreview.provenance as Record<string, unknown>).clipIdentity
+        ).toBe(selectionProvenance.clipIdentity);
+        expect(
+          (openedPreview.provenance as Record<string, unknown>).previewDigest
+        ).not.toBe(selectionProvenance.previewDigest);
         await popup.getByRole("button", { name: "Confirm capture" }).click();
         await waitForReceipt(popup, "opened_existing");
         expect(
           (await latestJson(harness.records, "/api/capture/clip", "POST", 200))
             .body
-        ).toMatchObject({
-          collisionPolicyResult: "opened_existing",
-        });
+        ).toMatchObject({ collisionPolicyResult: "opened_existing" });
 
         const canonicalMarkdown = popup.getByLabel(
           "Canonical capture Markdown"
         );
         await canonicalMarkdown.fill("Edited final body with changed meaning.");
+        await canonicalMarkdown.press("Tab");
+        await popup.evaluate(
+          () =>
+            new Promise<void>((resolve) =>
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => resolve())
+              )
+            )
+        );
+        expect(await canonicalMarkdown.inputValue()).toBe(
+          "Edited final body with changed meaning."
+        );
         await popup.getByRole("button", { name: "Refresh preview" }).click();
         const conflictPreviewResponse = await latestJson(
           harness.records,
           "/api/capture/clip/preview",
           "POST",
-          200
+          200,
+          3
         );
         const conflictPreview = conflictPreviewResponse.body as Record<
           string,
@@ -336,9 +403,7 @@ if (!enabled) {
             .body
         ).toMatchObject({ collisionPolicyResult: "conflict" });
 
-        await input(popup, "Collision policy").selectOption(
-          "create_with_suffix"
-        );
+        await selectValue(popup, "create_with_suffix");
         await popup.getByRole("button", { name: "Refresh preview" }).click();
         await popup.getByRole("button", { name: "Confirm capture" }).click();
         await waitForReceipt(popup, "created_with_suffix");
@@ -347,13 +412,14 @@ if (!enabled) {
         await popup.getByRole("button", { name: "Reader" }).click();
         await popup.getByRole("button", { name: "Extract now" }).click();
         await input(popup, "Relative path (optional)").fill("clips/reader.md");
-        await input(popup, "Collision policy").selectOption("error");
+        await selectValue(popup, "error");
         await popup.getByRole("button", { name: "Server preview" }).click();
         const readerPreviewResponse = await latestJson(
           harness.records,
           "/api/capture/clip/preview",
           "POST",
-          200
+          200,
+          5
         );
         const readerPreview = readerPreviewResponse.body as Record<
           string,
@@ -361,10 +427,13 @@ if (!enabled) {
         >;
         assertFourHashes(readerPreview);
         const readerJson = JSON.stringify(readerPreview);
+        const readerBody = (readerPreview.preview as Record<string, unknown>)
+          .body as string;
         expect(readerJson).toContain("Visible article heading");
         expect(readerJson).toContain("Visible quoted evidence");
         expect(readerJson).toContain("const visible = true;");
-        expect(readerJson).toContain("DANGEROUS_LINK_TEXT");
+        expect(readerBody).toContain("DANGEROUS\\_LINK\\_TEXT");
+        expect(readerBody).not.toContain("javascript:");
         for (const secret of EXCLUDED_SECRETS) {
           expect(readerJson).not.toContain(secret);
         }
@@ -373,7 +442,6 @@ if (!enabled) {
         popup = await exerciseClipperRecovery({
           context,
           extensionOrigin,
-          fixturePage,
           harness,
           popup,
           records: harness.records,

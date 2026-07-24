@@ -28,7 +28,7 @@ Preview and write are separate. Preview is non-mutating and server-owned. Write 
 
 - `POST /api/clipper/pair/start` creates a short-lived pairing request without granting access.
 - Same-origin Web UI `POST /api/clipper/pair/approve` visibly approves and binds the exact extension Origin.
-- One-time `GET /api/clipper/pair/:id` returns the scoped grant once; `POST /api/clipper/revoke` revokes it.
+- One-time `POST /api/clipper/pair/:id` returns the scoped grant once; `POST /api/clipper/revoke` revokes it.
 - `POST /api/capture/clip/preview` validates, canonicalizes, and returns the exact non-mutating preview, warnings, digest, and destination outcome.
 - `POST /api/capture/clip` accepts the versioned payload, preview digest, and idempotency key, then returns a closed versioned capture receipt: HTTP 200 for `opened_existing`, HTTP 202 for created/suffixed/overwritten outcomes, and HTTP 409 for a valid provenance-conflict receipt. Non-receipt failures use the closed clipper error body.
 - Gateway bearer identity and `gateway.enableWrite` never authorize clipping; clipper grants never authorize MCP or general REST.

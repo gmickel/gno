@@ -139,6 +139,41 @@ describe("clipper loopback boundary", () => {
     }
   });
 
+  test("allows an originless same-origin safe GET only when explicitly enabled", async () => {
+    const security = boundary();
+    const browserGet = request("GET", null, {
+      headers: { "sec-fetch-site": "same-origin" },
+    });
+    const allowed = await security.admit(browserGet, peerServer(), {
+      origin: { allowOriginlessSafeGet: true, kind: "same-origin" },
+    });
+    expect(allowed.ok).toBe(true);
+    if (allowed.ok) {
+      expect(allowed.value.origin).toBe(SAME_ORIGIN);
+      allowed.value.release();
+    }
+
+    for (const candidate of [
+      request("GET", null, {
+        headers: { "sec-fetch-site": "cross-site" },
+      }),
+      request("POST", null, {
+        body: "{}",
+        headers: { "sec-fetch-site": "same-origin" },
+      }),
+      request("GET", null, {
+        headers: { "sec-fetch-site": "same-origin" },
+        host: "attacker.example",
+      }),
+    ]) {
+      const denied = await security.admit(candidate, peerServer(), {
+        origin: { allowOriginlessSafeGet: true, kind: "same-origin" },
+      });
+      expect(denied.ok).toBe(false);
+      if (!denied.ok) expect(denied.response.status).toBe(403);
+    }
+  });
+
   test("accepts only an exact Chromium extension origin and enforces origin binding", async () => {
     expect(parseClipperExtensionOrigin(EXTENSION_ORIGIN)).toEqual({
       extensionId: EXTENSION_ID,
