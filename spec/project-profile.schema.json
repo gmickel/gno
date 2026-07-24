@@ -16,6 +16,7 @@
     "contexts": {
       "type": "array",
       "maxItems": 64,
+      "uniqueItems": true,
       "items": {
         "$ref": "#/definitions/context"
       },
@@ -24,6 +25,7 @@
     "contentTypes": {
       "type": "array",
       "maxItems": 64,
+      "uniqueItems": true,
       "items": {
         "$ref": "#/definitions/contentType"
       },
@@ -64,6 +66,36 @@
         {
           "not": {
             "type": "string",
+            "pattern": "(?:^|[\\\\/{,])\\.\\.(?=$|[\\\\/},])"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "^!"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "[<>:\"|\\u0000-\\u001f]"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "(?:^|[\\\\/])(?:[cC][oO][nN]|[pP][rR][nN]|[aA][uU][xX]|[nN][uU][lL]|[cC][oO][mM][1-9]|[lL][pP][tT][1-9])(?:\\.[^\\\\/]*)?(?:[\\\\/]|$)"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "(?:^|[\\\\/])(?:[^.\\\\/][^\\\\/]*|\\.[^\\\\/]+)[. ](?:[\\\\/]|$)"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
             "pattern": "(?:\\$\\{|\\$[A-Za-z_]|%[A-Za-z_][A-Za-z0-9_]*%)"
           }
         },
@@ -89,13 +121,13 @@
         {
           "not": {
             "type": "string",
-            "pattern": "(?:^|[\\\\/])\\.gno(?:[\\\\/]|$)"
+            "pattern": "(?:^|[\\\\/])\\.[gG][nN][oO](?:[\\\\/]|$)"
           }
         },
         {
           "not": {
             "type": "string",
-            "pattern": "\\.(?:db|sqlite|sqlite3|gguf|lock)$"
+            "pattern": "\\.(?:[dD][bB]|[sS][qQ][lL][iI][tT][eE](?:3)?|[gG][gG][uU][fF]|[lL][oO][cC][kK])$"
           }
         }
       ]
@@ -108,7 +140,7 @@
         {
           "not": {
             "type": "string",
-            "pattern": "(?:^|[\\\\/])\\.gno(?:[\\\\/]|$)|\\.(?:[dD][bB]|[sS][qQ][lL][iI][tT][eE](?:3)?|[gG][gG][uU][fF]|[lL][oO][cC][kK])$"
+            "pattern": "(?:^|[\\\\/])\\.[gG][nN][oO](?:[\\\\/]|$)|\\.(?:[dD][bB]|[sS][qQ][lL][iI][tT][eE](?:3)?|[gG][gG][uU][fF]|[lL][oO][cC][kK])$"
           }
         }
       ]
@@ -173,7 +205,17 @@
       "required": ["file"],
       "properties": {
         "file": {
-          "$ref": "#/definitions/portablePath"
+          "allOf": [
+            {
+              "$ref": "#/definitions/portablePath"
+            },
+            {
+              "not": {
+                "type": "string",
+                "pattern": "(?:^|[\\\\/])(?:\\.[eE][nN][vV](?:\\..*)?|[cC][rR][eE][dD][eE][nN][tT][iI][aA][lL][sS]?(?:\\..*)?|[iI][dD]_(?:[rR][sS][aA]|[dD][sS][aA]|[eE][cC][dD][sS][aA]|[eE][dD]25519)(?:\\..*)?|[sS][eE][cC][rR][eE][tT][sS]?(?:\\..*)?|[^\\\\/]+\\.(?:[kK][eE][yY]|[pP][eE][mM]|[pP]12|[pP][fF][xX]))$"
+              }
+            }
+          ]
         }
       }
     },

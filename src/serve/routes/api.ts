@@ -168,6 +168,7 @@ import { handleChanges, handleDiff, handleImpact } from "./changes";
 export interface ContextHolder {
   current: ServerContext;
   config: Config;
+  actualConfigPath?: string;
   scheduler: EmbedScheduler | null;
   eventBus: DocumentEventBus | null;
   watchService: CollectionWatchService | null;

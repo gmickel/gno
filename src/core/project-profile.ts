@@ -1,5 +1,5 @@
-// node:fs/promises provides realpath; Bun has no equivalent for symlink-safe path identity.
-import { realpath } from "node:fs/promises";
+// node:fs/promises provides realpath/stat; Bun has no equivalent for symlink-safe path identity and regular-file metadata.
+import { realpath, stat } from "node:fs/promises";
 // node:path provides cross-platform path operations; Bun has no path utilities.
 import { isAbsolute, relative, resolve, sep } from "node:path";
 
@@ -8,19 +8,39 @@ import type { Config, ModelPreset } from "../config/types";
 import { normalizeContentTypes } from "../config/content-types";
 import { createDefaultConfig } from "../config/defaults";
 import {
-  PROJECT_PROFILE_FINGERPRINT_DOMAIN,
   PROJECT_PROFILE_FORCED_EXCLUDES,
   PROJECT_PROFILE_SCHEMA_VERSION,
   type ProjectProfile,
-  ProjectProfileSchema,
 } from "../config/project-profile";
+import { parseModelUri } from "../llm/cache";
 import { getPreset } from "../llm/registry";
+import { canonicalOperationalPath } from "./config-write-lock";
+import {
+  canonicalProjectProfileJson,
+  compareCodeUnits,
+  fingerprintProjectProfileState,
+  normalizeLogicalPath,
+  projectProfileIncludePattern,
+  sha256,
+  sortedUnique,
+} from "./project-profile-canonical";
+import { parseProjectProfile } from "./project-profile-parser";
+
+export {
+  canonicalProjectProfileJson,
+  fingerprintProjectProfileState,
+  projectProfileIncludePattern,
+} from "./project-profile-canonical";
 export type ProjectProfileDiagnosticCode =
+  | "COLLECTION_ROOT_NOT_DIRECTORY"
   | "CONTEXT_FILE_INVALID"
+  | "CONTEXT_FILE_NOT_REGULAR"
+  | "CONTEXT_FILE_TOO_LARGE"
   | "CONTEXT_FILE_UNREADABLE"
   | "INVALID_PROFILE"
   | "MIGRATION_REQUIRED"
   | "MODEL_CACHE_CHECK_FAILED"
+  | "MODEL_PATH_OVERLAP"
   | "MODEL_PRESET_NOT_FOUND"
   | "MODEL_PRESET_UNAVAILABLE_OFFLINE"
   | "PATH_NOT_FOUND"
@@ -102,50 +122,7 @@ export interface ProjectProfileCompilerOptions {
   ) => Promise<boolean>;
 }
 
-const compareCodeUnits = (left: string, right: string): number =>
-  left < right ? -1 : left > right ? 1 : 0;
-
-const normalizeLogicalPath = (value: string): string => {
-  const normalized = value.replaceAll("\\", "/").replace(/^\.\//, "");
-  return normalized || ".";
-};
-
-const sortedUnique = (values: readonly string[]): string[] =>
-  [...new Set(values)].sort(compareCodeUnits);
-
-const canonicalize = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(canonicalize);
-  if (value !== null && typeof value === "object") {
-    const sorted: Record<string, unknown> = {};
-    for (const key of Object.keys(value).sort(compareCodeUnits)) {
-      const child = (value as Record<string, unknown>)[key];
-      if (child !== undefined) sorted[key] = canonicalize(child);
-    }
-    return sorted;
-  }
-  return value;
-};
-
-export const canonicalProjectProfileJson = (value: unknown): string =>
-  JSON.stringify(canonicalize(value));
-
-/** Encode one or more portable include globs into the config's single pattern. */
-export const projectProfileIncludePattern = (
-  include: readonly string[]
-): string =>
-  include.length === 1 ? (include[0] ?? "**/*") : `{${include.join(",")}}`;
-
-const sha256 = (value: string | Uint8Array): string =>
-  new Bun.CryptoHasher("sha256").update(value).digest("hex");
-
-export const fingerprintProjectProfileState = (
-  desiredState: ProjectProfileDesiredState
-): string =>
-  sha256(
-    `${PROJECT_PROFILE_FINGERPRINT_DOMAIN}${canonicalProjectProfileJson(
-      desiredState
-    )}`
-  );
+export const PROJECT_PROFILE_CONTEXT_FILE_MAX_BYTES = 65_536;
 
 const isContained = (parent: string, candidate: string): boolean => {
   const pathFromParent = relative(parent, candidate);
@@ -157,110 +134,24 @@ const isContained = (parent: string, candidate: string): boolean => {
   );
 };
 
-const zodPath = (segments: PropertyKey[]): string => {
-  let path = "";
-  for (const segment of segments) {
-    const value = String(segment);
-    path =
-      typeof segment === "number"
-        ? `${path}[${value}]`
-        : path
-          ? `${path}.${value}`
-          : value;
-  }
-  return path;
-};
-
-const versionDiagnostic = (
-  parsed: unknown
-): ProjectProfileDiagnostic | null => {
-  if (parsed === null || typeof parsed !== "object") {
-    return null;
-  }
-  if (!("schemaVersion" in parsed)) {
-    return {
-      code: "MIGRATION_REQUIRED",
-      severity: "error",
-      path: "schemaVersion",
-      message: `Project profile has no schemaVersion; migrate it to version ${PROJECT_PROFILE_SCHEMA_VERSION}.`,
-    };
-  }
-  const found = String(parsed.schemaVersion);
-  const match = /^(\d+)\.(\d+)$/.exec(found);
-  if (!match || match[1] !== "1") {
-    return {
-      code: "UNSUPPORTED_SCHEMA_MAJOR",
-      severity: "error",
-      path: "schemaVersion",
-      message: `Unsupported project profile major version "${found}"; expected 1.x.`,
-    };
-  }
-  if (found !== PROJECT_PROFILE_SCHEMA_VERSION) {
-    return {
-      code: "UNSUPPORTED_SCHEMA_MINOR",
-      severity: "error",
-      path: "schemaVersion",
-      message: `Project profile version "${found}" requires migration to supported version ${PROJECT_PROFILE_SCHEMA_VERSION}.`,
-    };
-  }
-  return null;
-};
-
-const parseProfile = (
-  yaml: string
-): CompileProjectProfileResult | ProjectProfile => {
-  let parsed: unknown;
-  try {
-    parsed = Bun.YAML.parse(yaml);
-  } catch {
-    return {
-      ok: false,
-      diagnostics: [
-        {
-          code: "INVALID_PROFILE",
-          severity: "error",
-          path: "",
-          message: "Project profile is not valid YAML.",
-        },
-      ],
-    };
-  }
-
-  const versionIssue = versionDiagnostic(parsed);
-  if (versionIssue) return { ok: false, diagnostics: [versionIssue] };
-
-  const result = ProjectProfileSchema.safeParse(parsed);
-  if (!result.success) {
-    return {
-      ok: false,
-      diagnostics: result.error.issues.map((issue) => {
-        const unsafePath = issue.message.startsWith("UNSAFE_PATH:");
-        return {
-          code: unsafePath ? "UNSAFE_PATH" : "INVALID_PROFILE",
-          severity: "error",
-          path: zodPath(issue.path),
-          message: unsafePath
-            ? issue.message.slice("UNSAFE_PATH:".length).trim()
-            : issue.message,
-        };
-      }),
-    };
-  }
-  return result.data;
-};
-
 const resolveContainedPath = async (
   profileRoot: string,
   logicalPath: string,
   diagnosticPath: string
 ): Promise<
-  | { ok: true; absolutePath: string }
+  | {
+      ok: true;
+      absolutePath: string;
+      metadata: Awaited<ReturnType<typeof stat>>;
+    }
   | { ok: false; diagnostic: ProjectProfileDiagnostic }
 > => {
   const candidate = resolve(profileRoot, normalizeLogicalPath(logicalPath));
   let absolutePath: string;
+  let metadata: Awaited<ReturnType<typeof stat>>;
   try {
     absolutePath = await realpath(candidate);
+    metadata = await stat(absolutePath);
   } catch {
     return {
       ok: false,
@@ -284,7 +175,7 @@ const resolveContainedPath = async (
       },
     };
   }
-  return { ok: true, absolutePath };
+  return { ok: true, absolutePath, metadata };
 };
 
 const modelUris = (
@@ -298,7 +189,8 @@ const modelUris = (
 
 const diagnoseModelPreset = async (
   profile: ProjectProfile,
-  options: ProjectProfileCompilerOptions
+  options: ProjectProfileCompilerOptions,
+  profileRoot: string
 ): Promise<ProjectProfileDiagnostic[]> => {
   const presetId = profile.collection.modelPreset;
   if (!presetId) return [];
@@ -312,6 +204,22 @@ const diagnoseModelPreset = async (
         message: `Model preset alias "${presetId}" is not configured.`,
       },
     ];
+  }
+  for (const [, uri] of modelUris(preset)) {
+    const parsed = parseModelUri(uri);
+    if (!parsed.ok || parsed.value.scheme !== "file") continue;
+    const modelPath = await canonicalOperationalPath(parsed.value.file);
+    if (isContained(profileRoot, modelPath)) {
+      return [
+        {
+          code: "MODEL_PATH_OVERLAP",
+          severity: "error",
+          path: "collection.modelPreset",
+          message:
+            "The selected model preset resolves runtime model state inside the project profile root.",
+        },
+      ];
+    }
   }
   if (!options.isModelAvailableOffline) return [];
 
@@ -347,7 +255,7 @@ export async function compileProjectProfileYaml(
   yaml: string,
   options: ProjectProfileCompilerOptions
 ): Promise<CompileProjectProfileResult> {
-  const parsed = parseProfile(yaml);
+  const parsed = parseProjectProfile(yaml);
   if ("ok" in parsed) return parsed;
   const profile = parsed;
   const diagnostics: ProjectProfileDiagnostic[] = [];
@@ -375,6 +283,14 @@ export async function compileProjectProfileYaml(
     "collection.root"
   );
   if (!collectionRoot.ok) diagnostics.push(collectionRoot.diagnostic);
+  else if (!collectionRoot.metadata.isDirectory()) {
+    diagnostics.push({
+      code: "COLLECTION_ROOT_NOT_DIRECTORY",
+      severity: "error",
+      path: "collection.root",
+      message: "The collection root must resolve to a directory.",
+    });
+  }
 
   const contexts: ProjectProfileContextState[] = [];
   const contextFiles: ResolvedProjectProfilePaths["contextFiles"] = [];
@@ -398,10 +314,30 @@ export async function compileProjectProfileYaml(
       diagnostics.push(resolved.diagnostic);
       continue;
     }
+    if (!resolved.metadata.isFile()) {
+      diagnostics.push({
+        code: "CONTEXT_FILE_NOT_REGULAR",
+        severity: "error",
+        path: `contexts[${index}].file`,
+        message: "Context input must resolve to a regular file.",
+      });
+      continue;
+    }
+    if (resolved.metadata.size > PROJECT_PROFILE_CONTEXT_FILE_MAX_BYTES) {
+      diagnostics.push({
+        code: "CONTEXT_FILE_TOO_LARGE",
+        severity: "error",
+        path: `contexts[${index}].file`,
+        message: `Context file exceeds ${PROJECT_PROFILE_CONTEXT_FILE_MAX_BYTES} bytes.`,
+      });
+      continue;
+    }
     let bytes: Uint8Array;
     try {
       bytes = new Uint8Array(
-        await Bun.file(resolved.absolutePath).arrayBuffer()
+        await Bun.file(resolved.absolutePath)
+          .slice(0, PROJECT_PROFILE_CONTEXT_FILE_MAX_BYTES + 1)
+          .arrayBuffer()
       );
     } catch {
       diagnostics.push({
@@ -409,6 +345,15 @@ export async function compileProjectProfileYaml(
         severity: "error",
         path: `contexts[${index}].file`,
         message: "Context file could not be read.",
+      });
+      continue;
+    }
+    if (bytes.byteLength > PROJECT_PROFILE_CONTEXT_FILE_MAX_BYTES) {
+      diagnostics.push({
+        code: "CONTEXT_FILE_TOO_LARGE",
+        severity: "error",
+        path: `contexts[${index}].file`,
+        message: `Context file exceeds ${PROJECT_PROFILE_CONTEXT_FILE_MAX_BYTES} bytes.`,
       });
       continue;
     }
@@ -437,7 +382,9 @@ export async function compileProjectProfileYaml(
     });
   }
 
-  diagnostics.push(...(await diagnoseModelPreset(profile, options)));
+  diagnostics.push(
+    ...(await diagnoseModelPreset(profile, options, profileRoot))
+  );
   if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
     return { ok: false, diagnostics };
   }

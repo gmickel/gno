@@ -528,6 +528,27 @@ export class ModelCache {
   }
 
   /**
+   * Read-only availability probe for inspection commands.
+   *
+   * Unlike isCached(), this never repairs manifest entries or removes invalid
+   * files. It is safe for commands whose contract forbids local mutation.
+   */
+  async isCachedReadOnly(uri: string): Promise<boolean> {
+    const parsed = parseModelUri(uri);
+    if (!parsed.ok) return false;
+    if (parsed.value.scheme === "file") {
+      const validation = await validateGgufFile(parsed.value.file, uri, "user");
+      return validation.ok;
+    }
+
+    const manifest = await this.readManifestFromDisk();
+    const entry = manifest.models.find((model) => model.uri === uri);
+    if (!entry || !(await this.fileExists(entry.path))) return false;
+    const validation = await validateGgufFile(entry.path, uri, "cache");
+    return validation.ok;
+  }
+
+  /**
    * Get cached/available path for a URI.
    * For file: URIs, returns path if file exists.
    * For hf: URIs, checks the manifest.

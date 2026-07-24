@@ -27,6 +27,10 @@ import {
   validateProjectProfileRuntimePaths,
 } from "../../core/project-profile-apply";
 import { discoverProjectProfile } from "../../core/project-profile-discovery";
+import {
+  ProjectProfileFileError,
+  readProjectProfileFile,
+} from "../../core/project-profile-file";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 import {
   compilerDiagnostic,
@@ -111,7 +115,11 @@ export async function runProjectProfileApplyCommand(
         discovery.summary,
         discoveryDiagnostics
       ),
-      exitCode: 1,
+      exitCode: discoveryDiagnostics.some(
+        (diagnostic) => diagnostic.code === "PROFILE_DISCOVERY_FAILED"
+      )
+        ? 2
+        : 1,
     };
   }
   if (!(discovery.profilePath && discovery.profileRoot)) {
@@ -132,22 +140,27 @@ export async function runProjectProfileApplyCommand(
 
   let profileYaml: string;
   try {
-    profileYaml = await (
-      options.readProfileFn ?? ((path: string) => Bun.file(path).text())
-    )(discovery.profilePath);
-  } catch {
+    profileYaml = await (options.readProfileFn ?? readProjectProfileFile)(
+      discovery.profilePath
+    );
+  } catch (error) {
+    const invalidFile = error instanceof ProjectProfileFileError ? error : null;
     return {
       result: failedApplyResult("failed", discovery.summary, [
         ...discoveryDiagnostics,
         {
-          code: "PROFILE_READ_FAILED",
+          code: invalidFile?.code ?? "PROFILE_READ_FAILED",
           severity: "error",
           path: ".gno/index.yml",
-          message: "The selected project profile could not be read.",
-          remediation: "Repair local file permissions and retry.",
+          message:
+            invalidFile?.message ??
+            "The selected project profile could not be read.",
+          remediation: invalidFile
+            ? "Reduce or repair .gno/index.yml and retry."
+            : "Repair local file permissions and retry.",
         },
       ]),
-      exitCode: 2,
+      exitCode: invalidFile ? 1 : 2,
     };
   }
 
@@ -165,6 +178,7 @@ export async function runProjectProfileApplyCommand(
     [
       { label: "Config", path: configPath },
       { label: "User data directory", path: dataDir },
+      { label: "Model cache directory", path: paths.cacheDir },
       { label: "Index database", path: indexPath },
     ]
   );
@@ -226,7 +240,10 @@ export async function runProjectProfileApplyCommand(
       configPath,
       dataDir,
       store,
-      runtimePaths: [{ label: "Index database", path: indexPath }],
+      runtimePaths: [
+        { label: "Model cache directory", path: paths.cacheDir },
+        { label: "Index database", path: indexPath },
+      ],
     });
     if (!applied.ok) {
       const diagnostics = [

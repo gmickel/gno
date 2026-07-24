@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import projectProfileJsonSchema from "../../spec/project-profile.schema.json";
+import { createDefaultConfig } from "../../src/config/defaults";
 import {
   PROJECT_PROFILE_FINGERPRINT_DOMAIN,
   ProjectProfileSchema,
@@ -15,6 +16,8 @@ import {
 import {
   canonicalProjectProfileJson,
   compileProjectProfileYaml,
+  PROJECT_PROFILE_CONTEXT_FILE_MAX_BYTES,
+  projectProfileIncludePattern,
 } from "../../src/core/project-profile";
 import { safeRm } from "../helpers/cleanup";
 
@@ -133,6 +136,98 @@ describe("project profile schema", () => {
       ).toBe(false);
     }
   });
+
+  test.each([
+    [
+      "duplicate include",
+      { collection: { name: "notes", include: ["**/*.md", "**/*.md"] } },
+    ],
+    [
+      "duplicate exclude",
+      { collection: { name: "notes", exclude: ["dist", "dist"] } },
+    ],
+    [
+      "duplicate context",
+      {
+        collection: { name: "notes" },
+        contexts: [{ text: "same" }, { text: "same" }],
+      },
+    ],
+    [
+      "uppercase runtime directory",
+      { collection: { name: "notes", root: ".GNO/state" } },
+    ],
+    [
+      "uppercase runtime model",
+      { collection: { name: "notes", include: ["models/EMBED.GGUF"] } },
+    ],
+    [
+      "brace traversal",
+      { collection: { name: "notes", include: ["docs/{safe,../private}/**"] } },
+    ],
+    [
+      "Windows reserved name",
+      { collection: { name: "notes", root: "docs/CON" } },
+    ],
+    [
+      "Windows reserved extension",
+      { collection: { name: "notes", root: "docs/aux.txt" } },
+    ],
+    [
+      "Windows invalid colon",
+      { collection: { name: "notes", root: "docs/a:b" } },
+    ],
+    [
+      "Windows trailing dot",
+      { collection: { name: "notes", root: "docs/name." } },
+    ],
+    [
+      "Windows trailing space",
+      { collection: { name: "notes", root: "docs/name " } },
+    ],
+    [
+      "secret context path",
+      {
+        collection: { name: "notes" },
+        contexts: [{ file: "config/.env.local" }],
+      },
+    ],
+  ])("keeps Zod and Draft-07 parity for %s", (_label, partial) => {
+    const candidate = { schemaVersion: "1.0", ...partial };
+    expect(ProjectProfileSchema.safeParse(candidate).success).toBe(false);
+    expect(validateJsonSchema(candidate)).toBe(false);
+  });
+
+  test("rejects duplicate content-type IDs even when the rules differ", () => {
+    const candidate = {
+      schemaVersion: "1.0",
+      collection: { name: "notes" },
+      contentTypes: [
+        { id: "people", prefixes: ["people"], preset: "person" },
+        { id: "people", prefixes: ["team"], preset: "meeting" },
+      ],
+    };
+    const result = ProjectProfileSchema.safeParse(candidate);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({ path: ["contentTypes", 1, "id"] })
+      );
+    }
+  });
+
+  test("escapes outer union commas while preserving nested brace globs", () => {
+    const pattern = projectProfileIncludePattern([
+      "docs/a,b.md",
+      "src/*.{ts,tsx}",
+    ]);
+    expect(pattern).toBe("{docs/a\\,b.md,src/*.{ts,tsx}}");
+    const glob = new Bun.Glob(pattern);
+    expect(glob.match("docs/a,b.md")).toBe(true);
+    expect(glob.match("docs/a.md")).toBe(false);
+    expect(glob.match("src/app.ts")).toBe(true);
+    expect(glob.match("src/app.tsx")).toBe(true);
+  });
 });
 
 describe("project profile compiler", () => {
@@ -232,6 +327,58 @@ contexts:
     });
   });
 
+  test("rejects secret, non-regular, and oversized context files before reading", async () => {
+    const root = await makeRoot("context-safety");
+    await mkdir(join(root, "guidance"), { recursive: true });
+    await Bun.write(
+      join(root, "large.txt"),
+      "x".repeat(PROJECT_PROFILE_CONTEXT_FILE_MAX_BYTES + 1)
+    );
+
+    const cases = [
+      {
+        file: ".env",
+        code: "UNSAFE_PATH",
+      },
+      {
+        file: "guidance",
+        code: "CONTEXT_FILE_NOT_REGULAR",
+      },
+      {
+        file: "large.txt",
+        code: "CONTEXT_FILE_TOO_LARGE",
+      },
+    ] as const;
+    for (const item of cases) {
+      const result = await compile(
+        `schemaVersion: "1.0"\ncollection: { name: notes }\ncontexts:\n  - file: "${item.file}"\n`,
+        root
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        diagnostics: [
+          expect.objectContaining({
+            code: item.code,
+            path: "contexts[0].file",
+          }),
+        ],
+      });
+    }
+  });
+
+  test("accepts a regular UTF-8 context at the exact byte limit", async () => {
+    const root = await makeRoot("context-limit");
+    await Bun.write(
+      join(root, "limit.txt"),
+      "x".repeat(PROJECT_PROFILE_CONTEXT_FILE_MAX_BYTES)
+    );
+    const result = await compile(
+      'schemaVersion: "1.0"\ncollection: { name: notes }\ncontexts:\n  - file: limit.txt\n',
+      root
+    );
+    expect(result.ok).toBe(true);
+  });
+
   test.each([
     [
       `schemaVersion: "2.0"\ncollection: { name: notes }\n`,
@@ -296,6 +443,46 @@ collection: { name: notes, modelPreset: missing }
           .sort((a, b) => a.path.localeCompare(b.path))
       )
     );
+  });
+
+  test("rejects file-backed models stored inside the profile root", async () => {
+    const root = await makeRoot("model-overlap");
+    const modelPath = join(root, "models", "embed.gguf");
+    await mkdir(join(root, "models"), { recursive: true });
+    await Bun.write(modelPath, "GGUF");
+    const config = createDefaultConfig();
+    config.models = {
+      activePreset: "local",
+      presets: [
+        {
+          id: "local",
+          name: "Local",
+          embed: `file:${modelPath}`,
+          rerank: "hf:owner/rerank/rerank.gguf",
+          expand: "hf:owner/expand/expand.gguf",
+          gen: "hf:owner/gen/gen.gguf",
+        },
+      ],
+      loadTimeout: 60_000,
+      inferenceTimeout: 30_000,
+      expandContextSize: 2_048,
+      warmModelTtl: 300_000,
+    };
+
+    const result = await compileProjectProfileYaml(
+      'schemaVersion: "1.0"\ncollection: { name: notes, modelPreset: local }\n',
+      { profileRoot: root, config }
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: [
+        expect.objectContaining({
+          code: "MODEL_PATH_OVERLAP",
+          path: "collection.modelPreset",
+        }),
+      ],
+    });
   });
 
   test("does not resolve environment expansion before validation", async () => {

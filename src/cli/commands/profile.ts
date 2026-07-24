@@ -30,6 +30,10 @@ import {
   discoverProjectProfile,
   type ProjectProfileDiscoveryDiagnostic,
 } from "../../core/project-profile-discovery";
+import {
+  ProjectProfileFileError,
+  readProjectProfileFile,
+} from "../../core/project-profile-file";
 import { ModelCache } from "../../llm/cache";
 
 export const PROJECT_PROFILE_COMMAND_SCHEMA_VERSION = "1.0" as const;
@@ -201,8 +205,7 @@ const loadProfileConfig = async (
   };
 };
 
-const defaultReadProfile = (path: string): Promise<string> =>
-  Bun.file(path).text();
+const defaultReadProfile = readProjectProfileFile;
 
 /**
  * Execute one read-only profile command and return a classified exit code.
@@ -233,7 +236,11 @@ export async function runProjectProfileCommand(
         discovery.summary,
         discoveryDiagnostics
       ),
-      exitCode: 1,
+      exitCode: discoveryDiagnostics.some(
+        (diagnostic) => diagnostic.code === "PROFILE_DISCOVERY_FAILED"
+      )
+        ? 2
+        : 1,
     };
   }
   if (!(discovery.profilePath && discovery.profileRoot)) {
@@ -275,7 +282,8 @@ export async function runProjectProfileCommand(
     yaml = await (options.readProfileFn ?? defaultReadProfile)(
       discovery.profilePath
     );
-  } catch {
+  } catch (error) {
+    const invalidFile = error instanceof ProjectProfileFileError ? error : null;
     return {
       result: resultWithoutProfile(
         options.command,
@@ -284,15 +292,19 @@ export async function runProjectProfileCommand(
         [
           ...discoveryDiagnostics,
           {
-            code: "PROFILE_READ_FAILED",
+            code: invalidFile?.code ?? "PROFILE_READ_FAILED",
             severity: "error",
             path: ".gno/index.yml",
-            message: "The selected project profile could not be read.",
-            remediation: "Repair local file permissions and retry.",
+            message:
+              invalidFile?.message ??
+              "The selected project profile could not be read.",
+            remediation: invalidFile
+              ? "Reduce or repair .gno/index.yml and retry."
+              : "Repair local file permissions and retry.",
           },
         ]
       ),
-      exitCode: 2,
+      exitCode: invalidFile ? 1 : 2,
     };
   }
 
@@ -301,7 +313,7 @@ export async function runProjectProfileCommand(
     : null;
   const offlineAvailability =
     options.isModelAvailableOffline ??
-    (modelCache ? modelCache.isCached.bind(modelCache) : undefined);
+    (modelCache ? modelCache.isCachedReadOnly.bind(modelCache) : undefined);
   const compiled = await compileProjectProfileYaml(yaml, {
     profileRoot: discovery.profileRoot,
     config: configResult.config,

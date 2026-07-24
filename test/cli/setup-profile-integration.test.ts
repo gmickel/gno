@@ -195,4 +195,56 @@ describe("setup project-profile integration", () => {
     });
     assertValid(absentParsed, await loadSchema("setup-profile-result"));
   });
+
+  test("rejects explicit setup overrides when applying a valid profile", async () => {
+    const { project, nested } = await createHarness("option-conflict");
+    await writeFile(
+      join(project, ".gno", "index.yml"),
+      [
+        'schemaVersion: "1.0"',
+        "collection:",
+        "  name: profiled",
+        "  root: docs",
+        '  include: ["**/*.md"]',
+        "contexts: []",
+        "contentTypes: []",
+        "affinityDefaults: { enabled: true, contribution: 0.01 }",
+        "",
+      ].join("\n")
+    );
+
+    for (const override of [
+      ["--name", "override"],
+      ["--exclude", "private"],
+    ]) {
+      const result = await cli(
+        "setup",
+        nested,
+        "--apply-profile",
+        ...override,
+        "--no-semantic",
+        "--json"
+      );
+      expect(result.code).toBe(1);
+      const parsed = JSON.parse(result.stdout);
+      expect(parsed).toMatchObject({
+        status: "failed",
+        profile: {
+          check: { status: "valid" },
+          apply: null,
+        },
+        setup: {
+          status: "failed",
+          lexical: {
+            error: { code: "profile_option_conflict" },
+          },
+        },
+      });
+      assertValid(parsed, await loadSchema("setup-profile-result"));
+    }
+    expect(await loadConfig()).toMatchObject({
+      ok: false,
+      error: { code: "NOT_FOUND" },
+    });
+  });
 });

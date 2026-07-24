@@ -92,10 +92,12 @@ retrievalTraces:
 
 ## Project affinity
 
-`projectAffinity.enabled` defaults to `true`. Set it to `false` to disable the
-trusted local CLI signal globally; callers can also use
-`--no-project-affinity` per request. `projectAffinity.contribution` defaults to
-`0.03` and must stay within `0..0.03`.
+`projectAffinity.enabled` defaults to `true` and controls only the fallback
+cwd-derived signal from user config. Set it to `false` to disable that fallback.
+Explicit `--project-root` values and a valid nearest project profile retain
+their higher-precedence request-local behavior. Use `--no-project-affinity` to
+disable every affinity source for one request. `projectAffinity.contribution`
+defaults to `0.03` and must stay within `0..0.03`.
 
 Only canonicalized local CLI roots can match configured collection paths.
 Explicit `--project-root` values replace profile/cwd inference. When no

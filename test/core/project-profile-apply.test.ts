@@ -9,6 +9,7 @@ import { join } from "node:path";
 import type { Config } from "../../src/config/types";
 import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
+import { getIndexDbPath } from "../../src/app/constants";
 import { createDefaultConfig } from "../../src/config/defaults";
 import { loadConfigFromPath } from "../../src/config/loader";
 import { saveConfigToPath } from "../../src/config/saver";
@@ -16,6 +17,7 @@ import {
   applyProjectProfile,
   type ProjectProfileApplyReceipt,
 } from "../../src/core/project-profile-apply";
+import { SqliteAdapter as RealSqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 
 const tempRoots: string[] = [];
@@ -57,6 +59,14 @@ function createStoreProbe(): StoreProbe {
         return { ok: true, value: undefined };
       },
       syncContexts: async (contexts: Config["contexts"]) => {
+        contextSyncs.push(structuredClone(contexts));
+        return { ok: true, value: undefined };
+      },
+      upsertCollections: async (collections: Config["collections"]) => {
+        collectionSyncs.push(structuredClone(collections));
+        return { ok: true, value: undefined };
+      },
+      upsertContexts: async (contexts: Config["contexts"]) => {
         contextSyncs.push(structuredClone(contexts));
         return { ok: true, value: undefined };
       },
@@ -240,6 +250,102 @@ describe("applyProjectProfile", () => {
     ]);
     expect(afterRemoval.contexts).toEqual(saved.contexts);
     expect(afterRemoval.contentTypes).toEqual(saved.contentTypes);
+  });
+
+  test("additively projects into a real store without deleting DB-only indexed state", async () => {
+    const fixture = await createFixture("real-store-preserve");
+    const store = new RealSqliteAdapter();
+    const dbPath = getIndexDbPath("default", {
+      config: join(fixture.root, "runtime", "config"),
+      data: fixture.dataDir,
+      cache: join(fixture.root, "runtime", "cache"),
+    });
+    await mkdir(fixture.dataDir, { recursive: true });
+    const opened = await store.open(dbPath, "unicode61");
+    expect(opened.ok).toBe(true);
+    expect(
+      (
+        await store.syncCollections([
+          {
+            name: "recovery",
+            path: join(fixture.root, "recovery"),
+            pattern: "**/*",
+            include: [],
+            exclude: [],
+          },
+        ])
+      ).ok
+    ).toBe(true);
+    expect(
+      (
+        await store.syncContexts([
+          {
+            scopeType: "collection",
+            scopeKey: "recovery:",
+            text: "Recovery context",
+          },
+        ])
+      ).ok
+    ).toBe(true);
+    const document = await store.upsertDocument({
+      collection: "recovery",
+      relPath: "evidence.md",
+      sourceHash: "a".repeat(64),
+      sourceMime: "text/markdown",
+      sourceExt: ".md",
+      sourceSize: 24,
+      sourceMtime: "2026-07-24T00:00:00.000Z",
+      title: "Recovery evidence",
+      mirrorHash: "b".repeat(64),
+      converterId: "native/markdown",
+      converterVersion: "1.0.0",
+      contentTypeSource: "default",
+    });
+    expect(document.ok).toBe(true);
+
+    try {
+      const applied = await applyProjectProfile({
+        profileYaml: PROFILE.replace(
+          "  - text: Project context.",
+          "  - text: Project context.\n  - text: Secondary context."
+        ),
+        profileRoot: fixture.project,
+        configPath: fixture.configPath,
+        dataDir: fixture.dataDir,
+        store,
+        runtimePaths: [{ label: "Index database", path: dbPath }],
+      });
+      expect(applied.ok).toBe(true);
+
+      const collections = await store.getCollections();
+      expect(collections.ok).toBe(true);
+      if (collections.ok) {
+        expect(collections.value.map((item) => item.name).sort()).toEqual([
+          "notes",
+          "recovery",
+        ]);
+      }
+      const contexts = await store.getContexts();
+      expect(contexts.ok).toBe(true);
+      if (contexts.ok) {
+        expect(
+          contexts.value
+            .filter((item) => item.scopeKey === "notes:")
+            .map((item) => item.text)
+            .sort()
+        ).toEqual(["Project context.", "Secondary context."]);
+        expect(contexts.value).toContainEqual(
+          expect.objectContaining({
+            scopeKey: "recovery:",
+            text: "Recovery context",
+          })
+        );
+      }
+      const preserved = await store.getDocument("recovery", "evidence.md");
+      expect(preserved.ok && preserved.value?.title).toBe("Recovery evidence");
+    } finally {
+      await store.close();
+    }
   });
 
   test("repairs a stale same-name root while retaining the old index identity", async () => {

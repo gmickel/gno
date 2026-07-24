@@ -68,7 +68,7 @@ describe("SqliteAdapter", () => {
       expect(result.value.applied).toContain(2);
       expect(result.value.applied).toContain(3);
       expect(result.value.applied).toContain(4);
-      expect(result.value.currentVersion).toBe(20);
+      expect(result.value.currentVersion).toBe(21);
       expect(result.value.ftsTokenizer).toBe("unicode61");
     });
 
@@ -86,7 +86,7 @@ describe("SqliteAdapter", () => {
       }
 
       expect(result.value.applied).toHaveLength(0);
-      expect(result.value.currentVersion).toBe(20);
+      expect(result.value.currentVersion).toBe(21);
     });
 
     test("rejects tokenizer mismatch", async () => {
@@ -353,6 +353,35 @@ describe("SqliteAdapter", () => {
 
       const global = getResult.value.find((c) => c.scopeType === "global");
       expect(global?.text).toBe("Global context");
+    });
+
+    test("preserves multiple texts at one scope and dedupes exact tuples", async () => {
+      const contexts: Context[] = [
+        {
+          scopeType: "collection",
+          scopeKey: "notes:",
+          text: "First context",
+        },
+        {
+          scopeType: "collection",
+          scopeKey: "notes:",
+          text: "Second context",
+        },
+        {
+          scopeType: "collection",
+          scopeKey: "notes:",
+          text: "First context",
+        },
+      ];
+
+      expect((await adapter.syncContexts(contexts)).ok).toBe(true);
+      const result = await adapter.getContexts();
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.map((context) => context.text).sort()).toEqual([
+        "First context",
+        "Second context",
+      ]);
     });
   });
 
@@ -1186,7 +1215,7 @@ describe("SqliteAdapter", () => {
         return;
       }
 
-      expect(result.value.version).toBe("20");
+      expect(result.value.version).toBe("21");
       expect(result.value.ftsTokenizer).toBe("unicode61");
       expect(result.value.dbPath).toBe(dbPath);
       expect(result.value.totalDocuments).toBe(1);

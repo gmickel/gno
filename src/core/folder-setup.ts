@@ -12,6 +12,7 @@ import { DEFAULT_EXCLUDES, loadConfig } from "../config";
 import { defaultSyncService, withContentTypeRules } from "../ingestion";
 import { verifyLexicalActivation } from "./activation-verifier";
 import { applyConfigChange } from "./config-mutation";
+import { getConfigWriteLockPath } from "./config-write-lock";
 import {
   type CollectionSelection,
   type FolderSetupError,
@@ -149,7 +150,7 @@ export async function setupFolder(
     indexName: storeIdentity.indexName,
     folderRealpath: folder,
   });
-  const configLockPath = `${options.configPath}.setup.lock`;
+  const configLockPath = await getConfigWriteLockPath(options.configPath);
   const unsafeOutput = await validateSetupOutputPaths(folder, [
     { label: "Data directory", path: options.dataDir },
     { label: "Setup receipt", path: receiptPath },
@@ -250,7 +251,6 @@ export async function setupFolder(
       {
         store: options.store,
         configPath: options.configPath,
-        writeLockPath: configLockPath,
         onConfigUpdated: (config) => {
           activeConfig = config;
         },

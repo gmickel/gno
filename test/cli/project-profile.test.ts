@@ -86,6 +86,8 @@ const createProfileApplyStore = (): SqliteAdapter =>
     close: async () => undefined,
     syncCollections: async () => ({ ok: true, value: undefined }),
     syncContexts: async () => ({ ok: true, value: undefined }),
+    upsertCollections: async () => ({ ok: true, value: undefined }),
+    upsertContexts: async () => ({ ok: true, value: undefined }),
   }) as unknown as SqliteAdapter;
 
 const captureCli = async (
@@ -456,6 +458,32 @@ describe("project profile check/show/diff", () => {
     );
   });
 
+  test("classifies discovery I/O as exit 2 and missing explicit input as exit 1", async () => {
+    const root = await makeRoot("discovery-exit");
+    const inaccessible = await runProjectProfileCommand({
+      command: "check",
+      path: root,
+      discoveryDependencies: {
+        stat: async () => {
+          throw Object.assign(new Error("denied"), { code: "EACCES" });
+        },
+      },
+    });
+    expect(inaccessible.exitCode).toBe(2);
+    expect(inaccessible.result.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "PROFILE_DISCOVERY_FAILED" })
+    );
+
+    const missing = await runProjectProfileCommand({
+      command: "check",
+      path: join(root, "missing"),
+    });
+    expect(missing.exitCode).toBe(1);
+    expect(missing.result.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "PROFILE_NOT_FOUND" })
+    );
+  });
+
   test("diff exposes stale repair/removal choices without applying either", async () => {
     const root = await makeRoot("stale");
     await writeProfile(root);
@@ -614,6 +642,34 @@ describe("project profile check/show/diff", () => {
       diagnostics: [{ code: "RUNTIME_PATH_OVERLAP" }],
     });
     assertValid(parsed, await loadSchema("project-profile-apply"));
+    expect(await Bun.file(join(runtime, "data")).exists()).toBe(false);
+  });
+
+  test("profile apply rejects an in-repository model cache boundary", async () => {
+    const fixture = await makeRoot("apply-cache-overlap");
+    const project = join(fixture, "project");
+    await mkdir(project);
+    await writeProfile(project);
+    const runtime = join(fixture, "runtime");
+    process.env.GNO_CONFIG_DIR = join(runtime, "config");
+    process.env.GNO_DATA_DIR = join(runtime, "data");
+    process.env.GNO_CACHE_DIR = join(project, ".gno", "cache");
+
+    const output = await captureCli(["profile", "apply", project, "--json"]);
+
+    expect(output.code).toBe(1);
+    expect(JSON.parse(output.stdout)).toMatchObject({
+      status: "invalid",
+      applied: false,
+      diagnostics: [
+        expect.objectContaining({
+          code: "RUNTIME_PATH_OVERLAP",
+          path: "runtime",
+          message:
+            "Model cache directory must remain outside the project profile root.",
+        }),
+      ],
+    });
     expect(await Bun.file(join(runtime, "data")).exists()).toBe(false);
   });
 });

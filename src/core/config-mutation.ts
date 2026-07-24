@@ -9,10 +9,12 @@ import type { SqliteAdapter } from "../store/sqlite/adapter";
 
 import {
   formatConfigWarnings,
+  getConfigPaths,
   loadConfig,
   normalizeConfigContentTypes,
   saveConfig,
 } from "../config";
+import { resolveConfigWriteTarget } from "./config-write-lock";
 import { withWriteLock } from "./file-lock";
 
 export interface ConfigMutationContext {
@@ -25,11 +27,14 @@ export interface ConfigMutationContext {
   createConfigIfMissing?: () => Config;
   onConfigUpdated: (config: Config) => void;
   /**
-   * Optional cross-process serialization boundary. The in-memory mutex remains
-   * authoritative within one process; callers sharing a config across
-   * processes must additionally share this OS-backed lock path.
+   * Optional targeted store projection. The default reconciles the complete
+   * config. Create/update-only callers can project a bounded subset without
+   * deleting DB-only recovery state.
    */
-  writeLockPath?: string;
+  projectStore?: (
+    store: SqliteAdapter,
+    config: Config
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
   /**
    * Runs after the selected config is durably present and before store projection.
    * Setup recovery uses this boundary to persist a truthful resumable receipt.
@@ -69,8 +74,11 @@ export async function applyConfigChange<T = void>(
   try {
     await previousMutex;
 
+    const requestedConfigPath = ctx.configPath ?? getConfigPaths().configFile;
+    const writeTarget = await resolveConfigWriteTarget(requestedConfigPath);
+    const selectedConfigPath = writeTarget.configPath;
     const applyFreshConfigChange = async (): Promise<ApplyConfigResult<T>> => {
-      const loadResult = await loadConfig(ctx.configPath);
+      const loadResult = await loadConfig(selectedConfigPath);
       if (
         !loadResult.ok &&
         !(loadResult.error.code === "NOT_FOUND" && ctx.createConfigIfMissing)
@@ -112,7 +120,7 @@ export async function applyConfigChange<T = void>(
       }
       const newConfig = normalized.config;
       if (!mutationResult.skipSave) {
-        const saveResult = await saveConfig(newConfig, ctx.configPath);
+        const saveResult = await saveConfig(newConfig, selectedConfigPath);
         if (!saveResult.ok) {
           return {
             ok: false,
@@ -124,32 +132,44 @@ export async function applyConfigChange<T = void>(
 
       await ctx.afterConfigSaved?.(newConfig);
 
-      const syncCollResult = await ctx.store.syncCollections(
-        newConfig.collections
-      );
-      if (!syncCollResult.ok) {
-        console.warn(
-          `Config saved but DB sync failed: ${syncCollResult.error.message}`
+      if (ctx.projectStore) {
+        const projection = await ctx.projectStore(ctx.store, newConfig);
+        if (!projection.ok) {
+          console.warn(`Config saved but DB sync failed: ${projection.error}`);
+          return {
+            ok: false,
+            error: `DB sync failed: ${projection.error}`,
+            code: "SYNC_ERROR",
+          };
+        }
+      } else {
+        const syncCollResult = await ctx.store.syncCollections(
+          newConfig.collections
         );
-        return {
-          ok: false,
-          error: `DB sync failed: ${syncCollResult.error.message}`,
-          code: "SYNC_ERROR",
-        };
-      }
+        if (!syncCollResult.ok) {
+          console.warn(
+            `Config saved but DB sync failed: ${syncCollResult.error.message}`
+          );
+          return {
+            ok: false,
+            error: `DB sync failed: ${syncCollResult.error.message}`,
+            code: "SYNC_ERROR",
+          };
+        }
 
-      const syncCtxResult = await ctx.store.syncContexts(
-        newConfig.contexts ?? []
-      );
-      if (!syncCtxResult.ok) {
-        console.warn(
-          `Config saved but context sync failed: ${syncCtxResult.error.message}`
+        const syncCtxResult = await ctx.store.syncContexts(
+          newConfig.contexts ?? []
         );
-        return {
-          ok: false,
-          error: `Context sync failed: ${syncCtxResult.error.message}`,
-          code: "SYNC_ERROR",
-        };
+        if (!syncCtxResult.ok) {
+          console.warn(
+            `Config saved but context sync failed: ${syncCtxResult.error.message}`
+          );
+          return {
+            ok: false,
+            error: `Context sync failed: ${syncCtxResult.error.message}`,
+            code: "SYNC_ERROR",
+          };
+        }
       }
 
       await ctx.afterStoreSynced?.(newConfig);
@@ -158,11 +178,8 @@ export async function applyConfigChange<T = void>(
       return { ok: true, config: newConfig, value: mutationResult.value };
     };
 
-    if (!ctx.writeLockPath) {
-      return await applyFreshConfigChange();
-    }
     try {
-      return await withWriteLock(ctx.writeLockPath, applyFreshConfigChange);
+      return await withWriteLock(writeTarget.lockPath, applyFreshConfigChange);
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("LOCKED:")) {
         return { ok: false, error: error.message, code: "LOCKED" };

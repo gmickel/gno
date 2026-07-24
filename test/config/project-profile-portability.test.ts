@@ -45,6 +45,8 @@ function storeStub(): SqliteAdapter {
   return {
     syncCollections: async () => ({ ok: true, value: undefined }),
     syncContexts: async () => ({ ok: true, value: undefined }),
+    upsertCollections: async () => ({ ok: true, value: undefined }),
+    upsertContexts: async () => ({ ok: true, value: undefined }),
   } as unknown as SqliteAdapter;
 }
 

@@ -240,6 +240,7 @@ export async function startResidentRuntime(
   const ctxHolder: ContextHolder = {
     current: ctx,
     config: initialConfig,
+    actualConfigPath,
     scheduler: null,
     eventBus: options.eventBus ?? null,
     watchService: null,

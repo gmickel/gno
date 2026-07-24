@@ -10,15 +10,7 @@
 // node:fs/promises provides realpath; Bun has no equivalent for canonical path identity.
 import { realpath } from "node:fs/promises";
 // node:path provides path containment primitives; Bun has no path utilities.
-import {
-  basename,
-  dirname,
-  isAbsolute,
-  join,
-  relative,
-  resolve,
-  sep,
-} from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 
 import type { Config } from "../config/types";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
@@ -32,6 +24,10 @@ import type {
 import { createDefaultConfig } from "../config";
 import { saveTextToPath } from "../config/saver";
 import { applyConfigChange } from "./config-mutation";
+import {
+  canonicalOperationalPath,
+  getConfigWriteLockPath,
+} from "./config-write-lock";
 import { compileProjectProfileYaml } from "./project-profile";
 import {
   applyProjectProfileDesiredState,
@@ -111,22 +107,6 @@ const isContained = (parent: string, candidate: string): boolean => {
   );
 };
 
-async function canonicalOperationalPath(path: string): Promise<string> {
-  const absolute = resolve(path);
-  const unresolved: string[] = [];
-  let candidate = absolute;
-  while (true) {
-    try {
-      return resolve(await realpath(candidate), ...unresolved.reverse());
-    } catch {
-      const parent = dirname(candidate);
-      if (parent === candidate) return absolute;
-      unresolved.push(basename(candidate));
-      candidate = parent;
-    }
-  }
-}
-
 export async function validateProjectProfileRuntimePaths(
   profileRoot: string,
   paths: ReadonlyArray<{ label: string; path: string }>
@@ -196,7 +176,7 @@ export async function applyProjectProfile(
 ): Promise<ProjectProfileApplyResult> {
   const runtimeDir = join(options.dataDir, "project-profiles");
   const receiptPath = join(runtimeDir, "apply-receipt.json");
-  const lockPath = join(runtimeDir, "apply.lock");
+  const lockPath = await getConfigWriteLockPath(options.configPath);
   const overlap = await validateProjectProfileRuntimePaths(
     options.profileRoot,
     [
@@ -210,6 +190,10 @@ export async function applyProjectProfile(
 
   let profileFailure: ProjectProfileDiagnostic[] | null = null;
   let receipt: ProjectProfileApplyReceipt | null = null;
+  let projection: {
+    collectionName: string;
+    contexts: Config["contexts"];
+  } | null = null;
   let receiptWriteFailed = false;
   let mutation;
   try {
@@ -218,8 +202,33 @@ export async function applyProjectProfile(
         store: options.store,
         configPath: options.configPath,
         createConfigIfMissing: createDefaultConfig,
-        writeLockPath: lockPath,
         onConfigUpdated: options.onConfigUpdated ?? (() => undefined),
+        projectStore: async (store, config) => {
+          const selected = projection;
+          if (!selected) {
+            return {
+              ok: false,
+              error: "Project profile store projection was not established.",
+            };
+          }
+          const collection = config.collections.find(
+            (item) => item.name === selected.collectionName
+          );
+          if (!collection) {
+            return {
+              ok: false,
+              error: "Project profile collection is missing after config save.",
+            };
+          }
+          const collectionsResult = await store.upsertCollections([collection]);
+          if (!collectionsResult.ok) {
+            return { ok: false, error: collectionsResult.error.message };
+          }
+          const contextsResult = await store.upsertContexts(selected.contexts);
+          return contextsResult.ok
+            ? { ok: true }
+            : { ok: false, error: contextsResult.error.message };
+        },
         ...(options.failureInjection === "after_config_save"
           ? {
               afterConfigSaved: () => {
@@ -264,6 +273,14 @@ export async function applyProjectProfile(
           compiled.value.desiredState,
           compiled.value.resolvedPaths.collectionRoot
         );
+        projection = {
+          collectionName: compiled.value.desiredState.collection.name,
+          contexts: compiled.value.desiredState.contexts.map((context) => ({
+            scopeType: context.scopeType,
+            scopeKey: context.scopeKey,
+            text: context.text,
+          })),
+        };
         const resources = buildProjectProfileResources(
           config,
           nextConfig,

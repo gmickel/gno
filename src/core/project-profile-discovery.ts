@@ -92,6 +92,14 @@ const diagnostic = (
 
 type PathProbe = "missing" | "present" | "unreadable";
 
+const isMissingFsError = (error: unknown): boolean => {
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String(error.code)
+      : "";
+  return code === "ENOENT" || code === "ENOTDIR";
+};
+
 const probePath = async (
   path: string,
   dependencies: ProjectProfileDiscoveryDependencies
@@ -100,11 +108,7 @@ const probePath = async (
     await dependencies.lstat(path);
     return "present";
   } catch (error) {
-    const code =
-      error && typeof error === "object" && "code" in error
-        ? String(error.code)
-        : "";
-    return code === "ENOENT" || code === "ENOTDIR" ? "missing" : "unreadable";
+    return isMissingFsError(error) ? "missing" : "unreadable";
   }
 };
 
@@ -257,14 +261,19 @@ const explicitProfileRoot = async (
   let inputMetadata: FileMetadata;
   try {
     inputMetadata = await dependencies.stat(absoluteInput);
-  } catch {
+  } catch (error) {
+    const missing = isMissingFsError(error);
     return {
       ok: false,
       diagnostic: diagnostic(
-        "PROFILE_DISCOVERY_FAILED",
+        missing ? "PROFILE_NOT_FOUND" : "PROFILE_DISCOVERY_FAILED",
         "error",
-        "The explicit project profile path does not exist.",
-        "Pass an existing directory or its .gno/index.yml file."
+        missing
+          ? "The explicit project profile path does not exist."
+          : "The explicit project profile path could not be inspected.",
+        missing
+          ? "Pass an existing directory or its .gno/index.yml file."
+          : "Repair local filesystem permissions or I/O and retry."
       ),
     };
   }
@@ -444,7 +453,16 @@ const discoverFromCwd = async (
         break;
       }
     } catch {
-      break;
+      return errorResult(
+        "cwd",
+        boundary,
+        diagnostic(
+          "PROFILE_DISCOVERY_FAILED",
+          "error",
+          "The discovery boundary could not be inspected safely.",
+          "Repair directory permissions or pass an exact profile root."
+        )
+      );
     }
     current = parent;
   }

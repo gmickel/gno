@@ -133,6 +133,27 @@ function invalidConnectorOutcome(connectorIds: string[]): SetupCommandOutcome {
   };
 }
 
+function profileOptionConflictOutcome(): SetupCommandOutcome {
+  return {
+    result: {
+      schemaVersion: SETUP_COMMAND_SCHEMA_VERSION,
+      status: "failed",
+      lexical: {
+        receipt: null,
+        error: {
+          code: "profile_option_conflict",
+          message:
+            "--apply-profile cannot be combined with explicit --name or --exclude options.",
+          remediation:
+            "Remove the explicit setup overrides or run setup without --apply-profile.",
+        },
+      },
+      semantic: null,
+    },
+    exitCode: 1,
+  };
+}
+
 function failedSetupActivationOutcome(
   setupOutcome: SetupCommandOutcome
 ): SetupOutputOutcome {
@@ -265,6 +286,20 @@ export async function setupWithActivation(
     ...setupOptions
   } = options;
   const profileCheck = await inspectSetupProfile(options);
+  if (
+    options.applyProfile &&
+    profileCheck?.status === "valid" &&
+    (options.name !== undefined || (options.exclude?.length ?? 0) > 0)
+  ) {
+    return withProfileResult(
+      definitions.length > 0
+        ? failedSetupActivationOutcome(profileOptionConflictOutcome())
+        : profileOptionConflictOutcome(),
+      true,
+      profileCheck,
+      null
+    );
+  }
   const profileApply = await applySetupProfile(options, profileCheck);
   const effectiveSetupOptions = await setupOptionsAfterProfileApply(
     setupOptions,

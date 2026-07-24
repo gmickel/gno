@@ -144,6 +144,43 @@ describe("ModelCache", () => {
       expect(isCached).toBe(false);
     });
 
+    test("read-only probe preserves stale manifest entries and invalid files", async () => {
+      const invalidPath = join(tempDir, "invalid.gguf");
+      const manifestPath = join(tempDir, "manifest.json");
+      await writeFile(invalidPath, "not a GGUF");
+      const manifest = `${JSON.stringify({
+        version: "1.0",
+        models: [
+          {
+            uri: "hf:test/missing/model.gguf",
+            type: "embed",
+            path: join(tempDir, "missing.gguf"),
+            size: 100,
+            checksum: "",
+            cachedAt: "2026-07-24T00:00:00.000Z",
+          },
+          {
+            uri: "hf:test/invalid/model.gguf",
+            type: "rerank",
+            path: invalidPath,
+            size: 10,
+            checksum: "",
+            cachedAt: "2026-07-24T00:00:00.000Z",
+          },
+        ],
+      })}\n`;
+      await writeFile(manifestPath, manifest);
+
+      expect(await cache.isCachedReadOnly("hf:test/missing/model.gguf")).toBe(
+        false
+      );
+      expect(await cache.isCachedReadOnly("hf:test/invalid/model.gguf")).toBe(
+        false
+      );
+      expect(await Bun.file(manifestPath).text()).toBe(manifest);
+      expect(await Bun.file(invalidPath).text()).toBe("not a GGUF");
+    });
+
     test("removes cached HTML model and manifest entry", async () => {
       const modelPath = join(tempDir, "html-model.gguf");
       await writeFile(modelPath, "<html><body>login</body></html>");

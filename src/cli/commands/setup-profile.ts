@@ -112,8 +112,8 @@ export async function setupOptionsAfterProfileApply(
   return {
     ...options,
     folder: collection.path,
-    name: collection.name,
-    exclude: undefined,
+    name: options.name ?? collection.name,
+    exclude: options.exclude,
   };
 }
 

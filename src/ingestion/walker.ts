@@ -20,6 +20,7 @@ import {
 import type { SkippedEntry, WalkConfig, WalkEntry, WalkerPort } from "./types";
 
 import { SUPPORTED_EXTENSIONS } from "../converters/mime";
+import { matchesCollectionExclusion } from "../core/path-rules";
 
 /**
  * Regex to detect dangerous patterns with parent directory traversal.
@@ -75,36 +76,6 @@ async function safeRelPath(
     // Can't resolve path (e.g., broken symlink)
     return null;
   }
-}
-
-/**
- * Check if a path matches any exclude pattern.
- *
- * Exclude semantics (component-based matching):
- * - Patterns match against path components (directory/file names)
- * - "node_modules" matches any path containing "node_modules" as a component
- * - ".git" matches ".git" directory at any level
- * - Patterns are NOT globs - they match exact component names
- *
- * Examples:
- * - exclude: [".git"] matches "foo/.git/bar" but not "foo/.github/..."
- * - exclude: ["dist"] matches "dist/bundle.js" and "src/dist/output.js"
- */
-function matchesExclude(relPath: string, excludes: string[]): boolean {
-  const parts = relPath.split("/");
-
-  for (const pattern of excludes) {
-    // Check if any path component matches exactly
-    if (parts.includes(pattern)) {
-      return true;
-    }
-    // Check if path starts with pattern
-    if (relPath.startsWith(`${pattern}/`)) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 /**
@@ -179,7 +150,7 @@ export class FileWalker implements WalkerPort {
       }
 
       // Check exclude patterns
-      if (matchesExclude(relPath, config.exclude)) {
+      if (matchesCollectionExclusion(relPath, config.exclude)) {
         skipped.push({
           absPath,
           relPath,

@@ -44,7 +44,7 @@ export async function applyConfigChange(
   const result = await applyConfigChangeCore(
     {
       store,
-      configPath,
+      configPath: configPath ?? ctxHolder.actualConfigPath,
       onConfigUpdated: (config) => {
         ctxHolder.config = config;
         ctxHolder.current = { ...ctxHolder.current, config };
@@ -72,7 +72,7 @@ export async function applyConfigChangeTyped<T>(
   const result = await applyConfigChangeCore(
     {
       store,
-      configPath,
+      configPath: configPath ?? ctxHolder.actualConfigPath,
       onConfigUpdated: (config) => {
         ctxHolder.config = config;
         ctxHolder.current = { ...ctxHolder.current, config };

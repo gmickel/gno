@@ -490,6 +490,13 @@ profile root rather than creating a duplicate subdirectory collection. The
 profile never deletes omitted resources or overwrites the user-level
 `projectAffinity` default.
 
+For a valid profile, `--apply-profile` is mutually exclusive with explicit
+`--name` and `--exclude` values. A conflict returns exit 1 with
+`profile_option_conflict` before config, store, or index mutation. Profile
+include/exclude values use validated Bun-glob semantics; plain exclusion
+components retain component matching. Discovery permission/I/O failures return
+exit 2, while missing, disabled, invalid, and unsafe profiles return exit 1.
+
 Opt-in JSON uses
 [`setup-profile-result@1.0`](./output-schemas/setup-profile-result.schema.json)
 and includes the closed `profile.check`, nullable `profile.apply`, unchanged

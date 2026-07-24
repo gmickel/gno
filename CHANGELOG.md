@@ -13,6 +13,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `gno setup --apply-profile`, nearest-profile affinity precedence, request-local
   defaults, closed JSON contracts, and clean-machine portability coverage.
 
+### Fixed
+
+- Preserved multiple contexts per scope and unrelated DB-only collections,
+  documents, and contexts during profile apply; serialized every config writer
+  through one canonical target-derived lock.
+- Enforced real profile exclusion globs, safe multi-include composition,
+  duplicate-ID rejection, bounded regular UTF-8 inputs, portable Windows path
+  rules, model/cache runtime boundaries, and non-mutating offline cache checks.
+- Rejected conflicting `setup --apply-profile` name/exclude overrides and
+  classified profile discovery I/O failures as runtime errors.
+
+### Security
+
+- Rejected likely secret context paths and any config, data, database, cache,
+  receipt, lock, or selected file-model path overlapping the project root.
+
 ## [1.25.1] - 2026-07-24
 
 ### Fixed

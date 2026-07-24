@@ -64,7 +64,16 @@ recommendedCapabilities:
 All paths are repository-relative and portable across POSIX and Windows.
 Absolute paths, traversal, environment expansion, runtime database/model/lock
 paths, secret fields, arbitrary hooks, and symlink escapes fail validation.
-`.gno` is always excluded from the declared collection.
+Windows-reserved names, trailing dots/spaces, unbalanced or negated globs, and
+likely secret context paths such as `.env`, private keys, and credentials also
+fail validation. Context files must be regular UTF-8 files no larger than
+64 KiB; `.gno/index.yml` is bounded at 1 MiB. `.gno` is always excluded from
+the declared collection.
+
+Profile excludes are real Bun globs when they contain glob metacharacters;
+plain components retain directory-component matching. Multiple include globs,
+including brace alternatives and literal commas, are combined without changing
+their meaning.
 
 ## Apply and Prove Retrieval
 
@@ -85,15 +94,19 @@ prints preview/apply guidance. It does not apply the profile implicitly.
 `--apply-profile` uses the same cross-process lock-safe, create/update-only
 apply path as `gno profile apply`, then indexes the profile-declared collection
 root and name. This remains true when setup starts in a nested subdirectory.
+It cannot be combined with explicit `--name` or `--exclude` overrides; remove
+those options or run setup without `--apply-profile`.
 
 Invalid or absent profiles never make profiles mandatory: ordinary folder setup
 continues. With `--apply-profile --json`, `status: completed_with_actions`,
 `profile.check`, and `profile.apply: null` report that the requested optional
 action did not run.
 
-Apply never deletes omitted collections, contexts, content types, or index
-state. Changed collections appear in `pendingIndexing`; repeat apply converges
-to `unchanged`.
+Apply additively projects its declared collection and contexts into the store.
+It never deletes unrelated DB-only collections, documents, contexts, omitted
+content types, or index state. Multiple context entries for one collection are
+preserved. Changed collections appear in `pendingIndexing`; repeat apply
+converges to `unchanged`.
 
 ## Affinity Precedence
 
@@ -133,5 +146,9 @@ Machine-local state stays under the configured user directories:
 ```
 
 Profile apply fails before mutation if config, database, data, cache, receipt,
-or lock paths overlap the project root. Never commit generated databases,
-models, cache files, locks, receipts, or credentials.
+lock, or file-backed selected model paths overlap the project root. Config
+writers share one canonical target-derived lock, including symlink aliases, so
+setup, profile apply, MCP, and resident Web mutations cannot overwrite each
+other. Read-only profile commands never repair or mutate model-cache metadata.
+Never commit generated databases, models, cache files, locks, receipts, or
+credentials.

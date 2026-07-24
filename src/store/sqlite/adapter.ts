@@ -625,6 +625,51 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async upsertCollections(
+    collections: Collection[]
+  ): Promise<StoreResult<void>> {
+    try {
+      const db = this.ensureOpen();
+      const stmt = db.prepare(`
+        INSERT INTO collections (name, path, pattern, include, exclude, update_cmd, language_hint, synced_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        ON CONFLICT(name) DO UPDATE SET
+          path = excluded.path,
+          pattern = excluded.pattern,
+          include = excluded.include,
+          exclude = excluded.exclude,
+          update_cmd = excluded.update_cmd,
+          language_hint = excluded.language_hint,
+          synced_at = datetime('now')
+      `);
+      const transaction = db.transaction(() => {
+        for (const collection of collections) {
+          stmt.run(
+            collection.name,
+            collection.path,
+            collection.pattern,
+            collection.include.length > 0
+              ? JSON.stringify(collection.include)
+              : null,
+            collection.exclude.length > 0
+              ? JSON.stringify(collection.exclude)
+              : null,
+            collection.updateCmd ?? null,
+            collection.languageHint ?? null
+          );
+        }
+      });
+      transaction();
+      return ok(undefined);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to upsert collections",
+        cause
+      );
+    }
+  }
+
   async syncContexts(contexts: Context[]): Promise<StoreResult<void>> {
     try {
       const db = this.ensureOpen();
@@ -636,6 +681,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         const stmt = db.prepare(`
           INSERT INTO contexts (scope_type, scope_key, text, synced_at)
           VALUES (?, ?, ?, datetime('now'))
+          ON CONFLICT(scope_type, scope_key, text) DO UPDATE SET
+            synced_at = excluded.synced_at
         `);
 
         for (const c of contexts) {
@@ -650,6 +697,32 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to sync contexts",
+        cause
+      );
+    }
+  }
+
+  async upsertContexts(contexts: Context[]): Promise<StoreResult<void>> {
+    try {
+      const db = this.ensureOpen();
+      const stmt = db.prepare(`
+        INSERT INTO contexts (scope_type, scope_key, text, synced_at)
+        VALUES (?, ?, ?, datetime('now'))
+        ON CONFLICT(scope_type, scope_key, text) DO UPDATE SET
+          synced_at = excluded.synced_at
+      `);
+      const transaction = db.transaction(() => {
+        for (const context of contexts) {
+          stmt.run(context.scopeType, context.scopeKey, context.text);
+        }
+      });
+      transaction();
+      this.contextGeneration += 1;
+      return ok(undefined);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to upsert contexts",
         cause
       );
     }

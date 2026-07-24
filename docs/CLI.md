@@ -143,6 +143,8 @@ Nested invocations do not create a duplicate subdirectory collection. Missing
 or invalid profiles keep ordinary setup usable and are reported as optional
 follow-up. See
 [Project-Local Retrieval Profiles](guides/project-profiles.md).
+For a valid profile, `--apply-profile` cannot be combined with explicit
+`--name` or `--exclude`; the command fails before config or index mutation.
 
 `--exclude` is repeatable and literal; it is not a comma-separated list. If GNO
 finds likely env files, credentials, or private keys, terminal use asks once
