@@ -8,6 +8,7 @@ describe("browser clipper manifest", () => {
   test("uses only explicit-action and trusted local storage permissions", async () => {
     const manifest = await Bun.file(manifestPath).json();
     expect(manifest.manifest_version).toBe(3);
+    expect(manifest.version).toBeUndefined();
     expect(manifest.permissions).toEqual(["activeTab", "scripting", "storage"]);
     expect(manifest.host_permissions).toEqual(["http://127.0.0.1/*"]);
     expect(manifest.content_scripts).toBeUndefined();

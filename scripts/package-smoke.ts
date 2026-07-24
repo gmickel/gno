@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { safeRm } from "../test/helpers/cleanup";
+import { verifyPackedClipperPackage } from "./package-smoke-clipper";
 import { configurePackedEmbeddingModel } from "./package-smoke-config";
 import { buildPackageSmokeProcessEnv } from "./package-smoke-isolation";
 import { verifyPackedMcpInstall } from "./package-smoke-mcp";
@@ -148,6 +149,7 @@ async function verifyTarballContents(
     join(rootDir, "package.json")
   ).json()) as {
     files?: string[];
+    version?: string;
   };
   const entries = runCommand(["tar", "-tzf", tarballPath], rootDir, env)
     .stdout.split("\n")
@@ -158,6 +160,13 @@ async function verifyTarballContents(
   }
 
   for (const requiredFile of [
+    `package/browser-extension/artifacts/gno-browser-clipper-v${packageJson.version}.zip`,
+    `package/browser-extension/artifacts/gno-browser-clipper-v${packageJson.version}.zip.sha256`,
+    "package/browser-extension/dist/PRIVACY.md",
+    "package/browser-extension/dist/content.js",
+    "package/browser-extension/dist/manifest.json",
+    "package/browser-extension/dist/preview.html",
+    "package/browser-extension/dist/service-worker.js",
     "package/package.json",
     "package/bunfig.toml",
     "package/src/index.ts",
@@ -180,6 +189,7 @@ async function verifyTarballContents(
   ]) {
     assertTarEntry(entries, requiredFile);
   }
+  assertTarPrefix(entries, "package/browser-extension/dist/chunk-");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -395,19 +405,21 @@ async function main(): Promise<void> {
     );
 
     const gnoBin = join(installPrefix, "bin", "gno");
+    const packageRoot = join(
+      runCommand(
+        ["npm", "root", "--global", "--prefix", installPrefix],
+        tempRoot,
+        env
+      ).stdout.trim(),
+      "@gmickel",
+      "gno"
+    );
     runCommand([gnoBin, "--version"], tempRoot, env);
     runCommand([gnoBin, "--help"], tempRoot, env);
+    await verifyPackedClipperPackage({ packageRoot, tempRoot });
     await verifyPackedFolderSetup({
       gnoBin,
-      packageRoot: join(
-        runCommand(
-          ["npm", "root", "--global", "--prefix", installPrefix],
-          tempRoot,
-          env
-        ).stdout.trim(),
-        "@gmickel",
-        "gno"
-      ),
+      packageRoot,
       cwd: tempRoot,
       env,
       fixtureDir: notesDir,
@@ -430,15 +442,7 @@ async function main(): Promise<void> {
     runCommand([gnoBin, "update", "--yes"], tempRoot, env);
     await verifyPackedResidentGateway({
       gnoBin,
-      packageRoot: join(
-        runCommand(
-          ["npm", "root", "--global", "--prefix", installPrefix],
-          tempRoot,
-          env
-        ).stdout.trim(),
-        "@gmickel",
-        "gno"
-      ),
+      packageRoot,
       cwd: tempRoot,
       env,
       fixtureDir: notesDir,
@@ -473,17 +477,18 @@ async function main(): Promise<void> {
     completedTarballPath = tarballPath;
   } catch (error) {
     console.error(`Package smoke temp root: ${tempRoot}`);
-    console.error(
-      "Set GNO_PACKAGE_SMOKE_KEEP_TEMP=1 to preserve temp dirs on success."
-    );
+    console.error("Failure preserved this forensic recovery directory.");
     smokeError = error;
   }
 
-  let sentinelProof: string;
+  let sentinelProof = "";
   try {
     sentinelProof = await verifyUserGnoStateUnchanged(userStateBefore);
+  } catch (error) {
+    smokeError ??= error;
+    console.error(`Package smoke forensic recovery directory: ${tempRoot}`);
   } finally {
-    if (!preserveTemp) {
+    if (!(preserveTemp || smokeError)) {
       await safeRm(tempRoot);
     }
   }

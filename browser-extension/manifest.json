@@ -1,7 +1,6 @@
 {
   "manifest_version": 3,
   "name": "GNO Browser Clipper",
-  "version": "0.1.0",
   "description": "Capture explicitly selected or visible page content into local GNO.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["http://127.0.0.1/*"],

@@ -42,6 +42,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Verify reproducible browser clipper package
+        if: matrix.os == 'ubuntu-latest'
+        run: bun run verify:clipper-package
+
+      - name: Test installed browser clipper package
+        if: matrix.os == 'ubuntu-latest'
+        run: bun run test:package:clipper
+
       - name: Lint & Typecheck
         run: bun run lint:check
 
@@ -96,3 +104,26 @@ jobs:
         run: bun test test/ --concurrency 1
         env:
           CI: "true"
+
+  clipper-e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Chromium and Linux dependencies
+        run: bunx playwright install --with-deps chromium
+
+      - name: Test installed browser clipper in headed Chromium
+        run: xvfb-run -a bun run test:e2e:clipper
+        env:
+          CI: "true"
+          GNO_CLIPPER_E2E: "1"

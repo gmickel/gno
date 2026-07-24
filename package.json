@@ -27,6 +27,8 @@
   },
   "files": [
     "assets",
+    "browser-extension/artifacts",
+    "browser-extension/dist",
     "bunfig.toml",
     "spec",
     "src",
@@ -53,7 +55,9 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "build": "bun build src/index.ts",
-    "build:clipper": "bun browser-extension/build.ts",
+    "build:clipper": "node scripts/run-bun.mjs browser-extension/build-cli.ts",
+    "package:clipper": "node scripts/run-bun.mjs browser-extension/package-cli.ts",
+    "verify:clipper-package": "node scripts/run-bun.mjs browser-extension/verify-package.ts",
     "start": "bun run src/index.ts",
     "lint": "oxlint --fix --type-aware --type-check && oxfmt .",
     "lint:check": "oxlint --type-aware --type-check && oxfmt --check .",
@@ -61,8 +65,10 @@
     "test": "bun test",
     "test:web": "bun test test/serve/public --timeout 30000",
     "test:e2e": "bun scripts/web-ui-smoke.ts",
+    "test:e2e:clipper": "node scripts/run-bun.mjs test test/clipper/e2e.test.ts --timeout 240000",
     "test:e2e:install": "bunx playwright install chromium",
     "test:package": "bun scripts/package-smoke.ts",
+    "test:package:clipper": "node scripts/run-bun.mjs scripts/package-smoke-clipper-cli.ts",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
     "test:coverage:html": "bun test --coverage --html",
@@ -138,10 +144,11 @@
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
     "version:major": "npm version major --no-git-tag-version",
-    "prerelease": "bun run lint:check && bun test && bun run docs:verify && bun run test:package",
+    "prerelease": "node scripts/run-bun.mjs run lint:check && node scripts/run-bun.mjs test && node scripts/run-bun.mjs run docs:verify && node scripts/run-bun.mjs run verify:clipper-package && node scripts/run-bun.mjs run test:package",
     "release:dry-run": "gh workflow run publish.yml -f publish=false",
     "release:trigger": "gh workflow run publish.yml -f publish=true",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "prepack": "node scripts/run-bun.mjs browser-extension/package-cli.ts"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "6.5.0",

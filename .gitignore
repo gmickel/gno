@@ -8,6 +8,7 @@ node_modules
 # output
 out
 dist
+browser-extension/artifacts/
 *.tgz
 
 # code coverage
