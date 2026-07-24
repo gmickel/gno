@@ -6,6 +6,7 @@ import {
   prepareBrowserClip,
   renderBrowserClipReader,
 } from "../../src/core/browser-clip";
+import { BROWSER_CLIP_HTTP_URL_PATTERN } from "../../src/core/browser-clip-provenance";
 import {
   extractCaptureSourceFromFrontmatter,
   planCapture,
@@ -252,23 +253,44 @@ describe("browser clip contract", () => {
     expect(browserClipPayloadSchema.safeParse(huge).success).toBeFalse();
   });
 
-  test("runtime and Draft-07 URLs agree on credentials and scheme case", async () => {
+  test("runtime and Draft-07 share one closed browser URL grammar", async () => {
     const schema = await loadSchema("browser-clip");
-    const uppercase = {
-      ...selectionPayload(),
-      sourceUrl: "HTTPS://example.com/article",
-    };
-    const credentialed = {
-      ...selectionPayload(),
-      sourceUrl: "https://user:pass@example.com/private",
-    };
+    const schemaPattern = (
+      schema as {
+        definitions: { httpUrl: { pattern: string } };
+      }
+    ).definitions.httpUrl.pattern;
+    expect(schemaPattern).toBe(BROWSER_CLIP_HTTP_URL_PATTERN);
 
-    expect(browserClipPayloadSchema.safeParse(uppercase).success).toBeTrue();
-    expect(assertValid(uppercase, schema)).toBeTrue();
-    expect(
-      browserClipPayloadSchema.safeParse(credentialed).success
-    ).toBeFalse();
-    expect(assertInvalid(credentialed, schema)).toBeTrue();
+    const accepted = [
+      "HTTPS://example.com/article",
+      "http://localhost:3000/path?x=1#section",
+      "https://xn--bcher-kva.example/a%20b",
+      "https://127.0.0.1:65535/a?currency=%E2%82%AC",
+    ];
+    const rejected = [
+      "http://",
+      "https://?x",
+      "https://#fragment",
+      "https://user:pass@example.com/private",
+      "https://bücher.example/article",
+      "https://example.com/%ZZ",
+      "https://example.com:65536/path",
+      "https://example.com:080/path",
+      "https://[::1]/path",
+      "https://[::1/path",
+    ];
+
+    for (const sourceUrl of accepted) {
+      const payload = { ...selectionPayload(), sourceUrl };
+      expect(browserClipPayloadSchema.safeParse(payload).success).toBeTrue();
+      expect(assertValid(payload, schema)).toBeTrue();
+    }
+    for (const sourceUrl of rejected) {
+      const payload = { ...selectionPayload(), sourceUrl };
+      expect(browserClipPayloadSchema.safeParse(payload).success).toBeFalse();
+      expect(assertInvalid(payload, schema)).toBeTrue();
+    }
   });
 
   test("rejects disallowed C0 and C1 controls while preserving tabs and line endings", async () => {
@@ -284,6 +306,68 @@ describe("browser clip contract", () => {
     allowed.selection.exactText = "one\ttwo\r\nthree";
     expect(browserClipPayloadSchema.safeParse(allowed).success).toBeTrue();
     expect(assertValid(allowed, schema)).toBeTrue();
+  });
+
+  test("control rejection covers every free-form payload category", async () => {
+    const schema = await loadSchema("browser-clip");
+    const control = "\u0085";
+    const readerText = readerPayload();
+    readerText.reader.blocks = [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: `bad${control}` }],
+      },
+    ] as never;
+    const readerLink = readerPayload();
+    readerLink.reader.blocks = [
+      {
+        type: "paragraph",
+        content: [
+          {
+            type: "link",
+            text: `bad${control}`,
+            href: "https://example.com",
+          },
+        ],
+      },
+    ] as never;
+    const readerCode = readerPayload();
+    readerCode.reader.blocks = [
+      { type: "code", language: "ts", text: `bad${control}` },
+    ] as never;
+    const destination = selectionPayload();
+    destination.destination.relPath = `clips/bad${control}.md`;
+    const edited = selectionPayload();
+    edited.selection.editedMarkdown = `bad${control}`;
+
+    const candidates = [
+      { ...selectionPayload(), title: `bad${control}` },
+      { ...selectionPayload(), author: `bad${control}` },
+      { ...selectionPayload(), site: `bad${control}` },
+      {
+        ...selectionPayload(),
+        browser: { ...selectionPayload().browser, name: `bad${control}` },
+      },
+      {
+        ...selectionPayload(),
+        extraction: {
+          ...selectionPayload().extraction,
+          extractorVersion: `bad${control}`,
+        },
+      },
+      { ...selectionPayload(), tags: [`bad${control}`] },
+      { ...selectionPayload(), note: `bad${control}` },
+      destination,
+      edited,
+      readerText,
+      readerLink,
+      readerCode,
+    ];
+
+    for (const candidate of candidates) {
+      expect(browserClipPayloadSchema.safeParse(candidate).success).toBeFalse();
+      expect(assertInvalid(candidate, schema)).toBeTrue();
+    }
   });
 
   test("Draft-07 payload schema matches runtime structural contract", async () => {

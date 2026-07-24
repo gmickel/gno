@@ -1686,6 +1686,13 @@ exact selection when applicable, extraction and final-body hashes, deterministic
 clip and preview digests, browser metadata, capture time, and bounded extraction
 warnings. Existing capture requests and receipts remain compatible.
 
+Browser clips accept a closed, credential-free HTTP(S) URL subset: ASCII DNS
+or punycode hosts (or IPv4), optional ports from 1 through 65535, and ASCII
+RFC 3986 path/query/fragment characters with well-formed percent escapes. Raw
+Unicode hosts and IPv6 literals are rejected; browser clients should submit
+their serialized IDNA/punycode URL. Free-form clip strings reject C0/C1 control
+characters except tab, LF, and CR.
+
 For browser clips, `open_existing` succeeds only when the stored
 `clipIdentity` matches. Missing or different stored provenance returns
 `collisionPolicyResult: "conflict"` and does not write. Use

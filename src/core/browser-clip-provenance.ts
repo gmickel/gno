@@ -14,6 +14,9 @@ export const BROWSER_CLIP_WARNING_CODES = [
   "unicode_normalized",
 ] as const;
 
+export const BROWSER_CLIP_HTTP_URL_PATTERN =
+  "^[Hh][Tt][Tt][Pp][Ss]?://(?:(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)*[A-Za-z](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(?::(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:(?:/(?:[A-Za-z0-9._~!$&'()*+,;=:@-]|%[0-9A-Fa-f]{2})*)*)(?:\\?(?:[A-Za-z0-9._~!$&'()*+,;=:@/?-]|%[0-9A-Fa-f]{2})*)?(?:#(?:[A-Za-z0-9._~!$&'()*+,;=:@/?-]|%[0-9A-Fa-f]{2})*)?$";
+
 const hasDisallowedControlCharacter = (value: string): boolean => {
   for (const character of value) {
     const codePoint = character.codePointAt(0);
@@ -57,27 +60,13 @@ export const findDisallowedBrowserClipControlPath = (
   return null;
 };
 
-const httpUrlSchema = z
+export const browserClipHttpUrlSchema = z
   .string()
   .max(4096)
-  .superRefine((value, context) => {
-    try {
-      const url = new URL(value);
-      if (
-        (url.protocol !== "http:" && url.protocol !== "https:") ||
-        url.username ||
-        url.password ||
-        !url.hostname
-      ) {
-        context.addIssue({
-          code: "custom",
-          message: "URL must be HTTP(S), credential-free, and absolute",
-        });
-      }
-    } catch {
-      context.addIssue({ code: "custom", message: "URL must be absolute" });
-    }
-  });
+  .regex(
+    new RegExp(BROWSER_CLIP_HTTP_URL_PATTERN, "u"),
+    "URL must use the browser clip HTTP(S) URL subset"
+  );
 
 const publishedAtSchema = z.union([
   z.string().date(),
@@ -98,8 +87,8 @@ export const browserClipProvenanceSchema = z
   .object({
     schemaVersion: z.literal(BROWSER_CLIP_SCHEMA_VERSION),
     mode: z.enum(["selection", "reader"]),
-    sourceUrl: httpUrlSchema,
-    canonicalUrl: httpUrlSchema.nullable(),
+    sourceUrl: browserClipHttpUrlSchema,
+    canonicalUrl: browserClipHttpUrlSchema.nullable(),
     title: z.string().min(1).max(2048),
     author: z.string().max(1024).nullable(),
     site: z.string().max(1024).nullable(),

@@ -5,6 +5,7 @@ import {
   BROWSER_CLIP_MAX_BYTES,
   BROWSER_CLIP_SCHEMA_VERSION,
   BROWSER_CLIP_WARNING_CODES,
+  browserClipHttpUrlSchema,
   findDisallowedBrowserClipControlPath,
   type BrowserClipProvenance,
   type BrowserClipWarningCode,
@@ -42,28 +43,6 @@ const stableJsonValue = (value: unknown): unknown => {
 const stableJson = (value: unknown): string =>
   JSON.stringify(stableJsonValue(value));
 
-const strictHttpUrl = z
-  .string()
-  .max(4096)
-  .superRefine((value, context) => {
-    try {
-      const url = new URL(value);
-      if (
-        (url.protocol !== "http:" && url.protocol !== "https:") ||
-        url.username ||
-        url.password ||
-        !url.hostname
-      ) {
-        context.addIssue({
-          code: "custom",
-          message: "URL must be HTTP(S), credential-free, and absolute",
-        });
-      }
-    } catch {
-      context.addIssue({ code: "custom", message: "URL must be absolute" });
-    }
-  });
-
 const strictDateTime = z.string().datetime({ offset: true });
 const strictPublishedDate = z
   .union([z.string().date(), z.string().datetime({ offset: true })])
@@ -76,7 +55,7 @@ const inlineNodeSchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal("link"),
       text: safeInlineText,
-      href: strictHttpUrl,
+      href: browserClipHttpUrlSchema,
     })
     .strict(),
 ]);
@@ -117,8 +96,8 @@ const readerBlockSchema = z.discriminatedUnion("type", [
 const commonPayload = z
   .object({
     schemaVersion: z.literal(BROWSER_CLIP_SCHEMA_VERSION),
-    sourceUrl: strictHttpUrl,
-    canonicalUrl: strictHttpUrl.nullable(),
+    sourceUrl: browserClipHttpUrlSchema,
+    canonicalUrl: browserClipHttpUrlSchema.nullable(),
     title: z.string().min(1).max(2048),
     author: z.string().max(1024).nullable(),
     site: z.string().max(1024).nullable(),
@@ -329,7 +308,7 @@ const assertSafeEditedMarkdown = (markdown: string): void => {
   const unmatchedInlineSyntax = markdown.replace(
     INLINE_MARKDOWN_LINK,
     (_link, destination: string) => {
-      strictHttpUrl.parse(destination);
+      browserClipHttpUrlSchema.parse(destination);
       return "";
     }
   );

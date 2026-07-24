@@ -1174,6 +1174,12 @@ The provenance preserves exact selection text separately from canonical final
 Markdown and carries extraction/final hashes, deterministic identity and
 preview digests, normalized dates/URLs, browser metadata, server capture time,
 and bounded warnings. Existing capture inputs and receipts remain compatible.
+Browser-clip URLs use a closed, credential-free HTTP(S) subset: ASCII DNS or
+punycode hosts (or IPv4), optional ports from 1 through 65535, and ASCII
+RFC 3986 path/query/fragment characters with well-formed percent escapes. Raw
+Unicode hosts and IPv6 literals are rejected; browser clients should submit
+their serialized IDNA/punycode URL. Free-form clip strings reject C0/C1 control
+characters except tab, LF, and CR.
 For browser provenance, `open_existing` MUST open only when the stored
 `clipIdentity` matches; missing or different provenance MUST return
 `collisionPolicyResult: "conflict"` without writing. `create_with_suffix`
