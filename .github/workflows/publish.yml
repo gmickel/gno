@@ -30,7 +30,7 @@ jobs:
 
       # Cache Bun's global package cache
       - name: Cache Bun packages
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.bun/install/cache
           key: bun-cache-${{ runner.os }}-${{ hashFiles('**/bun.lockb') }}
@@ -39,7 +39,7 @@ jobs:
 
       - name: Cache package-smoke embedding model
         if: matrix.os == 'macos-latest'
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/gno/package-smoke
           key: package-smoke-embeddinggemma-0f741b5a-${{ runner.os }}
@@ -224,7 +224,7 @@ jobs:
           bun-version: latest
 
       - name: Cache package-smoke embedding model
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/gno/package-smoke
           key: package-smoke-embeddinggemma-0f741b5a-${{ runner.os }}
