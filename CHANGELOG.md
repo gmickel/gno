@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.24.0] - 2026-07-24
+
 ### Added
 
 - Added `gno setup <folder>` as the verified lexical-first activation path,
@@ -1740,7 +1742,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.23.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.24.0...HEAD
+[1.24.0]: https://github.com/gmickel/gno/compare/v1.23.0...v1.24.0
 [1.23.0]: https://github.com/gmickel/gno/compare/v1.22.0...v1.23.0
 [1.22.0]: https://github.com/gmickel/gno/compare/v1.21.0...v1.22.0
 [1.21.0]: https://github.com/gmickel/gno/compare/v1.20.0...v1.21.0
