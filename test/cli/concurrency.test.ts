@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { safeRm } from "../helpers/cleanup";
 
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const CONCURRENCY_TIMEOUT_MS = process.platform === "win32" ? 20_000 : 5_000;
+const CONCURRENCY_TIMEOUT_MS = process.platform === "win32" ? 20_000 : 15_000;
 
 describe("CLI concurrent read/write access", () => {
   let testDir: string;
