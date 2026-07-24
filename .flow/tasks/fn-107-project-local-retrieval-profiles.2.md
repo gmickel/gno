@@ -34,9 +34,8 @@ Deliver implement safe discovery check show and diff as one implementation-sized
 
 
 ## Done summary
-TBD
-
+Implemented safe local project-profile discovery plus deterministic, redacted `gno profile check|show|diff` contracts. Added stale-mapping remediation, offline preset diagnostics, setup advisory discovery, and cross-boundary regression coverage without config/index mutation.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 4b3947040b27bae151e6395ff165d8022051c3d1
+- Tests: GATE_SKIPPED:unittest:green-receipt c251730c - baseline reused from prior post-gate pass, bun run lint:check, bun test test/config/project-profile* test/cli/profile*, bun test test/config/project-profile.test.ts test/cli/project-profile.test.ts, bun run docs:verify, .flow/bin/flowctl validate --spec fn-107-project-local-retrieval-profiles --json, bun test
 - PRs:

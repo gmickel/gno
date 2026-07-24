@@ -10,6 +10,7 @@ import { configurePackedEmbeddingModel } from "./package-smoke-config";
 import { buildPackageSmokeProcessEnv } from "./package-smoke-isolation";
 import { verifyPackedMcpInstall } from "./package-smoke-mcp";
 import { resolvePackageSmokeEmbeddingModel } from "./package-smoke-model";
+import { verifyPackedProjectProfile } from "./package-smoke-profile";
 import { verifyPackedResidentGateway } from "./package-smoke-resident";
 import { verifyPackedFolderSetup } from "./package-smoke-setup";
 import {
@@ -174,10 +175,17 @@ async function verifyTarballContents(
     "package/src/embed/retry.ts",
     "package/src/core/runtime-entrypoint.ts",
     "package/src/core/folder-setup.ts",
+    "package/src/core/project-profile.ts",
+    "package/src/core/project-profile-apply.ts",
+    "package/src/core/project-profile-file.ts",
+    "package/src/config/project-profile.ts",
+    "package/src/cli/commands/profile.ts",
+    "package/src/cli/commands/profile-apply.ts",
     "package/src/core/setup-activation.ts",
     "package/src/core/setup-receipt.ts",
     "package/src/cli/commands/setup.ts",
     "package/src/cli/commands/setup-activation.ts",
+    "package/src/cli/commands/setup-profile.ts",
     "package/src/cli/commands/setup-semantic.ts",
     "package/src/cli/setup-semantic-worker.ts",
     "package/src/serve/public/globals.built.css",
@@ -185,6 +193,10 @@ async function verifyTarballContents(
     "package/spec/output-schemas/setup-command-result.schema.json",
     "package/spec/output-schemas/setup-semantic-receipt.schema.json",
     "package/spec/output-schemas/setup-activation-result.schema.json",
+    "package/spec/output-schemas/setup-profile-result.schema.json",
+    "package/spec/output-schemas/project-profile-command.schema.json",
+    "package/spec/output-schemas/project-profile-apply.schema.json",
+    "package/spec/project-profile.schema.json",
     "package/THIRD_PARTY_NOTICES.md",
   ]) {
     assertTarEntry(entries, requiredFile);
@@ -423,6 +435,12 @@ async function main(): Promise<void> {
       cwd: tempRoot,
       env,
       fixtureDir: notesDir,
+      runCommand,
+    });
+    await verifyPackedProjectProfile({
+      gnoBin,
+      cwd: tempRoot,
+      env,
       runCommand,
     });
     const embeddingModelPath = await resolvePackageSmokeEmbeddingModel();

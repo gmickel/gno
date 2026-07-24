@@ -68,7 +68,7 @@ A declarative compiler is less flexible than arbitrary setup scripts but is revi
 ## Quick commands
 
 ```bash
-bun test test/config/project-profile* test/cli/profile*
+bun test test/config/project-profile* test/cli/project-profile*
 bun run docs:verify
 .flow/bin/flowctl validate --spec fn-107-project-local-retrieval-profiles --json
 ```

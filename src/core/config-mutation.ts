@@ -1,5 +1,5 @@
 /**
- * Config mutation helper shared by Web UI and MCP.
+ * Canonical config mutation helper shared by every config writer.
  *
  * @module src/core/config-mutation
  */
@@ -9,27 +9,42 @@ import type { SqliteAdapter } from "../store/sqlite/adapter";
 
 import {
   formatConfigWarnings,
+  getConfigPaths,
   loadConfig,
   normalizeConfigContentTypes,
   saveConfig,
 } from "../config";
+import { resolveConfigWriteTarget } from "./config-write-lock";
 import { withWriteLock } from "./file-lock";
 
-export interface ConfigMutationContext {
-  store: SqliteAdapter;
+export interface ConfigFileMutationContext {
   configPath?: string;
-  onConfigUpdated: (config: Config) => void;
   /**
-   * Optional cross-process serialization boundary. The in-memory mutex remains
-   * authoritative within one process; callers sharing a config across
-   * processes must additionally share this OS-backed lock path.
+   * Optional first-run config factory. Callers must opt in explicitly; existing
+   * mutation surfaces keep treating a missing config as an error.
    */
-  writeLockPath?: string;
+  createConfigIfMissing?: () => Config;
+  onConfigUpdated?: (config: Config) => void;
+}
+
+export interface ConfigMutationContext extends ConfigFileMutationContext {
+  store: SqliteAdapter;
+  /**
+   * Optional targeted store projection. The default reconciles the complete
+   * config. Create/update-only callers can project a bounded subset without
+   * deleting DB-only recovery state.
+   */
+  projectStore?: (
+    store: SqliteAdapter,
+    config: Config
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
   /**
    * Runs after the selected config is durably present and before store projection.
    * Setup recovery uses this boundary to persist a truthful resumable receipt.
    */
   afterConfigSaved?: (config: Config) => Promise<void> | void;
+  /** Runs after config projection succeeds while the write lock is still held. */
+  afterStoreSynced?: (config: Config) => Promise<void> | void;
 }
 
 export type MutationResult<T = void> =
@@ -40,68 +55,130 @@ export type ApplyConfigResult<T = void> =
   | { ok: true; config: Config; value?: T }
   | { ok: false; error: string; code: string };
 
-/**
- * In-memory mutex for serializing config mutations.
- * Prevents lost updates when multiple requests try to modify config concurrently.
- */
-let configMutex: Promise<void> = Promise.resolve();
+export interface ConfigMutationState {
+  created: boolean;
+}
 
-export async function applyConfigChange<T = void>(
-  ctx: ConfigMutationContext,
-  mutate: (config: Config) => Promise<MutationResult<T>> | MutationResult<T>
+type PersistedConfigHook = (
+  config: Config
+) => Promise<{ ok: true } | { ok: false; error: string; code: string }>;
+
+async function applySerializedConfigChange<T>(
+  ctx: ConfigFileMutationContext,
+  mutate: (
+    config: Config,
+    state: ConfigMutationState
+  ) => Promise<MutationResult<T>> | MutationResult<T>,
+  afterPersist?: PersistedConfigHook
 ): Promise<ApplyConfigResult<T>> {
-  const previousMutex = configMutex;
-  let resolveMutex: () => void = () => {
-    /* no-op until assigned */
-  };
-
-  configMutex = new Promise((resolve) => {
-    resolveMutex = resolve;
-  });
-
-  try {
-    await previousMutex;
-
-    const applyFreshConfigChange = async (): Promise<ApplyConfigResult<T>> => {
-      const loadResult = await loadConfig(ctx.configPath);
-      if (!loadResult.ok) {
-        return {
-          ok: false,
-          error: loadResult.error.message,
-          code: "LOAD_ERROR",
-        };
-      }
+  const requestedConfigPath = ctx.configPath ?? getConfigPaths().configFile;
+  const writeTarget = await resolveConfigWriteTarget(requestedConfigPath);
+  const selectedConfigPath = writeTarget.configPath;
+  const applyFreshConfigChange = async (): Promise<ApplyConfigResult<T>> => {
+    const loadResult = await loadConfig(selectedConfigPath);
+    if (
+      !loadResult.ok &&
+      !(loadResult.error.code === "NOT_FOUND" && ctx.createConfigIfMissing)
+    ) {
+      return {
+        ok: false,
+        error: loadResult.error.message,
+        code: "LOAD_ERROR",
+      };
+    }
+    if (loadResult.ok) {
       for (const warning of formatConfigWarnings(loadResult.warnings)) {
         console.warn(warning);
       }
+    }
 
-      const mutationResult = await mutate(loadResult.value);
-      if (!mutationResult.ok) {
+    const currentConfig = loadResult.ok
+      ? loadResult.value
+      : ctx.createConfigIfMissing?.();
+    if (!currentConfig) {
+      return {
+        ok: false,
+        error: "Config file is missing",
+        code: "LOAD_ERROR",
+      };
+    }
+    const mutationResult = await mutate(currentConfig, {
+      created: !loadResult.ok,
+    });
+    if (!mutationResult.ok) {
+      return {
+        ok: false,
+        error: mutationResult.error,
+        code: mutationResult.code,
+      };
+    }
+
+    const normalized = normalizeConfigContentTypes(mutationResult.config);
+    for (const warning of formatConfigWarnings(normalized.warnings)) {
+      console.warn(warning);
+    }
+    const newConfig = normalized.config;
+    if (!mutationResult.skipSave) {
+      const saveResult = await saveConfig(newConfig, selectedConfigPath);
+      if (!saveResult.ok) {
         return {
           ok: false,
-          error: mutationResult.error,
-          code: mutationResult.code,
+          error: saveResult.error.message,
+          code: "SAVE_ERROR",
         };
       }
+    }
 
-      const normalized = normalizeConfigContentTypes(mutationResult.config);
-      for (const warning of formatConfigWarnings(normalized.warnings)) {
-        console.warn(warning);
+    const persisted = await afterPersist?.(newConfig);
+    if (persisted && !persisted.ok) return persisted;
+    ctx.onConfigUpdated?.(newConfig);
+
+    return { ok: true, config: newConfig, value: mutationResult.value };
+  };
+
+  try {
+    return await withWriteLock(writeTarget.lockPath, applyFreshConfigChange);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("LOCKED:")) {
+      return { ok: false, error: error.message, code: "LOCKED" };
+    }
+    throw error;
+  }
+}
+
+/** Mutate only the selected config file under the canonical shared lock. */
+export async function applyConfigFileChange<T = void>(
+  ctx: ConfigFileMutationContext,
+  mutate: (
+    config: Config,
+    state: ConfigMutationState
+  ) => Promise<MutationResult<T>> | MutationResult<T>
+): Promise<ApplyConfigResult<T>> {
+  return applySerializedConfigChange(ctx, mutate);
+}
+
+/** Mutate config and project it to the selected store in one locked boundary. */
+export async function applyConfigChange<T = void>(
+  ctx: ConfigMutationContext,
+  mutate: (
+    config: Config,
+    state: ConfigMutationState
+  ) => Promise<MutationResult<T>> | MutationResult<T>
+): Promise<ApplyConfigResult<T>> {
+  return applySerializedConfigChange(ctx, mutate, async (newConfig) => {
+    await ctx.afterConfigSaved?.(newConfig);
+
+    if (ctx.projectStore) {
+      const projection = await ctx.projectStore(ctx.store, newConfig);
+      if (!projection.ok) {
+        console.warn(`Config saved but DB sync failed: ${projection.error}`);
+        return {
+          ok: false,
+          error: `DB sync failed: ${projection.error}`,
+          code: "SYNC_ERROR",
+        };
       }
-      const newConfig = normalized.config;
-      if (!mutationResult.skipSave) {
-        const saveResult = await saveConfig(newConfig, ctx.configPath);
-        if (!saveResult.ok) {
-          return {
-            ok: false,
-            error: saveResult.error.message,
-            code: "SAVE_ERROR",
-          };
-        }
-      }
-
-      await ctx.afterConfigSaved?.(newConfig);
-
+    } else {
       const syncCollResult = await ctx.store.syncCollections(
         newConfig.collections
       );
@@ -129,24 +206,9 @@ export async function applyConfigChange<T = void>(
           code: "SYNC_ERROR",
         };
       }
-
-      ctx.onConfigUpdated(newConfig);
-
-      return { ok: true, config: newConfig, value: mutationResult.value };
-    };
-
-    if (!ctx.writeLockPath) {
-      return await applyFreshConfigChange();
     }
-    try {
-      return await withWriteLock(ctx.writeLockPath, applyFreshConfigChange);
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith("LOCKED:")) {
-        return { ok: false, error: error.message, code: "LOCKED" };
-      }
-      throw error;
-    }
-  } finally {
-    resolveMutex();
-  }
+
+    await ctx.afterStoreSynced?.(newConfig);
+    return { ok: true };
+  });
 }

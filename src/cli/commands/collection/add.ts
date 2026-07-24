@@ -3,12 +3,8 @@
  */
 
 import { addCollection } from "../../../collection";
-import {
-  loadConfig,
-  pathExists,
-  saveConfig,
-  toAbsolutePath,
-} from "../../../config";
+import { pathExists, toAbsolutePath } from "../../../config";
+import { applyConfigFileChange } from "../../../core/config-mutation";
 import { CliError } from "../../errors";
 
 interface AddOptions {
@@ -18,6 +14,7 @@ interface AddOptions {
   include?: string;
   exclude?: string;
   update?: string;
+  configPath?: string;
 }
 
 export async function collectionAdd(
@@ -36,52 +33,49 @@ export async function collectionAdd(
     throw new CliError("VALIDATION", `Path does not exist: ${absolutePath}`);
   }
 
-  // Load config
-  const configResult = await loadConfig();
-  if (!configResult.ok) {
-    throw new CliError(
-      "RUNTIME",
-      `Failed to load config: ${configResult.error.message}`
-    );
-  }
+  const mutation = await applyConfigFileChange(
+    { configPath: options.configPath },
+    async (config) => {
+      const result = await addCollection(config, {
+        path,
+        name: options.name!,
+        pattern: options.pattern,
+        include: options.include,
+        exclude: options.exclude,
+        models: options.embedModel
+          ? {
+              embed: options.embedModel,
+            }
+          : undefined,
+        updateCmd: options.update,
+      });
+      return result.ok
+        ? {
+            ok: true as const,
+            config: result.config,
+            value: result.collection,
+          }
+        : {
+            ok: false as const,
+            error: result.message,
+            code: result.code,
+          };
+    }
+  );
 
-  // Add collection using shared module
-  const result = await addCollection(configResult.value, {
-    path,
-    name: options.name,
-    pattern: options.pattern,
-    include: options.include,
-    exclude: options.exclude,
-    models: options.embedModel
-      ? {
-          embed: options.embedModel,
-        }
-      : undefined,
-    updateCmd: options.update,
-  });
-
-  if (!result.ok) {
+  if (!mutation.ok) {
     // Map collection error codes to CLI error codes
     const cliCode =
-      result.code === "VALIDATION" ||
-      result.code === "PATH_NOT_FOUND" ||
-      result.code === "DUPLICATE"
+      mutation.code === "VALIDATION" ||
+      mutation.code === "PATH_NOT_FOUND" ||
+      mutation.code === "DUPLICATE"
         ? "VALIDATION"
         : "RUNTIME";
-    throw new CliError(cliCode, result.message);
-  }
-
-  // Save config
-  const saveResult = await saveConfig(result.config);
-  if (!saveResult.ok) {
-    throw new CliError(
-      "RUNTIME",
-      `Failed to save config: ${saveResult.error.message}`
-    );
+    throw new CliError(cliCode, mutation.error);
   }
 
   process.stdout.write(
-    `Collection "${result.collection.name}" added successfully\n`
+    `Collection "${mutation.value?.name}" added successfully\n`
   );
-  process.stdout.write(`Path: ${result.collection.path}\n`);
+  process.stdout.write(`Path: ${mutation.value?.path}\n`);
 }

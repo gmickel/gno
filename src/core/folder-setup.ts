@@ -12,6 +12,7 @@ import { DEFAULT_EXCLUDES, loadConfig } from "../config";
 import { defaultSyncService, withContentTypeRules } from "../ingestion";
 import { verifyLexicalActivation } from "./activation-verifier";
 import { applyConfigChange } from "./config-mutation";
+import { getConfigWriteLockPath } from "./config-write-lock";
 import {
   type CollectionSelection,
   type FolderSetupError,
@@ -60,6 +61,11 @@ export interface FolderSetupOptions {
   name?: string;
   exclude?: string[];
   secretRiskAuthorized?: boolean;
+  /**
+   * Preserve store-only recovery state while projecting the selected
+   * collection. Project-profile setup uses this after its own additive apply.
+   */
+  additiveStoreProjection?: boolean;
   /** Test-only deterministic interruption hook. */
   failureInjection?: FolderSetupFailurePoint;
   /** Test-only concurrency seam before the serialized config boundary. */
@@ -149,7 +155,7 @@ export async function setupFolder(
     indexName: storeIdentity.indexName,
     folderRealpath: folder,
   });
-  const configLockPath = `${options.configPath}.setup.lock`;
+  const configLockPath = await getConfigWriteLockPath(options.configPath);
   const unsafeOutput = await validateSetupOutputPaths(folder, [
     { label: "Data directory", path: options.dataDir },
     { label: "Setup receipt", path: receiptPath },
@@ -250,7 +256,6 @@ export async function setupFolder(
       {
         store: options.store,
         configPath: options.configPath,
-        writeLockPath: configLockPath,
         onConfigUpdated: (config) => {
           activeConfig = config;
         },
@@ -292,6 +297,29 @@ export async function setupFolder(
             throw new SetupAbort(storeReceiptFailure);
           }
         },
+        projectStore: options.additiveStoreProjection
+          ? async (store, config) => {
+              const selected = activeSelection;
+              if (!selected) {
+                return {
+                  ok: false,
+                  error: "Setup collection selection was not established",
+                };
+              }
+              const collectionResult = await store.upsertCollections([
+                selected.collection,
+              ]);
+              if (!collectionResult.ok) {
+                return { ok: false, error: collectionResult.error.message };
+              }
+              const contextResult = await store.upsertContexts(
+                config.contexts ?? []
+              );
+              return contextResult.ok
+                ? { ok: true }
+                : { ok: false, error: contextResult.error.message };
+            }
+          : undefined,
       },
       async (config) => {
         const fresh = await selectFolderCollection(

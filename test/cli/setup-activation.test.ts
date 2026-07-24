@@ -105,7 +105,7 @@ describe("setup connector activation", () => {
       folder,
       semantic: false,
       json: true,
-      discoverProfileAdvisory: async () => {
+      inspectProfileAdvisory: async () => {
         advisoryCalls += 1;
         throw new Error("invalid profile");
       },
@@ -116,6 +116,59 @@ describe("setup connector activation", () => {
     expect(outcome.result.status).toBe("completed");
     expect(advisoryCalls).toBe(1);
     assertValid(outcome.result, await loadSchema("setup-command-result"));
+  });
+
+  test("surfaces a valid profile check before setup mutates local config", async () => {
+    const { folder } = await harness("profile-before-setup");
+    await mkdir(join(folder, ".gno"), { recursive: true });
+    await writeFile(
+      join(folder, ".gno", "index.yml"),
+      'schemaVersion: "1.0"\ncollection: { name: docs, root: . }\n'
+    );
+    let observedStatus = "";
+    let setupStarted = false;
+    let setupHadStartedDuringAdvisory = true;
+
+    const outcome = await setupWithActivation({
+      folder,
+      semantic: false,
+      progress: () => {
+        setupStarted = true;
+      },
+      onProfileAdvisory: (profile) => {
+        observedStatus = profile.status;
+        setupHadStartedDuringAdvisory = setupStarted;
+      },
+    });
+
+    expect(outcome.exitCode).toBe(0);
+    expect(observedStatus).toBe("valid");
+    expect(setupHadStartedDuringAdvisory).toBe(false);
+    expect(
+      await Bun.file(join(process.env.GNO_CONFIG_DIR!, "index.yml")).exists()
+    ).toBe(true);
+  });
+
+  test("reports an invalid optional profile but continues safe setup", async () => {
+    const { folder } = await harness("profile-invalid");
+    await mkdir(join(folder, ".gno"), { recursive: true });
+    await writeFile(
+      join(folder, ".gno", "index.yml"),
+      'schemaVersion: "2.0"\ncollection: { name: docs, root: . }\n'
+    );
+    let advisoryStatus = "";
+
+    const outcome = await setupWithActivation({
+      folder,
+      semantic: false,
+      onProfileAdvisory: (profile) => {
+        advisoryStatus = profile.status;
+      },
+    });
+
+    expect(outcome.exitCode).toBe(0);
+    expect(advisoryStatus).toBe("invalid");
+    expect(outcome.result.status).toBe("completed");
   });
 
   test("rejects unknown IDs before setup or connector side effects", async () => {

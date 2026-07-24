@@ -36,6 +36,22 @@ retrieval proof; skill targets report `target_runtime_unverifiable` because
 setup cannot execute an agent runtime. Connector follow-up may return
 `completed_with_actions` while keeping exit 0 and lexical success intact.
 
+If the repository contains `.gno/index.yml`, setup inspects it before changing
+local state and prints preview/apply guidance. Apply the portable collection,
+contexts, content types, model alias, and project-local affinity defaults
+explicitly:
+
+```bash
+gno profile diff
+gno setup . --apply-profile
+```
+
+The profile is optional. Missing or invalid profiles do not block ordinary
+folder setup. `--apply-profile` is create/update-only, indexes the
+profile-declared root even when invoked below it, and never commits config,
+database, models, cache, locks, receipts, or secrets. See
+[Project-Local Retrieval Profiles](guides/project-profiles.md).
+
 Prefer a guided UI first? Start `gno serve`, open `http://localhost:3000`, then use the first-run checklist to add a folder, choose a preset, and start indexing without touching more CLI commands.
 
 ## 2. Finish Semantic Indexing

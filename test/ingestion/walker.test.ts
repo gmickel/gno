@@ -4,11 +4,16 @@
  */
 
 import { describe, expect, test } from "bun:test";
+// node:fs/promises provides temporary fixture structure; Bun has no structural equivalent.
+import { mkdir, mkdtemp } from "node:fs/promises";
+// node:os provides the temporary root.
+import { tmpdir } from "node:os";
 // node:path - Bun has no path manipulation module
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 import { SUPPORTED_EXTENSIONS } from "../../src/converters/mime";
 import { FileWalker } from "../../src/ingestion/walker";
+import { safeRm } from "../helpers/cleanup";
 
 const FIXTURES_ROOT = resolve(import.meta.dir, "../fixtures/walker");
 
@@ -67,6 +72,69 @@ describe("FileWalker", () => {
     for (const entry of entries) {
       expect(entry.relPath).not.toContain(".git");
       expect(entry.relPath).not.toContain("node_modules");
+    }
+  });
+
+  test("supports root-relative and recursive glob excludes while preserving literal components", async () => {
+    const testDir = await mkdtemp(join(tmpdir(), "gno-walker-glob-"));
+    try {
+      await mkdir(join(testDir, "generated"), { recursive: true });
+      await mkdir(join(testDir, "nested", "cache"), { recursive: true });
+      await Bun.write(join(testDir, "generated", "skip.md"), "skip");
+      await Bun.write(join(testDir, "nested", "draft.tmp.md"), "skip");
+      await Bun.write(join(testDir, "nested", "cache", "skip.md"), "skip");
+      await Bun.write(join(testDir, "nested", "keep.md"), "keep");
+
+      const result = await walker.walk({
+        root: testDir,
+        pattern: "**/*",
+        include: [".md"],
+        exclude: ["generated/**", "**/*.tmp.md", "cache"],
+        maxBytes: 1_000_000,
+      });
+
+      expect(result.entries.map((entry) => entry.relPath)).toContain(
+        "nested/keep.md"
+      );
+      expect(result.entries.map((entry) => entry.relPath)).not.toContain(
+        "generated/skip.md"
+      );
+      expect(result.entries.map((entry) => entry.relPath)).not.toContain(
+        "nested/draft.tmp.md"
+      );
+      expect(result.entries.map((entry) => entry.relPath)).not.toContain(
+        "nested/cache/skip.md"
+      );
+    } finally {
+      await safeRm(testDir);
+    }
+  });
+
+  test("splits whole-pattern unions without splitting bracket-class commas or braces", async () => {
+    const testDir = await mkdtemp(join(tmpdir(), "gno-walker-union-"));
+    try {
+      await mkdir(join(testDir, "chars"), { recursive: true });
+      await Bun.write(join(testDir, "chars", ",.md"), "comma");
+      await Bun.write(join(testDir, "chars", "{.md"), "opening brace");
+      await Bun.write(join(testDir, "chars", "}.md"), "closing brace");
+      await Bun.write(join(testDir, "plain.md"), "plain");
+
+      const result = await walker.walk({
+        root: testDir,
+        pattern: "{chars/[{},].md,plain.md}",
+        include: [".md"],
+        exclude: [],
+        maxBytes: 1_000_000,
+      });
+
+      expect(result.entries.map((entry) => entry.relPath)).toEqual([
+        "chars/,.md",
+        "chars/{.md",
+        "chars/}.md",
+        "plain.md",
+      ]);
+    } finally {
+      await safeRm(testDir);
     }
   });
 

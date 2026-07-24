@@ -1,0 +1,209 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/project-profile-apply@1.0",
+  "title": "GNO Project Profile Apply Result",
+  "description": "Deterministic, path-redacted receipt for create/update-only project profile application.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "command",
+    "status",
+    "applied",
+    "discovery",
+    "receipt",
+    "diagnostics"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "command": { "const": "apply" },
+    "status": {
+      "enum": [
+        "applied",
+        "unchanged",
+        "invalid",
+        "not_found",
+        "disabled",
+        "failed"
+      ]
+    },
+    "applied": { "type": "boolean" },
+    "discovery": { "$ref": "#/definitions/discovery" },
+    "receipt": {
+      "oneOf": [{ "$ref": "#/definitions/receipt" }, { "type": "null" }]
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/diagnostic" }
+    }
+  },
+  "definitions": {
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "path", "message", "remediation"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "severity": { "enum": ["error", "warning"] },
+        "path": { "type": "string" },
+        "message": { "type": "string", "minLength": 1 },
+        "remediation": { "type": "string", "minLength": 1 }
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "source",
+        "boundary",
+        "profile",
+        "ambiguous",
+        "shadowedProfiles"
+      ],
+      "properties": {
+        "status": { "enum": ["found", "not_found", "disabled", "error"] },
+        "source": { "enum": ["cwd", "override", "remote"] },
+        "boundary": {
+          "enum": ["repository", "filesystem", "explicit", "remote"]
+        },
+        "profile": {
+          "type": ["string", "null"],
+          "enum": [".gno/index.yml", null]
+        },
+        "ambiguous": { "type": "boolean" },
+        "shadowedProfiles": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "field", "destructive", "summary"],
+      "properties": {
+        "action": { "enum": ["add", "update", "repair", "review"] },
+        "field": { "type": "string", "minLength": 1 },
+        "destructive": { "const": false },
+        "summary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "staleMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collection", "reason", "choices"],
+      "properties": {
+        "collection": { "type": "string", "minLength": 1 },
+        "reason": { "enum": ["name_changed", "root_changed"] },
+        "choices": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "enum": ["repair", "remove_explicitly"] }
+        }
+      }
+    },
+    "diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "changes", "staleMappings"],
+      "properties": {
+        "status": { "enum": ["in_sync", "changes_required"] },
+        "changes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/change" }
+        },
+        "staleMappings": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/staleMapping" }
+        }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "disposition", "pendingIndexing"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "capability",
+            "collection",
+            "content_type",
+            "contexts",
+            "profile_binding",
+            "project_affinity",
+            "stale_mapping"
+          ]
+        },
+        "id": { "type": "string", "minLength": 1 },
+        "disposition": {
+          "enum": ["created", "reused", "updated", "skipped"]
+        },
+        "pendingIndexing": { "type": "boolean" }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "command",
+        "status",
+        "profile",
+        "diff",
+        "resources",
+        "pendingIndexing",
+        "diagnostics"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "1.0" },
+        "command": { "const": "apply" },
+        "status": { "enum": ["applied", "unchanged"] },
+        "profile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fingerprint"],
+          "properties": {
+            "fingerprint": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "diff": { "$ref": "#/definitions/diff" },
+        "resources": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/resource" }
+        },
+        "pendingIndexing": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/diagnostic" }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": { "enum": ["applied", "unchanged"] }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "receipt": { "$ref": "#/definitions/receipt" }
+        }
+      },
+      "else": {
+        "properties": {
+          "receipt": { "type": "null" },
+          "applied": { "const": false }
+        }
+      }
+    }
+  ]
+}

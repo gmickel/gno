@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added portable project-local retrieval profiles with explicit
+  `gno setup --apply-profile`, nearest-profile affinity precedence, request-local
+  defaults, keyed content-type declarations, path-redacted local fingerprint
+  bindings, closed JSON contracts, and clean-machine portability coverage.
+
+### Fixed
+
+- Made `gno setup --apply-profile` fail closed after valid profile discovery:
+  failed, thrown, incomplete, or unresolvable applies now abort before ordinary
+  setup and connector work; inspection transport failures abort before apply.
+- Preserved multiple contexts per scope and unrelated DB-only collections,
+  documents, and contexts during profile apply; serialized every config writer
+  through one canonical target-derived lock, including custom config paths and
+  dangling symlink aliases.
+- Normalized context identity consistently across CLI and project profiles;
+  exact `(scope, text)` duplicates are rejected while distinct contexts remain
+  independently removable.
+- Made additive profile projection idempotent and repairable without advancing
+  collection timestamps or context generation on unchanged reapply.
+- Enforced real profile exclusion globs, safe multi-include composition,
+  brace-free schema/runtime parity, duplicate-ID rejection, bounded regular
+  UTF-8 inputs, portable Windows path rules, model/cache runtime boundaries,
+  and non-mutating offline cache checks.
+- Rejected conflicting `setup --apply-profile` name/exclude overrides and
+  classified profile discovery I/O failures as runtime errors.
+
+### Security
+
+- Rejected likely secret context paths, including symlink targets, and any
+  config, data, database, cache, receipt, lock, or selected file-model path
+  overlapping the project root.
+
 ## [1.25.1] - 2026-07-24
 
 ### Fixed

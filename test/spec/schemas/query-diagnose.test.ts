@@ -86,7 +86,7 @@ describe("query-diagnose schema", () => {
         rawScore: 0.5,
         rawScoreKind: "hybrid_blended",
         rootAlias: "root_000000000000",
-        source: "cli_cwd",
+        source: "project_profile",
       },
     };
 

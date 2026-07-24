@@ -3,7 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -17,11 +17,7 @@ describe("ModelCache", () => {
   let cache: ModelCache;
 
   beforeEach(async () => {
-    tempDir = join(
-      tmpdir(),
-      `gno-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    );
-    await mkdir(tempDir, { recursive: true });
+    tempDir = await mkdtemp(join(tmpdir(), "gno-test-"));
     cache = new ModelCache(tempDir);
   });
 
@@ -142,6 +138,43 @@ describe("ModelCache", () => {
 
       const isCached = await cache.isCached("hf:test/model/model.gguf");
       expect(isCached).toBe(false);
+    });
+
+    test("read-only probe preserves stale manifest entries and invalid files", async () => {
+      const invalidPath = join(tempDir, "invalid.gguf");
+      const manifestPath = join(tempDir, "manifest.json");
+      await writeFile(invalidPath, "not a GGUF");
+      const manifest = `${JSON.stringify({
+        version: "1.0",
+        models: [
+          {
+            uri: "hf:test/missing/model.gguf",
+            type: "embed",
+            path: join(tempDir, "missing.gguf"),
+            size: 100,
+            checksum: "",
+            cachedAt: "2026-07-24T00:00:00.000Z",
+          },
+          {
+            uri: "hf:test/invalid/model.gguf",
+            type: "rerank",
+            path: invalidPath,
+            size: 10,
+            checksum: "",
+            cachedAt: "2026-07-24T00:00:00.000Z",
+          },
+        ],
+      })}\n`;
+      await writeFile(manifestPath, manifest);
+
+      expect(await cache.isCachedReadOnly("hf:test/missing/model.gguf")).toBe(
+        false
+      );
+      expect(await cache.isCachedReadOnly("hf:test/invalid/model.gguf")).toBe(
+        false
+      );
+      expect(await Bun.file(manifestPath).text()).toBe(manifest);
+      expect(await Bun.file(invalidPath).text()).toBe("not a GGUF");
     });
 
     test("removes cached HTML model and manifest entry", async () => {

@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS contexts (
   scope_key TEXT NOT NULL,
   text TEXT NOT NULL,
   synced_at TEXT NOT NULL DEFAULT (datetime('now')),
-  PRIMARY KEY (scope_type, scope_key)
+  PRIMARY KEY (scope_type, scope_key, text)
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────

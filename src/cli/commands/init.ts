@@ -17,13 +17,12 @@ import {
   FTS_TOKENIZERS,
   type FtsTokenizer,
   getConfigPaths,
-  isInitialized,
   isValidLanguageHint,
-  loadConfigOrNull,
   pathExists,
-  saveConfig,
   toAbsolutePath,
 } from "../../config";
+import { applyConfigFileChange } from "../../core/config-mutation";
+import { SqliteAdapter } from "../../store/sqlite/adapter";
 
 /** Pattern to replace invalid chars in collection names with hyphens */
 const INVALID_NAME_CHARS = /[^a-z0-9_-]/g;
@@ -71,165 +70,96 @@ export interface InitResult {
 }
 
 /**
- * Handle case when already initialized.
- */
-async function handleAlreadyInitialized(
-  options: InitOptions,
-  paths: ReturnType<typeof getConfigPaths>
-): Promise<InitResult> {
-  // Ensure directories exist (may have been deleted by reset)
-  await ensureDirectories();
-
-  const config = await loadConfigOrNull(options.configPath);
-  const dbPath = getIndexDbPath();
-
-  if (!options.path) {
-    return {
-      success: true,
-      alreadyInitialized: true,
-      configPath: paths.configFile,
-      dataDir: paths.dataDir,
-      dbPath,
-    };
-  }
-
-  if (!config) {
-    return {
-      success: false,
-      configPath: paths.configFile,
-      dataDir: paths.dataDir,
-      dbPath,
-      error: "Config exists but could not be loaded",
-    };
-  }
-
-  const collectionResult = await addCollectionToConfig(config, options);
-  if (!collectionResult.success) {
-    return {
-      success: false,
-      configPath: paths.configFile,
-      dataDir: paths.dataDir,
-      dbPath,
-      error: collectionResult.error,
-    };
-  }
-
-  const saveResult = await saveConfig(config, options.configPath);
-  if (!saveResult.ok) {
-    return {
-      success: false,
-      configPath: paths.configFile,
-      dataDir: paths.dataDir,
-      dbPath,
-      error: saveResult.error.message,
-    };
-  }
-
-  return {
-    success: true,
-    alreadyInitialized: true,
-    configPath: paths.configFile,
-    dataDir: paths.dataDir,
-    dbPath,
-    collectionAdded: collectionResult.collectionName,
-  };
-}
-
-/**
  * Execute gno init command.
  */
 export async function init(options: InitOptions = {}): Promise<InitResult> {
   const paths = getConfigPaths();
+  const configPath = toAbsolutePath(options.configPath ?? paths.configFile);
+  const dbPath = getIndexDbPath();
 
-  // Check if already initialized
-  const initialized = await isInitialized(options.configPath);
-  if (initialized) {
-    return handleAlreadyInitialized(options, paths);
-  }
-
-  // Create directories
   const dirResult = await ensureDirectories();
   if (!dirResult.ok) {
     return {
       success: false,
-      configPath: paths.configFile,
+      configPath,
       dataDir: paths.dataDir,
-      dbPath: getIndexDbPath(),
+      dbPath,
       error: dirResult.error.message,
     };
   }
 
-  // Validate tokenizer option if provided
   if (options.tokenizer && !FTS_TOKENIZERS.includes(options.tokenizer)) {
     return {
       success: false,
-      configPath: paths.configFile,
+      configPath,
       dataDir: paths.dataDir,
-      dbPath: getIndexDbPath(),
+      dbPath,
       error: `Invalid tokenizer: ${options.tokenizer}. Valid: ${FTS_TOKENIZERS.join(", ")}`,
     };
   }
 
-  // Create default config
-  const config = createDefaultConfig();
-
-  // Set tokenizer if provided
-  if (options.tokenizer) {
-    config.ftsTokenizer = options.tokenizer;
-  }
-
-  // Add collection if path provided
-  let collectionName: string | undefined;
-  if (options.path) {
-    const collectionResult = await addCollectionToConfig(config, options);
-    if (!collectionResult.success) {
+  const mutation = await applyConfigFileChange(
+    {
+      configPath,
+      createConfigIfMissing: createDefaultConfig,
+    },
+    async (config, state) => {
+      if (state.created && options.tokenizer) {
+        config.ftsTokenizer = options.tokenizer;
+      }
+      let collectionName: string | undefined;
+      if (options.path) {
+        const collectionResult = await addCollectionToConfig(config, options);
+        if (!collectionResult.success) {
+          return {
+            ok: false as const,
+            error: collectionResult.error,
+            code: "VALIDATION",
+          };
+        }
+        collectionName = collectionResult.collectionName;
+      }
       return {
-        success: false,
-        configPath: paths.configFile,
-        dataDir: paths.dataDir,
-        dbPath: getIndexDbPath(),
-        error: collectionResult.error,
+        ok: true as const,
+        config,
+        skipSave: !state.created && !options.path,
+        value: {
+          alreadyInitialized: !state.created,
+          collectionName,
+        },
       };
     }
-    collectionName = collectionResult.collectionName;
-  }
-
-  // Save config
-  const saveResult = await saveConfig(config, options.configPath);
-  if (!saveResult.ok) {
+  );
+  if (!mutation.ok) {
     return {
       success: false,
-      configPath: paths.configFile,
+      configPath,
       dataDir: paths.dataDir,
-      dbPath: getIndexDbPath(),
-      error: saveResult.error.message,
+      dbPath,
+      error: mutation.error,
     };
   }
 
-  // Create DB placeholder file only if it doesn't exist (don't truncate existing DB)
-  const dbPath = getIndexDbPath();
-  const dbFile = Bun.file(dbPath);
-  const dbExists = await dbFile.exists();
-  if (!dbExists) {
-    try {
-      await Bun.write(dbPath, "");
-    } catch (error) {
-      return {
-        success: false,
-        configPath: paths.configFile,
-        dataDir: paths.dataDir,
-        dbPath,
-        error: `Failed to create database file: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
+  const store = new SqliteAdapter();
+  const opened = await store.open(dbPath, mutation.config.ftsTokenizer);
+  if (!opened.ok) {
+    return {
+      success: false,
+      configPath,
+      dataDir: paths.dataDir,
+      dbPath,
+      error: `Failed to initialize database: ${opened.error.message}`,
+    };
   }
+  await store.close();
 
   return {
     success: true,
-    configPath: paths.configFile,
+    alreadyInitialized: mutation.value?.alreadyInitialized || undefined,
+    configPath,
     dataDir: paths.dataDir,
     dbPath,
-    collectionAdded: collectionName,
+    collectionAdded: mutation.value?.collectionName,
   };
 }
 

@@ -125,6 +125,7 @@ gno --offline setup ~/notes
 gno setup ~/notes --no-semantic
 gno setup ~/notes --connector codex-skill
 gno setup ~/notes --connector cursor-mcp --connector codex-skill
+gno setup . --apply-profile
 gno setup ~/notes --json
 ```
 
@@ -133,6 +134,23 @@ and runs a corpus-derived BM25 query. It reports success only when that query
 returns an exact `gno://` result URI. Rerunning the same canonical folder is
 idempotent: it reuses the collection and resumes from the durable local setup
 receipt.
+
+Setup checks for the nearest `.gno/index.yml` before its folder transaction.
+Plain setup prints profile preview/apply guidance but never applies it
+implicitly. `--apply-profile` explicitly uses the lock-safe, create/update-only
+profile apply path, then proves the profile-declared collection root and name.
+Nested invocations do not create a duplicate subdirectory collection. Missing
+or invalid profiles keep ordinary setup usable and are reported as optional
+follow-up. See
+[Project-Local Retrieval Profiles](guides/project-profiles.md).
+For a valid profile, `--apply-profile` cannot be combined with explicit
+`--name` or `--exclude`; the command fails before config or index mutation.
+After a valid profile is discovered, apply is fail-closed: a failed, thrown, or
+incomplete apply aborts before ordinary setup or connector work. A profile
+inspection transport failure aborts before apply and preserves existing
+config/index/store state. A late apply failure may leave resumable,
+create/update-only state; rerun `gno profile apply` for the detailed diagnostic
+before retrying setup.
 
 `--exclude` is repeatable and literal; it is not a comma-separated list. If GNO
 finds likely env files, credentials, or private keys, terminal use asks once
@@ -159,6 +177,9 @@ closed result on stdout; progress is suppressed. Without `--connector`, the
 payload remains the unchanged `setup-command-result@1.0`. With one or more
 explicit connector IDs, it is `setup-activation-result@1.0`, containing the
 unchanged setup result plus bounded per-target install and verification state.
+With `--apply-profile`, the outer `setup-profile-result@1.0` adds the closed
+profile check/apply state around the unchanged setup result and connector list.
+An absent/invalid profile uses `completed_with_actions` and `apply: null`.
 Connector-mode argument or lexical failure still uses that outer schema with
 `status: failed` and an empty connector list; the nested setup result and exit
 code remain unchanged, and no connector action runs.
@@ -821,6 +842,10 @@ gno context add "notes:" "Personal notes and journal entries"
 gno context add "gno://notes/projects" "Active project documentation"
 ```
 
+One scope may carry multiple distinct context texts. Re-adding the same text
+after BOM, newline, Unicode, and surrounding-whitespace normalization is
+rejected as a duplicate.
+
 Matching contexts appear in structured retrieval output; they guide agents and
 grounded answers but are not searched and do not boost ranking. Multiple scopes
 compose from global to most-specific prefix. Results without a match omit the
@@ -955,7 +980,12 @@ verification.
 
 ```bash
 gno context rm "/"
+gno context rm "/" "Global search context"
 ```
+
+Scope-only removal remains convenient when exactly one context matches. When a
+scope has multiple texts, pass the exact text; an ambiguous removal changes
+nothing.
 
 ## Model Commands
 

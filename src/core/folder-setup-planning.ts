@@ -24,13 +24,7 @@ import { isCanonicalPathContained, validateCollectionRoot } from "./validation";
 
 const INVALID_NAME_CHARS = /[^a-z0-9_-]/g;
 const LEADING_NON_ALPHANUMERIC = /^[^a-z0-9]+/;
-const SECRET_FILE_PATTERNS = [
-  /^\.env(?:\.|$)/,
-  /^credentials?(?:\.|$)/,
-  /^id_(?:rsa|dsa|ecdsa|ed25519)(?:\.|$)/,
-  /^secrets?(?:\.|$)/,
-  /\.(?:key|pem|p12|pfx)$/i,
-];
+import { hasLikelySecretPath, matchesCollectionExclusion } from "./path-rules";
 
 export type FolderSetupErrorCode =
   | "folder_not_found"
@@ -108,18 +102,6 @@ export function setupInjectedFailure(checkpoint: string): FolderSetupError {
     `Injected setup interruption at ${checkpoint}`,
     "Rerun setup for the same folder to resume."
   );
-}
-
-function isExcluded(relPath: string, excludes: string[]): boolean {
-  const parts = relPath.split("/");
-  return excludes.some(
-    (exclude) => parts.includes(exclude) || relPath.startsWith(`${exclude}/`)
-  );
-}
-
-function hasSecretRisk(relPath: string): boolean {
-  const fileName = basename(relPath).toLowerCase();
-  return SECRET_FILE_PATTERNS.some((pattern) => pattern.test(fileName));
 }
 
 async function listFolderFiles(folder: string): Promise<string[]> {
@@ -345,7 +327,7 @@ export async function preflightFolder(
   let files: string[];
   try {
     files = (await listFolderFiles(folder)).filter(
-      (path) => !isExcluded(path, excludes)
+      (path) => !matchesCollectionExclusion(path, excludes)
     );
   } catch {
     return setupError(
@@ -361,7 +343,10 @@ export async function preflightFolder(
       "Add supported documents or choose another folder."
     );
   }
-  if (!secretRiskAuthorized && files.some((path) => hasSecretRisk(path))) {
+  if (
+    !secretRiskAuthorized &&
+    files.some((path) => hasLikelySecretPath(path))
+  ) {
     return setupError(
       "secret_risk",
       `Folder contains likely credential or secret files: ${folder}`,

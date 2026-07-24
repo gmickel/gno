@@ -1,0 +1,160 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/project-profile-command@1.0",
+  "title": "GNO Project Profile Read Command",
+  "description": "Deterministic, path-redacted result shared by profile check, show, and diff.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "command",
+    "status",
+    "valid",
+    "discovery",
+    "profile",
+    "diff",
+    "diagnostics"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "command": { "enum": ["check", "show", "diff"] },
+    "status": { "enum": ["valid", "invalid", "not_found", "disabled"] },
+    "valid": { "type": "boolean" },
+    "discovery": { "$ref": "#/definitions/discovery" },
+    "profile": {
+      "oneOf": [{ "$ref": "#/definitions/profile" }, { "type": "null" }]
+    },
+    "diff": {
+      "oneOf": [{ "$ref": "#/definitions/diff" }, { "type": "null" }]
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/diagnostic" }
+    }
+  },
+  "definitions": {
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "path", "message", "remediation"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "severity": { "enum": ["error", "warning"] },
+        "path": { "type": "string" },
+        "message": { "type": "string", "minLength": 1 },
+        "remediation": { "type": "string", "minLength": 1 }
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "source",
+        "boundary",
+        "profile",
+        "ambiguous",
+        "shadowedProfiles"
+      ],
+      "properties": {
+        "status": { "enum": ["found", "not_found", "disabled", "error"] },
+        "source": { "enum": ["cwd", "override", "remote"] },
+        "boundary": {
+          "enum": ["repository", "filesystem", "explicit", "remote"]
+        },
+        "profile": {
+          "type": ["string", "null"],
+          "enum": [".gno/index.yml", null]
+        },
+        "ambiguous": { "type": "boolean" },
+        "shadowedProfiles": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fingerprint", "desiredState"],
+      "properties": {
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "desiredState": {
+          "oneOf": [{ "type": "object" }, { "type": "null" }]
+        }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "field", "destructive", "summary"],
+      "properties": {
+        "action": { "enum": ["add", "update", "repair", "review"] },
+        "field": { "type": "string", "minLength": 1 },
+        "destructive": { "type": "boolean" },
+        "summary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "staleMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collection", "reason", "choices"],
+      "properties": {
+        "collection": { "type": "string", "minLength": 1 },
+        "reason": { "enum": ["name_changed", "root_changed"] },
+        "choices": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "enum": ["repair", "remove_explicitly"] }
+        }
+      }
+    },
+    "diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "changes", "staleMappings"],
+      "properties": {
+        "status": { "enum": ["in_sync", "changes_required"] },
+        "changes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/change" }
+        },
+        "staleMappings": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/staleMapping" }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "valid": { "const": true } },
+        "required": ["valid"]
+      },
+      "then": {
+        "properties": {
+          "status": { "const": "valid" },
+          "profile": { "$ref": "#/definitions/profile" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "command": { "const": "diff" } },
+        "required": ["command"]
+      },
+      "then": {
+        "properties": {
+          "diff": {
+            "oneOf": [{ "$ref": "#/definitions/diff" }, { "type": "null" }]
+          }
+        }
+      },
+      "else": {
+        "properties": { "diff": { "type": "null" } }
+      }
+    }
+  ]
+}

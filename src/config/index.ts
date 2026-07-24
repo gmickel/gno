@@ -42,6 +42,7 @@ export {
   type SaveResult,
   saveConfig,
   saveConfigToPath,
+  saveTextToPath,
 } from "./saver";
 // Types and schemas
 export {
@@ -66,6 +67,8 @@ export {
   getCollectionFromScope,
   isValidLanguageHint,
   parseScope,
+  type ProjectProfileBinding,
+  ProjectProfileBindingSchema,
   type ScopeType,
   ScopeTypeSchema,
 } from "./types";

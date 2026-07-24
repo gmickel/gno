@@ -152,7 +152,7 @@ describe("contextAdd", () => {
     expect(exitCode).toBe(1);
   });
 
-  test("rejects duplicate scope", async () => {
+  test("allows distinct texts at one scope and rejects normalized duplicates", async () => {
     const configWithContext: Config = {
       ...MINIMAL_CONFIG,
       contexts: [
@@ -165,8 +165,10 @@ describe("contextAdd", () => {
     };
     await saveConfigToPath(configWithContext, getConfigPath());
 
-    const exitCode = await contextAdd("/", "New context");
-    expect(exitCode).toBe(1);
+    expect(await contextAdd("/", "New context")).toBe(0);
+    expect(await contextAdd("/", "\uFEFFExisting context\r\n")).toBe(1);
+    const loaded = await loadConfigFromPath(getConfigPath());
+    expect(loaded.ok && loaded.value.contexts).toHaveLength(2);
   });
 });
 
@@ -279,5 +281,23 @@ describe("contextRm", () => {
 
     const exitCode = await contextRm("/");
     expect(exitCode).toBe(1);
+  });
+
+  test("requires exact text when a scope has multiple contexts", async () => {
+    const configWithContexts: Config = {
+      ...MINIMAL_CONFIG,
+      contexts: [
+        { scopeType: "global", scopeKey: "/", text: "First" },
+        { scopeType: "global", scopeKey: "/", text: "Second" },
+      ],
+    };
+    await saveConfigToPath(configWithContexts, getConfigPath());
+
+    expect(await contextRm("/")).toBe(1);
+    expect(await contextRm("/", "Second")).toBe(0);
+    const loaded = await loadConfigFromPath(getConfigPath());
+    expect(loaded.ok && loaded.value.contexts).toEqual([
+      expect.objectContaining({ text: "First" }),
+    ]);
   });
 });

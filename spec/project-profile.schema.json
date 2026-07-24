@@ -1,0 +1,301 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gno.sh/schemas/project-profile-1.0.json",
+  "title": "GNO project retrieval profile",
+  "description": "Portable, declarative retrieval state for a single project collection.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "collection"],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "collection": {
+      "$ref": "#/definitions/collection"
+    },
+    "contexts": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/context"
+      },
+      "default": []
+    },
+    "contentTypes": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {
+        "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/contentType"
+      },
+      "default": {}
+    },
+    "affinityDefaults": {
+      "$ref": "#/definitions/affinityDefaults"
+    },
+    "recommendedCapabilities": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+      },
+      "default": []
+    }
+  },
+  "definitions": {
+    "portableRule": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "allOf": [
+        {
+          "not": {
+            "type": "string",
+            "pattern": "^(?:[/\\\\]|[A-Za-z]:|~)"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "[{}]"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "^!"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "[<>:\"|\\u0000-\\u001f]"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "(?:^|[\\\\/])(?:[cC][oO][nN]|[pP][rR][nN]|[aA][uU][xX]|[nN][uU][lL]|[cC][oO][mM][1-9]|[lL][pP][tT][1-9])(?:\\.[^\\\\/]*)?(?:[\\\\/]|$)"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "(?:^|[\\\\/])(?:[^.\\\\/][^\\\\/]*|\\.[^\\\\/]+)[. ](?:[\\\\/]|$)"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "(?:\\$\\{|\\$[A-Za-z_]|%[A-Za-z_][A-Za-z0-9_]*%)"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "\\u0000"
+          }
+        }
+      ]
+    },
+    "portablePath": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/portableRule"
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "[*?\\[\\]{}]"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "(?:^|[\\\\/])\\.[gG][nN][oO](?:[\\\\/]|$)"
+          }
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "\\.(?:[dD][bB]|[sS][qQ][lL][iI][tT][eE](?:3)?|[gG][gG][uU][fF]|[lL][oO][cC][kK])$"
+          }
+        }
+      ]
+    },
+    "portableInclude": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/portableRule"
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "(?:^|[\\\\/])\\.[gG][nN][oO](?:[\\\\/]|$)|\\.(?:[dD][bB]|[sS][qQ][lL][iI][tT][eE](?:3)?|[gG][gG][uU][fF]|[lL][oO][cC][kK])$"
+          }
+        }
+      ]
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+        },
+        "root": {
+          "$ref": "#/definitions/portablePath",
+          "default": "."
+        },
+        "include": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/portableInclude"
+          },
+          "default": ["**/*"]
+        },
+        "exclude": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/portableRule"
+          },
+          "default": []
+        },
+        "languageHint": {
+          "type": "string",
+          "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z]{2}|-[A-Za-z]{4})?$"
+        },
+        "modelPreset": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+        }
+      }
+    },
+    "inlineContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 65536
+        }
+      }
+    },
+    "fileContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file"],
+      "properties": {
+        "file": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/portablePath"
+            },
+            {
+              "not": {
+                "type": "string",
+                "pattern": "(?:^|[\\\\/])(?:\\.[eE][nN][vV](?:\\..*)?|[cC][rR][eE][dD][eE][nN][tT][iI][aA][lL][sS]?(?:\\..*)?|[iI][dD]_(?:[rR][sS][aA]|[dD][sS][aA]|[eE][cC][dD][sS][aA]|[eE][dD]25519)(?:\\..*)?|[sS][eE][cC][rR][eE][tT][sS]?(?:\\..*)?|[^\\\\/]+\\.(?:[kK][eE][yY]|[pP][eE][mM]|[pP]12|[pP][fF][xX]))$"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "context": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/inlineContext"
+        },
+        {
+          "$ref": "#/definitions/fileContext"
+        }
+      ]
+    },
+    "contentType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prefixes", "preset"],
+      "properties": {
+        "prefixes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/portablePath"
+          }
+        },
+        "preset": {
+          "enum": [
+            "blank",
+            "project-note",
+            "research-note",
+            "decision-note",
+            "prompt-pattern",
+            "source-summary",
+            "idea-original",
+            "person",
+            "company-project",
+            "meeting"
+          ]
+        },
+        "graphHints": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "searchBoost": {
+          "type": "number"
+        },
+        "temporal": {
+          "type": "boolean"
+        }
+      }
+    },
+    "affinityDefaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "contribution": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.03,
+          "default": 0.03
+        }
+      },
+      "default": {
+        "enabled": true,
+        "contribution": 0.03
+      }
+    }
+  }
+}

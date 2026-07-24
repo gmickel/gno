@@ -20,6 +20,7 @@ import {
 import type { SkippedEntry, WalkConfig, WalkEntry, WalkerPort } from "./types";
 
 import { SUPPORTED_EXTENSIONS } from "../converters/mime";
+import { matchesCollectionExclusion } from "../core/path-rules";
 
 /**
  * Regex to detect dangerous patterns with parent directory traversal.
@@ -52,6 +53,70 @@ function validatePattern(pattern: string): string | null {
 }
 
 /**
+ * Split GNO's canonical whole-pattern union into independently scannable Bun
+ * globs. Bun.Glob.match() accepts a leading `{a,b}` union, but scan() does not.
+ * Nested braces remain part of each child glob; escaped outer commas become
+ * literal commas again before scanning.
+ */
+function scanPatterns(pattern: string): string[] {
+  if (!(pattern.startsWith("{") && pattern.endsWith("}"))) return [pattern];
+
+  const patterns: string[] = [];
+  let branch = "";
+  let depth = 0;
+  let bracketDepth = 0;
+  for (let index = 0; index < pattern.length; index += 1) {
+    const character = pattern[index];
+    if (
+      character === "\\" &&
+      pattern[index + 1] === "," &&
+      depth === 1 &&
+      bracketDepth === 0
+    ) {
+      branch += ",";
+      index += 1;
+      continue;
+    }
+    if (character === "[" && bracketDepth === 0) {
+      bracketDepth = 1;
+      branch += character;
+      continue;
+    }
+    if (character === "]" && bracketDepth > 0) {
+      bracketDepth = 0;
+      branch += character;
+      continue;
+    }
+    if (bracketDepth > 0) {
+      branch += character;
+      continue;
+    }
+    if (character === "{") {
+      depth += 1;
+      if (depth > 1) branch += character;
+      continue;
+    }
+    if (character === "}") {
+      depth -= 1;
+      if (depth < 0 || (depth === 0 && index !== pattern.length - 1)) {
+        return [pattern];
+      }
+      if (depth > 0) branch += character;
+      continue;
+    }
+    if (character === "," && depth === 1) {
+      patterns.push(branch);
+      branch = "";
+      continue;
+    }
+    branch += character;
+  }
+  if (depth !== 0 || bracketDepth !== 0) return [pattern];
+  patterns.push(branch);
+  return patterns;
+}
+
+/**
  * Compute safe relative path from root to file.
  * Returns null if file is outside root (security check).
  * Uses realpath to resolve symlinks and normalize case.
@@ -75,36 +140,6 @@ async function safeRelPath(
     // Can't resolve path (e.g., broken symlink)
     return null;
   }
-}
-
-/**
- * Check if a path matches any exclude pattern.
- *
- * Exclude semantics (component-based matching):
- * - Patterns match against path components (directory/file names)
- * - "node_modules" matches any path containing "node_modules" as a component
- * - ".git" matches ".git" directory at any level
- * - Patterns are NOT globs - they match exact component names
- *
- * Examples:
- * - exclude: [".git"] matches "foo/.git/bar" but not "foo/.github/..."
- * - exclude: ["dist"] matches "dist/bundle.js" and "src/dist/output.js"
- */
-function matchesExclude(relPath: string, excludes: string[]): boolean {
-  const parts = relPath.split("/");
-
-  for (const pattern of excludes) {
-    // Check if any path component matches exactly
-    if (parts.includes(pattern)) {
-      return true;
-    }
-    // Check if path starts with pattern
-    if (relPath.startsWith(`${pattern}/`)) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 /**
@@ -145,10 +180,12 @@ export class FileWalker implements WalkerPort {
     const entries: WalkEntry[] = [];
     const skipped: SkippedEntry[] = [];
 
-    // Validate pattern for security
-    const patternError = validatePattern(config.pattern);
-    if (patternError) {
-      throw new Error(`Invalid glob pattern: ${patternError}`);
+    const patterns = scanPatterns(config.pattern);
+    for (const pattern of patterns) {
+      const patternError = validatePattern(pattern);
+      if (patternError) {
+        throw new Error(`Invalid glob pattern: ${patternError}`);
+      }
     }
 
     // Resolve root to real path for consistent comparison
@@ -161,16 +198,20 @@ export class FileWalker implements WalkerPort {
       return { entries: [], skipped: [] };
     }
 
-    const glob = new Bun.Glob(config.pattern);
+    const matches = new Set<string>();
+    for (const pattern of patterns) {
+      const glob = new Bun.Glob(pattern);
+      for await (const match of glob.scan({
+        cwd: rootReal,
+        absolute: true,
+        onlyFiles: true,
+        followSymlinks: false,
+      })) {
+        matches.add(normalizePath(match));
+      }
+    }
 
-    for await (const match of glob.scan({
-      cwd: rootReal,
-      absolute: true,
-      onlyFiles: true,
-      followSymlinks: false,
-    })) {
-      const absPath = normalizePath(match);
-
+    for (const absPath of [...matches].sort()) {
       // Security: Compute safe relative path (validates file is within root)
       const relPath = await safeRelPath(rootReal, absPath);
       if (relPath === null) {
@@ -179,7 +220,7 @@ export class FileWalker implements WalkerPort {
       }
 
       // Check exclude patterns
-      if (matchesExclude(relPath, config.exclude)) {
+      if (matchesCollectionExclusion(relPath, config.exclude)) {
         skipped.push({
           absPath,
           relPath,

@@ -1291,6 +1291,77 @@ function wireSearchCommands(program: Command): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function wireOnboardingCommands(program: Command): void {
+  const profileCmd = program
+    .command("profile")
+    .description("Inspect a project-local retrieval profile");
+
+  const wireProfileRead = (
+    command: "check" | "show" | "diff",
+    description: string
+  ): void => {
+    profileCmd
+      .command(`${command} [path]`)
+      .description(description)
+      .option("--json", "JSON output")
+      .action(
+        async (path: string | undefined, cmdOpts: Record<string, unknown>) => {
+          const globals = getGlobals();
+          const json = Boolean(cmdOpts.json) || globals.json;
+          const { formatProjectProfileResult, runProjectProfileCommand } =
+            await import("./commands/profile");
+          const outcome = await runProjectProfileCommand({
+            command,
+            path,
+            configPath: globals.config,
+            offline: globals.offline,
+          });
+          process.stdout.write(
+            `${formatProjectProfileResult(outcome.result, { json })}\n`
+          );
+          if (outcome.exitCode !== 0) {
+            throw new CliError(
+              outcome.exitCode === 1 ? "VALIDATION" : "RUNTIME",
+              "Project profile inspection failed",
+              { silent: true }
+            );
+          }
+        }
+      );
+  };
+
+  wireProfileRead("check", "Validate a project-local retrieval profile");
+  wireProfileRead("show", "Show normalized project-local retrieval state");
+  wireProfileRead("diff", "Compare a project profile with local config");
+  profileCmd
+    .command("apply [path]")
+    .description("Apply a project profile without implicit deletion")
+    .option("--json", "JSON output")
+    .action(
+      async (path: string | undefined, cmdOpts: Record<string, unknown>) => {
+        const globals = getGlobals();
+        const json = Boolean(cmdOpts.json) || globals.json;
+        const {
+          formatProjectProfileApplyResult,
+          runProjectProfileApplyCommand,
+        } = await import("./commands/profile-apply");
+        const outcome = await runProjectProfileApplyCommand({
+          path,
+          configPath: globals.config,
+          indexName: globals.index,
+        });
+        process.stdout.write(
+          `${formatProjectProfileApplyResult(outcome.result, { json })}\n`
+        );
+        if (outcome.exitCode !== 0) {
+          throw new CliError(
+            outcome.exitCode === 1 ? "VALIDATION" : "RUNTIME",
+            "Project profile apply failed",
+            { silent: true }
+          );
+        }
+      }
+    );
+
   // init - Initialize GNO
   program
     .command("init [path]")
@@ -1320,6 +1391,7 @@ function wireOnboardingCommands(program: Command): void {
             | undefined,
           language: cmdOpts.language as string | undefined,
           yes: globals.yes,
+          configPath: globals.config,
         });
 
         if (!result.success) {
@@ -1367,13 +1439,20 @@ function wireOnboardingCommands(program: Command): void {
       collectRepeatableValue,
       []
     )
+    .option(
+      "--apply-profile",
+      "apply a valid project profile before lexical setup"
+    )
     .option("--no-semantic", "skip background semantic indexing")
     .option("--json", "JSON output")
     .action(async (folder: string, cmdOpts: Record<string, unknown>) => {
       const globals = getGlobals();
       const json = Boolean(cmdOpts.json) || globals.json;
-      const { formatSetupOutputResult, setupWithActivation } =
-        await import("./commands/setup-activation");
+      const {
+        formatSetupOutputResult,
+        formatSetupProfileAdvisory,
+        setupWithActivation,
+      } = await import("./commands/setup-activation");
       const exclusions = cmdOpts.exclude as string[];
       const outcome = await setupWithActivation({
         folder,
@@ -1381,6 +1460,7 @@ function wireOnboardingCommands(program: Command): void {
         exclude: exclusions.length > 0 ? exclusions : undefined,
         authorizeSecretRisk: Boolean(cmdOpts.authorizeSecretRisk),
         connectorIds: cmdOpts.connector as string[],
+        applyProfile: Boolean(cmdOpts.applyProfile),
         semantic: cmdOpts.semantic !== false,
         indexName: globals.index,
         configPath: globals.config,
@@ -1390,6 +1470,17 @@ function wireOnboardingCommands(program: Command): void {
         quiet: globals.quiet,
         progress: (stage) => {
           process.stderr.write(`setup: ${stage}\n`);
+        },
+        onProfileAdvisory: (profile) => {
+          if (json || globals.quiet) return;
+          const advisory = formatSetupProfileAdvisory(profile, {
+            applyRequested: Boolean(cmdOpts.applyProfile),
+          });
+          if (advisory) process.stderr.write(`${advisory}\n`);
+        },
+        onProfileApply: (profile) => {
+          if (json || globals.quiet) return;
+          process.stderr.write(`setup: project profile ${profile.status}\n`);
         },
       });
       const output = formatSetupOutputResult(outcome.result, { json });
@@ -1958,6 +2049,7 @@ function wireManagementCommands(program: Command): void {
         include: cmdOpts.include as string | undefined,
         exclude: cmdOpts.exclude as string | undefined,
         update: cmdOpts.update as string | undefined,
+        configPath: getGlobals().config,
       });
     });
 
@@ -1982,7 +2074,7 @@ function wireManagementCommands(program: Command): void {
     .description("Remove a collection")
     .action(async (name: string) => {
       const { collectionRemove } = await import("./commands/collection");
-      await collectionRemove(name);
+      await collectionRemove(name, { configPath: getGlobals().config });
     });
 
   collectionCmd
@@ -1990,7 +2082,9 @@ function wireManagementCommands(program: Command): void {
     .description("Rename a collection")
     .action(async (oldName: string, newName: string) => {
       const { collectionRename } = await import("./commands/collection");
-      await collectionRename(oldName, newName);
+      await collectionRename(oldName, newName, {
+        configPath: getGlobals().config,
+      });
     });
 
   collectionCmd
@@ -2017,9 +2111,11 @@ function wireManagementCommands(program: Command): void {
     .description("Add context metadata for a scope")
     .action(async (scope: string, text: string) => {
       const { contextAdd } = await import("./commands/context");
-      const exitCode = await contextAdd(scope, text);
+      const exitCode = await contextAdd(scope, text, {
+        configPath: getGlobals().config,
+      });
       if (exitCode !== 0) {
-        throw new CliError("RUNTIME", "Failed to add context");
+        throw new CliError("VALIDATION", "Failed to add context");
       }
     });
 
@@ -2301,11 +2397,16 @@ function wireManagementCommands(program: Command): void {
     });
 
   contextCmd
-    .command("rm <uri>")
+    .command("rm <scope> [text]")
     .description("Remove context item")
-    .action(async (uri: string) => {
+    .action(async (scope: string, text?: string) => {
       const { contextRm } = await import("./commands/context");
-      await contextRm(uri);
+      const exitCode = await contextRm(scope, text, {
+        configPath: getGlobals().config,
+      });
+      if (exitCode !== 0) {
+        throw new CliError("VALIDATION", "Failed to remove context");
+      }
     });
 
   // models subcommands

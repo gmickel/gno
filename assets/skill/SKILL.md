@@ -37,6 +37,11 @@ gno search "your query"               # BM25 keyword search
 `gno setup` is the default activation path. It is idempotent, returns only
 after exact lexical proof, and runs directly without resident/Web/MCP
 attachment. Use `--no-semantic` to start no worker and record skipped state.
+Inside a repository with `.gno/index.yml`, setup inspects the optional profile
+before mutation. Run `gno profile diff`, then
+`gno setup . --apply-profile` to apply its portable collection/context/content
+rules before setup proves retrieval. Missing/invalid profiles keep ordinary
+setup usable; no profile is applied implicitly.
 Use repeatable `--connector` with `claude-code-skill`,
 `claude-desktop-mcp`, `cursor-mcp`, `codex-skill`, `opencode-skill`,
 `openclaw-skill`, or `hermes-skill`. Connector skips/failures can return
@@ -70,22 +75,22 @@ Recipe rules:
 
 ## Command Overview
 
-| Category     | Commands                                                                  | Description                                                              |
-| ------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Search**   | `search`, `vsearch`, `query`, `ask`                                       | Find documents by keywords, meaning, or get AI answers                   |
-| **Links**    | `links`, `backlinks`, `similar`, `graph`, `graph query`                   | Navigate document relationships and typed connections                    |
-| **Retrieve** | `get`, `multi-get`, `ls`                                                  | Fetch document content by URI or ID                                      |
-| **Index**    | `setup`, `init`, `collection add/list/remove`, `index`, `update`, `embed` | Prove first retrieval, then maintain the document index                  |
-| **Tags**     | `tags`, `tags add`, `tags rm`                                             | Organize and filter documents                                            |
-| **Context**  | `context add/list/rm/check/build/verify/watch/watches/reverify/unwatch`   | Configure guidance or compile, verify, and watch saved evidence Capsules |
-| **Changes**  | `changes`, `diff`, `impact`                                               | Inspect bounded metadata history and dependency impact                   |
-| **Traces**   | `trace list/show/label/export/replay/delete/purge`                        | Manage and replay private retrieval receipts                             |
-| **Models**   | `models list/use/pull/clear/path`                                         | Manage local AI models                                                   |
-| **Serve**    | `serve`, `daemon`                                                         | One resident Web/headless gateway and watcher                            |
-| **Publish**  | `publish export`                                                          | Export gno.sh publish artifacts                                          |
-| **MCP**      | `mcp`, `mcp install/uninstall/status`                                     | AI assistant integration                                                 |
-| **Skill**    | `skill install/uninstall/show/paths`                                      | Install skill for AI agents                                              |
-| **Admin**    | `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`               | Maintenance and diagnostics                                              |
+| Category     | Commands                                                                                                   | Description                                                              |
+| ------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **Search**   | `search`, `vsearch`, `query`, `ask`                                                                        | Find documents by keywords, meaning, or get AI answers                   |
+| **Links**    | `links`, `backlinks`, `similar`, `graph`, `graph query`                                                    | Navigate document relationships and typed connections                    |
+| **Retrieve** | `get`, `multi-get`, `ls`                                                                                   | Fetch document content by URI or ID                                      |
+| **Index**    | `setup`, `profile check/show/diff/apply`, `init`, `collection add/list/remove`, `index`, `update`, `embed` | Reproduce profile intent, prove retrieval, then maintain the index       |
+| **Tags**     | `tags`, `tags add`, `tags rm`                                                                              | Organize and filter documents                                            |
+| **Context**  | `context add/list/rm/check/build/verify/watch/watches/reverify/unwatch`                                    | Configure guidance or compile, verify, and watch saved evidence Capsules |
+| **Changes**  | `changes`, `diff`, `impact`                                                                                | Inspect bounded metadata history and dependency impact                   |
+| **Traces**   | `trace list/show/label/export/replay/delete/purge`                                                         | Manage and replay private retrieval receipts                             |
+| **Models**   | `models list/use/pull/clear/path`                                                                          | Manage local AI models                                                   |
+| **Serve**    | `serve`, `daemon`                                                                                          | One resident Web/headless gateway and watcher                            |
+| **Publish**  | `publish export`                                                                                           | Export gno.sh publish artifacts                                          |
+| **MCP**      | `mcp`, `mcp install/uninstall/status`                                                                      | AI assistant integration                                                 |
+| **Skill**    | `skill install/uninstall/show/paths`                                                                       | Install skill for AI agents                                              |
+| **Admin**    | `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`                                                | Maintenance and diagnostics                                              |
 
 ## Search Modes
 
@@ -119,11 +124,18 @@ Recipe rules:
 --no-project-affinity Disable trusted local project-aware ranking
 ```
 
-CLI searches use the current repository/worktree as a soft signal by default.
+CLI searches use explicit `--project-root`, the nearest valid compiled project
+profile, then the current repository/worktree, in that precedence order.
 A matching collection can receive at most `+0.03`; roots never stack, all
 auxiliary signals share `±0.08`, and collection/tag/date/exclude/egress filters
 stay hard. Use `--project-root` for explicit trusted roots or
 `--no-project-affinity` to disable it.
+
+Profile affinity defaults are request-local. `gno profile apply` never
+overwrites the user's global `projectAffinity` default, so one repository
+cannot change another repository's fallback. Explain/diagnose identify this
+trusted source as `project_profile`; contexts, content types, source metadata,
+and document fields never become project identity.
 
 Do not treat MCP/SDK/REST `projectHints` as paths. They are opaque, untrusted,
 limited to 16, never trigger filesystem probing, and currently produce zero

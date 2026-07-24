@@ -65,6 +65,10 @@ equivalent files fail closed as ambiguous.
 | status             | yes    | no      | no    | yes  | no    | terminal |
 | init               | no     | no      | no    | no   | no    | terminal |
 | setup              | yes    | no      | no    | no   | no    | terminal |
+| profile check      | yes    | no      | no    | no   | no    | terminal |
+| profile show       | yes    | no      | no    | no   | no    | terminal |
+| profile diff       | yes    | no      | no    | no   | no    | terminal |
+| profile apply      | yes    | no      | no    | no   | no    | terminal |
 | collection add     | no     | no      | no    | no   | no    | terminal |
 | collection list    | yes    | no      | no    | yes  | no    | terminal |
 | collection remove  | no     | no      | no    | no   | no    | terminal |
@@ -124,6 +128,89 @@ equivalent files fail closed as ambiguous.
 ---
 
 ## Commands
+
+### gno profile
+
+Inspect a repository-owned `.gno/index.yml` retrieval profile without changing
+the user config, index database, model cache, or tracked files.
+
+**Synopsis:**
+
+```bash
+gno profile check [path] [--json]
+gno profile show [path] [--json]
+gno profile diff [path] [--json]
+gno profile apply [path] [--json]
+```
+
+With no path, discovery starts at the canonical current directory and walks
+upward. Each directory is checked before its parent, so the nearest nested
+profile wins and any ancestor profile is reported as shadowed; profiles are
+never merged. Discovery stops after checking the first Git root (`.git` may be a
+directory or a worktree file), before crossing a filesystem device boundary,
+or at the filesystem root. This gives a nested repository precedence over its
+parent repository and lets a monorepo subtree intentionally shadow the root
+profile.
+
+An explicit directory path is an exact profile-root override: only
+`<path>/.gno/index.yml` is considered. An explicit
+`<path>/.gno/index.yml` file selects that exact profile. Explicit overrides do
+not fall back to ancestors. The profile file and its `.gno` path must resolve
+inside the selected canonical profile root; symlink escapes fail closed.
+Remote callers cannot enable discovery or cause filesystem probes.
+
+`check` validates discovery, schema, referenced paths, local preset aliases,
+and, with global `--offline`, exact cache availability without downloading.
+`show` returns the same receipt plus normalized portable desired state. `diff`
+compares that desired state with the selected user config. It reports stale
+same-name/path mappings and explicit repair/removal choices but never applies
+either choice. A missing user config is treated as empty desired-state input;
+an unreadable or invalid config is an actionable validation diagnostic.
+
+The three read-only JSON forms use
+[`project-profile-command@1.0`](./output-schemas/project-profile-command.schema.json).
+Receipts contain no absolute profile, config, database, cache, or model paths,
+no timestamps, and no model URIs. Diagnostics and changes are canonically
+ordered, so identical local state produces byte-identical JSON.
+
+`apply` rebuilds the shared diff against config reloaded inside a cross-process
+runtime lock, then creates or updates only resources declared by the profile
+through a resumable operation. It can initialize a missing user config. Omitted collections,
+collection-scoped contexts, and content-type rules remain untouched; stale
+same-path collections are reported as skipped and retained. A stale same-name
+collection root is repaired in place without deleting its collection or index
+identity. Apply also updates a timestamp-free `projectProfileBindings` record
+in the local user config with the canonical absolute profile path, profile
+fingerprint, and projected collection. The public `profile_binding` resource
+receipt identifies only the collection and never exposes that local path.
+Model preset aliases resolve to collection-local model overrides.
+Apply synchronizes the config projection but does not index documents; changed
+collections appear in `pendingIndexing`.
+`affinityDefaults` remains profile-scoped and is compiled at trusted local
+retrieval time; apply does not overwrite the user config `projectAffinity`
+default. Its apply resource is therefore `project_affinity/profile/skipped`,
+while the nearest valid profile can still supply request-local affinity.
+
+The deterministic JSON result uses
+[`project-profile-apply@1.0`](./output-schemas/project-profile-apply.schema.json).
+Its created/reused/updated/skipped resource receipt is also atomically saved as
+`project-profiles/apply-receipt.json` under the user data directory. The config,
+index, receipt, and lock paths must all remain outside the selected profile
+root. The tracked `.gno/index.yml` is never written. Interrupted or concurrent
+applies resume from fresh config state and converge idempotently.
+
+**Exit Codes:**
+
+- `0`: profile found and valid (`diff` may still report changes)
+- `1`: profile missing, ambiguous discovery could not be resolved safely, or
+  profile/config validation failed, including runtime-path overlap
+- `2`: unexpected local I/O, lock, receipt, or index-store failure
+
+`gno setup` calls the same local `check` composition before its folder
+transaction. Inspection is read-only and non-fatal. Plain setup prints bounded
+preview/apply guidance but preserves the existing setup result contract.
+Explicit `--apply-profile` runs the same lock-safe apply path before lexical
+setup and emits `setup-profile-result@1.0`.
 
 ### gno status
 
@@ -365,7 +452,7 @@ to one standalone background worker and never delays lexical success.
 ```bash
 gno setup <folder> [-n|--name <name>] [--exclude <pattern>]...
   [--authorize-secret-risk] [--connector <id>]...
-  [--no-semantic] [--json]
+  [--apply-profile] [--no-semantic] [--json]
 ```
 
 **Options:**
@@ -376,6 +463,7 @@ gno setup <folder> [-n|--name <name>] [--exclude <pattern>]...
 | `--exclude <pattern>`     | repeatable | core defaults | One literal exclusion per occurrence; never CSV                              |
 | `--authorize-secret-risk` | boolean    | false         | Explicitly authorize likely credentials, private keys, or env files          |
 | `--connector <id>`        | repeatable | none          | Install or reuse and verify one supported connector after lexical proof      |
+| `--apply-profile`         | boolean    | false         | Apply a valid discovered project profile before lexical setup                |
 | `--no-semantic`           | boolean    | false         | Prove lexical retrieval but record semantic work as skipped                  |
 | `--json`                  | boolean    | false         | Emit one closed setup result object                                          |
 
@@ -391,6 +479,53 @@ a completed `FolderSetupReceipt@1.0`, `activation.ready=true`, and a non-empty
 exact `activation.evidence.resultUri`. Terminal stage progress uses stderr;
 `--quiet` suppresses progress but not the final result. JSON writes exactly one
 canonical result to stdout on both success and domain failure, with no progress.
+
+Before the folder transaction, setup performs the same local read-only
+`gno profile check` composition from the supplied folder. Missing and invalid
+profiles remain optional and never block ordinary setup. Terminal output shows
+a valid profile fingerprint plus `profile diff`/`--apply-profile` guidance, or
+an invalid-profile diagnostic, before setup mutates local state.
+
+`--apply-profile` is explicit. When the check is valid, setup runs the existing
+cross-process lock-safe, create/update-only `profile apply` path first, then
+uses the applied profile collection's canonical root, name, and filters for
+lexical setup. A nested folder invocation therefore indexes the declared
+profile root rather than creating a duplicate subdirectory collection. The
+profile never deletes omitted resources or overwrites the user-level
+`projectAffinity` default.
+
+Once a valid profile has been discovered for an explicit `--apply-profile`
+request, apply is a fail-closed prerequisite. A validation failure returns exit
+1; an apply I/O/lock/store failure, thrown apply transport, missing result, or
+malformed success receipt returns exit 2. In every case setup aborts before its
+folder transaction or connector work. A late apply failure may have persisted
+resumable create/update-only profile state, but cannot trigger ordinary setup
+reconciliation. The outer result is `failed`, the nested lexical error code is
+`profile_apply_failed`, and `profile.apply` retains a returned apply result or
+is `null` when apply produced no result.
+
+Missing or invalid profile inspection remains the optional fallback described
+below. A thrown inspection transport/runtime failure for an explicit
+`--apply-profile` request instead returns exit 2 with
+`profile_inspection_failed` before apply or setup mutation. Because no trusted
+profile check result exists, this failure uses the unchanged
+`setup-command-result@1.0` shape rather than fabricating `profile.check`.
+
+For a valid profile, `--apply-profile` is mutually exclusive with explicit
+`--name` and `--exclude` values. A conflict returns exit 1 with
+`profile_option_conflict` before config, store, or index mutation. Profile
+include/exclude values use validated Bun-glob semantics; plain exclusion
+components retain component matching. Brace alternatives are rejected; express
+their branches as separate include/exclude entries. Discovery permission/I/O
+failures return exit 2, while missing, disabled, invalid, and unsafe profiles
+return exit 1.
+
+Opt-in JSON uses
+[`setup-profile-result@1.0`](./output-schemas/setup-profile-result.schema.json)
+and includes the closed `profile.check`, nullable `profile.apply`, unchanged
+setup result, and connectors. A missing/invalid profile keeps setup usable and
+returns `completed_with_actions` with `profile.apply: null`. Without
+`--apply-profile`, the existing setup/activation JSON bytes remain unchanged.
 
 After lexical proof, the command records one private atomic
 `setup-semantic@1.0` receipt per canonical index/folder and starts one detached,
@@ -430,6 +565,7 @@ second connector fingerprint or cache.
 
 - [`setup-command-result@1.0`](./output-schemas/setup-command-result.schema.json)
 - [`setup-activation-result@1.0`](./output-schemas/setup-activation-result.schema.json)
+- [`setup-profile-result@1.0`](./output-schemas/setup-profile-result.schema.json)
 - [`setup-semantic@1.0`](./output-schemas/setup-semantic-receipt.schema.json)
 - [`FolderSetupReceipt@1.0`](./output-schemas/setup-receipt.schema.json)
 
@@ -1338,6 +1474,10 @@ retrieval results and is used as trusted guidance during grounded answer
 generation. Matching scopes compose once in this order: global, collection,
 then path prefixes from broadest to most specific. Context guides interpretation;
 it is not searched and does not change ranking.
+Multiple distinct normalized texts may share one scope. The persisted identity
+is `(scopeType, canonicalScopeKey, normalizedText)`. Text normalization removes
+a leading BOM, converts CRLF/CR to LF, applies NFC, and trims surrounding
+whitespace; an exact normalized duplicate is rejected.
 
 **Synopsis:**
 
@@ -1411,18 +1551,20 @@ gno context check [--json|--md]
 
 ### gno context rm
 
-Remove a context.
+Remove a context. Scope-only removal succeeds only when exactly one record
+matches. If multiple texts share the scope, the caller MUST pass exact text;
+ambiguous removal fails without mutation.
 
 **Synopsis:**
 
 ```bash
-gno context rm <scope>
+gno context rm <scope> [text]
 ```
 
 **Exit Codes:**
 
 - 0: Success
-- 1: Scope not found
+- 1: Invalid/not-found scope, text not found, or ambiguous scope-only removal
 
 ---
 

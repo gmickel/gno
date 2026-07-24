@@ -54,7 +54,7 @@ describe("store migrations", () => {
 
       const upgradeResult = runMigrations(db, migrations, "unicode61");
       expect(upgradeResult.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(20);
+      expect(getSchemaVersion(db)).toBe(21);
 
       const indexedRow = db
         .query<{ indexed_at: string | null }, []>(
@@ -109,13 +109,47 @@ describe("store migrations", () => {
     }
   });
 
+  test("upgrades context identity from v20 and preserves existing guidance", () => {
+    const db = new Database(dbPath);
+    try {
+      expect(runMigrations(db, migrations.slice(0, 20), "unicode61").ok).toBe(
+        true
+      );
+      db.run(
+        `INSERT INTO contexts (scope_type, scope_key, text)
+         VALUES ('collection', 'notes:', 'Existing guidance')`
+      );
+
+      expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
+      expect(getSchemaVersion(db)).toBe(21);
+      db.run(
+        `INSERT INTO contexts (scope_type, scope_key, text)
+         VALUES ('collection', 'notes:', 'Additional guidance')`
+      );
+      expect(
+        db
+          .query<{ text: string }, []>(
+            `SELECT text FROM contexts
+             WHERE scope_type = 'collection' AND scope_key = 'notes:'
+             ORDER BY text`
+          )
+          .all()
+      ).toEqual([
+        { text: "Additional guidance" },
+        { text: "Existing guidance" },
+      ]);
+    } finally {
+      db.close();
+    }
+  });
+
   test("creates the metadata-only saved Capsule registry with bounded lifecycle constraints", () => {
     const db = new Database(dbPath);
     db.exec("PRAGMA foreign_keys = ON");
 
     try {
       expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(20);
+      expect(getSchemaVersion(db)).toBe(21);
 
       const savedTables = db
         .query<{ name: string }, []>(
@@ -264,7 +298,7 @@ describe("store migrations", () => {
       );
 
       expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(20);
+      expect(getSchemaVersion(db)).toBe(21);
       expect(
         db
           .query<{ retained_entries: number; retained_bytes: number }, []>(
@@ -299,7 +333,7 @@ describe("store migrations", () => {
       );
 
       expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(20);
+      expect(getSchemaVersion(db)).toBe(21);
       expect(
         db
           .query<
@@ -358,7 +392,7 @@ describe("store migrations", () => {
       );
 
       expect(runMigrations(db, migrations, "unicode61").ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(20);
+      expect(getSchemaVersion(db)).toBe(21);
       expect(
         db
           .query<
@@ -450,7 +484,7 @@ describe("store migrations", () => {
 
       const upgraded = runMigrations(db, migrations, "unicode61");
       expect(upgraded.ok).toBe(true);
-      expect(getSchemaVersion(db)).toBe(20);
+      expect(getSchemaVersion(db)).toBe(21);
       const rows = db
         .query<{ rel_path: string; fts_mirror_hash: string | null }, []>(
           "SELECT rel_path, fts_mirror_hash FROM documents ORDER BY rel_path"

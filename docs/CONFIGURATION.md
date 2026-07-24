@@ -90,19 +90,34 @@ retrievalTraces:
   enabled: false
 ```
 
+Project-profile apply also maintains optional `projectProfileBindings` entries
+in this local config. Each timestamp-free entry binds a canonical absolute
+`.gno/index.yml` path to its SHA-256 fingerprint and projected collection.
+These machine-local provenance records are written under the shared config
+lock; they are never copied into the tracked profile or exposed by public
+profile receipts.
+
 ## Project affinity
 
-`projectAffinity.enabled` defaults to `true`. Set it to `false` to disable the
-trusted local CLI signal globally; callers can also use
-`--no-project-affinity` per request. `projectAffinity.contribution` defaults to
-`0.03` and must stay within `0..0.03`.
+`projectAffinity.enabled` defaults to `true` and controls only the fallback
+cwd-derived signal from user config. Set it to `false` to disable that fallback.
+Explicit `--project-root` values and a valid nearest project profile retain
+their higher-precedence request-local behavior. Use `--no-project-affinity` to
+disable every affinity source for one request. `projectAffinity.contribution`
+defaults to `0.03` and must stay within `0..0.03`.
 
-Only canonicalized local CLI cwd/`--project-root` values can match configured
-collection paths. Explicit roots replace the cwd-derived root, and
-overlapping/duplicate roots never stack. SDK, REST, MCP, and Web UI
+Only canonicalized local CLI roots can match configured collection paths.
+Explicit `--project-root` values replace profile/cwd inference. When no
+explicit root is supplied, the nearest valid `.gno/index.yml` contributes its
+compiled, request-local `affinityDefaults`; otherwise the user config applies
+to the cwd-derived root. Profile defaults never overwrite this user default,
+and source metadata/content types never become project identity.
+Overlapping/duplicate roots never stack. SDK, REST, MCP, and Web UI
 `projectHints` are opaque/untrusted (maximum 16) and deliberately produce zero
 affinity without filesystem probing. All auxiliary contributions share the
 `±0.08` cap; collection/tag/date/exclude/egress filters remain hard.
+
+See [Project-Local Retrieval Profiles](guides/project-profiles.md).
 
 ## Resident HTTP MCP Gateway
 

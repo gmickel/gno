@@ -62,9 +62,18 @@ export async function saveConfigToPath(
     };
   }
 
-  // Convert to YAML
-  const yamlContent = Bun.YAML.stringify(config);
+  return saveTextToPath(Bun.YAML.stringify(config), filePath);
+}
 
+/**
+ * Atomically save deterministic text outside the config schema.
+ * Used for runtime receipts that need the same crash-safe write discipline as
+ * the user config.
+ */
+export async function saveTextToPath(
+  content: string,
+  filePath: string
+): Promise<SaveResult> {
   // Ensure parent directory exists
   const dir = dirname(filePath);
   try {
@@ -88,7 +97,7 @@ export async function saveConfigToPath(
   );
 
   try {
-    await Bun.write(tempPath, yamlContent);
+    await Bun.write(tempPath, content);
   } catch (cause) {
     return {
       ok: false,
@@ -102,10 +111,10 @@ export async function saveConfigToPath(
 
   // Rename temp to target (atomic on POSIX, needs unlink on Windows)
   try {
-    // Windows: rename fails if dest exists, so unlink first (ignore if not exists)
-    await unlink(filePath).catch(() => {
-      /* ENOENT ok */
-    });
+    if (process.platform === "win32") {
+      // Windows rename fails if dest exists, so unlink first (ignore ENOENT).
+      await unlink(filePath).catch(() => undefined);
+    }
     await rename(tempPath, filePath);
   } catch (cause) {
     // Clean up temp file on rename failure
