@@ -341,8 +341,7 @@ describe("qmd static preflight", () => {
     );
 
     await expectRejectCode(
-      preflightQmd({
-        repoPath: "/Users/gordon/repos/qmd",
+      preflightExactFixture(fixture, {
         modelCachePath: join(fixture.modelCachePath, "absent"),
       }),
       "qmd_model_preflight_failed"
