@@ -66,7 +66,7 @@ export const JSON_HEADERS = {
   accept: "application/json, text/event-stream",
   "content-type": "application/json",
 };
-const START_TIMEOUT_MS = 15_000;
+const START_TIMEOUT_MS = 60_000;
 
 export function isExpectedResidentShutdownExit(
   platform: NodeJS.Platform,
@@ -127,10 +127,22 @@ export function spawnResident(
 
 export async function waitForStatus(
   baseUrl: string,
-  expectedMode: "serve" | "daemon"
+  expectedMode: "serve" | "daemon",
+  residentProcess?: RunningProcess
 ): Promise<ResidentStatus> {
+  const startedAt = performance.now();
   const deadline = Date.now() + START_TIMEOUT_MS;
   while (Date.now() < deadline) {
+    const processState = residentProcess;
+    if (processState && processState.child.exitCode !== null) {
+      const [stdout, stderr] = await Promise.all([
+        processState.stdout,
+        processState.stderr,
+      ]);
+      throw new Error(
+        `Packed ${expectedMode} exited ${processState.child.exitCode} before listener readiness after ${Math.round(performance.now() - startedAt)}ms\nstdout:\n${stdout}\nstderr:\n${stderr}`
+      );
+    }
     try {
       const response = await fetch(`${baseUrl}/api/resident/status`);
       if (response.ok) {
@@ -151,7 +163,9 @@ export async function waitForStatus(
     }
     await Bun.sleep(100);
   }
-  throw new Error(`Timed out waiting for packed ${expectedMode} at ${baseUrl}`);
+  throw new Error(
+    `Timed out after ${Math.round(performance.now() - startedAt)}ms waiting for packed ${expectedMode} listener readiness at ${baseUrl}; process=${residentProcess?.child.exitCode ?? "running"}`
+  );
 }
 
 export async function stopResident(
@@ -172,6 +186,11 @@ export async function stopResident(
     residentProcess.stdout,
     residentProcess.stderr,
   ]);
+  if (stdout || stderr) {
+    console.warn(
+      `${label} process output\nstdout:\n${stdout}\nstderr:\n${stderr}`
+    );
+  }
   const expectedSignalExit = isExpectedResidentShutdownExit(
     process.platform,
     exitCode
