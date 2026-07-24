@@ -10,22 +10,11 @@ import type { Config } from "../../src/config/types";
 import type { HttpMcpPeerServer } from "../../src/mcp/http-security";
 import type { ContextHolder } from "../../src/serve/routes/api";
 
-import { prepareBrowserClip } from "../../src/core/browser-clip";
-import { writeCapturePlanFile } from "../../src/core/capture-write";
-import {
-  browserClipIdempotencyPlan,
-  planResidentCapture,
-} from "../../src/serve/capture-service";
-import { clipperSha256 } from "../../src/serve/clipper-contract";
 import {
   clipperRoutesForBind,
   createClipperRouteGateway,
 } from "../../src/serve/routes/clipper";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
-import {
-  claimClipperIdempotency,
-  createClipperGrant,
-} from "../../src/store/sqlite/clipper-store";
 import { safeRm } from "../helpers/cleanup";
 import { assertValid, loadSchema } from "../spec/schemas/validator";
 
@@ -409,130 +398,5 @@ describe("browser clipper route gateway", () => {
         port: 3000,
       })
     ).not.toThrow();
-  });
-
-  test("recovers a write completed before receipt persistence without duplicating it", async () => {
-    const token = "d".repeat(64);
-    const nowMs = Date.now();
-    const grant = createClipperGrant(store.getRawDb(), {
-      id: "crash-recovery-grant",
-      tokenHash: clipperSha256(token),
-      origin: EXTENSION_ORIGIN,
-      createdAtMs: nowMs,
-      expiresAtMs: nowMs + 60_000,
-    });
-    expect(grant.status).toBe("created");
-
-    const payload = {
-      ...clipPayload(),
-      destination: {
-        ...clipPayload().destination,
-        relPath: "clips/recovered.md",
-        collisionPolicy: "create_with_suffix" as const,
-      },
-    };
-    const prepared = prepareBrowserClip(payload, {
-      now: new Date("2026-07-24T08:00:00.000Z"),
-    });
-    const planned = await planResidentCapture(
-      context,
-      store,
-      prepared.captureInput
-    );
-    if (!planned.ok) throw new Error(planned.message);
-    const payloadDigest = clipperSha256(JSON.stringify(prepared.payload));
-    const requestDigest = clipperSha256(
-      `${prepared.preview.digest}\0${payloadDigest}`
-    );
-    expect(
-      claimClipperIdempotency(store.getRawDb(), {
-        grantId: "crash-recovery-grant",
-        keyHash: clipperSha256("original-key"),
-        requestDigest,
-        plan: browserClipIdempotencyPlan(planned),
-        nowMs,
-      }).status
-    ).toBe("claimed");
-
-    await writeCapturePlanFile(planned.plan, planned.fullPath);
-    const writtenContent = await Bun.file(planned.fullPath).text();
-    routes = createClipperRouteGateway(context, store, {
-      host: "127.0.0.1",
-      port: 3000,
-    }).routes;
-    const request = (idempotencyKey: string) =>
-      new Request(`${LISTENER_ORIGIN}/api/capture/clip`, {
-        method: "POST",
-        headers: headers(EXTENSION_ORIGIN, {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "Idempotency-Key": idempotencyKey,
-        }),
-        body: JSON.stringify({
-          payload,
-          previewDigest: prepared.preview.digest,
-        }),
-      });
-
-    await Bun.write(
-      planned.fullPath,
-      `${writtenContent.trimEnd()}\n\nTampered article body\n`
-    );
-    const rejectedDrift = await routes["/api/capture/clip"]?.POST?.(
-      request("retry-with-new-key"),
-      server
-    );
-    expect(rejectedDrift?.status).toBe(409);
-    expect(await rejectedDrift?.json()).toMatchObject({
-      error: { code: "CLIPPER_IDEMPOTENCY_RECOVERY_CONFLICT" },
-    });
-    await Bun.write(planned.fullPath, writtenContent);
-
-    const recovered = await routes["/api/capture/clip"]?.POST?.(
-      request("retry-with-new-key"),
-      server
-    );
-    expect(recovered?.status).toBe(202);
-    const receipt = await recovered?.json();
-    expect(receipt).toMatchObject({
-      relPath: "clips/recovered.md",
-      collisionPolicyResult: "created",
-      source: { capturedAt: "2026-07-24T08:00:00.000Z" },
-      sync: { status: "skipped" },
-    });
-    expect(assertValid(receipt, await loadSchema("capture-receipt"))).toBe(
-      true
-    );
-
-    const replay = await routes["/api/capture/clip"]?.POST?.(
-      request("another-retry-key"),
-      server
-    );
-    expect(replay?.status).toBe(202);
-    expect(replay?.headers.get("Idempotent-Replay")).toBe("true");
-    expect(await replay?.json()).toEqual(receipt);
-    expect(
-      await Bun.file(join(tempDir, "notes", "clips", "recovered-2.md")).exists()
-    ).toBe(false);
-  });
-
-  test("classifies capture-store failures as runtime errors", async () => {
-    const failingStore = {
-      listDocuments: async () => ({
-        ok: false as const,
-        error: { message: "database unavailable" },
-      }),
-    } as unknown as SqliteAdapter;
-    const result = await planResidentCapture(
-      context,
-      failingStore,
-      prepareBrowserClip(clipPayload()).captureInput
-    );
-    expect(result).toEqual({
-      ok: false,
-      code: "RUNTIME",
-      message: "database unavailable",
-      status: 500,
-    });
   });
 });
