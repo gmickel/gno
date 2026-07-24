@@ -8,6 +8,7 @@ import { chmod } from "node:fs/promises";
 import { join } from "node:path";
 
 import { assertValid, loadSchema } from "../test/spec/schemas/validator";
+import { proveResidentUnaffectedBySemanticSetup } from "./package-smoke-resident-setup";
 import {
   createHttpClient,
   freeLoopbackPort,
@@ -35,6 +36,7 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
   try {
     await waitForStatus(baseUrl, "serve");
     await proveResidentUnaffectedByDirectSetup(input, baseUrl);
+    await proveResidentUnaffectedBySemanticSetup(input, baseUrl);
     await validateStatusSurfaces(baseUrl, "serve", [
       input.cwd,
       input.env.GNO_DATA_DIR ?? "",

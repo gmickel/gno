@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import type { FolderSetupReceipt } from "../src/core/setup-receipt";
 
 import { assertValid, loadSchema } from "../test/spec/schemas/validator";
+import { verifyInstalledDisabledLiveOwnership } from "./package-smoke-setup-ownership";
 
 interface InstalledSetupContractOptions {
   packageRoot: string;
@@ -117,6 +118,14 @@ export async function verifyInstalledSetupContracts(
     indexName: "default",
     offline: true,
   };
+
+  await verifyInstalledDisabledLiveOwnership({
+    packageRoot: options.packageRoot,
+    setupReceipt: options.lexicalReceipt,
+    dataDir: options.dataDir,
+    configPath: options.configPath,
+    indexName: "default",
+  });
 
   let concurrentSpawns = 0;
   const concurrentOptions = {

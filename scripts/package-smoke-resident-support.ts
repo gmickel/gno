@@ -54,6 +54,7 @@ export interface RunningProcess {
 
 export interface ResidentSmokeInput {
   gnoBin: string;
+  packageRoot: string;
   cwd: string;
   env: Record<string, string>;
   fixtureDir: string;
@@ -274,7 +275,7 @@ export async function validateResidentStatusSurface(
   return resident as unknown as ResidentStatus;
 }
 
-function residentOwnershipState(status: ResidentStatus): object {
+export function residentOwnershipState(status: ResidentStatus): object {
   return {
     admission: status.admission,
     shutdown: status.shutdown,

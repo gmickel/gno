@@ -431,6 +431,15 @@ async function main(): Promise<void> {
     runCommand([gnoBin, "update", "--yes"], tempRoot, env);
     await verifyPackedResidentGateway({
       gnoBin,
+      packageRoot: join(
+        runCommand(
+          ["npm", "root", "--global", "--prefix", installPrefix],
+          tempRoot,
+          env
+        ).stdout.trim(),
+        "@gmickel",
+        "gno"
+      ),
       cwd: tempRoot,
       env,
       fixtureDir: notesDir,
