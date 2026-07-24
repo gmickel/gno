@@ -43,8 +43,9 @@ const handleMessage = async (message: unknown): Promise<unknown> => {
     case "STATE":
       return controller.state();
     case "START_PAIR":
-      return controller.startPair(
-        typeof input.gatewayOrigin === "string" ? input.gatewayOrigin : ""
+      return controller.acceptStartedPair(
+        typeof input.gatewayOrigin === "string" ? input.gatewayOrigin : "",
+        input.started as never
       );
     case "POLL_PAIR":
       return controller.pollPair();

@@ -10,6 +10,7 @@ import type {
   PendingCapture,
 } from "./types";
 
+import { ClipperGateway } from "./gateway";
 import { PairingView } from "./pairing-view";
 import { buildBrowserClipPayload } from "./payload";
 import { PendingRecoveryView } from "./pending-recovery-view";
@@ -152,9 +153,11 @@ function App() {
 
   const startPair = () =>
     run(async () => {
+      const started = await new ClipperGateway(gatewayOrigin).startPair();
       await send({
         type: "START_PAIR",
         gatewayOrigin,
+        started,
       });
       await refreshState();
     });

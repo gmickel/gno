@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 
 import type { LocalStorageArea } from "../src/storage";
 
@@ -108,8 +108,70 @@ describe("browser clipper controller", () => {
       .startPair("http://127.0.0.1:3000")
       .catch((error: unknown) => error);
     expect(mismatch).toBeInstanceOf(Error);
-    expect((mismatch as Error).message).toContain("different extension origin");
+    expect((mismatch as Error).message).toContain(
+      "invalid browser pairing state"
+    );
     expect(local.values[CLIPPER_STORAGE_KEY]).toBeUndefined();
+  });
+
+  test("accepts a foreground-validated pair without worker network access", async () => {
+    const local = new MemoryStorage();
+    const session = new MemoryStorage();
+    const opened: string[] = [];
+    const fetcher = mock(async () => {
+      throw new Error("service worker must not start pairing");
+    });
+    const controller = makeController(
+      local,
+      session,
+      fetcher as unknown as typeof fetch,
+      opened
+    );
+    const pairId = "d".repeat(64);
+
+    await controller.acceptStartedPair("http://127.0.0.1:3000", {
+      pairId,
+      pairingCode: "87654321",
+      expiresAt: "2099-07-24T08:05:00.000Z",
+      origin: `chrome-extension://${"a".repeat(32)}`,
+      approvalPath: "/api/clipper/pair/approve",
+    });
+
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(session.values[CLIPPER_PAIR_SESSION_KEY]).toMatchObject({ pairId });
+    expect(opened).toEqual([
+      `http://127.0.0.1:3000/clipper/pair#pairId=${pairId}`,
+    ]);
+  });
+
+  test("rejects hostile foreground pair handoff before session or navigation", async () => {
+    const local = new MemoryStorage();
+    const session = new MemoryStorage();
+    const opened: string[] = [];
+    const controller = makeController(
+      local,
+      session,
+      (() => Promise.reject(new Error("unused"))) as unknown as typeof fetch,
+      opened
+    );
+    const started = {
+      pairId: "d".repeat(64),
+      pairingCode: "87654321",
+      expiresAt: "2099-07-24T08:05:00.000Z",
+      origin: `chrome-extension://${"a".repeat(32)}`,
+      approvalPath: "/api/clipper/pair/approve" as const,
+    };
+
+    for (const gatewayOrigin of [
+      "https://attacker.example",
+      "http://127.0.0.1:3000/redirect",
+    ]) {
+      expect(
+        controller.acceptStartedPair(gatewayOrigin, started)
+      ).rejects.toBeInstanceOf(Error);
+    }
+    expect(session.values[CLIPPER_PAIR_SESSION_KEY]).toBeNull();
+    expect(opened).toEqual([]);
   });
 
   test("persists one pending write across restart and reuses its key offline", async () => {

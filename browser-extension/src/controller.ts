@@ -112,11 +112,26 @@ export class ClipperController {
 
   async startPair(gatewayOrigin: string): Promise<TransientPair> {
     const started = await this.gateway(gatewayOrigin).startPair();
-    if (started.origin !== this.dependencies.extensionOrigin) {
-      await this.clearPair();
-      throw new Error("GNO returned a grant for a different extension origin");
-    }
+    return this.acceptStartedPair(gatewayOrigin, started);
+  }
+
+  async acceptStartedPair(
+    gatewayOrigin: string,
+    started: PairStart
+  ): Promise<TransientPair> {
     const transient = { ...started, gatewayOrigin };
+    try {
+      this.gateway(gatewayOrigin);
+      if (
+        !isTransientPair(transient) ||
+        started.origin !== this.dependencies.extensionOrigin
+      ) {
+        throw new Error("invalid pairing state");
+      }
+    } catch {
+      await this.clearPair();
+      throw new Error("GNO returned invalid browser pairing state");
+    }
     await this.dependencies.session.set({ [PAIR_KEY]: transient });
     await this.dependencies.openApproval(
       `${gatewayOrigin}/clipper/pair#pairId=${started.pairId}`
