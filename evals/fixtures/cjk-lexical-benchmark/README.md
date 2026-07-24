@@ -15,6 +15,10 @@ lexical fallback before changing any production tokenizer or normalizer.
 - `latest.{json,md}` — convenience copies of the current baseline
 - `promotion-gates.{json,md}` — machine-readable and human-readable `fn-109`
   quality, non-regression, and cost contract
+- `candidates/2026-07-22-no-ship.json` — deterministic evaluation of every
+  committed fn-96 diagnostic against the frozen gates
+- `decision.md` — fn-109 no-ship decision: no committed representation clears
+  the Chinese quality floors plus the production evidence gates
 
 The document paths (`d001.md`, and so on) and query IDs are deliberately opaque.
 Queries may name a filename that appears **inside** a document, but never the
