@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 // node:path provides path joining; Bun has no path utilities.
 import { join } from "node:path";
 
+import type { ProjectAffinityPromotionArtifact } from "../../../evals/agentic/project-affinity-promotion";
 import type {
   BenchmarkReport,
   BenchmarkScoreRecord,
@@ -222,5 +223,35 @@ describe("committed authoritative agentic baseline", () => {
     expect(
       await Bun.file(join(BASELINE_ROOT, "verified-ask-promotion.md")).text()
     ).toContain("Baseline: production raw Ask");
+  });
+
+  test("contains the separate closed project-affinity promotion", async () => {
+    const artifact = (await Bun.file(
+      join(BASELINE_ROOT, "project-affinity-promotion.json")
+    ).json()) as ProjectAffinityPromotionArtifact;
+    expect(
+      validateAgenticSchema("project-affinity-promotion", artifact)
+    ).toBeTrue();
+    expect(artifact.gates).toEqual({
+      passed: true,
+      failures: [],
+      targetCorrectTop1: { disabled: 0, enabled: 2, required: 2 },
+      evidenceAccuracyLoss: 0,
+      evidenceCoverageLoss: 0,
+      multilingualLoss: 0,
+      filterHard: true,
+      zeroLanesExact: true,
+      auxiliaryReceiptsValid: true,
+      structuralCallsBounded: true,
+    });
+    expect(artifact.targets.map((target) => target.targetUri)).toEqual([
+      "gno://c015/d001.md",
+      "gno://c016/d001.md",
+    ]);
+    expect(
+      await Bun.file(
+        join(BASELINE_ROOT, "project-affinity-promotion.md")
+      ).exists()
+    ).toBeTrue();
   });
 });

@@ -1,0 +1,210 @@
+{
+  "benchmarkId": "project-affinity-promotion@1",
+  "canonicalFingerprint": "551ff3d020d3437e971594c13de74e14f376f3081bd30c3ad650855776aef97c",
+  "fixture": {
+    "bindingFingerprint": "346f1f4cdca5b31bf9c56813c0aa5e24c4ce2ab6e1b0ca77d72b558a9a8b99e0",
+    "bindings": [
+      {
+        "caseId": "pa-t456ef70",
+        "corpus": [
+          {
+            "collection": "c015",
+            "relPath": "d001.md",
+            "sourceHash": "aa21f9ddd17198aa5e12794b6a48d7b2bfbcd13173a07a773a0750ec77840cd7"
+          },
+          {
+            "collection": "c115",
+            "relPath": "d002.md",
+            "sourceHash": "274702c0912619fbbf400b334a09f275b88947b420f8e5bf85c9cbd836092bb9"
+          }
+        ],
+        "oracleSha256": "520af66f461a7d50b0ad1924b36ac2ebb284cb5ff8a6ec36bbfddba233d30b62",
+        "requiredEvidence": [
+          {
+            "endLine": 3,
+            "sourceHash": "aa21f9ddd17198aa5e12794b6a48d7b2bfbcd13173a07a773a0750ec77840cd7",
+            "sourceHashProvenance": "harness_observed",
+            "spanHash": "6a002d56d1b828fe0af6ba26bebef8512671d2abfa38dcc3216c1a5c9ca54a17",
+            "spanHashProvenance": "harness_observed",
+            "startLine": 3,
+            "uri": "gno://c015/d001.md"
+          }
+        ],
+        "taskId": "t456ef70",
+        "taskSha256": "13824af874195e8c244ff975298636e469d8a72df25d90d676bf8d3e0f3ddbca"
+      },
+      {
+        "caseId": "pa-t567f081",
+        "corpus": [
+          {
+            "collection": "c016",
+            "relPath": "d001.md",
+            "sourceHash": "9024c0e24d568a709478e7797e0c4ced44d9dee8bddf06b44c168ce3cdbd3d2c"
+          },
+          {
+            "collection": "c116",
+            "relPath": "d002.md",
+            "sourceHash": "0f8c45f7a60e0a3db4c77c555fdd46ba81eb44e44c040278094e66098b2ba621"
+          }
+        ],
+        "oracleSha256": "c7d50abbe1662d63062e1f7c5eff2d6db946b75bec4b3c7e5f4326015d52b18b",
+        "requiredEvidence": [
+          {
+            "endLine": 3,
+            "sourceHash": "9024c0e24d568a709478e7797e0c4ced44d9dee8bddf06b44c168ce3cdbd3d2c",
+            "sourceHashProvenance": "harness_observed",
+            "spanHash": "33e439ffe7deec12e23219ddec84e931b276f372e11355ab8d9c6bb58742e286",
+            "spanHashProvenance": "harness_observed",
+            "startLine": 3,
+            "uri": "gno://c016/d001.md"
+          }
+        ],
+        "taskId": "t567f081",
+        "taskSha256": "639c7a7bd60fcfa02ebe8636d955aff69c60ce7a86cbbf5501b3dfb1b298aca7"
+      }
+    ],
+    "corpusFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
+    "fixtureFingerprint": "2dc5fde6579c724dacd28df50a8266c95644c0e1550fb1723a89db47426b783a",
+    "fixtureVersion": "2026-07-24.1"
+  },
+  "gates": {
+    "auxiliaryReceiptsValid": true,
+    "evidenceAccuracyLoss": 0,
+    "evidenceCoverageLoss": 0,
+    "failures": [],
+    "filterHard": true,
+    "multilingualLoss": 0,
+    "passed": true,
+    "structuralCallsBounded": true,
+    "targetCorrectTop1": {
+      "disabled": 0,
+      "enabled": 2,
+      "required": 2
+    },
+    "zeroLanesExact": true
+  },
+  "limitations": [
+    "Controlled vector distances isolate the bounded promotion seam; they do not claim general retrieval superiority.",
+    "The fixture agent still selects hard collections and MCP project hints remain untrusted zero-affinity inputs.",
+    "Results apply only to this closed synthetic corpus and exact committed identities."
+  ],
+  "methodology": [
+    "Separate deterministic fn-97 lane; the authoritative 24-task adapter matrix is unchanged.",
+    "Two controlled vector-distance pairs make the oracle collection lose by 0.02 before one trusted local +0.03 contribution.",
+    "All 24 tasks run with their existing hard collection; the gate requires zero URI-rank and required-evidence coverage loss.",
+    "Store calls are instrumented structurally; wall-clock latency is not a gate."
+  ],
+  "schemaVersion": "1.0",
+  "targets": [
+    {
+      "caseId": "pa-t456ef70",
+      "disabled": [
+        {
+          "affinityApplied": 0,
+          "affinityRequested": 0,
+          "baseScore": 0.9,
+          "collectionAlias": null,
+          "matched": false,
+          "rank": 1,
+          "rootAlias": null,
+          "score": 0.9,
+          "uri": "gno://c115/d002.md"
+        },
+        {
+          "affinityApplied": 0,
+          "affinityRequested": 0,
+          "baseScore": 0.88,
+          "collectionAlias": null,
+          "matched": false,
+          "rank": 2,
+          "rootAlias": null,
+          "score": 0.88,
+          "uri": "gno://c015/d001.md"
+        }
+      ],
+      "enabled": [
+        {
+          "affinityApplied": 0.03,
+          "affinityRequested": 0.03,
+          "baseScore": 0.88,
+          "collectionAlias": "collection_d876c93718c4",
+          "matched": true,
+          "rank": 1,
+          "rootAlias": "root_9efe24a9dd98",
+          "score": 0.91,
+          "uri": "gno://c015/d001.md"
+        },
+        {
+          "affinityApplied": 0,
+          "affinityRequested": 0,
+          "baseScore": 0.9,
+          "collectionAlias": null,
+          "matched": false,
+          "rank": 2,
+          "rootAlias": null,
+          "score": 0.9,
+          "uri": "gno://c115/d002.md"
+        }
+      ],
+      "query": "invoice identifier",
+      "requiredEvidenceRetained": true,
+      "targetUri": "gno://c015/d001.md",
+      "taskId": "t456ef70"
+    },
+    {
+      "caseId": "pa-t567f081",
+      "disabled": [
+        {
+          "affinityApplied": 0,
+          "affinityRequested": 0,
+          "baseScore": 0.9,
+          "collectionAlias": null,
+          "matched": false,
+          "rank": 1,
+          "rootAlias": null,
+          "score": 0.9,
+          "uri": "gno://c116/d002.md"
+        },
+        {
+          "affinityApplied": 0,
+          "affinityRequested": 0,
+          "baseScore": 0.88,
+          "collectionAlias": null,
+          "matched": false,
+          "rank": 2,
+          "rootAlias": null,
+          "score": 0.88,
+          "uri": "gno://c016/d001.md"
+        }
+      ],
+      "enabled": [
+        {
+          "affinityApplied": 0.03,
+          "affinityRequested": 0.03,
+          "baseScore": 0.88,
+          "collectionAlias": "collection_0a7c58e8fed6",
+          "matched": true,
+          "rank": 1,
+          "rootAlias": "root_57ecd9d5a8e0",
+          "score": 0.91,
+          "uri": "gno://c016/d001.md"
+        },
+        {
+          "affinityApplied": 0,
+          "affinityRequested": 0,
+          "baseScore": 0.9,
+          "collectionAlias": null,
+          "matched": false,
+          "rank": 2,
+          "rootAlias": null,
+          "score": 0.9,
+          "uri": "gno://c116/d002.md"
+        }
+      ],
+      "query": "initiative owner",
+      "requiredEvidenceRetained": true,
+      "targetUri": "gno://c016/d001.md",
+      "taskId": "t567f081"
+    }
+  ]
+}
