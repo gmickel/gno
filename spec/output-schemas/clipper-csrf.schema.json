@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/clipper-csrf@1.0",
+  "title": "Browser Clipper Approval CSRF",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "csrfToken"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "csrfToken": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

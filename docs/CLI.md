@@ -522,6 +522,14 @@ Provenance flags write structured `source:` frontmatter. `--source-date` maps to
 the shared capture receipt with write, sync, and embed status; quiet mode prints
 only the URI.
 
+Browser-clip receipts extend that same contract with optional normalized source
+fields and closed `source.browserClip` provenance: extraction mode, exact
+selection when applicable, extraction/final hashes, deterministic clip/preview
+digests, browser metadata, capture time, and bounded warnings. Existing CLI
+capture inputs are unchanged. A browser clip using `open_existing` opens only a
+note with the same stored `clipIdentity`; missing or different provenance is an
+explicit conflict. `create_with_suffix` creates a distinct note.
+
 ## Document Commands
 
 ### gno get

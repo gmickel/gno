@@ -85,6 +85,29 @@ import { createGnoClient } from "@gmickel/gno";
 
 > **macOS users**: Vector search requires Homebrew SQLite. See [macOS setup](#macos) below.
 
+### Chromium Browser Clipper
+
+The npm package includes a reproducible unpacked Manifest V3 extension at:
+
+```text
+~/.bun/install/global/node_modules/@gmickel/gno/browser-extension/dist
+```
+
+Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**,
+and select that directory. npm-global installs use
+`$(npm root -g)/@gmickel/gno/browser-extension/dist`. Start `gno serve`, then
+pair through the extension's visible five-minute approval flow. Updating GNO
+updates the packaged files; reload the same extension directory afterward.
+Moving the unpacked directory can change its Chromium extension ID and requires
+re-pairing.
+
+The release also includes
+`browser-extension/artifacts/gno-browser-clipper-v<VERSION>.zip` and its
+adjacent `.zip.sha256`. This is a local unpacked Chromium distribution; GNO
+does not claim Chrome Web Store availability or Firefox parity. See
+[Browser Clipper](integrations/browser-clipper.md) for checksum, pairing,
+privacy, provenance, and recovery details.
+
 ## Requirements
 
 | Component | Version | Notes                                       |

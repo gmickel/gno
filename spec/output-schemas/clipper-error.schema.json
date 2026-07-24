@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/clipper-error@1.0",
+  "title": "Browser Clipper Error",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["error"],
+  "properties": {
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "enum": [
+            "CLIPPER_ABORTED",
+            "CLIPPER_BODY_TOO_LARGE",
+            "CLIPPER_BUSY",
+            "CLIPPER_FORBIDDEN",
+            "CLIPPER_INVALID_JSON",
+            "CLIPPER_RATE_LIMITED",
+            "CLIPPER_UNAUTHORIZED",
+            "CLIPPER_PAIRING_UNAVAILABLE",
+            "CLIPPER_CSRF",
+            "CLIPPER_INVALID_REQUEST",
+            "CLIPPER_PAIR_NOT_FOUND",
+            "CLIPPER_PAIR_EXPIRED",
+            "CLIPPER_PAIR_INVALID_CODE",
+            "CLIPPER_PAIR_ALREADY_USED",
+            "CLIPPER_PREVIEW_MISMATCH",
+            "CLIPPER_PREVIEW_REQUIRED",
+            "CLIPPER_IDEMPOTENCY_PENDING",
+            "CLIPPER_IDEMPOTENCY_CONFLICT",
+            "CLIPPER_IDEMPOTENCY_RECOVERY_CONFLICT",
+            "CLIPPER_IDEMPOTENCY_GRANT_INACTIVE",
+            "CLIPPER_CAPTURE_FAILED",
+            "NOT_FOUND",
+            "RUNTIME",
+            "VALIDATION"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

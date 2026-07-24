@@ -34,7 +34,7 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
   ]);
   const clients: Client[] = [];
   try {
-    await waitForStatus(baseUrl, "serve");
+    await waitForStatus(baseUrl, "serve", residentProcess);
     await proveResidentUnaffectedByDirectSetup(input, baseUrl);
     await proveResidentUnaffectedBySemanticSetup(input, baseUrl);
     await validateStatusSurfaces(baseUrl, "serve", [
@@ -261,7 +261,7 @@ async function proveNonLoopbackDaemon(
   const residentProcess = spawnResident(input, "daemon", securedArgs);
   const clients: Client[] = [];
   try {
-    await waitForStatus(baseUrl, "daemon");
+    await waitForStatus(baseUrl, "daemon", residentProcess);
     await validateResidentStatusSurface(baseUrl, "daemon", [
       input.cwd,
       input.env.GNO_DATA_DIR ?? "",

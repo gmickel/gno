@@ -1201,6 +1201,15 @@ same provenance receipt contract as CLI, REST, and SDK capture. The MCP result
 also preserves legacy fields: `docid`, `absPath`, `overwritten`, and
 `serverInstanceId`.
 
+Browser-clip results may extend the shared receipt with normalized source fields
+and closed `source.browserClip` provenance: extraction mode, exact selection
+when applicable, extraction/final hashes, deterministic clip/preview digests,
+browser metadata, capture time, and bounded warnings. Existing `gno_capture`
+inputs remain compatible. For a browser clip, `open_existing` succeeds only
+when stored `clipIdentity` matches; missing or different provenance returns an
+explicit conflict without writing. `create_with_suffix` creates a distinct
+note.
+
 Collision handling checks both indexed documents and disk-only files. Use
 `collisionPolicy: "open_existing"` to return an existing receipt without
 rewriting content, `create_with_suffix` to create the next available filename,

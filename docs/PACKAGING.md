@@ -12,6 +12,7 @@ This is split by product surface:
 
 - CLI
 - desktop shell
+- Chromium browser clipper
 
 Use this document when deciding what artifacts to publish, what to test in CI,
 and what to claim in release notes.
@@ -45,16 +46,17 @@ Current repo/runtime facts that drive the matrix:
 
 ## Recommended Matrix
 
-| Surface | OS / Arch   | Tier         | Recommended artifact                        | Notes                                                     |
-| :------ | :---------- | :----------- | :------------------------------------------ | :-------------------------------------------------------- |
-| CLI     | macOS arm64 | Supported    | npm package via Bun global install          | default macOS CLI path                                    |
-| CLI     | macOS x64   | Supported    | npm package via Bun global install          | same support story as arm64                               |
-| CLI     | Linux x64   | Supported    | npm package via Bun global install          | simplest Linux path today                                 |
-| CLI     | Linux arm64 | Experimental | npm package via Bun global install          | no vendored `fts5-snowball` proof yet                     |
-| Desktop | macOS arm64 | Beta         | signed `.app` inside DMG                    | primary desktop target                                    |
-| Desktop | macOS x64   | Beta         | signed `.app` inside DMG                    | keep parity with Apple Silicon when signing path is ready |
-| Desktop | Linux x64   | Experimental | unpacked app dir or AppImage-style artifact | only after runtime proof on Ubuntu baseline               |
-| Desktop | Linux arm64 | Unsupported  | none                                        | no runtime proof and no vendored stemmer binary           |
+| Surface | OS / Arch   | Tier         | Recommended artifact                         | Notes                                                     |
+| :------ | :---------- | :----------- | :------------------------------------------- | :-------------------------------------------------------- |
+| CLI     | macOS arm64 | Supported    | npm package via Bun global install           | default macOS CLI path                                    |
+| CLI     | macOS x64   | Supported    | npm package via Bun global install           | same support story as arm64                               |
+| CLI     | Linux x64   | Supported    | npm package via Bun global install           | simplest Linux path today                                 |
+| CLI     | Linux arm64 | Experimental | npm package via Bun global install           | no vendored `fts5-snowball` proof yet                     |
+| Desktop | macOS arm64 | Beta         | signed `.app` inside DMG                     | primary desktop target                                    |
+| Desktop | macOS x64   | Beta         | signed `.app` inside DMG                     | keep parity with Apple Silicon when signing path is ready |
+| Desktop | Linux x64   | Experimental | unpacked app dir or AppImage-style artifact  | only after runtime proof on Ubuntu baseline               |
+| Desktop | Linux arm64 | Unsupported  | none                                         | no runtime proof and no vendored stemmer binary           |
+| Clipper | Chromium    | Beta         | unpacked MV3 build inside npm + zip/checksum | local loopback pairing; no store or Firefox claim         |
 
 ## Artifact Guidance
 
@@ -76,6 +78,28 @@ Not recommended as first-class right now:
 
 Those can exist later for convenience, but they should not replace the npm path
 until they have the same verification and support story.
+
+### Browser Clipper
+
+The npm package is the canonical distribution. It contains:
+
+- `browser-extension/dist` for Chromium **Load unpacked**
+- `browser-extension/artifacts/gno-browser-clipper-v<VERSION>.zip`
+- the adjacent `.zip.sha256`
+- `browser-extension/PRIVACY.md`
+
+`package.json` is the sole version source. `bun run package:clipper` performs a
+clean unpacked build, generates the matching archive and checksum, and
+`bun run verify:clipper-package` packages twice from the same source and
+compares bytes. The build must contain no timestamps, absolute paths, source
+maps, remote code, or environment-dependent output.
+
+Do not claim:
+
+- Chrome Web Store availability
+- signed CRX distribution
+- Firefox parity
+- remote/non-loopback capture
 
 ### Desktop: macOS
 
@@ -195,6 +219,18 @@ CLI package proof:
 - rejects hostile Host/Origin, oversized bodies, missing/wrong/rotated tokens,
   write attempts under read-only auth, `serve` non-loopback binds, and
   unauthenticated daemon non-loopback binds
+- inspects the clipper from the installed npm tarball rather than the source
+  checkout, validates manifest/package/archive version agreement and minimal
+  permissions, verifies the archive checksum, and rebuilds twice
+  byte-identically
+- runs with isolated HOME/config/data/cache/npm paths, proves actual user
+  config/database/WAL/SHM/receipt sentinels are unchanged, and preserves a
+  printed forensic recovery directory on failure
+
+Browser-clipper E2E is a separate serial headed Chromium/Xvfb lane. It loads the
+real installed unpacked artifact into a persistent profile and drives the popup,
+service worker, content script, same-origin Web approval page, and loopback
+gateway. Ordinary macOS/Windows unit lanes do not install or launch Chromium.
 
 The packed resident lane runs on Ubuntu and macOS CI. Native Windows
 `--detach` remains unsupported, and Bun's Windows signal path may report exit
@@ -215,5 +251,8 @@ Desktop-specific proof:
 - **Ship desktop beta**: macOS arm64/x64 first
 - **Offer Linux desktop only as experimental**: `linux-x64`, Ubuntu `22.04+`,
   after packaged-runtime proof exists
+- **Ship clipper beta inside npm**: unpacked Chromium MV3 build plus
+  deterministic zip/checksum
 - **Do not claim**: Linux arm64 desktop, Linux-wide desktop GA, or PKG/MSI as
-  the primary cross-platform path today
+  the primary cross-platform path today; Chrome Web Store or Firefox clipper
+  availability

@@ -137,6 +137,11 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
   `client.capture()`, MCP `gno_capture`, and Web UI Quick Capture write
   provenance-rich notes from text, stdin, or files, including typed presets for
   ideas, people, company/projects, and meetings
+- **Local Chromium clipper**: the npm package includes a reproducible unpacked
+  Manifest V3 extension for explicit visible selection or constrained Reader
+  capture. A loopback `gno serve` pairing, server-owned preview, exact
+  provenance, and idempotent recovery protect every write; no history, cookies,
+  remote fetch, store listing, or Firefox parity is claimed.
 - **Schema-lite content types**: optional `contentTypes` rules map configured
   frontmatter `type` values or path prefixes to canonical `contentType` metadata
   in JSON search/query results
@@ -644,6 +649,9 @@ Open `http://localhost:3000` to:
 - **Create in place**: New notes in the current folder/collection with presets and command-palette flows
 - **Capture with provenance**: `gno capture` and Web UI Quick Capture write quick notes to an editable collection with structured `source:` metadata, typed preset scaffolds, and a receipt that separates write, sync, and embed state
 - **Same capture contract everywhere**: CLI, MCP `gno_capture`, REST `/api/capture`, SDK `client.capture()`, and Web UI Quick Capture return the same provenance receipt shape
+- **Browser clipper**: npm-distributed unpacked Chromium extension for explicit
+  visible selection or Reader capture through a local preview/confirm flow.
+  See [Browser Clipper](docs/integrations/browser-clipper.md).
 - **Ask**: AI-powered Q&A with citations
 - **Manage Collections**: Add, remove, and re-index collections
 - **Verify retrieval**: See each folder's lexical proof, exact failed stage,

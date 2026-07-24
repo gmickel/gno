@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/browser-clip-preview@1.0",
+  "title": "Browser Clip Preview",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "preview", "provenance", "plan"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "preview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["body", "digest", "source", "destination", "tags"],
+      "properties": {
+        "body": { "type": "string" },
+        "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "source": { "$ref": "#/definitions/source" },
+        "destination": {
+          "$ref": "gno://schemas/browser-clip@1.0#/properties/destination"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "provenance": {
+      "$ref": "gno://schemas/browser-clip@1.0#/definitions/provenance"
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collection", "relPath", "outcome", "provenanceConflict"],
+      "properties": {
+        "collection": { "type": "string", "minLength": 1 },
+        "relPath": { "type": "string", "minLength": 1 },
+        "outcome": {
+          "enum": [
+            "created",
+            "opened_existing",
+            "created_with_suffix",
+            "overwritten",
+            "conflict"
+          ]
+        },
+        "provenanceConflict": { "type": "boolean" }
+      }
+    }
+  },
+  "definitions": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "title",
+        "url",
+        "observedAt",
+        "capturedAt",
+        "browserClip"
+      ],
+      "properties": {
+        "kind": { "const": "web" },
+        "title": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "author": { "type": "string" },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "capturedAt": { "type": "string", "format": "date-time" },
+        "canonicalUrl": { "type": "string", "format": "uri" },
+        "site": { "type": "string" },
+        "publishedAt": {
+          "oneOf": [
+            { "type": "string", "format": "date" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "browserClip": {
+          "$ref": "gno://schemas/browser-clip@1.0#/definitions/provenance"
+        }
+      }
+    }
+  }
+}

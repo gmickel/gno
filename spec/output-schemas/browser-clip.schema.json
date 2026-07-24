@@ -1,0 +1,586 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/browser-clip@1.0",
+  "title": "GNO Browser Clip Payload",
+  "description": "Closed local browser-clip request. Reader extraction is a constrained semantic AST; raw HTML is not accepted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "mode",
+    "sourceUrl",
+    "canonicalUrl",
+    "title",
+    "author",
+    "site",
+    "publishedAt",
+    "observedAt",
+    "browser",
+    "extraction",
+    "destination",
+    "tags",
+    "note"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "mode": { "enum": ["selection", "reader"] },
+    "sourceUrl": { "$ref": "#/definitions/httpUrl" },
+    "canonicalUrl": {
+      "oneOf": [{ "$ref": "#/definitions/httpUrl" }, { "type": "null" }]
+    },
+    "title": {
+      "allOf": [
+        { "$ref": "#/definitions/controlSafeString" },
+        { "type": "string", "minLength": 1, "maxLength": 2048 }
+      ]
+    },
+    "author": {
+      "oneOf": [
+        {
+          "allOf": [
+            { "$ref": "#/definitions/controlSafeString" },
+            { "type": "string", "maxLength": 1024 }
+          ]
+        },
+        { "type": "null" }
+      ]
+    },
+    "site": {
+      "oneOf": [
+        {
+          "allOf": [
+            { "$ref": "#/definitions/controlSafeString" },
+            { "type": "string", "maxLength": 1024 }
+          ]
+        },
+        { "type": "null" }
+      ]
+    },
+    "publishedAt": {
+      "oneOf": [
+        {
+          "allOf": [
+            { "$ref": "#/definitions/controlSafeString" },
+            { "type": "string", "format": "date" }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/definitions/controlSafeString" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        { "type": "null" }
+      ]
+    },
+    "observedAt": {
+      "allOf": [
+        { "$ref": "#/definitions/controlSafeString" },
+        { "type": "string", "format": "date-time" }
+      ]
+    },
+    "browser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "platform"],
+      "properties": {
+        "name": {
+          "allOf": [
+            { "$ref": "#/definitions/controlSafeString" },
+            { "type": "string", "minLength": 1, "maxLength": 128 }
+          ]
+        },
+        "version": {
+          "oneOf": [
+            {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "maxLength": 128 }
+              ]
+            },
+            { "type": "null" }
+          ]
+        },
+        "platform": {
+          "oneOf": [
+            {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "maxLength": 128 }
+              ]
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "extraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visibility",
+        "authenticated",
+        "extractorVersion",
+        "warnings"
+      ],
+      "properties": {
+        "visibility": { "const": "user_visible" },
+        "authenticated": { "type": "boolean" },
+        "extractorVersion": {
+          "allOf": [
+            { "$ref": "#/definitions/controlSafeString" },
+            { "type": "string", "minLength": 1, "maxLength": 128 }
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/warningCode" }
+        }
+      }
+    },
+    "destination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collection", "relPath", "folderPath", "collisionPolicy"],
+      "properties": {
+        "collection": {
+          "allOf": [
+            { "$ref": "#/definitions/controlSafeString" },
+            { "type": "string", "minLength": 1, "maxLength": 128 }
+          ]
+        },
+        "relPath": {
+          "oneOf": [
+            {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "minLength": 1, "maxLength": 2048 }
+              ]
+            },
+            { "type": "null" }
+          ]
+        },
+        "folderPath": {
+          "oneOf": [
+            {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "minLength": 1, "maxLength": 2048 }
+              ]
+            },
+            { "type": "null" }
+          ]
+        },
+        "collisionPolicy": {
+          "enum": ["error", "open_existing", "create_with_suffix"]
+        }
+      },
+      "not": {
+        "properties": {
+          "relPath": { "type": "string" },
+          "folderPath": { "type": "string" }
+        },
+        "required": ["relPath", "folderPath"]
+      }
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "allOf": [
+          { "$ref": "#/definitions/controlSafeString" },
+          { "type": "string", "minLength": 1, "maxLength": 256 }
+        ]
+      }
+    },
+    "note": {
+      "oneOf": [
+        {
+          "allOf": [
+            { "$ref": "#/definitions/controlSafeString" },
+            { "type": "string", "maxLength": 32768 }
+          ]
+        },
+        { "type": "null" }
+      ]
+    },
+    "selection": { "$ref": "#/definitions/selection" },
+    "reader": { "$ref": "#/definitions/reader" }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "mode": { "const": "selection" },
+        "selection": {}
+      },
+      "required": ["selection"],
+      "not": { "properties": { "reader": {} }, "required": ["reader"] }
+    },
+    {
+      "properties": {
+        "mode": { "const": "reader" },
+        "reader": {}
+      },
+      "required": ["reader"],
+      "not": {
+        "properties": { "selection": {} },
+        "required": ["selection"]
+      }
+    }
+  ],
+  "definitions": {
+    "controlSafeString": {
+      "type": "string",
+      "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F]*$"
+    },
+    "httpUrl": {
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://(?:(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)*[A-Za-z](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(?::(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:(?:/(?:[A-Za-z0-9._~!$&'()*+,;=:@-]|%[0-9A-Fa-f]{2})*)*)(?:\\?(?:[A-Za-z0-9._~!$&'()*+,;=:@/?-]|%[0-9A-Fa-f]{2})*)?(?:#(?:[A-Za-z0-9._~!$&'()*+,;=:@/?-]|%[0-9A-Fa-f]{2})*)?$"
+    },
+    "warningCode": {
+      "enum": [
+        "authenticated_visible_content",
+        "canonical_url_differs",
+        "edited_content",
+        "line_endings_normalized",
+        "reader_partial",
+        "selection_truncated",
+        "spa_snapshot",
+        "unicode_normalized"
+      ]
+    },
+    "inline": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "text"],
+          "properties": {
+            "type": { "const": "text" },
+            "text": {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "minLength": 1, "maxLength": 32768 }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "text", "href"],
+          "properties": {
+            "type": { "const": "link" },
+            "text": {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "minLength": 1, "maxLength": 32768 }
+              ]
+            },
+            "href": { "$ref": "#/definitions/httpUrl" }
+          }
+        }
+      ]
+    },
+    "inlineContent": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": { "$ref": "#/definitions/inline" }
+    },
+    "readerBlock": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "content"],
+          "properties": {
+            "type": { "const": "paragraph" },
+            "content": { "$ref": "#/definitions/inlineContent" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "level", "content"],
+          "properties": {
+            "type": { "const": "heading" },
+            "level": { "type": "integer", "minimum": 1, "maximum": 6 },
+            "content": { "$ref": "#/definitions/inlineContent" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "content"],
+          "properties": {
+            "type": { "const": "quote" },
+            "content": { "$ref": "#/definitions/inlineContent" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "ordered", "items"],
+          "properties": {
+            "type": { "const": "list" },
+            "ordered": { "type": "boolean" },
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 256,
+              "items": { "$ref": "#/definitions/inlineContent" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "language", "text"],
+          "properties": {
+            "type": { "const": "code" },
+            "language": {
+              "oneOf": [
+                {
+                  "allOf": [
+                    { "$ref": "#/definitions/controlSafeString" },
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_+-]{1,32}$"
+                    }
+                  ]
+                },
+                { "type": "null" }
+              ]
+            },
+            "text": {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "maxLength": 131072 }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": { "type": { "const": "horizontal_rule" } }
+        }
+      ]
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exactText", "editedMarkdown"],
+      "properties": {
+        "exactText": {
+          "allOf": [
+            { "$ref": "#/definitions/controlSafeString" },
+            { "type": "string", "minLength": 1, "maxLength": 524288 }
+          ]
+        },
+        "editedMarkdown": {
+          "oneOf": [
+            {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "maxLength": 524288 }
+              ]
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "reader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blocks", "editedMarkdown"],
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": { "$ref": "#/definitions/readerBlock" }
+        },
+        "editedMarkdown": {
+          "oneOf": [
+            {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "maxLength": 524288 }
+              ]
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "mode",
+        "sourceUrl",
+        "canonicalUrl",
+        "title",
+        "author",
+        "site",
+        "publishedAt",
+        "observedAt",
+        "capturedAt",
+        "extractionHash",
+        "finalBodyHash",
+        "clipIdentity",
+        "previewDigest",
+        "exactSelection",
+        "extractionWarnings",
+        "browser"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "1.0" },
+        "mode": { "enum": ["selection", "reader"] },
+        "sourceUrl": { "$ref": "#/definitions/httpUrl" },
+        "canonicalUrl": {
+          "oneOf": [{ "$ref": "#/definitions/httpUrl" }, { "type": "null" }]
+        },
+        "title": {
+          "allOf": [
+            { "$ref": "#/definitions/controlSafeString" },
+            { "type": "string", "minLength": 1, "maxLength": 2048 }
+          ]
+        },
+        "author": {
+          "oneOf": [
+            {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "maxLength": 1024 }
+              ]
+            },
+            { "type": "null" }
+          ]
+        },
+        "site": {
+          "oneOf": [
+            {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "maxLength": 1024 }
+              ]
+            },
+            { "type": "null" }
+          ]
+        },
+        "publishedAt": {
+          "oneOf": [
+            {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "format": "date" }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "format": "date-time" }
+              ]
+            },
+            { "type": "null" }
+          ]
+        },
+        "observedAt": {
+          "allOf": [
+            { "$ref": "#/definitions/controlSafeString" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "capturedAt": {
+          "allOf": [
+            { "$ref": "#/definitions/controlSafeString" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "extractionHash": { "$ref": "#/definitions/sha256" },
+        "finalBodyHash": { "$ref": "#/definitions/sha256" },
+        "clipIdentity": { "$ref": "#/definitions/sha256" },
+        "previewDigest": { "$ref": "#/definitions/sha256" },
+        "exactSelection": {
+          "oneOf": [
+            {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "maxLength": 524288 }
+              ]
+            },
+            { "type": "null" }
+          ]
+        },
+        "extractionWarnings": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/warningCode" }
+        },
+        "browser": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version", "platform"],
+          "properties": {
+            "name": {
+              "allOf": [
+                { "$ref": "#/definitions/controlSafeString" },
+                { "type": "string", "minLength": 1, "maxLength": 128 }
+              ]
+            },
+            "version": {
+              "oneOf": [
+                {
+                  "allOf": [
+                    { "$ref": "#/definitions/controlSafeString" },
+                    { "type": "string", "maxLength": 128 }
+                  ]
+                },
+                { "type": "null" }
+              ]
+            },
+            "platform": {
+              "oneOf": [
+                {
+                  "allOf": [
+                    { "$ref": "#/definitions/controlSafeString" },
+                    { "type": "string", "maxLength": 128 }
+                  ]
+                },
+                { "type": "null" }
+              ]
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "selection" } } },
+          "then": {
+            "properties": {
+              "exactSelection": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "reader" } } },
+          "then": { "properties": { "exactSelection": { "type": "null" } } }
+        }
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

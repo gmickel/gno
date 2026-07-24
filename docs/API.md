@@ -90,6 +90,8 @@ CLI.
 | `/api/collections/:name`      | DELETE | Remove collection                      |
 | `/api/sync`                   | POST   | Trigger re-index                       |
 | `/api/capture`                | POST   | Capture note with provenance receipt   |
+| `/api/capture/clip/preview`   | POST   | Preview a paired browser clip          |
+| `/api/capture/clip`           | POST   | Commit a matching browser-clip preview |
 | `/api/docs`                   | POST   | Create new document                    |
 | `/api/docs/:id`               | PUT    | Update document                        |
 | `/api/docs/:id/refactor-plan` | POST   | Preview rename/move/duplicate warnings |
@@ -111,6 +113,98 @@ it includes local index and configuration details. An explicit non-loopback
 daemon bind requires the MCP token file plus exact Host and Origin allowlists.
 The resident status projection never exposes tokens, paths, queries, content,
 or caller identities.
+
+### Browser Clipper Boundary
+
+`gno serve` mounts a separate loopback-only browser-clipper gateway. Its grants
+are not the optional REST API token or the `/mcp` bearer token, and
+`gateway.enableWrite` does not authorize clipping.
+
+| Endpoint                    | Method | Purpose                                       |
+| :-------------------------- | :----- | :-------------------------------------------- |
+| `/api/clipper/pair/start`   | POST   | Create a five-minute extension pairing        |
+| `/api/clipper/pair/csrf`    | GET    | Read the same-origin approval CSRF token      |
+| `/api/clipper/pair/approve` | POST   | Approve the displayed code from the Web UI    |
+| `/api/clipper/pair/:id`     | POST   | Poll once for the approved capture grant      |
+| `/api/clipper/revoke`       | POST   | Revoke the authenticated capture grant        |
+| `/api/capture/clip/preview` | POST   | Validate, normalize, and plan without writing |
+| `/api/capture/clip`         | POST   | Write an unchanged preview with idempotency   |
+
+Every request requires the actual TCP peer to be loopback, the exact listener
+`Host`, and an explicit exact `Origin`. Extension calls accept only
+`chrome-extension://<32-character Chromium id>`. Pair approval accepts only the
+Web UI origin and requires `X-GNO-CSRF`. CORS and Private Network Access
+preflights echo the one validated extension origin; there is no wildcard or
+credentials mode.
+
+Pair IDs and delivered grants use 256 bits of randomness. The user-visible
+eight-digit approval code expires after five minutes and is invalidated after
+five failed guesses. Unfinished pairings, plaintext grants awaiting their
+one-time delivery, CSRF state, and preview tickets exist only in memory.
+SQLite stores only the grant-token hash, exact extension origin, fixed capture
+scope, expiry/revocation state, and bounded idempotency receipts. A pending
+receipt retains only the exact collection/path, collision outcome, and content
+and clip-identity hashes needed to reconcile an interrupted atomic write.
+
+Preview accepts the closed
+[`browser-clip@1.0`](../spec/output-schemas/browser-clip.schema.json) payload
+and returns the normalized body, full provenance, preview digest, and collision
+plan without writing. Commit requires the same payload and digest plus a
+visible-ASCII `Idempotency-Key` header. The server reparses and replans before
+using the shared capture writer; completed retries replay the stored receipt.
+If the process is interrupted after the file write but before receipt
+persistence, a retry verifies those exact local hashes and completes the
+receipt without choosing a new path or creating a suffixed duplicate. Plan or
+file drift fails closed as an idempotency recovery conflict.
+The gateway never fetches the source URL or any content referenced by the
+page. Browser content is untrusted input.
+
+Successful response contracts are closed:
+[`clipper-pair-start@1.0`](../spec/output-schemas/clipper-pair-start.schema.json),
+[`clipper-pair-status@1.0`](../spec/output-schemas/clipper-pair-status.schema.json),
+[`clipper-pair-approval@1.0`](../spec/output-schemas/clipper-pair-approval.schema.json),
+[`clipper-revoke@1.0`](../spec/output-schemas/clipper-revoke.schema.json), and
+[`browser-clip-preview@1.0`](../spec/output-schemas/browser-clip-preview.schema.json).
+The write response uses the shared
+[`capture-receipt@1.0`](../spec/output-schemas/capture-receipt.schema.json).
+Browser-clipper HTTP receipts always include `schemaVersion: "1.0"` and are
+closed at the receipt, source, and indexing-status levels. A valid provenance
+conflict remains a versioned receipt with HTTP 409; clients must distinguish it
+from a closed `clipper-error@1.0` body instead of treating every 409 as failure.
+CSRF and failure responses use
+[`clipper-csrf@1.0`](../spec/output-schemas/clipper-csrf.schema.json) and
+[`clipper-error@1.0`](../spec/output-schemas/clipper-error.schema.json).
+
+The Chromium client uses `credentials: "omit"` for every extension-origin
+request. Its service worker is the only component that sees the bearer grant.
+It persists the exact loopback origin, approved grant, and at most one pending
+`{payload, previewDigest, idempotencyKey}` logical write in protected local
+extension storage. Page extraction and the Web approval page never receive
+that state.
+
+The client validates the closed receipt before interpreting the HTTP status:
+
+| Status | Valid body                                                                                   |
+| :----- | :------------------------------------------------------------------------------------------- |
+| `200`  | capture receipt with `collisionPolicyResult: "opened_existing"`                              |
+| `202`  | capture receipt with `created`, `created_with_suffix`, or `overwritten`                      |
+| `409`  | capture receipt with `collisionPolicyResult: "conflict"`, or a matching closed clipper error |
+
+Unknown fields, schema versions, result codes, non-JSON bodies, and
+status/body mismatches are invalid responses. `CLIPPER_OFFLINE`,
+`CLIPPER_INVALID_RESPONSE`, and `CLIPPER_CLIENT` are local client
+classifications; they never appear as `clipper-error@1.0` wire codes.
+
+Browser-clip provenance names exactly four hashes:
+`extractionHash`, `finalBodyHash`, `clipIdentity`, and `previewDigest`.
+`extractionHash` covers the visible selection or constrained Reader
+extraction; `finalBodyHash` covers the final Markdown; `clipIdentity` binds the
+source and extracted/final content; `previewDigest` binds the server-owned
+preview and destination plan. Browser clips do not have a `sourceHash`.
+Warnings are closed to `authenticated_visible_content`,
+`canonical_url_differs`, `edited_content`, `line_endings_normalized`,
+`reader_partial`, `selection_truncated`, `spa_snapshot`, and
+`unicode_normalized`.
 
 ### CSRF Protection
 
@@ -1678,6 +1772,25 @@ The response is the shared capture receipt. `sync.status` is usually `pending`
 with a `jobId` because the REST API syncs asynchronously; poll
 `/api/jobs/:id` for completion. `embed.status` is `not_requested` unless a
 separate embed job completes.
+
+Receipts produced by the browser-clip flow may also include normalized
+`source.canonicalUrl`, `source.site`, `source.publishedAt`, and a closed
+`source.browserClip` provenance object. That object records the extraction mode,
+exact selection when applicable, extraction and final-body hashes, deterministic
+clip and preview digests, browser metadata, capture time, and bounded extraction
+warnings. Existing capture requests and receipts remain compatible.
+
+Browser clips accept a closed, credential-free HTTP(S) URL subset: ASCII DNS
+or punycode hosts (or IPv4), optional ports from 1 through 65535, and ASCII
+RFC 3986 path/query/fragment characters with well-formed percent escapes. Raw
+Unicode hosts and IPv6 literals are rejected; browser clients should submit
+their serialized IDNA/punycode URL. Free-form clip strings reject C0/C1 control
+characters except tab, LF, and CR.
+
+For browser clips, `open_existing` succeeds only when the stored
+`clipIdentity` matches. Missing or different stored provenance returns
+`collisionPolicyResult: "conflict"` and does not write. Use
+`create_with_suffix` when the intended outcome is a distinct captured note.
 
 ```json
 {

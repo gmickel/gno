@@ -349,6 +349,15 @@ text, `presetId` accepts `blank`, `project-note`, `research-note`,
 exclusive create semantics so a late-arriving file fails instead of being
 replaced.
 
+Browser-clip receipts use this same capture contract and may include normalized
+source fields plus closed `source.browserClip` provenance: extraction mode,
+exact selection when applicable, extraction/final hashes, deterministic
+clip/preview digests, browser metadata, capture time, and bounded warnings.
+Existing `client.capture()` inputs remain compatible. For a browser clip,
+`open_existing` opens only a note with the same stored `clipIdentity`; missing
+or different provenance is an explicit conflict. Use `create_with_suffix` to
+create a distinct note.
+
 Use `client.createNote()` for lower-level raw note creation without provenance
 capture semantics.
 

@@ -1167,6 +1167,24 @@ Capture writes structured `source:` frontmatter and returns the shared
 [`capture-receipt`](./output-schemas/capture-receipt.schema.json). `--source-date`
 maps to `source.observedAt`; `--source-id` maps to `source.externalId`.
 
+Browser-clip receipts MAY extend `source` with `canonicalUrl`, `site`,
+`publishedAt`, and the closed
+[`browser-clip`](./output-schemas/browser-clip.schema.json) provenance object.
+The provenance preserves exact selection text separately from canonical final
+Markdown and carries extraction/final hashes, deterministic identity and
+preview digests, normalized dates/URLs, browser metadata, server capture time,
+and bounded warnings. Existing capture inputs and receipts remain compatible.
+Browser-clip URLs use a closed, credential-free HTTP(S) subset: ASCII DNS or
+punycode hosts (or IPv4), optional ports from 1 through 65535, and ASCII
+RFC 3986 path/query/fragment characters with well-formed percent escapes. Raw
+Unicode hosts and IPv6 literals are rejected; browser clients should submit
+their serialized IDNA/punycode URL. Free-form clip strings reject C0/C1 control
+characters except tab, LF, and CR.
+For browser provenance, `open_existing` MUST open only when the stored
+`clipIdentity` matches; missing or different provenance MUST return
+`collisionPolicyResult: "conflict"` without writing. `create_with_suffix`
+creates a distinct note.
+
 **Path and Collision Rules:**
 
 - Explicit `--path` wins.
@@ -2952,6 +2970,38 @@ is blocked.
 - Mounts stateful Streamable HTTP MCP at `/mcp` only after the fail-closed
   actual-peer, Host, Origin, bearer, body, rate, request, queue, and session
   boundary initializes
+- On the loopback `gno serve` listener only, mounts the browser-clipper pairing,
+  preview, and capture routes. These require exact extension/same-origin
+  policies and dedicated origin-bound capture grants; MCP bearer tokens,
+  `GNO_API_TOKEN`, and `gateway.enableWrite` do not authorize them. Clipper
+  routes are structurally absent from non-loopback listeners. Capture
+  idempotency persists exact content-free plan hashes and reconciles an
+  interrupted atomic write only at its original path; changed plans fail
+  closed without a duplicate write.
+- Serves the standalone `/clipper/pair` approval page. Its exact pair-ID
+  fragment is synchronously validated and scrubbed before normal workspace
+  state initializes; the user enters the eight-digit code manually. The page
+  obtains same-origin CSRF state, never receives the extension grant, and does
+  not persist pairing material.
+- Browser-clipper HTTP write receipts add `schemaVersion: "1.0"` to the closed
+  shared capture receipt. HTTP 409 can therefore be either a valid provenance
+  conflict receipt or a closed clipper error; clients parse the body contract
+  before classifying the outcome.
+- Browser clip response/status closure is exact: HTTP 200 only for
+  `opened_existing`; HTTP 202 only for `created`, `created_with_suffix`, or
+  `overwritten`; HTTP 409 for either a valid `conflict` receipt or the matching
+  closed `clipper-error@1.0`. Unknown versions, fields, codes, non-JSON bodies,
+  and status/body mismatches fail as invalid responses. `CLIPPER_OFFLINE`,
+  `CLIPPER_INVALID_RESPONSE`, and `CLIPPER_CLIENT` are client-only
+  classifications.
+- Browser clip provenance contains exactly `extractionHash`, `finalBodyHash`,
+  `clipIdentity`, and `previewDigest`; it does not contain `sourceHash`.
+- The Chromium service worker stores the loopback origin, plaintext bounded
+  grant, and at most one `{payload, previewDigest, idempotencyKey}` in protected
+  local extension storage. Unfinished pairing state uses extension session
+  storage. Page extraction and the approval page receive neither grant nor
+  pending-write state. Recovery reuses the same logical write or fails closed
+  without changing destination.
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON (`{pid, port, cmd:"serve", version, started_at}`), prints `{pid, url}` on stdout, exits 0
 - On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json). Liveness via `process.kill(pid, 0)`; stale pid-files (ESRCH) are reported as `running:false`. Live status best-effort reads the same redacted `resident-status@1.0` snapshot from the recorded listener.
 - On `--stop`: sends SIGTERM, polls every 100ms for up to 10s, falls back to SIGKILL, polls 2s more, unlinks pid-file if the process cleaned up after itself

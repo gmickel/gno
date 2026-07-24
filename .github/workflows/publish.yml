@@ -235,6 +235,9 @@ jobs:
       - name: Build CSS
         run: bun run build:css
 
+      - name: Verify reproducible browser clipper package
+        run: bun run verify:clipper-package
+
       - name: Provision pinned package-smoke model
         run: bun scripts/package-smoke-model.ts
 
@@ -247,6 +250,13 @@ jobs:
           name: npm-package
           path: /tmp/gno-package-smoke-*/pack/gmickel-gno-*.tgz
           if-no-files-found: ignore
+
+      - name: Upload browser clipper artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-clipper
+          path: browser-extension/artifacts/*
+          if-no-files-found: error
 
   publish:
     needs: pack-test
@@ -302,6 +312,12 @@ jobs:
           name: gno-desktop-beta-macos-release
           path: release-assets/macos
 
+      - name: Download browser clipper package
+        uses: actions/download-artifact@v8
+        with:
+          name: browser-clipper
+          path: release-assets/browser-clipper
+
       - name: Extract version from tag
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
@@ -331,6 +347,8 @@ jobs:
           draft: false
           prerelease: false
           files: |
+            release-assets/browser-clipper/*.zip
+            release-assets/browser-clipper/*.sha256
             release-assets/windows/*.zip
             release-assets/macos/*.zip
             release-assets/macos/*.dmg

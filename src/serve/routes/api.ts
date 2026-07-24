@@ -6,9 +6,9 @@
  */
 
 // node:fs/promises structure ops have no Bun equivalent
-import { mkdir, readdir } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 // node:path has no Bun equivalent
-import { dirname, join as pathJoin, posix as pathPosix } from "node:path";
+import { posix as pathPosix } from "node:path";
 
 import type {
   Collection,
@@ -48,14 +48,7 @@ import {
   fingerprintContentTypeRules,
   normalizeContentTypes,
 } from "../../config";
-import {
-  buildCaptureReceipt,
-  listCaptureDiskRelPaths,
-  planCapture,
-  type CapturePlan,
-  type PublicCaptureInput,
-} from "../../core/capture";
-import { writeCapturePlanFile } from "../../core/capture-write";
+import { type PublicCaptureInput } from "../../core/capture";
 import {
   type ConnectorVerificationCode,
   getConnectorVerificationRemediation,
@@ -146,6 +139,10 @@ import {
 } from "../../publish/artifact";
 import { exportPublishArtifact } from "../../publish/export-service";
 import { buildBrowseTree, normalizeBrowsePath } from "../browse-tree";
+import {
+  executeResidentCapturePlan,
+  planResidentCapture,
+} from "../capture-service";
 import { applyConfigChange, applyConfigChangeTyped } from "../config-sync";
 import {
   getConnectorStatuses,
@@ -3167,114 +3164,21 @@ export async function handleCreateCapture(
     );
   }
 
-  const collectionName = body.collection.toLowerCase();
-  const collection = ctxHolder.config.collections.find(
-    (candidate) => candidate.name.toLowerCase() === collectionName
-  );
-  if (!collection) {
-    return errorResponse(
-      "NOT_FOUND",
-      `Collection not found: ${body.collection}`,
-      404
-    );
+  const planned = await planResidentCapture(ctxHolder, store, {
+    ...body,
+    collection: body.collection,
+  });
+  if (!planned.ok) {
+    return errorResponse(planned.code, planned.message, planned.status);
   }
-
-  let plan: CapturePlan;
   try {
-    plan = planCapture({
-      input: {
-        ...body,
-        collection: collection.name,
-      },
-      existingRelPaths: await listCollectionRelPaths(store, collection.name),
-      diskRelPaths: await listCaptureDiskRelPaths(collection.path),
-    });
-  } catch (error) {
-    return errorResponse(
-      "VALIDATION",
-      error instanceof Error ? error.message : String(error),
-      409
+    const result = await executeResidentCapturePlan(
+      ctxHolder,
+      store,
+      planned,
+      deps
     );
-  }
-
-  const fullPath = pathJoin(collection.path, plan.relPath);
-  if (plan.openedExisting) {
-    const existingDoc = await store.getDocument(collection.name, plan.relPath);
-    if (!existingDoc.ok) {
-      return errorResponse("RUNTIME", existingDoc.error.message, 500);
-    }
-    return jsonResponse(
-      buildCaptureReceipt({
-        plan,
-        absPath: fullPath,
-        docid: existingDoc.value?.docid,
-        sync: existingDoc.value
-          ? { status: "completed" }
-          : {
-              status: "skipped",
-              reason: "Existing file is not indexed yet.",
-            },
-      })
-    );
-  }
-
-  try {
-    await mkdir(dirname(fullPath), { recursive: true });
-    ctxHolder.watchService?.suppress(fullPath);
-    await writeCapturePlanFile(plan, fullPath);
-
-    const gnoUri = `gno://${collection.name}/${plan.relPath}`;
-    const jobResult = await startJob(
-      "sync",
-      async (): Promise<SyncResult> => {
-        const result = await syncResidentCollection(
-          ctxHolder,
-          collection,
-          store,
-          withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
-          deps?.syncCollection
-        );
-        ctxHolder.scheduler?.notifySyncComplete([plan.relPath]);
-        ctxHolder.eventBus?.emit({
-          type: "document-changed",
-          uri: gnoUri,
-          collection: collection.name,
-          relPath: plan.relPath,
-          origin: "create",
-          changedAt: new Date().toISOString(),
-        });
-        return {
-          collections: [result],
-          totalDurationMs: result.durationMs,
-          totalFilesProcessed: result.filesProcessed,
-          totalFilesAdded: result.filesAdded,
-          totalFilesUpdated: result.filesUpdated,
-          totalFilesErrored: result.filesErrored,
-          totalFilesSkipped: result.filesSkipped,
-        };
-      },
-      ctxHolder.jobManager
-    );
-
-    return jsonResponse(
-      buildCaptureReceipt({
-        plan,
-        absPath: fullPath,
-        sync: jobResult.ok
-          ? {
-              status: "pending",
-              jobId: jobResult.jobId,
-              reason: "Sync job started; poll /api/jobs/:id for status.",
-            }
-          : {
-              status: "skipped",
-              jobId: jobResult.activeJobId,
-              reason: "Sync skipped because another job is running.",
-              error: jobResult.error,
-            },
-      }),
-      202
-    );
+    return jsonResponse(result.body, result.status);
   } catch (error) {
     return errorResponse(
       "RUNTIME",

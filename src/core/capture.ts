@@ -11,6 +11,10 @@ import { posix as pathPosix } from "node:path";
 
 import { buildUri } from "../app/constants";
 import {
+  browserClipProvenanceSchema,
+  type BrowserClipProvenance,
+} from "./browser-clip-provenance";
+import {
   resolveNoteCreatePlan,
   type NoteCollisionPolicy,
 } from "./note-creation";
@@ -59,9 +63,13 @@ export interface CaptureSource {
   mime?: string;
   ext?: string;
   author?: string;
+  canonicalUrl?: string;
+  site?: string;
+  publishedAt?: string;
   observedAt?: string;
   capturedAt: string;
   externalId?: string;
+  browserClip?: BrowserClipProvenance;
 }
 
 export interface CaptureIndexStatus {
@@ -117,6 +125,7 @@ export interface CapturePlan {
   source: CaptureSource;
   openedExisting: boolean;
   createdWithSuffix: boolean;
+  provenanceConflict: boolean;
   collisionPolicy: NoteCollisionPolicy;
   collisionPolicyResult: CaptureCollisionPolicyResult;
   overwrite: boolean;
@@ -126,6 +135,7 @@ export interface PlanCaptureOptions {
   input: CaptureInput;
   existingRelPaths: Iterable<string>;
   diskRelPaths?: Iterable<string>;
+  existingProvenanceByRelPath?: ReadonlyMap<string, string>;
   now?: Date;
 }
 
@@ -145,7 +155,7 @@ const VALID_COLLISION_POLICIES = new Set<NoteCollisionPolicy>([
   "open_existing",
   "create_with_suffix",
 ]);
-const URL_SOURCE_FIELDS = new Set(["url", "uri"]);
+const URL_SOURCE_FIELDS = new Set(["url", "uri", "canonicalUrl"]);
 const LEGACY_SOURCE_FIELD_MAP: Record<string, keyof CaptureSource> = {
   gno_source_docid: "docid",
   gno_source_uri: "uri",
@@ -160,6 +170,9 @@ const CAPTURE_SOURCE_STRING_KEYS = new Set([
   "mime",
   "ext",
   "author",
+  "canonicalUrl",
+  "site",
+  "publishedAt",
   "externalId",
 ]);
 
@@ -264,27 +277,46 @@ function normalizeSource(
       continue;
     }
     if (key === "capturedAt") {
-      normalized.capturedAt = normalizeIsoDate(
-        String(value),
-        "source.capturedAt"
-      );
+      if (typeof value !== "string") {
+        throw new Error("source.capturedAt must be a string.");
+      }
+      normalized.capturedAt = normalizeIsoDate(value, "source.capturedAt");
       continue;
     }
     if (key === "observedAt") {
-      normalized.observedAt = normalizeIsoDate(
-        String(value),
-        "source.observedAt"
-      );
+      if (typeof value !== "string") {
+        throw new Error("source.observedAt must be a string.");
+      }
+      normalized.observedAt = normalizeIsoDate(value, "source.observedAt");
+      continue;
+    }
+    if (key === "publishedAt") {
+      if (typeof value !== "string") {
+        throw new Error("source.publishedAt must be a string.");
+      }
+      normalized.publishedAt = /^\d{4}-\d{2}-\d{2}$/.test(value)
+        ? value
+        : normalizeIsoDate(value, "source.publishedAt");
+      continue;
+    }
+    if (key === "browserClip") {
+      normalized.browserClip = browserClipProvenanceSchema.parse(value);
       continue;
     }
     if (URL_SOURCE_FIELDS.has(key)) {
+      if (typeof value !== "string") {
+        throw new Error(`source.${key} must be a string.`);
+      }
       try {
-        new URL(String(value));
+        new URL(value);
       } catch {
         throw new Error(`source.${key} must be a valid URL.`);
       }
     }
     if (CAPTURE_SOURCE_STRING_KEYS.has(key)) {
+      if (typeof value !== "string") {
+        throw new Error(`source.${key} must be a string.`);
+      }
       normalized[
         key as keyof Pick<
           CaptureSource,
@@ -295,9 +327,11 @@ function normalizeSource(
           | "mime"
           | "ext"
           | "author"
+          | "canonicalUrl"
+          | "site"
           | "externalId"
         >
-      ] = String(value);
+      ] = value;
     }
   }
 
@@ -489,6 +523,16 @@ export function extractCaptureSourceFromFrontmatter(
         .trim() as keyof CaptureSource;
       const nestedValue = nested.slice(nestedColon + 1).trim();
       if (nestedValue) {
+        if (nestedKey === "browserClip") {
+          try {
+            const parsed = JSON.parse(nestedValue) as unknown;
+            const provenance = browserClipProvenanceSchema.safeParse(parsed);
+            if (provenance.success) source.browserClip = provenance.data;
+          } catch {
+            // Ignore malformed optional browser provenance.
+          }
+          continue;
+        }
         source[nestedKey] = stripYamlString(nestedValue) as never;
       }
     }
@@ -664,6 +708,13 @@ export function planCapture(options: PlanCaptureOptions): CapturePlan {
     overwrite ? [] : existing
   );
   const overwritten = overwrite && existing.has(createPlan.relPath);
+  const clipIdentity = source.browserClip?.clipIdentity;
+  const provenanceConflict =
+    createPlan.openedExisting &&
+    clipIdentity !== undefined &&
+    options.existingProvenanceByRelPath?.get(createPlan.relPath) !==
+      clipIdentity;
+  const openedExisting = createPlan.openedExisting && !provenanceConflict;
 
   return {
     collection: options.input.collection,
@@ -675,16 +726,19 @@ export function planCapture(options: PlanCaptureOptions): CapturePlan {
     title,
     tags: contentTags,
     source,
-    openedExisting: createPlan.openedExisting,
+    openedExisting,
     createdWithSuffix: createPlan.createdWithSuffix,
+    provenanceConflict,
     collisionPolicy,
     collisionPolicyResult: overwritten
       ? "overwritten"
-      : createPlan.openedExisting
-        ? "opened_existing"
-        : createPlan.createdWithSuffix
-          ? "created_with_suffix"
-          : "created",
+      : provenanceConflict
+        ? "conflict"
+        : openedExisting
+          ? "opened_existing"
+          : createPlan.createdWithSuffix
+            ? "created_with_suffix"
+            : "created",
     overwrite,
   };
 }
@@ -705,7 +759,10 @@ export function buildCaptureReceipt(input: {
     collection: input.plan.collection,
     relPath: input.plan.relPath,
     absPath: input.absPath,
-    created: !input.plan.openedExisting && !overwritten,
+    created:
+      !input.plan.openedExisting &&
+      !input.plan.provenanceConflict &&
+      !overwritten,
     openedExisting: input.plan.openedExisting,
     createdWithSuffix: input.plan.createdWithSuffix,
     overwritten,
