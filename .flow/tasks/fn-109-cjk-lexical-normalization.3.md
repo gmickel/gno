@@ -34,9 +34,8 @@ Deliver use identical bounded analysis at index and query time as one implementa
 
 
 ## Done summary
-TBD
-
+Not executed: no benchmark-proven analyzer exists. Implementing index/query normalization after the no-ship gate would be unjustified production behavior and could regress identifiers, source fidelity, or index cost without evidence. No production files changed.
 ## Evidence
 - Commits:
-- Tests:
+- Tests: evals/fixtures/cjk-lexical-benchmark/candidates/2026-07-22-no-ship.json, test/bench/cjk-decision.test.ts
 - PRs:
