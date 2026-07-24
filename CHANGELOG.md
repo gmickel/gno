@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the Chromium Manifest V3 browser-clipper source and local build,
   including explicit selection/Reader extraction, visible loopback pairing,
   server-owned canonical previews, and restart-safe idempotent capture.
+- Distributed the clipper inside the npm package as a version-matched unpacked
+  build plus byte-reproducible zip/checksum, with an isolated packed-install
+  smoke, real headed Chromium flow, privacy disclosure, and install/recovery
+  documentation.
 
 ### Security
 

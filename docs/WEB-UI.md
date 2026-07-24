@@ -736,9 +736,12 @@ hashes; they never choose a new destination or create a duplicate suffix.
 It never downloads the source page; only content already visible in the browser
 payload is processed.
 
-### Chromium Clipper Development Build
+### Chromium Browser Clipper
 
-The repository contains the unpacked Manifest V3 source. Build it locally:
+GNO ships the Chromium Manifest V3 clipper as an unpacked artifact inside the
+npm package. For install, update, checksum, and privacy instructions, see
+[Browser Clipper](integrations/browser-clipper.md). Contributors can rebuild it
+locally:
 
 ```bash
 bun run build:clipper
@@ -746,9 +749,8 @@ bun run build:clipper
 
 Load `browser-extension/dist` as an unpacked Chromium extension, run
 `gno serve`, then pair against the default
-`http://127.0.0.1:3000` gateway. Store packaging and headed browser
-compatibility validation are separate release work; Firefox parity is not yet
-claimed.
+`http://127.0.0.1:3000` gateway. GNO does not claim Chrome Web Store
+availability or Firefox parity.
 
 The manifest grants only `activeTab`, `scripting`, `storage`, and
 `http://127.0.0.1/*`. Extraction runs only after a popup action. It emits exact
@@ -765,6 +767,21 @@ restart or offline retries. A lost preview is refreshed for the same payload;
 key/recovery conflicts stop without selecting another destination. Reopening
 the popup shows the saved destination and source, with explicit controls to
 retry the exact stored logical write or stop recovery and discard it.
+
+`chrome.storage.session` holds only an unfinished pairing request. Protected
+`chrome.storage.local` holds the loopback origin, plaintext grant ID/token and
+expiry, plus at most one pending payload, preview digest, and idempotency key.
+The extension does not use browser sync storage. Revoking clears the usable
+grant and pending write in the extension and persists revocation in GNO.
+
+The server owns normalization, preview, provenance, destination planning, and
+write receipts. Browser-clip provenance uses exactly `extractionHash`,
+`finalBodyHash`, `clipIdentity`, and `previewDigest`; it never uses
+`sourceHash`. HTTP 200 is valid only for `opened_existing`, HTTP 202 for
+`created`, `created_with_suffix`, or `overwritten`, and HTTP 409 for either a
+valid `conflict` receipt or the matching closed clipper error. The client rejects
+unknown versions, fields, codes, non-JSON bodies, and impossible status/body
+combinations.
 
 The Web UI is designed for local use only:
 

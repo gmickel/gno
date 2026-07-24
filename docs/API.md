@@ -182,6 +182,30 @@ It persists the exact loopback origin, approved grant, and at most one pending
 extension storage. Page extraction and the Web approval page never receive
 that state.
 
+The client validates the closed receipt before interpreting the HTTP status:
+
+| Status | Valid body                                                                                   |
+| :----- | :------------------------------------------------------------------------------------------- |
+| `200`  | capture receipt with `collisionPolicyResult: "opened_existing"`                              |
+| `202`  | capture receipt with `created`, `created_with_suffix`, or `overwritten`                      |
+| `409`  | capture receipt with `collisionPolicyResult: "conflict"`, or a matching closed clipper error |
+
+Unknown fields, schema versions, result codes, non-JSON bodies, and
+status/body mismatches are invalid responses. `CLIPPER_OFFLINE`,
+`CLIPPER_INVALID_RESPONSE`, and `CLIPPER_CLIENT` are local client
+classifications; they never appear as `clipper-error@1.0` wire codes.
+
+Browser-clip provenance names exactly four hashes:
+`extractionHash`, `finalBodyHash`, `clipIdentity`, and `previewDigest`.
+`extractionHash` covers the visible selection or constrained Reader
+extraction; `finalBodyHash` covers the final Markdown; `clipIdentity` binds the
+source and extracted/final content; `previewDigest` binds the server-owned
+preview and destination plan. Browser clips do not have a `sourceHash`.
+Warnings are closed to `authenticated_visible_content`,
+`canonical_url_differs`, `edited_content`, `line_endings_normalized`,
+`reader_partial`, `selection_truncated`, `spa_snapshot`, and
+`unicode_normalized`.
+
 ### CSRF Protection
 
 All mutating requests (POST, DELETE) require one of:

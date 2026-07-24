@@ -303,6 +303,60 @@ Windows can be significantly slower due to NTFS overhead and real-time antivirus
 
 This can improve indexing speed by 2-4x on Windows.
 
+## Browser Clipper Issues
+
+### Pairing page does not approve
+
+Keep `gno serve` running on the same literal `127.0.0.1` origin and port shown
+in the extension. Start pairing again, confirm the eight-digit code in the
+extension, then type it into the Web approval page. Pairings expire after five
+minutes, stop after five wrong guesses, are one-time, and disappear when
+`gno serve` restarts.
+
+The approval URL temporarily carries only the high-entropy pair ID in the
+fragment. GNO scrubs that fragment before normal workspace state starts. The
+approval page never receives the bearer grant.
+
+If you moved or rebuilt the unpacked extension at a different path, Chromium
+may assign a different extension ID. Remove/reload the artifact and pair again;
+grants are bound to the exact `chrome-extension://<id>` origin.
+
+### Clipper reports offline or invalid response
+
+- `CLIPPER_OFFLINE`: the loopback listener was unavailable; start
+  `gno serve`, then retry the saved write.
+- `CLIPPER_INVALID_RESPONSE`: the response was non-JSON, had an unknown
+  version/field/code, or did not match its HTTP status. Update GNO and reload
+  the matching packaged extension.
+- `CLIPPER_CLIENT`: the popup/service worker rejected a local operation before
+  a valid wire response existed.
+
+These are client classifications, not server `clipper-error@1.0` codes. Do not
+substitute an MCP/API bearer token or set `gateway.enableWrite`; neither
+authorizes browser clipping.
+
+### A saved browser write is awaiting recovery
+
+Open the extension and use **Retry saved write** to resume the exact stored
+`{payload, previewDigest, idempotencyKey}`. If the server lost its preview
+ticket, the service worker refreshes the preview for the same payload and
+retries with the same idempotency key. It refuses a different capture while
+that recovery is pending.
+
+Use **Stop recovery** only when you deliberately want to discard the saved
+pending payload. Plan, file, key, or provenance drift fails closed; GNO does
+not choose a new path or silently add a suffix during recovery.
+
+### Reader or selection omitted content
+
+The clipper captures only rendered, visible content in the active top frame.
+Hidden/inert/`aria-hidden` content, navigation/aside/form content, images,
+media, canvas, SVG, MathML, iframe/embed/object content, scripts/styles,
+dangerous links, background tabs, cookies, sessions, history, and raw HTML are
+outside the contract. `reader_partial`, `selection_truncated`, `spa_snapshot`,
+and `authenticated_visible_content` warnings disclose relevant limits without
+bypassing them.
+
 ## Daemon Issues
 
 ### "Daemon not refreshing after I changed config"

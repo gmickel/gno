@@ -2987,6 +2987,21 @@ is blocked.
   shared capture receipt. HTTP 409 can therefore be either a valid provenance
   conflict receipt or a closed clipper error; clients parse the body contract
   before classifying the outcome.
+- Browser clip response/status closure is exact: HTTP 200 only for
+  `opened_existing`; HTTP 202 only for `created`, `created_with_suffix`, or
+  `overwritten`; HTTP 409 for either a valid `conflict` receipt or the matching
+  closed `clipper-error@1.0`. Unknown versions, fields, codes, non-JSON bodies,
+  and status/body mismatches fail as invalid responses. `CLIPPER_OFFLINE`,
+  `CLIPPER_INVALID_RESPONSE`, and `CLIPPER_CLIENT` are client-only
+  classifications.
+- Browser clip provenance contains exactly `extractionHash`, `finalBodyHash`,
+  `clipIdentity`, and `previewDigest`; it does not contain `sourceHash`.
+- The Chromium service worker stores the loopback origin, plaintext bounded
+  grant, and at most one `{payload, previewDigest, idempotencyKey}` in protected
+  local extension storage. Unfinished pairing state uses extension session
+  storage. Page extraction and the approval page receive neither grant nor
+  pending-write state. Recovery reuses the same logical write or fails closed
+  without changing destination.
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON (`{pid, port, cmd:"serve", version, started_at}`), prints `{pid, url}` on stdout, exits 0
 - On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json). Liveness via `process.kill(pid, 0)`; stale pid-files (ESRCH) are reported as `running:false`. Live status best-effort reads the same redacted `resident-status@1.0` snapshot from the recorded listener.
 - On `--stop`: sends SIGTERM, polls every 100ms for up to 10s, falls back to SIGKILL, polls 2s more, unlinks pid-file if the process cleaned up after itself

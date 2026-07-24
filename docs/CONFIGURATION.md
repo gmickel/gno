@@ -142,6 +142,20 @@ Upgrading from a stdio-only setup requires no client-config migration:
 that can use the resident URL `http://127.0.0.1:3000/mcp`. Stop any resident
 owner for the same data directory before switching between serve and daemon.
 
+### Browser clipper boundary
+
+The browser clipper is not enabled by a gateway write flag. It exists only on
+loopback `gno serve`, uses a dedicated visibly approved, origin-bound capture
+grant, and is structurally absent from non-loopback listeners. MCP bearer
+tokens, `GNO_API_TOKEN`, and `gateway.enableWrite` never authorize clipping.
+
+The extension targets literal `http://127.0.0.1:<port>`; its unpacked manifest
+grants only `activeTab`, `scripting`, `storage`, and
+`http://127.0.0.1/*`. There is no configuration for remote clipper access,
+cookie/history access, background surveillance, or source-URL fetching. See
+[Browser Clipper](integrations/browser-clipper.md) for install, pairing,
+storage, and recovery details.
+
 ## Private Retrieval Traces
 
 Retrieval trace recording is local, opt-in, and disabled when
