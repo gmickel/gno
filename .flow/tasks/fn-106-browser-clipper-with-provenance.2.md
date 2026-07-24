@@ -60,9 +60,8 @@ Add the visible pairing/grant lifecycle plus non-mutating preview and idempotent
 <!-- Updated by plan-sync: fn-106.1 finalized browserClipPayloadSchema/prepareBrowserClip, server-owned previewDigest, and provenance-aware planCapture contracts. -->
 
 ## Done summary
-TBD
-
+Added a structurally loopback-only browser clipper gateway: visible one-time pairing with CSRF approval, 256-bit poll/grant identities, hashed origin-bound bounded grants, revoke/expiry/replay protection, strict actual-peer/Host/Origin/CORS/PNA/body/rate/concurrency enforcement, non-mutating preview, digest-bound idempotent writes, persisted crash reconciliation, and shared capture execution. Added migration/store, closed schemas, direct security/store/schema/route/recovery tests, docs, and independent SHIP review.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: b7eb8b7, 345cc66
+- Tests: focused security/store/schema/route/recovery: 91 pass, 1476 assertions, bun test: 3014 pass, 1 expected Windows skip, 0 fail, 24010 assertions, bunx tsc --noEmit --pretty false, bun run lint:check, bun run docs:verify, independent final review: SHIP, split route/recovery tests: 4 pass, 52 assertions
 - PRs:
