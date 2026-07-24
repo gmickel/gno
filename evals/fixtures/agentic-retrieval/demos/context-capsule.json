@@ -3,9 +3,9 @@
   "demoId": "context-capsule-demo@1",
   "sourceBenchmark": {
     "benchmarkId": "agentic-retrieval@1",
-    "canonicalFingerprint": "174ddc425adf51acccc26fabe8eadf9b42a4a1b4225f8e642d6884f1dabc419b",
+    "canonicalFingerprint": "95bfa90ee63a6ed117dd3d1ab3e61fac715cbacda0a8269ed8c6a63270d61156",
     "fixtureFingerprint": "68027bb0248c09507dbdba9d8cf2433f1b9b7b547ba5db8811db338982f9d08b",
-    "runGitCommit": "5eddaad679fc9b582bee6b12957fc08a3f7b1135",
+    "runGitCommit": "1ab4ac05a72e0d20ed502e0df6873e28b292e32c",
     "reportPath": "evals/fixtures/agentic-retrieval/baseline/fixture-agent/report.json",
     "selection": {
       "rule": "cold_gno_failure_capsule_success",
@@ -67,7 +67,7 @@
       "bunVersion": "1.3.14",
       "fixtureVersion": "2026-07-22.1",
       "git": {
-        "commit": "5eddaad679fc9b582bee6b12957fc08a3f7b1135",
+        "commit": "1ab4ac05a72e0d20ed502e0df6873e28b292e32c",
         "dirty": false,
         "unavailableReason": null
       },
@@ -341,16 +341,16 @@
             "peakRssBytes": null,
             "unavailableReason": "peak RSS not sampled"
           },
-          "recordedAt": "2026-07-24T20:21:46.141Z",
+          "recordedAt": "2026-07-24T21:00:09.650Z",
           "tempPaths": ["<temp>", "<temp>"],
           "timings": {
             "driver": {
               "unavailableReason": null,
-              "valueMs": 0.08
+              "valueMs": 0.042
             },
             "endToEnd": {
               "unavailableReason": null,
-              "valueMs": 7.302
+              "valueMs": 2.013
             },
             "modelLoad": {
               "unavailableReason": "one or more model-load components unavailable",
@@ -358,15 +358,15 @@
             },
             "preparation": {
               "unavailableReason": null,
-              "valueMs": 534.271
+              "valueMs": 112.202
             },
             "startup": {
               "unavailableReason": null,
-              "valueMs": 4.348
+              "valueMs": 0.85
             },
             "tool": {
               "unavailableReason": null,
-              "valueMs": 1.068
+              "valueMs": 0.735
             }
           }
         },
@@ -411,7 +411,7 @@
         "tokenUnavailableReason": "The benchmark did not have one pinned comparable tokenizer.",
         "endToEnd": {
           "unavailableReason": null,
-          "valueMs": 7.302
+          "valueMs": 2.013
         },
         "stopOutcome": "complete: INC-1042"
       }
@@ -579,21 +579,21 @@
           "trialId": "fixture-01"
         },
         "observations": {
-          "diagnostics": ["GNO MCP 1.26.0 pid=46512"],
+          "diagnostics": ["GNO MCP 1.26.0 pid=79510"],
           "process": {
             "peakRssBytes": null,
             "unavailableReason": "peak RSS not sampled"
           },
-          "recordedAt": "2026-07-24T20:20:39.649Z",
+          "recordedAt": "2026-07-24T20:59:01.419Z",
           "tempPaths": ["<temp>"],
           "timings": {
             "driver": {
               "unavailableReason": null,
-              "valueMs": 0.132
+              "valueMs": 1.32
             },
             "endToEnd": {
               "unavailableReason": null,
-              "valueMs": 1318.951
+              "valueMs": 3008.01
             },
             "modelLoad": {
               "unavailableReason": "one or more model-load components unavailable",
@@ -601,15 +601,15 @@
             },
             "preparation": {
               "unavailableReason": null,
-              "valueMs": 4394.96
+              "valueMs": 5135.453
             },
             "startup": {
               "unavailableReason": null,
-              "valueMs": 129.287
+              "valueMs": 416.585
             },
             "tool": {
               "unavailableReason": null,
-              "valueMs": 1183.729
+              "valueMs": 2558.297
             }
           }
         },
@@ -654,7 +654,7 @@
         "tokenUnavailableReason": "The benchmark did not have one pinned comparable tokenizer.",
         "endToEnd": {
           "unavailableReason": null,
-          "valueMs": 1318.951
+          "valueMs": 3008.01
         },
         "stopOutcome": "complete: INC-1042"
       }
@@ -793,16 +793,16 @@
             "peakRssBytes": null,
             "unavailableReason": "peak RSS not sampled"
           },
-          "recordedAt": "2026-07-24T20:20:32.038Z",
+          "recordedAt": "2026-07-24T20:58:50.655Z",
           "tempPaths": ["<temp>", "<temp>"],
           "timings": {
             "driver": {
               "unavailableReason": null,
-              "valueMs": 0.115
+              "valueMs": 0.155
             },
             "endToEnd": {
               "unavailableReason": null,
-              "valueMs": 3.665
+              "valueMs": 3.809
             },
             "modelLoad": {
               "unavailableReason": "one or more model-load components unavailable",
@@ -810,15 +810,15 @@
             },
             "preparation": {
               "unavailableReason": null,
-              "valueMs": 589.144
+              "valueMs": 730.465
             },
             "startup": {
               "unavailableReason": null,
-              "valueMs": 0.641
+              "valueMs": 0.99
             },
             "tool": {
               "unavailableReason": null,
-              "valueMs": 2.496
+              "valueMs": 2.077
             }
           }
         },
@@ -863,7 +863,7 @@
         "tokenUnavailableReason": "The benchmark did not have one pinned comparable tokenizer.",
         "endToEnd": {
           "unavailableReason": null,
-          "valueMs": 3.665
+          "valueMs": 3.809
         },
         "stopOutcome": "complete: INC-4827"
       }
@@ -949,8 +949,8 @@
   "verifiedAsk": {
     "proofKind": "answer_enforcement",
     "benchmarkId": "verified-ask-outcome@1",
-    "canonicalFingerprint": "911273341dc356b350a0e64eb40bb533717dcd8108477c64293c033a6b7488da",
-    "runGitCommit": "5eddaad679fc9b582bee6b12957fc08a3f7b1135",
+    "canonicalFingerprint": "abcd681a0cf9dcb28fa00db1b484a83907987f25e99d4fd4f95166b1a33d92cc",
+    "runGitCommit": "1ab4ac05a72e0d20ed502e0df6873e28b292e32c",
     "artifactPath": "evals/fixtures/agentic-retrieval/baseline/fixture-agent/verified-ask-promotion.json",
     "pairCount": 22,
     "excludedTasks": [
@@ -971,5 +971,5 @@
       "unsupportedSubstantiveClaimReduction": 1
     }
   },
-  "canonicalFingerprint": "26bed90052be60a1b3378aa6dfb0ab422ce716195761b0a4fa8c29c51700919f"
+  "canonicalFingerprint": "7ec58f3b11dfe6bfe912c9d9714298cc6f3b2ea35b427ec1d8736bb8b8976a49"
 }
