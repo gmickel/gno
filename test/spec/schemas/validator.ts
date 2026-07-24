@@ -45,6 +45,7 @@ async function loadAllSchemas(): Promise<void> {
     "setup-command-result",
     "setup-activation-result",
     "project-profile-command",
+    "project-profile-apply",
     "context-capsule-v1",
     "context-capsule-verification",
     "saved-capsule-registration",

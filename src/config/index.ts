@@ -42,6 +42,7 @@ export {
   type SaveResult,
   saveConfig,
   saveConfigToPath,
+  saveTextToPath,
 } from "./saver";
 // Types and schemas
 export {

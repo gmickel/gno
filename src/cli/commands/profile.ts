@@ -111,18 +111,18 @@ const remediationForCompilerDiagnostic = (
   }
 };
 
-const compilerDiagnostic = (
+export const compilerDiagnostic = (
   issue: ProjectProfileDiagnostic
 ): ProjectProfileCommandDiagnostic => ({
   ...issue,
   remediation: remediationForCompilerDiagnostic(issue),
 });
 
-const discoveryDiagnostic = (
+export const discoveryDiagnostic = (
   issue: ProjectProfileDiscoveryDiagnostic
 ): ProjectProfileCommandDiagnostic => ({ ...issue });
 
-const sortDiagnostics = (
+export const sortDiagnostics = (
   diagnostics: ProjectProfileCommandDiagnostic[]
 ): ProjectProfileCommandDiagnostic[] =>
   diagnostics.sort(

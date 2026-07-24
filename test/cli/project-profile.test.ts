@@ -15,11 +15,16 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 import type { Config } from "../../src/config/types";
+import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
 import {
   formatProjectProfileResult,
   runProjectProfileCommand,
 } from "../../src/cli/commands/profile";
+import {
+  formatProjectProfileApplyResult,
+  runProjectProfileApplyCommand,
+} from "../../src/cli/commands/profile-apply";
 import { runCli } from "../../src/cli/run";
 import { createDefaultConfig } from "../../src/config";
 import {
@@ -73,6 +78,15 @@ const writeConfig = async (path: string, config: Config): Promise<void> => {
   await mkdir(dirname(path), { recursive: true });
   await Bun.write(path, Bun.YAML.stringify(config));
 };
+
+const createProfileApplyStore = (): SqliteAdapter =>
+  ({
+    setConfigPath: () => undefined,
+    open: async () => ({ ok: true, value: undefined }),
+    close: async () => undefined,
+    syncCollections: async () => ({ ok: true, value: undefined }),
+    syncContexts: async () => ({ ok: true, value: undefined }),
+  }) as unknown as SqliteAdapter;
 
 const captureCli = async (
   args: string[]
@@ -520,5 +534,86 @@ describe("project profile check/show/diff", () => {
       },
     });
     assertValid(parsed, await loadSchema("project-profile-command"));
+  });
+
+  test("profile apply emits a contract-valid receipt and is idempotent", async () => {
+    const fixture = await makeRoot("apply-cli");
+    const project = join(fixture, "project");
+    await mkdir(project);
+    await writeProfile(project);
+    const dataDir = join(fixture, "runtime", "data");
+    const configPath = join(fixture, "runtime", "config", "index.yml");
+    const options = {
+      path: project,
+      configPath,
+      dataDir,
+      createStore: createProfileApplyStore,
+    };
+
+    const first = await runProjectProfileApplyCommand(options);
+    const second = await runProjectProfileApplyCommand(options);
+
+    expect(first.exitCode).toBe(0);
+    expect(second.exitCode).toBe(0);
+    const applied = JSON.parse(
+      formatProjectProfileApplyResult(first.result, { json: true })
+    );
+    const unchanged = JSON.parse(
+      formatProjectProfileApplyResult(second.result, { json: true })
+    );
+    expect(applied).toMatchObject({
+      schemaVersion: "1.0",
+      command: "apply",
+      status: "applied",
+      applied: true,
+      receipt: {
+        status: "applied",
+        pendingIndexing: ["notes"],
+      },
+    });
+    expect(unchanged).toMatchObject({
+      command: "apply",
+      status: "unchanged",
+      applied: false,
+      receipt: {
+        status: "unchanged",
+        pendingIndexing: [],
+        diff: { status: "in_sync" },
+      },
+    });
+    for (const result of [applied, unchanged]) {
+      assertValid(result, await loadSchema("project-profile-apply"));
+      const serialized = JSON.stringify(result);
+      expect(serialized).not.toContain(project);
+      expect(serialized).not.toContain(dataDir);
+      expect(serialized).not.toContain("hf:");
+    }
+    expect(
+      await Bun.file(
+        join(dataDir, "project-profiles", "apply-receipt.json")
+      ).exists()
+    ).toBe(true);
+  });
+
+  test("profile apply rejects in-repository runtime directories before opening the index", async () => {
+    const project = await makeRoot("apply-overlap");
+    await writeProfile(project);
+    const runtime = join(project, ".gno", "runtime");
+    process.env.GNO_CONFIG_DIR = join(runtime, "config");
+    process.env.GNO_DATA_DIR = join(runtime, "data");
+    process.env.GNO_CACHE_DIR = join(runtime, "cache");
+
+    const output = await captureCli(["profile", "apply", project, "--json"]);
+
+    expect(output.code).toBe(1);
+    expect(output.stderr).toBe("");
+    const parsed = JSON.parse(output.stdout);
+    expect(parsed).toMatchObject({
+      status: "invalid",
+      applied: false,
+      diagnostics: [{ code: "RUNTIME_PATH_OVERLAP" }],
+    });
+    assertValid(parsed, await loadSchema("project-profile-apply"));
+    expect(await Bun.file(join(runtime, "data")).exists()).toBe(false);
   });
 });

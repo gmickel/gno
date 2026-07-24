@@ -68,6 +68,7 @@ equivalent files fail closed as ambiguous.
 | profile check      | yes    | no      | no    | no   | no    | terminal |
 | profile show       | yes    | no      | no    | no   | no    | terminal |
 | profile diff       | yes    | no      | no    | no   | no    | terminal |
+| profile apply      | yes    | no      | no    | no   | no    | terminal |
 | collection add     | no     | no      | no    | no   | no    | terminal |
 | collection list    | yes    | no      | no    | yes  | no    | terminal |
 | collection remove  | no     | no      | no    | no   | no    | terminal |
@@ -139,6 +140,7 @@ the user config, index database, model cache, or tracked files.
 gno profile check [path] [--json]
 gno profile show [path] [--json]
 gno profile diff [path] [--json]
+gno profile apply [path] [--json]
 ```
 
 With no path, discovery starts at the canonical current directory and walks
@@ -165,18 +167,36 @@ same-name/path mappings and explicit repair/removal choices but never applies
 either choice. A missing user config is treated as empty desired-state input;
 an unreadable or invalid config is an actionable validation diagnostic.
 
-All three JSON forms use
+The three read-only JSON forms use
 [`project-profile-command@1.0`](./output-schemas/project-profile-command.schema.json).
 Receipts contain no absolute profile, config, database, cache, or model paths,
 no timestamps, and no model URIs. Diagnostics and changes are canonically
 ordered, so identical local state produces byte-identical JSON.
 
+`apply` rebuilds the shared diff against config reloaded inside a cross-process
+runtime lock, then atomically creates or updates only resources declared by the
+profile. It can initialize a missing user config. Omitted collections,
+collection-scoped contexts, and content-type rules remain untouched; stale
+same-path collections are reported as skipped and retained. A stale same-name
+collection root is repaired in place without deleting its collection or index
+identity. Model preset aliases resolve to collection-local model overrides.
+Apply synchronizes the config projection but does not index documents; changed
+collections appear in `pendingIndexing`.
+
+The deterministic JSON result uses
+[`project-profile-apply@1.0`](./output-schemas/project-profile-apply.schema.json).
+Its created/reused/updated/skipped resource receipt is also atomically saved as
+`project-profiles/apply-receipt.json` under the user data directory. The config,
+index, receipt, and lock paths must all remain outside the selected profile
+root. The tracked `.gno/index.yml` is never written. Interrupted or concurrent
+applies resume from fresh config state and converge idempotently.
+
 **Exit Codes:**
 
 - `0`: profile found and valid (`diff` may still report changes)
 - `1`: profile missing, ambiguous discovery could not be resolved safely, or
-  profile/config validation failed
-- `2`: unexpected local I/O failure
+  profile/config validation failed, including runtime-path overlap
+- `2`: unexpected local I/O, lock, receipt, or index-store failure
 
 `gno setup` may call the same local discovery function after proven lexical
 setup. This advisory seam is optional, read-only, non-fatal, and does not alter

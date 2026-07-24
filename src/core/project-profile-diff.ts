@@ -8,7 +8,11 @@
 import type { Config } from "../config/types";
 import type { ProjectProfileDesiredState } from "./project-profile";
 
-import { canonicalProjectProfileJson } from "./project-profile";
+import { getPreset } from "../llm/registry";
+import {
+  canonicalProjectProfileJson,
+  projectProfileIncludePattern,
+} from "./project-profile";
 
 export interface ProjectProfileChange {
   action: "add" | "update" | "repair" | "review";
@@ -50,41 +54,63 @@ const compareCodeUnits = (left: string, right: string): number =>
 const canonicalEqual = (left: unknown, right: unknown): boolean =>
   canonicalProjectProfileJson(left) === canonicalProjectProfileJson(right);
 
-const profileContexts = (desiredState: ProjectProfileDesiredState): string[] =>
-  desiredState.contexts.map((context) => context.text).sort(compareCodeUnits);
-
-const configuredContexts = (config: Config, collection: string): string[] =>
-  config.contexts
-    .filter(
-      (context) =>
-        context.scopeType === "collection" &&
-        context.scopeKey === `${collection}:`
-    )
-    .map((context) => context.text)
-    .sort(compareCodeUnits);
+const hasEveryProfileContext = (
+  desiredState: ProjectProfileDesiredState,
+  config: Config
+): boolean => {
+  const configured = new Set(
+    config.contexts
+      .filter(
+        (context) =>
+          context.scopeType === "collection" &&
+          context.scopeKey === `${desiredState.collection.name}:`
+      )
+      .map((context) => context.text)
+  );
+  return desiredState.contexts.every((context) => configured.has(context.text));
+};
 
 const desiredCollectionRules = (
   desiredState: ProjectProfileDesiredState
-): { include: string[]; exclude: string[] } => ({
-  include: desiredState.collection.include,
+): { pattern: string; include: string[]; exclude: string[] } => ({
+  pattern: projectProfileIncludePattern(desiredState.collection.include),
+  include: [],
   exclude: desiredState.collection.exclude,
 });
 
 const configuredCollectionRules = (
   collection: Config["collections"][number]
-): { include: string[]; exclude: string[] } => ({
-  include: [collection.pattern, ...collection.include].sort(compareCodeUnits),
+): { pattern: string; include: string[]; exclude: string[] } => ({
+  pattern: collection.pattern,
+  include: [...collection.include].sort(compareCodeUnits),
   exclude: [...collection.exclude].sort(compareCodeUnits),
 });
 
-const modelSelection = (
+const modelSelectionMatches = (
   config: Config,
-  collection: Config["collections"][number]
-): string => {
-  if (collection.models && Object.keys(collection.models).length > 0) {
-    return "collection_override";
-  }
-  return config.models?.activePreset ?? "slim-tuned";
+  collection: Config["collections"][number],
+  presetId: string
+): boolean => {
+  const preset = getPreset(config, presetId);
+  if (!preset) return false;
+  return canonicalEqual(collection.models ?? {}, {
+    embed: preset.embed,
+    rerank: preset.rerank,
+    ...(preset.expand ? { expand: preset.expand } : {}),
+    gen: preset.gen,
+  });
+};
+
+const hasEveryProfileContentType = (
+  desiredState: ProjectProfileDesiredState,
+  config: Config
+): boolean => {
+  const configured = new Map(
+    (config.contentTypes ?? []).map((rule) => [rule.id, rule])
+  );
+  return desiredState.contentTypes.every((rule) =>
+    canonicalEqual(configured.get(rule.id), rule)
+  );
 };
 
 const canonicalizeConfiguredPaths = async (
@@ -157,7 +183,10 @@ export async function buildProjectProfileDiff(
         summary: "Update portable include and exclude rules.",
       });
     }
-    if (target.languageHint !== desiredState.collection.languageHint) {
+    if (
+      desiredState.collection.languageHint !== undefined &&
+      target.languageHint !== desiredState.collection.languageHint
+    ) {
       changes.push({
         action: "update",
         field: "collection.languageHint",
@@ -167,7 +196,11 @@ export async function buildProjectProfileDiff(
     }
     if (
       desiredState.collection.modelPreset &&
-      modelSelection(config, target) !== desiredState.collection.modelPreset
+      !modelSelectionMatches(
+        config,
+        target,
+        desiredState.collection.modelPreset
+      )
     ) {
       changes.push({
         action: "update",
@@ -197,12 +230,7 @@ export async function buildProjectProfileDiff(
     }
   }
 
-  if (
-    !canonicalEqual(
-      configuredContexts(config, collectionName),
-      profileContexts(desiredState)
-    )
-  ) {
+  if (!hasEveryProfileContext(desiredState, config)) {
     changes.push({
       action: "update",
       field: "contexts",
@@ -210,7 +238,7 @@ export async function buildProjectProfileDiff(
       summary: "Update collection-scoped profile contexts.",
     });
   }
-  if (!canonicalEqual(config.contentTypes ?? [], desiredState.contentTypes)) {
+  if (!hasEveryProfileContentType(desiredState, config)) {
     changes.push({
       action: "update",
       field: "contentTypes",

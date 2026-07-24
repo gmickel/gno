@@ -129,6 +129,12 @@ const canonicalize = (value: unknown): unknown => {
 export const canonicalProjectProfileJson = (value: unknown): string =>
   JSON.stringify(canonicalize(value));
 
+/** Encode one or more portable include globs into the config's single pattern. */
+export const projectProfileIncludePattern = (
+  include: readonly string[]
+): string =>
+  include.length === 1 ? (include[0] ?? "**/*") : `{${include.join(",")}}`;
+
 const sha256 = (value: string | Uint8Array): string =>
   new Bun.CryptoHasher("sha256").update(value).digest("hex");
 

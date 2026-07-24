@@ -18,6 +18,11 @@ import { withWriteLock } from "./file-lock";
 export interface ConfigMutationContext {
   store: SqliteAdapter;
   configPath?: string;
+  /**
+   * Optional first-run config factory. Callers must opt in explicitly; existing
+   * mutation surfaces keep treating a missing config as an error.
+   */
+  createConfigIfMissing?: () => Config;
   onConfigUpdated: (config: Config) => void;
   /**
    * Optional cross-process serialization boundary. The in-memory mutex remains
@@ -30,6 +35,8 @@ export interface ConfigMutationContext {
    * Setup recovery uses this boundary to persist a truthful resumable receipt.
    */
   afterConfigSaved?: (config: Config) => Promise<void> | void;
+  /** Runs after config projection succeeds while the write lock is still held. */
+  afterStoreSynced?: (config: Config) => Promise<void> | void;
 }
 
 export type MutationResult<T = void> =
@@ -64,18 +71,33 @@ export async function applyConfigChange<T = void>(
 
     const applyFreshConfigChange = async (): Promise<ApplyConfigResult<T>> => {
       const loadResult = await loadConfig(ctx.configPath);
-      if (!loadResult.ok) {
+      if (
+        !loadResult.ok &&
+        !(loadResult.error.code === "NOT_FOUND" && ctx.createConfigIfMissing)
+      ) {
         return {
           ok: false,
           error: loadResult.error.message,
           code: "LOAD_ERROR",
         };
       }
-      for (const warning of formatConfigWarnings(loadResult.warnings)) {
-        console.warn(warning);
+      if (loadResult.ok) {
+        for (const warning of formatConfigWarnings(loadResult.warnings)) {
+          console.warn(warning);
+        }
       }
 
-      const mutationResult = await mutate(loadResult.value);
+      const currentConfig = loadResult.ok
+        ? loadResult.value
+        : ctx.createConfigIfMissing?.();
+      if (!currentConfig) {
+        return {
+          ok: false,
+          error: "Config file is missing",
+          code: "LOAD_ERROR",
+        };
+      }
+      const mutationResult = await mutate(currentConfig);
       if (!mutationResult.ok) {
         return {
           ok: false,
@@ -130,6 +152,7 @@ export async function applyConfigChange<T = void>(
         };
       }
 
+      await ctx.afterStoreSynced?.(newConfig);
       ctx.onConfigUpdated(newConfig);
 
       return { ok: true, config: newConfig, value: mutationResult.value };

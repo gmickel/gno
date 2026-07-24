@@ -1332,6 +1332,35 @@ function wireOnboardingCommands(program: Command): void {
   wireProfileRead("check", "Validate a project-local retrieval profile");
   wireProfileRead("show", "Show normalized project-local retrieval state");
   wireProfileRead("diff", "Compare a project profile with local config");
+  profileCmd
+    .command("apply [path]")
+    .description("Apply a project profile without implicit deletion")
+    .option("--json", "JSON output")
+    .action(
+      async (path: string | undefined, cmdOpts: Record<string, unknown>) => {
+        const globals = getGlobals();
+        const json = Boolean(cmdOpts.json) || globals.json;
+        const {
+          formatProjectProfileApplyResult,
+          runProjectProfileApplyCommand,
+        } = await import("./commands/profile-apply");
+        const outcome = await runProjectProfileApplyCommand({
+          path,
+          configPath: globals.config,
+          indexName: globals.index,
+        });
+        process.stdout.write(
+          `${formatProjectProfileApplyResult(outcome.result, { json })}\n`
+        );
+        if (outcome.exitCode !== 0) {
+          throw new CliError(
+            outcome.exitCode === 1 ? "VALIDATION" : "RUNTIME",
+            "Project profile apply failed",
+            { silent: true }
+          );
+        }
+      }
+    );
 
   // init - Initialize GNO
   program

@@ -7,10 +7,11 @@ satisfies: [R1, R3, R5, R6]
 Deliver integrate profiles with setup affinity docs and portability proof as one implementation-sized increment.
 
 **Size:** M
-**Files:** `src/core/folder-setup.ts`, `src/core/project-affinity.ts`, `src/core/project-affinity-surface.ts`, `docs/guides/project-profiles.md`, `docs/QUICKSTART.md`, `assets/skill/SKILL.md`, `/Users/gordon/work/gno.sh/src/lib/gno-docs.tsx`
+**Files:** `src/cli/commands/profile.ts`, `src/cli/commands/setup-activation.ts`, `src/cli/program.ts`, `src/core/folder-setup.ts`, `src/core/project-affinity.ts`, `src/core/project-affinity-surface.ts`, `docs/guides/project-profiles.md`, `docs/QUICKSTART.md`, `assets/skill/SKILL.md`, `/Users/gordon/work/gno.sh/src/lib/gno-docs.tsx`
 
 ### Approach
-- Let `gno setup` discover/show an optional profile before its own safe apply; no profile remains a first-class path.
+- Let `gno setup` surface the existing `runProjectProfileCommand()` discovery/check result before its own safe apply; no profile remains a first-class path.
+<!-- Updated by plan-sync: fn-107-project-local-retrieval-profiles.2 used runProjectProfileCommand() not a planned setup-local profile inspection -->
 - Feed compiled affinity defaults through fn-104's `src/core/project-affinity-surface.ts` trust boundary with one precedence: explicit CLI roots or remote `projectHints`, nearest chosen profile, user config default.
 <!-- Updated by plan-sync (cross-spec): fn-104-project-aware-retrieval-affinity.3 introduced src/core/project-affinity-surface.ts for caller-supplied roots/hints -->
 - Run second-clean-machine portability, worktree/monorepo, no-runtime-state, docs/skill/hosted, and package gates.
