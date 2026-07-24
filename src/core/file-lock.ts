@@ -4,8 +4,9 @@
  * @module src/core/file-lock
  */
 
-// node:fs/promises for mkdir/rm (no Bun equivalent for filesystem structure ops)
-import { mkdir, rm } from "node:fs/promises";
+import { Database } from "bun:sqlite";
+// node:fs/promises provides recursive directory creation without a Bun equivalent.
+import { mkdir } from "node:fs/promises";
 // node:path for dirname (no Bun path utils)
 import { dirname } from "node:path";
 
@@ -13,8 +14,8 @@ import { MCP_ERRORS } from "./errors";
 const DEFAULT_TIMEOUT_MS = 5000;
 const HOLD_SECONDS = 60 * 60 * 24 * 365;
 const READY_TOKEN = "READY";
-const DIRECTORY_LOCK_SUFFIX = ".dir";
-const DIRECTORY_LOCK_POLL_MS = 50;
+const SQLITE_LOCK_SUFFIX = ".sqlite";
+const MAX_BUSY_TIMEOUT_MS = 60_000;
 
 export interface WriteLockHandle {
   release: () => Promise<void>;
@@ -67,10 +68,6 @@ function buildHoldCommand(): string {
   return `printf '${READY_TOKEN}\\n'; exec sleep ${HOLD_SECONDS}`;
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function waitForReady(
   proc: ReturnType<typeof Bun.spawn>
 ): Promise<boolean> {
@@ -96,33 +93,58 @@ async function waitForReady(
   }
 }
 
-async function acquireDirectoryLock(
+function sqliteLockPath(lockPath: string): string {
+  return `${lockPath}${SQLITE_LOCK_SUFFIX}`;
+}
+
+function normalizedBusyTimeout(timeoutMs: number): number {
+  if (!Number.isFinite(timeoutMs)) {
+    return DEFAULT_TIMEOUT_MS;
+  }
+  return Math.min(Math.max(0, Math.floor(timeoutMs)), MAX_BUSY_TIMEOUT_MS);
+}
+
+function isSqliteLockContention(cause: unknown): boolean {
+  if (cause === null || typeof cause !== "object") {
+    return false;
+  }
+  const code = "code" in cause ? cause.code : undefined;
+  return code === "SQLITE_BUSY" || code === "SQLITE_LOCKED";
+}
+
+export async function acquireSqliteWriteLock(
   lockPath: string,
   timeoutMs: number
 ): Promise<WriteLockHandle | null> {
-  const directoryLockPath = `${lockPath}${DIRECTORY_LOCK_SUFFIX}`;
-  await mkdir(dirname(directoryLockPath), { recursive: true });
+  const databasePath = sqliteLockPath(lockPath);
+  await mkdir(dirname(databasePath), { recursive: true });
 
-  const deadline = Date.now() + Math.max(0, timeoutMs);
-  while (true) {
-    try {
-      await mkdir(directoryLockPath);
-      return {
-        release: async () => {
-          await rm(directoryLockPath, { force: true, recursive: true });
-        },
-      };
-    } catch (error) {
-      const code = (error as { code?: string }).code;
-      if (code !== "EEXIST") {
-        throw error;
-      }
-      if (Date.now() >= deadline) {
-        return null;
-      }
-      await delay(Math.min(DIRECTORY_LOCK_POLL_MS, deadline - Date.now()));
+  const database = new Database(databasePath, { create: true });
+  try {
+    database.exec(`PRAGMA busy_timeout = ${normalizedBusyTimeout(timeoutMs)}`);
+    database.exec("BEGIN IMMEDIATE");
+  } catch (cause) {
+    database.close();
+    if (isSqliteLockContention(cause)) {
+      return null;
     }
+    throw cause;
   }
+
+  let released = false;
+  return {
+    release: async () => {
+      if (released) {
+        return;
+      }
+      released = true;
+      try {
+        database.exec("ROLLBACK");
+      } finally {
+        database.close();
+      }
+    },
+  };
 }
 
 export async function acquireWriteLock(
@@ -131,7 +153,7 @@ export async function acquireWriteLock(
 ): Promise<WriteLockHandle | null> {
   const cmd = resolveLockCommand();
   if (!cmd) {
-    return acquireDirectoryLock(lockPath, timeoutMs);
+    return acquireSqliteWriteLock(lockPath, timeoutMs);
   }
 
   await mkdir(dirname(lockPath), { recursive: true });
@@ -159,6 +181,23 @@ export async function acquireWriteLock(
       await proc.exited.catch(() => undefined);
     },
   };
+}
+
+export async function withSqliteWriteLock<T>(
+  lockPath: string,
+  fn: () => Promise<T>,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS
+): Promise<T> {
+  const lock = await acquireSqliteWriteLock(lockPath, timeoutMs);
+  if (!lock) {
+    throw new Error(`${MCP_ERRORS.LOCKED.code}: ${MCP_ERRORS.LOCKED.message}`);
+  }
+
+  try {
+    return await fn();
+  } finally {
+    await lock.release();
+  }
 }
 
 export async function withWriteLock<T>(

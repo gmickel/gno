@@ -32,6 +32,7 @@ async function loadAllSchemas(): Promise<void> {
     "mcp-http-error",
     "process-status",
     "activation-verification",
+    "setup-receipt",
     "context-capsule-v1",
     "context-capsule-verification",
     "saved-capsule-registration",
