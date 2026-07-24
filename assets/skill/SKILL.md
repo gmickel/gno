@@ -120,8 +120,10 @@ stay hard. Use `--project-root` for explicit trusted roots or
 
 Do not treat MCP/SDK/REST `projectHints` as paths. They are opaque, untrusted,
 limited to 16, never trigger filesystem probing, and currently produce zero
-affinity. Explain/diagnose affinity data uses redacted aliases only. The Web UI
-does not infer a browser project root.
+affinity. Explain uses redacted aliases only. Diagnose preserves exact closed
+v1.0 bytes and omits `affinity` for absent, disabled, and remote/untrusted
+inputs; trusted local diagnose uses closed v1.1 redacted metadata, including an
+explicit unmatched state. The Web UI does not infer a browser project root.
 
 ## Advanced: Structured Query Modes (query/ask only)
 

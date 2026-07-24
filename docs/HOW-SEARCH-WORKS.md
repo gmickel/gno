@@ -33,8 +33,11 @@ Only CLI cwd/`--project-root` is trusted for this signal.
 `--no-project-affinity` disables it and explicit roots replace cwd inference.
 SDK, REST, MCP, and browser `projectHints` are opaque/untrusted, limited to 16,
 and intentionally produce no match or boost without filesystem probing.
-Explain/diagnose reports redacted root/collection aliases plus requested and
-applied score contributions.
+Explain reports redacted root/collection aliases plus requested and applied
+score contributions. Diagnose uses the same closed redacted metadata in
+`schemaVersion: "1.1"` only for trusted local input (matched or unmatched);
+absent, disabled, and remote/untrusted requests preserve exact v1.0 bytes and
+omit `affinity`.
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
@@ -452,7 +455,10 @@ expansion, and rerank, including target states such as `not_found`,
 `filtered_out`, `no_indexed_content`, and diagnosed drop reasons such as
 `not_in_candidate_set` or `below_cutoff`. In fast/BM25-only mode, vector and
 rerank stages are skipped with reasons while fusion still runs over the BM25
-candidate set.
+candidate set. Without trusted local affinity, the closed v1.0 response remains
+byte-compatible and omits `affinity`. A trusted CLI cwd or explicit project root
+selects the closed v1.1 response and requires redacted affinity metadata,
+including `matched: false` when the target collection does not match.
 
 ## Controlling Search Behavior
 

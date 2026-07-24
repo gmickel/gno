@@ -1,6 +1,25 @@
 import type { ProjectAffinityIdentityBinding } from "./project-affinity-contract";
+import type { ProjectAffinityProvenance } from "./project-affinity-provenance";
 
 import { canonicalFingerprint } from "./canonical";
+
+export const PROJECT_AFFINITY_STORE_CALL_LIMITS = {
+  getChunksBatch: 1,
+  getCollections: 1,
+  getContextGeneration: 2,
+  getContexts: 1,
+  getDocumentsByMirrorHashes: 1,
+  getTagsBatch: 0,
+  listDocuments: 0,
+} as const;
+
+export type ProjectAffinityStoreCallName =
+  keyof typeof PROJECT_AFFINITY_STORE_CALL_LIMITS;
+
+export type ProjectAffinityStoreCallMap = Record<
+  ProjectAffinityStoreCallName,
+  number
+>;
 
 export interface ProjectAffinityRankedEntry {
   rank: number;
@@ -28,6 +47,7 @@ export interface ProjectAffinityPromotionArtifact {
   schemaVersion: "1.0";
   benchmarkId: "project-affinity-promotion@1";
   canonicalFingerprint: string;
+  provenance: ProjectAffinityProvenance;
   fixture: {
     fixtureVersion: string;
     fixtureFingerprint: string;
@@ -52,14 +72,24 @@ export interface ProjectAffinityPromotionArtifact {
       candidateHash: string;
       equal: boolean;
     }>;
+    filter: {
+      caseId: string;
+      targetCollection: string;
+      distractorCollection: string;
+      resultUris: string[];
+      requiredEvidenceRetained: boolean;
+    };
+    regression: Array<{
+      taskId: string;
+      lane: "disabled" | "enabled";
+      resultUris: string[];
+      requiredEvidenceCount: number;
+      requiredEvidenceRetained: boolean;
+    }>;
     structural: Array<{
       caseId: string;
-      calls: {
-        getDocumentsByMirrorHashes: number;
-        getChunksBatch: number;
-        getCollections: number;
-        listDocuments: number;
-      };
+      calls: ProjectAffinityStoreCallMap;
+      unexpectedCalls: Array<{ method: string; count: number }>;
       candidateRequested: number;
       candidateReturned: number;
       outputLimit: number;
@@ -173,9 +203,11 @@ export const renderProjectAffinityPromotionMarkdown = (
       (receipt) =>
         `- Zero \`${receipt.lane}\`: ${receipt.equal ? "equal" : "different"} (\`${receipt.baselineHash}\` / \`${receipt.candidateHash}\`)`
     ),
+    `- Filter \`${artifact.receipts.filter.caseId}\`: ${artifact.receipts.filter.requiredEvidenceRetained ? "required evidence retained" : "required evidence missing"}; ${artifact.receipts.filter.resultUris.length} result(s)`,
+    `- Regression: ${artifact.receipts.regression.length} disabled/enabled task receipts`,
     ...artifact.receipts.structural.map(
       (receipt) =>
-        `- Structural \`${receipt.caseId}\`: candidates ${receipt.candidateReturned}/${receipt.candidateRequested}, limit ${receipt.outputLimit}, bound ${receipt.maxCandidateBound}, calls docs/chunks/collections/list ${receipt.calls.getDocumentsByMirrorHashes}/${receipt.calls.getChunksBatch}/${receipt.calls.getCollections}/${receipt.calls.listDocuments}`
+        `- Structural \`${receipt.caseId}\`: candidates ${receipt.candidateReturned}/${receipt.candidateRequested}, limit ${receipt.outputLimit}, bound ${receipt.maxCandidateBound}, calls docs/chunks/collections/contexts/generation/tags/list ${receipt.calls.getDocumentsByMirrorHashes}/${receipt.calls.getChunksBatch}/${receipt.calls.getCollections}/${receipt.calls.getContexts}/${receipt.calls.getContextGeneration}/${receipt.calls.getTagsBatch}/${receipt.calls.listDocuments}; unexpected ${receipt.unexpectedCalls.length}`
     ),
     "",
     "## Limitations",

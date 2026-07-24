@@ -13,9 +13,12 @@ After each pipeline's base relevance is final—and before document cutoff/order
 one matched collection can request `+0.03`. Overlapping or duplicate roots do
 not stack. All auxiliary signals use the order-independent shared formula
 `clamp(sum, -0.08, 0.08)` before the final score is clamped to `0..1`.
-Candidate breadth is bounded to at most `3×` the requested limit when affinity
-can reorder results. Existing hard filters run unchanged. Explain/diagnose
-surfaces use deterministic aliases, not absolute roots.
+Candidate breadth requested and returned are each bounded to at most `3×` the
+output limit; complete StorePort call receipts enforce per-method maxima and
+reject unexpected calls. Existing hard filters run unchanged. Explain uses
+deterministic aliases, not absolute roots. Diagnose emits those closed redacted
+fields only in affinity-bearing v1.1 output; zero-affinity requests preserve
+exact legacy v1.0 bytes and omit `affinity`.
 
 ## System Overview
 

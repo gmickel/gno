@@ -291,8 +291,29 @@ describe("POST /api/query/diagnose", () => {
     const schema = await loadSchema("query-diagnose");
 
     expect(assertValid(body, schema)).toBe(true);
+    expect(body.schemaVersion).toBe("1.0");
+    expect(body).not.toHaveProperty("affinity");
     expect(body.target.status).toBe("diagnosed");
     expect(body.meta.mode).toBe("bm25_only");
+
+    const hintedRes = await handleQueryDiagnose(
+      ctx as never,
+      new Request("http://localhost/api/query/diagnose", {
+        method: "POST",
+        body: JSON.stringify({
+          query: "Alice Acme",
+          target: target.uri,
+          noExpand: true,
+          noRerank: true,
+          projectHints: ["opaque/client-project"],
+        }),
+      })
+    );
+    expect(hintedRes.status).toBe(200);
+    const hintedBody = await hintedRes.json();
+    expect(hintedBody).toEqual(body);
+    expect(JSON.stringify(hintedBody)).toBe(JSON.stringify(body));
+    expect(JSON.stringify(hintedBody)).not.toContain("opaque/client-project");
   });
 
   test("rejects missing target", async () => {

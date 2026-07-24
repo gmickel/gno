@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "gno://schemas/query-diagnose@1.1",
+  "$id": "gno://schemas/query-diagnose@1.0",
   "title": "GNO Query Diagnose",
   "type": "object",
   "required": ["schemaVersion", "query", "target", "stages", "chunk", "meta"],
   "properties": {
-    "schemaVersion": { "type": "string", "enum": ["1.0", "1.1"] },
+    "schemaVersion": { "type": "string", "const": "1.0" },
     "query": { "type": "string" },
     "target": {
       "type": "object",
@@ -86,74 +86,6 @@
         "additionalProperties": false
       }
     },
-    "affinity": {
-      "type": "object",
-      "required": [
-        "affinityAdjustedScore",
-        "affinityApplied",
-        "affinityRequested",
-        "affinityWeight",
-        "baseScore",
-        "collectionAlias",
-        "combinedAuxiliaryApplied",
-        "combinedAuxiliaryCap",
-        "combinedAuxiliaryRequested",
-        "finalBlendedScore",
-        "finalScore",
-        "matched",
-        "rawScore",
-        "rawScoreKind",
-        "rootAlias",
-        "source"
-      ],
-      "properties": {
-        "affinityAdjustedScore": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "affinityApplied": { "type": "number" },
-        "affinityRequested": { "type": "number" },
-        "affinityWeight": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 0.03
-        },
-        "baseScore": { "type": "number", "minimum": 0, "maximum": 1 },
-        "collectionAlias": {
-          "type": ["string", "null"],
-          "pattern": "^collection_[a-f0-9]{12}$"
-        },
-        "combinedAuxiliaryApplied": {
-          "type": "number",
-          "minimum": -0.08,
-          "maximum": 0.08
-        },
-        "combinedAuxiliaryCap": { "type": "number", "const": 0.08 },
-        "combinedAuxiliaryRequested": { "type": "number" },
-        "finalBlendedScore": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "finalScore": { "type": "number", "minimum": 0, "maximum": 1 },
-        "matched": { "type": "boolean" },
-        "rawScore": { "type": "number" },
-        "rawScoreKind": {
-          "type": "string",
-          "enum": ["bm25", "hybrid_blended", "normalized", "vector_distance"]
-        },
-        "rootAlias": {
-          "type": ["string", "null"],
-          "pattern": "^root_[a-f0-9]{12}$"
-        },
-        "source": {
-          "type": ["string", "null"],
-          "enum": ["cli_cwd", "cli_explicit", "cli_worktree", null]
-        }
-      },
-      "additionalProperties": false
-    },
     "chunk": {
       "type": "object",
       "required": ["seq", "startLine", "endLine", "language"],
@@ -187,24 +119,5 @@
       "additionalProperties": false
     }
   },
-  "allOf": [
-    {
-      "if": {
-        "properties": { "schemaVersion": { "const": "1.0" } },
-        "required": ["schemaVersion"]
-      },
-      "then": { "properties": { "affinity": false } }
-    },
-    {
-      "if": {
-        "properties": { "schemaVersion": { "const": "1.1" } },
-        "required": ["schemaVersion"]
-      },
-      "then": {
-        "properties": { "affinity": {} },
-        "required": ["affinity"]
-      }
-    }
-  ],
   "additionalProperties": false
 }

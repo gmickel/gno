@@ -11,6 +11,7 @@ import { join } from "node:path";
 
 import { runCli } from "../../../src/cli/run";
 import { safeRm } from "../../helpers/cleanup";
+import { assertValid, loadSchema } from "../../spec/schemas/validator";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Environment Setup
@@ -526,12 +527,40 @@ describe("gno query diagnose", () => {
 
     expect(code).toBe(0);
     const data = JSON.parse(stdout);
-    expect(data.schemaVersion).toBe("1.0");
+    expect(data.schemaVersion).toBe("1.1");
+    expect(data.affinity).toMatchObject({ matched: false });
     expect(data.target.status).toBe("diagnosed");
     expect(data.meta.mode).toBe("bm25_only");
     expect(
       data.stages.some((stage: { id: string }) => stage.id === "fusion")
     ).toBe(true);
+  });
+
+  test("keeps disabled diagnose JSON byte-identical to the legacy v1.0 projection", async () => {
+    const baseArgs = [
+      "query",
+      "diagnose",
+      "Target Document",
+      "--target",
+      "gno://notes/target.md",
+      "--fast",
+      "--json",
+    ] as const;
+    const baseline = await cli(...baseArgs);
+    const disabled = await cli(...baseArgs, "--no-project-affinity");
+    expect(disabled.code).toBe(0);
+    const disabledData = JSON.parse(disabled.stdout);
+    expect(
+      assertValid(disabledData, await loadSchema("query-diagnose-v1"))
+    ).toBeTrue();
+    const legacyProjection = JSON.parse(baseline.stdout);
+    legacyProjection.schemaVersion = "1.0";
+    delete legacyProjection.affinity;
+    expect(disabledData).toEqual(legacyProjection);
+    expect(disabled.stdout).toBe(
+      `${JSON.stringify(legacyProjection, null, 2)}\n`
+    );
+    expect(disabled.stdout).not.toContain('"affinity"');
   });
 
   test("forwards structured query modes to target diagnostics", async () => {

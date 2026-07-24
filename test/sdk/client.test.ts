@@ -202,6 +202,19 @@ describe("SDK client", () => {
     });
     expect(hinted).toEqual(baseline);
     expect(JSON.stringify(hinted)).not.toContain("private/sdk-project");
+
+    const queryOptions = {
+      limit: 5,
+      noExpand: true,
+      noRerank: true,
+    };
+    const queryBaseline = await client.query("JWT token", queryOptions);
+    const queryHinted = await client.query("JWT token", {
+      ...queryOptions,
+      projectHints: [" private/sdk-project "],
+    });
+    expect(queryHinted).toEqual(queryBaseline);
+    expect(JSON.stringify(queryHinted)).toBe(JSON.stringify(queryBaseline));
   });
 
   test("maps malformed hints to public SDK validation errors on every retrieval seam", async () => {

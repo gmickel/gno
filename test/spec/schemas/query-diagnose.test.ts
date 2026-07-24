@@ -4,9 +4,11 @@ import { assertInvalid, assertValid, loadSchema } from "./validator";
 
 describe("query-diagnose schema", () => {
   let schema: object;
+  let legacySchema: object;
 
   beforeAll(async () => {
     schema = await loadSchema("query-diagnose");
+    legacySchema = await loadSchema("query-diagnose-v1");
   });
 
   test("validates diagnosed response", () => {
@@ -52,6 +54,22 @@ describe("query-diagnose schema", () => {
           reason: "vector_unavailable",
         },
       ],
+      chunk: {
+        seq: 1,
+        startLine: 3,
+        endLine: 8,
+        language: "en",
+      },
+      meta: {
+        mode: "bm25_only",
+        vectorsUsed: false,
+        reranked: false,
+        totalResults: 1,
+      },
+    };
+    const affinityResponse = {
+      ...response,
+      schemaVersion: "1.1",
       affinity: {
         affinityAdjustedScore: 0.53,
         affinityApplied: 0.03,
@@ -70,36 +88,38 @@ describe("query-diagnose schema", () => {
         rootAlias: "root_000000000000",
         source: "cli_cwd",
       },
-      chunk: {
-        seq: 1,
-        startLine: 3,
-        endLine: 8,
-        language: "en",
-      },
-      meta: {
-        mode: "bm25_only",
-        vectorsUsed: false,
-        reranked: false,
-        totalResults: 1,
-      },
     };
 
     expect(assertValid(response, schema)).toBe(true);
-    expect(assertValid({ ...response, affinity: null }, schema)).toBe(true);
+    expect(assertValid(response, legacySchema)).toBe(true);
+    expect(assertValid(affinityResponse, schema)).toBe(true);
+    expect(assertInvalid(affinityResponse, legacySchema)).toBe(true);
+    expect(
+      assertInvalid(
+        { ...response, affinity: affinityResponse.affinity },
+        schema
+      )
+    ).toBe(true);
+    expect(
+      assertInvalid({ ...affinityResponse, affinity: undefined }, schema)
+    ).toBe(true);
+    expect(assertInvalid({ ...affinityResponse, affinity: null }, schema)).toBe(
+      true
+    );
     expect(assertInvalid({ ...response, unexpected: true }, schema)).toBe(true);
     expect(
       assertInvalid(
         {
-          ...response,
+          ...affinityResponse,
           affinity: {
-            ...response.affinity,
+            ...affinityResponse.affinity,
             projectRoot: "/private/project",
           },
         },
         schema
       )
     ).toBe(true);
-    expect(JSON.stringify(response.affinity)).not.toContain("/private");
+    expect(JSON.stringify(affinityResponse.affinity)).not.toContain("/private");
   });
 
   test("rejects missing schemaVersion", () => {

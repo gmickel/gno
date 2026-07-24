@@ -19,7 +19,9 @@ Hints are opaque, untrusted caller metadata: MCP does not interpret them as
 paths, probe the filesystem, reflect them in results, or apply a project
 affinity boost. This deliberate zero-affinity behavior differs from trusted
 local CLI cwd/`--project-root` resolution. Omit the field for byte-compatible
-existing behavior. Diagnose affinity metadata is closed and redacted.
+existing behavior. MCP diagnose therefore preserves the closed
+`query-diagnose@1.0` payload and omits `affinity`; only trusted local CLI
+diagnose can emit the closed, redacted `query-diagnose@1.1` affinity metadata.
 
 ## Overview
 
@@ -1102,7 +1104,9 @@ tagsAll: ["crm"]
 
 Use this when an expected document is missing from `gno_query` results or when
 you need evidence before changing filters, query modes, graph expansion, or
-reranking. The structured response matches `query-diagnose.schema.json` and
+reranking. The structured response matches the legacy
+`query-diagnose@1.0` branch of `query-diagnose.schema.json`, omits `affinity`,
+and
 reports target status (`not_found`, `inactive`, `no_indexed_content`,
 `filtered_out`, or `diagnosed`), typed metadata, graph hints, chunk/line choice,
 and BM25/vector/fusion/graph/rerank stage survival.

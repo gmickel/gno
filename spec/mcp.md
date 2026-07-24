@@ -759,6 +759,10 @@ Structured content includes `schemaVersion`, normalized `query`, `target`
 metadata/status (`not_found`, `inactive`, `no_indexed_content`,
 `filtered_out`, or `diagnosed`), `stages` for BM25/vector/fusion/graph/rerank,
 the selected target `chunk`, and retrieval `meta`.
+MCP inputs are remote and untrusted, so this tool preserves exact v1.0 bytes
+and omits `affinity`, even when `projectHints` are supplied. The shared current
+validation schema is `gno://schemas/query-diagnose@1.1`; its affinity-bearing
+v1.1 branch is reserved for trusted local CLI diagnose requests.
 
 Use when an expected target is missing from `gno_query`, when filters may have
 excluded it, or when an agent needs evidence before raising `candidateLimit`,

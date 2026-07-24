@@ -2195,12 +2195,19 @@ Explains why a named target document does or does not appear in a query result. 
 
 **Response**: `query-diagnose.schema.json`.
 
+REST project hints are opaque and untrusted. Responses therefore preserve the
+exact closed `schemaVersion: "1.0"` shape and omit `affinity`, whether
+`projectHints` are absent or supplied. The current schema also defines a closed
+`schemaVersion: "1.1"` affinity branch for trusted local CLI diagnose output;
+the unchanged legacy contract remains in `query-diagnose-v1.schema.json`.
+
 Top-level fields:
 
 - `schemaVersion` - Query diagnose schema version
 - `query` - Normalized query text
 - `target` - Resolved target metadata, status, filters, and graph hints
 - `stages` - BM25/vector/fusion/graph/rerank survival, rank, score, and drop reason
+- `affinity` - v1.1 only; required closed/redacted trusted-local match metadata
 - `chunk` - Target chunk and line range when diagnosed
 - `meta` - Retrieval mode, vector/rerank usage, and result count
 

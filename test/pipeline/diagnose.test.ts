@@ -141,6 +141,7 @@ describe("diagnoseQueryTarget", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
+    expect(result.value.schemaVersion).toBe("1.1");
     expect(result.value.target.status).toBe("diagnosed");
     expect(result.value.target.graphHints).toEqual(["works_at"]);
     expect(result.value.meta.mode).toBe("bm25_only");
@@ -165,6 +166,68 @@ describe("diagnoseQueryTarget", () => {
       sourceCount: 1,
       present: true,
     });
+  });
+
+  test("preserves exact v1.0 bytes for absent, disabled, and untrusted affinity", async () => {
+    const target = await setupDocument("v1.md", "legacy diagnose bytes", [
+      {
+        seq: 0,
+        pos: 0,
+        text: "legacy diagnose bytes",
+        startLine: 1,
+        endLine: 1,
+        language: "en",
+      },
+    ]);
+    const baseOptions = {
+      target: target.uri,
+      noExpand: true,
+      noRerank: true,
+    };
+    const absent = await diagnoseQueryTarget(
+      deps(),
+      "legacy diagnose bytes",
+      baseOptions
+    );
+    const disabled = await diagnoseQueryTarget(
+      deps(),
+      "legacy diagnose bytes",
+      {
+        ...baseOptions,
+        projectAffinity: {
+          enabled: false,
+          resolution: { matches: [], roots: [] },
+        },
+      }
+    );
+    const untrusted = await diagnoseQueryTarget(
+      deps(),
+      "legacy diagnose bytes",
+      {
+        ...baseOptions,
+        projectAffinity: {
+          resolution: {
+            matches: [],
+            roots: [
+              {
+                collectionAliases: [],
+                reason: "untrusted_remote_hint",
+                repositoryRootDiscovered: false,
+                rootAlias: "root_000000000000",
+                source: "remote_hint",
+                status: "zero",
+              },
+            ],
+          },
+        },
+      }
+    );
+    expect(absent.ok && absent.value.schemaVersion).toBe("1.0");
+    expect(absent.ok && "affinity" in absent.value).toBeFalse();
+    expect(disabled).toEqual(absent);
+    expect(untrusted).toEqual(absent);
+    expect(JSON.stringify(disabled)).toBe(JSON.stringify(absent));
+    expect(JSON.stringify(untrusted)).toBe(JSON.stringify(absent));
   });
 
   test("reports filtered_out before tracing", async () => {
@@ -269,6 +332,7 @@ describe("diagnoseQueryTarget", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.target.uri).toBe("gno://archive/shared-copy.md");
+    expect(result.value.schemaVersion).toBe("1.1");
     expect(result.value.affinity).toMatchObject({
       affinityApplied: 0,
       affinityRequested: 0,

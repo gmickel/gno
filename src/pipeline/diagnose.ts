@@ -21,6 +21,7 @@ import { evaluateQueryTargetFilters } from "./filters";
 import { searchHybrid } from "./hybrid";
 import {
   getProjectAffinityMetadata,
+  type ProjectAffinityScoringInput,
   type ProjectAffinityScoreMetadata,
   scoreProjectAffinity,
 } from "./project-affinity";
@@ -51,7 +52,7 @@ export interface QueryDiagnoseStage {
 }
 
 export interface QueryDiagnoseResult {
-  schemaVersion: "1.0";
+  schemaVersion: "1.0" | "1.1";
   query: string;
   target: {
     ref: string;
@@ -70,7 +71,7 @@ export interface QueryDiagnoseResult {
     filterReasons: string[];
   };
   stages: QueryDiagnoseStage[];
-  affinity: ProjectAffinityScoreMetadata | null;
+  affinity?: ProjectAffinityScoreMetadata;
   chunk: {
     seq: number | null;
     startLine: number | null;
@@ -135,7 +136,6 @@ function buildBaseResult(
       filterReasons: fields.filterReasons ?? [],
     },
     stages: [],
-    affinity: null,
     chunk: {
       seq: null,
       startLine: null,
@@ -161,6 +161,15 @@ function findTargetCandidate(
       candidate.mirrorHash === mirrorHash && targetSeqs.has(candidate.seq)
   );
 }
+
+const hasTrustedProjectAffinityInput = (
+  input: ProjectAffinityScoringInput | undefined
+): boolean =>
+  input?.enabled !== false &&
+  Boolean(
+    input?.resolution.matches.length ||
+    input?.resolution.roots.some((root) => root.source !== "remote_hint")
+  );
 
 export async function diagnoseQueryTarget(
   deps: HybridSearchDeps,
@@ -304,14 +313,13 @@ export async function diagnoseQueryTarget(
         )
       : null);
 
-  return ok({
+  const baseResult: QueryDiagnoseResult = {
     ...buildBaseResult(query, options.target, "diagnosed", doc, {
       graphHints,
       chunkCount: chunks.length,
       fingerprintMatches,
     }),
     stages,
-    affinity,
     chunk: {
       seq: matchedChunk?.seq ?? null,
       startLine: matchedChunk?.startLine ?? null,
@@ -326,5 +334,14 @@ export async function diagnoseQueryTarget(
       totalResults: searchResult.value.meta.totalResults,
       queryModes: searchResult.value.meta.queryModes,
     },
-  });
+  };
+  return ok(
+    affinity && hasTrustedProjectAffinityInput(options.projectAffinity)
+      ? {
+          ...baseResult,
+          schemaVersion: "1.1",
+          affinity,
+        }
+      : baseResult
+  );
 }

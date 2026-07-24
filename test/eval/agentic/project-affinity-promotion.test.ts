@@ -7,6 +7,11 @@ import {
   loadProjectAffinityCases,
 } from "../../../evals/agentic/project-affinity-contract";
 import { runProjectAffinityOutcomeBenchmark } from "../../../evals/agentic/project-affinity-outcome";
+import {
+  isStructurallyBounded,
+  type CallObservation,
+} from "../../../evals/agentic/project-affinity-runtime";
+import { validateProjectAffinityPromotionArtifact } from "../../../evals/agentic/project-affinity-validation";
 import { validateAgenticSchema } from "../../../evals/agentic/validation";
 
 describe("project-affinity promotion cases", () => {
@@ -81,6 +86,11 @@ describe("project-affinity promotion cases", () => {
           receipt.calls.getDocumentsByMirrorHashes <= 1 &&
           receipt.calls.getChunksBatch <= 1 &&
           receipt.calls.getCollections <= 1 &&
+          receipt.calls.getContexts <= 1 &&
+          receipt.calls.getContextGeneration <= 2 &&
+          receipt.unexpectedCalls.length === 0 &&
+          receipt.candidateRequested <= receipt.maxCandidateBound &&
+          receipt.candidateReturned <= receipt.candidateRequested &&
           receipt.calls.listDocuments === 0 &&
           receipt.candidateReturned <= receipt.maxCandidateBound
       )
@@ -99,5 +109,72 @@ describe("project-affinity promotion cases", () => {
     const second = await runProjectAffinityOutcomeBenchmark(fixture);
     expect(canonicalJson(second)).toBe(canonicalJson(first));
     expect(second.canonicalFingerprint).toBe(first.canonicalFingerprint);
+  });
+
+  test("rejects over-request and hidden StorePort calls independently", () => {
+    const bounded: CallObservation = {
+      calls: {
+        getChunksBatch: 1,
+        getCollections: 1,
+        getContextGeneration: 2,
+        getContexts: 1,
+        getDocumentsByMirrorHashes: 1,
+        getTagsBatch: 0,
+        listDocuments: 0,
+      },
+      unexpectedCalls: {},
+      candidateCount: 3,
+      requestedCount: 3,
+      outputLimit: 1,
+    };
+    expect(isStructurallyBounded(bounded)).toBeTrue();
+    expect(
+      isStructurallyBounded({ ...bounded, requestedCount: 4 })
+    ).toBeFalse();
+    expect(
+      isStructurallyBounded({
+        ...bounded,
+        unexpectedCalls: { getContent: 1 },
+      })
+    ).toBeFalse();
+    expect(
+      isStructurallyBounded({
+        ...bounded,
+        calls: { ...bounded.calls, getContexts: 2 },
+      })
+    ).toBeFalse();
+  });
+
+  test("independently rejects ranking, receipt, gate, and fingerprint mutations", async () => {
+    const fixture = await loadAgenticFixture();
+    const artifact = await runProjectAffinityOutcomeBenchmark(fixture);
+    expect(
+      await validateProjectAffinityPromotionArtifact(artifact, fixture)
+    ).toEqual([]);
+
+    const reversed = structuredClone(artifact);
+    reversed.targets[0]!.enabled.reverse();
+    expect(
+      await validateProjectAffinityPromotionArtifact(reversed, fixture)
+    ).toContain("artifact_target_identity_invalid");
+
+    const changedReceipt = structuredClone(artifact);
+    changedReceipt.receipts.structural[0]!.candidateRequested =
+      changedReceipt.receipts.structural[0]!.maxCandidateBound + 1;
+    expect(
+      await validateProjectAffinityPromotionArtifact(changedReceipt, fixture)
+    ).toContain("artifact_structural_receipt_invalid");
+
+    const forgedGate = structuredClone(artifact);
+    forgedGate.gates.targetCorrectTop1.enabled = 0;
+    expect(
+      await validateProjectAffinityPromotionArtifact(forgedGate, fixture)
+    ).toContain("artifact_gate_summary_mismatch");
+
+    const forgedFingerprint = structuredClone(artifact);
+    forgedFingerprint.canonicalFingerprint = "0".repeat(64);
+    expect(
+      await validateProjectAffinityPromotionArtifact(forgedFingerprint, fixture)
+    ).toContain("artifact_fingerprint_mismatch");
   });
 });

@@ -17,6 +17,8 @@ import {
   AGENTIC_FIXTURE_ROOT,
   loadAgenticFixture,
 } from "../../../evals/agentic/fixture-db";
+import { runProjectAffinityOutcomeBenchmark } from "../../../evals/agentic/project-affinity-outcome";
+import { validateProjectAffinityPromotionArtifact } from "../../../evals/agentic/project-affinity-validation";
 import {
   evaluatePromotionGates,
   pairPromotionCohorts,
@@ -229,9 +231,15 @@ describe("committed authoritative agentic baseline", () => {
     const artifact = (await Bun.file(
       join(BASELINE_ROOT, "project-affinity-promotion.json")
     ).json()) as ProjectAffinityPromotionArtifact;
+    const fixture = await loadAgenticFixture();
     expect(
       validateAgenticSchema("project-affinity-promotion", artifact)
     ).toBeTrue();
+    expect(
+      await validateProjectAffinityPromotionArtifact(artifact, fixture)
+    ).toEqual([]);
+    const fresh = await runProjectAffinityOutcomeBenchmark(fixture);
+    expect(canonicalJson(fresh)).toBe(canonicalJson(artifact));
     expect(artifact.gates).toEqual({
       passed: true,
       failures: [],

@@ -24,6 +24,7 @@ import {
   searchInputSchema,
   vsearchInputSchema,
 } from "../../src/mcp/tools/index";
+import { handleQueryDiagnose } from "../../src/mcp/tools/query";
 import { handleSearch } from "../../src/mcp/tools/search";
 import { safeRm } from "../helpers/cleanup";
 
@@ -292,5 +293,45 @@ describe("project affinity surface parity", () => {
     expect(invalid.isError).toBe(true);
     expect(invalid.content[0]?.text).toContain("at most 16");
     expect(invalid.content[0]?.text).not.toContain("private-0");
+  });
+
+  test("MCP diagnose keeps absent and untrusted hints byte-identical at v1.0", async () => {
+    const config = createDefaultConfig();
+    config.collections = [];
+    const store = {
+      getDocumentByUri: async () => ({ ok: true as const, value: null }),
+      getDocumentByDocid: async () => ({ ok: true as const, value: null }),
+      getDocument: async () => ({ ok: true as const, value: null }),
+    };
+    const context = {
+      store,
+      config,
+      collections: [],
+      actualConfigPath: "/not-exposed/config.yml",
+      indexName: "default",
+      toolMutex: new Mutex(),
+      jobManager: {},
+      serverInstanceId: "test",
+      writeLockPath: "/not-exposed/write.lock",
+      enableWrite: false,
+      isShuttingDown: () => false,
+    } as unknown as ToolContext;
+    const input = {
+      query: "missing",
+      target: "gno://private/missing.md",
+      fast: true,
+    };
+    const absent = await handleQueryDiagnose(input, context);
+    const hinted = await handleQueryDiagnose(
+      { ...input, projectHints: ["opaque/client-project"] },
+      context
+    );
+    expect(hinted.structuredContent).toEqual(absent.structuredContent);
+    expect(JSON.stringify(hinted.structuredContent)).toBe(
+      JSON.stringify(absent.structuredContent)
+    );
+    expect(hinted.structuredContent).toMatchObject({ schemaVersion: "1.0" });
+    expect(hinted.structuredContent).not.toHaveProperty("affinity");
+    expect(JSON.stringify(hinted)).not.toContain("opaque/client-project");
   });
 });

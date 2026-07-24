@@ -888,8 +888,12 @@ gno query diagnose <query> --target <doc> [-n <num>] [--min-score <num>] [-c <co
 **Diagnose Output:**
 
 `gno query diagnose` wraps the shared `diagnoseQueryTarget()` core and emits
-`query-diagnose.schema.json` for `--json`. The payload requires
-`schemaVersion: "1.0"`, resolves the target first, reports `target.status`
+`query-diagnose.schema.json` for `--json`. No trusted affinity input preserves
+the exact closed `schemaVersion: "1.0"` payload and omits `affinity`; the legacy
+contract remains in `query-diagnose-v1.schema.json`. A resolved trusted CLI cwd
+or explicit project root emits `schemaVersion: "1.1"` and requires closed,
+redacted `affinity` metadata, including unmatched state. The payload resolves
+the target first, reports `target.status`
 (`not_found|inactive|no_indexed_content|filtered_out|diagnosed`), and only runs
 stage tracing for `diagnosed` targets. Stages report
 `present`, `rank`, `score`, `survived`, `dropReason`, `status`, and

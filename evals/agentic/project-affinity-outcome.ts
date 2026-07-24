@@ -24,6 +24,7 @@ import {
   projectAffinityBindingFingerprint,
 } from "./project-affinity-contract";
 import { evaluateProjectAffinityPromotion } from "./project-affinity-promotion";
+import { projectAffinityProvenance } from "./project-affinity-provenance";
 import {
   corpusVectorCandidates,
   exactSearchProjection,
@@ -44,13 +45,10 @@ const structuralReceipts = (
 ): ProjectAffinityPromotionArtifact["receipts"]["structural"] =>
   observations.map(({ caseId, observation }) => ({
     caseId,
-    calls: {
-      getDocumentsByMirrorHashes:
-        observation.calls.getDocumentsByMirrorHashes ?? 0,
-      getChunksBatch: observation.calls.getChunksBatch ?? 0,
-      getCollections: observation.calls.getCollections ?? 0,
-      listDocuments: observation.calls.listDocuments ?? 0,
-    },
+    calls: observation.calls,
+    unexpectedCalls: Object.entries(observation.unexpectedCalls)
+      .sort(([left], [right]) => left.localeCompare(right, "en"))
+      .map(([method, count]) => ({ method, count })),
     candidateRequested: observation.requestedCount,
     candidateReturned: observation.candidateCount,
     outputLimit: observation.outputLimit,
@@ -212,6 +210,8 @@ export const runProjectAffinityOutcomeBenchmark = async (
     let enabledCoverage = 0;
     let multilingualDisabledCorrect = 0;
     let multilingualEnabledCorrect = 0;
+    const regressionReceipts: ProjectAffinityPromotionArtifact["receipts"]["regression"] =
+      [];
     const multilingualIds = ["t012ab3c", "t123bc4d", "te8f901a", "tf901a2b"];
     for (const [taskId, task] of [...fixture.tasks.entries()].sort()) {
       const oracle = fixture.oracles.get(taskId)!;
@@ -260,6 +260,22 @@ export const runProjectAffinityOutcomeBenchmark = async (
         if (disabledRetained) multilingualDisabledCorrect += 1;
         if (enabledRetained) multilingualEnabledCorrect += 1;
       }
+      regressionReceipts.push(
+        {
+          taskId,
+          lane: "disabled",
+          resultUris: disabledUris,
+          requiredEvidenceCount: required.length,
+          requiredEvidenceRetained: disabledRetained,
+        },
+        {
+          taskId,
+          lane: "enabled",
+          resultUris: enabledUris,
+          requiredEvidenceCount: required.length,
+          requiredEvidenceRetained: enabledRetained,
+        }
+      );
       observations.push(
         {
           caseId: `regression:${taskId}:disabled`,
@@ -311,6 +327,17 @@ export const runProjectAffinityOutcomeBenchmark = async (
           !result.uri.startsWith(`gno://${filterCase.distractorCollection}/`)
       ) &&
       requiredEvidenceRetained(filtered.output, filterBinding.requiredEvidence);
+    const filterReceipt: ProjectAffinityPromotionArtifact["receipts"]["filter"] =
+      {
+        caseId: filterCase.caseId,
+        targetCollection: filterCase.targetCollection,
+        distractorCollection: filterCase.distractorCollection,
+        resultUris: filtered.output.results.map((result) => result.uri),
+        requiredEvidenceRetained: requiredEvidenceRetained(
+          filtered.output,
+          filterBinding.requiredEvidence
+        ),
+      };
 
     const zeroCandidates = corpusVectorCandidates(documents, [
       filterCase.targetCollection,
@@ -383,6 +410,7 @@ export const runProjectAffinityOutcomeBenchmark = async (
       {
         schemaVersion: "1.0",
         benchmarkId: "project-affinity-promotion@1",
+        provenance: await projectAffinityProvenance(),
         fixture: {
           fixtureVersion: cases.fixture.fixtureVersion,
           fixtureFingerprint: cases.fingerprint,
@@ -402,7 +430,13 @@ export const runProjectAffinityOutcomeBenchmark = async (
           "Results apply only to this closed synthetic corpus and exact committed identities.",
         ],
         targets,
-        receipts: { auxiliary, zeroLanes, structural },
+        receipts: {
+          auxiliary,
+          zeroLanes,
+          filter: filterReceipt,
+          regression: regressionReceipts,
+          structural,
+        },
         regression: {
           taskCount: 24,
           evidenceAccuracy: {

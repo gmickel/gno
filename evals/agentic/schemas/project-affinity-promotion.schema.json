@@ -8,6 +8,7 @@
     "schemaVersion",
     "benchmarkId",
     "canonicalFingerprint",
+    "provenance",
     "fixture",
     "methodology",
     "limitations",
@@ -20,6 +21,47 @@
     "schemaVersion": { "const": "1.0" },
     "benchmarkId": { "const": "project-affinity-promotion@1" },
     "canonicalFingerprint": { "$ref": "#/definitions/hash" },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "producer",
+        "pipeline",
+        "store",
+        "vectorModel",
+        "implementation"
+      ],
+      "properties": {
+        "producer": { "const": "runProjectAffinityOutcomeBenchmark" },
+        "pipeline": { "const": "searchVectorWithEmbedding" },
+        "store": { "const": "SqliteAdapter" },
+        "vectorModel": {
+          "const": "fixture:project-affinity-vector-v1"
+        },
+        "implementation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fingerprint", "files"],
+          "properties": {
+            "fingerprint": { "$ref": "#/definitions/hash" },
+            "files": {
+              "type": "array",
+              "minItems": 10,
+              "maxItems": 10,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["path", "sha256"],
+                "properties": {
+                  "path": { "type": "string", "minLength": 1 },
+                  "sha256": { "$ref": "#/definitions/hash" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "fixture": {
       "type": "object",
       "additionalProperties": false,
@@ -62,7 +104,13 @@
     "receipts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["auxiliary", "zeroLanes", "structural"],
+      "required": [
+        "auxiliary",
+        "zeroLanes",
+        "filter",
+        "regression",
+        "structural"
+      ],
       "properties": {
         "auxiliary": {
           "type": "array",
@@ -76,9 +124,17 @@
           "maxItems": 4,
           "items": { "$ref": "#/definitions/zeroReceipt" }
         },
+        "filter": { "$ref": "#/definitions/filterReceipt" },
+        "regression": {
+          "type": "array",
+          "minItems": 48,
+          "maxItems": 48,
+          "items": { "$ref": "#/definitions/regressionReceipt" }
+        },
         "structural": {
           "type": "array",
-          "minItems": 1,
+          "minItems": 57,
+          "maxItems": 57,
           "items": { "$ref": "#/definitions/structuralReceipt" }
         }
       }
@@ -343,12 +399,59 @@
         "equal": { "type": "boolean" }
       }
     },
+    "filterReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "targetCollection",
+        "distractorCollection",
+        "resultUris",
+        "requiredEvidenceRetained"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "targetCollection": { "type": "string", "minLength": 1 },
+        "distractorCollection": { "type": "string", "minLength": 1 },
+        "resultUris": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^gno://" }
+        },
+        "requiredEvidenceRetained": { "type": "boolean" }
+      }
+    },
+    "regressionReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskId",
+        "lane",
+        "resultUris",
+        "requiredEvidenceCount",
+        "requiredEvidenceRetained"
+      ],
+      "properties": {
+        "taskId": { "type": "string", "pattern": "^t[0-9a-f]{7}$" },
+        "lane": { "enum": ["disabled", "enabled"] },
+        "resultUris": {
+          "type": "array",
+          "maxItems": 5,
+          "items": { "type": "string", "pattern": "^gno://" }
+        },
+        "requiredEvidenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requiredEvidenceRetained": { "type": "boolean" }
+      }
+    },
     "structuralReceipt": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "caseId",
         "calls",
+        "unexpectedCalls",
         "candidateRequested",
         "candidateReturned",
         "outputLimit",
@@ -364,6 +467,9 @@
             "getDocumentsByMirrorHashes",
             "getChunksBatch",
             "getCollections",
+            "getContextGeneration",
+            "getContexts",
+            "getTagsBatch",
             "listDocuments"
           ],
           "properties": {
@@ -382,7 +488,31 @@
               "minimum": 0,
               "maximum": 1
             },
+            "getContextGeneration": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "getContexts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "getTagsBatch": { "const": 0 },
             "listDocuments": { "const": 0 }
+          }
+        },
+        "unexpectedCalls": {
+          "type": "array",
+          "maxItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["method", "count"],
+            "properties": {
+              "method": { "type": "string", "minLength": 1 },
+              "count": { "type": "integer", "minimum": 1 }
+            }
           }
         },
         "candidateRequested": { "type": "integer", "minimum": 0 },

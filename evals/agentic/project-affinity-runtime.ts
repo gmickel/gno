@@ -7,15 +7,21 @@ import type {
   VectorSearchResult,
 } from "../../src/store/vector/types";
 import type { LoadedAgenticFixture } from "./fixture-db";
-import type { ProjectAffinityRankedEntry } from "./project-affinity-promotion";
+import type {
+  ProjectAffinityRankedEntry,
+  ProjectAffinityStoreCallMap,
+  ProjectAffinityStoreCallName,
+} from "./project-affinity-promotion";
 
 import { DEFAULT_FTS_TOKENIZER } from "../../src/config/types";
 import { getProjectAffinityMetadata } from "../../src/pipeline/project-affinity";
 import { searchVectorWithEmbedding } from "../../src/pipeline/vsearch";
 import { canonicalJson } from "./canonical";
+import { PROJECT_AFFINITY_STORE_CALL_LIMITS } from "./project-affinity-promotion";
 
 export interface CallObservation {
-  calls: Record<string, number>;
+  calls: ProjectAffinityStoreCallMap;
+  unexpectedCalls: Record<string, number>;
   candidateCount: number;
   requestedCount: number;
   outputLimit: number;
@@ -28,7 +34,7 @@ export interface SearchRun {
 
 const instrumentStore = (
   store: StorePort,
-  calls: Record<string, number>
+  observation: Pick<CallObservation, "calls" | "unexpectedCalls">
 ): StorePort =>
   new Proxy(store, {
     get(target, property, receiver) {
@@ -36,11 +42,27 @@ const instrumentStore = (
       if (typeof value !== "function") return value;
       return (...args: unknown[]) => {
         const name = String(property);
-        calls[name] = (calls[name] ?? 0) + 1;
+        if (name in PROJECT_AFFINITY_STORE_CALL_LIMITS) {
+          const callName = name as ProjectAffinityStoreCallName;
+          observation.calls[callName] += 1;
+        } else {
+          observation.unexpectedCalls[name] =
+            (observation.unexpectedCalls[name] ?? 0) + 1;
+        }
         return Reflect.apply(value, target, args);
       };
     },
   });
+
+const emptyStoreCallMap = (): ProjectAffinityStoreCallMap => ({
+  getChunksBatch: 0,
+  getCollections: 0,
+  getContextGeneration: 0,
+  getContexts: 0,
+  getDocumentsByMirrorHashes: 0,
+  getTagsBatch: 0,
+  listDocuments: 0,
+});
 
 const vectorIndex = (
   candidates: readonly VectorSearchResult[],
@@ -112,16 +134,16 @@ export const runProjectAffinitySearch = async (
     limit: number;
   }
 ): Promise<SearchRun> => {
-  const calls: Record<string, number> = {};
   const observation: CallObservation = {
-    calls,
+    calls: emptyStoreCallMap(),
+    unexpectedCalls: {},
     candidateCount: 0,
     requestedCount: 0,
     outputLimit: options.limit,
   };
   const result = await searchVectorWithEmbedding(
     {
-      store: instrumentStore(store, calls),
+      store: instrumentStore(store, observation),
       vectorIndex: vectorIndex(candidates, observation),
       embedPort: {} as never,
       config,
@@ -171,10 +193,12 @@ export const exactSearchProjection = (output: SearchResults): string =>
   });
 
 export const isStructurallyBounded = (observation: CallObservation): boolean =>
-  ["getDocumentsByMirrorHashes", "getChunksBatch", "getCollections"].every(
-    (name) => (observation.calls[name] ?? 0) <= 1
+  Object.entries(PROJECT_AFFINITY_STORE_CALL_LIMITS).every(
+    ([name, maximum]) =>
+      observation.calls[name as ProjectAffinityStoreCallName] <= maximum
   ) &&
-  (observation.calls.listDocuments ?? 0) === 0 &&
+  Object.keys(observation.unexpectedCalls).length === 0 &&
+  observation.requestedCount <= 3 * observation.outputLimit &&
   observation.candidateCount <= observation.requestedCount &&
   observation.candidateCount <= 3 * observation.outputLimit;
 

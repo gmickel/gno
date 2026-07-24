@@ -87,14 +87,21 @@ The target collection starts `0.02` behind, then receives one trusted local
 evidence-coverage loss across all 24 hard-collection tasks, and zero loss for
 `t012ab3c`, `t123bc4d`, `te8f901a`, and `tf901a2b`. It also gates hard-filter
 isolation, absent/disabled/unavailable/untrusted exact zero lanes, shared
-auxiliary cap receipts, and structural store-call/candidate bounds. Latency is
-not a gate.
+auxiliary cap receipts, and structural store-call/candidate bounds. Structural
+receipts record the complete closed StorePort method map, reject unexpected
+methods, enforce per-method maxima, require candidate requests and returns to
+stay within `3×` the output limit, and require returned candidates not to exceed
+requested candidates. Latency is not a gate.
 
 The committed artifacts are
 `baseline/fixture-agent/project-affinity-promotion.json` and `.md`. They contain
-only GNO evidence URIs, hashes, scores, and redacted aliases—never temporary
-roots, raw project hints, or absolute paths. The controlled synthetic lane
-isolates the score seam and makes no general workload superiority claim.
+only GNO evidence URIs, hashes, scores, raw filter/regression/zero/auxiliary/
+structural receipts, implementation provenance, and redacted aliases—never
+temporary roots, raw project hints, or absolute paths. An independent validator
+rebinds fixture identities, recomputes summaries/gates/fingerprint from those
+receipts, and compares the committed artifact with a fresh deterministic
+production run. The controlled synthetic lane isolates the score seam and makes
+no general workload superiority claim.
 
 The first fixture version contains 24 original synthetic tasks and 34 Markdown
 documents under the MIT license. It covers exact identifiers, ambiguity,
