@@ -35,6 +35,6 @@ Deliver apply project profiles idempotently without implicit deletion as one imp
 ## Done summary
 Implemented lock-safe, create/update-only project profile apply through the shared compiler/diff pipeline, with deterministic external receipts, first-run config creation, stale mapping preservation, and no implicit collection/index deletion. Added the `gno profile apply` CLI contract plus interruption, concurrency, idempotency, runtime-path, schema, and regression coverage.
 ## Evidence
-- Commits: 90f7803
+- Commits: 90f7803c7598f9692683e9e7601062ba6c77ad2b
 - Tests: GATE_SKIPPED:unittest:green-receipt 013ef3ed - baseline reused from prior post-gate pass, bun run typecheck, bun run lint:check, bun test test/core/project-profile-apply.test.ts test/config/project-profile.test.ts test/cli/project-profile.test.ts test/config/saver.test.ts test/core/file-lock.test.ts, bun test test/spec/schemas, bun test test/config/project-profile* test/cli/project-profile*, bun test, bun run docs:verify, .flow/bin/flowctl validate --spec fn-107-project-local-retrieval-profiles --json
 - PRs:

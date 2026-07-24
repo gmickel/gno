@@ -34,6 +34,6 @@ Deliver define the versioned project profile schema and compiler as one implemen
 ## Done summary
 Defined the strict version 1.0 project retrieval profile schema and a symlink-safe compiler that separates portable desired state from resolved machine paths. Added deterministic domain-separated fingerprints, exact-byte context inputs, offline-only model diagnostics, forced `.gno` exclusion, and cross-platform security regression coverage.
 ## Evidence
-- Commits: 1c2eb13
+- Commits: 1c2eb1392609e170a69b7167d14328d2cb146b6e
 - Tests: baseline: red (bun test test/config/project-profile* test/cli/profile* failed pre-edit: task-owned test files did not exist and zsh reported no matches), bun test test/config/project-profile* test/cli/profile*, bun run docs:verify, bun run lint:check, .flow/bin/flowctl validate --spec fn-107-project-local-retrieval-profiles --json
 - PRs:
