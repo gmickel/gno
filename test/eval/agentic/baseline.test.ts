@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 // node:path provides path joining; Bun has no path utilities.
 import { join } from "node:path";
 
+import type { ContentTypeBoostPromotionArtifact } from "../../../evals/agentic/content-type-boost-promotion";
 import type { ProjectAffinityPromotionArtifact } from "../../../evals/agentic/project-affinity-promotion";
 import type {
   BenchmarkReport,
@@ -13,6 +14,7 @@ import {
   canonicalFingerprint,
   canonicalJson,
 } from "../../../evals/agentic/canonical";
+import { buildContentTypeBoostPromotion } from "../../../evals/agentic/content-type-boost-promotion";
 import {
   AGENTIC_FIXTURE_ROOT,
   loadAgenticFixture,
@@ -268,6 +270,37 @@ describe("committed authoritative agentic baseline", () => {
     expect(
       await Bun.file(
         join(BASELINE_ROOT, "project-affinity-promotion.md")
+      ).exists()
+    ).toBeTrue();
+  });
+
+  test("contains the separate content-type boost compatibility promotion", async () => {
+    const source = (await Bun.file(
+      join(BASELINE_ROOT, "project-affinity-promotion.json")
+    ).json()) as ProjectAffinityPromotionArtifact;
+    const artifact = (await Bun.file(
+      join(BASELINE_ROOT, "content-type-boost-promotion.json")
+    ).json()) as ContentTypeBoostPromotionArtifact;
+    const fresh = buildContentTypeBoostPromotion(source);
+    expect(canonicalJson(fresh)).toBe(canonicalJson(artifact));
+    expect(artifact.source.canonicalFingerprint).toBe(
+      source.canonicalFingerprint
+    );
+    expect(artifact.rulesFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(artifact.receipts).toHaveLength(24);
+    expect(
+      new Set(artifact.receipts.map((receipt) => receipt.taskId)).size
+    ).toBe(24);
+    expect(artifact.gates).toEqual({
+      passed: true,
+      failures: [],
+      exactNoOpReceipts: true,
+      evidenceAccuracyLoss: 0,
+      evidenceCoverageLoss: 0,
+    });
+    expect(
+      await Bun.file(
+        join(BASELINE_ROOT, "content-type-boost-promotion.md")
       ).exists()
     ).toBeTrue();
   });

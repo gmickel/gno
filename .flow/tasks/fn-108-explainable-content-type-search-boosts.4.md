@@ -35,9 +35,45 @@ Deliver run adversarial promotion evals and replace no-op documentation as one i
 
 
 ## Done summary
-TBD
+Completed adversarial promotion gates, committed benchmark receipts, and every
+local/hosted documentation surface for bounded content-type search boosts.
 
+- Added deterministic active-rule cases for relevant and keyword-stuffed
+  candidates, clear-score leads, negative rules, stable ties, configured-type
+  precedence, collection/exclude hard filters, candidate non-creation, and
+  project-affinity composition under the shared auxiliary cap.
+- Added a separate `content-type-boost-promotion@1` artifact derived from all
+  24 authoritative fn-97 tasks. The committed before/after receipts preserve
+  URI order, evidence accuracy (24/24), and evidence coverage (25/25).
+- Kept the benchmark claim narrow: the fn-97 lane proves compatibility with no
+  configured boost rules; controlled adversarial tests prove active-rule
+  behavior. Neither lane claims general retrieval superiority.
+- Recorded the current egress boundary explicitly: retrieval egress policy is
+  unavailable, so the suite makes no unsupported egress-bypass claim.
+- Replaced reserved/no-op documentation with the exact factor range, neutral
+  value, contribution and shared caps, one-rule precedence, explain/status
+  receipts, fingerprint/invalidation behavior, filter guarantees, and limits
+  across README, config/search/CLI/API/MCP/SDK/architecture specs, benchmark
+  docs, shipped skill, changelog, and hosted gno.sh product truth.
+- The authoritative agentic run passed: 144/144 scored, Capsule promotion
+  passed, zero exclusions, and deterministic Capsule replays.
+
+Verification:
+
+- `bun run lint:check`
+- `bun test` (full suite green)
+- `bun run docs:verify` (13 passed, 2 model-cache skips)
+- `bun run eval:agentic -- --write` (144/144 scored; promotion PASS)
+- Focused adversarial, agentic baseline, and artifact writer tests (16 passing)
+- `.flow/bin/flowctl validate --spec fn-108-explainable-content-type-search-boosts --json`
+
+Hosted docs are committed and pushed on
+`codex/fn-108-content-type-boost-docs` at `d8ca598`; lint, typecheck, 110 tests,
+and the 68-page production build are green. Merge/deploy follows GNO landing.
+
+No macOS or Windows client artifacts were awaited, per roadmap execution
+policy.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 440db11
+- Tests: bun run lint:check, bun test, bun run docs:verify, bun run eval:agentic -- --write, bun test test/pipeline/content-type-boost-adversarial.test.ts test/eval/agentic/cli.test.ts test/eval/agentic/baseline.test.ts, .flow/bin/flowctl validate --spec fn-108-explainable-content-type-search-boosts --json, gno.sh: bun run typecheck && bun test && bun run build
 - PRs:

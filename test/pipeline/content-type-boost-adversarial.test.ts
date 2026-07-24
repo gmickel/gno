@@ -1,10 +1,15 @@
 import { describe, expect, test } from "bun:test";
 
+import type { ContentTypeBoostPromotionArtifact } from "../../evals/agentic/content-type-boost-promotion";
+import type { ProjectAffinityPromotionArtifact } from "../../evals/agentic/project-affinity-promotion";
 import type { NormalizedContentTypeRule } from "../../src/config/content-types";
 import type { ProjectAffinityResolution } from "../../src/core/project-affinity";
 import type { SearchResult } from "../../src/pipeline/types";
 import type { ChunkRow, FtsResult, StorePort } from "../../src/store/types";
 
+import { buildContentTypeBoostPromotion } from "../../evals/agentic/content-type-boost-promotion";
+import committed from "../../evals/fixtures/agentic-retrieval/baseline/fixture-agent/content-type-boost-promotion.json";
+import source from "../../evals/fixtures/agentic-retrieval/baseline/fixture-agent/project-affinity-promotion.json";
 import {
   applyContentTypeBoost,
   getContentTypeBoostMetadata,
@@ -181,6 +186,21 @@ describe("content-type search boost adversarial promotion gates", () => {
     expect(searched.value.results.map((candidate) => candidate.docid)).toEqual([
       "#allowed",
     ]);
+  });
+
+  test("commits exact fn-97 before/after receipts with no accuracy or coverage loss", () => {
+    const rebuilt = buildContentTypeBoostPromotion(
+      source as ProjectAffinityPromotionArtifact
+    );
+    expect(rebuilt).toEqual(committed as ContentTypeBoostPromotionArtifact);
+    expect(rebuilt.gates).toEqual({
+      passed: true,
+      failures: [],
+      exactNoOpReceipts: true,
+      evidenceAccuracyLoss: 0,
+      evidenceCoverageLoss: 0,
+    });
+    expect(rebuilt.receipts).toHaveLength(24);
   });
 });
 
