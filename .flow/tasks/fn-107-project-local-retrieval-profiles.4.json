@@ -1,7 +1,4 @@
 {
-  "assignee": null,
-  "claim_note": "",
-  "claimed_at": null,
   "created_at": "2026-07-21T22:00:55.622398Z",
   "depends_on": [
     "fn-107-project-local-retrieval-profiles.3"
@@ -12,5 +9,5 @@
   "spec_path": ".flow/tasks/fn-107-project-local-retrieval-profiles.4.md",
   "status": "todo",
   "title": "Integrate profiles with setup affinity docs and portability proof",
-  "updated_at": "2026-07-21T22:07:12.801608Z"
+  "updated_at": "2026-07-24T16:22:02.024186Z"
 }

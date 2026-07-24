@@ -42,24 +42,21 @@ Deliver integrate profiles with setup affinity docs and portability proof as one
 
 
 ## Done summary
-Implemented setup, affinity, documentation, and portability integration for
-project-local retrieval profiles.
+Closed the fn-107 final-audit gaps across project-profile persistence, safety,
+portability, concurrency, and distribution. Multiple same-scope contexts now
+survive migration and sync; profile apply uses additive store projection and
+preserves unrelated indexed state. Every config writer shares one canonical
+target-derived cross-process lock, including symlink aliases and resident
+custom config paths.
 
-- `gno setup` now inspects the nearest profile before mutation and supports
-  explicit `--apply-profile` composition through the existing lock-safe apply
-  path.
-- Added the closed `setup-profile-result@1.0` contract while preserving existing
-  setup JSON bytes when profile application is not requested.
-- Enforced affinity precedence: explicit CLI roots, nearest valid profile, then
-  user-config cwd defaults; profile defaults stay request-local.
-- Added clean-machine, POSIX/Windows path-shape, monorepo/worktree, no-runtime-
-  state, packed-package, schema, CLI, docs, and skill coverage.
-- Updated the authoritative project-affinity benchmark provenance.
-
-Hosted gno.sh documentation was completed separately by the parent workflow.
-Skill autoresearch could not run because `uv` and an Anthropic API key were
-absent, while its Claude CLI fallback was explicitly prohibited.
+Profile inputs now enforce bounded regular UTF-8 files, likely-secret
+rejection, portable Windows path rules, duplicate identity checks, safe glob
+composition, real exclude globs, non-mutating offline cache probes, and complete
+config/data/cache/model/receipt/lock boundaries. Setup rejects conflicting
+profile overrides. Packed-install smoke executes check, diff, apply,
+idempotency, and setup integration. User docs, CLI/spec contracts, DB schema,
+and changelog reflect the hardened behavior.
 ## Evidence
-- Commits: ec8d2172c85b42c7e579bfefda6e184b2f528c12
-- Tests: bun test (3109 pass, 2 expected skips, 0 fail), bun test test/project-affinity/parity.test.ts test/eval/agentic/baseline.test.ts test/cli/setup-profile-integration.test.ts test/cli/setup.test.ts (26 pass, 0 fail), bun run lint:check, bun run docs:verify (13 pass, 2 expected model-cache skips), bun run test:package, .flow/bin/flowctl validate --spec fn-107-project-local-retrieval-profiles --json
+- Commits: 35da435
+- Tests: bun run lint:check (0 warnings, 0 errors), bun test (3144 pass, 2 platform/opt-in skips, 0 fail), bun run test:package (packed install and user-state sentinel passed), bun scripts/docs-verify.ts (13 passed, 2 model-cache skips, 0 failed), bun run eval:hybrid (88%, 70% threshold passed)
 - PRs:
