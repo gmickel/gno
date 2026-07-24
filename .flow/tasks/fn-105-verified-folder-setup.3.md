@@ -41,9 +41,17 @@ Read the landed folder/setup receipts and schemas, setup CLI/semantic scheduler,
 - [ ] Optional future profile discovery is injected/advisory only; absent, invalid, or throwing discovery cannot select a connector, mutate config, fail basic setup, or create destructive ambiguity.
 - [ ] Focused CLI/schema/integration tests, full `bun test`, `bun run lint:check`, `bun run typecheck`, docs verification, Flow validation, fresh inherited review, commit, push, and clean branch all pass.
 ## Done summary
-TBD
+Implemented verified connector activation after folder setup.
 
+- Added repeatable `gno setup <folder> --connector <id>` support for the seven shipped connector targets.
+- Preserved the existing `setup-command-result@1.0` output when no connector flag is supplied.
+- Added the bounded `setup-activation-result@1.0` contract for connector-mode results.
+- Gated connector installation and smoke verification on proven lexical setup success.
+- Preserved existing and malformed connector configurations; missing targets install once without overwriting.
+- Added fail-bounded connector store lifecycle handling, bounded remediation, and raw-error redaction.
+- Added CLI, lifecycle, schema, and connector regression coverage plus user-facing CLI documentation.
+- Fresh implementation review verdict: SHIP.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: f304f8e
+- Tests: bun test test/cli/setup-activation.test.ts test/cli/setup-activation-command.test.ts test/cli/setup-activation-lifecycle.test.ts test/spec/schemas/setup-activation-result.test.ts test/serve/connectors.test.ts, bun test, bun run lint:check, bun run typecheck, bun run docs:verify, git diff --check, .flow/bin/flowctl validate --spec fn-105 --json
 - PRs:
