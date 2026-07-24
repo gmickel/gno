@@ -99,9 +99,14 @@ Turn the completed Chromium MV3 clipper and deterministic unpacked build into a 
 <!-- Updated by plan-sync: fn-106.3 finalized visible-only extraction, closed receipt/status parsing, popup/service-worker recovery, and the deterministic unpacked build; packaging/E2E/privacy/hosted docs remain. -->
 
 ## Done summary
-TBD
+Packaged the Chromium MV3 browser clipper as a deterministic versioned ZIP with an adjacent SHA-256 checksum, npm-installed artifact verification, release attachment wiring, privacy disclosure, and exact manual install/update documentation. Added a real headed Playwright harness against an isolated loopback `gno serve`, including foreground Chrome LNA-compatible pairing, strict service-worker handoff validation, exact wire/header assertions, adversarial selection and Reader extraction, all four provenance hashes, collision outcomes, offline recovery, genuine service-worker replacement, different-payload refusal, same-key receipt replay, explicit Stop recovery, exact-path conflict without suffixing, resident redaction, and revoke.
 
+Updated repo, shipped skill, and hosted gno.sh documentation without claiming Chrome Web Store or Firefox availability. The canonical skill autoresearch evaluator scored 47/47, the updated skill was reinstalled byte-identically across all five user targets, and independent review returned SHIP after the recovery coverage fix.
+
+Hosted documentation commits: `3451d83`, `5fb9eda`. Deployment remains intentionally deferred to landing.
+
+Validation: lint, typecheck, docs verification, 78 focused clipper tests, reproducible package verification, installed-package clipper smoke, gno.sh check/typecheck/109 tests/build/68-page prerender/Web smoke, and independent P1/P2 review passed. The full 3,051-test run recorded 3,047 pass, two expected skips, and two unrelated connector-verifier subprocess timeouts under concurrent machine load; the isolated connector-verifier suite subsequently passed 22/22.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: c4e2770, ed039a7, 09d84d9, e5f3356, e50ccef, ac172a8, ba7c6be
+- Tests: bun run lint:check, bun run typecheck, bun run docs:verify, bun test browser-extension/test test/clipper test/serve/public/clipper-approval-location.test.ts test/serve/public/clipper-pairing-page.dom.test.tsx test/spec/schemas/clipper.test.ts test/store/clipper-store.test.ts --timeout 30000 (78 pass, 1 opt-in skip), bun run verify:clipper-package, bun run test:package:clipper, bun test test/core/connector-verifier.test.ts --timeout 10000 (22 pass on isolated rerun), cd /Users/gordon/work/gno.sh && bun run check, cd /Users/gordon/work/gno.sh && bun run typecheck, cd /Users/gordon/work/gno.sh && bun run test (109 pass, 5 expected skips), cd /Users/gordon/work/gno.sh && bun run build (68 pages prerendered), cd /Users/gordon/work/gno.sh && bun run smoke:web, canonical gno skill evaluator (47/47)
 - PRs:
