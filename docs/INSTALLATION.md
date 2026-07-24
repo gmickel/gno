@@ -90,14 +90,16 @@ import { createGnoClient } from "@gmickel/gno";
 The npm package includes a reproducible unpacked Manifest V3 extension at:
 
 ```text
-<npm root -g>/@gmickel/gno/browser-extension/dist
+~/.bun/install/global/node_modules/@gmickel/gno/browser-extension/dist
 ```
 
 Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**,
-and select that directory. Start `gno serve`, then pair through the extension's
-visible five-minute approval flow. Updating GNO updates the packaged files;
-reload the same extension directory afterward. Moving the unpacked directory
-can change its Chromium extension ID and requires re-pairing.
+and select that directory. npm-global installs use
+`$(npm root -g)/@gmickel/gno/browser-extension/dist`. Start `gno serve`, then
+pair through the extension's visible five-minute approval flow. Updating GNO
+updates the packaged files; reload the same extension directory afterward.
+Moving the unpacked directory can change its Chromium extension ID and requires
+re-pairing.
 
 The release also includes
 `browser-extension/artifacts/gno-browser-clipper-v<VERSION>.zip` and its

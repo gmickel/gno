@@ -408,6 +408,17 @@ lock, syncs the file for FTS, and preserves legacy MCP fields (`docid`,
 `absPath`, `overwritten`, `serverInstanceId`) alongside the shared receipt. It
 does not auto-embed.
 
+For an explicit browser capture, use the local unpacked Chromium clipper with
+`gno serve`: the user selects visible top-frame text or Reader content, reviews
+the server-owned preview, chooses the destination/tags, and confirms the write.
+This is not an autonomous CLI/MCP browser tool. Never claim Chrome Web Store or
+Firefox support, history/cookie/session/background-tab/iframe access, raw HTML
+ingestion, paywall bypass, or remote source fetching. After capture, verify the
+receipt with `gno search` or `gno get`; use `gno index`/`gno embed` when semantic
+search must include the new note. Browser provenance fields are
+`extractionHash`, `finalBodyHash`, `clipIdentity`, and `previewDigest`—do not
+invent `sourceHash`.
+
 ## Collection-specific embedding models
 
 Collections can override the global embedding model with `models.embed`.

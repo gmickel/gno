@@ -21,17 +21,14 @@ bun install -g @gmickel/gno
 gno --version
 ```
 
-Find the global package root:
-
-```bash
-npm root -g
-```
-
-The unpacked extension is:
+The default Bun-global unpacked extension is:
 
 ```text
-<npm-root>/@gmickel/gno/browser-extension/dist
+~/.bun/install/global/node_modules/@gmickel/gno/browser-extension/dist
 ```
+
+If you installed with npm instead, use
+`$(npm root -g)/@gmickel/gno/browser-extension/dist`.
 
 In Chromium:
 
