@@ -112,7 +112,7 @@ gno daemon --detach  # headless continuous indexing (background; --status / --st
 
 <!-- public-truth:current-version -->
 
-> Current release: **v1.25.1** — see [CHANGELOG.md](./CHANGELOG.md)
+> Current release: **v1.26.0** — see [CHANGELOG.md](./CHANGELOG.md)
 
 <!-- /public-truth -->
 
