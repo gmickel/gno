@@ -12,6 +12,26 @@ Command-line guide for GNO's local knowledge engine and workspace tooling.
 
 ![GNO CLI](../assets/screenshots/cli.jpg)
 
+## Project-aware ranking
+
+`search`, `vsearch`, `query`, `ask`, and `context build` derive a trusted local
+project root from the current repository/worktree by default. A matching
+collection receives one soft `+0.03` contribution:
+
+```bash
+gno query "deployment decision"
+gno query "deployment decision" --project-root ../service-a
+gno query "deployment decision" --project-root ../service-a --project-root ../shared
+gno query "deployment decision" --no-project-affinity
+```
+
+Repeatable `--project-root` values replace cwd inference; they do not stack.
+`--project-root` and `--no-project-affinity` are mutually exclusive. All
+auxiliary ranking signals share the `±0.08` cap, filters remain hard, and a
+base-score lead greater than the applied contribution still wins.
+`--explain`/diagnose output exposes only redacted aliases and score receipts,
+never raw roots.
+
 ## Quick Reference
 
 | Command          | Description                       |

@@ -116,8 +116,17 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
   harness failure.
 - `--write` only accepts a complete lane. The committed authoritative fixture
   baseline lives at `fixtures/agentic-retrieval/baseline/fixture-agent/`;
-  qmd/local-model outputs stay under `baseline/optional/` and are not promotion
-  evidence.
+
+The authoritative fixture lane also writes the separate
+`project-affinity-promotion.json`/`.md` pair. Its two controlled ambiguous cases
+improve correct target top-1 from `0/2` to `2/2` with one trusted local `+0.03`
+signal. The same artifact records zero URI-rank/required-evidence coverage loss
+over the existing 24 hard-collection tasks, zero loss on the four fixed
+multilingual IDs, hard-filter isolation, exact zero lanes, shared `±0.08` cap
+receipts, and bounded batch calls. This is closed synthetic regression evidence,
+not a general superiority benchmark.
+qmd/local-model outputs stay under `baseline/optional/` and are not promotion
+evidence.
 
 See [the full contract](../spec/evals-agentic.md).
 

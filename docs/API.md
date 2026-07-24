@@ -26,6 +26,16 @@ The GNO REST API provides programmatic access to your local knowledge index. Use
 
 All endpoints are JSON-based and run entirely on your machine.
 
+## Project hints
+
+Search, vector search, hybrid query, Ask, diagnose, and context request bodies
+may include `projectHints` with at most 16 strings. REST treats these values as
+opaque, untrusted metadata: it performs no filesystem probing, returns no raw
+hint/path reflection, and deliberately applies zero project-affinity boost.
+Omitting the optional field preserves the existing request/output contract; no
+schema-version bump is required. Trusted local cwd inference exists only on the
+CLI.
+
 ---
 
 ## Quick Reference

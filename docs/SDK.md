@@ -10,6 +10,15 @@ Import GNO directly into another Bun or TypeScript app and reuse the same local 
 
 No CLI subprocesses. No local server required.
 
+## Project hints
+
+`search`, `vsearch`, `query`, `ask`, and context compilation accept optional
+`projectHints: string[]` (maximum 16). SDK hints are opaque and untrusted:
+GNO normalizes them for bounded input handling but deliberately performs no
+filesystem probing and applies no project-affinity boost. Omitted hints preserve
+existing output bytes. Only trusted local CLI cwd/`--project-root` inputs can
+produce the soft `+0.03` contribution.
+
 ---
 
 ## Install

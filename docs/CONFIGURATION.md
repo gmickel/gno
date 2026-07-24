@@ -19,6 +19,11 @@ version: "1.0"
 # FTS tokenizer (set at init, cannot change)
 ftsTokenizer: snowball english
 
+# Trusted local CLI project affinity
+projectAffinity:
+  enabled: true
+  contribution: 0.03
+
 # Collections
 collections:
   - name: notes
