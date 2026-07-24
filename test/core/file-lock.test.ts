@@ -8,6 +8,7 @@ import { dirname, join } from "node:path";
 
 import {
   acquireSqliteWriteLock,
+  acquireWriteLock,
   withSqliteWriteLock,
 } from "../../src/core/file-lock";
 import { safeRm } from "../helpers/cleanup";
@@ -83,5 +84,21 @@ describe("SQLite write-lock fallback", () => {
     expect(entries).toContain("write.lock.sqlite");
     expect(entries.some((entry) => entry.includes(".candidate"))).toBe(false);
     expect(entries.some((entry) => entry.endsWith(".dir"))).toBe(false);
+  });
+});
+
+describe("OS-backed advisory write lock", () => {
+  test("releases the actual lock holder before resolving", async () => {
+    const fixture = await createLockFixture("os-release");
+    const first = await acquireWriteLock(fixture.lockPath, 100);
+    expect(first).not.toBeNull();
+
+    const blocked = await acquireWriteLock(fixture.lockPath, 10);
+    expect(blocked).toBeNull();
+    await first?.release();
+
+    const next = await acquireWriteLock(fixture.lockPath, 100);
+    expect(next).not.toBeNull();
+    await next?.release();
   });
 });

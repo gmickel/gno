@@ -36,6 +36,7 @@ function resolveLockCommand(): LockCommand | null {
     return {
       path: lockfPath,
       args: (lockPath, timeoutSeconds, holdCommand) => [
+        "-k",
         "-t",
         String(timeoutSeconds),
         lockPath,
@@ -51,6 +52,7 @@ function resolveLockCommand(): LockCommand | null {
     return {
       path: flockPath,
       args: (lockPath, timeoutSeconds, holdCommand) => [
+        "--no-fork",
         "-w",
         String(timeoutSeconds),
         lockPath,
@@ -91,6 +93,21 @@ async function waitForReady(
   } finally {
     await reader.cancel().catch(() => undefined);
   }
+}
+
+async function terminateLockProcess(
+  proc: ReturnType<typeof Bun.spawn>
+): Promise<void> {
+  if (process.platform === "win32") {
+    if (proc.exitCode === null) proc.kill();
+  } else {
+    try {
+      process.kill(-proc.pid, "SIGTERM");
+    } catch {
+      if (proc.exitCode === null) proc.kill();
+    }
+  }
+  await proc.exited.catch(() => undefined);
 }
 
 function sqliteLockPath(lockPath: string): string {
@@ -163,6 +180,7 @@ export async function acquireWriteLock(
   const proc = Bun.spawn(
     [cmd.path, ...cmd.args(lockPath, timeoutSeconds, holdCommand)],
     {
+      detached: true,
       stdout: "pipe",
       stderr: "pipe",
     }
@@ -170,16 +188,12 @@ export async function acquireWriteLock(
 
   const ready = await waitForReady(proc);
   if (!ready) {
-    proc.kill();
-    await proc.exited.catch(() => undefined);
+    await terminateLockProcess(proc);
     return null;
   }
 
   return {
-    release: async () => {
-      proc.kill();
-      await proc.exited.catch(() => undefined);
-    },
+    release: () => terminateLockProcess(proc),
   };
 }
 
