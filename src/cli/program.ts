@@ -32,7 +32,9 @@ import { CliError } from "./errors";
 import {
   assertFormatSupported,
   CMD,
+  collectRepeatableValue,
   getDefaultLimit,
+  parseCliProjectAffinityOptions,
   parseOptionalFloat,
   parsePositiveInt,
 } from "./options";
@@ -594,6 +596,13 @@ function wireSearchCommands(program: Command): void {
     )
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
+    .option(
+      "--project-root <path>",
+      "trusted project root (repeatable; replaces cwd affinity)",
+      collectRepeatableValue,
+      []
+    )
+    .option("--no-project-affinity", "disable project-aware ranking")
     .option("--full", "include full content")
     .option("--line-numbers", "include line numbers in output")
     .option("--json", "JSON output")
@@ -641,6 +650,7 @@ function wireSearchCommands(program: Command): void {
           : getDefaultLimit(format);
       const categories = parseCsvValues(cmdOpts.category);
       const exclude = parseCsvValues(cmdOpts.exclude);
+      const projectAffinity = parseCliProjectAffinityOptions(cmdOpts);
 
       const { search, formatSearch } = await import("./commands/search");
       const result = await search(queryText, {
@@ -658,6 +668,7 @@ function wireSearchCommands(program: Command): void {
         exclude,
         tagsAll,
         tagsAny,
+        ...projectAffinity,
         full: Boolean(cmdOpts.full),
         lineNumbers: Boolean(cmdOpts.lineNumbers),
         json: format === "json",
@@ -714,6 +725,13 @@ function wireSearchCommands(program: Command): void {
     )
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
+    .option(
+      "--project-root <path>",
+      "trusted project root (repeatable; replaces cwd affinity)",
+      collectRepeatableValue,
+      []
+    )
+    .option("--no-project-affinity", "disable project-aware ranking")
     .option("--full", "include full content")
     .option("--line-numbers", "include line numbers in output")
     .option("--json", "JSON output")
@@ -759,6 +777,7 @@ function wireSearchCommands(program: Command): void {
         : getDefaultLimit(format);
       const categories = parseCsvValues(cmdOpts.category);
       const exclude = parseCsvValues(cmdOpts.exclude);
+      const projectAffinity = parseCliProjectAffinityOptions(cmdOpts);
 
       const { vsearch, formatVsearch } = await import("./commands/vsearch");
       const result = await vsearch(queryText, {
@@ -776,6 +795,7 @@ function wireSearchCommands(program: Command): void {
         exclude,
         tagsAll,
         tagsAny,
+        ...projectAffinity,
         full: Boolean(cmdOpts.full),
         lineNumbers: Boolean(cmdOpts.lineNumbers),
         json: format === "json",
@@ -827,6 +847,13 @@ function wireSearchCommands(program: Command): void {
     )
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
+    .option(
+      "--project-root <path>",
+      "trusted project root (repeatable; replaces cwd affinity)",
+      collectRepeatableValue,
+      []
+    )
+    .option("--no-project-affinity", "disable project-aware ranking")
     .option("--full", "include full content")
     .option("--line-numbers", "include line numbers in output")
     .option("--fast", "skip expansion and reranking (fastest, ~0.7s)")
@@ -931,6 +958,7 @@ function wireSearchCommands(program: Command): void {
         : undefined;
       const categories = parseCsvValues(cmdOpts.category);
       const exclude = parseCsvValues(cmdOpts.exclude);
+      const projectAffinity = parseCliProjectAffinityOptions(cmdOpts);
 
       const depthPolicy = resolveDepthPolicy({
         presetId: activePresetId,
@@ -960,6 +988,7 @@ function wireSearchCommands(program: Command): void {
           exclude,
           tagsAll,
           tagsAny,
+          ...projectAffinity,
           noExpand: depthPolicy.noExpand,
           noRerank: depthPolicy.noRerank,
           graph: Boolean(cmdOpts.graph),
@@ -995,6 +1024,7 @@ function wireSearchCommands(program: Command): void {
         exclude,
         tagsAll,
         tagsAny,
+        ...projectAffinity,
         full: Boolean(cmdOpts.full),
         lineNumbers: Boolean(cmdOpts.lineNumbers),
         noExpand: depthPolicy.noExpand,
@@ -1121,6 +1151,13 @@ function wireSearchCommands(program: Command): void {
     .option("--context-budget-bytes <num>", "verified Context byte budget")
     .option("--min-score <score>", "minimum retrieval score (0-1)")
     .option("--graph", "include bounded graph expansion")
+    .option(
+      "--project-root <path>",
+      "trusted project root (repeatable; replaces cwd affinity)",
+      collectRepeatableValue,
+      []
+    )
+    .option("--no-project-affinity", "disable project-aware ranking")
     .option("--show-sources", "show all retrieved sources (not just cited)")
     .option("--json", "JSON output")
     .option("--md", "Markdown output")
@@ -1169,6 +1206,7 @@ function wireSearchCommands(program: Command): void {
       }
       const categories = parseCsvValues(cmdOpts.category);
       const exclude = parseCsvValues(cmdOpts.exclude);
+      const projectAffinity = parseCliProjectAffinityOptions(cmdOpts);
 
       let queryModes: import("../pipeline/types").QueryModeInput[] | undefined;
       if (Array.isArray(cmdOpts.queryMode) && cmdOpts.queryMode.length > 0) {
@@ -1229,6 +1267,7 @@ function wireSearchCommands(program: Command): void {
         maxAnswerTokens,
         contextBudgetTokens,
         contextBudgetBytes,
+        ...projectAffinity,
         showSources,
         json: format === "json",
         md: format === "md",
@@ -1974,6 +2013,13 @@ function wireManagementCommands(program: Command): void {
     .option("--since <date>", "modified-at lower bound")
     .option("--until <date>", "modified-at upper bound")
     .option("--graph", "enable graph neighbor expansion")
+    .option(
+      "--project-root <path>",
+      "trusted project root (repeatable; replaces cwd affinity)",
+      collectRepeatableValue,
+      []
+    )
+    .option("--no-project-affinity", "disable project-aware ranking")
     .option("--fast", "use lexical-first fast retrieval")
     .option("--thorough", "use a wider retrieval pool")
     .option("-n, --limit <num>", "maximum retrieved results")
@@ -1991,6 +2037,7 @@ function wireManagementCommands(program: Command): void {
         throw new CliError("VALIDATION", "Choose either --fast or --thorough");
       }
       const globals = getGlobals();
+      const projectAffinity = parseCliProjectAffinityOptions(cmdOpts);
       const { contextBuild } = await import("./commands/context-build");
       let queryModes: import("../pipeline/types").QueryModeInput[] | undefined;
       if (Array.isArray(cmdOpts.queryMode) && cmdOpts.queryMode.length > 0) {
@@ -2022,6 +2069,7 @@ function wireManagementCommands(program: Command): void {
           true
         ),
         query: cmdOpts.query as string | undefined,
+        ...projectAffinity,
         queryModes,
         collections: cmdOpts.collection as string[],
         uriPrefix: cmdOpts.uriPrefix as string | undefined,

@@ -97,13 +97,26 @@ export interface GnoModelOverrides {
   rerankModel?: string;
 }
 
-export type GnoQueryOptions = HybridSearchOptions & GnoModelOverrides;
-export type GnoAskOptions = AskOptions & GnoModelOverrides;
-export type GnoVectorSearchOptions = SearchOptions & {
-  model?: string;
-};
+export interface GnoProjectHintOptions {
+  /** Opaque caller project hints; never resolved against the server filesystem. */
+  projectHints?: string[];
+}
 
-export type GnoContextInput = Omit<ContextCapsuleBuildInput, "indexName">;
+export type GnoSearchOptions = Omit<SearchOptions, "projectAffinity"> &
+  GnoProjectHintOptions;
+export type GnoQueryOptions = Omit<HybridSearchOptions, "projectAffinity"> &
+  GnoModelOverrides &
+  GnoProjectHintOptions;
+export type GnoAskOptions = Omit<AskOptions, "projectAffinity"> &
+  GnoModelOverrides &
+  GnoProjectHintOptions;
+export type GnoVectorSearchOptions = Omit<SearchOptions, "projectAffinity"> &
+  GnoProjectHintOptions & {
+    model?: string;
+  };
+
+export type GnoContextInput = Omit<ContextCapsuleBuildInput, "indexName"> &
+  GnoProjectHintOptions;
 export type GnoContextResult = ContextCapsuleV1;
 export type GnoContextVerificationResult = ContextCapsuleVerification;
 export type GnoContextErrorCode =
@@ -227,7 +240,7 @@ export interface GnoClient {
   readonly configPath: string | null;
   readonly configSource: "file" | "inline";
   isOpen(): boolean;
-  search(query: string, options?: SearchOptions): Promise<SearchResults>;
+  search(query: string, options?: GnoSearchOptions): Promise<SearchResults>;
   vsearch(
     query: string,
     options?: GnoVectorSearchOptions

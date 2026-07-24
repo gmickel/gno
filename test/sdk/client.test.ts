@@ -3,6 +3,8 @@ import {
   createGnoClient,
   getRetrievalTraceMetadata,
   type GnoClient,
+  type GnoProjectHintOptions,
+  type GnoSearchOptions,
   type SearchResults,
 } from "@gmickel/gno";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -122,6 +124,15 @@ afterAll(async () => {
 });
 
 describe("SDK client", () => {
+  test("exports public project-hint option types", () => {
+    const hints: GnoProjectHintOptions = { projectHints: ["opaque/project"] };
+    const search: GnoSearchOptions = { ...hints, limit: 5 };
+    expect(search).toEqual({
+      projectHints: ["opaque/project"],
+      limit: 5,
+    });
+  });
+
   test("rejects an unsafe index name even with an explicit database path", async () => {
     let caught: unknown;
     try {
@@ -181,6 +192,70 @@ describe("SDK client", () => {
       uri: "gno://fixtures/authentication.md",
       context: "Global guidance\n\nFixture guidance\n\nAuthentication guidance",
     });
+  });
+
+  test("keeps opaque SDK hints zero-effect and non-reflective", async () => {
+    const baseline = await client.search("JWT token", { limit: 5 });
+    const hinted = await client.search("JWT token", {
+      limit: 5,
+      projectHints: [" private/sdk-project "],
+    });
+    expect(hinted).toEqual(baseline);
+    expect(JSON.stringify(hinted)).not.toContain("private/sdk-project");
+
+    const queryOptions = {
+      limit: 5,
+      noExpand: true,
+      noRerank: true,
+    };
+    const queryBaseline = await client.query("JWT token", queryOptions);
+    const queryHinted = await client.query("JWT token", {
+      ...queryOptions,
+      projectHints: [" private/sdk-project "],
+    });
+    expect(queryHinted).toEqual(queryBaseline);
+    expect(JSON.stringify(queryHinted)).toBe(JSON.stringify(queryBaseline));
+  });
+
+  test("maps malformed hints to public SDK validation errors on every retrieval seam", async () => {
+    const expected = {
+      name: "GnoSdkError",
+      code: "VALIDATION",
+      message: "project hints must not contain empty values",
+    };
+    const calls = [
+      () => client.search("JWT token", { projectHints: [" "] }),
+      () => client.vsearch("JWT token", { projectHints: [" "] }),
+      () =>
+        client.query("JWT token", {
+          projectHints: [" "],
+          noExpand: true,
+          noRerank: true,
+        }),
+      () =>
+        client.ask("JWT token", {
+          projectHints: [" "],
+          noAnswer: true,
+          noExpand: true,
+          noRerank: true,
+        }),
+      () =>
+        client.context({
+          goal: "JWT token",
+          budgetTokens: 100,
+          depthPolicy: "fast",
+          projectHints: [" "],
+        }),
+    ];
+    for (const call of calls) {
+      let caught: unknown;
+      try {
+        await call();
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toMatchObject(expected);
+    }
   });
 
   test("runs hybrid query in BM25-only fallback mode", async () => {

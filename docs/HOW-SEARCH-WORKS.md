@@ -24,6 +24,21 @@ The diagram below shows how your query flows through GNO's search system:
 
 **Stage 4: Reranking** → Top candidates rescored by Qwen3-Reranker using best chunk per document (4K chars).
 
+**Stage 5: Bounded auxiliary ranking** → After base relevance is final, a
+trusted local CLI project match can add one soft `+0.03` before document cutoff
+and ordering. Duplicate/overlapping roots never stack. All auxiliary signals
+share `±0.08`; filters remain hard, and final scores remain clamped to `0..1`.
+
+Only CLI cwd/`--project-root` is trusted for this signal.
+`--no-project-affinity` disables it and explicit roots replace cwd inference.
+SDK, REST, MCP, and browser `projectHints` are opaque/untrusted, limited to 16,
+and intentionally produce no match or boost without filesystem probing.
+Explain reports redacted root/collection aliases plus requested and applied
+score contributions. Diagnose uses the same closed redacted metadata in
+`schemaVersion: "1.1"` only for trusted local input (matched or unmatched);
+absent, disabled, and remote/untrusted requests preserve exact v1.0 bytes and
+omit `affinity`.
+
 ```
 ┌───────────────────────────────────────────────────────────────┐
 │                         YOUR QUERY                            │
@@ -259,6 +274,13 @@ All scores are normalized to **[0.0 - 1.0]** range where 1.0 is the best match. 
 
 **Important**: Scores are normalized _per query_ and are NOT comparable across different queries. A score of 0.8 on query A doesn't mean the same relevance as 0.8 on query B.
 
+The committed fn-97 project-affinity lane measures this seam with two controlled
+ambiguous pairs: correct top-1 moved from `0/2` with affinity disabled to `2/2`
+with trusted local affinity. Across the existing 24 hard-collection tasks it
+measured zero URI-rank, required-evidence coverage, or fixed multilingual loss.
+This closed synthetic result isolates the `+0.03` seam; it is not a claim of
+superiority on general workloads.
+
 ### BM25 Scores
 
 ```
@@ -433,7 +455,10 @@ expansion, and rerank, including target states such as `not_found`,
 `filtered_out`, `no_indexed_content`, and diagnosed drop reasons such as
 `not_in_candidate_set` or `below_cutoff`. In fast/BM25-only mode, vector and
 rerank stages are skipped with reasons while fusion still runs over the BM25
-candidate set.
+candidate set. Without trusted local affinity, the closed v1.0 response remains
+byte-compatible and omits `affinity`. A trusted CLI cwd or explicit project root
+selects the closed v1.1 response and requires redacted affinity metadata,
+including `matched: false` when the target collection does not match.
 
 ## Controlling Search Behavior
 

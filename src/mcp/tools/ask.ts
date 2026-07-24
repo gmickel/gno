@@ -8,6 +8,7 @@ import type { ToolContext } from "../server";
 import type { ToolResult } from "./index";
 
 import { buildVerifiedAsk } from "../../app/verified-ask";
+import { resolveRemoteProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
   retrievalTraceFilters,
@@ -30,6 +31,7 @@ const queryModeSchema = z
 export const askInputSchema = z
   .object({
     query: z.string().trim().min(1),
+    projectHints: z.array(z.string()).max(16).optional(),
     verify: z.literal(true),
     collection: z.string().optional(),
     limit: z.number().int().min(1).max(100).default(5),
@@ -153,8 +155,14 @@ export const handleAsk = (
       );
       if (!normalized.ok) throw new Error(normalized.error.message);
       const query = normalized.value.query;
+      const { projectHints, ...askInput } = args;
+      const projectAffinity = await resolveRemoteProjectAffinity(
+        context.config,
+        projectHints
+      );
       const options = {
-        ...args,
+        ...askInput,
+        projectAffinity,
         queryModes:
           normalized.value.queryModes.length > 0
             ? normalized.value.queryModes
@@ -210,6 +218,7 @@ export const handleAsk = (
           embedPort: modelPorts.embedPort,
           rerankPort: modelPorts.rerankPort,
           genPort: modelPorts.genPort,
+          projectAffinity,
           traceSession,
         });
         const finished = await traceSession?.finish(

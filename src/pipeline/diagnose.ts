@@ -19,6 +19,12 @@ import { resolveDocRef } from "../core/ref-parser";
 import { err, ok } from "../store/types";
 import { evaluateQueryTargetFilters } from "./filters";
 import { searchHybrid } from "./hybrid";
+import {
+  getProjectAffinityMetadata,
+  type ProjectAffinityScoringInput,
+  type ProjectAffinityScoreMetadata,
+  scoreProjectAffinity,
+} from "./project-affinity";
 
 export type QueryDiagnoseTargetStatus =
   | "not_found"
@@ -46,7 +52,7 @@ export interface QueryDiagnoseStage {
 }
 
 export interface QueryDiagnoseResult {
-  schemaVersion: "1.0";
+  schemaVersion: "1.0" | "1.1";
   query: string;
   target: {
     ref: string;
@@ -65,6 +71,7 @@ export interface QueryDiagnoseResult {
     filterReasons: string[];
   };
   stages: QueryDiagnoseStage[];
+  affinity?: ProjectAffinityScoreMetadata;
   chunk: {
     seq: number | null;
     startLine: number | null;
@@ -154,6 +161,15 @@ function findTargetCandidate(
       candidate.mirrorHash === mirrorHash && targetSeqs.has(candidate.seq)
   );
 }
+
+const hasTrustedProjectAffinityInput = (
+  input: ProjectAffinityScoringInput | undefined
+): boolean =>
+  input?.enabled !== false &&
+  Boolean(
+    input?.resolution.matches.length ||
+    input?.resolution.roots.some((root) => root.source !== "remote_hint")
+  );
 
 export async function diagnoseQueryTarget(
   deps: HybridSearchDeps,
@@ -276,8 +292,28 @@ export async function diagnoseQueryTarget(
     chunks.find((chunk) => chunk.seq === firstMatched?.seq) ??
     chunks[0] ??
     null;
+  const targetResult = searchResult.value.results.find(
+    (result) => result.uri === doc.uri
+  );
+  const lastMatched = trace?.stages
+    .toReversed()
+    .flatMap((stage) => stage.candidates)
+    .find(
+      (candidate) =>
+        candidate.mirrorHash === doc.mirrorHash && targetSeqs.has(candidate.seq)
+    );
+  const affinity =
+    (targetResult ? getProjectAffinityMetadata(targetResult) : undefined) ??
+    (lastMatched && options.projectAffinity
+      ? scoreProjectAffinity(
+          lastMatched.score,
+          doc.collection,
+          options.projectAffinity,
+          { kind: "hybrid_blended", score: lastMatched.score }
+        )
+      : null);
 
-  return ok({
+  const baseResult: QueryDiagnoseResult = {
     ...buildBaseResult(query, options.target, "diagnosed", doc, {
       graphHints,
       chunkCount: chunks.length,
@@ -298,5 +334,14 @@ export async function diagnoseQueryTarget(
       totalResults: searchResult.value.meta.totalResults,
       queryModes: searchResult.value.meta.queryModes,
     },
-  });
+  };
+  return ok(
+    affinity && hasTrustedProjectAffinityInput(options.projectAffinity)
+      ? {
+          ...baseResult,
+          schemaVersion: "1.1",
+          affinity,
+        }
+      : baseResult
+  );
 }

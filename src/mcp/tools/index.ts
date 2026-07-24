@@ -131,13 +131,22 @@ export const MCP_WRITE_TOOL_NAMES = new Set([
 // Shared Input Schemas
 // ─────────────────────────────────────────────────────────────────────────────
 
-const searchInputSchema = z.object({
+const projectHintsInputSchema = z
+  .array(z.string())
+  .max(16)
+  .optional()
+  .describe(
+    "Opaque caller project hints for cross-surface parity; remote hints never inspect server paths"
+  );
+
+export const searchInputSchema = z.object({
   query: z
     .string()
     .min(1, "Query cannot be empty")
     .describe(
       "Exact keyword, identifier, filename, error text, or phrase to match with BM25"
     ),
+  projectHints: projectHintsInputSchema,
   collection: z
     .string()
     .optional()
@@ -378,13 +387,14 @@ const duplicateNoteInputSchema = z.object({
   name: z.string().optional(),
 });
 
-const vsearchInputSchema = z.object({
+export const vsearchInputSchema = z.object({
   query: z
     .string()
     .min(1, "Query cannot be empty")
     .describe(
       "Natural-language concept to match semantically; use gno_search for exact error text or identifiers"
     ),
+  projectHints: projectHintsInputSchema,
   collection: z
     .string()
     .optional()
@@ -455,6 +465,7 @@ export const queryInputSchema = z.object({
     .describe(
       "Primary user query; combine with intent or queryModes for ambiguous requests"
     ),
+  projectHints: projectHintsInputSchema,
   collection: z
     .string()
     .optional()

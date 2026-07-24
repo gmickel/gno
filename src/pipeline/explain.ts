@@ -11,7 +11,10 @@ import type {
   ExplainResult,
   QueryModeSummary,
   RerankedCandidate,
+  SearchResult,
 } from "./types";
+
+import { SEARCH_RESULT_PLANNER_METADATA } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Formatter
@@ -35,7 +38,8 @@ export function formatResultExplain(results: ExplainResult[]): string {
       r.fusionScore !== undefined ||
       r.bm25Score !== undefined ||
       r.vecScore !== undefined ||
-      r.rerankScore !== undefined
+      r.rerankScore !== undefined ||
+      r.projectAffinity !== undefined
     ) {
       msg += " (";
       if (r.fusionScore !== undefined) {
@@ -58,6 +62,12 @@ export function formatResultExplain(results: ExplainResult[]): string {
           msg += ", ";
         }
         msg += `rerank=${r.rerankScore.toFixed(2)}`;
+      }
+      if (r.projectAffinity) {
+        if (msg.at(-1) !== "(") {
+          msg += ", ";
+        }
+        msg += `raw=${r.projectAffinity.rawScoreKind}:${r.projectAffinity.rawScore.toFixed(3)}, base=${r.projectAffinity.baseScore.toFixed(3)}, affinity=${r.projectAffinity.affinityApplied.toFixed(3)}/${r.projectAffinity.affinityRequested.toFixed(3)}, auxiliary=${r.projectAffinity.combinedAuxiliaryApplied.toFixed(3)}/${r.projectAffinity.combinedAuxiliaryCap.toFixed(3)}, collection=${r.projectAffinity.collectionAlias}, root=${r.projectAffinity.rootAlias}, source=${r.projectAffinity.source}, final=${r.projectAffinity.finalScore.toFixed(3)}`;
       }
       msg += ")";
     }
@@ -206,18 +216,49 @@ export function explainTimings(timings: StageTimingsInput): ExplainLine {
 
 export function buildExplainResults(
   candidates: RerankedCandidate[],
-  docidMap: Map<string, string>
+  docidMap: Map<string, string>,
+  finalResults?: SearchResult[]
 ): ExplainResult[] {
-  return candidates.slice(0, 20).map((c, i) => {
-    const key = `${c.mirrorHash}:${c.seq}`;
-    return {
-      rank: i + 1,
-      docid: docidMap.get(key) ?? "#unknown",
-      score: c.blendedScore,
-      fusionScore: c.fusionScore,
-      bm25Score: c.bm25Rank !== null ? 1 / (60 + c.bm25Rank) : undefined,
-      vecScore: c.vecRank !== null ? 1 / (60 + c.vecRank) : undefined,
-      rerankScore: c.rerankScore ?? undefined,
-    };
+  if (finalResults) {
+    return finalResults.slice(0, 20).map((result, index) => {
+      const planner = result[SEARCH_RESULT_PLANNER_METADATA];
+      const candidate = candidates.find(
+        (entry) =>
+          entry.mirrorHash === result.conversion?.mirrorHash &&
+          entry.seq === (planner?.retrievalSeq ?? planner?.seq)
+      );
+      return buildExplainResult(result.docid, result.score, index, candidate);
+    });
+  }
+  return candidates.slice(0, 20).map((candidate, index) => {
+    const key = `${candidate.mirrorHash}:${candidate.seq}`;
+    return buildExplainResult(
+      docidMap.get(key) ?? "#unknown",
+      candidate.blendedScore,
+      index,
+      candidate
+    );
   });
+}
+
+function buildExplainResult(
+  docid: string,
+  score: number,
+  index: number,
+  candidate?: RerankedCandidate
+): ExplainResult {
+  if (!candidate) {
+    return { rank: index + 1, docid, score };
+  }
+  return {
+    rank: index + 1,
+    docid,
+    score,
+    fusionScore: candidate.fusionScore,
+    bm25Score:
+      candidate.bm25Rank !== null ? 1 / (60 + candidate.bm25Rank) : undefined,
+    vecScore:
+      candidate.vecRank !== null ? 1 / (60 + candidate.vecRank) : undefined,
+    rerankScore: candidate.rerankScore ?? undefined,
+  };
 }

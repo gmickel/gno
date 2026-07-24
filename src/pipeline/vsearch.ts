@@ -17,6 +17,7 @@ import { createChunkLookup } from "./chunk-lookup";
 import { formatQueryForEmbedding } from "./contextual";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { selectBestChunkForSteering } from "./intent";
+import { applyProjectAffinity, hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import { attachSearchResultContexts } from "./result-context";
 import {
@@ -82,8 +83,9 @@ export async function searchVectorWithEmbedding(
   const { store, vectorIndex } = deps;
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
+  const affinityActive = hasProjectAffinity(options.projectAffinity);
   const recencySort = shouldSortByRecency(query);
-  const retrievalLimit = recencySort ? limit * 3 : limit;
+  const retrievalLimit = recencySort || affinityActive ? limit * 3 : limit;
   const temporalRange = resolveTemporalRange(
     query,
     options.since,
@@ -104,7 +106,7 @@ export async function searchVectorWithEmbedding(
     queryEmbedding,
     retrievalLimit,
     {
-      minScore,
+      minScore: affinityActive ? undefined : minScore,
       allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     }
   );
@@ -126,7 +128,7 @@ export async function searchVectorWithEmbedding(
   }
 
   // Cache docs to avoid N+1 queries (filtered by collection and tags)
-  const docByMirrorHash = await buildDocumentMap(store, {
+  const docsByMirrorHash = await buildDocumentMap(store, {
     collection: options.collection,
     relPathPrefix: options.retrievalScope?.relPathPrefix,
     tagsAll: options.tagsAll,
@@ -152,12 +154,18 @@ export async function searchVectorWithEmbedding(
   // For --full, track best score per docid to de-dupe
   const bestByDocid = new Map<
     string,
-    { doc: DocumentInfo; chunk: ChunkInfo; score: number }
+    {
+      doc: DocumentInfo;
+      chunk: ChunkInfo;
+      rankingScore: number;
+      rawDistance: number;
+      score: number;
+    }
   >();
 
   for (const vec of vecResults) {
-    const score = normalizeVectorScore(vec.distance);
-    if (score < minScore) {
+    const baseScore = normalizeVectorScore(vec.distance);
+    if (!affinityActive && baseScore < minScore) {
       continue;
     }
 
@@ -184,56 +192,36 @@ export async function searchVectorWithEmbedding(
     }
 
     // Get document (cached)
-    const doc = docByMirrorHash.get(vec.mirrorHash);
-    if (!doc) {
+    const matchingDocs = docsByMirrorHash.get(vec.mirrorHash);
+    if (!matchingDocs || matchingDocs.length === 0) {
       continue;
     }
-
-    const excluded =
-      matchesExcludedText(
-        [
-          doc.title ?? "",
-          doc.relPath,
-          doc.author ?? "",
-          doc.contentType ?? "",
-          ...(doc.categories ?? []),
-        ],
-        options.exclude
-      ) ||
-      matchesExcludedChunks(
-        chunksMap.get(vec.mirrorHash) ?? [],
-        options.exclude
-      );
-    if (excluded) {
-      continue;
-    }
-
-    // For --full, de-dupe by docid (keep best scoring chunk per doc)
-    if (options.full) {
-      const existing = bestByDocid.get(doc.docid);
-      if (!existing || score > existing.score) {
-        bestByDocid.set(doc.docid, {
-          doc,
-          chunk: {
-            text: chunk.text,
-            language: chunk.language,
-            startLine: chunk.startLine,
-            endLine: chunk.endLine,
-            seq: chunk.seq,
-          },
-          score,
-        });
+    const docs = affinityActive ? matchingDocs : [matchingDocs.at(-1)!];
+    for (const doc of docs) {
+      const collectionPath = collectionPaths.get(doc.collection);
+      const excluded =
+        matchesExcludedText(
+          [
+            doc.title ?? "",
+            doc.relPath,
+            doc.author ?? "",
+            doc.contentType ?? "",
+            ...(doc.categories ?? []),
+          ],
+          options.exclude
+        ) ||
+        matchesExcludedChunks(
+          chunksMap.get(vec.mirrorHash) ?? [],
+          options.exclude
+        );
+      if (excluded) {
+        continue;
       }
-      continue;
-    }
 
-    const collectionPath = collectionPaths.get(doc.collection);
-
-    results.push(
-      attachSearchResultPlannerMetadata(
+      const scoredResult = applyProjectAffinity(
         {
           docid: doc.docid,
-          score,
+          score: baseScore,
           uri: doc.uri,
           title: doc.title ?? undefined,
           contentType: doc.contentType ?? undefined,
@@ -265,7 +253,35 @@ export async function searchVectorWithEmbedding(
               }
             : undefined,
         },
-        {
+        doc.collection,
+        options.projectAffinity,
+        { kind: "vector_distance", score: vec.distance }
+      );
+      if (scoredResult.score < minScore) continue;
+
+      // For --full, de-dupe by docid (keep best scoring chunk per doc)
+      if (options.full) {
+        const existing = bestByDocid.get(doc.docid);
+        if (!existing || scoredResult.score > existing.rankingScore) {
+          bestByDocid.set(doc.docid, {
+            doc,
+            chunk: {
+              text: chunk.text,
+              language: chunk.language,
+              startLine: chunk.startLine,
+              endLine: chunk.endLine,
+              seq: chunk.seq,
+            },
+            rankingScore: scoredResult.score,
+            rawDistance: vec.distance,
+            score: baseScore,
+          });
+        }
+        continue;
+      }
+
+      results.push(
+        attachSearchResultPlannerMetadata(scoredResult, {
           retrievalRank: 0,
           mirrorHash: vec.mirrorHash,
           seq: chunk.seq,
@@ -276,9 +292,9 @@ export async function searchVectorWithEmbedding(
           passageHash: new Bun.CryptoHasher("sha256")
             .update(chunk.text)
             .digest("hex"),
-        }
-      )
-    );
+        })
+      );
+    }
   }
 
   // For --full, fetch full content and build results
@@ -294,47 +310,52 @@ export async function searchVectorWithEmbedding(
     }
     const fullContentByHash = fullContentResult.value;
 
-    for (const { doc, chunk, score } of bestByDocid.values()) {
+    for (const { doc, chunk, rawDistance, score } of bestByDocid.values()) {
       const fullContent = doc.mirrorHash
         ? fullContentByHash.get(doc.mirrorHash)
         : undefined;
 
       const collectionPath = collectionPaths.get(doc.collection);
 
-      const result: SearchResult = {
-        docid: doc.docid,
-        score,
-        uri: doc.uri,
-        title: doc.title ?? undefined,
-        contentType: doc.contentType ?? undefined,
-        categories: doc.categories ?? undefined,
-        line: chunk.startLine,
-        snippet: fullContent ?? chunk.text,
-        snippetLanguage: chunk.language ?? undefined,
-        // --full: no snippetRange (full doc content)
-        snippetRange: fullContent
-          ? undefined
-          : { startLine: chunk.startLine, endLine: chunk.endLine },
-        source: {
-          relPath: doc.relPath,
-          absPath: collectionPath
-            ? `${collectionPath}/${doc.relPath}`
+      const result = applyProjectAffinity(
+        {
+          docid: doc.docid,
+          score,
+          uri: doc.uri,
+          title: doc.title ?? undefined,
+          contentType: doc.contentType ?? undefined,
+          categories: doc.categories ?? undefined,
+          line: chunk.startLine,
+          snippet: fullContent ?? chunk.text,
+          snippetLanguage: chunk.language ?? undefined,
+          // --full: no snippetRange (full doc content)
+          snippetRange: fullContent
+            ? undefined
+            : { startLine: chunk.startLine, endLine: chunk.endLine },
+          source: {
+            relPath: doc.relPath,
+            absPath: collectionPath
+              ? `${collectionPath}/${doc.relPath}`
+              : undefined,
+            mime: doc.sourceMime,
+            ext: doc.sourceExt,
+            modifiedAt: doc.sourceMtime,
+            documentDate: doc.frontmatterDate ?? undefined,
+            sizeBytes: doc.sourceSize,
+            sourceHash: doc.sourceHash,
+          },
+          conversion: doc.mirrorHash
+            ? {
+                mirrorHash: doc.mirrorHash,
+                converterId: doc.converterId ?? undefined,
+                converterVersion: doc.converterVersion ?? undefined,
+              }
             : undefined,
-          mime: doc.sourceMime,
-          ext: doc.sourceExt,
-          modifiedAt: doc.sourceMtime,
-          documentDate: doc.frontmatterDate ?? undefined,
-          sizeBytes: doc.sourceSize,
-          sourceHash: doc.sourceHash,
         },
-        conversion: doc.mirrorHash
-          ? {
-              mirrorHash: doc.mirrorHash,
-              converterId: doc.converterId ?? undefined,
-              converterVersion: doc.converterVersion ?? undefined,
-            }
-          : undefined,
-      };
+        doc.collection,
+        options.projectAffinity,
+        { kind: "vector_distance", score: rawDistance }
+      );
       results.push(
         doc.mirrorHash
           ? attachSearchResultPlannerMetadata(result, {
@@ -369,6 +390,8 @@ export async function searchVectorWithEmbedding(
       }
       return b.score - a.score;
     });
+  } else if (affinityActive) {
+    results.sort((a, b) => b.score - a.score);
   }
 
   const finalResults = results.slice(0, limit);
@@ -507,8 +530,8 @@ function matchesCategoryFilter(
 async function buildDocumentMap(
   store: StorePort,
   options: DocumentMapOptions = {}
-): Promise<Map<string, DocumentInfo>> {
-  const result = new Map<string, DocumentInfo>();
+): Promise<Map<string, DocumentInfo[]>> {
+  const result = new Map<string, DocumentInfo[]>();
 
   if (options.mirrorHashes && options.mirrorHashes.length === 0) {
     return result;
@@ -594,7 +617,7 @@ async function buildDocumentMap(
       continue;
     }
 
-    result.set(doc.mirrorHash!, {
+    const documentInfo: DocumentInfo = {
       docid: doc.docid,
       uri: doc.uri,
       title: doc.title,
@@ -612,7 +635,10 @@ async function buildDocumentMap(
       mirrorHash: doc.mirrorHash,
       converterId: doc.converterId,
       converterVersion: doc.converterVersion,
-    });
+    };
+    const matchingDocuments = result.get(doc.mirrorHash!) ?? [];
+    matchingDocuments.push(documentInfo);
+    result.set(doc.mirrorHash!, matchingDocuments);
   }
 
   return result;

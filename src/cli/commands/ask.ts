@@ -5,6 +5,7 @@
  * @module src/cli/commands/ask
  */
 
+import type { CliProjectAffinityRequest } from "../../core/project-affinity-surface";
 import type { RetrievalTraceSurfaceMetadata } from "../../core/retrieval-trace-session";
 import type { RetrievalTraceSession } from "../../core/retrieval-trace-session";
 import type {
@@ -15,6 +16,7 @@ import type {
 import type { AskOptions, AskResult, Citation } from "../../pipeline/types";
 
 import { buildVerifiedAsk } from "../../app/verified-ask";
+import { resolveCliProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
   retrievalTraceFilters,
@@ -46,24 +48,25 @@ export { formatAsk } from "./ask-format";
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type AskCommandOptions = AskOptions & {
-  /** Override config path */
-  configPath?: string;
-  /** Override embedding model */
-  embedModel?: string;
-  /** Override expansion model */
-  expandModel?: string;
-  /** Override answer generation model */
-  genModel?: string;
-  /** Override rerank model */
-  rerankModel?: string;
-  /** Output as JSON */
-  json?: boolean;
-  /** Output as Markdown */
-  md?: boolean;
-  /** Show all retrieved sources (not just cited) */
-  showSources?: boolean;
-};
+export type AskCommandOptions = Omit<AskOptions, "projectAffinity"> &
+  CliProjectAffinityRequest & {
+    /** Override config path */
+    configPath?: string;
+    /** Override embedding model */
+    embedModel?: string;
+    /** Override expansion model */
+    expandModel?: string;
+    /** Override answer generation model */
+    genModel?: string;
+    /** Override rerank model */
+    rerankModel?: string;
+    /** Output as JSON */
+    json?: boolean;
+    /** Output as Markdown */
+    md?: boolean;
+    /** Show all retrieved sources (not just cited) */
+    showSources?: boolean;
+  };
 
 export type AskCommandResult =
   | {
@@ -108,6 +111,12 @@ export async function ask(
   let traceSession: RetrievalTraceSession | undefined;
 
   try {
+    const { projectAffinityDisabled, projectRoots, ...askOptions } = options;
+    const projectAffinity = await resolveCliProjectAffinity(config, {
+      cwd: process.cwd(),
+      disabled: projectAffinityDisabled,
+      projectRoots,
+    });
     const verificationRequested = options.verify === true;
     const answerRequested =
       verificationRequested || Boolean(options.answer && !options.noAnswer);
@@ -141,7 +150,7 @@ export async function ask(
       store,
       config,
       query,
-      filters: retrievalTraceFilters({ ...options, limit }),
+      filters: retrievalTraceFilters({ ...askOptions, limit }),
       pipeline: "ask",
       indexName: globals.index,
       modelUris: [embedUri, expandUri, answerUri, rerankUri].filter(
@@ -264,7 +273,7 @@ export async function ask(
     if (verificationRequested && answerPort) {
       const verified = await buildVerifiedAsk(
         query,
-        { ...options, limit },
+        { ...askOptions, limit, projectAffinity },
         {
           store,
           config,
@@ -273,6 +282,7 @@ export async function ask(
           embedPort,
           rerankPort,
           genPort: answerPort,
+          projectAffinity,
           traceSession,
         }
       );
@@ -308,6 +318,7 @@ export async function ask(
       noExpand: options.noExpand,
       noRerank: options.noRerank,
       candidateLimit: options.candidateLimit,
+      projectAffinity,
       traceSession,
     });
 

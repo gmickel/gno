@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 // node:path provides path joining; Bun has no path utilities.
 import { join } from "node:path";
 
+import type { ProjectAffinityPromotionArtifact } from "../../../evals/agentic/project-affinity-promotion";
 import type {
   BenchmarkReport,
   BenchmarkScoreRecord,
@@ -16,6 +17,8 @@ import {
   AGENTIC_FIXTURE_ROOT,
   loadAgenticFixture,
 } from "../../../evals/agentic/fixture-db";
+import { runProjectAffinityOutcomeBenchmark } from "../../../evals/agentic/project-affinity-outcome";
+import { validateProjectAffinityPromotionArtifact } from "../../../evals/agentic/project-affinity-validation";
 import {
   evaluatePromotionGates,
   pairPromotionCohorts,
@@ -222,5 +225,50 @@ describe("committed authoritative agentic baseline", () => {
     expect(
       await Bun.file(join(BASELINE_ROOT, "verified-ask-promotion.md")).text()
     ).toContain("Baseline: production raw Ask");
+  });
+
+  test("contains the separate closed project-affinity promotion", async () => {
+    const artifact = (await Bun.file(
+      join(BASELINE_ROOT, "project-affinity-promotion.json")
+    ).json()) as ProjectAffinityPromotionArtifact;
+    const fixture = await loadAgenticFixture();
+    expect(
+      validateAgenticSchema("project-affinity-promotion", artifact)
+    ).toBeTrue();
+    expect(
+      await validateProjectAffinityPromotionArtifact(artifact, fixture)
+    ).toEqual([]);
+    const fresh = await runProjectAffinityOutcomeBenchmark(fixture);
+    expect(canonicalJson(fresh)).toBe(canonicalJson(artifact));
+    expect(artifact.gates).toEqual({
+      passed: true,
+      failures: [],
+      targetCorrectTop1: { disabled: 0, enabled: 2, required: 2 },
+      evidenceAccuracyLoss: 0,
+      evidenceCoverageLoss: 0,
+      multilingualLoss: 0,
+      filterHard: true,
+      zeroLanesExact: true,
+      auxiliaryReceiptsValid: true,
+      structuralCallsBounded: true,
+    });
+    expect(artifact.receipts.auxiliary).toHaveLength(5);
+    expect(artifact.receipts.zeroLanes).toHaveLength(4);
+    expect(artifact.receipts.structural.length).toBeGreaterThan(0);
+    expect(artifact.regression).toMatchObject({
+      taskCount: 24,
+      evidenceAccuracy: { loss: 0 },
+      evidenceCoverage: { loss: 0 },
+      multilingual: { taskCount: 4, loss: 0 },
+    });
+    expect(artifact.targets.map((target) => target.targetUri)).toEqual([
+      "gno://c015/d001.md",
+      "gno://c016/d001.md",
+    ]);
+    expect(
+      await Bun.file(
+        join(BASELINE_ROOT, "project-affinity-promotion.md")
+      ).exists()
+    ).toBeTrue();
   });
 });

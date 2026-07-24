@@ -41,6 +41,11 @@ import { evaluateDocumentChunkFilters } from "./filters";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
 import { selectBestChunkForSteering } from "./intent";
+import {
+  applyProjectAffinity,
+  getProjectAffinityMetadata,
+  hasProjectAffinity,
+} from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import {
   buildExpansionFromQueryModes,
@@ -301,6 +306,7 @@ export async function searchHybrid(
   const runStartedAt = performance.now();
   const { store, vectorIndex, embedPort, expandPort, rerankPort } = deps;
   const pipelineConfig = deps.pipelineConfig ?? DEFAULT_PIPELINE_CONFIG;
+  const affinityActive = hasProjectAffinity(options.projectAffinity);
 
   const limit = options.limit ?? 20;
   const recencySort = shouldSortByRecency(query);
@@ -719,7 +725,7 @@ export async function searchHybrid(
   // ─────────────────────────────────────────────────────────────────────────
   const minScore = options.minScore ?? 0;
   const filteredCandidates =
-    minScore > 0
+    minScore > 0 && !affinityActive
       ? rerankResult.candidates.filter((c) => c.blendedScore >= minScore)
       : rerankResult.candidates;
 
@@ -875,7 +881,7 @@ export async function searchHybrid(
   // Iterate until we have enough results (don't slice early - deduping may skip candidates)
   for (const [candidateIndex, candidate] of filteredCandidates.entries()) {
     // Stop when we have enough results
-    if (results.length >= assemblyLimit) {
+    if (!affinityActive && results.length >= assemblyLimit) {
       break;
     }
 
@@ -939,64 +945,76 @@ export async function searchHybrid(
     }
 
     for (const doc of candidateDocs) {
-      if (results.length >= assemblyLimit) break;
+      if (!affinityActive && results.length >= assemblyLimit) break;
       const filterEval = evaluateDocumentChunkFilters(
         query,
         doc,
         docChunks,
         options
       );
-      if (!filterEval.matches || (options.full && seenDocids.has(doc.docid))) {
+      if (
+        !filterEval.matches ||
+        (options.full && !affinityActive && seenDocids.has(doc.docid))
+      ) {
         continue;
       }
       const docidKey = `${candidate.mirrorHash}:${candidate.seq}`;
       if (!docidMap.has(docidKey)) docidMap.set(docidKey, doc.docid);
       const collectionPath = collectionPaths.get(doc.collection);
-      seenDocids.add(doc.docid);
-      results.push(
-        attachSearchResultPlannerMetadata(
-          {
-            docid: doc.docid,
-            score: candidate.blendedScore,
-            uri: doc.uri,
-            title: doc.title ?? undefined,
-            contentType: doc.contentType ?? undefined,
-            categories: doc.categories ?? undefined,
-            line: snippetChunk.startLine,
-            snippet,
-            snippetLanguage: chunk.language ?? undefined,
-            snippetRange,
-            source: {
-              relPath: doc.relPath,
-              absPath: collectionPath
-                ? `${collectionPath}/${doc.relPath}`
-                : undefined,
-              mime: doc.sourceMime,
-              ext: doc.sourceExt,
-              modifiedAt: doc.sourceMtime,
-              documentDate: doc.frontmatterDate ?? undefined,
-              sizeBytes: doc.sourceSize,
-              sourceHash: doc.sourceHash,
-            },
-            conversion: {
-              mirrorHash: candidate.mirrorHash,
-              converterId: doc.converterId ?? undefined,
-              converterVersion: doc.converterVersion ?? undefined,
-            },
+      if (options.full && !affinityActive) {
+        seenDocids.add(doc.docid);
+      }
+      const scoredResult = applyProjectAffinity(
+        {
+          docid: doc.docid,
+          score: candidate.blendedScore,
+          uri: doc.uri,
+          title: doc.title ?? undefined,
+          contentType: doc.contentType ?? undefined,
+          categories: doc.categories ?? undefined,
+          line: snippetChunk.startLine,
+          snippet,
+          snippetLanguage: chunk.language ?? undefined,
+          snippetRange,
+          source: {
+            relPath: doc.relPath,
+            absPath: collectionPath
+              ? `${collectionPath}/${doc.relPath}`
+              : undefined,
+            mime: doc.sourceMime,
+            ext: doc.sourceExt,
+            modifiedAt: doc.sourceMtime,
+            documentDate: doc.frontmatterDate ?? undefined,
+            sizeBytes: doc.sourceSize,
+            sourceHash: doc.sourceHash,
           },
-          {
-            retrievalRank: candidateIndex + 1,
+          conversion: {
             mirrorHash: candidate.mirrorHash,
-            seq: snippetChunk.seq,
-            sources: [...candidate.sources].sort(),
-            graphExpanded: candidate.sources.includes("graph"),
-            startLine: snippetChunk.startLine,
-            endLine: snippetChunk.endLine,
-            passageHash: new Bun.CryptoHasher("sha256")
-              .update(snippetChunk.text)
-              .digest("hex"),
-          }
-        )
+            converterId: doc.converterId ?? undefined,
+            converterVersion: doc.converterVersion ?? undefined,
+          },
+        },
+        doc.collection,
+        options.projectAffinity,
+        { kind: "hybrid_blended", score: candidate.blendedScore }
+      );
+      if (scoredResult.score < minScore) continue;
+      results.push(
+        attachSearchResultPlannerMetadata(scoredResult, {
+          retrievalRank: candidateIndex + 1,
+          mirrorHash: candidate.mirrorHash,
+          seq: snippetChunk.seq,
+          ...(affinityActive && snippetChunk.seq !== candidate.seq
+            ? { retrievalSeq: candidate.seq }
+            : {}),
+          sources: [...candidate.sources].sort(),
+          graphExpanded: candidate.sources.includes("graph"),
+          startLine: snippetChunk.startLine,
+          endLine: snippetChunk.endLine,
+          passageHash: new Bun.CryptoHasher("sha256")
+            .update(snippetChunk.text)
+            .digest("hex"),
+        })
       );
     }
   }
@@ -1008,21 +1026,16 @@ export async function searchHybrid(
   // ─────────────────────────────────────────────────────────────────────────
   // 6. Build explain data (if requested)
   // ─────────────────────────────────────────────────────────────────────────
-  const explainData = options.explain
-    ? {
-        lines: explainLines,
-        results: buildExplainResults(
-          filteredCandidates.slice(0, limit),
-          docidMap
-        ),
-      }
-    : undefined;
-
   // ─────────────────────────────────────────────────────────────────────────
   // 7. Return results
   // ─────────────────────────────────────────────────────────────────────────
+  const dedupedResults =
+    options.full && affinityActive
+      ? dedupeFullResultsByDocid(results)
+      : results;
+
   if (recencySort) {
-    results.sort((a, b) => {
+    dedupedResults.sort((a, b) => {
       const aTs = resolveRecencyTimestamp(
         a.source.documentDate,
         a.source.modifiedAt
@@ -1036,9 +1049,26 @@ export async function searchHybrid(
       }
       return b.score - a.score;
     });
+  } else if (affinityActive) {
+    dedupedResults.sort((a, b) => b.score - a.score);
   }
 
-  const finalResults = results.slice(0, limit);
+  const finalResults = dedupedResults.slice(0, limit);
+  const explainData = options.explain
+    ? {
+        lines: explainLines,
+        results: affinityActive
+          ? buildExplainResults(filteredCandidates, docidMap, finalResults).map(
+              (result, index) => ({
+                ...result,
+                projectAffinity: getProjectAffinityMetadata(
+                  finalResults[index]!
+                ),
+              })
+            )
+          : buildExplainResults(filteredCandidates.slice(0, limit), docidMap),
+      }
+    : undefined;
   await attachSearchResultContexts(store, finalResults);
 
   const output: SearchResults = {
@@ -1142,4 +1172,15 @@ export async function searchHybrid(
     );
   }
   return ok(output);
+}
+
+function dedupeFullResultsByDocid(results: SearchResult[]): SearchResult[] {
+  const bestByDocid = new Map<string, SearchResult>();
+  for (const result of results) {
+    const existing = bestByDocid.get(result.docid);
+    if (!existing || result.score > existing.score) {
+      bestByDocid.set(result.docid, result);
+    }
+  }
+  return [...bestByDocid.values()];
 }

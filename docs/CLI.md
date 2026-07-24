@@ -12,6 +12,26 @@ Command-line guide for GNO's local knowledge engine and workspace tooling.
 
 ![GNO CLI](../assets/screenshots/cli.jpg)
 
+## Project-aware ranking
+
+`search`, `vsearch`, `query`, `ask`, and `context build` derive a trusted local
+project root from the current repository/worktree by default. A matching
+collection receives one soft `+0.03` contribution:
+
+```bash
+gno query "deployment decision"
+gno query "deployment decision" --project-root ../service-a
+gno query "deployment decision" --project-root ../service-a --project-root ../shared
+gno query "deployment decision" --no-project-affinity
+```
+
+Repeatable `--project-root` values replace cwd inference; they do not stack.
+`--project-root` and `--no-project-affinity` are mutually exclusive. All
+auxiliary ranking signals share the `±0.08` cap, filters remain hard, and a
+base-score lead greater than the applied contribution still wins.
+`--explain`/diagnose output exposes only redacted aliases and score receipts,
+never raw roots.
+
 ## Quick Reference
 
 | Command          | Description                       |
@@ -240,8 +260,14 @@ Additional options:
 
 `gno query diagnose "<query>" --target <doc>` runs the query with an opt-in
 trace and reports whether the target document appears at each retrieval stage.
-The JSON payload uses `query-diagnose.schema.json`, requires
-`schemaVersion: "1.0"`, and includes `target.status`
+The JSON payload uses the closed `query-diagnose.schema.json` contract.
+Requests without trusted local affinity metadata retain the exact legacy
+`schemaVersion: "1.0"` shape and omit `affinity`; the unchanged closed v1
+contract remains available as `query-diagnose-v1.schema.json`. When a trusted
+cwd or `--project-root` is resolved, the payload uses `schemaVersion: "1.1"`
+and requires closed, redacted `affinity` metadata, including `matched: false`
+when the trusted root does not match the target collection. The payload also
+includes `target.status`
 (`not_found|inactive|no_indexed_content|filtered_out|diagnosed`), per-stage
 `present/rank/score/survived/dropReason`, typed metadata, graph hints, and the
 chunk/line selected for the target. In BM25-only mode, vector/rerank stages are

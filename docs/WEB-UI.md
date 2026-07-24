@@ -24,6 +24,11 @@ index. Create, edit, search, and manage documents on your machine. Model
 downloads, explicitly configured HTTP inference, and gno.sh publishing are
 separate network boundaries.
 
+The browser does not infer a project root. Web UI retrieval uses the same REST
+trust boundary: any `projectHints` input is opaque/untrusted and has zero
+affinity effect. Use CLI cwd or `--project-root` when trusted local
+project-aware ranking is desired.
+
 | Page              | Purpose                                                         |
 | :---------------- | :-------------------------------------------------------------- |
 | **Dashboard**     | First-run onboarding, health center, stats, and quick capture   |

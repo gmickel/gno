@@ -5,6 +5,10 @@
  * @module src/cli/options
  */
 
+import {
+  normalizeProjectAffinityValues,
+  ProjectAffinityInputError,
+} from "../core/project-affinity-surface";
 import { CliError } from "./errors";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -12,6 +16,41 @@ import { CliError } from "./errors";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type OutputFormat = "terminal" | "json" | "files" | "csv" | "md" | "xml";
+
+export interface CliProjectAffinityOptions {
+  projectAffinityDisabled: boolean;
+  projectRoots: string[];
+}
+
+export const collectRepeatableValue = (
+  value: string,
+  previous: string[] = []
+): string[] => [...previous, value];
+
+export const parseCliProjectAffinityOptions = (
+  options: Record<string, unknown>
+): CliProjectAffinityOptions => {
+  try {
+    const projectRoots = normalizeProjectAffinityValues(
+      Array.isArray(options.projectRoot)
+        ? (options.projectRoot as string[])
+        : undefined,
+      "project roots"
+    );
+    const projectAffinityDisabled = options.projectAffinity === false;
+    if (projectAffinityDisabled && projectRoots.length > 0) {
+      throw new ProjectAffinityInputError(
+        "--no-project-affinity cannot be combined with --project-root"
+      );
+    }
+    return { projectAffinityDisabled, projectRoots };
+  } catch (error) {
+    throw new CliError(
+      "VALIDATION",
+      error instanceof Error ? error.message : "Invalid project affinity input"
+    );
+  }
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Format Support Matrix (per spec/cli.md)

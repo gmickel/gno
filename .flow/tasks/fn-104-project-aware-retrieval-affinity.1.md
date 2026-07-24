@@ -32,9 +32,15 @@ Deliver build trusted project-root resolution and affinity metadata as one imple
 
 
 ## Done summary
-TBD
+Implemented trusted project-root resolution and redaction-safe affinity metadata.
 
+- Added separate local and remote project-affinity schemas plus a required out-of-band resolver channel.
+- Canonicalized trusted local roots and configured collection roots through injectable boundaries.
+- Added segment-safe containment, nearest repository/worktree discovery, stable redacted aliases, deterministic overlap ordering, and explicit zero reasons.
+- Remote resolution short-circuits before filesystem or collection probing, including forged local-source payloads.
+- Added temporary-tree coverage for nested/prefix collisions, symlinks, worktrees, overlaps, case behavior, deleted roots, opaque hints, and forged remote trust escalation.
+- Ranking behavior remains unchanged.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: f961917
+- Tests: bun test test/core/project-affinity.test.ts (8 pass, 0 fail), bun run lint:check (clean), bun run typecheck (clean), git diff --check (clean), bun test (2868 pass, 1 Windows-only skip, 0 fail)
 - PRs:

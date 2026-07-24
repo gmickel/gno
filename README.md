@@ -17,6 +17,17 @@
 
 GNO is a local knowledge engine for notes, code, PDFs, Office docs, meeting transcripts, and reference material. It gives you fast keyword search, semantic retrieval, grounded answers with citations, wiki-style linking, and a real workspace UI, while keeping the whole stack local by default.
 
+CLI retrieval also uses the current repository/workspace as a transparent soft
+ranking signal. A trusted local cwd or repeatable `--project-root` can add at
+most `+0.03` to matching collection results; `--no-project-affinity` disables
+it, and explicit roots replace cwd inference. It never overrides collection,
+tag, date, exclude, or egress filters. SDK, REST, and MCP `projectHints` are
+opaque, untrusted, limited to 16, and intentionally have zero ranking effect:
+those surfaces never probe caller or server filesystem paths. Trusted local
+diagnose output uses closed `schemaVersion: "1.1"` redacted affinity metadata;
+absent, disabled, and remote/untrusted diagnose requests preserve exact legacy
+v1.0 bytes and omit `affinity`.
+
 Use it when:
 
 - your notes live in more than one folder

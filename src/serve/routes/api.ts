@@ -17,6 +17,7 @@ import type {
   ModelPreset,
 } from "../../config/types";
 import type { JobManager } from "../../core/job-manager";
+import type { ProjectAffinityScoringInput } from "../../pipeline/project-affinity";
 import type {
   AskResult,
   Citation,
@@ -95,6 +96,10 @@ import {
   resolveNotePreset,
   type NotePresetId,
 } from "../../core/note-presets";
+import {
+  ProjectAffinityInputError,
+  resolveRemoteProjectAffinity,
+} from "../../core/project-affinity-surface";
 import {
   retrievalTraceFilters,
   startRetrievalTraceRequest,
@@ -231,6 +236,7 @@ const DEFAULT_CONNECTOR_ROUTE_DEPS: ConnectorRouteDeps = {
 
 export interface SearchRequestBody {
   query: string;
+  projectHints?: string[];
   // Only BM25 supported in web UI (vector/hybrid require LLM deps)
   limit?: number;
   minScore?: number;
@@ -250,6 +256,7 @@ export interface SearchRequestBody {
 
 export interface QueryRequestBody {
   query: string;
+  projectHints?: string[];
   limit?: number;
   minScore?: number;
   collection?: string;
@@ -279,6 +286,7 @@ export interface QueryDiagnoseRequestBody extends QueryRequestBody {
 
 export interface AskRequestBody {
   query: string;
+  projectHints?: string[];
   limit?: number;
   collection?: string;
   lang?: string;
@@ -308,6 +316,7 @@ export interface AskRequestBody {
 
 const ASK_REQUEST_KEYS = new Set<keyof AskRequestBody>([
   "query",
+  "projectHints",
   "limit",
   "collection",
   "lang",
@@ -3630,6 +3639,19 @@ export async function handleSearch(
     ? parseCommaSeparatedValues(body.exclude)
     : undefined;
   const author = body.author?.trim() || undefined;
+  let projectAffinity: ProjectAffinityScoringInput | undefined;
+  try {
+    projectAffinity = context
+      ? await resolveRemoteProjectAffinity(context.config, body.projectHints)
+      : undefined;
+  } catch (error) {
+    return errorResponse(
+      "VALIDATION",
+      error instanceof ProjectAffinityInputError
+        ? error.message
+        : "Invalid project hints"
+    );
+  }
 
   // Only BM25 supported in web UI (vector/hybrid require LLM ports)
   const options: SearchOptions = {
@@ -3644,6 +3666,7 @@ export async function handleSearch(
     until: body.until,
     categories,
     author,
+    projectAffinity,
   };
 
   const trace = context
@@ -3802,6 +3825,20 @@ export async function handleQuery(
     ? parseCommaSeparatedValues(body.exclude)
     : undefined;
   const author = body.author?.trim() || undefined;
+  let projectAffinity: ProjectAffinityScoringInput | undefined;
+  try {
+    projectAffinity = await resolveRemoteProjectAffinity(
+      ctx.config,
+      body.projectHints
+    );
+  } catch (error) {
+    return errorResponse(
+      "VALIDATION",
+      error instanceof ProjectAffinityInputError
+        ? error.message
+        : "Invalid project hints"
+    );
+  }
 
   const queryOptions = {
     limit: Math.min(body.limit ?? 20, 50),
@@ -3825,6 +3862,7 @@ export async function handleQuery(
     until: body.until,
     categories,
     author,
+    projectAffinity,
   };
   const trace = await startRestTrace(ctx, {
     query: normalizedQuery,
@@ -4004,6 +4042,20 @@ export async function handleQueryDiagnose(
   const contentTypeRules = normalizeContentTypes(
     ctx.config.contentTypes ?? []
   ).rules;
+  let projectAffinity: ProjectAffinityScoringInput | undefined;
+  try {
+    projectAffinity = await resolveRemoteProjectAffinity(
+      ctx.config,
+      body.projectHints
+    );
+  } catch (error) {
+    return errorResponse(
+      "VALIDATION",
+      error instanceof ProjectAffinityInputError
+        ? error.message
+        : "Invalid project hints"
+    );
+  }
 
   const result = await diagnoseQueryTarget(
     {
@@ -4038,6 +4090,7 @@ export async function handleQueryDiagnose(
       until: body.until,
       categories,
       author,
+      projectAffinity,
       contentTypeRules,
       contentTypeRulesFingerprint:
         fingerprintContentTypeRules(contentTypeRules),
@@ -4229,6 +4282,20 @@ export async function handleAsk(
     ? parseCommaSeparatedValues(body.exclude)
     : undefined;
   const author = body.author?.trim() || undefined;
+  let projectAffinity: ProjectAffinityScoringInput | undefined;
+  try {
+    projectAffinity = await resolveRemoteProjectAffinity(
+      ctx.config,
+      body.projectHints
+    );
+  } catch (error) {
+    return errorResponse(
+      "VALIDATION",
+      error instanceof ProjectAffinityInputError
+        ? error.message
+        : "Invalid project hints"
+    );
+  }
 
   const limit = Math.min(body.limit ?? 5, 20);
   const askOptions = {
@@ -4257,6 +4324,7 @@ export async function handleAsk(
     contextBudgetTokens: body.contextBudgetTokens,
     contextBudgetBytes: body.contextBudgetBytes,
     maxAnswerTokens: body.maxAnswerTokens,
+    projectAffinity,
   };
   const trace = await startRestTrace(ctx, {
     query: normalizedQuery,
@@ -4307,6 +4375,7 @@ export async function handleAsk(
         embedPort: ctx.embedPort,
         rerankPort: ctx.rerankPort,
         genPort: ctx.answerPort,
+        projectAffinity,
         traceSession: trace.session ?? undefined,
       });
       return finishRestTrace(

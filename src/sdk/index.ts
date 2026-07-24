@@ -51,6 +51,8 @@ export type {
   GnoMultiGetOptions,
   GnoMultiGetResult,
   GnoQueryOptions,
+  GnoProjectHintOptions,
+  GnoSearchOptions,
   GnoSkippedDocument,
   GnoUpdateOptions,
   GnoVectorSearchOptions,

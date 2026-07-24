@@ -108,7 +108,22 @@ Recipe rules:
 --json                JSON output
 --files               URI list output
 --line-numbers        Include line numbers
+--project-root <path> Trusted local root; repeatable and replaces cwd affinity
+--no-project-affinity Disable trusted local project-aware ranking
 ```
+
+CLI searches use the current repository/worktree as a soft signal by default.
+A matching collection can receive at most `+0.03`; roots never stack, all
+auxiliary signals share `±0.08`, and collection/tag/date/exclude/egress filters
+stay hard. Use `--project-root` for explicit trusted roots or
+`--no-project-affinity` to disable it.
+
+Do not treat MCP/SDK/REST `projectHints` as paths. They are opaque, untrusted,
+limited to 16, never trigger filesystem probing, and currently produce zero
+affinity. Explain uses redacted aliases only. Diagnose preserves exact closed
+v1.0 bytes and omits `affinity` for absent, disabled, and remote/untrusted
+inputs; trusted local diagnose uses closed v1.1 redacted metadata, including an
+explicit unmatched state. The Web UI does not infer a browser project root.
 
 ## Advanced: Structured Query Modes (query/ask only)
 

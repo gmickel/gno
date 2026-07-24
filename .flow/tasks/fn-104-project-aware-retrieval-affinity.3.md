@@ -31,9 +31,8 @@ Deliver expose explicit affinity inputs across cli sdk rest and mcp as one imple
 
 
 ## Done summary
-TBD
-
+Implemented one shared project-affinity surface boundary and wired trusted CLI roots plus opaque SDK/REST/MCP hints through search, vsearch, query/diagnose, Ask, and Context Capsule retrieval. Added bounded normalization/privacy/parity coverage at real CLI, SDK, REST, and MCP seams; centralized SDK validation-error translation; exported the public SDK hint/search option types; and updated CLI/MCP interface contracts without changing output schema versions.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 97426c9
+- Tests: baseline: green (bun test test/core/project-affinity* test/pipeline/project-affinity*: 16 pass, 0 fail), bun run typecheck, bun test test/project-affinity/parity.test.ts test/core/project-affinity.test.ts test/pipeline/project-affinity.test.ts test/cli/search-smoke.test.ts test/cli/query-smoke.test.ts test/cli/ask-smoke.test.ts test/cli/context-capsule.test.ts test/mcp/tools/search.test.ts test/mcp/tools/query.test.ts test/mcp/tools/ask.test.ts test/mcp/context-transport.test.ts test/serve/routes/query.test.ts test/serve/routes/retrieval-context.test.ts test/sdk/client.test.ts (160 pass, 0 fail), post-review: bun test test/project-affinity/parity.test.ts test/sdk/client.test.ts test/serve/routes/query.test.ts test/mcp/tools/search.test.ts test/pipeline/verified-ask-build.test.ts (85 pass, 0 fail), fresh independent rereview: SHIP, bun test (2893 pass, 1 Windows-only skip, 0 fail across 360 files), bun run lint:check, .flow/bin/flowctl validate --spec fn-104-project-aware-retrieval-affinity --json, git diff --check
 - PRs:

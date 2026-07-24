@@ -26,6 +26,7 @@ import {
   normalizeContentTypes,
 } from "../../config";
 import { resolveDepthPolicy } from "../../core/depth-policy";
+import { resolveRemoteProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
   retrievalTraceFilters,
@@ -49,6 +50,7 @@ import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
 interface QueryInput {
   query: string;
+  projectHints?: string[];
   collection?: string;
   limit?: number;
   minScore?: number;
@@ -227,6 +229,10 @@ export function handleQuery(
         hasStructuredModes,
       });
       const { noExpand, noRerank } = depthPolicy;
+      const projectAffinity = await resolveRemoteProjectAffinity(
+        ctx.config,
+        args.projectHints
+      );
       const expandUri =
         !noExpand && !hasStructuredModes
           ? resolveModelUri(ctx.config, "expand", undefined, args.collection)
@@ -253,6 +259,7 @@ export function handleQuery(
         queryModes,
         tagsAll: normalizeTagFilters(args.tagsAll),
         tagsAny: normalizeTagFilters(args.tagsAny),
+        projectAffinity,
       };
 
       try {
@@ -440,6 +447,10 @@ export function handleQueryDiagnose(
           hasStructuredModes,
         });
         const { noExpand, noRerank } = depthPolicy;
+        const projectAffinity = await resolveRemoteProjectAffinity(
+          ctx.config,
+          args.projectHints
+        );
 
         if (!args.fast) {
           const embedResult = await llm.createEmbeddingPort(embedUri, {
@@ -524,6 +535,7 @@ export function handleQueryDiagnose(
           queryModes,
           tagsAll: normalizeTagFilters(args.tagsAll),
           tagsAny: normalizeTagFilters(args.tagsAny),
+          projectAffinity,
           contentTypeRules,
           contentTypeRulesFingerprint:
             fingerprintContentTypeRules(contentTypeRules),

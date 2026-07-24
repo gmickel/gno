@@ -1,6 +1,7 @@
 /** Context Capsule build command over the shared application runtime. */
 
 import type { ContextCapsuleBuildInput } from "../../app/context-runtime";
+import type { CliProjectAffinityRequest } from "../../core/project-affinity-surface";
 import type { RetrievalTraceSession } from "../../core/retrieval-trace-session";
 import type { EmbeddingPort, RerankPort } from "../../llm/types";
 import type { VectorIndexPort } from "../../store/vector";
@@ -11,6 +12,7 @@ import {
   canonicalBuiltContextCapsuleJson,
   validateContextCapsuleBuildInput,
 } from "../../app/context-runtime";
+import { resolveCliProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
   startRetrievalTraceRequest,
@@ -27,10 +29,8 @@ import {
 } from "../progress";
 import { initStore } from "./shared";
 
-export interface ContextBuildCommandOptions extends Omit<
-  ContextCapsuleBuildInput,
-  "goal"
-> {
+export interface ContextBuildCommandOptions
+  extends Omit<ContextCapsuleBuildInput, "goal">, CliProjectAffinityRequest {
   configPath?: string;
   format: "json" | "md";
 }
@@ -64,8 +64,12 @@ export const contextBuild = async (
   goal: string,
   options: ContextBuildCommandOptions
 ): Promise<string> => {
+  const { projectAffinityDisabled, projectRoots, ...contextOptions } = options;
   try {
-    validateContextCapsuleBuildInput({ goal, ...options }, options.indexName);
+    validateContextCapsuleBuildInput(
+      { goal, ...contextOptions },
+      options.indexName
+    );
   } catch (error) {
     throw contextCliError(error);
   }
@@ -84,8 +88,13 @@ export const contextBuild = async (
   let vectorIndex: VectorIndexPort | null = null;
   let traceSession: RetrievalTraceSession | undefined;
   try {
+    const projectAffinity = await resolveCliProjectAffinity(config, {
+      cwd: process.cwd(),
+      disabled: projectAffinityDisabled,
+      projectRoots,
+    });
     validateContextCapsuleBuildInput(
-      { goal, ...options },
+      { goal, ...contextOptions },
       options.indexName,
       config.collections.map((collection) => collection.name)
     );
@@ -163,7 +172,7 @@ export const contextBuild = async (
       if (showProgress && progress) process.stderr.write("\n");
     }
     const capsule = await buildContextCapsule(
-      { goal, ...options },
+      { goal, ...contextOptions },
       {
         store,
         config,
@@ -171,6 +180,7 @@ export const contextBuild = async (
         vectorIndex,
         embedPort,
         rerankPort,
+        projectAffinity,
         traceSession,
       }
     );

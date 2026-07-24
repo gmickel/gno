@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "fixtureVersion": "2026-07-24.1",
+  "method": "controlled-vector-distance",
+  "cases": [
+    {
+      "caseId": "pa-t456ef70",
+      "taskId": "t456ef70",
+      "query": "invoice identifier",
+      "targetCollection": "c015",
+      "distractorCollection": "c115",
+      "targetDistance": 0.24,
+      "distractorDistance": 0.2,
+      "limit": 2
+    },
+    {
+      "caseId": "pa-t567f081",
+      "taskId": "t567f081",
+      "query": "initiative owner",
+      "targetCollection": "c016",
+      "distractorCollection": "c116",
+      "targetDistance": 0.24,
+      "distractorDistance": 0.2,
+      "limit": 2
+    }
+  ]
+}

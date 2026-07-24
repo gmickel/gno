@@ -96,6 +96,7 @@ export const buildContextCapsule = async (
           {
             ...request,
             noRerank: requestNoRerank,
+            projectAffinity: deps.projectAffinity,
             traceSession: deps.traceSession,
           }
         );

@@ -5,6 +5,7 @@
  * @module src/cli/commands/vsearch
  */
 
+import type { CliProjectAffinityRequest } from "../../core/project-affinity-surface";
 import type {
   RetrievalTraceSession,
   RetrievalTraceSurfaceMetadata,
@@ -12,6 +13,7 @@ import type {
 import type { EmbeddingPort } from "../../llm/types";
 import type { SearchOptions, SearchResults } from "../../pipeline/types";
 
+import { resolveCliProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
   retrievalTraceFilters,
@@ -35,26 +37,27 @@ import { decorateSearchResultsForIndex, initStore } from "./shared";
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type VsearchCommandOptions = SearchOptions & {
-  /** Override config path */
-  configPath?: string;
-  /** Index name */
-  indexName?: string;
-  /** Override model URI */
-  model?: string;
-  /** Output as JSON */
-  json?: boolean;
-  /** Output as Markdown */
-  md?: boolean;
-  /** Output as CSV */
-  csv?: boolean;
-  /** Output as XML */
-  xml?: boolean;
-  /** Output files only */
-  files?: boolean;
-  /** Terminal hyperlink policy */
-  terminalLinks?: FormatOptions["terminalLinks"];
-};
+export type VsearchCommandOptions = Omit<SearchOptions, "projectAffinity"> &
+  CliProjectAffinityRequest & {
+    /** Override config path */
+    configPath?: string;
+    /** Index name */
+    indexName?: string;
+    /** Override model URI */
+    model?: string;
+    /** Output as JSON */
+    json?: boolean;
+    /** Output as Markdown */
+    md?: boolean;
+    /** Output as CSV */
+    csv?: boolean;
+    /** Output as XML */
+    xml?: boolean;
+    /** Output files only */
+    files?: boolean;
+    /** Terminal hyperlink policy */
+    terminalLinks?: FormatOptions["terminalLinks"];
+  };
 
 export type VsearchResult =
   | {
@@ -96,6 +99,12 @@ export async function vsearch(
   let traceSession: RetrievalTraceSession | undefined;
 
   try {
+    const { projectAffinityDisabled, projectRoots, ...searchOptions } = options;
+    const projectAffinity = await resolveCliProjectAffinity(config, {
+      cwd: process.cwd(),
+      disabled: projectAffinityDisabled,
+      projectRoots,
+    });
     // Get model URI from preset
     const modelUri = resolveModelUri(
       config,
@@ -107,7 +116,7 @@ export async function vsearch(
       store,
       config,
       query,
-      filters: retrievalTraceFilters({ ...options, limit }),
+      filters: retrievalTraceFilters({ ...searchOptions, limit }),
       pipeline: "vector",
       indexName: options.indexName,
       modelUris: [modelUri],
@@ -152,7 +161,7 @@ export async function vsearch(
       deps,
       query,
       queryEmbedding,
-      { ...options, limit, traceSession }
+      { ...searchOptions, limit, projectAffinity, traceSession }
     );
     if (!result.ok) {
       await traceSession?.finish("failed");

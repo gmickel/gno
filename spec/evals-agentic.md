@@ -22,6 +22,10 @@ evals/agentic/
   fixture-db.ts
   scoring.ts
   promotion.ts
+  project-affinity-contract.ts
+  project-affinity-outcome.ts
+  project-affinity-promotion.ts
+  project-affinity-runtime.ts
   verified-ask-outcome.ts
   verified-ask-promotion.ts
   demos/context-capsule.ts
@@ -67,6 +71,37 @@ evals/fixtures/agentic-retrieval/
     context-capsule.json
     context-capsule.md
 ```
+
+## Separate project-affinity promotion
+
+`project-affinity-cases.json` defines two controlled vector-distance pairs over
+the existing `t456ef70` (`c015`/`c115`) and `t567f081`
+(`c016`/`c116`) task/corpus/oracle identities. The separate closed
+`project-affinity-promotion@1.0` artifact hash-binds those manifest identities;
+it does not add tasks to the authoritative 24-task, 144-receipt matrix or
+change `BenchmarkReport@1`.
+
+The target collection starts `0.02` behind, then receives one trusted local
+`+0.03` contribution. Promotion requires correct top-1 to strictly improve to
+`2/2`, exact required evidence to remain retained, zero URI-rank/required
+evidence-coverage loss across all 24 hard-collection tasks, and zero loss for
+`t012ab3c`, `t123bc4d`, `te8f901a`, and `tf901a2b`. It also gates hard-filter
+isolation, absent/disabled/unavailable/untrusted exact zero lanes, shared
+auxiliary cap receipts, and structural store-call/candidate bounds. Structural
+receipts record the complete closed StorePort method map, reject unexpected
+methods, enforce per-method maxima, require candidate requests and returns to
+stay within `3×` the output limit, and require returned candidates not to exceed
+requested candidates. Latency is not a gate.
+
+The committed artifacts are
+`baseline/fixture-agent/project-affinity-promotion.json` and `.md`. They contain
+only GNO evidence URIs, hashes, scores, raw filter/regression/zero/auxiliary/
+structural receipts, implementation provenance, and redacted aliases—never
+temporary roots, raw project hints, or absolute paths. An independent validator
+rebinds fixture identities, recomputes summaries/gates/fingerprint from those
+receipts, and compares the committed artifact with a fresh deterministic
+production run. The controlled synthetic lane isolates the score seam and makes
+no general workload superiority claim.
 
 The first fixture version contains 24 original synthetic tasks and 34 Markdown
 documents under the MIT license. It covers exact identifiers, ambiguity,

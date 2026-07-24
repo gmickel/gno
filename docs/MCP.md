@@ -12,6 +12,17 @@ Use GNO as a local MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Ra
 
 ![GNO MCP in Claude Desktop](../assets/screenshots/mcp.jpg)
 
+## Project hints and trust
+
+Retrieval tools accept optional `projectHints` arrays with at most 16 strings.
+Hints are opaque, untrusted caller metadata: MCP does not interpret them as
+paths, probe the filesystem, reflect them in results, or apply a project
+affinity boost. This deliberate zero-affinity behavior differs from trusted
+local CLI cwd/`--project-root` resolution. Omit the field for byte-compatible
+existing behavior. MCP diagnose therefore preserves the closed
+`query-diagnose@1.0` payload and omits `affinity`; only trusted local CLI
+diagnose can emit the closed, redacted `query-diagnose@1.1` affinity metadata.
+
 ## Overview
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and
@@ -1093,7 +1104,9 @@ tagsAll: ["crm"]
 
 Use this when an expected document is missing from `gno_query` results or when
 you need evidence before changing filters, query modes, graph expansion, or
-reranking. The structured response matches `query-diagnose.schema.json` and
+reranking. The structured response matches the legacy
+`query-diagnose@1.0` branch of `query-diagnose.schema.json`, omits `affinity`,
+and
 reports target status (`not_found`, `inactive`, `no_indexed_content`,
 `filtered_out`, or `diagnosed`), typed metadata, graph hints, chunk/line choice,
 and BM25/vector/fusion/graph/rerank stage survival.

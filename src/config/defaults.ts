@@ -4,7 +4,12 @@
  * @module src/config/defaults
  */
 
-import { CONFIG_VERSION, type Config, DEFAULT_FTS_TOKENIZER } from "./types";
+import {
+  CONFIG_VERSION,
+  type Config,
+  DEFAULT_FTS_TOKENIZER,
+  PROJECT_AFFINITY_MAX_CONTRIBUTION,
+} from "./types";
 
 /**
  * Create a default config object.
@@ -17,5 +22,9 @@ export function createDefaultConfig(): Config {
     collections: [],
     contexts: [],
     contentTypes: [],
+    projectAffinity: {
+      enabled: true,
+      contribution: PROJECT_AFFINITY_MAX_CONTRIBUTION,
+    },
   };
 }

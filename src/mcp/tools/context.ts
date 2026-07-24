@@ -25,6 +25,11 @@ import {
   parseContextVerifySurfaceInput,
 } from "../../app/context-surface";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
+import { ContextCapsuleContractError } from "../../core/context-capsule";
+import {
+  ProjectAffinityInputError,
+  resolveRemoteProjectAffinity,
+} from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
   startRetrievalTraceRequest,
@@ -224,6 +229,18 @@ export const handleContext = (
       null;
     let traceSession: RetrievalTraceSession | undefined;
     try {
+      let projectAffinity;
+      try {
+        projectAffinity = await resolveRemoteProjectAffinity(
+          context.config,
+          parsed.projectHints
+        );
+      } catch (error) {
+        if (error instanceof ProjectAffinityInputError) {
+          throw new ContextCapsuleContractError("invalid_input", error.message);
+        }
+        throw error;
+      }
       const traceStart = await startRetrievalTraceRequest({
         store: context.store,
         config: context.config,
@@ -261,6 +278,7 @@ export const handleContext = (
         vectorIndex: modelPorts?.vectorIndex ?? null,
         embedPort: modelPorts?.embedPort ?? null,
         rerankPort: modelPorts?.rerankPort ?? null,
+        projectAffinity,
         traceSession,
       });
       const finalized = await traceSession?.finish("completed");

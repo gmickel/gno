@@ -51,6 +51,7 @@ async function loadAllSchemas(): Promise<void> {
     "changes",
     "document-diff",
     "impact",
+    "query-diagnose-v1",
     "query-diagnose",
     "retrieval-trace-filters",
     "retrieval-trace-payloads",

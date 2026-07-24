@@ -122,13 +122,37 @@ describe("diagnoseQueryTarget", () => {
           graphHints: ["works_at"],
         },
       ],
+      projectAffinity: {
+        resolution: {
+          matches: [
+            {
+              collection: "notes",
+              collectionAlias: "collection_000000000000",
+              distance: 0,
+              relation: "exact",
+              rootAlias: "root_000000000000",
+              source: "cli_cwd",
+            },
+          ],
+          roots: [],
+        },
+      },
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
+    expect(result.value.schemaVersion).toBe("1.1");
     expect(result.value.target.status).toBe("diagnosed");
     expect(result.value.target.graphHints).toEqual(["works_at"]);
     expect(result.value.meta.mode).toBe("bm25_only");
+    expect(result.value.affinity).toMatchObject({
+      affinityRequested: 0.03,
+      collectionAlias: "collection_000000000000",
+      combinedAuxiliaryCap: 0.08,
+      matched: true,
+      rootAlias: "root_000000000000",
+      source: "cli_cwd",
+    });
     expect(
       result.value.stages.find((stage) => stage.id === "vector")
     ).toMatchObject({
@@ -142,6 +166,68 @@ describe("diagnoseQueryTarget", () => {
       sourceCount: 1,
       present: true,
     });
+  });
+
+  test("preserves exact v1.0 bytes for absent, disabled, and untrusted affinity", async () => {
+    const target = await setupDocument("v1.md", "legacy diagnose bytes", [
+      {
+        seq: 0,
+        pos: 0,
+        text: "legacy diagnose bytes",
+        startLine: 1,
+        endLine: 1,
+        language: "en",
+      },
+    ]);
+    const baseOptions = {
+      target: target.uri,
+      noExpand: true,
+      noRerank: true,
+    };
+    const absent = await diagnoseQueryTarget(
+      deps(),
+      "legacy diagnose bytes",
+      baseOptions
+    );
+    const disabled = await diagnoseQueryTarget(
+      deps(),
+      "legacy diagnose bytes",
+      {
+        ...baseOptions,
+        projectAffinity: {
+          enabled: false,
+          resolution: { matches: [], roots: [] },
+        },
+      }
+    );
+    const untrusted = await diagnoseQueryTarget(
+      deps(),
+      "legacy diagnose bytes",
+      {
+        ...baseOptions,
+        projectAffinity: {
+          resolution: {
+            matches: [],
+            roots: [
+              {
+                collectionAliases: [],
+                reason: "untrusted_remote_hint",
+                repositoryRootDiscovered: false,
+                rootAlias: "root_000000000000",
+                source: "remote_hint",
+                status: "zero",
+              },
+            ],
+          },
+        },
+      }
+    );
+    expect(absent.ok && absent.value.schemaVersion).toBe("1.0");
+    expect(absent.ok && "affinity" in absent.value).toBeFalse();
+    expect(disabled).toEqual(absent);
+    expect(untrusted).toEqual(absent);
+    expect(JSON.stringify(disabled)).toBe(JSON.stringify(absent));
+    expect(JSON.stringify(untrusted)).toBe(JSON.stringify(absent));
   });
 
   test("reports filtered_out before tracing", async () => {
@@ -168,6 +254,93 @@ describe("diagnoseQueryTarget", () => {
     expect(result.value.target.status).toBe("filtered_out");
     expect(result.value.target.filterReasons).toContain("collection");
     expect(result.value.stages).toEqual([]);
+  });
+
+  test("uses canonical URI when same-docid collection copies have different affinity", async () => {
+    await adapter.syncCollections([
+      {
+        name: "notes",
+        path: testDir,
+        pattern: "**/*.md",
+        include: [],
+        exclude: [],
+      },
+      {
+        name: "archive",
+        path: join(testDir, "archive"),
+        pattern: "**/*.md",
+        include: [],
+        exclude: [],
+      },
+    ]);
+    const sourceHash = `deadbeef${"0".repeat(56)}`;
+    const mirrorHash = "shared-diagnose-mirror";
+    for (const [collection, relPath] of [
+      ["notes", "shared.md"],
+      ["archive", "shared-copy.md"],
+    ] as const) {
+      const upsert = await adapter.upsertDocument({
+        collection,
+        relPath,
+        sourceHash,
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 15,
+        sourceMtime: "2026-01-01T00:00:00.000Z",
+        mirrorHash,
+        title: relPath,
+      });
+      expect(upsert.ok).toBe(true);
+    }
+    await adapter.upsertContent(mirrorHash, "shared evidence");
+    await adapter.upsertChunks(mirrorHash, [
+      {
+        seq: 0,
+        pos: 0,
+        text: "shared evidence",
+        startLine: 1,
+        endLine: 1,
+        language: "en",
+      },
+    ]);
+    await adapter.rebuildFtsForHash(mirrorHash);
+    const archive = await adapter.getDocument("archive", "shared-copy.md");
+    expect(archive.ok && archive.value).toBeTruthy();
+    if (!archive.ok || !archive.value) return;
+
+    const result = await diagnoseQueryTarget(deps(), "shared evidence", {
+      target: archive.value.uri,
+      noExpand: true,
+      noRerank: true,
+      projectAffinity: {
+        resolution: {
+          matches: [
+            {
+              collection: "notes",
+              collectionAlias: "collection_000000000000",
+              distance: 0,
+              relation: "exact",
+              rootAlias: "root_000000000000",
+              source: "cli_cwd",
+            },
+          ],
+          roots: [],
+        },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.target.uri).toBe("gno://archive/shared-copy.md");
+    expect(result.value.schemaVersion).toBe("1.1");
+    expect(result.value.affinity).toMatchObject({
+      affinityApplied: 0,
+      affinityRequested: 0,
+      collectionAlias: null,
+      matched: false,
+      rootAlias: null,
+      source: null,
+    });
   });
 
   test("reports non-diagnosed target states", async () => {

@@ -7,11 +7,12 @@ satisfies: [R1, R3, R5, R6]
 Deliver integrate profiles with setup affinity docs and portability proof as one implementation-sized increment.
 
 **Size:** M
-**Files:** `src/core/folder-setup.ts`, `src/core/project-affinity.ts`, `docs/guides/project-profiles.md`, `docs/QUICKSTART.md`, `assets/skill/SKILL.md`, `/Users/gordon/work/gno.sh/src/lib/gno-docs.tsx`
+**Files:** `src/core/folder-setup.ts`, `src/core/project-affinity.ts`, `src/core/project-affinity-surface.ts`, `docs/guides/project-profiles.md`, `docs/QUICKSTART.md`, `assets/skill/SKILL.md`, `/Users/gordon/work/gno.sh/src/lib/gno-docs.tsx`
 
 ### Approach
 - Let `gno setup` discover/show an optional profile before its own safe apply; no profile remains a first-class path.
-- Feed compiled affinity defaults into fn-104 with explicit caller overrides and one precedence: caller override, nearest chosen profile, user config default.
+- Feed compiled affinity defaults through fn-104's `src/core/project-affinity-surface.ts` trust boundary with one precedence: explicit CLI roots or remote `projectHints`, nearest chosen profile, user config default.
+<!-- Updated by plan-sync (cross-spec): fn-104-project-aware-retrieval-affinity.3 introduced src/core/project-affinity-surface.ts for caller-supplied roots/hints -->
 - Run second-clean-machine portability, worktree/monorepo, no-runtime-state, docs/skill/hosted, and package gates.
 
 ### Investigation targets
@@ -27,6 +28,7 @@ Deliver integrate profiles with setup affinity docs and portability proof as one
 **Planned dependency outputs** (expected by execution; not plan-time investigation sources):
 - `src/core/folder-setup.ts`
 - `src/core/project-affinity.ts`
+- `src/core/project-affinity-surface.ts`
 
 ### Key context
 - Profile values do not override explicit caller inputs; source metadata/content types never become project identity.

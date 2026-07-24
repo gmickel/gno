@@ -5,6 +5,7 @@
  * @module src/cli/commands/query
  */
 
+import type { CliProjectAffinityRequest } from "../../core/project-affinity-surface";
 import type { RetrievalTraceSurfaceMetadata } from "../../core/retrieval-trace-session";
 import type { RetrievalTraceSession } from "../../core/retrieval-trace-session";
 import type {
@@ -18,6 +19,7 @@ import {
   fingerprintContentTypeRules,
   normalizeContentTypes,
 } from "../../config";
+import { resolveCliProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
   retrievalTraceFilters,
@@ -46,30 +48,31 @@ import { decorateSearchResultsForIndex, initStore } from "./shared";
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type QueryCommandOptions = HybridSearchOptions & {
-  /** Override config path */
-  configPath?: string;
-  /** Index name */
-  indexName?: string;
-  /** Override embedding model */
-  embedModel?: string;
-  /** Override expansion model */
-  expandModel?: string;
-  /** Deprecated alias for expansion model */
-  genModel?: string;
-  /** Override rerank model */
-  rerankModel?: string;
-  /** Output as JSON */
-  json?: boolean;
-  /** Output as Markdown */
-  md?: boolean;
-  /** Output as CSV */
-  csv?: boolean;
-  /** Output as XML */
-  xml?: boolean;
-  /** Output files only */
-  files?: boolean;
-};
+export type QueryCommandOptions = Omit<HybridSearchOptions, "projectAffinity"> &
+  CliProjectAffinityRequest & {
+    /** Override config path */
+    configPath?: string;
+    /** Index name */
+    indexName?: string;
+    /** Override embedding model */
+    embedModel?: string;
+    /** Override expansion model */
+    expandModel?: string;
+    /** Deprecated alias for expansion model */
+    genModel?: string;
+    /** Override rerank model */
+    rerankModel?: string;
+    /** Output as JSON */
+    json?: boolean;
+    /** Output as Markdown */
+    md?: boolean;
+    /** Output as CSV */
+    csv?: boolean;
+    /** Output as XML */
+    xml?: boolean;
+    /** Output files only */
+    files?: boolean;
+  };
 
 export interface QueryFormatOptions {
   format: "terminal" | "json" | "files" | "csv" | "md" | "xml";
@@ -86,16 +89,20 @@ export type QueryResult =
     }
   | { success: false; error: string };
 
-export type QueryDiagnoseCommandOptions = HybridSearchOptions & {
-  target: string;
-  configPath?: string;
-  indexName?: string;
-  embedModel?: string;
-  expandModel?: string;
-  genModel?: string;
-  rerankModel?: string;
-  json?: boolean;
-};
+export type QueryDiagnoseCommandOptions = Omit<
+  HybridSearchOptions,
+  "projectAffinity"
+> &
+  CliProjectAffinityRequest & {
+    target: string;
+    configPath?: string;
+    indexName?: string;
+    embedModel?: string;
+    expandModel?: string;
+    genModel?: string;
+    rerankModel?: string;
+    json?: boolean;
+  };
 
 export interface QueryDiagnoseFormatOptions {
   format: "terminal" | "json";
@@ -140,6 +147,12 @@ export async function query(
   let traceSession: RetrievalTraceSession | undefined;
 
   try {
+    const { projectAffinityDisabled, projectRoots, ...queryOptions } = options;
+    const projectAffinity = await resolveCliProjectAffinity(config, {
+      cwd: process.cwd(),
+      disabled: projectAffinityDisabled,
+      projectRoots,
+    });
     const embedUri = resolveModelUri(
       config,
       "embed",
@@ -167,7 +180,7 @@ export async function query(
       store,
       config,
       query: queryText,
-      filters: retrievalTraceFilters({ ...options, limit }),
+      filters: retrievalTraceFilters({ ...queryOptions, limit }),
       pipeline: "hybrid",
       indexName: options.indexName,
       modelUris: [embedUri, expandUri, rerankUri].filter(
@@ -261,8 +274,9 @@ export async function query(
       rerankPort,
     };
     const result = await searchHybrid(deps, queryText, {
-      ...options,
+      ...queryOptions,
       limit,
+      projectAffinity,
       traceSession,
     });
 
@@ -318,6 +332,12 @@ export async function queryDiagnose(
   let rerankPort: RerankPort | null = null;
 
   try {
+    const { projectAffinityDisabled, projectRoots, ...queryOptions } = options;
+    const projectAffinity = await resolveCliProjectAffinity(config, {
+      cwd: process.cwd(),
+      disabled: projectAffinityDisabled,
+      projectRoots,
+    });
     const globals = getGlobals();
     const policy = resolveDownloadPolicy(process.env, {
       offline: globals.offline,
@@ -415,7 +435,8 @@ export async function queryDiagnose(
       rerankPort,
     };
     const result = await diagnoseQueryTarget(deps, queryText, {
-      ...options,
+      ...queryOptions,
+      projectAffinity,
       contentTypeRules,
       contentTypeRulesFingerprint:
         fingerprintContentTypeRules(contentTypeRules),

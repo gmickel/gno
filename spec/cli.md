@@ -749,22 +749,24 @@ gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <da
 
 **Options:**
 
-| Option             | Type    | Default                   | Description                                                                                   |
-| ------------------ | ------- | ------------------------- | --------------------------------------------------------------------------------------------- |
-| `-n`               | integer | 5 (20 for --json/--files) | Max results                                                                                   |
-| `--min-score`      | number  | 0                         | Minimum score threshold                                                                       |
-| `-c, --collection` | string  | all                       | Filter to collection                                                                          |
-| `--since`          | string  | none                      | Modified-at lower bound (ISO date/time or relative token)                                     |
-| `--until`          | string  | none                      | Modified-at upper bound (ISO date/time or relative token)                                     |
-| `--category`       | string  | none                      | Filter to docs with matching category/content type (comma-separated)                          |
-| `--author`         | string  | none                      | Filter to docs where author contains value (case-insensitive)                                 |
-| `--intent`         | string  | none                      | Disambiguating context for ambiguous queries; steers snippets without being searched directly |
-| `--exclude`        | string  | none                      | Hard-prune docs containing any comma-separated term in title/path/body                        |
-| `--tags-all`       | string  | none                      | Filter to docs with ALL tags (comma-separated)                                                |
-| `--tags-any`       | string  | none                      | Filter to docs with ANY tag (comma-separated)                                                 |
-| `--full`           | boolean | false                     | Include full mirror content instead of snippet                                                |
-| `--line-numbers`   | boolean | false                     | Include line numbers in output                                                                |
-| `--lang`           | string  | auto                      | Language filter/hint (BCP-47)                                                                 |
+| Option                  | Type     | Default                   | Description                                                                                   |
+| ----------------------- | -------- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| `-n`                    | integer  | 5 (20 for --json/--files) | Max results                                                                                   |
+| `--min-score`           | number   | 0                         | Minimum score threshold                                                                       |
+| `-c, --collection`      | string   | all                       | Filter to collection                                                                          |
+| `--since`               | string   | none                      | Modified-at lower bound (ISO date/time or relative token)                                     |
+| `--until`               | string   | none                      | Modified-at upper bound (ISO date/time or relative token)                                     |
+| `--category`            | string   | none                      | Filter to docs with matching category/content type (comma-separated)                          |
+| `--author`              | string   | none                      | Filter to docs where author contains value (case-insensitive)                                 |
+| `--intent`              | string   | none                      | Disambiguating context for ambiguous queries; steers snippets without being searched directly |
+| `--exclude`             | string   | none                      | Hard-prune docs containing any comma-separated term in title/path/body                        |
+| `--tags-all`            | string   | none                      | Filter to docs with ALL tags (comma-separated)                                                |
+| `--tags-any`            | string   | none                      | Filter to docs with ANY tag (comma-separated)                                                 |
+| `--project-root`        | string[] | cwd                       | Trusted project root; repeatable, replaces default cwd/repository affinity                    |
+| `--no-project-affinity` | boolean  | false                     | Disable project-aware soft ranking; invalid with `--project-root`                             |
+| `--full`                | boolean  | false                     | Include full mirror content instead of snippet                                                |
+| `--line-numbers`        | boolean  | false                     | Include line numbers in output                                                                |
+| `--lang`                | string   | auto                      | Language filter/hint (BCP-47)                                                                 |
 
 **Scoring:**
 
@@ -824,7 +826,8 @@ Vector semantic search over indexed documents.
 gno vsearch <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
 ```
 
-**Options:** Same as `gno search` (including temporal/category/author and tag filters)
+**Options:** Same as `gno search` (including temporal/category/author, tag, and
+project-affinity controls).
 
 **Scoring:**
 
@@ -870,6 +873,9 @@ gno query diagnose <query> --target <doc> [-n <num>] [--min-score <num>] [-c <co
 | `--explain` | boolean | Print retrieval explanation to stderr |
 | `--target` | ref | Required for `query diagnose`; target document to diagnose |
 
+`query diagnose` accepts the same `--project-root` and
+`--no-project-affinity` controls as `query`.
+
 **Compatibility / Migration:**
 
 - Legacy query invocations remain valid (`gno query "<text>"`, `--fast`, `--thorough`, `--no-expand`, `--no-rerank`).
@@ -882,8 +888,12 @@ gno query diagnose <query> --target <doc> [-n <num>] [--min-score <num>] [-c <co
 **Diagnose Output:**
 
 `gno query diagnose` wraps the shared `diagnoseQueryTarget()` core and emits
-`query-diagnose.schema.json` for `--json`. The payload requires
-`schemaVersion: "1.0"`, resolves the target first, reports `target.status`
+`query-diagnose.schema.json` for `--json`. No trusted affinity input preserves
+the exact closed `schemaVersion: "1.0"` payload and omits `affinity`; the legacy
+contract remains in `query-diagnose-v1.schema.json`. A resolved trusted CLI cwd
+or explicit project root emits `schemaVersion: "1.1"` and requires closed,
+redacted `affinity` metadata, including unmatched state. The payload resolves
+the target first, reports `target.status`
 (`not_found|inactive|no_indexed_content|filtered_out|diagnosed`), and only runs
 stage tracing for `diagnosed` targets. Stages report
 `present`, `rank`, `score`, `survived`, `dropReason`, `status`, and
@@ -992,6 +1002,8 @@ gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [
 | `--no-expand`             | boolean  | false   | Disable query expansion                                                            |
 | `--no-rerank`             | boolean  | false   | Disable cross-encoder reranking                                                    |
 | `--show-sources`          | boolean  | false   | Show all retrieved sources (not just cited)                                        |
+| `--project-root`          | string[] | cwd     | Trusted project root; repeatable, replaces default cwd/repository affinity         |
+| `--no-project-affinity`   | boolean  | false   | Disable project-aware soft ranking; invalid with `--project-root`                  |
 
 **Output (JSON):**
 See [Output Schemas](./output-schemas/ask.schema.json)
@@ -1315,7 +1327,7 @@ written to stderr.
 **Synopsis:**
 
 ```bash
-gno context build "<goal>" --budget <tokens> [--collection <name>] [--fast|--thorough] [--json|--md] [--output <file>]
+gno context build "<goal>" --budget <tokens> [--collection <name>] [--project-root <path>]... [--no-project-affinity] [--fast|--thorough] [--json|--md] [--output <file>]
 ```
 
 `--budget` is the global token ceiling. `--bytes` optionally sets a separate
@@ -1328,6 +1340,10 @@ repeatable. Tag filters are NFC-normalized, lowercased, deduplicated, and
 validated before retrieval. Result and candidate limits are global across
 repeated collections: the merged result pool is capped once, while candidate
 work is distributed deterministically in canonical collection order.
+Project affinity defaults to the trusted process cwd/repository. Repeatable
+`--project-root` values replace that default, are normalized/deduplicated, and
+are capped at 16. `--no-project-affinity` disables the soft signal and cannot
+be combined with explicit roots.
 
 JSON is the canonical V1 payload. Markdown is a readable projection of that
 same payload and hard-delimits each untrusted evidence passage. Passage,

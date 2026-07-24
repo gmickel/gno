@@ -1,0 +1,536 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/evals/agentic/project-affinity-promotion@1.0",
+  "title": "ProjectAffinityPromotionArtifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "benchmarkId",
+    "canonicalFingerprint",
+    "provenance",
+    "fixture",
+    "methodology",
+    "limitations",
+    "targets",
+    "receipts",
+    "regression",
+    "gates"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "benchmarkId": { "const": "project-affinity-promotion@1" },
+    "canonicalFingerprint": { "$ref": "#/definitions/hash" },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "producer",
+        "pipeline",
+        "store",
+        "vectorModel",
+        "implementation"
+      ],
+      "properties": {
+        "producer": { "const": "runProjectAffinityOutcomeBenchmark" },
+        "pipeline": { "const": "searchVectorWithEmbedding" },
+        "store": { "const": "SqliteAdapter" },
+        "vectorModel": {
+          "const": "fixture:project-affinity-vector-v1"
+        },
+        "implementation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fingerprint", "files"],
+          "properties": {
+            "fingerprint": { "$ref": "#/definitions/hash" },
+            "files": {
+              "type": "array",
+              "minItems": 10,
+              "maxItems": 10,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["path", "sha256"],
+                "properties": {
+                  "path": { "type": "string", "minLength": 1 },
+                  "sha256": { "$ref": "#/definitions/hash" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixtureVersion",
+        "fixtureFingerprint",
+        "corpusFingerprint",
+        "bindingFingerprint",
+        "bindings"
+      ],
+      "properties": {
+        "fixtureVersion": { "type": "string", "minLength": 1 },
+        "fixtureFingerprint": { "$ref": "#/definitions/hash" },
+        "corpusFingerprint": { "$ref": "#/definitions/hash" },
+        "bindingFingerprint": { "$ref": "#/definitions/hash" },
+        "bindings": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/definitions/binding" }
+        }
+      }
+    },
+    "methodology": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/definitions/target" }
+    },
+    "receipts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "auxiliary",
+        "zeroLanes",
+        "filter",
+        "regression",
+        "structural"
+      ],
+      "properties": {
+        "auxiliary": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": { "$ref": "#/definitions/auxiliaryReceipt" }
+        },
+        "zeroLanes": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "$ref": "#/definitions/zeroReceipt" }
+        },
+        "filter": { "$ref": "#/definitions/filterReceipt" },
+        "regression": {
+          "type": "array",
+          "minItems": 48,
+          "maxItems": 48,
+          "items": { "$ref": "#/definitions/regressionReceipt" }
+        },
+        "structural": {
+          "type": "array",
+          "minItems": 57,
+          "maxItems": 57,
+          "items": { "$ref": "#/definitions/structuralReceipt" }
+        }
+      }
+    },
+    "regression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskCount",
+        "evidenceAccuracy",
+        "evidenceCoverage",
+        "multilingual"
+      ],
+      "properties": {
+        "taskCount": { "const": 24 },
+        "evidenceAccuracy": { "$ref": "#/definitions/regressionMetric" },
+        "evidenceCoverage": { "$ref": "#/definitions/regressionMetric" },
+        "multilingual": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "taskIds",
+            "taskCount",
+            "disabledCorrect",
+            "enabledCorrect",
+            "loss"
+          ],
+          "properties": {
+            "taskIds": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": { "type": "string", "pattern": "^t[0-9a-f]{7}$" }
+            },
+            "taskCount": { "const": 4 },
+            "disabledCorrect": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "enabledCorrect": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "loss": { "type": "integer", "minimum": 0, "maximum": 4 }
+          }
+        }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "passed",
+        "failures",
+        "targetCorrectTop1",
+        "evidenceAccuracyLoss",
+        "evidenceCoverageLoss",
+        "multilingualLoss",
+        "filterHard",
+        "zeroLanesExact",
+        "auxiliaryReceiptsValid",
+        "structuralCallsBounded"
+      ],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "failures": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "targetCorrectTop1": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["disabled", "enabled", "required"],
+          "properties": {
+            "disabled": { "type": "integer", "minimum": 0, "maximum": 2 },
+            "enabled": { "type": "integer", "minimum": 0, "maximum": 2 },
+            "required": { "const": 2 }
+          }
+        },
+        "evidenceAccuracyLoss": { "type": "number", "minimum": 0 },
+        "evidenceCoverageLoss": { "type": "number", "minimum": 0 },
+        "multilingualLoss": { "type": "number", "minimum": 0 },
+        "filterHard": { "type": "boolean" },
+        "zeroLanesExact": { "type": "boolean" },
+        "auxiliaryReceiptsValid": { "type": "boolean" },
+        "structuralCallsBounded": { "type": "boolean" }
+      }
+    }
+  },
+  "definitions": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sourceHash",
+        "startLine",
+        "endLine",
+        "spanHash",
+        "sourceHashProvenance",
+        "spanHashProvenance"
+      ],
+      "properties": {
+        "uri": { "type": "string", "pattern": "^gno://" },
+        "sourceHash": { "$ref": "#/definitions/hash" },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "spanHash": { "$ref": "#/definitions/hash" },
+        "sourceHashProvenance": {
+          "enum": ["harness_observed", "backend_provided"]
+        },
+        "spanHashProvenance": {
+          "enum": ["harness_observed", "backend_provided"]
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "taskId",
+        "taskSha256",
+        "oracleSha256",
+        "corpus",
+        "requiredEvidence"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "taskId": { "type": "string", "pattern": "^t[0-9a-f]{7}$" },
+        "taskSha256": { "$ref": "#/definitions/hash" },
+        "oracleSha256": { "$ref": "#/definitions/hash" },
+        "corpus": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["collection", "relPath", "sourceHash"],
+            "properties": {
+              "collection": { "type": "string", "minLength": 1 },
+              "relPath": { "type": "string", "minLength": 1 },
+              "sourceHash": { "$ref": "#/definitions/hash" }
+            }
+          }
+        },
+        "requiredEvidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/evidence" }
+        }
+      }
+    },
+    "rankedEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rank",
+        "uri",
+        "score",
+        "baseScore",
+        "matched",
+        "affinityRequested",
+        "affinityApplied",
+        "collectionAlias",
+        "rootAlias"
+      ],
+      "properties": {
+        "rank": { "type": "integer", "minimum": 1 },
+        "uri": { "type": "string", "pattern": "^gno://" },
+        "score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "baseScore": { "type": "number", "minimum": 0, "maximum": 1 },
+        "matched": { "type": "boolean" },
+        "affinityRequested": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.03
+        },
+        "affinityApplied": { "type": "number", "minimum": 0, "maximum": 0.03 },
+        "collectionAlias": {
+          "oneOf": [
+            { "type": "string", "pattern": "^collection_[a-f0-9]{12}$" },
+            { "type": "null" }
+          ]
+        },
+        "rootAlias": {
+          "oneOf": [
+            { "type": "string", "pattern": "^root_[a-f0-9]{12}$" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "taskId",
+        "query",
+        "targetUri",
+        "requiredEvidenceRetained",
+        "disabled",
+        "enabled"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "taskId": { "type": "string", "pattern": "^t[0-9a-f]{7}$" },
+        "query": { "type": "string", "minLength": 1 },
+        "targetUri": { "type": "string", "pattern": "^gno://" },
+        "requiredEvidenceRetained": { "type": "boolean" },
+        "disabled": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/definitions/rankedEntry" }
+        },
+        "enabled": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/definitions/rankedEntry" }
+        }
+      }
+    },
+    "auxiliaryReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "contributions",
+        "requested",
+        "applied",
+        "finalScore"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "contributions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "type": "number", "minimum": -0.08, "maximum": 0.08 }
+        },
+        "requested": { "type": "number", "minimum": -0.13, "maximum": 0.11 },
+        "applied": { "type": "number", "minimum": -0.08, "maximum": 0.08 },
+        "finalScore": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "zeroReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lane", "baselineHash", "candidateHash", "equal"],
+      "properties": {
+        "lane": {
+          "enum": ["absent", "disabled", "unavailable", "untrusted_remote"]
+        },
+        "baselineHash": { "$ref": "#/definitions/hash" },
+        "candidateHash": { "$ref": "#/definitions/hash" },
+        "equal": { "type": "boolean" }
+      }
+    },
+    "filterReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "targetCollection",
+        "distractorCollection",
+        "resultUris",
+        "requiredEvidenceRetained"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "targetCollection": { "type": "string", "minLength": 1 },
+        "distractorCollection": { "type": "string", "minLength": 1 },
+        "resultUris": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^gno://" }
+        },
+        "requiredEvidenceRetained": { "type": "boolean" }
+      }
+    },
+    "regressionReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskId",
+        "lane",
+        "resultUris",
+        "requiredEvidenceCount",
+        "requiredEvidenceRetained"
+      ],
+      "properties": {
+        "taskId": { "type": "string", "pattern": "^t[0-9a-f]{7}$" },
+        "lane": { "enum": ["disabled", "enabled"] },
+        "resultUris": {
+          "type": "array",
+          "maxItems": 5,
+          "items": { "type": "string", "pattern": "^gno://" }
+        },
+        "requiredEvidenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requiredEvidenceRetained": { "type": "boolean" }
+      }
+    },
+    "structuralReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "calls",
+        "unexpectedCalls",
+        "candidateRequested",
+        "candidateReturned",
+        "outputLimit",
+        "maxCandidateBound",
+        "passed"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "calls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "getDocumentsByMirrorHashes",
+            "getChunksBatch",
+            "getCollections",
+            "getContextGeneration",
+            "getContexts",
+            "getTagsBatch",
+            "listDocuments"
+          ],
+          "properties": {
+            "getDocumentsByMirrorHashes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "getChunksBatch": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "getCollections": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "getContextGeneration": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "getContexts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "getTagsBatch": { "const": 0 },
+            "listDocuments": { "const": 0 }
+          }
+        },
+        "unexpectedCalls": {
+          "type": "array",
+          "maxItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["method", "count"],
+            "properties": {
+              "method": { "type": "string", "minLength": 1 },
+              "count": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "candidateRequested": { "type": "integer", "minimum": 0 },
+        "candidateReturned": { "type": "integer", "minimum": 0 },
+        "outputLimit": { "type": "integer", "minimum": 1 },
+        "maxCandidateBound": { "type": "integer", "minimum": 3 },
+        "passed": { "type": "boolean" }
+      }
+    },
+    "regressionMetric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disabled", "enabled", "loss"],
+      "properties": {
+        "disabled": { "type": "integer", "minimum": 0 },
+        "enabled": { "type": "integer", "minimum": 0 },
+        "loss": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

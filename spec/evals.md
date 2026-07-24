@@ -27,6 +27,12 @@ Agent-level evidence sufficiency, exact citation coverage, stopping behavior,
 and Context Capsule promotion use the separate deterministic
 [Agentic Retrieval Evaluation Contract](evals-agentic.md).
 
+That contract also owns a separate closed project-affinity promotion artifact.
+It reuses the immutable 24-task fixture identities while leaving the main task
+inventory and report schema unchanged. The gate records measured top-1,
+evidence, multilingual, hard-filter, zero-lane, score-cap, and structural-call
+outcomes; it does not use a wall-clock threshold.
+
 ## Dependencies
 
 ```json

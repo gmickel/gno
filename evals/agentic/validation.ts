@@ -2,6 +2,7 @@ import Ajv, { type ErrorObject, type ValidateFunction } from "ajv";
 import addFormats from "ajv-formats";
 
 import type { ContextCapsuleDemoArtifact } from "./demos/context-capsule-types";
+import type { ProjectAffinityPromotionArtifact } from "./project-affinity-promotion";
 import type {
   AgentTask,
   BenchmarkReport,
@@ -19,6 +20,7 @@ import benchmarkReportSchema from "./schemas/benchmark-report.schema.json";
 import contextCapsuleDemoSchema from "./schemas/context-capsule-demo.schema.json";
 import finalEnvelopeSchema from "./schemas/final-envelope.schema.json";
 import hiddenOracleSchema from "./schemas/hidden-oracle.schema.json";
+import projectAffinityPromotionSchema from "./schemas/project-affinity-promotion.schema.json";
 import trajectoryReceiptSchema from "./schemas/trajectory-receipt.schema.json";
 
 export interface AgenticSchemaTypes {
@@ -27,6 +29,7 @@ export interface AgenticSchemaTypes {
   "context-capsule-demo": ContextCapsuleDemoArtifact;
   "final-envelope": FinalEnvelope;
   "hidden-oracle": HiddenOracle;
+  "project-affinity-promotion": ProjectAffinityPromotionArtifact;
   "trajectory-receipt": TrajectoryReceipt;
 }
 
@@ -36,6 +39,7 @@ const schemas = {
   "context-capsule-demo": contextCapsuleDemoSchema,
   "final-envelope": finalEnvelopeSchema,
   "hidden-oracle": hiddenOracleSchema,
+  "project-affinity-promotion": projectAffinityPromotionSchema,
   "trajectory-receipt": trajectoryReceiptSchema,
 } as const;
 

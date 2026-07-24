@@ -218,6 +218,10 @@ Optional fields are `collection`, `limit` (default 5), `minScore`, `lang`,
 `since`, `until`, `categories`, `author`, `graph`, `noGraph`, `noRerank`,
 `maxAnswerTokens`, `contextBudgetTokens`, and `contextBudgetBytes`. Input
 objects are closed.
+`projectHints` is an optional array of at most 16 non-empty caller hints. Hints
+are normalized and deduplicated as opaque values, never resolved against or
+reflected from the MCP server filesystem, and therefore have zero ranking
+effect on the remote channel.
 
 `structuredContent` uses the
 [`ask`](./output-schemas/ask.schema.json) contract. Its `verification` object
@@ -273,6 +277,9 @@ validated before retrieval. `limit` and `candidateLimit` are global across all
 requested collections: result admission is capped after merging, and
 rerank/graph candidate work is distributed deterministically in canonical
 collection order.
+`projectHints` is also accepted as an optional array of at most 16 opaque
+caller hints. It follows the same remote zero-affinity, non-probing, and
+non-reflection contract as all MCP retrieval tools.
 
 `structuredContent` is the complete canonical Context Capsule object for
 application clients. Model-visible text is always one deterministic
@@ -337,6 +344,13 @@ evidence reads. `structuredContent` is the canonical verification receipt.
 ### gno_search
 
 BM25 keyword search over indexed documents.
+
+All retrieval input schemas (`gno_search`, `gno_vsearch`, `gno_query`, and
+`gno_query_diagnose`) additionally accept optional `projectHints: string[]`
+(maximum 16). Values are trimmed, NFC-normalized, deduplicated, and treated as
+opaque remote hints. The server never stats, realpaths, discovers repositories,
+or infers its cwd from them; remote hints produce redacted zero-affinity
+metadata and no ranking change.
 
 **Input Schema:**
 
@@ -745,6 +759,10 @@ Structured content includes `schemaVersion`, normalized `query`, `target`
 metadata/status (`not_found`, `inactive`, `no_indexed_content`,
 `filtered_out`, or `diagnosed`), `stages` for BM25/vector/fusion/graph/rerank,
 the selected target `chunk`, and retrieval `meta`.
+MCP inputs are remote and untrusted, so this tool preserves exact v1.0 bytes
+and omits `affinity`, even when `projectHints` are supplied. The shared current
+validation schema is `gno://schemas/query-diagnose@1.1`; its affinity-bearing
+v1.1 branch is reserved for trusted local CLI diagnose requests.
 
 Use when an expected target is missing from `gno_query`, when filters may have
 excluded it, or when an agent needs evidence before raising `candidateLimit`,
