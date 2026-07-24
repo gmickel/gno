@@ -69,9 +69,65 @@ Build the core-only, resumable setup orchestrator and canonical receipt. This in
 - [ ] Focused tests, full tests, lint/typecheck, schema validation, and a fresh implementation review pass with no core-task scope leakage.
 
 ## Done summary
-TBD
+# fn-105.1 implementation handoff
 
+Implemented and review-hardened the core verified-folder setup transaction
+without adding CLI, Web, Desktop, connector, resident-runtime, model-download,
+or documentation surfaces.
+
+### Changes
+
+- Added `src/core/folder-setup.ts`: resumable setup coordinator composing config
+  mutation, store projection, lexical ingestion, activation proof, and receipts.
+- Added `src/core/folder-setup-planning.ts`: canonical path preflight, content and
+  secret-risk checks, exact-root reuse, filter agreement, output containment,
+  store/index binding, overlap rejection, and deterministic collection naming.
+- Added `src/core/setup-receipt.ts`: closed v1 receipt model, canonical JSON,
+  exact realpath-byte SHA-256 identity, private-at-creation atomic persistence,
+  truthful interruption transitions, and stable receipt identity.
+- Added `spec/output-schemas/setup-receipt.schema.json` and registered it in the
+  schema validator.
+- Extended `src/core/config-mutation.ts` with a post-durable-config hook and
+  unchanged-config save suppression plus an optional OS-backed file lock inside
+  the process mutex, making fresh create/reuse projection converge across
+  processes without changing existing callers.
+- Replaced the no-`lockf`/`flock` fallback with a Bun-native SQLite sibling
+  lock database: bounded `busy_timeout`, `BEGIN IMMEDIATE` ownership, and
+  `ROLLBACK`/close release. Process death now releases the OS-backed lock
+  without stale-owner recovery or ownership artifacts; native paths remain
+  unchanged.
+- Normalized explicit empty exclusion lists to the default safety exclusions on
+  both create and reuse paths.
+- Resolved output paths through their deepest existing ancestor so symlinked
+  ancestors remain subject to containment checks even when several descendants
+  do not yet exist.
+- Added `test/core/folder-setup.test.ts` covering success, receipt schema and
+  permissions, symlink reuse, collision rules, unsafe inputs, secret exclusions,
+  all four interruption checkpoints, resumability, and concurrent convergence.
+- Added `test/core/folder-setup-safety.test.ts` covering exact receipt digests,
+  store/index mismatch, all ten receipt-write boundaries, output-path overlap,
+  reused-filter ingestion safety, deterministic stale-reuse/create races,
+  explicit-empty exclusion normalization, and deep symlink containment.
+- Added `test/core/file-lock.test.ts` covering concurrent contention, release
+  and reacquisition, callback-error cleanup, and absence of `.candidate` or
+  `.dir` ownership artifacts.
+
+### Validation
+
+- `bun test test/core/folder-setup.test.ts test/core/folder-setup-safety.test.ts test/core/file-lock.test.ts`:
+  22 pass, 0 fail, 194 assertions.
+- `bun run lint`: 0 warnings, 0 errors.
+- `bun run typecheck`: exit 0.
+- `bun test`: 2,924 pass, 1 skip, 0 fail, 23,482 assertions across 364 files.
+- `.flow/bin/flowctl validate --spec fn-105 --json`: valid, 0 errors, 0 warnings.
+- `git diff --check`: exit 0.
+
+### Handoff boundary
+
+Implementation committed as `6982ba5`. Fresh inherited review completed with
+verdict `SHIP` and no remaining P1/P2 findings. CLI and other user-facing
+surfaces remain intentionally deferred to later fn-105 tasks.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 6982ba5
+- Tests: {'command': 'bun test test/core/folder-setup.test.ts test/core/folder-setup-safety.test.ts test/core/file-lock.test.ts', 'result': '22 pass, 0 fail, 194 assertions'}, {'command': 'bun run lint', 'result': '0 warnings, 0 errors'}, {'command': 'bun run typecheck', 'result': 'exit 0'}, {'command': 'bun test', 'result': '2924 pass, 1 skip, 0 fail, 23482 assertions across 364 files'}, {'command': '.flow/bin/flowctl validate --spec fn-105 --json', 'result': 'valid, 0 errors, 0 warnings'}, {'command': 'git diff --check', 'result': 'exit 0'}
 - PRs:
