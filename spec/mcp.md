@@ -216,7 +216,7 @@ Required input:
 Optional fields are `collection`, `limit` (default 5), `minScore`, `lang`,
 `intent`, `candidateLimit`, `exclude`, `queryModes`, `tagsAll`, `tagsAny`,
 `since`, `until`, `categories`, `author`, `graph`, `noGraph`, `noRerank`,
-`maxAnswerTokens`, `contextBudgetTokens`, and `contextBudgetBytes`. Input
+`explain`, `maxAnswerTokens`, `contextBudgetTokens`, and `contextBudgetBytes`. Input
 objects are closed.
 `projectHints` is an optional array of at most 16 non-empty caller hints. Hints
 are normalized and deduplicated as opaque values, never resolved against or
@@ -648,6 +648,11 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
       "description": "Enable cross-encoder reranking",
       "default": true
     },
+    "explain": {
+      "type": "boolean",
+      "description": "Include deterministic stage and per-result scoring metadata",
+      "default": false
+    },
     "noGraph": {
       "type": "boolean",
       "description": "Compatibility no-op unless graph is also true",
@@ -692,6 +697,11 @@ Search result items include `contentType` when available and always include
 human-oriented; structured clients should read `structuredContent.results`.
 Structured result items also preserve optional `context` guidance in
 global-to-specific order without changing the result `uri` or `docid`.
+When `explain: true`, `structuredContent.meta.explain` includes deterministic
+stage lines and per-result score receipts. Non-neutral configured content-type
+rules add `contentTypeBoost` with base/raw scores, factor, capped contribution,
+shared auxiliary-cap composition, final score, rule source, and redacted rules
+fingerprint. Normal output omits this sidecar.
 
 Compatibility / migration notes:
 
@@ -753,16 +763,17 @@ plus a required `target` reference.
 - `target`: URI, `#docid`, or `collection/path` for the document to diagnose.
 - `query`, filters, `queryModes`, `fast`/`thorough`, `graph`, and rerank/expand controls behave like `gno_query`.
 
-**Output Schema:** `gno://schemas/query-diagnose@1.0`
+**Output Schema:** `gno://schemas/query-diagnose@1.2`
 
 Structured content includes `schemaVersion`, normalized `query`, `target`
 metadata/status (`not_found`, `inactive`, `no_indexed_content`,
 `filtered_out`, or `diagnosed`), `stages` for BM25/vector/fusion/graph/rerank,
 the selected target `chunk`, and retrieval `meta`.
-MCP inputs are remote and untrusted, so this tool preserves exact v1.0 bytes
-and omits `affinity`, even when `projectHints` are supplied. The shared current
-validation schema is `gno://schemas/query-diagnose@1.1`; its affinity-bearing
-v1.1 branch is reserved for trusted local CLI diagnose requests.
+MCP inputs are remote and untrusted, so this tool omits `affinity`, even when
+`projectHints` are supplied. Neutral configurations preserve exact v1.0 bytes;
+an active configured content-type boost emits v1.2 with the same bounded score
+receipt exposed by query explain. The v1.1 affinity-bearing branch remains
+reserved for trusted local CLI diagnose requests.
 
 Use when an expected target is missing from `gno_query`, when filters may have
 excluded it, or when an agent needs evidence before raising `candidateLimit`,
@@ -979,10 +990,18 @@ counters; it never claims attachment to another process.
     "totalDocuments": 150,
     "totalChunks": 800,
     "embeddingBacklog": 0,
+    "contentTypeBoost": {
+      "rulesFingerprint": "<sha256>",
+      "rules": [{ "id": "decision", "searchBoost": 2 }]
+    },
     "healthy": true
   }
 }
 ```
+
+`contentTypeBoost` is a redacted ranking-status projection. It exposes only
+normalized IDs/factors plus the rules fingerprint; path prefixes are never
+returned.
 
 ---
 

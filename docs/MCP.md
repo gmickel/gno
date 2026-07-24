@@ -1055,6 +1055,7 @@ queryModes:
   - { mode: "term", text: "\"refresh token\" -oauth1" }
   - { mode: "intent", text: "how token rotation is implemented" }
   - { mode: "hyde", text: "Refresh tokens rotate on each use and old tokens are invalidated." }
+explain: true
 ```
 
 **Search modes** (via parameters):
@@ -1082,6 +1083,10 @@ Optional steering controls:
 - `intent`: disambiguating context for ambiguous queries. It steers expansion, reranking, and snippet selection without being searched directly.
 - `candidateLimit`: max candidates sent to reranking. Lower it for faster responses on CPU-heavy or low-memory setups.
 - `exclude`: hard-prune docs containing any excluded term in title/path/body.
+- `explain`: include per-result scoring details. Active content-type rules add
+  the factor, raw/base score, bounded and combined contributions, final score,
+  rule source, and full ranking-rules fingerprint. `gno_ask` accepts the same
+  opt-in, including verified mode, without changing canonical Capsule bytes.
 
 **Migration notes (retrieval v2):**
 
@@ -1124,9 +1129,10 @@ tagsAll: ["crm"]
 
 Use this when an expected document is missing from `gno_query` results or when
 you need evidence before changing filters, query modes, graph expansion, or
-reranking. The structured response matches the legacy
-`query-diagnose@1.0` branch of `query-diagnose.schema.json`, omits `affinity`,
-and
+reranking. Without active auxiliary metadata, the structured response matches
+the legacy `query-diagnose@1.0` branch of `query-diagnose.schema.json` and omits
+`affinity`. An active content-type boost uses v1.2 and includes its closed score
+receipt. The response
 reports target status (`not_found`, `inactive`, `no_indexed_content`,
 `filtered_out`, or `diagnosed`), typed metadata, graph hints, chunk/line choice,
 and BM25/vector/fusion/graph/rerank stage survival.
@@ -1175,6 +1181,9 @@ Returns collection counts, document totals, and health status.
 The structured response also includes `resident-status@1.0`. HTTP clients see
 the shared serve/daemon lifecycle. Stdio reports `mode:"stdio"`,
 `resident:false`, and no listener.
+
+`contentTypeBoost` contains the effective rule IDs/factors and full ranking
+fingerprint. Configured path prefixes are omitted.
 
 ### gno_capture
 

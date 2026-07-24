@@ -20,6 +20,16 @@ deterministic aliases, not absolute roots. Diagnose emits those closed redacted
 fields only in affinity-bearing v1.1 output; zero-affinity requests preserve
 exact legacy v1.0 bytes and omit `affinity`.
 
+Configured content-type ranking enters the same seam. One canonical rule is
+resolved from configured type ID before longest-prefix matching;
+`searchBoost: 0.5..2` maps linearly to `-0.05..+0.05`. It composes
+order-independently with affinity under the shared cap, cannot create a
+candidate, and runs only after hard document filters. Explain carries the full
+score receipt and live ranking fingerprint. Diagnose uses v1.2 only when this
+component is active. Search-boost-only config changes affect live ranking but
+not persisted metadata derivation, so they do not trigger conversion or vector
+rebuilds.
+
 ## System Overview
 
 ```

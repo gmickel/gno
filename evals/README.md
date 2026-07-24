@@ -125,6 +125,13 @@ over the existing 24 hard-collection tasks, zero loss on the four fixed
 multilingual IDs, hard-filter isolation, exact zero lanes, shared `±0.08` cap
 receipts, and bounded batch calls. This is closed synthetic regression evidence,
 not a general superiority benchmark.
+
+The lane also writes `content-type-boost-promotion.json`/`.md`: 24 exact fn-97
+before/after receipts proving empty/legacy content-type configuration leaves
+ordered evidence, accuracy, and coverage unchanged. Active boost behavior is
+covered by `test/pipeline/content-type-boost-adversarial.test.ts`; the receipt
+does not claim general retrieval superiority or currently unavailable egress
+enforcement.
 qmd/local-model outputs stay under `baseline/optional/` and are not promotion
 evidence.
 

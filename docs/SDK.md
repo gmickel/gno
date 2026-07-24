@@ -127,6 +127,7 @@ const results = await client.query("performance", {
   exclude: ["reviews"],
   noExpand: true,
   noRerank: true,
+  explain: true,
 });
 
 const structured = await client.query(
@@ -155,6 +156,7 @@ const answered = await client.ask("What is our auth flow?", {
 
 const verified = await client.ask("Who owns the launch decision?", {
   verify: true,
+  explain: true,
   contextBudgetTokens: 12_000,
   contextBudgetBytes: 48_000,
 });
@@ -186,6 +188,12 @@ freshness receipt, coverage, gaps, and semantic capability state under
 `verification`. This is a support classification against the retained Capsule,
 not a guarantee of corpus completeness or source truth. Existing retrieval-only
 and `answer: true` calls remain compatible.
+
+`explain: true` adds `meta.explain`. When a configured content type has a
+non-neutral `searchBoost`, the result receipt includes raw/base score, factor,
+bounded and combined contributions, final score, rule source, and the full
+ranking-rules fingerprint. Verified Ask keeps this metadata outside the
+canonical Capsule.
 
 ### Vector Search
 
@@ -365,8 +373,15 @@ capture semantics.
 
 ```ts
 const status = await client.status();
-console.log(status.activeDocuments, status.embeddingBacklog);
+console.log(
+  status.activeDocuments,
+  status.embeddingBacklog,
+  status.contentTypeBoost.rules,
+  status.contentTypeBoost.rulesFingerprint
+);
 ```
+
+Status exposes normalized rule IDs/factors, not configured path prefixes.
 
 ### Changes, Structural Diff, and Impact
 

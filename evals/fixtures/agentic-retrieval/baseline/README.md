@@ -21,6 +21,12 @@ strictly fewer unsupported substantive claims. `verified-ask-promotion.md` is
 the readable projection. These files do not rename or replace the Capsule
 retrieval metrics in `report.json`.
 
+`content-type-boost-promotion.json` is a separate 24-task fn-97
+backward-compatibility receipt. It requires byte-identical ordered evidence and
+zero required-evidence accuracy/coverage loss when the shipped boost seam sees
+no configured rules. Active-rule behavior is gated by deterministic adversarial
+pipeline tests; this receipt does not claim an active quality gain.
+
 `optional/qmd/` and `optional/local-model/` are non-authoritative local lanes.
 They may be written only as complete matrices and never replace
 `fixture-agent/`. qmd requires the exact checkout and model cache declared in

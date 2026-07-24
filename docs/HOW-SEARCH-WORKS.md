@@ -24,20 +24,29 @@ The diagram below shows how your query flows through GNO's search system:
 
 **Stage 4: Reranking** → Top candidates rescored by Qwen3-Reranker using best chunk per document (4K chars).
 
-**Stage 5: Bounded auxiliary ranking** → After base relevance is final, a
-trusted local CLI project match can add one soft `+0.03` before document cutoff
-and ordering. Duplicate/overlapping roots never stack. All auxiliary signals
-share `±0.08`; filters remain hard, and final scores remain clamped to `0..1`.
+**Stage 5: Bounded auxiliary ranking** → After a lane's normalized or blended
+relevance score is final, a configured content type can contribute
+`-0.05..+0.05` and a trusted local CLI project match can contribute up to
+`+0.03` before document cutoff and ordering. Signals compose once under a
+shared `±0.08` cap; filters remain hard, and scores stay clamped to `0..1`.
+
+`contentTypes[].searchBoost` accepts factors from `0.5` to `2`; omitted or `1`
+is exactly neutral. A canonical configured frontmatter type wins over
+longest-prefix matching. Categories, unknown type text, and multiple matching
+prefixes cannot stack or manufacture a boost. This scoring never creates a
+candidate or bypasses collection, tag, date, category, author, or exclude
+filters.
 
 Only CLI cwd/`--project-root` is trusted for this signal.
 `--no-project-affinity` disables it and explicit roots replace cwd inference.
 SDK, REST, MCP, and browser `projectHints` are opaque/untrusted, limited to 16,
 and intentionally produce no match or boost without filesystem probing.
 Explain reports redacted root/collection aliases plus requested and applied
-score contributions. Diagnose uses the same closed redacted metadata in
-`schemaVersion: "1.1"` only for trusted local input (matched or unmatched);
-absent, disabled, and remote/untrusted requests preserve exact v1.0 bytes and
-omit `affinity`.
+project contributions. An active content-type boost additionally reports its
+raw/base score, factor, capped contribution, combined cap, final score, rule
+source, and ranking-rules fingerprint. Diagnose uses `schemaVersion: "1.1"`
+for affinity-only metadata and v1.2 when content-type boost metadata is active;
+absent signals preserve exact v1.0 bytes.
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
@@ -106,6 +115,15 @@ omit `affinity`.
 │    11+: 40% fusion / 60% rerank                               │
 │                                                               │
 │  Guardrail: preserve original BM25 #1 exact hit as top result │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────┐
+│  STAGE 5: BOUNDED AUXILIARY RANKING                           │
+│                                                               │
+│  Content type: -0.05..+0.05                                  │
+│  Trusted local project affinity: up to +0.03                  │
+│  Shared cap: ±0.08; hard filters already applied              │
 └───────────────────────────────┬───────────────────────────────┘
                                 │
                                 ▼

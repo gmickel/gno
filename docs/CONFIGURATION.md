@@ -609,7 +609,7 @@ Fields:
 | `prefixes`    | string[] | Relative path prefixes that map documents to this type                |
 | `preset`      | string   | Note preset used by future type-aware creation and ingestion behavior |
 | `temporal`    | boolean  | Accepted metadata flag for time-oriented pages                        |
-| `searchBoost` | number   | Reserved for future ranking; accepted but currently no-op             |
+| `searchBoost` | number   | Bounded soft ranking factor from `0.5` to `2`; default/neutral is `1` |
 | `graphHints`  | string[] | Ordered typed-edge hints for link projection, traversal, and diagnose |
 
 Validation is warning-based after YAML parsing:
@@ -618,6 +618,25 @@ Validation is warning-based after YAML parsing:
 - exact duplicate prefixes are deduped
 - overlapping prefixes are retained, for example `people/` and `people/team/`
 - rules are normalized longest-prefix-first for matching and edge derivation
+
+`searchBoost` applies only after a document is already a valid retrieval
+candidate. One canonical configured type wins: a configured frontmatter `type`
+ID takes precedence, otherwise longest-prefix matching applies. Boosts never
+stack and arbitrary categories cannot trigger them. Factors map linearly onto
+a contribution from `-0.05` through `+0.05`; project affinity and all other
+auxiliary signals share the final `±0.08` cap. The contribution is applied to
+the lane's normalized or blended relevance score before final cutoff/order,
+with scores clamped to `0..1`. Collection, tag, date, category, author, and
+exclude filters remain hard.
+
+Use `gno query --explain` or `gno ask --explain` to inspect raw/base score,
+configured factor, requested/capped contribution, combined auxiliary cap, final
+score, rule source, and ranking fingerprint. `gno query diagnose` exposes the
+same component as schema v1.2 when active. `gno status --json`, REST status,
+MCP `gno_status`, and SDK `client.status()` show the effective rule IDs/factors
+and fingerprint without exposing configured path prefixes. A boost-only config
+edit takes effect immediately and does not reconvert documents or rebuild
+vectors.
 
 `graphHints` vocabulary is centralized in the config API. Supported hints are
 `mentions`, `works_at`, `attended`, `decided`, and `related_to`. Hints do not
