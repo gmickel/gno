@@ -120,6 +120,10 @@ const inlineNodes = (
     if (node.tagName === "A") {
       const anchor = node as HTMLAnchorElement;
       const text = visibleText(anchor, warnings);
+      if (text.trim().length === 0) {
+        warnings.add("reader_partial");
+        return;
+      }
       if (/^https?:\/\//iu.test(anchor.href)) {
         nodes.push({ type: "link", text, href: anchor.href });
       } else {

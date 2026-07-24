@@ -230,10 +230,9 @@ const normalizePublishedAt = (value: string | null): string | null => {
 
 const escapeInline = (value: string): string =>
   value
-    .replaceAll("\\", "\\\\")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
-    .replace(/([*_[\]~`])/g, "\\$1");
+    .replace(/([\\*_[\]~`])/g, "\\$1");
 
 const normalizeLink = (value: string): string =>
   normalizeUrl(value).replaceAll("(", "%28").replaceAll(")", "%29");

@@ -177,6 +177,22 @@ describe("browser clip contract", () => {
     expect(markdown).not.toContain("<script>");
   });
 
+  test("Reader text escapes existing backslashes and Markdown punctuation once", () => {
+    const markdown = renderBrowserClipReader([
+      {
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: String.raw`Path C:\docs\*draft*`,
+          },
+        ],
+      },
+    ]);
+
+    expect(markdown).toBe(String.raw`Path C:\\docs\\\*draft\*` + "\n");
+  });
+
   test("closed Reader schema rejects HTML, embeds, images, attributes, and dangerous URLs", () => {
     const payload = readerPayload();
     const invalidBlocks = [

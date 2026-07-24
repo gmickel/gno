@@ -28,6 +28,7 @@ describe("explicit visible-page extraction", () => {
         <p>Paragraph <script>steal()</script><img src="private.png"></p>
         <blockquote>Quoted</blockquote>
         <ul><li>First</li><li><a href="javascript:bad()">Unsafe link text</a></li></ul>
+        <p><a href="https://example.com/empty"><img src="empty.png"></a></p>
         <pre><code class="language-ts">const café = true;</code></pre>
         <hr>
         <iframe src="https://private.example"></iframe>
@@ -46,6 +47,9 @@ describe("explicit visible-page extraction", () => {
     ]);
     expect(JSON.stringify(result.readerBlocks)).not.toContain("<");
     expect(JSON.stringify(result.readerBlocks)).not.toContain("private.png");
+    expect(JSON.stringify(result.readerBlocks)).not.toContain(
+      "https://example.com/empty"
+    );
     expect(JSON.stringify(result.readerBlocks)).not.toContain("Secret field");
     expect(JSON.stringify(result.readerBlocks)).not.toContain("javascript:");
     expect(JSON.stringify(result.readerBlocks)).toContain("Unsafe link text");
