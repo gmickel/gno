@@ -2978,6 +2978,15 @@ is blocked.
   idempotency persists exact content-free plan hashes and reconciles an
   interrupted atomic write only at its original path; changed plans fail
   closed without a duplicate write.
+- Serves the standalone `/clipper/pair` approval page. Its exact pair-ID
+  fragment is synchronously validated and scrubbed before normal workspace
+  state initializes; the user enters the eight-digit code manually. The page
+  obtains same-origin CSRF state, never receives the extension grant, and does
+  not persist pairing material.
+- Browser-clipper HTTP write receipts add `schemaVersion: "1.0"` to the closed
+  shared capture receipt. HTTP 409 can therefore be either a valid provenance
+  conflict receipt or a closed clipper error; clients parse the body contract
+  before classifying the outcome.
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON (`{pid, port, cmd:"serve", version, started_at}`), prints `{pid, url}` on stdout, exits 0
 - On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json). Liveness via `process.kill(pid, 0)`; stale pid-files (ESRCH) are reported as `running:false`. Live status best-effort reads the same redacted `resident-status@1.0` snapshot from the recorded listener.
 - On `--stop`: sends SIGTERM, polls every 100ms for up to 10s, falls back to SIGKILL, polls 2s more, unlinks pid-file if the process cleaned up after itself

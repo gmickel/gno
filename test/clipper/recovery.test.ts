@@ -193,6 +193,7 @@ describe("browser clipper recovery", () => {
     expect(recovered?.status).toBe(202);
     const receipt = await recovered?.json();
     expect(receipt).toMatchObject({
+      schemaVersion: "1.0",
       relPath: "clips/recovered.md",
       collisionPolicyResult: "created",
       source: { capturedAt: "2026-07-24T08:00:00.000Z" },

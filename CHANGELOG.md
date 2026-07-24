@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the Chromium Manifest V3 browser-clipper source and local build,
+  including explicit selection/Reader extraction, visible loopback pairing,
+  server-owned canonical previews, and restart-safe idempotent capture.
+
+### Security
+
+- Browser grants and pending writes remain service-worker-only in protected
+  `chrome.storage.local`; pairing secrets are transient, Web approval fragments
+  are scrubbed before workspace state loads, and the extension has no history,
+  cookie, background-tab, or non-loopback permission.
+
 ## [1.24.0] - 2026-07-24
 
 ### Added

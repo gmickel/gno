@@ -82,6 +82,30 @@ describe("capture-receipt schema", () => {
     ).toBe(true);
   });
 
+  test("rejects unknown receipt, source, and status fields", () => {
+    expect(
+      assertInvalid({ ...VALID_RECEIPT, surprise: true }, schema)
+    ).toBeTrue();
+    expect(
+      assertInvalid(
+        {
+          ...VALID_RECEIPT,
+          source: { ...VALID_RECEIPT.source, surprise: true },
+        },
+        schema
+      )
+    ).toBeTrue();
+    expect(
+      assertInvalid(
+        {
+          ...VALID_RECEIPT,
+          sync: { ...VALID_RECEIPT.sync, surprise: true },
+        },
+        schema
+      )
+    ).toBeTrue();
+  });
+
   test("validates browser provenance and explicit provenance conflict", () => {
     expect(
       assertValid(

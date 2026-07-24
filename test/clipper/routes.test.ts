@@ -259,8 +259,10 @@ describe("browser clipper route gateway", () => {
     );
     expect(captured?.status).toBe(409);
     const receipt = (await captured?.json()) as {
+      schemaVersion: string;
       collisionPolicyResult: string;
     };
+    expect(receipt.schemaVersion).toBe("1.0");
     expect(receipt.collisionPolicyResult).toBe("conflict");
     expect(assertValid(receipt, await loadSchema("capture-receipt"))).toBe(
       true

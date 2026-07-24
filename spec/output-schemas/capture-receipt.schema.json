@@ -4,6 +4,7 @@
   "title": "GNO Capture Receipt",
   "description": "Shared receipt returned by capture surfaces after a write/open decision.",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "uri",
     "collection",
@@ -19,6 +20,10 @@
     "collisionPolicyResult"
   ],
   "properties": {
+    "schemaVersion": {
+      "const": "1.0",
+      "description": "Present on browser-clipper HTTP responses."
+    },
     "uri": {
       "type": "string",
       "description": "GNO URI for the captured note.",
@@ -39,6 +44,9 @@
     "absPath": {
       "type": "string",
       "description": "Absolute path when the local surface exposes it."
+    },
+    "serverInstanceId": {
+      "type": "string"
     },
     "created": {
       "type": "boolean",
@@ -63,6 +71,7 @@
     },
     "source": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["kind", "capturedAt"],
       "properties": {
         "kind": {
@@ -125,6 +134,7 @@
   "definitions": {
     "indexStatus": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["status"],
       "properties": {
         "status": {

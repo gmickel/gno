@@ -719,6 +719,14 @@ grant: the exact extension origin polls a high-entropy pairing ID once, then
 stores its origin-bound capture-only grant. Restarting `gno serve` discards
 unfinished pairings and preview tickets. Revocation persists.
 
+The extension opens
+`/clipper/pair#pairId=<64-hex-id>`. Before the workspace router or persisted tab
+state initializes, GNO validates the exact fragment and replaces browser
+history with `/clipper/pair`. The approval code is never placed in the URL:
+the user types the eight digits shown by the extension. The page keeps the pair
+ID and CSRF token only in memory, never receives the bearer grant, and fails
+closed for unknown response versions, fields, or error codes.
+
 Clip previews are non-mutating. They show the server-normalized Markdown,
 provenance, destination, collision outcome, and digest before a write. The
 server accepts a write only for the unchanged preview plus an idempotency key.
@@ -727,6 +735,36 @@ interrupted write, retries reconcile only the exact local file and provenance
 hashes; they never choose a new destination or create a duplicate suffix.
 It never downloads the source page; only content already visible in the browser
 payload is processed.
+
+### Chromium Clipper Development Build
+
+The repository contains the unpacked Manifest V3 source. Build it locally:
+
+```bash
+bun run build:clipper
+```
+
+Load `browser-extension/dist` as an unpacked Chromium extension, run
+`gno serve`, then pair against the default
+`http://127.0.0.1:3000` gateway. Store packaging and headed browser
+compatibility validation are separate release work; Firefox parity is not yet
+claimed.
+
+The manifest grants only `activeTab`, `scripting`, `storage`, and
+`http://127.0.0.1/*`. Extraction runs only after a popup action. It emits exact
+selection text or a constrained visible Reader AST of paragraphs, headings,
+quotes, lists, code, horizontal rules, text, and HTTP(S) links. It never reads
+history, cookies, sessions, background tabs, raw HTML, images, or iframe
+documents. Cross-frame selections are deliberately unsupported under this
+minimal permission boundary; select top-frame text or use Reader mode.
+
+The popup marks every content, metadata, destination, tag, mode, or
+authenticated-content change stale and requires a fresh server preview.
+Pending writes retain one visible-ASCII idempotency key across service-worker
+restart or offline retries. A lost preview is refreshed for the same payload;
+key/recovery conflicts stop without selecting another destination. Reopening
+the popup shows the saved destination and source, with explicit controls to
+retry the exact stored logical write or stop recovery and discard it.
 
 The Web UI is designed for local use only:
 

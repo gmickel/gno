@@ -167,9 +167,20 @@ Successful response contracts are closed:
 [`browser-clip-preview@1.0`](../spec/output-schemas/browser-clip-preview.schema.json).
 The write response uses the shared
 [`capture-receipt@1.0`](../spec/output-schemas/capture-receipt.schema.json).
+Browser-clipper HTTP receipts always include `schemaVersion: "1.0"` and are
+closed at the receipt, source, and indexing-status levels. A valid provenance
+conflict remains a versioned receipt with HTTP 409; clients must distinguish it
+from a closed `clipper-error@1.0` body instead of treating every 409 as failure.
 CSRF and failure responses use
 [`clipper-csrf@1.0`](../spec/output-schemas/clipper-csrf.schema.json) and
 [`clipper-error@1.0`](../spec/output-schemas/clipper-error.schema.json).
+
+The Chromium client uses `credentials: "omit"` for every extension-origin
+request. Its service worker is the only component that sees the bearer grant.
+It persists the exact loopback origin, approved grant, and at most one pending
+`{payload, previewDigest, idempotencyKey}` logical write in protected local
+extension storage. Page extraction and the Web approval page never receive
+that state.
 
 ### CSRF Protection
 

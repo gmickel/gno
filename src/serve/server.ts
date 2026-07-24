@@ -279,6 +279,7 @@ export async function startServer(
         "/traces": homepage,
         "/ask": homepage,
         "/graph": homepage,
+        "/clipper/pair": homepage,
 
         // API routes with CSRF protection wrapper
         "/api/health": {

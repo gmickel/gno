@@ -8,6 +8,7 @@ import { WorkspaceTabs } from "./components/WorkspaceTabs";
 import { CaptureModalProvider, useCaptureModal } from "./hooks/useCaptureModal";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { WorkspaceProvider } from "./hooks/useWorkspace";
+import { consumeClipperPairLaunch } from "./lib/clipper-approval";
 import { parseDocumentDeepLink } from "./lib/deep-links";
 import { saveRecentDocument } from "./lib/navigation-state";
 import {
@@ -22,6 +23,7 @@ import {
 } from "./lib/workspace-tabs";
 import Ask from "./pages/Ask";
 import Browse from "./pages/Browse";
+import ClipperPairing from "./pages/ClipperPairing";
 import Collections from "./pages/Collections";
 import Connectors from "./pages/Connectors";
 import Dashboard from "./pages/Dashboard";
@@ -354,4 +356,9 @@ if (!rootElement) {
   throw new Error("Root element not found");
 }
 const root = createRoot(rootElement);
-root.render(<App />);
+if (window.location.pathname === "/clipper/pair") {
+  const launch = consumeClipperPairLaunch(window.location, window.history);
+  root.render(<ClipperPairing pairId={launch.pairId} />);
+} else {
+  root.render(<App />);
+}

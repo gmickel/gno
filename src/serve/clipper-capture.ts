@@ -69,7 +69,10 @@ const completeResponse = (
     grantId: input.grantId,
     keyHash,
     requestDigest,
-    body,
+    body:
+      body !== null && typeof body === "object" && !Array.isArray(body)
+        ? { schemaVersion: "1.0", ...body }
+        : body,
     status,
   });
 

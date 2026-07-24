@@ -1,0 +1,197 @@
+:root {
+  color-scheme: dark;
+  font-family: "Avenir Next", "Futura", sans-serif;
+  background: #151616;
+  color: #f2eee5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 390px;
+  min-height: 520px;
+  background:
+    radial-gradient(circle at 12% 0%, #493a2738, transparent 40%),
+    linear-gradient(155deg, #171918, #101111);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.shell {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+header,
+.compact,
+.mode-row,
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+h1 {
+  margin: 4px 0;
+  font-family: "Iowan Old Style", Georgia, serif;
+  font-size: 25px;
+  font-weight: 500;
+}
+
+p {
+  margin: 0;
+}
+
+.eyebrow {
+  color: #d1a35d;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+}
+
+.panel,
+.receipt {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #ffffff19;
+  border-radius: 12px;
+  background: #ffffff08;
+}
+
+.fields {
+  grid-template-columns: 1fr 1fr;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  color: #c7c3bb;
+  font-size: 11px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid #ffffff20;
+  border-radius: 8px;
+  outline: none;
+  background: #0d0e0e;
+  color: #f2eee5;
+  padding: 9px 10px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #d1a35d;
+}
+
+textarea {
+  resize: vertical;
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+button {
+  border: 1px solid #d1a35d66;
+  border-radius: 8px;
+  background: #d1a35d;
+  color: #171411;
+  cursor: pointer;
+  padding: 8px 11px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+button.quiet {
+  background: transparent;
+  color: #d2cec5;
+  border-color: #ffffff20;
+}
+
+button.active {
+  background: #31423a;
+  color: #d9efe4;
+  border-color: #6f9e8466;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.pair-code {
+  font-family: "SFMono-Regular", Menlo, monospace;
+  color: #edc889;
+  font-size: 28px;
+  letter-spacing: 0.2em;
+}
+
+.hint,
+.warning,
+.error {
+  color: #aaa69d;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.error {
+  color: #ff9b91;
+}
+
+.warning {
+  color: #edc889;
+}
+
+.check {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+}
+
+.check input {
+  width: auto;
+}
+
+.outcome {
+  color: #d1a35d;
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 11px;
+}
+
+.preview-meta {
+  display: grid;
+  gap: 4px;
+  color: #aaa69d;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+details {
+  color: #aaa69d;
+  font-size: 10px;
+}
+
+details pre {
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.receipt {
+  color: #a8d5b8;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}

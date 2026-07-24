@@ -53,6 +53,7 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "build": "bun build src/index.ts",
+    "build:clipper": "bun browser-extension/build.ts",
     "start": "bun run src/index.ts",
     "lint": "oxlint --fix --type-aware --type-check && oxfmt .",
     "lint:check": "oxlint --type-aware --type-check && oxfmt --check .",
