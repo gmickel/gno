@@ -40,5 +40,55 @@ describe("project-affinity promotion cases", () => {
     });
     expect(JSON.stringify(artifact)).not.toContain("gno-agentic-fixture-");
     expect(JSON.stringify(artifact)).not.toContain("opaque-project-hint");
+    expect(artifact.receipts.auxiliary).toEqual([
+      expect.objectContaining({
+        caseId: "project_match",
+        requested: 0.03,
+        applied: 0.03,
+      }),
+      expect.objectContaining({
+        caseId: "combined_exact_cap",
+        requested: 0.08,
+        applied: 0.08,
+      }),
+      expect.objectContaining({
+        caseId: "positive_over_cap",
+        requested: 0.11,
+        applied: 0.08,
+      }),
+      expect.objectContaining({
+        caseId: "negative_over_cap",
+        requested: -0.13,
+        applied: -0.08,
+      }),
+      expect.objectContaining({
+        caseId: "overlap_no_stack",
+        requested: 0.03,
+        applied: 0.03,
+      }),
+    ]);
+    expect(
+      artifact.receipts.zeroLanes.every(
+        (receipt) =>
+          receipt.equal && receipt.baselineHash === receipt.candidateHash
+      )
+    ).toBeTrue();
+    expect(
+      artifact.receipts.structural.every(
+        (receipt) =>
+          receipt.passed &&
+          receipt.calls.getDocumentsByMirrorHashes <= 1 &&
+          receipt.calls.getChunksBatch <= 1 &&
+          receipt.calls.getCollections <= 1 &&
+          receipt.calls.listDocuments === 0 &&
+          receipt.candidateReturned <= receipt.maxCandidateBound
+      )
+    ).toBeTrue();
+    expect(artifact.regression).toMatchObject({
+      taskCount: 24,
+      evidenceAccuracy: { loss: 0 },
+      evidenceCoverage: { loss: 0 },
+      multilingual: { taskCount: 4, loss: 0 },
+    });
   });
 });

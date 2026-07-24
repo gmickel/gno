@@ -12,6 +12,8 @@
     "methodology",
     "limitations",
     "targets",
+    "receipts",
+    "regression",
     "gates"
   ],
   "properties": {
@@ -56,6 +58,76 @@
       "minItems": 2,
       "maxItems": 2,
       "items": { "$ref": "#/definitions/target" }
+    },
+    "receipts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["auxiliary", "zeroLanes", "structural"],
+      "properties": {
+        "auxiliary": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": { "$ref": "#/definitions/auxiliaryReceipt" }
+        },
+        "zeroLanes": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "$ref": "#/definitions/zeroReceipt" }
+        },
+        "structural": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/structuralReceipt" }
+        }
+      }
+    },
+    "regression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskCount",
+        "evidenceAccuracy",
+        "evidenceCoverage",
+        "multilingual"
+      ],
+      "properties": {
+        "taskCount": { "const": 24 },
+        "evidenceAccuracy": { "$ref": "#/definitions/regressionMetric" },
+        "evidenceCoverage": { "$ref": "#/definitions/regressionMetric" },
+        "multilingual": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "taskIds",
+            "taskCount",
+            "disabledCorrect",
+            "enabledCorrect",
+            "loss"
+          ],
+          "properties": {
+            "taskIds": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": { "type": "string", "pattern": "^t[0-9a-f]{7}$" }
+            },
+            "taskCount": { "const": 4 },
+            "disabledCorrect": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "enabledCorrect": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "loss": { "type": "integer", "minimum": 0, "maximum": 4 }
+          }
+        }
+      }
     },
     "gates": {
       "type": "object",
@@ -233,6 +305,101 @@
           "maxItems": 2,
           "items": { "$ref": "#/definitions/rankedEntry" }
         }
+      }
+    },
+    "auxiliaryReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "contributions",
+        "requested",
+        "applied",
+        "finalScore"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "contributions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "type": "number", "minimum": -0.08, "maximum": 0.08 }
+        },
+        "requested": { "type": "number", "minimum": -0.13, "maximum": 0.11 },
+        "applied": { "type": "number", "minimum": -0.08, "maximum": 0.08 },
+        "finalScore": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "zeroReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lane", "baselineHash", "candidateHash", "equal"],
+      "properties": {
+        "lane": {
+          "enum": ["absent", "disabled", "unavailable", "untrusted_remote"]
+        },
+        "baselineHash": { "$ref": "#/definitions/hash" },
+        "candidateHash": { "$ref": "#/definitions/hash" },
+        "equal": { "type": "boolean" }
+      }
+    },
+    "structuralReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "calls",
+        "candidateRequested",
+        "candidateReturned",
+        "outputLimit",
+        "maxCandidateBound",
+        "passed"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "calls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "getDocumentsByMirrorHashes",
+            "getChunksBatch",
+            "getCollections",
+            "listDocuments"
+          ],
+          "properties": {
+            "getDocumentsByMirrorHashes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "getChunksBatch": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "getCollections": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "listDocuments": { "const": 0 }
+          }
+        },
+        "candidateRequested": { "type": "integer", "minimum": 0 },
+        "candidateReturned": { "type": "integer", "minimum": 0 },
+        "outputLimit": { "type": "integer", "minimum": 1 },
+        "maxCandidateBound": { "type": "integer", "minimum": 3 },
+        "passed": { "type": "boolean" }
+      }
+    },
+    "regressionMetric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disabled", "enabled", "loss"],
+      "properties": {
+        "disabled": { "type": "integer", "minimum": 0 },
+        "enabled": { "type": "integer", "minimum": 0 },
+        "loss": { "type": "integer", "minimum": 0 }
       }
     }
   }

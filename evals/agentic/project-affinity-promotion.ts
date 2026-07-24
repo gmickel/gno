@@ -38,6 +38,47 @@ export interface ProjectAffinityPromotionArtifact {
   methodology: string[];
   limitations: string[];
   targets: ProjectAffinityTargetReceipt[];
+  receipts: {
+    auxiliary: Array<{
+      caseId: string;
+      contributions: number[];
+      requested: number;
+      applied: number;
+      finalScore: number;
+    }>;
+    zeroLanes: Array<{
+      lane: "absent" | "disabled" | "unavailable" | "untrusted_remote";
+      baselineHash: string;
+      candidateHash: string;
+      equal: boolean;
+    }>;
+    structural: Array<{
+      caseId: string;
+      calls: {
+        getDocumentsByMirrorHashes: number;
+        getChunksBatch: number;
+        getCollections: number;
+        listDocuments: number;
+      };
+      candidateRequested: number;
+      candidateReturned: number;
+      outputLimit: number;
+      maxCandidateBound: number;
+      passed: boolean;
+    }>;
+  };
+  regression: {
+    taskCount: 24;
+    evidenceAccuracy: { disabled: number; enabled: number; loss: number };
+    evidenceCoverage: { disabled: number; enabled: number; loss: number };
+    multilingual: {
+      taskIds: string[];
+      taskCount: 4;
+      disabledCorrect: number;
+      enabledCorrect: number;
+      loss: number;
+    };
+  };
   gates: {
     passed: boolean;
     failures: string[];
@@ -114,11 +155,28 @@ export const renderProjectAffinityPromotionMarkdown = (
     `Hard filter: ${artifact.gates.filterHard ? "PASS" : "FAIL"}`,
     `Zero lanes: ${artifact.gates.zeroLanesExact ? "PASS" : "FAIL"}`,
     `Structural calls: ${artifact.gates.structuralCallsBounded ? "PASS" : "FAIL"}`,
+    `Regression tasks: ${artifact.regression.taskCount}; evidence accuracy ${artifact.regression.evidenceAccuracy.disabled}/${artifact.regression.evidenceAccuracy.enabled}; coverage ${artifact.regression.evidenceCoverage.disabled}/${artifact.regression.evidenceCoverage.enabled}`,
+    `Multilingual: ${artifact.regression.multilingual.disabledCorrect}/${artifact.regression.multilingual.enabledCorrect} across ${artifact.regression.multilingual.taskCount}`,
     `Failures: ${artifact.gates.failures.join(", ") || "none"}`,
     "",
     "## Methodology",
     "",
     ...artifact.methodology.map((item) => `- ${item}`),
+    "",
+    "## Raw bounded receipts",
+    "",
+    ...artifact.receipts.auxiliary.map(
+      (receipt) =>
+        `- Auxiliary \`${receipt.caseId}\`: requested ${receipt.requested}, applied ${receipt.applied}, final ${receipt.finalScore}`
+    ),
+    ...artifact.receipts.zeroLanes.map(
+      (receipt) =>
+        `- Zero \`${receipt.lane}\`: ${receipt.equal ? "equal" : "different"} (\`${receipt.baselineHash}\` / \`${receipt.candidateHash}\`)`
+    ),
+    ...artifact.receipts.structural.map(
+      (receipt) =>
+        `- Structural \`${receipt.caseId}\`: candidates ${receipt.candidateReturned}/${receipt.candidateRequested}, limit ${receipt.outputLimit}, bound ${receipt.maxCandidateBound}, calls docs/chunks/collections/list ${receipt.calls.getDocumentsByMirrorHashes}/${receipt.calls.getChunksBatch}/${receipt.calls.getCollections}/${receipt.calls.listDocuments}`
+    ),
     "",
     "## Limitations",
     "",

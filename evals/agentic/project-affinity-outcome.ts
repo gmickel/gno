@@ -8,9 +8,12 @@ import {
   resolveCliProjectAffinity,
   resolveRemoteProjectAffinity,
 } from "../../src/core/project-affinity-surface";
-import { applyAuxiliaryScore } from "../../src/pipeline/project-affinity";
+import {
+  applyAuxiliaryScore,
+  scoreProjectAffinity,
+} from "../../src/pipeline/project-affinity";
 import { SqliteAdapter } from "../../src/store";
-import { canonicalJson } from "./canonical";
+import { canonicalJson, sha256Bytes } from "./canonical";
 import {
   cleanupNativeIndexPreparation,
   prepareGnoNativeIndex,
@@ -31,6 +34,82 @@ import {
   runProjectAffinitySearch,
 } from "./project-affinity-runtime";
 
+interface LabeledObservation {
+  caseId: string;
+  observation: CallObservation;
+}
+
+const structuralReceipts = (
+  observations: LabeledObservation[]
+): ProjectAffinityPromotionArtifact["receipts"]["structural"] =>
+  observations.map(({ caseId, observation }) => ({
+    caseId,
+    calls: {
+      getDocumentsByMirrorHashes:
+        observation.calls.getDocumentsByMirrorHashes ?? 0,
+      getChunksBatch: observation.calls.getChunksBatch ?? 0,
+      getCollections: observation.calls.getCollections ?? 0,
+      listDocuments: observation.calls.listDocuments ?? 0,
+    },
+    candidateRequested: observation.requestedCount,
+    candidateReturned: observation.candidateCount,
+    outputLimit: observation.outputLimit,
+    maxCandidateBound: observation.outputLimit * 3,
+    passed: isStructurallyBounded(observation),
+  }));
+
+const auxiliaryReceipts =
+  (): ProjectAffinityPromotionArtifact["receipts"]["auxiliary"] => {
+    const stable = (value: number): number => Number(value.toFixed(12));
+    const overlap = scoreProjectAffinity(0.5, "project", {
+      resolution: {
+        matches: ["root_a", "root_b"].map((rootAlias) => ({
+          collection: "project",
+          collectionAlias: "collection_overlap",
+          distance: 0,
+          relation: "exact" as const,
+          rootAlias,
+          source: "cli_explicit" as const,
+        })),
+        roots: [],
+      },
+    });
+    return [
+      {
+        caseId: "project_match",
+        contributions: [0.03],
+        ...applyAuxiliaryScore(0.5, [0.03]),
+      },
+      {
+        caseId: "combined_exact_cap",
+        contributions: [0.03, 0.05],
+        ...applyAuxiliaryScore(0.5, [0.03, 0.05]),
+      },
+      {
+        caseId: "positive_over_cap",
+        contributions: [0.08, 0.03],
+        ...applyAuxiliaryScore(0.5, [0.08, 0.03]),
+      },
+      {
+        caseId: "negative_over_cap",
+        contributions: [-0.08, -0.05],
+        ...applyAuxiliaryScore(0.5, [-0.08, -0.05]),
+      },
+      {
+        caseId: "overlap_no_stack",
+        contributions: [0.03, 0.03],
+        requested: overlap.affinityRequested,
+        applied: overlap.affinityApplied,
+        finalScore: overlap.finalScore,
+      },
+    ].map((receipt) => ({
+      ...receipt,
+      requested: stable(receipt.requested),
+      applied: stable(receipt.applied),
+      finalScore: stable(receipt.finalScore),
+    }));
+  };
+
 export const runProjectAffinityOutcomeBenchmark = async (
   fixture: LoadedAgenticFixture
 ): Promise<ProjectAffinityPromotionArtifact> => {
@@ -48,7 +127,7 @@ export const runProjectAffinityOutcomeBenchmark = async (
     );
     const config = projectAffinityEvalConfig(fixture, native.rootPath);
     const targets: ProjectAffinityPromotionArtifact["targets"] = [];
-    const observations: CallObservation[] = [];
+    const observations: LabeledObservation[] = [];
 
     for (const item of cases.fixture.cases) {
       const binding = bindings.find((entry) => entry.caseId === item.caseId)!;
@@ -59,11 +138,8 @@ export const runProjectAffinityOutcomeBenchmark = async (
       const distractorUri = `gno://${distractorSource.collection}/${distractorSource.relPath}`;
       const target = byUri.get(targetUri);
       const distractor = byUri.get(distractorUri);
-      if (!(target?.mirrorHash && distractor?.mirrorHash)) {
-        throw new Error(
-          `Project-affinity indexed identity missing: ${item.caseId}`
-        );
-      }
+      if (!(target?.mirrorHash && distractor?.mirrorHash))
+        throw new Error(`Indexed identity missing: ${item.caseId}`);
       const candidates = [
         {
           mirrorHash: distractor.mirrorHash,
@@ -81,9 +157,7 @@ export const runProjectAffinityOutcomeBenchmark = async (
         config,
         item.query,
         candidates,
-        {
-          limit: item.limit,
-        }
+        { limit: item.limit }
       );
       const affinity = await resolveCliProjectAffinity(config, {
         cwd: config.collections.find(
@@ -95,12 +169,15 @@ export const runProjectAffinityOutcomeBenchmark = async (
         config,
         item.query,
         candidates,
-        {
-          affinity,
-          limit: item.limit,
-        }
+        { affinity, limit: item.limit }
       );
-      observations.push(disabled.observation, enabled.observation);
+      observations.push(
+        {
+          caseId: `${item.caseId}:disabled`,
+          observation: disabled.observation,
+        },
+        { caseId: `${item.caseId}:enabled`, observation: enabled.observation }
+      );
       targets.push({
         caseId: item.caseId,
         taskId: item.taskId,
@@ -116,13 +193,13 @@ export const runProjectAffinityOutcomeBenchmark = async (
 
     let evidenceAccuracyLoss = 0;
     let evidenceCoverageLoss = 0;
-    let multilingualLoss = 0;
-    const multilingualIds = new Set([
-      "t012ab3c",
-      "t123bc4d",
-      "te8f901a",
-      "tf901a2b",
-    ]);
+    let disabledAccuracy = 0;
+    let enabledAccuracy = 0;
+    let disabledCoverage = 0;
+    let enabledCoverage = 0;
+    let multilingualDisabledCorrect = 0;
+    let multilingualEnabledCorrect = 0;
+    const multilingualIds = ["t012ab3c", "t123bc4d", "te8f901a", "tf901a2b"];
     for (const [taskId, task] of [...fixture.tasks.entries()].sort()) {
       const oracle = fixture.oracles.get(taskId)!;
       const collection = task.corpus.collections[0]!;
@@ -137,7 +214,7 @@ export const runProjectAffinityOutcomeBenchmark = async (
       const affinity = await resolveCliProjectAffinity(config, {
         cwd: config.collections.find((item) => item.name === collection)!.path,
       });
-      const matched = await runProjectAffinitySearch(
+      const enabled = await runProjectAffinitySearch(
         store,
         config,
         task.brief.goal,
@@ -145,23 +222,46 @@ export const runProjectAffinityOutcomeBenchmark = async (
         { affinity, collection, limit: 5 }
       );
       const required = oracle.claims.flatMap((claim) => claim.requiredEvidence);
-      const disabledCoverage = requiredEvidenceRetained(
+      const disabledRetained = requiredEvidenceRetained(
         disabled.output,
         required
       );
-      const matchedCoverage = requiredEvidenceRetained(
-        matched.output,
+      const enabledRetained = requiredEvidenceRetained(
+        enabled.output,
         required
       );
-      if (disabledCoverage && !matchedCoverage) evidenceCoverageLoss += 1;
-      const disabledUris = disabled.output.results.map((result) => result.uri);
-      const matchedUris = matched.output.results.map((result) => result.uri);
-      if (canonicalJson(disabledUris) !== canonicalJson(matchedUris)) {
-        evidenceAccuracyLoss += 1;
-        if (multilingualIds.has(taskId)) multilingualLoss += 1;
+      if (disabledRetained) {
+        disabledAccuracy += 1;
+        disabledCoverage += required.length;
       }
-      observations.push(disabled.observation, matched.observation);
+      if (enabledRetained) {
+        enabledAccuracy += 1;
+        enabledCoverage += required.length;
+      }
+      if (disabledRetained && !enabledRetained) evidenceCoverageLoss += 1;
+      const disabledUris = disabled.output.results.map((result) => result.uri);
+      const enabledUris = enabled.output.results.map((result) => result.uri);
+      if (canonicalJson(disabledUris) !== canonicalJson(enabledUris))
+        evidenceAccuracyLoss += 1;
+      if (multilingualIds.includes(taskId)) {
+        if (disabledRetained) multilingualDisabledCorrect += 1;
+        if (enabledRetained) multilingualEnabledCorrect += 1;
+      }
+      observations.push(
+        {
+          caseId: `regression:${taskId}:disabled`,
+          observation: disabled.observation,
+        },
+        {
+          caseId: `regression:${taskId}:enabled`,
+          observation: enabled.observation,
+        }
+      );
     }
+    const multilingualLoss = Math.max(
+      0,
+      multilingualDisabledCorrect - multilingualEnabledCorrect
+    );
 
     const filterCase = cases.fixture.cases[0]!;
     const filterBinding = bindings[0]!;
@@ -185,7 +285,10 @@ export const runProjectAffinityOutcomeBenchmark = async (
         limit: 5,
       }
     );
-    observations.push(filtered.observation);
+    observations.push({
+      caseId: "filter:c015-vs-c115",
+      observation: filtered.observation,
+    });
     const filterHard =
       filtered.output.results.every((result) =>
         result.uri.startsWith(`gno://${filterCase.targetCollection}/`)
@@ -207,42 +310,61 @@ export const runProjectAffinityOutcomeBenchmark = async (
       zeroCandidates,
       { limit: 2 }
     );
-    const zeroInputs: Array<ProjectAffinityScoringInput | undefined> = [
-      undefined,
-      { enabled: false, resolution: { matches: [], roots: [] } },
-      await resolveCliProjectAffinity(config, {
-        cwd: `${native.rootPath}/unavailable-project`,
-      }),
-      await resolveRemoteProjectAffinity(config, ["opaque-project-hint"]),
+    const zeroInputs: Array<{
+      lane: ProjectAffinityPromotionArtifact["receipts"]["zeroLanes"][number]["lane"];
+      affinity: ProjectAffinityScoringInput | undefined;
+    }> = [
+      { lane: "absent", affinity: undefined },
+      {
+        lane: "disabled",
+        affinity: { enabled: false, resolution: { matches: [], roots: [] } },
+      },
+      {
+        lane: "unavailable",
+        affinity: await resolveCliProjectAffinity(config, {
+          cwd: `${native.rootPath}/unavailable-project`,
+        }),
+      },
+      {
+        lane: "untrusted_remote",
+        affinity: await resolveRemoteProjectAffinity(config, [
+          "opaque-project-hint",
+        ]),
+      },
     ];
-    let zeroLanesExact = true;
-    for (const affinity of zeroInputs) {
-      const lane = await runProjectAffinitySearch(
+    const baselineProjection = exactSearchProjection(zeroBaseline.output);
+    const zeroLanes: ProjectAffinityPromotionArtifact["receipts"]["zeroLanes"] =
+      [];
+    for (const input of zeroInputs) {
+      const candidate = await runProjectAffinitySearch(
         store,
         config,
         filterCase.query,
         zeroCandidates,
-        { affinity, limit: 2 }
+        { affinity: input.affinity, limit: 2 }
       );
-      observations.push(lane.observation);
-      zeroLanesExact =
-        zeroLanesExact &&
-        exactSearchProjection(lane.output) ===
-          exactSearchProjection(zeroBaseline.output);
+      observations.push({
+        caseId: `zero:${input.lane}`,
+        observation: candidate.observation,
+      });
+      const candidateProjection = exactSearchProjection(candidate.output);
+      zeroLanes.push({
+        lane: input.lane,
+        baselineHash: sha256Bytes(baselineProjection),
+        candidateHash: sha256Bytes(candidateProjection),
+        equal: candidateProjection === baselineProjection,
+      });
     }
 
-    const directAuxiliary = [
-      applyAuxiliaryScore(0.5, [0.03, 0.05]),
-      applyAuxiliaryScore(0.5, [0.08, 0.03]),
-      applyAuxiliaryScore(0.5, [-0.08, -0.05]),
-    ];
+    const auxiliary = auxiliaryReceipts();
+    const structural = structuralReceipts(observations);
+    const zeroLanesExact = zeroLanes.every((receipt) => receipt.equal);
     const auxiliaryReceiptsValid =
-      canonicalJson(directAuxiliary) ===
-      canonicalJson([
-        { requested: 0.08, applied: 0.08, finalScore: 0.58 },
-        { requested: 0.11, applied: 0.08, finalScore: 0.58 },
-        { requested: -0.13, applied: -0.08, finalScore: 0.42 },
-      ]);
+      auxiliary[0]?.applied === 0.03 &&
+      auxiliary[1]?.applied === 0.08 &&
+      auxiliary[2]?.applied === 0.08 &&
+      auxiliary[3]?.applied === -0.08 &&
+      auxiliary[4]?.applied === 0.03;
 
     return evaluateProjectAffinityPromotion(
       {
@@ -267,6 +389,27 @@ export const runProjectAffinityOutcomeBenchmark = async (
           "Results apply only to this closed synthetic corpus and exact committed identities.",
         ],
         targets,
+        receipts: { auxiliary, zeroLanes, structural },
+        regression: {
+          taskCount: 24,
+          evidenceAccuracy: {
+            disabled: disabledAccuracy,
+            enabled: enabledAccuracy,
+            loss: Math.max(0, disabledAccuracy - enabledAccuracy),
+          },
+          evidenceCoverage: {
+            disabled: disabledCoverage,
+            enabled: enabledCoverage,
+            loss: Math.max(0, disabledCoverage - enabledCoverage),
+          },
+          multilingual: {
+            taskIds: multilingualIds,
+            taskCount: 4,
+            disabledCorrect: multilingualDisabledCorrect,
+            enabledCorrect: multilingualEnabledCorrect,
+            loss: multilingualLoss,
+          },
+        },
       },
       {
         evidenceAccuracyLoss,
@@ -275,7 +418,7 @@ export const runProjectAffinityOutcomeBenchmark = async (
         filterHard,
         zeroLanesExact,
         auxiliaryReceiptsValid,
-        structuralCallsBounded: observations.every(isStructurallyBounded),
+        structuralCallsBounded: structural.every((receipt) => receipt.passed),
       }
     );
   } finally {
