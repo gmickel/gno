@@ -174,8 +174,8 @@ no timestamps, and no model URIs. Diagnostics and changes are canonically
 ordered, so identical local state produces byte-identical JSON.
 
 `apply` rebuilds the shared diff against config reloaded inside a cross-process
-runtime lock, then atomically creates or updates only resources declared by the
-profile. It can initialize a missing user config. Omitted collections,
+runtime lock, then creates or updates only resources declared by the profile
+through a resumable operation. It can initialize a missing user config. Omitted collections,
 collection-scoped contexts, and content-type rules remain untouched; stale
 same-path collections are reported as skipped and retained. A stale same-name
 collection root is repaired in place without deleting its collection or index
@@ -494,12 +494,31 @@ profile root rather than creating a duplicate subdirectory collection. The
 profile never deletes omitted resources or overwrites the user-level
 `projectAffinity` default.
 
+Once a valid profile has been discovered for an explicit `--apply-profile`
+request, apply is a fail-closed prerequisite. A validation failure returns exit
+1; an apply I/O/lock/store failure, thrown apply transport, missing result, or
+malformed success receipt returns exit 2. In every case setup aborts before its
+folder transaction or connector work. A late apply failure may have persisted
+resumable create/update-only profile state, but cannot trigger ordinary setup
+reconciliation. The outer result is `failed`, the nested lexical error code is
+`profile_apply_failed`, and `profile.apply` retains a returned apply result or
+is `null` when apply produced no result.
+
+Missing or invalid profile inspection remains the optional fallback described
+below. A thrown inspection transport/runtime failure for an explicit
+`--apply-profile` request instead returns exit 2 with
+`profile_inspection_failed` before apply or setup mutation. Because no trusted
+profile check result exists, this failure uses the unchanged
+`setup-command-result@1.0` shape rather than fabricating `profile.check`.
+
 For a valid profile, `--apply-profile` is mutually exclusive with explicit
 `--name` and `--exclude` values. A conflict returns exit 1 with
 `profile_option_conflict` before config, store, or index mutation. Profile
 include/exclude values use validated Bun-glob semantics; plain exclusion
-components retain component matching. Discovery permission/I/O failures return
-exit 2, while missing, disabled, invalid, and unsafe profiles return exit 1.
+components retain component matching. Brace alternatives are rejected; express
+their branches as separate include/exclude entries. Discovery permission/I/O
+failures return exit 2, while missing, disabled, invalid, and unsafe profiles
+return exit 1.
 
 Opt-in JSON uses
 [`setup-profile-result@1.0`](./output-schemas/setup-profile-result.schema.json)

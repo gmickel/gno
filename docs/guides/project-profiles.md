@@ -76,8 +76,10 @@ unique in both the YAML contract and runtime validation.
 
 Profile excludes are real Bun globs when they contain glob metacharacters;
 plain components retain directory-component matching. Multiple include globs,
-including brace alternatives and literal commas, are combined without changing
-their meaning.
+including literal commas and bracket classes, are combined without changing
+their meaning. Brace alternatives are intentionally rejected so the runtime and
+published schema enforce the same portable path rules; use separate
+`include`/`exclude` entries instead.
 
 ## Apply and Prove Retrieval
 
@@ -100,6 +102,16 @@ apply path as `gno profile apply`, then indexes the profile-declared collection
 root and name. This remains true when setup starts in a nested subdirectory.
 It cannot be combined with explicit `--name` or `--exclude` overrides; remove
 those options or run setup without `--apply-profile`.
+
+After setup discovers a valid profile for an explicit `--apply-profile`
+request, applying it is a prerequisite. If apply fails, throws, or cannot
+return a complete collection receipt, setup stops before the ordinary folder
+transaction and connector work. An inspection transport failure stops before
+apply and leaves existing config/index/store state unchanged. A late apply
+failure may already have durable create/update-only state; rerunning apply
+resumes idempotently without deleting unrelated resources. Run
+`gno profile apply` for the detailed diagnostic, repair the problem, then retry
+setup.
 
 Invalid or absent profiles never make profiles mandatory: ordinary folder setup
 continues. With `--apply-profile --json`, `status: completed_with_actions`,

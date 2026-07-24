@@ -53,6 +53,70 @@ function validatePattern(pattern: string): string | null {
 }
 
 /**
+ * Split GNO's canonical whole-pattern union into independently scannable Bun
+ * globs. Bun.Glob.match() accepts a leading `{a,b}` union, but scan() does not.
+ * Nested braces remain part of each child glob; escaped outer commas become
+ * literal commas again before scanning.
+ */
+function scanPatterns(pattern: string): string[] {
+  if (!(pattern.startsWith("{") && pattern.endsWith("}"))) return [pattern];
+
+  const patterns: string[] = [];
+  let branch = "";
+  let depth = 0;
+  let bracketDepth = 0;
+  for (let index = 0; index < pattern.length; index += 1) {
+    const character = pattern[index];
+    if (
+      character === "\\" &&
+      pattern[index + 1] === "," &&
+      depth === 1 &&
+      bracketDepth === 0
+    ) {
+      branch += ",";
+      index += 1;
+      continue;
+    }
+    if (character === "[" && bracketDepth === 0) {
+      bracketDepth = 1;
+      branch += character;
+      continue;
+    }
+    if (character === "]" && bracketDepth > 0) {
+      bracketDepth = 0;
+      branch += character;
+      continue;
+    }
+    if (bracketDepth > 0) {
+      branch += character;
+      continue;
+    }
+    if (character === "{") {
+      depth += 1;
+      if (depth > 1) branch += character;
+      continue;
+    }
+    if (character === "}") {
+      depth -= 1;
+      if (depth < 0 || (depth === 0 && index !== pattern.length - 1)) {
+        return [pattern];
+      }
+      if (depth > 0) branch += character;
+      continue;
+    }
+    if (character === "," && depth === 1) {
+      patterns.push(branch);
+      branch = "";
+      continue;
+    }
+    branch += character;
+  }
+  if (depth !== 0 || bracketDepth !== 0) return [pattern];
+  patterns.push(branch);
+  return patterns;
+}
+
+/**
  * Compute safe relative path from root to file.
  * Returns null if file is outside root (security check).
  * Uses realpath to resolve symlinks and normalize case.
@@ -116,10 +180,12 @@ export class FileWalker implements WalkerPort {
     const entries: WalkEntry[] = [];
     const skipped: SkippedEntry[] = [];
 
-    // Validate pattern for security
-    const patternError = validatePattern(config.pattern);
-    if (patternError) {
-      throw new Error(`Invalid glob pattern: ${patternError}`);
+    const patterns = scanPatterns(config.pattern);
+    for (const pattern of patterns) {
+      const patternError = validatePattern(pattern);
+      if (patternError) {
+        throw new Error(`Invalid glob pattern: ${patternError}`);
+      }
     }
 
     // Resolve root to real path for consistent comparison
@@ -132,16 +198,20 @@ export class FileWalker implements WalkerPort {
       return { entries: [], skipped: [] };
     }
 
-    const glob = new Bun.Glob(config.pattern);
+    const matches = new Set<string>();
+    for (const pattern of patterns) {
+      const glob = new Bun.Glob(pattern);
+      for await (const match of glob.scan({
+        cwd: rootReal,
+        absolute: true,
+        onlyFiles: true,
+        followSymlinks: false,
+      })) {
+        matches.add(normalizePath(match));
+      }
+    }
 
-    for await (const match of glob.scan({
-      cwd: rootReal,
-      absolute: true,
-      onlyFiles: true,
-      followSymlinks: false,
-    })) {
-      const absPath = normalizePath(match);
-
+    for (const absPath of [...matches].sort()) {
       // Security: Compute safe relative path (validates file is within root)
       const relPath = await safeRelPath(rootReal, absPath);
       if (relPath === null) {

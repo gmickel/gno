@@ -7,7 +7,10 @@ import { tmpdir } from "node:os";
 // node:path has no Bun path utilities.
 import { join } from "node:path";
 
+import type { ProjectProfileApplyCommandOutcome } from "../../src/cli/commands/profile-apply";
+
 import { getIndexDbPath } from "../../src/app/constants";
+import { setupWithActivation } from "../../src/cli/commands/setup-activation";
 import { runCli } from "../../src/cli/run";
 import { createDefaultConfig, loadConfig, saveConfig } from "../../src/config";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
@@ -66,6 +69,141 @@ async function cli(...args: string[]) {
     process.stdout.write = originalWrites.stdout;
     process.stderr.write = originalWrites.stderr;
   }
+}
+
+async function seedRecoveryState(root: string) {
+  const config = createDefaultConfig();
+  expect((await saveConfig(config)).ok).toBe(true);
+  await mkdir(join(root, "runtime", "data"), { recursive: true });
+
+  const store = new SqliteAdapter();
+  expect((await store.open(getIndexDbPath(), config.ftsTokenizer)).ok).toBe(
+    true
+  );
+  expect(
+    (
+      await store.syncCollections([
+        {
+          name: "recovery",
+          path: join(root, "recovery"),
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+      ])
+    ).ok
+  ).toBe(true);
+  expect(
+    (
+      await store.syncContexts([
+        {
+          scopeType: "collection",
+          scopeKey: "recovery:",
+          text: "Recovery context",
+        },
+      ])
+    ).ok
+  ).toBe(true);
+  expect(
+    (
+      await store.upsertDocument({
+        collection: "recovery",
+        relPath: "evidence.md",
+        sourceHash: "a".repeat(64),
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 24,
+        sourceMtime: "2026-07-24T00:00:00.000Z",
+        title: "Recovery evidence",
+        mirrorHash: "b".repeat(64),
+        converterId: "native/markdown",
+        converterVersion: "1.0.0",
+        contentTypeSource: "default",
+      })
+    ).ok
+  ).toBe(true);
+  await store.close();
+  return config;
+}
+
+async function readRecoverySnapshot(
+  config: ReturnType<typeof createDefaultConfig>
+) {
+  const store = new SqliteAdapter();
+  const opened = await store.open(getIndexDbPath(), config.ftsTokenizer);
+  if (!opened.ok) throw new Error(opened.error.message);
+  try {
+    const collections = await store.getCollections();
+    const contexts = await store.getContexts();
+    const documents = await store.listDocuments("recovery");
+    if (!(collections.ok && contexts.ok && documents.ok)) {
+      throw new Error("Failed to read recovery-state snapshot");
+    }
+    return {
+      collections: collections.value,
+      contexts: contexts.value,
+      documents: documents.value,
+    };
+  } finally {
+    await store.close();
+  }
+}
+
+const validProfileYaml = [
+  'schemaVersion: "1.0"',
+  "collection:",
+  "  name: profiled",
+  "  root: docs",
+  '  include: ["**/*.md"]',
+  "contexts:",
+  "  - text: Profile context.",
+  "contentTypes: {}",
+  "",
+].join("\n");
+
+function successfulApplyOutcome(
+  collectionName: string,
+  options: {
+    resultStatus?: "applied" | "unchanged";
+    receiptStatus?: "applied" | "unchanged";
+  } = {}
+): ProjectProfileApplyCommandOutcome {
+  const resultStatus = options.resultStatus ?? "applied";
+  return {
+    exitCode: 0,
+    result: {
+      schemaVersion: "1.0",
+      command: "apply",
+      status: resultStatus,
+      applied: resultStatus === "applied",
+      discovery: {
+        status: "found",
+        source: "cwd",
+        boundary: "repository",
+        profile: ".gno/index.yml",
+        ambiguous: false,
+        shadowedProfiles: 0,
+      },
+      receipt: {
+        schemaVersion: "1.0",
+        command: "apply",
+        status: options.receiptStatus ?? resultStatus,
+        profile: { fingerprint: "a".repeat(64) },
+        diff: { status: "in_sync", changes: [], staleMappings: [] },
+        resources: [
+          {
+            kind: "collection",
+            id: collectionName,
+            disposition: "reused",
+            pendingIndexing: false,
+          },
+        ],
+        pendingIndexing: [],
+        diagnostics: [],
+      },
+      diagnostics: [],
+    },
+  };
 }
 
 afterEach(async () => {
@@ -154,71 +292,8 @@ describe("setup project-profile integration", () => {
 
   test("preserves DB-only recovery state through profile apply and full setup", async () => {
     const { root, project, nested } = await createHarness("recovery");
-    await writeFile(
-      join(project, ".gno", "index.yml"),
-      [
-        'schemaVersion: "1.0"',
-        "collection:",
-        "  name: profiled",
-        "  root: docs",
-        '  include: ["**/*.md"]',
-        "contexts:",
-        "  - text: Profile context.",
-        "contentTypes: {}",
-        "",
-      ].join("\n")
-    );
-    const initialConfig = createDefaultConfig();
-    expect((await saveConfig(initialConfig)).ok).toBe(true);
-    await mkdir(join(root, "runtime", "data"), { recursive: true });
-
-    const seeded = new SqliteAdapter();
-    expect(
-      (await seeded.open(getIndexDbPath(), initialConfig.ftsTokenizer)).ok
-    ).toBe(true);
-    expect(
-      (
-        await seeded.syncCollections([
-          {
-            name: "recovery",
-            path: join(root, "recovery"),
-            pattern: "**/*",
-            include: [],
-            exclude: [],
-          },
-        ])
-      ).ok
-    ).toBe(true);
-    expect(
-      (
-        await seeded.syncContexts([
-          {
-            scopeType: "collection",
-            scopeKey: "recovery:",
-            text: "Recovery context",
-          },
-        ])
-      ).ok
-    ).toBe(true);
-    expect(
-      (
-        await seeded.upsertDocument({
-          collection: "recovery",
-          relPath: "evidence.md",
-          sourceHash: "a".repeat(64),
-          sourceMime: "text/markdown",
-          sourceExt: ".md",
-          sourceSize: 24,
-          sourceMtime: "2026-07-24T00:00:00.000Z",
-          title: "Recovery evidence",
-          mirrorHash: "b".repeat(64),
-          converterId: "native/markdown",
-          converterVersion: "1.0.0",
-          contentTypeSource: "default",
-        })
-      ).ok
-    ).toBe(true);
-    await seeded.close();
+    await writeFile(join(project, ".gno", "index.yml"), validProfileYaml);
+    const initialConfig = await seedRecoveryState(root);
 
     const result = await cli(
       "setup",
@@ -248,6 +323,205 @@ describe("setup project-profile integration", () => {
     expect(documents.ok && documents.value).toHaveLength(1);
     await verified.close();
   });
+
+  for (const failure of [
+    { status: "invalid" as const, exitCode: 1 as const },
+    { status: "failed" as const, exitCode: 2 as const },
+  ]) {
+    test(`fails closed before setup when profile apply returns ${failure.status}`, async () => {
+      const { root, project, nested } = await createHarness(
+        `apply-${failure.status}`
+      );
+      await writeFile(join(project, ".gno", "index.yml"), validProfileYaml);
+      const config = await seedRecoveryState(root);
+      const configPath = join(process.env.GNO_CONFIG_DIR!, "index.yml");
+      const configBefore = await Bun.file(configPath).text();
+      const storeBefore = await readRecoverySnapshot(config);
+
+      const outcome = await setupWithActivation({
+        folder: nested,
+        applyProfile: true,
+        semantic: false,
+        json: true,
+        applyProfileAdvisory: async () => ({
+          exitCode: failure.exitCode,
+          result: {
+            schemaVersion: "1.0",
+            command: "apply",
+            status: failure.status,
+            applied: false,
+            discovery: {
+              status: "found",
+              source: "cwd",
+              boundary: "repository",
+              profile: ".gno/index.yml",
+              ambiguous: false,
+              shadowedProfiles: 0,
+            },
+            receipt: null,
+            diagnostics: [
+              {
+                code: "PROFILE_APPLY_TEST_FAILURE",
+                severity: "error",
+                path: "runtime",
+                message: "Injected profile apply failure.",
+                remediation: "Repair the injected failure.",
+              },
+            ],
+          },
+        }),
+      });
+
+      expect(outcome).toMatchObject({
+        exitCode: failure.exitCode,
+        result: {
+          status: "failed",
+          profile: {
+            check: { status: "valid" },
+            apply: { status: failure.status },
+          },
+          setup: {
+            status: "failed",
+            lexical: { error: { code: "profile_apply_failed" } },
+          },
+          connectors: [],
+        },
+      });
+      assertValid(outcome.result, await loadSchema("setup-profile-result"));
+      expect(await Bun.file(configPath).text()).toBe(configBefore);
+      expect(await readRecoverySnapshot(config)).toEqual(storeBefore);
+    });
+  }
+
+  test("fails closed before setup when profile apply throws", async () => {
+    const { root, project, nested } = await createHarness("apply-throws");
+    await writeFile(join(project, ".gno", "index.yml"), validProfileYaml);
+    const config = await seedRecoveryState(root);
+    const configPath = join(process.env.GNO_CONFIG_DIR!, "index.yml");
+    const configBefore = await Bun.file(configPath).text();
+    const storeBefore = await readRecoverySnapshot(config);
+
+    const outcome = await setupWithActivation({
+      folder: nested,
+      applyProfile: true,
+      semantic: false,
+      json: true,
+      applyProfileAdvisory: async () => {
+        throw new Error("Injected profile apply transport failure");
+      },
+    });
+
+    expect(outcome).toMatchObject({
+      exitCode: 2,
+      result: {
+        status: "failed",
+        profile: {
+          check: { status: "valid" },
+          apply: null,
+        },
+        setup: {
+          status: "failed",
+          lexical: { error: { code: "profile_apply_failed" } },
+        },
+        connectors: [],
+      },
+    });
+    assertValid(outcome.result, await loadSchema("setup-profile-result"));
+    expect(await Bun.file(configPath).text()).toBe(configBefore);
+    expect(await readRecoverySnapshot(config)).toEqual(storeBefore);
+  });
+
+  test("fails closed before apply or setup when explicit profile inspection throws", async () => {
+    const { root, nested } = await createHarness("inspection-throws");
+    const config = await seedRecoveryState(root);
+    const configPath = join(process.env.GNO_CONFIG_DIR!, "index.yml");
+    const configBefore = await Bun.file(configPath).text();
+    const storeBefore = await readRecoverySnapshot(config);
+    let applyCalled = false;
+
+    const outcome = await setupWithActivation({
+      folder: nested,
+      applyProfile: true,
+      semantic: false,
+      json: true,
+      inspectProfileAdvisory: async () => {
+        throw new Error("Injected profile inspection failure");
+      },
+      applyProfileAdvisory: async () => {
+        applyCalled = true;
+        return successfulApplyOutcome("profiled");
+      },
+    });
+
+    expect(outcome).toMatchObject({
+      exitCode: 2,
+      result: {
+        status: "failed",
+        lexical: { error: { code: "profile_inspection_failed" } },
+      },
+    });
+    assertValid(outcome.result, await loadSchema("setup-command-result"));
+    expect(applyCalled).toBe(false);
+    expect(await Bun.file(configPath).text()).toBe(configBefore);
+    expect(await readRecoverySnapshot(config)).toEqual(storeBefore);
+  });
+
+  for (const malformed of [
+    {
+      label: "mismatched receipt status",
+      outcome: successfulApplyOutcome("profiled", {
+        resultStatus: "applied",
+        receiptStatus: "unchanged",
+      }),
+      retainApply: false,
+    },
+    {
+      label: "empty collection resource ID",
+      outcome: successfulApplyOutcome(""),
+      retainApply: false,
+    },
+    {
+      label: "collection absent from persisted config",
+      outcome: successfulApplyOutcome("missing"),
+      retainApply: true,
+    },
+  ]) {
+    test(`fails closed before setup for ${malformed.label}`, async () => {
+      const { root, project, nested } = await createHarness(
+        `malformed-${malformed.outcome.result.receipt?.resources[0]?.id || "empty"}`
+      );
+      await writeFile(join(project, ".gno", "index.yml"), validProfileYaml);
+      const config = await seedRecoveryState(root);
+      const configPath = join(process.env.GNO_CONFIG_DIR!, "index.yml");
+      const configBefore = await Bun.file(configPath).text();
+      const storeBefore = await readRecoverySnapshot(config);
+
+      const outcome = await setupWithActivation({
+        folder: nested,
+        applyProfile: true,
+        semantic: false,
+        json: true,
+        applyProfileAdvisory: async () => malformed.outcome,
+      });
+
+      expect(outcome).toMatchObject({
+        exitCode: 2,
+        result: {
+          status: "failed",
+          profile: {
+            apply: malformed.retainApply ? malformed.outcome.result : null,
+          },
+          setup: {
+            status: "failed",
+            lexical: { error: { code: "profile_apply_failed" } },
+          },
+        },
+      });
+      assertValid(outcome.result, await loadSchema("setup-profile-result"));
+      expect(await Bun.file(configPath).text()).toBe(configBefore);
+      expect(await readRecoverySnapshot(config)).toEqual(storeBefore);
+    });
+  }
 
   test("keeps invalid and absent profiles usable with truthful action status", async () => {
     const invalid = await createHarness("invalid");

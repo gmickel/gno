@@ -47,7 +47,10 @@ const escapeOuterBraceDelimiter = (pattern: string): string => {
   return escaped;
 };
 
-/** Encode one or more portable include globs into the config's single pattern. */
+/**
+ * Encode portable include globs into the config's single pattern. FileWalker
+ * splits a whole-pattern union before calling Bun.Glob.scan().
+ */
 export const projectProfileIncludePattern = (
   include: readonly string[]
 ): string => {

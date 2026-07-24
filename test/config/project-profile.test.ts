@@ -19,6 +19,7 @@ import {
   PROJECT_PROFILE_CONTEXT_FILE_MAX_BYTES,
   projectProfileIncludePattern,
 } from "../../src/core/project-profile";
+import { FileWalker } from "../../src/ingestion/walker";
 import { safeRm } from "../helpers/cleanup";
 
 const tempRoots: string[] = [];
@@ -215,6 +216,34 @@ describe("project profile schema", () => {
       { collection: { name: "notes", include: ["docs/{safe,name }/**"] } },
     ],
     [
+      "composed brace traversal",
+      { collection: { name: "notes", include: ["docs/.{.,safe}/**"] } },
+    ],
+    [
+      "composed trailing dot",
+      { collection: { name: "notes", include: ["docs/name{.,x}"] } },
+    ],
+    [
+      "composed Windows reserved name",
+      { collection: { name: "notes", include: ["docs/C{ON,AT}/**"] } },
+    ],
+    [
+      "composed Windows reserved extension",
+      { collection: { name: "notes", include: ["docs/a{ux,bc}.txt"] } },
+    ],
+    [
+      "split composed Windows reserved name",
+      { collection: { name: "notes", include: ["docs/{C,A}ON/**"] } },
+    ],
+    [
+      "suffix-composed Windows reserved name",
+      { collection: { name: "notes", include: ["docs/C{O,AT}N/**"] } },
+    ],
+    [
+      "split composed Windows reserved extension",
+      { collection: { name: "notes", include: ["docs/{a,b}ux.txt"] } },
+    ],
+    [
       "secret context path",
       {
         collection: { name: "notes" },
@@ -268,17 +297,52 @@ describe("project profile schema", () => {
     expect(validateJsonSchema(tooManyRules)).toBe(false);
   });
 
-  test("escapes outer union commas while preserving nested brace globs", () => {
+  test("accepts multiple brace-free include entries with exact schema parity", () => {
+    const candidate = {
+      schemaVersion: "1.0",
+      collection: {
+        name: "notes",
+        include: ["docs/**/*.md", "src/**/*.ts", "src/**/*.tsx"],
+      },
+    };
+    expect(ProjectProfileSchema.safeParse(candidate).success).toBe(true);
+    expect(validateJsonSchema(candidate)).toBe(true);
+  });
+
+  test("scans canonical include unions while preserving literal and bracket-class commas", async () => {
     const pattern = projectProfileIncludePattern([
       "docs/a,b.md",
-      "src/*.{ts,tsx}",
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "chars/[a,b].md",
     ]);
-    expect(pattern).toBe("{docs/a\\,b.md,src/*.{ts,tsx}}");
-    const glob = new Bun.Glob(pattern);
-    expect(glob.match("docs/a,b.md")).toBe(true);
-    expect(glob.match("docs/a.md")).toBe(false);
-    expect(glob.match("src/app.ts")).toBe(true);
-    expect(glob.match("src/app.tsx")).toBe(true);
+    expect(pattern).toBe(
+      "{docs/a\\,b.md,src/**/*.ts,src/**/*.tsx,chars/[a,b].md}"
+    );
+    const root = await makeRoot("include-union");
+    await mkdir(join(root, "docs"), { recursive: true });
+    await mkdir(join(root, "src"), { recursive: true });
+    await mkdir(join(root, "chars"), { recursive: true });
+    await Bun.write(join(root, "docs", "a,b.md"), "included");
+    await Bun.write(join(root, "docs", "a.md"), "excluded");
+    await Bun.write(join(root, "src", "app.ts"), "included");
+    await Bun.write(join(root, "src", "app.tsx"), "included");
+    await Bun.write(join(root, "chars", "a.md"), "included");
+    await Bun.write(join(root, "chars", "b.md"), "included");
+    const scanned = await new FileWalker().walk({
+      root,
+      pattern,
+      include: [".md", ".ts", ".tsx"],
+      exclude: [],
+      maxBytes: 1024,
+    });
+    expect(scanned.entries.map((entry) => entry.relPath)).toEqual([
+      "chars/a.md",
+      "chars/b.md",
+      "docs/a,b.md",
+      "src/app.ts",
+      "src/app.tsx",
+    ]);
   });
 });
 

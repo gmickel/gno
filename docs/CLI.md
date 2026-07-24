@@ -145,6 +145,12 @@ follow-up. See
 [Project-Local Retrieval Profiles](guides/project-profiles.md).
 For a valid profile, `--apply-profile` cannot be combined with explicit
 `--name` or `--exclude`; the command fails before config or index mutation.
+After a valid profile is discovered, apply is fail-closed: a failed, thrown, or
+incomplete apply aborts before ordinary setup or connector work. A profile
+inspection transport failure aborts before apply and preserves existing
+config/index/store state. A late apply failure may leave resumable,
+create/update-only state; rerun `gno profile apply` for the detailed diagnostic
+before retrying setup.
 
 `--exclude` is repeatable and literal; it is not a comma-separated list. If GNO
 finds likely env files, credentials, or private keys, terminal use asks once

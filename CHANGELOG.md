@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Made `gno setup --apply-profile` fail closed after valid profile discovery:
+  failed, thrown, incomplete, or unresolvable applies now abort before ordinary
+  setup and connector work; inspection transport failures abort before apply.
 - Preserved multiple contexts per scope and unrelated DB-only collections,
   documents, and contexts during profile apply; serialized every config writer
   through one canonical target-derived lock, including custom config paths and
@@ -26,8 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made additive profile projection idempotent and repairable without advancing
   collection timestamps or context generation on unchanged reapply.
 - Enforced real profile exclusion globs, safe multi-include composition,
-  duplicate-ID rejection, bounded regular UTF-8 inputs, portable Windows path
-  rules, model/cache runtime boundaries, and non-mutating offline cache checks.
+  brace-free schema/runtime parity, duplicate-ID rejection, bounded regular
+  UTF-8 inputs, portable Windows path rules, model/cache runtime boundaries,
+  and non-mutating offline cache checks.
 - Rejected conflicting `setup --apply-profile` name/exclude overrides and
   classified profile discovery I/O failures as runtime errors.
 

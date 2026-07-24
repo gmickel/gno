@@ -110,6 +110,34 @@ describe("FileWalker", () => {
     }
   });
 
+  test("splits whole-pattern unions without splitting bracket-class commas or braces", async () => {
+    const testDir = await mkdtemp(join(tmpdir(), "gno-walker-union-"));
+    try {
+      await mkdir(join(testDir, "chars"), { recursive: true });
+      await Bun.write(join(testDir, "chars", ",.md"), "comma");
+      await Bun.write(join(testDir, "chars", "{.md"), "opening brace");
+      await Bun.write(join(testDir, "chars", "}.md"), "closing brace");
+      await Bun.write(join(testDir, "plain.md"), "plain");
+
+      const result = await walker.walk({
+        root: testDir,
+        pattern: "{chars/[{},].md,plain.md}",
+        include: [".md"],
+        exclude: [],
+        maxBytes: 1_000_000,
+      });
+
+      expect(result.entries.map((entry) => entry.relPath)).toEqual([
+        "chars/,.md",
+        "chars/{.md",
+        "chars/}.md",
+        "plain.md",
+      ]);
+    } finally {
+      await safeRm(testDir);
+    }
+  });
+
   test("skips files exceeding maxBytes", async () => {
     const { entries, skipped } = await walker.walk({
       root: FIXTURES_ROOT,

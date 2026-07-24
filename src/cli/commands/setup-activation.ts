@@ -33,6 +33,9 @@ import {
 import {
   applySetupProfile,
   inspectSetupProfile,
+  profileApplyFailureOutcome,
+  profileApplySucceeded,
+  profileInspectionFailureOutcome,
   setupOptionsAfterProfileApply,
 } from "./setup-profile";
 
@@ -285,7 +288,14 @@ export async function setupWithActivation(
     onProfileApply: _onProfileApply,
     ...setupOptions
   } = options;
-  const profileCheck = await inspectSetupProfile(options);
+  const profileInspection = await inspectSetupProfile(options);
+  const profileCheck = profileInspection.result;
+  if (options.applyProfile && profileInspection.failed) {
+    const failedInspection = profileInspectionFailureOutcome();
+    return definitions.length > 0
+      ? failedSetupActivationOutcome(failedInspection)
+      : failedInspection;
+  }
   if (
     options.applyProfile &&
     profileCheck?.status === "valid" &&
@@ -300,11 +310,43 @@ export async function setupWithActivation(
       null
     );
   }
-  const profileApply = await applySetupProfile(options, profileCheck);
+  const profileApplyOutcome = await applySetupProfile(options, profileCheck);
+  const profileApplySuccess = profileApplySucceeded(profileApplyOutcome);
+  const returnedProfileApply = profileApplyOutcome?.result ?? null;
+  const profileApply =
+    profileApplyOutcome?.exitCode === 0 && !profileApplySuccess
+      ? null
+      : returnedProfileApply;
+  if (
+    options.applyProfile &&
+    profileCheck?.status === "valid" &&
+    !profileApplySuccess
+  ) {
+    const failedApply = profileApplyFailureOutcome(profileApplyOutcome);
+    return withProfileResult(
+      definitions.length > 0
+        ? failedSetupActivationOutcome(failedApply)
+        : failedApply,
+      true,
+      profileCheck,
+      profileApply
+    );
+  }
   const effectiveSetupOptions = await setupOptionsAfterProfileApply(
     setupOptions,
     profileApply
   );
+  if (effectiveSetupOptions === null) {
+    const failedApply = profileApplyFailureOutcome(profileApplyOutcome);
+    return withProfileResult(
+      definitions.length > 0
+        ? failedSetupActivationOutcome(failedApply)
+        : failedApply,
+      true,
+      profileCheck,
+      profileApply
+    );
+  }
   const setupOutcome = await setup(effectiveSetupOptions);
   if (
     setupOutcome.exitCode !== 0 ||

@@ -19,7 +19,6 @@ const WINDOWS_UNC_PATH_PATTERN = /^(?:\\\\|\/\/)/;
 const ENV_EXPANSION_PATTERN =
   /(?:\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%)/;
 const GLOB_META_PATTERN = /[*?[\]{}]/;
-const GLOB_TRAVERSAL_PATTERN = /(?:^|[/{,])\.\.(?=$|[/},])/;
 const WINDOWS_INVALID_COMPONENT_PATTERN = /[<>:"|]/;
 const WINDOWS_RESERVED_COMPONENT_PATTERN =
   /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
@@ -52,89 +51,6 @@ const globStructureIssue = (value: string): string | null => {
   if (braceDepth !== 0) return "contains an unmatched opening brace";
   if (bracketDepth !== 0) return "contains an unmatched opening bracket";
   return null;
-};
-
-const MAX_GLOB_ALTERNATIVE_EXPANSIONS = 256;
-
-const globAlternativeIssue = (
-  value: string,
-  expansionBudget = MAX_GLOB_ALTERNATIVE_EXPANSIONS
-): { issue: string | null; expansions: number } => {
-  const opening = value.indexOf("{");
-  if (opening === -1) return { issue: null, expansions: 1 };
-
-  let depth = 0;
-  let closing = -1;
-  for (let index = opening; index < value.length; index += 1) {
-    const character = value[index];
-    if (character === "{") depth += 1;
-    else if (character === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        closing = index;
-        break;
-      }
-    }
-  }
-  if (closing === -1) return { issue: null, expansions: 1 };
-
-  const body = value.slice(opening + 1, closing);
-  const alternatives: string[] = [];
-  let alternative = "";
-  depth = 0;
-  for (const character of body) {
-    if (character === "{") depth += 1;
-    else if (character === "}") depth -= 1;
-    if (character === "," && depth === 0) {
-      alternatives.push(alternative);
-      alternative = "";
-    } else {
-      alternative += character;
-    }
-  }
-  alternatives.push(alternative);
-
-  let expansions = 0;
-  for (const branch of alternatives) {
-    if (
-      branch.startsWith("/") ||
-      branch.startsWith("\\") ||
-      WINDOWS_UNC_PATH_PATTERN.test(branch) ||
-      WINDOWS_DRIVE_PATH_PATTERN.test(branch) ||
-      branch.startsWith("~")
-    ) {
-      return {
-        issue: "contains an absolute or platform-rooted brace alternative",
-        expansions: 0,
-      };
-    }
-    const normalizedBranch = branch.replaceAll("\\", "/");
-    if (
-      normalizedBranch.split("/").includes("..") ||
-      GLOB_TRAVERSAL_PATTERN.test(normalizedBranch)
-    ) {
-      return {
-        issue: "contains traversal in a brace alternative",
-        expansions: 0,
-      };
-    }
-    const branchWindowsIssue = windowsComponentIssue(normalizedBranch, true);
-    if (branchWindowsIssue) {
-      return { issue: branchWindowsIssue, expansions: 0 };
-    }
-
-    const expanded = `${value.slice(0, opening)}${branch}${value.slice(closing + 1)}`;
-    const nested = globAlternativeIssue(expanded, expansionBudget - expansions);
-    if (nested.issue) return nested;
-    expansions += nested.expansions;
-    if (expansions > expansionBudget) {
-      return {
-        issue: `expands to more than ${MAX_GLOB_ALTERNATIVE_EXPANSIONS} alternatives`,
-        expansions,
-      };
-    }
-  }
-  return { issue: null, expansions };
 };
 
 const windowsComponentIssue = (
@@ -210,10 +126,7 @@ const portablePathIssue = (
   }
 
   const normalized = value.replaceAll("\\", "/");
-  if (
-    normalized.split("/").includes("..") ||
-    GLOB_TRAVERSAL_PATTERN.test(normalized)
-  ) {
+  if (normalized.split("/").includes("..")) {
     return "must not contain traversal segments";
   }
   const windowsIssue = windowsComponentIssue(normalized, options.allowGlob);
@@ -224,8 +137,9 @@ const portablePathIssue = (
   if (options.allowGlob) {
     const globIssue = globStructureIssue(normalized);
     if (globIssue) return globIssue;
-    const alternativeIssue = globAlternativeIssue(normalized).issue;
-    if (alternativeIssue) return alternativeIssue;
+    if (normalized.includes("{") || normalized.includes("}")) {
+      return "must not use brace alternatives; use separate include or exclude entries";
+    }
   }
   if (!options.allowRuntimeExclusion && RUNTIME_PATH_PATTERN.test(normalized)) {
     return "must not reference GNO runtime state";
