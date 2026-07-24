@@ -3,7 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -17,11 +17,7 @@ describe("ModelCache", () => {
   let cache: ModelCache;
 
   beforeEach(async () => {
-    tempDir = join(
-      tmpdir(),
-      `gno-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    );
-    await mkdir(tempDir, { recursive: true });
+    tempDir = await mkdtemp(join(tmpdir(), "gno-test-"));
     cache = new ModelCache(tempDir);
   });
 
