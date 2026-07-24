@@ -15,6 +15,7 @@
     "recentErrors",
     "activePreset",
     "capabilities",
+    "contentTypeBoost",
     "activation",
     "onboarding",
     "health",
@@ -133,6 +134,29 @@
         },
         "answer": {
           "type": "boolean"
+        }
+      }
+    },
+    "contentTypeBoost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rulesFingerprint", "rules"],
+      "properties": {
+        "rulesFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "searchBoost"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "searchBoost": { "type": "number", "minimum": 0.5, "maximum": 2 }
+            }
+          }
         }
       }
     },

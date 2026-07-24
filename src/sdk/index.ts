@@ -43,6 +43,7 @@ export type {
   GnoGetResult,
   GnoIndexOptions,
   GnoIndexResult,
+  GnoIndexStatus,
   GnoListDocument,
   GnoListOptions,
   GnoListResult,

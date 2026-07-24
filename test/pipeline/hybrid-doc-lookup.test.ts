@@ -30,11 +30,13 @@ const makeDoc = (
     frontmatterDate?: string | null;
     categories?: string[];
     author?: string;
+    contentType?: string;
+    relPath?: string;
   }
 ): DocumentRow => ({
   id,
   collection: "notes",
-  relPath: `${mirrorHash}.md`,
+  relPath: metadata?.relPath ?? `${mirrorHash}.md`,
   sourceHash: `source_${mirrorHash}`,
   sourceMime: "text/markdown",
   sourceExt: ".md",
@@ -57,6 +59,7 @@ const makeDoc = (
   frontmatterDate: metadata?.frontmatterDate ?? null,
   categories: metadata?.categories ?? null,
   author: metadata?.author ?? null,
+  contentType: metadata?.contentType ?? null,
 });
 
 const makeChunk = (
@@ -225,6 +228,68 @@ const TEST_COLLECTIONS: CollectionRow[] = [
 ];
 
 describe("searchHybrid targeted document lookup", () => {
+  test("refreshes planner ranks after auxiliary ordering for Capsule consumers", async () => {
+    const plain = makeDoc(1, "plain");
+    const decision = makeDoc(2, "decision", {
+      contentType: "decision",
+      relPath: "decisions/decision.md",
+    });
+    const store: Partial<StorePort> = {
+      searchFts: async () => ({
+        ok: true as const,
+        value: [
+          { ...makeFtsResult("plain", 0), score: -5 },
+          { ...makeFtsResult("decision", 0), score: -4.8 },
+        ],
+      }),
+      getDocumentsByMirrorHashes: async () => ({
+        ok: true as const,
+        value: [plain, decision],
+      }),
+      getCollections: async () => ({
+        ok: true as const,
+        value: TEST_COLLECTIONS,
+      }),
+      getChunksBatch: async () => ({
+        ok: true as const,
+        value: new Map([
+          ["plain", [makeChunk("plain", 0)]],
+          ["decision", [makeChunk("decision", 0)]],
+        ]),
+      }),
+    };
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {
+          contentTypes: [
+            {
+              id: "decision",
+              prefixes: ["decisions/"],
+              preset: "decision-note",
+              searchBoost: 2,
+            },
+          ],
+        } as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "shared evidence",
+      { noExpand: true, noRerank: true, limit: 2 }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(
+      result.value.results.map(
+        (entry) => entry[SEARCH_RESULT_PLANNER_METADATA]?.retrievalRank
+      )
+    ).toEqual([1, 2]);
+  });
+
   test("full mode scores shared-mirror copies before docid deduplication", async () => {
     const sharedHash = "shared-full";
     const bestDoc = makeDoc(3, "best-full", {
@@ -525,7 +590,7 @@ describe("searchHybrid targeted document lookup", () => {
       result.value.results.map(
         (item) => item[SEARCH_RESULT_PLANNER_METADATA]?.retrievalRank
       )
-    ).toEqual([1, 1]);
+    ).toEqual([1, 2]);
     expect(JSON.stringify(result.value.results)).not.toContain("retrievalRank");
   });
 

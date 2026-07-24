@@ -7,7 +7,9 @@
 export { createDefaultConfig } from "./defaults";
 export {
   type ContentTypeRuleResolution,
+  type ContentTypeBoostStatus,
   type ConfigWarning,
+  buildContentTypeBoostStatus,
   fingerprintContentTypeMetadataRules,
   fingerprintContentTypeRules,
   formatConfigWarning,

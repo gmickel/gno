@@ -204,6 +204,7 @@ describe("content-type boost surface parity", () => {
                 rawScore: 0.5,
                 rawScoreKind: "hybrid_blended",
                 ruleSource: "configured-id",
+                rulesFingerprint: "a".repeat(64),
               },
             },
           ],

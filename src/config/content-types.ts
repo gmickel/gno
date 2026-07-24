@@ -35,6 +35,14 @@ export interface ConfigNormalizationResult {
   warnings: ConfigWarning[];
 }
 
+export interface ContentTypeBoostStatus {
+  rulesFingerprint: string;
+  rules: Array<{
+    id: string;
+    searchBoost: number;
+  }>;
+}
+
 const NOTE_PRESET_IDS = new Set<NotePresetId>(
   NOTE_PRESETS.map((preset) => preset.id)
 );
@@ -178,6 +186,20 @@ export function fingerprintContentTypeRules(
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(JSON.stringify(canonical));
   return hasher.digest("hex");
+}
+
+/**
+ * Redacted live-ranking projection for status surfaces. Prefixes remain local
+ * configuration details; rule IDs and factors are enough to audit behavior.
+ */
+export function buildContentTypeBoostStatus(
+  contentTypes: ContentTypeConfig[]
+): ContentTypeBoostStatus {
+  const { rules } = normalizeContentTypes(contentTypes);
+  return {
+    rulesFingerprint: fingerprintContentTypeRules(rules),
+    rules: rules.map(({ id, searchBoost }) => ({ id, searchBoost })),
+  };
 }
 
 /**

@@ -21,8 +21,16 @@ describe("GET /api/status", () => {
 
   test("passes known resident vector capability into activation status", async () => {
     const ctx = createMockContext();
+    ctx.config.contentTypes = [
+      {
+        id: "decision",
+        preset: "decision-note",
+        prefixes: ["private/decisions/"],
+        searchBoost: 1.25,
+      },
+    ];
     let vectorAvailable: boolean | undefined;
-    await handleStatus(ctx, {
+    const response = await handleStatus(ctx, {
       inspectDisk: async () => null,
       isModelCached: async () => true,
       listSuggestedCollections: async () => [],
@@ -33,6 +41,12 @@ describe("GET /api/status", () => {
     });
 
     expect(vectorAvailable).toBe(false);
+    const body = (await response.json()) as AppStatusResponse;
+    expect(body.contentTypeBoost.rules).toEqual([
+      { id: "decision", searchBoost: 1.25 },
+    ]);
+    expect(body.contentTypeBoost.rulesFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(body.contentTypeBoost)).not.toContain("private");
   });
 
   test("projects explicit resident vector unavailability without claiming semantic proof", async () => {

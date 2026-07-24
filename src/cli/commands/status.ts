@@ -5,11 +5,17 @@
  * @module src/cli/commands/status
  */
 
+import type { ContentTypeBoostStatus } from "../../config/content-types";
 import type { ActivationStatus } from "../../core/activation-status";
 import type { IndexStatus } from "../../store/types";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
-import { getConfigPaths, isInitialized, loadConfig } from "../../config";
+import {
+  buildContentTypeBoostStatus,
+  getConfigPaths,
+  isInitialized,
+  loadConfig,
+} from "../../config";
 import { isConnectorActivationComplete } from "../../core/activation-connector-health";
 import { buildActivationStatus } from "../../core/activation-status";
 import { ModelCache } from "../../llm/cache";
@@ -36,7 +42,12 @@ export interface StatusOptions {
  * Result of status command.
  */
 export type StatusResult =
-  | { success: true; status: IndexStatus; activation: ActivationStatus }
+  | {
+      success: true;
+      status: IndexStatus;
+      activation: ActivationStatus;
+      contentTypeBoost: ContentTypeBoostStatus;
+    }
   | { success: false; error: string };
 
 function connectorProjectionLine(activation: ActivationStatus): string | null {
@@ -63,7 +74,8 @@ function isStatusHealthy(
  */
 function formatTerminal(
   indexStatus: IndexStatus,
-  activation: ActivationStatus
+  activation: ActivationStatus,
+  contentTypeBoost: ContentTypeBoostStatus
 ): string {
   const lines: string[] = [];
 
@@ -102,6 +114,11 @@ function formatTerminal(
   }
 
   lines.push(
+    `Content-type boosts: ${contentTypeBoost.rules.length ? contentTypeBoost.rules.map((rule) => `${rule.id}=${rule.searchBoost}`).join(", ") : "none"}`
+  );
+  lines.push(`Ranking fingerprint: ${contentTypeBoost.rulesFingerprint}`);
+
+  lines.push(
     `Health: ${isStatusHealthy(indexStatus, activation) ? "OK" : "DEGRADED"}`
   );
   lines.push("");
@@ -138,7 +155,8 @@ function formatTerminal(
  */
 function formatMarkdown(
   indexStatus: IndexStatus,
-  activation: ActivationStatus
+  activation: ActivationStatus,
+  contentTypeBoost: ContentTypeBoostStatus
 ): string {
   const lines: string[] = [];
 
@@ -174,6 +192,10 @@ function formatMarkdown(
   if (indexStatus.lastUpdatedAt) {
     lines.push(`- **Last updated**: ${indexStatus.lastUpdatedAt}`);
   }
+  lines.push(
+    `- **Content-type boosts**: ${contentTypeBoost.rules.length ? contentTypeBoost.rules.map((rule) => `${rule.id}=${rule.searchBoost}`).join(", ") : "none"}`
+  );
+  lines.push(`- **Ranking fingerprint**: ${contentTypeBoost.rulesFingerprint}`);
 
   lines.push("");
   lines.push("## Lexical activation");
@@ -254,7 +276,12 @@ export async function status(
       }
     );
 
-    return { success: true, status: statusResult.value, activation };
+    return {
+      success: true,
+      status: statusResult.value,
+      activation,
+      contentTypeBoost: buildContentTypeBoostStatus(config.contentTypes ?? []),
+    };
   } finally {
     await store.close();
   }
@@ -294,6 +321,7 @@ export function formatStatus(
         embeddingBacklog: s.embeddingBacklog,
         lastUpdated: s.lastUpdatedAt,
         healthy: isStatusHealthy(s, result.activation),
+        contentTypeBoost: result.contentTypeBoost,
         activation: result.activation,
       },
       null,
@@ -302,8 +330,16 @@ export function formatStatus(
   }
 
   if (options.md) {
-    return formatMarkdown(result.status, result.activation);
+    return formatMarkdown(
+      result.status,
+      result.activation,
+      result.contentTypeBoost
+    );
   }
 
-  return formatTerminal(result.status, result.activation);
+  return formatTerminal(
+    result.status,
+    result.activation,
+    result.contentTypeBoost
+  );
 }

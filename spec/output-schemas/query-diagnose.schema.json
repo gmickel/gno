@@ -174,7 +174,8 @@
         "rawContribution",
         "rawScore",
         "rawScoreKind",
-        "ruleSource"
+        "ruleSource",
+        "rulesFingerprint"
       ],
       "properties": {
         "baseScore": { "type": "number", "minimum": 0, "maximum": 1 },
@@ -199,7 +200,8 @@
           "type": "string",
           "enum": ["bm25", "hybrid_blended", "normalized", "vector_distance"]
         },
-        "ruleSource": { "type": "string", "enum": ["configured-id", "prefix"] }
+        "ruleSource": { "type": "string", "enum": ["configured-id", "prefix"] },
+        "rulesFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
       },
       "additionalProperties": false
     },

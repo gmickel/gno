@@ -106,6 +106,14 @@ beforeAll(async () => {
       text: "Authentication guidance",
     },
   ];
+  config.contentTypes = [
+    {
+      id: "reference",
+      preset: "source-summary",
+      prefixes: ["authentication.md"],
+      searchBoost: 1.2,
+    },
+  ];
 
   client = await createGnoClient({
     config,
@@ -156,6 +164,11 @@ describe("SDK client", () => {
     expect(status.dbPath).toBe(dbPath);
     expect(status.activeDocuments).toBeGreaterThan(0);
     expect(status.collections[0]?.name).toBe("fixtures");
+    expect(status.contentTypeBoost.rules).toEqual([
+      { id: "reference", searchBoost: 1.2 },
+    ]);
+    expect(status.contentTypeBoost.rulesFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(status.contentTypeBoost).not.toHaveProperty("prefixes");
   });
 
   test("lists indexed documents", async () => {

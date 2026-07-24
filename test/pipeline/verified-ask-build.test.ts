@@ -73,6 +73,14 @@ describe("verified Ask application boundary", () => {
             exclude: [],
           },
         ],
+        contentTypes: [
+          {
+            id: "decision",
+            prefixes: ["decisions/"],
+            preset: "decision-note",
+            searchBoost: 2,
+          },
+        ],
       };
       expect((await store.syncCollections(config.collections)).ok).toBe(true);
       const content = "# Owner\nMina owns the launch decision.";
@@ -91,6 +99,8 @@ describe("verified Ask application boundary", () => {
             mirrorHash,
             title: "Launch decision",
             languageHint: "en",
+            contentType: "decision",
+            contentTypeSource: "frontmatter-type",
           })
         ).ok
       ).toBe(true);
@@ -189,6 +199,7 @@ describe("verified Ask application boundary", () => {
           candidateLimit: 9,
           contextBudgetTokens: 100_000,
           contextBudgetBytes: 100_000,
+          explain: true,
         },
         {
           store,
@@ -219,6 +230,14 @@ describe("verified Ask application boundary", () => {
         retrievalSources: ["bm25"],
         graphExpanded: false,
       });
+      expect(result.meta.explain?.results[0]?.contentTypeBoost).toMatchObject({
+        configuredFactor: 2,
+        contentType: "decision",
+        ruleSource: "configured-id",
+      });
+      expect(JSON.stringify(result.verification?.capsule)).not.toContain(
+        "contentTypeBoost"
+      );
       expect(
         verifyContextCapsuleRuntime(result.verification?.capsule, {
           store,

@@ -1151,6 +1151,7 @@ function wireSearchCommands(program: Command): void {
     .option("--context-budget-bytes <num>", "verified Context byte budget")
     .option("--min-score <score>", "minimum retrieval score (0-1)")
     .option("--graph", "include bounded graph expansion")
+    .option("--explain", "include retrieval scoring explanation")
     .option(
       "--project-root <path>",
       "trusted project root (repeatable; replaces cwd affinity)",
@@ -1259,6 +1260,7 @@ function wireSearchCommands(program: Command): void {
         noExpand: depthPolicy.noExpand,
         noRerank: depthPolicy.noRerank,
         candidateLimit: depthPolicy.candidateLimit,
+        explain: Boolean(cmdOpts.explain),
         // Per spec: --answer defaults to false, --no-answer forces retrieval-only
         // Commander creates separate cmdOpts.noAnswer for --no-answer flag
         answer: Boolean(cmdOpts.answer),

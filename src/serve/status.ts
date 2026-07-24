@@ -13,6 +13,7 @@ import type {
 } from "./status-model";
 
 import { getModelsCachePath } from "../app/constants";
+import { buildContentTypeBoostStatus } from "../config/content-types";
 import {
   type ActivationStatus,
   buildActivationStatus,
@@ -740,6 +741,9 @@ export async function buildAppStatus(
       name: preset.name,
     },
     capabilities: ctx.capabilities,
+    contentTypeBoost: buildContentTypeBoostStatus(
+      ctx.config.contentTypes ?? []
+    ),
     activation,
     onboarding: buildOnboarding(
       status,

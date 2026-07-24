@@ -5,8 +5,46 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
 
+import type { ToolContext } from "../../../src/mcp/server";
+
+import { handleStatus } from "../../../src/mcp/tools/status";
+import { createMockContext } from "../../serve/helpers/activation-status-fixtures";
+
 // Test the status input/output schemas match spec
 describe("gno_status schema", () => {
+  test("projects effective boost rules without path prefixes", async () => {
+    const serverContext = createMockContext();
+    serverContext.config.contentTypes = [
+      {
+        id: "decision",
+        preset: "decision-note",
+        prefixes: ["private/decisions/"],
+        searchBoost: 1.25,
+      },
+    ];
+    const ctx = {
+      ...serverContext,
+      collections: serverContext.config.collections,
+      actualConfigPath: "/tmp/config.yml",
+      toolMutex: { acquire: async () => () => undefined },
+      jobManager: {},
+      serverInstanceId: "status-test",
+      writeLockPath: "/tmp/.lock",
+      enableWrite: false,
+      isShuttingDown: () => false,
+    } as unknown as ToolContext;
+
+    const result = await handleStatus({}, ctx);
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent?.contentTypeBoost).toEqual({
+      rulesFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      rules: [{ id: "decision", searchBoost: 1.25 }],
+    });
+    expect(
+      JSON.stringify(result.structuredContent?.contentTypeBoost)
+    ).not.toContain("private");
+  });
+
   test("status input schema accepts empty object", () => {
     const schema = z.object({});
     const result = schema.safeParse({});

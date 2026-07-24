@@ -557,6 +557,9 @@
               }
             }
           }
+        },
+        "explain": {
+          "$ref": "gno://schemas/search-results@1.0#/properties/meta/properties/explain"
         }
       }
     }

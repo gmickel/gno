@@ -105,6 +105,7 @@ describe("query-diagnose schema", () => {
         rawScore: -4.2,
         rawScoreKind: "bm25",
         ruleSource: "configured-id",
+        rulesFingerprint: "a".repeat(64),
       },
     };
 

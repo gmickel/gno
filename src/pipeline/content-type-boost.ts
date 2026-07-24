@@ -8,7 +8,10 @@ import type { NormalizedContentTypeRule } from "../config/content-types";
 import type { ProjectAffinityScoringInput } from "./project-affinity";
 import type { SearchResult } from "./types";
 
-import { resolveContentTypeRule } from "../config/content-types";
+import {
+  fingerprintContentTypeRules,
+  resolveContentTypeRule,
+} from "../config/content-types";
 import {
   CONTENT_TYPE_SEARCH_BOOST_MAX,
   CONTENT_TYPE_SEARCH_BOOST_MIN,
@@ -37,6 +40,7 @@ export interface ContentTypeBoostScoreMetadata {
   rawScore: number;
   rawScoreKind: ProjectAffinityScoreMetadata["rawScoreKind"];
   ruleSource: "configured-id" | "prefix";
+  rulesFingerprint: string;
 }
 
 export const SEARCH_RESULT_CONTENT_TYPE_BOOST_METADATA = Symbol(
@@ -45,6 +49,22 @@ export const SEARCH_RESULT_CONTENT_TYPE_BOOST_METADATA = Symbol(
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
+
+const rankingFingerprints = new WeakMap<
+  readonly NormalizedContentTypeRule[],
+  string
+>();
+
+const rankingFingerprint = (
+  rules: readonly NormalizedContentTypeRule[] | undefined
+): string => {
+  if (!rules) return fingerprintContentTypeRules([]);
+  const cached = rankingFingerprints.get(rules);
+  if (cached) return cached;
+  const fingerprint = fingerprintContentTypeRules([...rules]);
+  rankingFingerprints.set(rules, fingerprint);
+  return fingerprint;
+};
 
 /** Map the supported factor range continuously onto the contribution range. */
 export function contentTypeBoostContribution(factor: number): {
@@ -147,6 +167,7 @@ export function scoreContentTypeBoost(
       rawScore: raw.score,
       rawScoreKind: raw.kind,
       ruleSource: resolution.source,
+      rulesFingerprint: rankingFingerprint(rules),
     },
   };
 }

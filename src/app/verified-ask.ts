@@ -16,6 +16,7 @@ import { attachCitationTraceMetadata } from "../pipeline/trace-metadata";
 import { CITATION_TRACE_METADATA } from "../pipeline/types";
 import {
   buildContextCapsule,
+  getContextCapsuleExplain,
   verifyContextCapsuleRuntime,
 } from "./context-runtime";
 import { contextRuntimeConfigFingerprint } from "./context-runtime-contract";
@@ -199,7 +200,7 @@ export const buildVerifiedAsk = async (
       budgetBytes: options.contextBudgetBytes,
       depthPolicy: "balanced",
     },
-    deps
+    { ...deps, explain: options.explain }
   );
   const freshness = await verifyContextCapsuleRuntime(capsule, deps);
   return synthesizeVerifiedAsk(query, options, capsule, freshness, deps);
@@ -258,6 +259,9 @@ export const synthesizeVerifiedAsk = async (
     citationEvidenceIds(verification, new Set(["supported", "contradicted"]))
   );
   await recordRetainedCitations(deps.traceSession, traceCitations);
+  const retrievalExplain = options.explain
+    ? getContextCapsuleExplain(capsule)
+    : undefined;
   return {
     query,
     mode: capsule.capabilities.semanticSearch ? "hybrid" : "bm25_only",
@@ -276,6 +280,7 @@ export const synthesizeVerifiedAsk = async (
       exclude: capsule.retrieval.request.exclude,
       answerGenerated: generated.ok,
       totalResults: capsule.evidence.length,
+      ...(retrievalExplain ? { explain: retrievalExplain } : {}),
       verificationRequested: true,
       abstained: verification.verification.abstained,
     },

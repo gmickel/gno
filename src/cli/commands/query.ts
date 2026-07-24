@@ -48,7 +48,10 @@ import { decorateSearchResultsForIndex, initStore } from "./shared";
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type QueryCommandOptions = Omit<HybridSearchOptions, "projectAffinity"> &
+export type QueryCommandOptions = Omit<
+  HybridSearchOptions,
+  "contentTypeRules" | "projectAffinity"
+> &
   CliProjectAffinityRequest & {
     /** Override config path */
     configPath?: string;

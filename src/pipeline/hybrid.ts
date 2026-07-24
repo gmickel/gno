@@ -64,7 +64,10 @@ import {
   attachSearchResultPlannerMetadata,
   attachSearchResultsTraceMetadata,
 } from "./trace-metadata";
-import { DEFAULT_PIPELINE_CONFIG } from "./types";
+import {
+  DEFAULT_PIPELINE_CONFIG,
+  SEARCH_RESULT_PLANNER_METADATA,
+} from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dependencies
@@ -1062,6 +1065,10 @@ export async function searchHybrid(
   }
 
   const finalResults = dedupedResults.slice(0, limit);
+  for (const [index, result] of finalResults.entries()) {
+    const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
+    if (metadata) metadata.retrievalRank = index + 1;
+  }
   const explainData = options.explain
     ? {
         lines: explainLines,

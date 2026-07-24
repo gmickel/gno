@@ -26,7 +26,10 @@ const fingerprint = (value: unknown): string =>
 
 export const contextRuntimeConfigFingerprint = (
   deps: Pick<ContextCapsuleRuntimeDeps, "config">
-): string => fingerprint(deps.config);
+): string =>
+  fingerprint(
+    JSON.parse(JSON.stringify(deps.config)) as Record<string, unknown>
+  );
 
 const configuredContextFingerprint = (
   deps: ContextCapsuleRuntimeDeps

@@ -37,8 +37,9 @@ configuration behavior.
 - Loaded the same normalized content-type rules for BM25 through CLI, REST,
   MCP, SDK, and retrieval replay. Hybrid, Ask, and Capsule continue to consume
   the shared runtime config through their existing dependency boundary.
-- Added optional REST and MCP query explain controls without changing normal
-  result JSON.
+- Added optional query and Ask explain controls through CLI, REST, MCP, and SDK
+  without changing normal result JSON. Verified Ask carries the same explain
+  component while its canonical Capsule bytes remain unchanged.
 - Added complete bounded content-type boost fields to search explain and query
   diagnose schemas. Diagnose uses v1.2 only when the new component is present,
   preserving v1.0 and affinity-only v1.1 contracts.
@@ -46,19 +47,27 @@ configuration behavior.
   fingerprint. Search-boost edits now affect live ranking immediately without
   reconverting source content or rebuilding vectors; type, prefix, preset, and
   graph-hint edits still trigger metadata re-derivation.
-- Added real CLI/REST/MCP/SDK BM25 parity coverage, boost-only invalidation
-  coverage, schema coverage, and MCP input validation.
+- Refreshed hybrid planner ranks after final boost ordering so Capsule evidence
+  selection cannot restore stale pre-boost order.
+- Added a redacted `contentTypeBoost` status projection across CLI, REST, MCP,
+  and SDK with rule IDs, effective factors, and the full ranking fingerprint;
+  path prefixes remain private.
+- Added real CLI/REST/MCP/SDK BM25, verified-Ask, and status parity coverage,
+  boost-only invalidation coverage, schema coverage, and MCP input validation.
+- Canonicalized optional config fields before Capsule config fingerprinting so
+  valid normalized rules with absent optional fields remain deterministic.
 
 Verification:
 
 - `bun run lint:check`
 - `bun test`
-- Focused content boost, diagnose, ingestion, schema, and MCP tests (50 passing)
+- Focused cross-surface, status, Ask, Capsule, hybrid, schema, and boost tests
+  (117 passing before the final status additions; all focused tests green)
 - `.flow/bin/flowctl validate --spec fn-108-explainable-content-type-search-boosts --json`
 
 No macOS or Windows client artifacts were awaited, per roadmap execution
 policy.
 ## Evidence
 - Commits:
-- Tests: bun run lint:check, bun test, bun test ./test/pipeline/diagnose.test.ts ./test/content-type-boost/parity.test.ts ./test/ingestion/sync-tags.test.ts ./test/spec/schemas/query-diagnose.test.ts ./test/mcp/tools/query.test.ts, .flow/bin/flowctl validate --spec fn-108-explainable-content-type-search-boosts --json
+- Tests: bun run lint:check, bun test, bun test ./test/cli/status.test.ts ./test/mcp/tools/status.test.ts ./test/serve/api-status.test.ts ./test/sdk/client.test.ts ./test/spec/schemas/status.test.ts ./test/pipeline/verified-ask-parity.test.ts ./test/pipeline/verified-ask-build.test.ts ./test/pipeline/hybrid-doc-lookup.test.ts ./test/content-type-boost/parity.test.ts, .flow/bin/flowctl validate --spec fn-108-explainable-content-type-search-boosts --json
 - PRs:

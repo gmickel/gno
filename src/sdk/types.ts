@@ -8,6 +8,7 @@ import type {
   ContextCapsuleBuildInput,
   ContextRuntimeErrorCode,
 } from "../app/context-runtime";
+import type { ContentTypeBoostStatus } from "../config/content-types";
 import type { Config } from "../config/types";
 import type { CaptureInput, CaptureReceipt } from "../core/capture";
 import type {
@@ -130,6 +131,9 @@ export type GnoVectorSearchOptions = Omit<
 export type GnoContextInput = Omit<ContextCapsuleBuildInput, "indexName"> &
   GnoProjectHintOptions;
 export type GnoContextResult = ContextCapsuleV1;
+export type GnoIndexStatus = IndexStatus & {
+  contentTypeBoost: ContentTypeBoostStatus;
+};
 export type GnoContextVerificationResult = ContextCapsuleVerification;
 export type GnoContextErrorCode =
   | ContextRuntimeErrorCode
@@ -280,7 +284,7 @@ export interface GnoClient {
     ref: string,
     options?: KnowledgeImpactInput
   ): Promise<KnowledgeImpactResult>;
-  status(): Promise<IndexStatus>;
+  status(): Promise<GnoIndexStatus>;
   listRetrievalTraces(
     options?: RetrievalTraceListRequest
   ): Promise<RetrievalTraceListResult>;

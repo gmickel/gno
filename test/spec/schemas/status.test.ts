@@ -85,6 +85,11 @@ describe("status schema", () => {
           hybrid: false,
           answer: false,
         },
+        contentTypeBoost: {
+          rulesFingerprint:
+            "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          rules: [],
+        },
         activation,
         onboarding: {
           ready: false,
@@ -187,6 +192,11 @@ describe("status schema", () => {
           hybrid: true,
           answer: true,
         },
+        contentTypeBoost: {
+          rulesFingerprint:
+            "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          rules: [],
+        },
         activation: { ...activation, usable: true, healthy: true },
         onboarding: {
           ready: false,
@@ -280,6 +290,10 @@ describe("status schema", () => {
           vector: false,
           hybrid: false,
           answer: false,
+        },
+        contentTypeBoost: {
+          rulesFingerprint: "a".repeat(64),
+          rules: [{ id: "decision", searchBoost: 1.25 }],
         },
         activation,
         onboarding: {

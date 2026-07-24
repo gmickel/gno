@@ -307,6 +307,7 @@ export interface AskRequestBody {
   noRerank?: boolean;
   graph?: boolean;
   noGraph?: boolean;
+  explain?: boolean;
   /** Comma-separated tags - filter to docs having ALL (AND) */
   tagsAll?: string;
   /** Comma-separated tags - filter to docs having ANY (OR) */
@@ -336,6 +337,7 @@ const ASK_REQUEST_KEYS = new Set<keyof AskRequestBody>([
   "noRerank",
   "graph",
   "noGraph",
+  "explain",
   "tagsAll",
   "tagsAny",
 ]);
@@ -4054,6 +4056,7 @@ export async function handleAsk(
     "noRerank",
     "graph",
     "noGraph",
+    "explain",
   ] as const) {
     if (body[field] !== undefined && typeof body[field] !== "boolean") {
       return errorResponse("VALIDATION", `${field} must be a boolean`);
@@ -4237,6 +4240,7 @@ export async function handleAsk(
     contextBudgetBytes: body.contextBudgetBytes,
     maxAnswerTokens: body.maxAnswerTokens,
     projectAffinity,
+    explain: body.explain,
   };
   const trace = await startRestTrace(ctx, {
     query: normalizedQuery,
@@ -4453,6 +4457,9 @@ export async function handleAsk(
       answerGenerated,
       totalResults: results.length,
       answerContext,
+      ...(body.explain && searchResult.value.meta.explain
+        ? { explain: searchResult.value.meta.explain }
+        : {}),
     },
   };
 
