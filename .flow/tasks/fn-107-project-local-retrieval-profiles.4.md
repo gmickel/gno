@@ -42,22 +42,25 @@ Deliver integrate profiles with setup affinity docs and portability proof as one
 
 
 ## Done summary
-Closed the final fn-107 re-audit findings across contracts, configuration mutation, profile discovery/application, store projection, context identity, security validation, CLI routing, packaging, and public documentation.
+Closed the final fn-107 audit findings across contracts, configuration mutation, profile discovery/application, store projection, context identity, security validation, CLI routing, multi-include ingestion, packaging, and public documentation.
 
 Key outcomes:
 - Full setup profile projection is additive, idempotent, and repairs missing profile-owned rows without deleting unrelated store state or advancing unchanged timestamps/generations.
 - All GNO-owned user config writers use a canonical target-derived cross-process lock, honor global custom config paths, preserve malformed configs, and safely resolve existing or dangling symlink aliases.
-- Project profiles use keyed content-type declarations, bounded brace-alternative validation, normalized context tuple identity, and timestamp-free local fingerprint bindings that detect removal-only edits without leaking local paths in public receipts.
+- Project profiles use keyed content-type declarations, brace-free Draft-07/runtime parity, normalized context tuple identity, and timestamp-free local fingerprint bindings that detect removal-only edits without leaking local paths in public receipts.
+- Generated multi-include patterns scan independently, deduplicate, and preserve literal commas and bracket classes.
+- Explicit `setup --apply-profile` aborts before ordinary setup and connector work on inspection transport failure, unsuccessful apply, malformed success receipt, or a receipt collection absent from persisted config.
 - Secret context symlink targets, dangling profile aliases, project/runtime overlaps, unsafe Windows paths, and ambiguous context removals fail closed without mutation.
 - CLI/spec/schema/package/docs and hosted gno.sh documentation now describe the hardened behavior.
 
 Validation:
-- Full GNO suite: 3,165 passed, 2 skipped, 0 failed.
-- Focused profile/config/store suite: 142 passed, 0 failed.
+- Full GNO suite: 3,181 passed, 2 skipped, 0 failed.
+- Final focused profile/setup/walker suite: 110 passed, 0 failed.
 - Lint/typecheck/format, docs verification, packed-package smoke, and hybrid eval all passed.
+- Packed-package smoke preserved the 1,089,186,752-byte real-user sentinel exactly.
 - Hybrid eval: 88% against a 70% threshold.
 - Hosted gno.sh: check, 110 tests, and production build passed.
 ## Evidence
-- Commits: a987c27
-- Tests: bun run lint:check, bun test (3165 passed, 2 skipped, 0 failed), focused fn-107 suite (142 passed, 0 failed), bun run docs:verify (13 passed, 2 skipped), bun run test:package, bun run eval:hybrid (88%, threshold 70%), gno.sh: bun run check, gno.sh: bun run test (110 passed, 5 skipped), gno.sh: bun run build
+- Commits: a987c27, 955689c
+- Tests: bun run lint:check, focused profile/setup/walker suite (110 passed, 0 failed), bun test (3181 passed, 2 skipped, 0 failed), bun run docs:verify (13 passed, 2 skipped), bun run test:package (real-user 1089186752-byte sentinel unchanged), bun run eval:hybrid (88%, threshold 70%), gno.sh: bun run check, gno.sh: bun run test (110 passed, 5 skipped), gno.sh: bun run build
 - PRs:
