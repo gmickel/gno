@@ -154,6 +154,38 @@ const waitForHealthy = async (
   throw new Error(`Timed out waiting for ${baseUrl}`);
 };
 
+const readPipeText = async (pipe: unknown): Promise<string> => {
+  if (!(pipe instanceof ReadableStream)) return "";
+  return (await new Response(pipe).text()).trim();
+};
+
+const processOutput = async (
+  process: ReturnType<typeof Bun.spawn>
+): Promise<string> => {
+  const [stdout, stderr] = await Promise.all([
+    readPipeText(process.stdout),
+    readPipeText(process.stderr),
+  ]);
+  return `stdout=${JSON.stringify(stdout)} stderr=${JSON.stringify(stderr)}`;
+};
+
+const waitForResidentRelease = async (baseUrl: string): Promise<void> => {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    try {
+      await fetch(`${baseUrl}/api/health`, {
+        signal: AbortSignal.timeout(200),
+      });
+    } catch {
+      // Give the Linux listener teardown one additional scheduling turn before
+      // the same fixed port is rebound by the recovery test.
+      await Bun.sleep(100);
+      return;
+    }
+    await Bun.sleep(50);
+  }
+  throw new Error(`gno serve listener remained reachable at ${baseUrl}`);
+};
+
 export const createClipperE2EHarness = async (): Promise<ClipperE2EHarness> => {
   const root = await mkdtemp(join(tmpdir(), "gno-clipper-e2e-"));
   const configDir = join(root, "config");
@@ -188,40 +220,59 @@ export const createClipperE2EHarness = async (): Promise<ClipperE2EHarness> => {
 
   const startResident = async (): Promise<void> => {
     if (resident !== null) throw new Error("Resident is already running");
-    resident = Bun.spawn(
-      [
-        process.execPath,
-        "src/index.ts",
-        "--config",
-        configPath,
-        "--index",
-        indexName,
-        "serve",
-        "--port",
-        String(port),
-      ],
-      {
-        cwd: process.cwd(),
-        env: {
-          ...process.env,
-          GNO_CACHE_DIR: join(root, "cache"),
-          GNO_CONFIG_DIR: configDir,
-          GNO_DATA_DIR: join(root, "data"),
-          GNO_OFFLINE: "1",
-          NODE_ENV: "production",
-        },
-        stderr: "pipe",
-        stdout: "pipe",
+    const failures: string[] = [];
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const candidate = Bun.spawn(
+        [
+          process.execPath,
+          "src/index.ts",
+          "--config",
+          configPath,
+          "--index",
+          indexName,
+          "serve",
+          "--port",
+          String(port),
+        ],
+        {
+          cwd: process.cwd(),
+          env: {
+            ...process.env,
+            GNO_CACHE_DIR: join(root, "cache"),
+            GNO_CONFIG_DIR: configDir,
+            GNO_DATA_DIR: join(root, "data"),
+            GNO_OFFLINE: "1",
+            NODE_ENV: "production",
+          },
+          stderr: "pipe",
+          stdout: "pipe",
+        }
+      );
+      resident = candidate;
+      try {
+        await waitForHealthy(baseUrl, candidate);
+        return;
+      } catch (error) {
+        if (candidate.exitCode === null) candidate.kill();
+        await candidate.exited;
+        failures.push(
+          `attempt ${attempt}: ${error instanceof Error ? error.message : String(error)} ${await processOutput(candidate)}`
+        );
+        resident = null;
+        if (attempt < 3) await Bun.sleep(attempt * 250);
       }
-    );
-    await waitForHealthy(baseUrl, resident);
+    }
+    throw new Error(`gno serve failed to start: ${failures.join("; ")}`);
   };
 
   const stopResident = async (): Promise<void> => {
     if (resident === null) return;
-    resident.kill();
-    await resident.exited;
+    const running = resident;
+    running.kill();
+    await running.exited;
+    await processOutput(running);
     resident = null;
+    await waitForResidentRelease(baseUrl);
   };
 
   return {
