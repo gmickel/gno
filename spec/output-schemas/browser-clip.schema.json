@@ -141,7 +141,7 @@
       "type": "string",
       "format": "uri",
       "maxLength": 4096,
-      "pattern": "^https?://"
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://(?![^/?#]*@)"
     },
     "warningCode": {
       "enum": [
@@ -163,7 +163,12 @@
           "required": ["type", "text"],
           "properties": {
             "type": { "const": "text" },
-            "text": { "type": "string", "minLength": 1, "maxLength": 32768 }
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32768,
+              "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F]*$"
+            }
           }
         },
         {
@@ -172,7 +177,12 @@
           "required": ["type", "text", "href"],
           "properties": {
             "type": { "const": "link" },
-            "text": { "type": "string", "minLength": 1, "maxLength": 32768 },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32768,
+              "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F]*$"
+            },
             "href": { "$ref": "#/definitions/httpUrl" }
           }
         }
@@ -239,7 +249,11 @@
               "type": ["string", "null"],
               "pattern": "^[A-Za-z0-9_+-]{1,32}$"
             },
-            "text": { "type": "string", "maxLength": 131072 }
+            "text": {
+              "type": "string",
+              "maxLength": 131072,
+              "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F]*$"
+            }
           }
         },
         {
@@ -255,8 +269,17 @@
       "additionalProperties": false,
       "required": ["exactText", "editedMarkdown"],
       "properties": {
-        "exactText": { "type": "string", "minLength": 1, "maxLength": 524288 },
-        "editedMarkdown": { "type": ["string", "null"], "maxLength": 524288 }
+        "exactText": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 524288,
+          "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F]*$"
+        },
+        "editedMarkdown": {
+          "type": ["string", "null"],
+          "maxLength": 524288,
+          "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F]*$"
+        }
       }
     },
     "reader": {
@@ -270,7 +293,11 @@
           "maxItems": 4096,
           "items": { "$ref": "#/definitions/readerBlock" }
         },
-        "editedMarkdown": { "type": ["string", "null"], "maxLength": 524288 }
+        "editedMarkdown": {
+          "type": ["string", "null"],
+          "maxLength": 524288,
+          "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F]*$"
+        }
       }
     },
     "provenance": {
@@ -318,7 +345,11 @@
         "finalBodyHash": { "$ref": "#/definitions/sha256" },
         "clipIdentity": { "$ref": "#/definitions/sha256" },
         "previewDigest": { "$ref": "#/definitions/sha256" },
-        "exactSelection": { "type": ["string", "null"], "maxLength": 524288 },
+        "exactSelection": {
+          "type": ["string", "null"],
+          "maxLength": 524288,
+          "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F]*$"
+        },
         "extractionWarnings": {
           "type": "array",
           "maxItems": 16,

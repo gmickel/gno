@@ -147,6 +147,17 @@ describe("browser clip contract", () => {
     expect(first.preview.digest).toBe(second.preview.digest);
     expect(first.preview.digest).toBe(later.preview.digest);
     expect(first.provenance.capturedAt).not.toBe(later.provenance.capturedAt);
+
+    const changedTitle = selectionPayload();
+    changedTitle.title = "Different title";
+    const changedAuthor = selectionPayload();
+    changedAuthor.author = "Grace";
+    expect(
+      prepareBrowserClip(changedTitle, { now: FIXED_NOW }).preview.digest
+    ).not.toBe(first.preview.digest);
+    expect(
+      prepareBrowserClip(changedAuthor, { now: FIXED_NOW }).preview.digest
+    ).not.toBe(first.preview.digest);
   });
 
   test("Reader AST preserves structure and escapes visible markup", () => {
@@ -200,9 +211,12 @@ describe("browser clip contract", () => {
   test("edited Markdown rejects raw HTML, images, and dangerous links", () => {
     for (const editedMarkdown of [
       "<script>alert(1)</script>",
+      "<!-- hidden -->",
       "![pixel](https://example.com/p.gif)",
+      "![pixel][tracker]\n\n[tracker]: https://example.com/p.gif",
       "[click](javascript:alert(1))",
       "[data](data:text/html,x)",
+      "[click][target]\n\n[target]: javascript:alert(1)",
     ]) {
       const payload = selectionPayload();
       payload.selection.editedMarkdown = editedMarkdown;
@@ -236,6 +250,40 @@ describe("browser clip contract", () => {
     const huge = selectionPayload();
     huge.selection.exactText = "x".repeat(BROWSER_CLIP_MAX_BYTES);
     expect(browserClipPayloadSchema.safeParse(huge).success).toBeFalse();
+  });
+
+  test("runtime and Draft-07 URLs agree on credentials and scheme case", async () => {
+    const schema = await loadSchema("browser-clip");
+    const uppercase = {
+      ...selectionPayload(),
+      sourceUrl: "HTTPS://example.com/article",
+    };
+    const credentialed = {
+      ...selectionPayload(),
+      sourceUrl: "https://user:pass@example.com/private",
+    };
+
+    expect(browserClipPayloadSchema.safeParse(uppercase).success).toBeTrue();
+    expect(assertValid(uppercase, schema)).toBeTrue();
+    expect(
+      browserClipPayloadSchema.safeParse(credentialed).success
+    ).toBeFalse();
+    expect(assertInvalid(credentialed, schema)).toBeTrue();
+  });
+
+  test("rejects disallowed C0 and C1 controls while preserving tabs and line endings", async () => {
+    const schema = await loadSchema("browser-clip");
+    for (const control of ["\u0000", "\u001f", "\u0085"]) {
+      const payload = selectionPayload();
+      payload.selection.exactText = `before${control}after`;
+      expect(browserClipPayloadSchema.safeParse(payload).success).toBeFalse();
+      expect(assertInvalid(payload, schema)).toBeTrue();
+    }
+
+    const allowed = selectionPayload();
+    allowed.selection.exactText = "one\ttwo\r\nthree";
+    expect(browserClipPayloadSchema.safeParse(allowed).success).toBeTrue();
+    expect(assertValid(allowed, schema)).toBeTrue();
   });
 
   test("Draft-07 payload schema matches runtime structural contract", async () => {
@@ -328,6 +376,46 @@ describe("browser clip contract", () => {
       expect(conflict.provenanceConflict).toBeTrue();
       expect(conflict.collisionPolicyResult).toBe("conflict");
     }
+  });
+
+  test("edited bodies never open an existing clip with the same extraction", () => {
+    const originalPayload = selectionPayload();
+    originalPayload.selection.editedMarkdown = "Original edit";
+    const original = prepareBrowserClip(originalPayload, { now: FIXED_NOW });
+    const changedPayload = selectionPayload();
+    changedPayload.selection.editedMarkdown = "Changed edit";
+    const changed = prepareBrowserClip(changedPayload, { now: FIXED_NOW });
+    const relPath = "clips/article.md";
+
+    expect(changed.provenance.extractionHash).toBe(
+      original.provenance.extractionHash
+    );
+    expect(changed.provenance.finalBodyHash).not.toBe(
+      original.provenance.finalBodyHash
+    );
+    expect(changed.provenance.clipIdentity).not.toBe(
+      original.provenance.clipIdentity
+    );
+    const conflict = planCapture({
+      input: changed.captureInput,
+      existingRelPaths: [relPath],
+      existingProvenanceByRelPath: new Map([
+        [relPath, original.provenance.clipIdentity],
+      ]),
+      now: FIXED_NOW,
+    });
+    expect(conflict.openedExisting).toBeFalse();
+    expect(conflict.provenanceConflict).toBeTrue();
+
+    changedPayload.destination.collisionPolicy = "create_with_suffix";
+    const suffixed = prepareBrowserClip(changedPayload, { now: FIXED_NOW });
+    const suffixPlan = planCapture({
+      input: suffixed.captureInput,
+      existingRelPaths: [relPath],
+      now: FIXED_NOW,
+    });
+    expect(suffixPlan.openedExisting).toBeFalse();
+    expect(suffixPlan.createdWithSuffix).toBeTrue();
   });
 
   test("create_with_suffix creates a distinct clip without provenance matching", () => {

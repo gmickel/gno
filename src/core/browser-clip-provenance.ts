@@ -14,6 +14,49 @@ export const BROWSER_CLIP_WARNING_CODES = [
   "unicode_normalized",
 ] as const;
 
+const hasDisallowedControlCharacter = (value: string): boolean => {
+  for (const character of value) {
+    const codePoint = character.codePointAt(0);
+    if (
+      codePoint !== undefined &&
+      (codePoint <= 8 ||
+        codePoint === 11 ||
+        codePoint === 12 ||
+        (codePoint >= 14 && codePoint <= 31) ||
+        (codePoint >= 127 && codePoint <= 159))
+    ) {
+      return true;
+    }
+  }
+  return false;
+};
+
+export const findDisallowedBrowserClipControlPath = (
+  value: unknown,
+  path: Array<string | number> = []
+): Array<string | number> | null => {
+  if (typeof value === "string") {
+    return hasDisallowedControlCharacter(value) ? path : null;
+  }
+  if (Array.isArray(value)) {
+    for (const [index, child] of value.entries()) {
+      const match = findDisallowedBrowserClipControlPath(child, [
+        ...path,
+        index,
+      ]);
+      if (match !== null) return match;
+    }
+    return null;
+  }
+  if (value !== null && typeof value === "object") {
+    for (const [key, child] of Object.entries(value)) {
+      const match = findDisallowedBrowserClipControlPath(child, [...path, key]);
+      if (match !== null) return match;
+    }
+  }
+  return null;
+};
+
 const httpUrlSchema = z
   .string()
   .max(4096)
@@ -73,6 +116,14 @@ export const browserClipProvenanceSchema = z
   })
   .strict()
   .superRefine((value, context) => {
+    const controlPath = findDisallowedBrowserClipControlPath(value);
+    if (controlPath !== null) {
+      context.addIssue({
+        code: "custom",
+        message: "Browser clip text cannot contain C0 or C1 control characters",
+        path: controlPath,
+      });
+    }
     if (
       new Set(value.extractionWarnings).size !== value.extractionWarnings.length
     ) {

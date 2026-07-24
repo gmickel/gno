@@ -5,6 +5,7 @@ import {
   BROWSER_CLIP_MAX_BYTES,
   BROWSER_CLIP_SCHEMA_VERSION,
   BROWSER_CLIP_WARNING_CODES,
+  findDisallowedBrowserClipControlPath,
   type BrowserClipProvenance,
   type BrowserClipWarningCode,
 } from "./browser-clip-provenance";
@@ -182,6 +183,14 @@ const readerPayload = commonPayload
 export const browserClipPayloadSchema = z
   .discriminatedUnion("mode", [selectionPayload, readerPayload])
   .superRefine((value, context) => {
+    const controlPath = findDisallowedBrowserClipControlPath(value);
+    if (controlPath !== null) {
+      context.addIssue({
+        code: "custom",
+        message: "Browser clip text cannot contain C0 or C1 control characters",
+        path: controlPath,
+      });
+    }
     if (
       new TextEncoder().encode(stableJson(value)).byteLength >
       BROWSER_CLIP_MAX_BYTES
@@ -301,17 +310,33 @@ export const renderBrowserClipReader = (
       .join("\n\n")
   );
 
+const INLINE_MARKDOWN_LINK = /(?<!!)\[[^\]\r\n]*\]\(([^()\s]+)\)/gu;
+const REFERENCE_LINK = /\[[^\]\r\n]*\]\s*\[[^\]\r\n]*\]/u;
+const REFERENCE_DEFINITION = /^[ \t]{0,3}\[[^\]\r\n]+\]:/mu;
+
 const assertSafeEditedMarkdown = (markdown: string): void => {
-  if (/<\/?[A-Za-z][^>]*>/u.test(markdown)) {
-    throw new Error("Edited clip Markdown cannot contain raw HTML.");
+  if (markdown.includes("<") || markdown.includes(">")) {
+    throw new Error(
+      "Edited clip Markdown cannot contain HTML, comments, or autolinks."
+    );
   }
-  if (/!\[[^\]]*\]\s*\(/u.test(markdown)) {
+  if (markdown.includes("![")) {
     throw new Error("Edited clip Markdown cannot contain images.");
   }
-  for (const match of markdown.matchAll(
-    /(?<!!)\[[^\]]*\]\(([^)\s]+)(?:\s+[^)]*)?\)/gu
-  )) {
-    strictHttpUrl.parse(match[1]);
+  if (REFERENCE_LINK.test(markdown) || REFERENCE_DEFINITION.test(markdown)) {
+    throw new Error("Edited clip Markdown cannot contain reference links.");
+  }
+  const unmatchedInlineSyntax = markdown.replace(
+    INLINE_MARKDOWN_LINK,
+    (_link, destination: string) => {
+      strictHttpUrl.parse(destination);
+      return "";
+    }
+  );
+  if (unmatchedInlineSyntax.includes("](")) {
+    throw new Error(
+      "Edited clip Markdown links must use a simple absolute HTTP(S) destination."
+    );
   }
 };
 
@@ -356,6 +381,7 @@ export const prepareBrowserClip = (
     stableJson({
       canonicalUrl,
       extractionHash,
+      finalBodyHash,
       mode: payload.mode,
       schemaVersion: payload.schemaVersion,
       sourceUrl,
@@ -372,11 +398,44 @@ export const prepareBrowserClip = (
   if (extracted.normalize("NFC") !== extracted)
     warnings.push("unicode_normalized");
   const extractionWarnings = dedupeWarnings(warnings);
+  const publishedAt = normalizePublishedAt(payload.publishedAt);
+  const observedAt = new Date(payload.observedAt).toISOString();
+  const exactSelection =
+    payload.mode === "selection" ? payload.selection.exactText : null;
+  const previewSource = {
+    kind: "web",
+    title: payload.title,
+    url: sourceUrl,
+    author: payload.author,
+    observedAt,
+    canonicalUrl,
+    site: payload.site,
+    publishedAt,
+  };
+  const previewProvenance = {
+    schemaVersion: payload.schemaVersion,
+    mode: payload.mode,
+    sourceUrl,
+    canonicalUrl,
+    title: payload.title,
+    author: payload.author,
+    site: payload.site,
+    publishedAt,
+    observedAt,
+    extractionHash,
+    finalBodyHash,
+    clipIdentity,
+    exactSelection,
+    extractionWarnings,
+    browser: payload.browser,
+  };
   const previewDigest = sha256(
     stableJson({
       body,
-      clipIdentity,
       destination: payload.destination,
+      extraction: payload.extraction,
+      provenance: previewProvenance,
+      source: previewSource,
       tags: payload.tags,
     })
   );
@@ -388,15 +447,14 @@ export const prepareBrowserClip = (
     title: payload.title,
     author: payload.author,
     site: payload.site,
-    publishedAt: normalizePublishedAt(payload.publishedAt),
-    observedAt: new Date(payload.observedAt).toISOString(),
+    publishedAt,
+    observedAt,
     capturedAt,
     extractionHash,
     finalBodyHash,
     clipIdentity,
     previewDigest,
-    exactSelection:
-      payload.mode === "selection" ? payload.selection.exactText : null,
+    exactSelection,
     extractionWarnings,
     browser: payload.browser,
   };
