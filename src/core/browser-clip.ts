@@ -293,7 +293,7 @@ const REFERENCE_LINK = /\[[^\]\r\n]*\]\s*\[[^\]\r\n]*\]/u;
 const REFERENCE_DEFINITION = /^[ \t]{0,3}\[[^\]\r\n]+\]:/mu;
 
 const assertSafeEditedMarkdown = (markdown: string): void => {
-  if (markdown.includes("<") || markdown.includes(">")) {
+  if (markdown.includes("<")) {
     throw new Error(
       "Edited clip Markdown cannot contain HTML, comments, or autolinks."
     );

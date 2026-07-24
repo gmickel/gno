@@ -78,10 +78,7 @@ const errorOptions = (
   clearGrant?: boolean;
 } => {
   if (code === "CLIPPER_UNAUTHORIZED") return { clearGrant: true };
-  if (
-    code === "CLIPPER_PREVIEW_REQUIRED" ||
-    code === "CLIPPER_PREVIEW_MISMATCH"
-  ) {
+  if (code === "CLIPPER_PREVIEW_REQUIRED") {
     return { refreshPreview: true };
   }
   if (

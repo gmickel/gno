@@ -37,6 +37,15 @@ const defaultDestination: Destination = {
   collisionPolicy: "open_existing",
 };
 
+export const editablePreviewBody = (
+  body: string,
+  note: string | null
+): string => {
+  if (!note?.trim()) return body;
+  const noteBoundary = body.indexOf("\n\n");
+  return noteBoundary === -1 ? "" : body.slice(noteBoundary + 2);
+};
+
 function App() {
   const [controllerState, setControllerState] =
     useState<ControllerState | null>(null);
@@ -431,7 +440,10 @@ function App() {
               invalidate();
             }}
             rows={12}
-            value={editedMarkdown ?? preview.preview.body}
+            value={
+              editedMarkdown ??
+              editablePreviewBody(preview.preview.body, payload?.note ?? null)
+            }
           />
           {previewStale ? (
             <p className="warning">

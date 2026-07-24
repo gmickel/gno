@@ -370,6 +370,44 @@ describe("browser clipper controller", () => {
     });
   });
 
+  test("never auto-refreshes a mismatched preview into a write", async () => {
+    const local = new MemoryStorage();
+    const session = new MemoryStorage();
+    await writeClipperState(
+      {
+        gatewayOrigin: "http://127.0.0.1:3000",
+        grant: { ...grant, expiresAt: "2099-08-24T08:00:00.000Z" },
+        pending: null,
+      },
+      local
+    );
+    const requests: Request[] = [];
+    const controller = makeController(local, session, (async (input, init) => {
+      requests.push(new Request(input, init));
+      return jsonResponse(
+        {
+          error: {
+            code: "CLIPPER_PREVIEW_MISMATCH",
+            message: "Preview no longer matches the capture.",
+          },
+        },
+        409
+      );
+    }) as typeof fetch);
+
+    const captureError = await controller
+      .capture(payload, "4".repeat(64))
+      .catch((error: unknown) => error);
+
+    expect(captureError).toMatchObject({
+      code: "CLIPPER_PREVIEW_MISMATCH",
+      refreshPreview: false,
+    });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.url).toBe("http://127.0.0.1:3000/api/capture/clip");
+    expect((await readClipperState(local)).pending).toBeNull();
+  });
+
   test("clears grant on unauthorized and clears pending on recovery conflict", async () => {
     for (const [code, expectedGrant] of [
       ["CLIPPER_UNAUTHORIZED", null],

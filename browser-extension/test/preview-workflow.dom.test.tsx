@@ -55,8 +55,21 @@ describe("browser clipper preview workflow", () => {
           };
         case "EXTRACT":
           return { ok: true, result: extraction };
-        case "PREVIEW":
-          return { ok: true, result: previewResponse };
+        case "PREVIEW": {
+          const requestPayload = message.payload as { note: string | null };
+          return {
+            ok: true,
+            result: {
+              ...previewResponse,
+              preview: {
+                ...previewResponse.preview,
+                body: requestPayload.note
+                  ? `> **Clip note:** ${requestPayload.note}\n\n${previewResponse.preview.body}`
+                  : previewResponse.preview.body,
+              },
+            },
+          };
+        }
         case "CAPTURE":
           return {
             ok: true,
@@ -89,6 +102,7 @@ describe("browser clipper preview workflow", () => {
     await screen.findByText("Capture visible context");
     await user.click(screen.getByRole("button", { name: "Extract now" }));
     await user.type(screen.getByLabelText("Collection"), "notes");
+    await user.type(screen.getByLabelText("Note"), "Review later");
     await user.click(screen.getByRole("button", { name: "Server preview" }));
 
     const markdown = await screen.findByLabelText("Canonical capture Markdown");
@@ -124,6 +138,7 @@ describe("browser clipper preview workflow", () => {
       extraction.selectionText ?? ""
     );
     expect(secondPayload.selection.editedMarkdown).toContain("Edited");
+    expect(secondPayload.selection.editedMarkdown).not.toContain("Clip note");
     expect(
       messages.filter((message) => message.type === "CAPTURE")
     ).toHaveLength(1);

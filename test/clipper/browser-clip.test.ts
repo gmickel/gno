@@ -241,6 +241,15 @@ describe("browser clip contract", () => {
     }
   });
 
+  test("edited Markdown preserves safe server-rendered blockquotes", () => {
+    const payload = selectionPayload();
+    payload.selection.editedMarkdown = "> Quoted source\n>\n> Follow-up";
+
+    expect(
+      prepareBrowserClip(payload, { now: FIXED_NOW }).preview.body
+    ).toContain("> Quoted source\n>\n> Follow-up");
+  });
+
   test("rejects credentials, non-HTTP schemes, ambiguous destinations, and huge payloads", () => {
     const badUrls = [
       "file:///tmp/a",
