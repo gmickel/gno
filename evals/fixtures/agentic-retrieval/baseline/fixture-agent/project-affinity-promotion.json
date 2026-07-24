@@ -1,6 +1,6 @@
 {
   "benchmarkId": "project-affinity-promotion@1",
-  "canonicalFingerprint": "551ff3d020d3437e971594c13de74e14f376f3081bd30c3ad650855776aef97c",
+  "canonicalFingerprint": "ce71b7bade4f951b74d28b2b4317b33f126d2eff6a946ecde33ecf786587ed48",
   "fixture": {
     "bindingFingerprint": "346f1f4cdca5b31bf9c56813c0aa5e24c4ce2ab6e1b0ca77d72b558a9a8b99e0",
     "bindings": [
@@ -94,6 +94,891 @@
     "All 24 tasks run with their existing hard collection; the gate requires zero URI-rank and required-evidence coverage loss.",
     "Store calls are instrumented structurally; wall-clock latency is not a gate."
   ],
+  "receipts": {
+    "auxiliary": [
+      {
+        "applied": 0.03,
+        "caseId": "project_match",
+        "contributions": [0.03],
+        "finalScore": 0.53,
+        "requested": 0.03
+      },
+      {
+        "applied": 0.08,
+        "caseId": "combined_exact_cap",
+        "contributions": [0.03, 0.05],
+        "finalScore": 0.58,
+        "requested": 0.08
+      },
+      {
+        "applied": 0.08,
+        "caseId": "positive_over_cap",
+        "contributions": [0.08, 0.03],
+        "finalScore": 0.58,
+        "requested": 0.11
+      },
+      {
+        "applied": -0.08,
+        "caseId": "negative_over_cap",
+        "contributions": [-0.08, -0.05],
+        "finalScore": 0.42,
+        "requested": -0.13
+      },
+      {
+        "applied": 0.03,
+        "caseId": "overlap_no_stack",
+        "contributions": [0.03, 0.03],
+        "finalScore": 0.53,
+        "requested": 0.03
+      }
+    ],
+    "structural": [
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 2,
+        "candidateReturned": 2,
+        "caseId": "pa-t456ef70:disabled",
+        "maxCandidateBound": 6,
+        "outputLimit": 2,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 6,
+        "candidateReturned": 2,
+        "caseId": "pa-t456ef70:enabled",
+        "maxCandidateBound": 6,
+        "outputLimit": 2,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 2,
+        "candidateReturned": 2,
+        "caseId": "pa-t567f081:disabled",
+        "maxCandidateBound": 6,
+        "outputLimit": 2,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 6,
+        "candidateReturned": 2,
+        "caseId": "pa-t567f081:enabled",
+        "maxCandidateBound": 6,
+        "outputLimit": 2,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:t012ab3c:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:t012ab3c:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 2,
+        "caseId": "regression:t0a1b2c3:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 2,
+        "caseId": "regression:t0a1b2c3:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:t123bc4d:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:t123bc4d:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:t1b2c3d4:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:t1b2c3d4:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:t234cd5e:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:t234cd5e:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 2,
+        "caseId": "regression:t2c3d4e5:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 2,
+        "caseId": "regression:t2c3d4e5:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:t345de6f:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:t345de6f:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 2,
+        "caseId": "regression:t3d4e5f6:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 2,
+        "caseId": "regression:t3d4e5f6:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:t456ef70:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:t456ef70:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 2,
+        "caseId": "regression:t4e5f607:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 2,
+        "caseId": "regression:t4e5f607:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:t567f081:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:t567f081:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 2,
+        "caseId": "regression:t5f60718:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 2,
+        "caseId": "regression:t5f60718:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:t6071829:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:t6071829:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 2,
+        "caseId": "regression:t6780192:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 2,
+        "caseId": "regression:t6780192:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:t718293a:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:t718293a:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:t7891a03:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:t7891a03:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 2,
+        "caseId": "regression:t8293a4b:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 2,
+        "caseId": "regression:t8293a4b:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 2,
+        "caseId": "regression:t93a4b5c:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 2,
+        "caseId": "regression:t93a4b5c:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:ta4b5c6d:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:ta4b5c6d:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:tb5c6d7e:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:tb5c6d7e:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:tc6d7e8f:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:tc6d7e8f:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:td7e8f90:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:td7e8f90:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:te8f901a:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:te8f901a:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 5,
+        "candidateReturned": 1,
+        "caseId": "regression:tf901a2b:disabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 1,
+        "caseId": "regression:tf901a2b:enabled",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 15,
+        "candidateReturned": 2,
+        "caseId": "filter:c015-vs-c115",
+        "maxCandidateBound": 15,
+        "outputLimit": 5,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 2,
+        "candidateReturned": 2,
+        "caseId": "zero:absent",
+        "maxCandidateBound": 6,
+        "outputLimit": 2,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 2,
+        "candidateReturned": 2,
+        "caseId": "zero:disabled",
+        "maxCandidateBound": 6,
+        "outputLimit": 2,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 2,
+        "candidateReturned": 2,
+        "caseId": "zero:unavailable",
+        "maxCandidateBound": 6,
+        "outputLimit": 2,
+        "passed": true
+      },
+      {
+        "calls": {
+          "getChunksBatch": 1,
+          "getCollections": 1,
+          "getDocumentsByMirrorHashes": 1,
+          "listDocuments": 0
+        },
+        "candidateRequested": 2,
+        "candidateReturned": 2,
+        "caseId": "zero:untrusted_remote",
+        "maxCandidateBound": 6,
+        "outputLimit": 2,
+        "passed": true
+      }
+    ],
+    "zeroLanes": [
+      {
+        "baselineHash": "8c84612e784a0bbe6837ceb887c0c1a40e4566c8fb9a73c0c31f0271fcd2d357",
+        "candidateHash": "8c84612e784a0bbe6837ceb887c0c1a40e4566c8fb9a73c0c31f0271fcd2d357",
+        "equal": true,
+        "lane": "absent"
+      },
+      {
+        "baselineHash": "8c84612e784a0bbe6837ceb887c0c1a40e4566c8fb9a73c0c31f0271fcd2d357",
+        "candidateHash": "8c84612e784a0bbe6837ceb887c0c1a40e4566c8fb9a73c0c31f0271fcd2d357",
+        "equal": true,
+        "lane": "disabled"
+      },
+      {
+        "baselineHash": "8c84612e784a0bbe6837ceb887c0c1a40e4566c8fb9a73c0c31f0271fcd2d357",
+        "candidateHash": "8c84612e784a0bbe6837ceb887c0c1a40e4566c8fb9a73c0c31f0271fcd2d357",
+        "equal": true,
+        "lane": "unavailable"
+      },
+      {
+        "baselineHash": "8c84612e784a0bbe6837ceb887c0c1a40e4566c8fb9a73c0c31f0271fcd2d357",
+        "candidateHash": "8c84612e784a0bbe6837ceb887c0c1a40e4566c8fb9a73c0c31f0271fcd2d357",
+        "equal": true,
+        "lane": "untrusted_remote"
+      }
+    ]
+  },
+  "regression": {
+    "evidenceAccuracy": {
+      "disabled": 24,
+      "enabled": 24,
+      "loss": 0
+    },
+    "evidenceCoverage": {
+      "disabled": 25,
+      "enabled": 25,
+      "loss": 0
+    },
+    "multilingual": {
+      "disabledCorrect": 4,
+      "enabledCorrect": 4,
+      "loss": 0,
+      "taskCount": 4,
+      "taskIds": ["t012ab3c", "t123bc4d", "te8f901a", "tf901a2b"]
+    },
+    "taskCount": 24
+  },
   "schemaVersion": "1.0",
   "targets": [
     {
@@ -130,7 +1015,7 @@
           "collectionAlias": "collection_d876c93718c4",
           "matched": true,
           "rank": 1,
-          "rootAlias": "root_9efe24a9dd98",
+          "rootAlias": "root_45f5ce13e467",
           "score": 0.91,
           "uri": "gno://c015/d001.md"
         },
@@ -185,7 +1070,7 @@
           "collectionAlias": "collection_0a7c58e8fed6",
           "matched": true,
           "rank": 1,
-          "rootAlias": "root_57ecd9d5a8e0",
+          "rootAlias": "root_803668d63065",
           "score": 0.91,
           "uri": "gno://c016/d001.md"
         },
