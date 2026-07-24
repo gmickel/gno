@@ -244,6 +244,15 @@ describe("committed authoritative agentic baseline", () => {
       auxiliaryReceiptsValid: true,
       structuralCallsBounded: true,
     });
+    expect(artifact.receipts.auxiliary).toHaveLength(5);
+    expect(artifact.receipts.zeroLanes).toHaveLength(4);
+    expect(artifact.receipts.structural.length).toBeGreaterThan(0);
+    expect(artifact.regression).toMatchObject({
+      taskCount: 24,
+      evidenceAccuracy: { loss: 0 },
+      evidenceCoverage: { loss: 0 },
+      multilingual: { taskCount: 4, loss: 0 },
+    });
     expect(artifact.targets.map((target) => target.targetUri)).toEqual([
       "gno://c015/d001.md",
       "gno://c016/d001.md",
