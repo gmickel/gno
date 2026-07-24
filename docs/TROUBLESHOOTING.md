@@ -313,6 +313,11 @@ extension, then type it into the Web approval page. Pairings expire after five
 minutes, stop after five wrong guesses, are one-time, and disappear when
 `gno serve` restarts.
 
+Chrome 142 and newer may first show a Local Network Access prompt. Approve it
+from the user-opened popup. Chrome service workers cannot trigger that prompt
+themselves; the popup sends the credentialless pairing-start request, then the
+service worker validates and retains the returned transient pairing state.
+
 The approval URL temporarily carries only the high-entropy pair ID in the
 fragment. GNO scrubs that fragment before normal workspace state starts. The
 approval page never receives the bearer grant.

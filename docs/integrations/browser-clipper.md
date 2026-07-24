@@ -71,11 +71,15 @@ Then:
 
 1. Open the clipper and keep the gateway at
    `http://127.0.0.1:3000` unless `gno serve` uses another loopback port.
-2. Choose **Start pairing**. The extension creates a five-minute request and
-   opens `/clipper/pair#pairId=<64-hex-id>`.
-3. Compare the eight-digit code shown in the extension, type it into the GNO
+2. Choose **Start pairing**. Chrome 142 and newer may ask whether the extension
+   can access the local network. Approve that browser prompt. The active popup
+   sends the closed pairing-start request so Chrome can show the permission
+   before the service worker owns the transient pairing state.
+3. The extension creates a five-minute request and opens
+   `/clipper/pair#pairId=<64-hex-id>`.
+4. Compare the eight-digit code shown in the extension, type it into the GNO
    approval page, and approve.
-4. Return to the popup and poll once for the approved grant.
+5. Return to the popup and poll once for the approved grant.
 
 The Web page obtains an in-memory same-origin CSRF token and sends
 `X-GNO-CSRF` to `/api/clipper/pair/approve`. It validates and scrubs the pair-ID
@@ -200,6 +204,13 @@ extension CORS/PNA responses allow only the validated extension origin, never
 wildcards or credentials. Clipper grants authorize capture only. MCP/API bearer
 tokens and `gateway.enableWrite` do not authorize clipping, and clipper routes
 are structurally absent from non-loopback listeners.
+
+Chrome Local Network Access is a browser permission layered in front of this
+gateway. Service workers cannot trigger its prompt, so the user-activated popup
+performs the exact-origin, `credentials: "omit"` pairing-start request. It
+passes the closed response into the service worker, which validates it again,
+keeps the transient state, opens approval, and owns all grant-bearing
+poll/preview/write/revoke calls.
 
 See [REST API](../API.md#browser-clipper-boundary) for the exact route and
 response contracts and [Troubleshooting](../TROUBLESHOOTING.md#browser-clipper-issues)

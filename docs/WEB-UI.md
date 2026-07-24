@@ -752,6 +752,12 @@ Load `browser-extension/dist` as an unpacked Chromium extension, run
 `http://127.0.0.1:3000` gateway. GNO does not claim Chrome Web Store
 availability or Firefox parity.
 
+Chrome 142 and newer may show a Local Network Access permission prompt on the
+first pairing attempt. The user-opened popup sends the credentialless closed
+pairing-start request so Chrome can show that prompt, then the service worker
+re-validates and retains the transient pairing state. Bearer grant polling and
+all grant-bearing capture calls remain service-worker-only.
+
 The manifest grants only `activeTab`, `scripting`, `storage`, and
 `http://127.0.0.1/*`. Extraction runs only after a popup action. It emits exact
 selection text or a constrained visible Reader AST of paragraphs, headings,
