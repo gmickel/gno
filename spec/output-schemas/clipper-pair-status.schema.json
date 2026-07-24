@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/clipper-pair-status@1.0",
+  "title": "Browser Clipper Pair Status",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "status", "expiresAt"],
+      "properties": {
+        "schemaVersion": { "const": "1.0" },
+        "status": { "const": "pending" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "status",
+        "grantId",
+        "grantToken",
+        "expiresAt"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "1.0" },
+        "status": { "const": "approved" },
+        "grantId": { "type": "string", "format": "uuid" },
+        "grantToken": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "status"],
+      "properties": {
+        "schemaVersion": { "const": "1.0" },
+        "status": {
+          "enum": ["consumed", "expired", "not_found", "origin_mismatch"]
+        }
+      }
+    }
+  ]
+}

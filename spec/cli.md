@@ -2970,6 +2970,14 @@ is blocked.
 - Mounts stateful Streamable HTTP MCP at `/mcp` only after the fail-closed
   actual-peer, Host, Origin, bearer, body, rate, request, queue, and session
   boundary initializes
+- On the loopback `gno serve` listener only, mounts the browser-clipper pairing,
+  preview, and capture routes. These require exact extension/same-origin
+  policies and dedicated origin-bound capture grants; MCP bearer tokens,
+  `GNO_API_TOKEN`, and `gateway.enableWrite` do not authorize them. Clipper
+  routes are structurally absent from non-loopback listeners. Capture
+  idempotency persists exact content-free plan hashes and reconciles an
+  interrupted atomic write only at its original path; changed plans fail
+  closed without a duplicate write.
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON (`{pid, port, cmd:"serve", version, started_at}`), prints `{pid, url}` on stdout, exits 0
 - On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json). Liveness via `process.kill(pid, 0)`; stale pid-files (ESRCH) are reported as `running:false`. Live status best-effort reads the same redacted `resident-status@1.0` snapshot from the recorded listener.
 - On `--stop`: sends SIGTERM, polls every 100ms for up to 10s, falls back to SIGKILL, polls 2s more, unlinks pid-file if the process cleaned up after itself

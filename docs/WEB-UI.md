@@ -712,6 +712,22 @@ indexing without the Web UI, use `gno daemon`.
 
 ## Security
 
+Browser-clipper approval is a separate same-origin Web action. The page obtains
+the runtime's in-memory CSRF token, and the user confirms the eight-digit code
+shown by the extension. Approval never displays or receives the final bearer
+grant: the exact extension origin polls a high-entropy pairing ID once, then
+stores its origin-bound capture-only grant. Restarting `gno serve` discards
+unfinished pairings and preview tickets. Revocation persists.
+
+Clip previews are non-mutating. They show the server-normalized Markdown,
+provenance, destination, collision outcome, and digest before a write. The
+server accepts a write only for the unchanged preview plus an idempotency key.
+Pending writes persist a content-free destination/hash plan. After an
+interrupted write, retries reconcile only the exact local file and provenance
+hashes; they never choose a new destination or create a duplicate suffix.
+It never downloads the source page; only content already visible in the browser
+payload is processed.
+
 The Web UI is designed for local use only:
 
 | Protection                | Description                                       |

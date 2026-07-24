@@ -70,6 +70,10 @@ import {
   handleVerifyConnector,
 } from "./routes/api";
 import { handleChanges, handleDiff, handleImpact } from "./routes/changes";
+import {
+  clipperRoutesForBind,
+  createClipperRouteGateway,
+} from "./routes/clipper";
 import { handleGraph, handleGraphQuery } from "./routes/graph";
 import {
   handleDocBacklinks,
@@ -104,6 +108,7 @@ export interface ServeResult {
 interface StartServerDependencies {
   startBackgroundRuntime?: typeof startBackgroundRuntime;
   createMcpHttpGateway?: typeof createMcpHttpGateway;
+  createClipperRouteGateway?: typeof createClipperRouteGateway;
   serve?: typeof Bun.serve;
   handleInstallConnector?: typeof handleInstallConnector;
   handleDocs?: typeof handleDocs;
@@ -217,6 +222,18 @@ export async function startServer(
       error: error instanceof Error ? error.message : String(error),
     };
   }
+  const hasSqliteClipperStore =
+    typeof Reflect.get(store, "getRawDb") === "function";
+  const clipperGateway = hasSqliteClipperStore
+    ? (dependencies.createClipperRouteGateway ?? createClipperRouteGateway)(
+        ctxHolder,
+        store,
+        {
+          host: gatewayConfig.host,
+          port: gatewayConfig.port,
+        }
+      )
+    : { routes: {} };
 
   // Shutdown controller for clean lifecycle
   const shutdownController = new AbortController();
@@ -247,6 +264,10 @@ export async function startServer(
       // Static routes - Bun handles HTML bundling and /_bun/* assets automatically
       routes: {
         "/mcp": gateway.route,
+        ...clipperRoutesForBind(
+          isHttpGatewayLoopbackBind(gatewayConfig.host),
+          clipperGateway
+        ),
         // SPA routes - all serve the same React app
         "/": homepage,
         "/search": homepage,

@@ -90,6 +90,8 @@ CLI.
 | `/api/collections/:name`      | DELETE | Remove collection                      |
 | `/api/sync`                   | POST   | Trigger re-index                       |
 | `/api/capture`                | POST   | Capture note with provenance receipt   |
+| `/api/capture/clip/preview`   | POST   | Preview a paired browser clip          |
+| `/api/capture/clip`           | POST   | Commit a matching browser-clip preview |
 | `/api/docs`                   | POST   | Create new document                    |
 | `/api/docs/:id`               | PUT    | Update document                        |
 | `/api/docs/:id/refactor-plan` | POST   | Preview rename/move/duplicate warnings |
@@ -111,6 +113,63 @@ it includes local index and configuration details. An explicit non-loopback
 daemon bind requires the MCP token file plus exact Host and Origin allowlists.
 The resident status projection never exposes tokens, paths, queries, content,
 or caller identities.
+
+### Browser Clipper Boundary
+
+`gno serve` mounts a separate loopback-only browser-clipper gateway. Its grants
+are not the optional REST API token or the `/mcp` bearer token, and
+`gateway.enableWrite` does not authorize clipping.
+
+| Endpoint                    | Method | Purpose                                       |
+| :-------------------------- | :----- | :-------------------------------------------- |
+| `/api/clipper/pair/start`   | POST   | Create a five-minute extension pairing        |
+| `/api/clipper/pair/csrf`    | GET    | Read the same-origin approval CSRF token      |
+| `/api/clipper/pair/approve` | POST   | Approve the displayed code from the Web UI    |
+| `/api/clipper/pair/:id`     | GET    | Poll once for the approved capture grant      |
+| `/api/clipper/revoke`       | POST   | Revoke the authenticated capture grant        |
+| `/api/capture/clip/preview` | POST   | Validate, normalize, and plan without writing |
+| `/api/capture/clip`         | POST   | Write an unchanged preview with idempotency   |
+
+Every request requires the actual TCP peer to be loopback, the exact listener
+`Host`, and an explicit exact `Origin`. Extension calls accept only
+`chrome-extension://<32-character Chromium id>`. Pair approval accepts only the
+Web UI origin and requires `X-GNO-CSRF`. CORS and Private Network Access
+preflights echo the one validated extension origin; there is no wildcard or
+credentials mode.
+
+Pair IDs and delivered grants use 256 bits of randomness. The user-visible
+eight-digit approval code expires after five minutes and is invalidated after
+five failed guesses. Unfinished pairings, plaintext grants awaiting their
+one-time delivery, CSRF state, and preview tickets exist only in memory.
+SQLite stores only the grant-token hash, exact extension origin, fixed capture
+scope, expiry/revocation state, and bounded idempotency receipts. A pending
+receipt retains only the exact collection/path, collision outcome, and content
+and clip-identity hashes needed to reconcile an interrupted atomic write.
+
+Preview accepts the closed
+[`browser-clip@1.0`](../spec/output-schemas/browser-clip.schema.json) payload
+and returns the normalized body, full provenance, preview digest, and collision
+plan without writing. Commit requires the same payload and digest plus a
+visible-ASCII `Idempotency-Key` header. The server reparses and replans before
+using the shared capture writer; completed retries replay the stored receipt.
+If the process is interrupted after the file write but before receipt
+persistence, a retry verifies those exact local hashes and completes the
+receipt without choosing a new path or creating a suffixed duplicate. Plan or
+file drift fails closed as an idempotency recovery conflict.
+The gateway never fetches the source URL or any content referenced by the
+page. Browser content is untrusted input.
+
+Successful response contracts are closed:
+[`clipper-pair-start@1.0`](../spec/output-schemas/clipper-pair-start.schema.json),
+[`clipper-pair-status@1.0`](../spec/output-schemas/clipper-pair-status.schema.json),
+[`clipper-pair-approval@1.0`](../spec/output-schemas/clipper-pair-approval.schema.json),
+[`clipper-revoke@1.0`](../spec/output-schemas/clipper-revoke.schema.json), and
+[`browser-clip-preview@1.0`](../spec/output-schemas/browser-clip-preview.schema.json).
+The write response uses the shared
+[`capture-receipt@1.0`](../spec/output-schemas/capture-receipt.schema.json).
+CSRF and failure responses use
+[`clipper-csrf@1.0`](../spec/output-schemas/clipper-csrf.schema.json) and
+[`clipper-error@1.0`](../spec/output-schemas/clipper-error.schema.json).
 
 ### CSRF Protection
 

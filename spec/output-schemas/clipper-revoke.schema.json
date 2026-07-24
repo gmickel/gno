@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/clipper-revoke@1.0",
+  "title": "Browser Clipper Grant Revocation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "grantId", "status"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "grantId": { "type": "string", "format": "uuid" },
+    "status": {
+      "enum": ["revoked", "already_revoked", "expired", "not_found"]
+    },
+    "revokedAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "revoked" } } },
+      "then": {
+        "properties": {
+          "revokedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["revokedAt"]
+      },
+      "else": { "not": { "required": ["revokedAt"] } }
+    }
+  ]
+}

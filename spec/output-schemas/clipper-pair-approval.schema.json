@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/clipper-pair-approval@1.0",
+  "title": "Browser Clipper Pair Approval",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "origin", "expiresAt"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "status": { "const": "approved" },
+    "origin": {
+      "type": "string",
+      "pattern": "^chrome-extension://[a-p]{32}$"
+    },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  }
+}
