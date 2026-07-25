@@ -12,13 +12,59 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { SUPPORTED_EXTENSIONS } from "../../src/converters/mime";
-import { FileWalker } from "../../src/ingestion/walker";
+import { FileWalker, matchesWalkPath } from "../../src/ingestion/walker";
 import { safeRm } from "../helpers/cleanup";
 
 const FIXTURES_ROOT = resolve(import.meta.dir, "../fixtures/walker");
 
 /** ISO date string prefix regex */
 const ISO_DATE_PREFIX_REGEX = /^\d{4}-\d{2}-\d{2}T/;
+
+describe("matchesWalkPath", () => {
+  const config = {
+    pattern: "**/*.md",
+    include: [],
+    exclude: [".obsidian"],
+    additionalDefaultExtensions: [],
+  };
+
+  test("matches pattern, include, and exclude rules without filesystem access", () => {
+    expect(matchesWalkPath("notes/decision.md", config)).toBe(true);
+    expect(matchesWalkPath("deleted.md", config)).toBe(true);
+    expect(matchesWalkPath(".obsidian/workspace.md", config)).toBe(false);
+    expect(matchesWalkPath(".obsidian/.sync.lock", config)).toBe(false);
+    expect(matchesWalkPath("cover.png", config)).toBe(false);
+    expect(matchesWalkPath("../outside.md", config)).toBe(false);
+  });
+
+  test("accepts adapter extensions only when include uses supported defaults", () => {
+    const transcriptConfig = {
+      ...config,
+      pattern: "**/*",
+      additionalDefaultExtensions: [".transcript"],
+    };
+    expect(matchesWalkPath("calls/demo.transcript", transcriptConfig)).toBe(
+      true
+    );
+    expect(
+      matchesWalkPath("calls/demo.transcript", {
+        ...transcriptConfig,
+        include: [".md"],
+      })
+    ).toBe(false);
+  });
+
+  test("supports whole-pattern unions and rejects virtual record paths", () => {
+    const unionConfig = {
+      ...config,
+      pattern: "{**/*.md,**/*.txt}",
+    };
+    expect(matchesWalkPath("notes/readme.txt", unionConfig)).toBe(true);
+    expect(
+      matchesWalkPath(".gno/records/deadbeef/collision.md", unionConfig)
+    ).toBe(false);
+  });
+});
 
 describe("FileWalker", () => {
   const walker = new FileWalker();

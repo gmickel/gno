@@ -7,7 +7,11 @@ import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { DocumentEvent, DocumentEventBus } from "./doc-events";
 import type { EmbedScheduler } from "./embed-scheduler";
 
-import { defaultSyncService } from "../ingestion";
+import {
+  collectionToWalkConfig,
+  defaultSyncService,
+  matchesWalkPath,
+} from "../ingestion";
 
 export interface CollectionWatchState {
   expectedCollections: string[];
@@ -45,6 +49,41 @@ interface CollectionWatchServiceOptions {
   watchFactory?: typeof watch;
 }
 
+function watcherCollectionFingerprint(
+  collection: Collection,
+  syncOptions: SyncOptions
+): string {
+  return JSON.stringify({
+    path: normalize(collection.path),
+    pattern: collection.pattern,
+    include: collection.include,
+    exclude: collection.exclude,
+    languageHint: collection.languageHint ?? null,
+    recordAdapters: collection.recordAdapters ?? null,
+    limits: syncOptions.limits ?? null,
+    concurrency: syncOptions.concurrency ?? null,
+    contentTypeRules: syncOptions.contentTypeRules ?? null,
+    contentTypeRulesFingerprint:
+      syncOptions.contentTypeRulesFingerprint ?? null,
+    projectTypedEdges: syncOptions.projectTypedEdges ?? null,
+  });
+}
+
+function changedPaths(
+  result: CollectionSyncResult,
+  fallbackPaths: string[] = []
+): string[] {
+  if (result.files) {
+    return result.files
+      .filter((file) => file.status === "added" || file.status === "updated")
+      .map((file) => file.relPath);
+  }
+  return result.filesAdded + result.filesUpdated + result.filesMarkedInactive >
+    0
+    ? fallbackPaths
+    : [];
+}
+
 export class CollectionWatchService {
   #collections: Collection[];
   readonly #store: SqliteAdapter;
@@ -53,12 +92,18 @@ export class CollectionWatchService {
   readonly #callbacks: CollectionWatchCallbacks | null;
   #syncOptions: SyncOptions;
   readonly #watchers = new Map<string, FSWatcher>();
+  readonly #watchRoots = new Map<string, string>();
+  readonly #collectionGenerations = new Map<string, number>();
+  readonly #collectionFingerprints = new Map<string, string>();
   readonly #pendingByCollection = new Map<string, Set<string>>();
   readonly #timers = new Map<string, ReturnType<typeof setTimeout>>();
   readonly #syncing = new Set<string>();
+  readonly #inFlightSyncs = new Set<Promise<void>>();
   readonly #suppressedPaths = new Map<string, number>();
   readonly #watchFactory: typeof watch;
   readonly #failedCollections = new Map<string, string>();
+  #nextCollectionGeneration = 0;
+  #disposed = false;
   #lastEventAt: string | null = null;
   #lastSyncAt: string | null = null;
 
@@ -73,6 +118,9 @@ export class CollectionWatchService {
   }
 
   start(): void {
+    if (this.#disposed) {
+      return;
+    }
     this.updateCollections(this.#collections);
   }
 
@@ -80,16 +128,28 @@ export class CollectionWatchService {
     collections: Collection[],
     syncOptions?: SyncOptions
   ): void {
-    this.#collections = collections;
+    if (this.#disposed) {
+      return;
+    }
     if (syncOptions) {
       this.#syncOptions = syncOptions;
     }
-    const nextNames = new Set(collections.map((collection) => collection.name));
+    const nextByName = new Map(
+      collections.map((collection) => [collection.name, collection])
+    );
 
     for (const [collectionName, watcher] of this.#watchers) {
-      if (!nextNames.has(collectionName)) {
+      const nextCollection = nextByName.get(collectionName);
+      const nextRoot = nextCollection
+        ? normalize(nextCollection.path)
+        : undefined;
+      if (
+        nextRoot === undefined ||
+        nextRoot !== this.#watchRoots.get(collectionName)
+      ) {
         watcher.close();
         this.#watchers.delete(collectionName);
+        this.#watchRoots.delete(collectionName);
         this.#failedCollections.delete(collectionName);
         this.#pendingByCollection.delete(collectionName);
         const timer = this.#timers.get(collectionName);
@@ -97,7 +157,31 @@ export class CollectionWatchService {
           clearTimeout(timer);
           this.#timers.delete(collectionName);
         }
-        this.#syncing.delete(collectionName);
+      }
+    }
+
+    for (const collectionName of this.#collectionFingerprints.keys()) {
+      if (!nextByName.has(collectionName)) {
+        this.#collectionFingerprints.delete(collectionName);
+        this.#collectionGenerations.set(
+          collectionName,
+          ++this.#nextCollectionGeneration
+        );
+      }
+    }
+
+    this.#collections = collections;
+    for (const collection of collections) {
+      const fingerprint = watcherCollectionFingerprint(
+        collection,
+        this.#syncOptions
+      );
+      if (this.#collectionFingerprints.get(collection.name) !== fingerprint) {
+        this.#collectionFingerprints.set(collection.name, fingerprint);
+        this.#collectionGenerations.set(
+          collection.name,
+          ++this.#nextCollectionGeneration
+        );
       }
     }
 
@@ -106,13 +190,27 @@ export class CollectionWatchService {
         continue;
       }
       try {
+        const watchedRoot = normalize(collection.path);
         const watcher = this.#watchFactory(
           collection.path,
           { recursive: true },
           (_eventType, filename) => {
-            if (!filename) return;
+            if (this.#disposed || !filename) return;
             const relPath = filename.toString().replaceAll("\\", "/");
-            const fullPath = normalize(join(collection.path, relPath));
+            const currentCollection = this.#collections.find(
+              (entry) => entry.name === collection.name
+            );
+            if (
+              !currentCollection ||
+              normalize(currentCollection.path) !== watchedRoot ||
+              !matchesWalkPath(
+                relPath,
+                collectionToWalkConfig(currentCollection, 0)
+              )
+            ) {
+              return;
+            }
+            const fullPath = normalize(join(watchedRoot, relPath));
             const suppressedUntil = this.#suppressedPaths.get(fullPath);
             if (suppressedUntil && suppressedUntil > Date.now()) {
               return;
@@ -122,6 +220,7 @@ export class CollectionWatchService {
           }
         );
         this.#watchers.set(collection.name, watcher);
+        this.#watchRoots.set(collection.name, watchedRoot);
         this.#failedCollections.delete(collection.name);
       } catch (error) {
         this.#failedCollections.set(
@@ -136,7 +235,11 @@ export class CollectionWatchService {
     this.#suppressedPaths.set(normalize(absPath), Date.now() + ms);
   }
 
-  dispose(): void {
+  async dispose(): Promise<void> {
+    if (this.#disposed) {
+      return;
+    }
+    this.#disposed = true;
     for (const timer of this.#timers.values()) {
       clearTimeout(timer);
     }
@@ -145,7 +248,12 @@ export class CollectionWatchService {
     }
     this.#timers.clear();
     this.#watchers.clear();
+    this.#watchRoots.clear();
+    this.#collectionGenerations.clear();
+    this.#collectionFingerprints.clear();
+    this.#collections = [];
     this.#pendingByCollection.clear();
+    await Promise.allSettled(this.#inFlightSyncs);
     this.#syncing.clear();
   }
 
@@ -168,6 +276,9 @@ export class CollectionWatchService {
   }
 
   #queueChange(collectionName: string, relPath: string): void {
+    if (this.#disposed) {
+      return;
+    }
     const pending =
       this.#pendingByCollection.get(collectionName) ?? new Set<string>();
     pending.add(relPath);
@@ -180,12 +291,28 @@ export class CollectionWatchService {
     this.#timers.set(
       collectionName,
       setTimeout(() => {
-        void this.#flushCollection(collectionName);
+        this.#startFlush(collectionName);
       }, 300)
     );
   }
 
+  #startFlush(collectionName: string): void {
+    if (this.#disposed) {
+      return;
+    }
+    const sync = this.#flushCollection(collectionName);
+    this.#inFlightSyncs.add(sync);
+    void sync
+      .finally(() => {
+        this.#inFlightSyncs.delete(sync);
+      })
+      .catch(() => undefined);
+  }
+
   async #flushCollection(collectionName: string): Promise<void> {
+    if (this.#disposed) {
+      return;
+    }
     const pending = this.#pendingByCollection.get(collectionName);
     if (!pending || pending.size === 0) {
       return;
@@ -202,8 +329,15 @@ export class CollectionWatchService {
       return;
     }
 
-    const relPaths = [...pending];
+    const relPaths = [...pending].filter((relPath) =>
+      matchesWalkPath(relPath, collectionToWalkConfig(collection, 0))
+    );
+    let syncGeneration = this.#collectionGenerations.get(collectionName) ?? 0;
     this.#pendingByCollection.set(collectionName, new Set<string>());
+    if (relPaths.length === 0) {
+      this.#notifySettledIfIdle();
+      return;
+    }
     this.#syncing.add(collectionName);
 
     try {
@@ -211,7 +345,7 @@ export class CollectionWatchService {
         collection: collection.name,
         relPaths,
       });
-      const result = await defaultSyncService.syncPaths(
+      let result = await defaultSyncService.syncPaths(
         collection,
         this.#store,
         relPaths,
@@ -220,13 +354,67 @@ export class CollectionWatchService {
           runUpdateCmd: false,
         }
       );
+      if (this.#disposed) {
+        return;
+      }
       this.#callbacks?.onSyncComplete?.({
         collection: collection.name,
         relPaths,
         result,
       });
-      this.#afterSync(collection, relPaths);
+
+      let completionCollection = collection;
+      let completionPaths = changedPaths(result, relPaths);
+      while (true) {
+        const currentCollection = this.#collections.find(
+          (entry) => entry.name === collectionName
+        );
+        if (!currentCollection) {
+          break;
+        }
+        const currentGeneration =
+          this.#collectionGenerations.get(collectionName) ?? 0;
+        if (currentGeneration === syncGeneration) {
+          const currentRelPaths =
+            normalize(currentCollection.path) ===
+            normalize(completionCollection.path)
+              ? completionPaths.filter((relPath) =>
+                  matchesWalkPath(
+                    relPath,
+                    collectionToWalkConfig(currentCollection, 0)
+                  )
+                )
+              : [];
+          if (currentRelPaths.length > 0) {
+            this.#afterSync(currentCollection, currentRelPaths);
+          }
+          break;
+        }
+
+        result = await defaultSyncService.syncCollection(
+          currentCollection,
+          this.#store,
+          {
+            ...this.#syncOptions,
+            runUpdateCmd: false,
+          }
+        );
+        if (this.#disposed) {
+          return;
+        }
+        completionCollection = currentCollection;
+        completionPaths = changedPaths(result);
+        syncGeneration = currentGeneration;
+        this.#callbacks?.onSyncComplete?.({
+          collection: currentCollection.name,
+          relPaths: completionPaths,
+          result,
+        });
+      }
     } catch (error) {
+      if (this.#disposed) {
+        return;
+      }
       this.#callbacks?.onSyncError?.({
         collection: collection.name,
         relPaths,
@@ -235,22 +423,30 @@ export class CollectionWatchService {
       throw error;
     } finally {
       this.#syncing.delete(collectionName);
-      const remaining = this.#pendingByCollection.get(collectionName);
-      if (remaining && remaining.size > 0) {
-        void this.#flushCollection(collectionName);
-      } else if (
-        this.#syncing.size === 0 &&
-        ![...this.#pendingByCollection.values()].some(
-          (relPaths) => relPaths.size > 0
-        )
-      ) {
-        this.#callbacks?.onSettled?.();
+      if (!this.#disposed) {
+        const remaining = this.#pendingByCollection.get(collectionName);
+        if (remaining && remaining.size > 0) {
+          this.#startFlush(collectionName);
+        } else {
+          this.#notifySettledIfIdle();
+        }
       }
     }
   }
 
+  #notifySettledIfIdle(): void {
+    if (
+      this.#syncing.size === 0 &&
+      ![...this.#pendingByCollection.values()].some(
+        (relPaths) => relPaths.size > 0
+      )
+    ) {
+      this.#callbacks?.onSettled?.();
+    }
+  }
+
   #afterSync(collection: Collection, relPaths: string[]): void {
-    if (relPaths.length === 0) {
+    if (this.#disposed || relPaths.length === 0) {
       return;
     }
 

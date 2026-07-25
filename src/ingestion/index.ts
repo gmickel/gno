@@ -31,4 +31,4 @@ export type {
 } from "./types";
 export { collectionToWalkConfig, DEFAULT_CHUNK_PARAMS } from "./types";
 // Walker
-export { defaultWalker, FileWalker } from "./walker";
+export { defaultWalker, FileWalker, matchesWalkPath } from "./walker";

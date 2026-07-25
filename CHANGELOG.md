@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Filtered resident watcher events through the collection's live pattern,
+  include, exclude, and adapter-extension rules before sync, scheduling, or
+  Web event broadcast. Same-name collection root changes now restart their
+  watcher instead of retaining the stale path. Thanks @DanielKillenberger for
+  the report.
+
 ## [1.29.5] - 2026-07-25
 
 ### Changed

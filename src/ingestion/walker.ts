@@ -174,6 +174,50 @@ function matchesInclude(
   });
 }
 
+type PathEligibilityConfig = Pick<
+  WalkConfig,
+  "additionalDefaultExtensions" | "exclude" | "include" | "pattern"
+>;
+
+/**
+ * Check collection-relative path eligibility without touching the filesystem.
+ * This intentionally remains usable for deleted paths so incremental sync can
+ * mark previously indexed documents inactive.
+ */
+export function matchesWalkPath(
+  relPath: string,
+  config: PathEligibilityConfig
+): boolean {
+  const normalizedPath = relPath.replaceAll("\\", "/");
+  if (
+    isAbsolute(normalizedPath) ||
+    DANGEROUS_PATTERN_REGEX.test(normalizedPath) ||
+    isRecordVirtualPath(normalizedPath)
+  ) {
+    return false;
+  }
+
+  let matchesPattern = false;
+  try {
+    matchesPattern = new Bun.Glob(config.pattern).match(normalizedPath);
+  } catch {
+    return false;
+  }
+  if (!matchesPattern) {
+    return false;
+  }
+
+  if (matchesCollectionExclusion(normalizedPath, config.exclude)) {
+    return false;
+  }
+
+  return matchesInclude(
+    normalizedPath,
+    config.include,
+    config.additionalDefaultExtensions ?? []
+  );
+}
+
 /**
  * File walker implementation using Bun.Glob.
  *
@@ -228,29 +272,7 @@ export class FileWalker implements WalkerPort {
       }
       const { absPath, relPath } = safePath;
 
-      if (isRecordVirtualPath(relPath)) {
-        skipped.push({ absPath, relPath, reason: "EXCLUDED" });
-        continue;
-      }
-
-      // Check exclude patterns
-      if (matchesCollectionExclusion(relPath, config.exclude)) {
-        skipped.push({
-          absPath,
-          relPath,
-          reason: "EXCLUDED",
-        });
-        continue;
-      }
-
-      // Check include extensions
-      if (
-        !matchesInclude(
-          relPath,
-          config.include,
-          config.additionalDefaultExtensions ?? []
-        )
-      ) {
+      if (!matchesWalkPath(relPath, config)) {
         skipped.push({
           absPath,
           relPath,
