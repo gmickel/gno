@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Synchronized the packaged GNO agent skill with every shipped v1.29
+  retrieval/context capability, refreshed the tracked Claude and Codex project
+  installations, and added a release-gate parity check to prevent future skill
+  shadowing by stale project copies.
+
 ## [1.29.2] - 2026-07-25
 
 ### Fixed

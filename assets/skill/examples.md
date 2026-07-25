@@ -7,14 +7,11 @@ Real-world examples for common tasks.
 ### Index a folder of docs
 
 ```bash
-# Initialize
-gno init
+# Preferred path: add folder, index, and prove exact retrieval
+gno setup ~/Documents/work --name work
 
-# Add your docs folder
-gno collection add ~/Documents/work --name work
-
-# Build index
-gno index
+# Skip the background semantic worker when BM25 is sufficient
+gno setup ~/Documents/contracts --name contracts --no-semantic
 ```
 
 ### Index multiple folders
@@ -71,6 +68,9 @@ gno ask "what are the payment terms"
 
 # Get an AI-generated answer
 gno ask "what are the payment terms" --answer
+
+# Fail closed unless every substantive claim has retained evidence
+gno ask "what are the payment terms" --verify --show-sources
 ```
 
 ### Scoped answers
@@ -82,6 +82,67 @@ gno ask "termination clause" -c contracts --answer
 # Limit answer length
 gno ask "summarize project goals" --answer --max-answer-tokens 200
 ```
+
+## Context Capsules
+
+### Build one bounded evidence handoff
+
+```bash
+gno context build "What changed in the launch plan?" \
+  --budget 12000 --json --output launch-capsule.json
+```
+
+The saved JSON contains exact evidence spans, hashes, coverage gaps, omissions,
+and the frozen retrieval plan. GNO does not save it unless `--output` is
+explicit.
+
+### Verify or watch saved evidence
+
+```bash
+# Check the old evidence without rebuilding it
+gno context verify launch-capsule.json --json
+
+# Reverify automatically when relevant indexed evidence changes
+gno context watch launch-capsule.json \
+  --question "What changed in the launch plan?" --notify --json
+gno context watches --json
+```
+
+`verify` and `reverify` never overwrite or silently rebuild the Capsule. Run
+`context build` again when a fresh evidence selection is required.
+
+## Project-Aware Retrieval
+
+```bash
+# Inspect portable repository intent before applying it
+gno profile check
+gno profile diff
+gno setup . --apply-profile
+
+# Override or disable trusted local project affinity for one request
+gno query "release plan" --project-root ~/work/product
+gno query "release plan" --no-project-affinity
+```
+
+Configured `contentTypes[].searchBoost` is bounded and visible with
+`--explain`; hard collection/tag/date/exclude/egress filters still win.
+
+## Changes and Retrieval Learning
+
+```bash
+# What changed, and what depends on it?
+gno changes --since 2026-07-20T00:00:00Z --json
+gno diff gno://work/launch.md --json
+gno impact gno://work/launch.md --max-depth 3 --json
+
+# Explicit local judgment -> immutable qrels -> offline comparison
+gno trace label <trace-id> --label relevant \
+  --target gno://work/launch.md --target-kind document
+gno trace export <trace-id> --format qrels --output launch-qrels.json
+gno trace replay <export-id> --candidate hybrid --md
+```
+
+Replay is advisory and never changes live ranking.
 
 ## Reading Documents
 

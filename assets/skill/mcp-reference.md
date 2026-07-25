@@ -119,6 +119,19 @@ Read-only MCP graph/query diagnostics include `gno_graph_query` and
 `gno_query_diagnose`. In `gno_query_diagnose`, pass `fast: true` for a BM25-only
 diagnosis that avoids embedding/rerank model initialization.
 
+Before reusing caller-saved Capsule JSON, pass the complete canonical object to
+`gno_context_verify`. It reports evidence, ranking, and fingerprint drift
+without rebuilding or persisting the Capsule. The complete `gno_context` result
+lives in `structuredContent`; its text projection is deliberately compact and
+should not be expanded back into duplicate model context.
+
+Use `gno_changes`, `gno_diff`, and `gno_impact` for retained metadata history
+and bounded dependency questions. Use `gno_trace_list` and `gno_trace_show` for
+private local diagnostics. Invoke `gno_trace_label` only when the user
+explicitly provides a relevant, irrelevant, or missing-expected judgment.
+Trace export/replay/delete/purge and saved-Capsule watch lifecycle remain
+CLI-only.
+
 ## Capture
 
 `gno_capture` is available only when MCP starts with `--enable-write` or

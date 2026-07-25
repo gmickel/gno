@@ -24,6 +24,27 @@ punctuation. NFC/case-equivalent spellings share one identity. See
 
 ## Initialization
 
+### gno setup
+
+Preferred activation path: add one folder, prove a real exact lexical result,
+then continue semantic indexing in the background.
+
+```bash
+gno setup <folder> --name <collection> [options]
+```
+
+| Option                    | Description                                               |
+| ------------------------- | --------------------------------------------------------- |
+| `--exclude <pattern>`     | Repeatable literal exclusion                              |
+| `--authorize-secret-risk` | Explicitly allow likely-secret files                      |
+| `--connector <id>`        | Install and smoke-test a connector; repeatable            |
+| `--apply-profile`         | Apply a valid `.gno/index.yml` before setup               |
+| `--no-semantic`           | Stop after lexical retrieval proof; start no model worker |
+| `--json`                  | Structured activation receipt                             |
+
+Setup is idempotent. Success means a corpus-derived BM25 query returned a
+cited result; it does not imply that background semantic work already finished.
+
 ### gno init
 
 ```bash
@@ -115,6 +136,25 @@ Generate embeddings only.
 ```bash
 gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run]
 ```
+
+## Project Profiles
+
+Project-local `.gno/index.yml` files describe portable collection, context,
+content-type, source-metadata, and retrieval-default intent. They never relocate
+the database into the repository and are never applied implicitly.
+
+```bash
+gno profile check [path]
+gno profile show [path]
+gno profile diff [path]
+gno profile apply [path]
+gno setup . --apply-profile
+```
+
+`check` validates only. `show` emits normalized state. `diff` compares the
+profile with local configuration. `apply` is additive/update-oriented and does
+not infer deletions. Profile project roots are trusted local affinity inputs;
+MCP/SDK/REST hints remain opaque and cannot become filesystem paths.
 
 ## Capture
 
@@ -220,9 +260,18 @@ gno ask <question> [options]
 | `--fast`                  | Skip expansion and reranking (fastest) |
 | `--thorough`              | Enable query expansion (better recall) |
 | `--answer`                | Generate grounded answer               |
+| `--verify`                | Closed-Capsule answer or abstention    |
 | `--no-answer`             | Retrieval only                         |
 | `--max-answer-tokens <n>` | Cap answer length                      |
+| `--context-budget-tokens` | Global verified-Capsule token budget   |
+| `--context-budget-bytes`  | Global verified-Capsule byte budget    |
 | `--show-sources`          | Show all sources                       |
+
+`--verify` is distinct from `--answer`: generation receives only a closed
+Context Capsule, every substantive claim is checked against exact retained
+spans, and GNO releases the answer only at 100% support coverage. Failed or
+unavailable semantic verification forces an explicit abstention. This proves
+support against retained evidence, not corpus completeness or source truth.
 
 ## Document Retrieval
 
@@ -291,6 +340,113 @@ Validate context configuration.
 ```bash
 gno context check [--json]
 ```
+
+### gno context build
+
+Compile one deterministic, extractive evidence bundle under global token and
+byte budgets:
+
+```bash
+gno context build "<goal>" --budget 12000 --json --output capsule.json
+gno context build "compare proposals" --budget 16000 --collection work --md
+gno context build "release evidence" --budget 12000 --fast --json
+```
+
+The Capsule retains exact URI/heading/line spans, source/mirror/passage hashes,
+normalized retrieval inputs, fingerprints, capability outcomes, omissions,
+coverage, and explicit gaps. Selection collapses overlaps and rewards uncovered
+facets. `--fast` avoids model loading; `--thorough` widens retrieval. GNO writes
+only to stdout or an explicit `--output`; it never persists Capsules implicitly.
+
+### gno context verify
+
+Recheck a saved canonical JSON Capsule without rebuilding or mutating it:
+
+```bash
+gno context verify capsule.json --json
+cat capsule.json | gno context verify - --md
+```
+
+The receipt classifies evidence as unchanged, stale, or missing; ranking as
+unchanged, reranked, or unavailable; and reports fingerprint drift separately.
+Verification uses the Capsule's index and refuses an explicitly mismatched
+global `--index`.
+
+### Saved Capsule watches
+
+Register a caller-owned Capsule file for evidence-triggered reverification:
+
+```bash
+gno context watch capsule.json --question "Who owns launch?" --notify --json
+gno context watches --json
+gno context reverify <registration-id> --json
+gno context unwatch <registration-id> --json
+```
+
+GNO stores only bounded registration metadata and evidence hashes—not Capsule
+or passage bytes. `serve`/`daemon` reverify after relevant settled index
+changes. Watch lifecycle operations are CLI-only. Reverification never rebuilds
+or overwrites the saved Capsule.
+
+## Knowledge Delta
+
+Inspect retained metadata-only change history and bounded dependency impact:
+
+```bash
+gno changes --since 2026-07-20T00:00:00Z --json
+gno diff gno://notes/plan.md --json
+gno impact gno://notes/plan.md --max-depth 3 --json
+```
+
+`changes` accepts an ISO time or opaque cursor and optional collection/limit.
+`diff` reports structural headings, links, and typed-relationship changes for
+one retained change. `impact` follows inbound evidence edges with explicit
+depth/node/edge/frontier/visited bounds. Expired journal history is reported,
+not reconstructed.
+
+## Private Retrieval Traces
+
+Trace recording is local and off by default. Metadata mode excludes raw
+query/goal/filter values; replay mode is separate explicit consent.
+
+```bash
+gno trace list --json
+gno trace show <trace-id> --json
+gno trace label <trace-id> --label relevant --target <uri> \
+  --target-kind document
+gno trace export <trace-id> --format qrels --output qrels.json
+gno trace replay <export-id> --candidate hybrid --md
+gno trace delete <trace-id>
+gno trace purge
+```
+
+Only append relevance labels the user explicitly supplied. Export, delete, and
+purge are explicit mutations. Replay compares one candidate with an immutable
+local baseline and always reports `applied: false`; it never changes live
+ranking.
+
+## Collection Egress
+
+Collections can be restricted to `local_only`, `lan`, or `remote`. Egress is
+checked before non-loopback serving, remote model calls, network export, or
+publishing and remains separate from authentication or write permission.
+
+```bash
+gno collection policy get work
+gno collection policy check --action remote_model \
+  --destination remote --content-class internal -c work --explain-egress
+gno collection policy set work remote --confirm-relaxation <revision>
+gno egress-audit list
+gno egress-audit show <audit-id>
+gno egress-audit status
+gno egress-audit delete <audit-id>
+gno egress-audit purge
+```
+
+Denied egress is terminal for that route; do not retry through another network
+surface. Relaxing policy requires the current revision; tightening to
+`local_only` does not. Audit receipts are local and content-free.
+Deletion/purge must remain explicit.
 
 ## Note Linking
 

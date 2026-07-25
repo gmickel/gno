@@ -116,6 +116,56 @@ function skip(name: string, reason: string) {
   log(`${YELLOW}○${RESET} ${name} (skipped: ${reason})`);
 }
 
+async function listFiles(dir: string): Promise<string[]> {
+  const files: string[] = [];
+  const glob = new Bun.Glob("**/*");
+  for await (const path of glob.scan({ cwd: dir, onlyFiles: true })) {
+    files.push(path);
+  }
+  return files.sort();
+}
+
+async function testProjectSkillParity() {
+  log(`\n${BOLD}Project Skill Parity${RESET}`);
+
+  const sourceDir = join(import.meta.dir, "../assets/skill");
+  const sourceFiles = await listFiles(sourceDir);
+  const projectCopies = [
+    join(import.meta.dir, "../.claude/skills/gno"),
+    join(import.meta.dir, "../.codex/skills/gno"),
+  ];
+
+  for (const copyDir of projectCopies) {
+    const copyFiles = await listFiles(copyDir);
+    const label = copyDir.includes("/.claude/") ? "Claude" : "Codex";
+
+    if (JSON.stringify(copyFiles) !== JSON.stringify(sourceFiles)) {
+      fail(`${label} project skill`, "file list differs from assets/skill");
+      continue;
+    }
+
+    let mismatch: string | undefined;
+    for (const path of sourceFiles) {
+      const sourceBytes = await Bun.file(join(sourceDir, path)).bytes();
+      const copyBytes = await Bun.file(join(copyDir, path)).bytes();
+      const sameLength = sourceBytes.length === copyBytes.length;
+      const sameBytes =
+        sameLength &&
+        sourceBytes.every((byte, index) => byte === copyBytes[index]);
+      if (!sameBytes) {
+        mismatch = path;
+        break;
+      }
+    }
+
+    if (mismatch) {
+      fail(`${label} project skill`, `${mismatch} differs from assets/skill`);
+    } else {
+      pass(`${label} project skill matches assets/skill`);
+    }
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Capability Detection
 // ─────────────────────────────────────────────────────────────────────────────
@@ -473,6 +523,7 @@ async function main() {
     }
 
     // Run test suites
+    await testProjectSkillParity();
     await testHelp();
     await testInit();
     await testIndex();
