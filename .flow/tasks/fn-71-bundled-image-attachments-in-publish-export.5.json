@@ -6,13 +6,14 @@
   "depends_on": [
     "fn-71-bundled-image-attachments-in-publish-export.2",
     "fn-71-bundled-image-attachments-in-publish-export.3",
-    "fn-71-bundled-image-attachments-in-publish-export.4"
+    "fn-71-bundled-image-attachments-in-publish-export.4",
+    "fn-71-bundled-image-attachments-in-publish-export.6"
   ],
   "id": "fn-71-bundled-image-attachments-in-publish-export.5",
   "priority": 5,
   "spec": "fn-71-bundled-image-attachments-in-publish-export",
   "spec_path": ".flow/tasks/fn-71-bundled-image-attachments-in-publish-export.5.md",
   "status": "todo",
-  "title": "End-to-end smoke, docs, and CHANGELOG",
-  "updated_at": "2026-04-20T15:00:00Z"
+  "title": "Prove cross-repo image publishing and reconcile release surfaces",
+  "updated_at": "2026-08-02T20:58:24.833131Z"
 }

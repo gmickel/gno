@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-08-02T20:46:34.056068Z",
+  "depends_on": [
+    "fn-60-reference-safe-file-operations-and-refactors.8",
+    "fn-60-reference-safe-file-operations-and-refactors.10"
+  ],
+  "id": "fn-60-reference-safe-file-operations-and-refactors.9",
+  "priority": 5,
+  "spec": "fn-60-reference-safe-file-operations-and-refactors",
+  "spec_path": ".flow/tasks/fn-60-reference-safe-file-operations-and-refactors.9.md",
+  "status": "todo",
+  "title": "Prove refactor safety and reconcile every documentation surface",
+  "updated_at": "2026-08-02T20:57:14.908671Z"
+}

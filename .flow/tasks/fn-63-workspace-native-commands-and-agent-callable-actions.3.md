@@ -19,9 +19,8 @@ Initial slice:
 - [ ] Tests cover representative command execution paths
 
 ## Done summary
-
+Reconciled as shipped: core note, folder, navigation, and refactor actions are wired through the palette with direct API/SDK/MCP operations where applicable.
 ## Evidence
-
-- Commits:
-- Tests:
+- Commits: 7f8706c5, 0db1cd2e, cc513c58, 05eb785f, 2ad51158, 695fbe65
+- Tests: bun test test/core/sections.test.ts test/mcp/tools/workspace-write-export.test.ts test/mcp/tools/workspace-write.test.ts test/sdk/client.test.ts test/serve/api-docs-lifecycle.test.ts test/serve/public/components/QuickSwitcher.dom.test.tsx (56 pass)
 - PRs:

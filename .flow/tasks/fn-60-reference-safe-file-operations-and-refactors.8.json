@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-08-02T20:46:33.815155Z",
+  "depends_on": [
+    "fn-60-reference-safe-file-operations-and-refactors.7"
+  ],
+  "id": "fn-60-reference-safe-file-operations-and-refactors.8",
+  "priority": 4,
+  "spec": "fn-60-reference-safe-file-operations-and-refactors",
+  "spec_path": ".flow/tasks/fn-60-reference-safe-file-operations-and-refactors.8.md",
+  "status": "todo",
+  "title": "Adopt canonical refactor semantics in REST and Web UI",
+  "updated_at": "2026-08-02T20:57:14.406485Z"
+}

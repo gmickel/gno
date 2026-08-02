@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-08-02T20:47:55.085886Z",
+  "depends_on": [
+    "fn-61-document-structure-navigation-and-section-addressability.5"
+  ],
+  "id": "fn-61-document-structure-navigation-and-section-addressability.6",
+  "priority": 2,
+  "spec": "fn-61-document-structure-navigation-and-section-addressability",
+  "spec_path": ".flow/tasks/fn-61-document-structure-navigation-and-section-addressability.6.md",
+  "status": "todo",
+  "title": "Expose section target creation and resolution through REST and SDK",
+  "updated_at": "2026-08-02T20:57:43.369097Z"
+}

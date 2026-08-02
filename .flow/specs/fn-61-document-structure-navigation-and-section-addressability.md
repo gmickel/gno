@@ -1,125 +1,116 @@
-# fn-61-document-structure-navigation-and-section-addressability Document structure navigation and section addressability
+# fn-61 Document structure navigation and section addressability
 
-## Overview
+## Goal & Context
+<!-- scope: business -->
 
-Make long notes easier to read, navigate, cite, and reuse by turning document structure into a first-class workspace concept.
+Finish section addressability for citations and agents without rebuilding the already-shipped outline experience. Main already has shared heading extraction, deterministic duplicate slugs, DocView outline/current-section tracking, readable `#anchor` deep links, QuickSwitcher section navigation, REST sections, and SDK `getSections()`; fn-61.1–fn-61.4 are reconciled as delivered.
 
-This epic centers on heading/section navigation, but should also cover the broader "document anatomy" layer that power users expect when living in notes all day.
+The remaining user problem is durability and parity. A readable fragment identifies the current rendering, but a heading rename, inserted duplicate, or structural edit can silently retarget it. Agents also lack one canonical section locator/resolution contract in MCP. This revision adds versioned, evidence-carrying section targets that resolve conservatively and remain compatible with current human-readable links.
 
-## Prior Context
+The product promise is not “anchors never change.” It is “GNO never silently cites the wrong section”: exact and safely recovered targets navigate; ambiguous or stale targets report why and preserve the evidence needed for a human or agent to recover.
 
-- DocView now has much better metadata/frontmatter/link panels.
-- GNO already supports deep links with line targets and note-level navigation.
-- The current gap is inside-document navigation and section-level addressability.
-- `docs/adr/001-scholarly-dusk-design-system.md` defines the rail/panel/layout vocabulary this work should extend.
+## Architecture & Data Models
+<!-- scope: technical -->
 
-## Why now
+`src/core/sections.ts` remains the only heading extraction and display-anchor source. Add a browser-safe section target/resolver beside it:
 
-- Obsidian replacement requires stronger reading/navigation ergonomics, not just file-level browsing.
-- Long notes, research writeups, and agent-generated docs need section-level movement.
-- Agents and APIs also benefit from stable section targets.
+```mermaid
+flowchart LR
+  Doc[Document + revision] --> Extract[extractSections]
+  Extract --> Target[SectionTarget v1]
+  Target --> Resolve[Conservative resolver]
+  Resolve --> Exact[exact]
+  Resolve --> Recovered[recovered]
+  Resolve --> Ambiguous[ambiguous]
+  Resolve --> Stale[stale]
+  Resolve --> Missing[missing]
+```
 
-## Difficulty
+A v1 target carries document identity, schema version, the readable anchor at capture time, normalized heading ancestry and duplicate occurrence, exact heading/section quote with bounded prefix/suffix context, a source-content fingerprint, and line/offset hints. Hints accelerate resolution but are not identity.
 
-Medium.
+Resolution order is deterministic: same-revision structural match; exact heading path/occurrence; unique quote plus context recovery; otherwise `ambiguous`, `stale`, or `missing`. No fuzzy threshold may silently choose among multiple candidates. Results include confidence/status, current anchor and line range when navigable, candidates when safe to expose, and the original target evidence.
 
-## Start Here
+The first release computes targets from document content and does not persist opaque section rows in SQLite. Human URLs retain readable fragments. Transport-specific encodings may carry the versioned target alongside the fragment, but old `#anchor` links remain valid and current rendering IDs do not change.
 
-- `src/serve/public/pages/DocView.tsx`
-- `src/serve/public/components/editor/MarkdownPreview.tsx`
-- `src/serve/public/lib/*`
-- `src/serve/routes/api.ts`
-- `docs/WEB-UI.md`
-- `docs/API.md`
-- `docs/adr/001-scholarly-dusk-design-system.md`
+## API Contracts
+<!-- scope: technical -->
 
-## Scope
+Shared core types:
 
-- heading navigator / outline pane
-- section jump links
-- stable heading-anchor generation
-- copy deep link to section
-- current-section highlighting while scrolling where practical
-- section-aware quick navigation commands
-- section metadata/addressability contract usable by API/SDK later
-- docs, website, tests
+- current `DocumentSection` remains backward compatible;
+- `SectionTargetV1` is an immutable/versioned locator;
+- `SectionResolution` returns `exact`, `recovered`, `ambiguous`, `stale`, or `missing`, plus current section/citation metadata when navigable.
 
-## Explicit Non-goals
+REST and SDK expose target creation/resolution without reimplementing parsing. MCP adds a read-only section-resolution/retrieval surface or extends the existing document retrieval contract through the versioned schema. It returns canonical document URI, heading, anchor, line range, source fingerprint, and resolution status so answers can cite what was actually resolved.
 
-- block-level editing model
-- full block reference system
-- canvas or whiteboard views
-- daily-notes-specific affordances
+Ambiguous/stale results are non-navigable by default and never masquerade as not-found success. Existing `/api/doc/:id/sections`, SDK `getSections()`, `#anchor` links, and `gno_get` line-range behavior stay compatible.
 
-## Product Stance
+## Edge Cases & Constraints
+<!-- scope: technical -->
 
-- Prefer section/heading addressability first; block-level identity can come later if still needed.
-- Build this as a reusable document-structure layer, not a DocView-only ornament.
-- Structure navigation UI should extend Scholarly Dusk rails/panels instead of adding generic editor chrome.
+- Duplicate headings are distinguished by ancestry, occurrence, quote/context, and revision evidence—not current slug alone.
+- Heading rename, heading insertion before a duplicate, section reorder, deleted heading, repeated identical sections, and changed body context have explicit expected statuses.
+- Setext headings, inline HTML headings, ATX closing markers, fenced content, and heading normalization must be either supported consistently or documented as unsupported; renderer and extractor cannot diverge.
+- Resolution is local, deterministic, network-free, and LLM-free.
+- Targets are bounded in size and do not embed entire private sections in URLs, logs, analytics, or error messages.
+- Copy-link UX must remain readable and safe to share; any opaque selector is additive to the fragment, versioned, and privacy-reviewed.
+- A source content fingerprint mismatch is evidence of staleness, not automatic failure if the locator still recovers uniquely.
+- Current anchor IDs remain unique per rendered document as required by HTML; GNO owns the slug compatibility contract because Markdown does not standardize heading IDs.
 
-## Requirements
+## Acceptance Criteria
+<!-- scope: both -->
 
-- DocView can show a heading outline for markdown-like documents.
-- Users can jump to sections quickly.
-- Users can copy/open deep links to a section.
-- Anchor generation is stable and predictable.
-- API/SDK/MCP surfaces should expose the same section structure without reimplementing parser rules per surface.
-- Works especially well for:
-  - research notes
-  - long docs
-  - agent-generated summaries/designs
+- **R1:** GNO can create a bounded, versioned section target containing enough structural, quote/context, revision, and human-anchor evidence to distinguish duplicate headings without persisting section rows.
+- **R2:** One deterministic resolver returns `exact`, `recovered`, `ambiguous`, `stale`, or `missing`; it never silently selects a different section when evidence is non-unique.
+- **R3:** Existing readable `#anchor` links, rendered heading IDs, outline navigation, QuickSwitcher jumps, REST sections, and SDK `getSections()` remain backward compatible.
+- **R4:** REST, SDK, and read-only MCP expose the same target and resolution semantics, including canonical document URI, current anchor, line range, source fingerprint, and non-success diagnostics suitable for citations.
+- **R5:** Section target creation/resolution is browser-safe, deterministic, local, LLM-free, bounded in output size, and covered for duplicate/edit/reorder/delete/parser-renderer cases.
+- **R6:** Repo contracts/docs/skill and `/Users/gordon/work/gno.sh` explain readable anchors versus durable section targets; live UI/API/MCP QA proves copy, resolve, recover, and fail-closed behavior.
 
-## UX Deliverables
+## Boundaries
+<!-- scope: business -->
 
-- outline pane or section navigator
-- current section highlight
-- section actions:
-  - copy link
-  - jump
-  - maybe open in source/editor at heading
-- empty-state behavior for docs without headings
-- section/navigation controls that match existing Scholarly Dusk rail density and typography
+- No block-level identity, transclusion, collaborative annotation store, canvas, or general-purpose fuzzy anchoring platform.
+- No database table of persistent section IDs in the first release.
+- No change to current heading slug/render IDs unless compatibility tests prove a required parser bug fix.
+- No automatic navigation for ambiguous or stale targets.
+- No rebuild of the shipped outline, current-section highlighting, or QuickSwitcher UI.
 
-## Technical Deliverables
+## Decision Context
+<!-- scope: both — conditionally substructured -->
 
-- shared heading/section extraction layer
-- stable slug/anchor rules
-- reusable section link builder
-- tests for:
-  - heading extraction
-  - slug stability
-  - section deep links
-  - DocView section navigation behavior
-- docs updates in `docs/`
-- website updates where reading/navigation/workspace capabilities are described
-
-## Architecture Rule
-
-Document structure is data, not just UI chrome.
-
-Expose it through shared types/helpers so all applicable surfaces can stay in parity:
-
-- Web UI
-- SDK
-- API
-- MCP section-aware retrieval or navigation helpers
-
-## Risks / Design Traps
-
-- anchors changing after minor formatting tweaks
-- parsing rules diverging between source mode and rendered mode
-- over-building a mini block editor instead of solving section navigation cleanly
+Readable slugs are excellent navigation affordances but weak citation identity. Replacing them with opaque IDs would harm URLs and break compatibility; pretending slugs survive semantic edits would create false trust. The chosen composite target keeps the current fragment for humans and adds bounded evidence for conservative recovery by APIs and agents. A content-derived first release avoids premature persistent identity/schema work while leaving a versioned migration path if usage later proves it necessary.
 
 ## Quick commands
 
-- `bun run lint:check`
-- `bun test`
-- `bun run test:e2e`
+```bash
+bun test test/core/sections.test.ts test/sdk/client.test.ts
+bun test test/serve/public/components/QuickSwitcher.dom.test.tsx
+bun run lint:check
+```
 
-## Acceptance
+## Early proof point
 
-- [ ] Long notes expose a heading/section navigator in DocView.
-- [ ] Users can jump to and deep-link specific sections.
-- [ ] Section extraction and anchor generation live in shared logic.
-- [ ] New UI follows `docs/adr/001-scholarly-dusk-design-system.md`.
-- [ ] Docs in `docs/`, website copy/pages, and tests all reflect section-level navigation/addressability.
+Task fn-61.5 proves a bounded target can recover the intended section after representative heading edits while returning `ambiguous` for indistinguishable duplicates. If that cannot be achieved deterministically without excessive private text or persistent IDs, revisit the locator design before exposing it through transports.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|---|---|---|---|
+| R1 | Versioned bounded target | fn-61.5 | — |
+| R2 | Conservative deterministic resolver | fn-61.5 | — |
+| R3 | Backward-compatible UI/fragments | fn-61.5, fn-61.7 | — |
+| R4 | REST/SDK/MCP citation parity | fn-61.6, fn-61.8 | — |
+| R5 | Local deterministic safety/performance | fn-61.5, fn-61.7 | — |
+| R6 | Documentation and live QA | fn-61.7 | — |
+
+## References
+
+- `src/core/sections.ts:9-92`
+- `src/serve/public/components/editor/MarkdownPreview.tsx:190-217`
+- `src/serve/public/pages/DocView.tsx:566-610,1169-1235`
+- `src/serve/public/components/QuickSwitcher.tsx:103-130,338-367`
+- `src/serve/routes/api.ts:1919-1948`
+- `src/sdk/client.ts:1832-1836`
+- W3C Web Annotation Data Model selectors: https://www.w3.org/TR/annotation-model/
+- HTML `id` contract: https://html.spec.whatwg.org/multipage/dom.html#the-id-attribute

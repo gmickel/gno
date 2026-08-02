@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-08-02T20:53:54.108811Z",
+  "depends_on": [
+    "fn-86-deferred-second-brain-maintenance-and.2",
+    "fn-86-deferred-second-brain-maintenance-and.3"
+  ],
+  "id": "fn-86-deferred-second-brain-maintenance-and.4",
+  "priority": 3,
+  "spec": "fn-86-deferred-second-brain-maintenance-and",
+  "spec_path": ".flow/tasks/fn-86-deferred-second-brain-maintenance-and.4.md",
+  "status": "todo",
+  "title": "Expose audit reports through CLI and read-only MCP",
+  "updated_at": "2026-08-02T20:53:54.108811Z"
+}

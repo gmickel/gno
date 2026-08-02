@@ -1,158 +1,95 @@
-# fn-63-workspace-native-commands-and-agent-callable-actions Workspace-native commands and agent-callable actions
+# fn-63 Workspace-native commands and agent-callable actions
 
-## Overview
+## Goal & Context
+<!-- scope: business -->
 
-Turn the existing quick-switcher into a serious command surface for the workspace.
+Deliver a keyboard-first command surface for GNO's workspace without turning the product into a generic action-bus framework. The useful product outcome is already present on main: QuickSwitcher combines document discovery, recents, favorites, section jumps, presets, and contextual workspace commands; the `?` surface teaches the shortcuts; typed UI action descriptors keep command availability and labels coherent.
 
-This epic is about commands that make sense for GNO's target audience:
+This revision reconciles the stale Flow state with the shipped product. A universal UI/CLI/SDK/MCP action protocol is deliberately not retained as unfinished scope. Those surfaces have different safety and transport semantics, and the current direct typed APIs are clearer than an unproven generic executor. A future cross-surface action protocol requires a concrete user workflow and at least three operations whose duplicated semantics cannot be solved in their owning feature specs.
 
-- developers
-- researchers
-- agent-heavy users
+## Architecture & Data Models
+<!-- scope: technical -->
 
-The command system should not just be UI polish. It should provide one shared action vocabulary and semantic core so CLI, SDK, MCP, and UI can stay in parity where the same actions are exposed.
+Shipped baseline:
 
-## Prior Context
+- `src/serve/public/lib/workspace-actions.ts:4-225` owns typed UI action IDs, descriptors, context filtering, and execution routing.
+- `src/serve/public/components/QuickSwitcher.tsx:318-635` composes search, sections, presets, and action rows into the command palette.
+- `src/serve/public/components/ShortcutHelpModal.tsx:171-236` exposes keyboard discoverability.
+- Direct REST, SDK, and write-gated MCP operations remain the semantic owners for mutations; the command palette invokes product routes/events rather than bypassing their validation.
 
-- Quick-switcher, recents, favorites, and pinned collections already exist.
-- Tabs and Browse now provide strong workspace context.
-- The workspace already has a `?` shortcuts/help surface via `ShortcutHelpModal`; command work should build on that instead of replacing it blindly.
-- Upcoming epics define note creation, file ops, structure navigation, and presets. Those need a coherent command/action layer.
-- `docs/adr/001-scholarly-dusk-design-system.md` defines the aesthetic/interaction language command surfaces should inherit.
+No new shared action schema, generic remote executor, or database model belongs to this completed spec.
 
-## Why now
+## API Contracts
+<!-- scope: technical -->
 
-- Obsidian feels powerful partly because commands are everywhere.
-- GNO's audience is even more command/action driven than Obsidian's average user.
-- Agents also benefit if workspace actions are defined as reusable operations instead of hidden UI-only handlers.
+The delivered contract is UI-local and typed:
 
-## Difficulty
+- each action has a stable ID, label, group, search terms, and context-dependent availability;
+- invocation uses the current workspace context and routes to an existing product operation;
+- unavailable actions remain undiscoverable or explain their missing context in the owning UI;
+- API, SDK, and MCP keep their existing operation-specific schemas and write gates.
 
-Medium to hard.
+MCP tool annotations or UI action descriptors are never authorization. Any future agent-callable action layer must preserve the existing MCP/API capability checks and explicit destructive confirmation rules.
 
-## Start Here
+## Edge Cases & Constraints
+<!-- scope: technical -->
 
-- `src/serve/public/components/QuickSwitcher.tsx`
-- `src/serve/public/components/ShortcutHelpModal.tsx`
-- `src/serve/public/hooks/useKeyboardShortcuts.ts`
-- `src/serve/public/app.tsx`
-- future action/command layer under `src/serve/public/lib/*`
-- `docs/WEB-UI.md`
-- `docs/API.md`
-- `docs/MCP.md`
-- `docs/adr/001-scholarly-dusk-design-system.md`
+- The palette must not become a second implementation of file, note, or section operations.
+- Candidate commands in the original roadmap were examples, not a requirement that every UI action appear on every transport.
+- Browser custom events are acceptable orchestration inside the shipped UI; they are not a cross-process protocol.
+- A generic action registry would increase versioning and security surface without current evidence of user value.
+- Existing keyboard navigation, search ranking, section precedence, and empty-input command discovery remain regression-covered.
 
-## Scope
+## Acceptance Criteria
+<!-- scope: both -->
 
-- command palette evolution of quick-switcher
-- integration with the existing `?` help/shortcuts surface
-- typed action registry
-- context-aware commands
-- command execution for:
-  - open/create note
-  - navigate browse/tree
-  - file ops
-  - section jumps
-  - preset-based creation
-  - tab actions where useful
-- command discoverability and keyboard UX
-- agent-callable/shared action contracts where relevant
-- docs, website, tests
+- **R1:** QuickSwitcher behaves as a command palette, showing useful contextual actions before the user types while retaining document search, recents, favorites, presets, and section navigation.
+- **R2:** Workspace command descriptors and execution routing are typed and centralized in the UI rather than duplicated across palette rows.
+- **R3:** The existing `?` help surface documents the relevant keyboard and command-palette behavior.
+- **R4:** Direct API, SDK, and MCP operations retain their operation-specific validation and write gates; no UI descriptor is treated as authorization.
+- **R5:** Focused command-palette, API, SDK, and MCP tests pass on current main.
+- **R6:** No generic cross-surface action bus is left as implied unfinished work; reopening that idea requires concrete duplication and user-workflow evidence.
 
-## Explicit Non-goals
+## Boundaries
+<!-- scope: business -->
 
-- generic plugin command marketplace
-- every UI button becoming an exposed command in first pass
-- voice control or macro recorder
+- No plugin command marketplace, macro recorder, voice control, or arbitrary remote action executor.
+- No requirement for every UI command to exist in CLI, SDK, or MCP.
+- No new implementation work in this closure revision.
+- Feature-specific semantic gaps remain owned by their feature specs, especially fn-60 and fn-61.
 
-## Product Stance
+## Decision Context
+<!-- scope: both — conditionally substructured -->
 
-- Commands should feel native to GNO's workspace, not copied from Obsidian mechanically.
-- Prefer fewer powerful actions over a giant weak command list.
-- Action semantics should be shared and typed, not duplicated across modal handlers.
-- The command palette must extend the Scholarly Dusk visual language instead of reverting to generic command-menu styling.
-
-## Requirements
-
-- Quick-switcher evolves into a true command palette with action grouping.
-- Commands can use current workspace context:
-  - active tab
-  - selected browse folder
-  - current document
-  - current section where relevant
-- Commands cover the core workspace operations introduced in epics 59-62.
-- Shared action contracts define parity across applicable surfaces, not just the command palette.
-
-## Candidate First-pass Commands
-
-- open or create note
-- create note in current folder
-- rename current note
-- move current note
-- duplicate current note
-- create folder in current browse location
-- jump to section
-- copy section link
-- apply preset
-- pin/unpin collection
-- favorite/unfavorite note
-- open graph
-- open browse
-- open search / ask
-
-## UX Deliverables
-
-- command palette UI
-- grouped actions
-- context hints
-- keyboard-first flows
-- strong empty states when a command requires context the user does not currently have
-- Scholarly Dusk-consistent panel, typography, and action-row treatment
-- existing `?` help surface updated so new commands stay discoverable
-
-## Technical Deliverables
-
-- typed command/action registry
-- context resolution layer
-- reusable executor layer
-- tests for:
-  - command registration
-  - command filtering/ranking
-  - context gating
-  - execution behavior for representative actions
-- docs updates in `docs/`
-- website updates where command/workspace navigation capabilities are described
-
-## Architecture Rule
-
-Build commands as shared workspace actions, not just command-palette callbacks.
-
-That means parity across applicable surfaces:
-
-- one action contract
-- UI can invoke it
-- CLI can invoke it where applicable
-- SDK can invoke it where applicable
-- MCP can invoke it where safe/applicable
-- matching surfaces share validation, conflict handling, and result semantics
-
-## Risks / Design Traps
-
-- quick-switcher becoming a cluttered omnibox
-- action semantics drifting from actual UI behavior
-- exposing unsafe write operations to future agent surfaces without proper guardrails
+The original product feature shipped. Extending it into a universal action vocabulary now would be speculative architecture: the current transports intentionally expose different contracts, permissions, and interaction models. Closing fn-63 keeps the valuable palette while avoiding an abstraction that has not earned its cost. If repeated drift later appears across several operations, capture that evidence in a new, narrowly scoped spec instead of reopening this one by default.
 
 ## Quick commands
 
-- `bun run lint:check`
-- `bun test`
-- `bun run test:e2e`
+```bash
+bun test test/serve/public/components/QuickSwitcher.dom.test.tsx test/mcp/tools/workspace-write.test.ts test/sdk/client.test.ts
+bun run lint:check
+```
 
-## Acceptance
+## Early proof point
 
-- [ ] GNO has a real command palette / action surface, not just a document jumper.
-- [ ] Core workspace operations are available as typed, context-aware actions.
-- [ ] Action semantics are reusable outside the immediate UI.
-- [ ] New UI follows `docs/adr/001-scholarly-dusk-design-system.md`.
-- [ ] Existing `?` help surface is updated for discoverability.
-- [ ] Docs in `docs/`, website copy/pages, and tests all reflect the new command/action model.
+Historical task fn-63.1 established the typed UI registry reused by the palette. Current focused tests confirm the registry/palette and applicable transport operations remain healthy; no further proof task is needed.
+
+## Requirement coverage
+
+| Req | Description | Task(s) | Gap justification |
+|---|---|---|---|
+| R1 | Command palette behavior | fn-63.2, fn-63.3 | — |
+| R2 | Typed centralized UI actions | fn-63.1, fn-63.3 | — |
+| R3 | Help and discoverability | fn-63.2, fn-63.4 | — |
+| R4 | Preserve transport safety ownership | fn-63.3 | — |
+| R5 | Focused regression proof | fn-63.4 | — |
+| R6 | Explicitly reject speculative action bus | — | Product decision recorded by this closure revision. |
+
+## References
+
+- `src/serve/public/lib/workspace-actions.ts:4-225`
+- `src/serve/public/components/QuickSwitcher.tsx:318-635`
+- `src/serve/public/components/ShortcutHelpModal.tsx:171-236`
+- `test/serve/public/components/QuickSwitcher.dom.test.tsx`
+- `docs/WEB-UI.md:329`
+- `CHANGELOG.md:1005`

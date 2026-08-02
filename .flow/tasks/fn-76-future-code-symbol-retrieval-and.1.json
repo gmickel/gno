@@ -9,6 +9,6 @@
   "spec": "fn-76-future-code-symbol-retrieval-and",
   "spec_path": ".flow/tasks/fn-76-future-code-symbol-retrieval-and.1.md",
   "status": "todo",
-  "title": "Design symbol-aware code retrieval after AST decision",
-  "updated_at": "2026-04-24T12:31:20.709939Z"
+  "title": "Run evidence gate and record symbol-retrieval go or no-go",
+  "updated_at": "2026-08-02T20:51:07.808588Z"
 }

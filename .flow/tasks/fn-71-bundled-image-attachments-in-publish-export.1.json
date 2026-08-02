@@ -9,6 +9,6 @@
   "spec": "fn-71-bundled-image-attachments-in-publish-export",
   "spec_path": ".flow/tasks/fn-71-bundled-image-attachments-in-publish-export.1.md",
   "status": "todo",
-  "title": "Implement the Obsidian attachment resolver",
-  "updated_at": "2026-04-20T15:00:00Z"
+  "title": "Freeze cross-repo asset contract threat model and fixtures",
+  "updated_at": "2026-08-02T20:50:18.304817Z"
 }

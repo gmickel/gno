@@ -1,0 +1,17 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-08-02T20:47:55.321344Z",
+  "depends_on": [
+    "fn-61-document-structure-navigation-and-section-addressability.6",
+    "fn-61-document-structure-navigation-and-section-addressability.8"
+  ],
+  "id": "fn-61-document-structure-navigation-and-section-addressability.7",
+  "priority": 3,
+  "spec": "fn-61-document-structure-navigation-and-section-addressability",
+  "spec_path": ".flow/tasks/fn-61-document-structure-navigation-and-section-addressability.7.md",
+  "status": "todo",
+  "title": "Integrate citation-safe links and verify compatibility end to end",
+  "updated_at": "2026-08-02T20:57:43.856426Z"
+}

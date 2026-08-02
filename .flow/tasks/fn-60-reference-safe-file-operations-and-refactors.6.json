@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-08-02T20:46:33.333660Z",
+  "depends_on": [
+    "fn-60-reference-safe-file-operations-and-refactors.5"
+  ],
+  "id": "fn-60-reference-safe-file-operations-and-refactors.6",
+  "priority": 2,
+  "spec": "fn-60-reference-safe-file-operations-and-refactors",
+  "spec_path": ".flow/tasks/fn-60-reference-safe-file-operations-and-refactors.6.md",
+  "status": "todo",
+  "title": "Implement parser-backed reference impact planning",
+  "updated_at": "2026-08-02T20:46:33.333660Z"
+}

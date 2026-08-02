@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-08-02T20:46:33.573624Z",
+  "depends_on": [
+    "fn-60-reference-safe-file-operations-and-refactors.6"
+  ],
+  "id": "fn-60-reference-safe-file-operations-and-refactors.7",
+  "priority": 3,
+  "spec": "fn-60-reference-safe-file-operations-and-refactors",
+  "spec_path": ".flow/tasks/fn-60-reference-safe-file-operations-and-refactors.7.md",
+  "status": "todo",
+  "title": "Add atomic refactor apply service and recovery receipts",
+  "updated_at": "2026-08-02T20:46:33.573624Z"
+}

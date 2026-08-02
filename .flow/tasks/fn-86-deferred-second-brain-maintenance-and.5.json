@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-08-02T20:53:54.344797Z",
+  "depends_on": [
+    "fn-86-deferred-second-brain-maintenance-and.4"
+  ],
+  "id": "fn-86-deferred-second-brain-maintenance-and.5",
+  "priority": 4,
+  "spec": "fn-86-deferred-second-brain-maintenance-and",
+  "spec_path": ".flow/tasks/fn-86-deferred-second-brain-maintenance-and.5.md",
+  "status": "todo",
+  "title": "Verify audit utility safety and all truth surfaces",
+  "updated_at": "2026-08-02T20:53:54.344797Z"
+}
