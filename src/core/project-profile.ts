@@ -146,13 +146,13 @@ const resolveContainedPath = async (
   | {
       ok: true;
       absolutePath: string;
-      metadata: Awaited<ReturnType<typeof stat>>;
+      metadata: NonNullable<Awaited<ReturnType<typeof stat>>>;
     }
   | { ok: false; diagnostic: ProjectProfileDiagnostic }
 > => {
   const candidate = resolve(profileRoot, normalizeLogicalPath(logicalPath));
   let absolutePath: string;
-  let metadata: Awaited<ReturnType<typeof stat>>;
+  let metadata: NonNullable<Awaited<ReturnType<typeof stat>>>;
   try {
     absolutePath = await realpath(candidate);
     metadata = await stat(absolutePath);

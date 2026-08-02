@@ -17,6 +17,16 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    # These packages form one lint-policy toolchain. Newer versions enable
+    # repository-wide rules and require a deliberate migration.
+    ignore:
+      - dependency-name: "ultracite"
+      - dependency-name: "oxlint"
+      - dependency-name: "oxlint-tsgolint"
+      - dependency-name: "oxfmt"
+      # ajv-formats currently installs a second Ajv copy with Bun when the
+      # direct Ajv pin moves past 8.17.1, making its nominal types incompatible.
+      - dependency-name: "ajv"
     # Limit open PRs to avoid noise
     open-pull-requests-limit: 5
     # Auto-assign for review
