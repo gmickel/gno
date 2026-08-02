@@ -182,7 +182,7 @@
     "nanoid": "5.1.6",
     "node-llama-cpp": "3.19.1",
     "officeparser": "6.0.4",
-    "pdfjs-dist": "5.7.284",
+    "pdfjs-dist": "6.2.108",
     "picocolors": "1.1.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
