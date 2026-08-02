@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-61-document-structure-navigation-and-section-addressability",
   "spec_path": ".flow/tasks/fn-61-document-structure-navigation-and-section-addressability.5.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add durable section target and conservative resolver",
-  "updated_at": "2026-08-02T20:48:07.834241Z"
+  "updated_at": "2026-08-02T23:07:56.805448Z"
 }

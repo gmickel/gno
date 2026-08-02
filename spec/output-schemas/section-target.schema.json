@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/section-target@1.0",
+  "title": "GNO Section Target V1",
+  "description": "Bounded, versioned, content-derived section locator for conservative citation recovery. Does not embed full section bodies.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "document",
+    "anchor",
+    "headingPath",
+    "occurrence",
+    "quote",
+    "sourceFingerprint",
+    "hints"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1",
+      "description": "Section target schema version"
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "description": "Canonical document URI"
+        }
+      }
+    },
+    "anchor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "description": "Human-readable heading anchor at capture time"
+    },
+    "headingPath": {
+      "type": "array",
+      "description": "NFC-normalized heading ancestry including the section title",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    },
+    "occurrence": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "1-based occurrence among sections with the same headingPath"
+    },
+    "quote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exact", "prefix", "suffix"],
+      "properties": {
+        "exact": {
+          "type": "string",
+          "maxLength": 96,
+          "description": "Bounded exact quote (section body preferred, else heading title)"
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Bounded prefix context immediately before exact"
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Bounded suffix context immediately after exact"
+        }
+      }
+    },
+    "sourceFingerprint": {
+      "$ref": "#/definitions/sha256",
+      "description": "SHA-256 hex fingerprint of the full source document content at capture"
+    },
+    "hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "startOffset", "endOffset"],
+      "description": "Line and code-unit offset hints only; never identity",
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1-based heading line at capture"
+        },
+        "startOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "UTF-16 code-unit start offset of the exact quote at capture"
+        },
+        "endOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "UTF-16 code-unit end offset of the exact quote at capture"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

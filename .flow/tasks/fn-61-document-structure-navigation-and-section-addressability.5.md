@@ -39,9 +39,8 @@ No persistent section table in v1. A fingerprint mismatch can still recover uniq
 
 
 ## Done summary
-TBD
-
+Added a bounded browser-safe SectionTargetV1, a deterministic fail-closed resolver, and schema-backed regressions for exact recovery, edits, ambiguity, stale/missing states, fences, Unicode, and hostile oversized identity fields.
 ## Evidence
 - Commits:
-- Tests:
+- Tests: bun test test/core/sections.test.ts test/spec/schemas/section-target.test.ts test/serve/public/lib/deep-links.test.ts (20 pass, 0 fail), bun test (3634 pass, 2 platform skips, 0 fail), bun run lint:check (clean)
 - PRs:
