@@ -70,7 +70,7 @@ const START_TIMEOUT_MS = 60_000;
 // Resident disposal can spend up to two 5s admission-drain windows before
 // releasing model resources. Linux CI needs headroom beyond that product
 // deadline, especially after a model-backed smoke run.
-const STOP_TIMEOUT_MS = 30_000;
+export const STOP_TIMEOUT_MS = 30_000;
 
 export function isExpectedResidentShutdownExit(
   platform: NodeJS.Platform,
