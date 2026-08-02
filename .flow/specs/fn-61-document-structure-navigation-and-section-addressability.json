@@ -1,17 +1,36 @@
 {
   "branch_name": "fn-61-document-structure-navigation-and-section-addressability",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-04-05T11:15:00Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [
     "fn-41-document-workspace-foundation-for",
     "fn-53-desktop-beta-app-level-tabs-and-multi",
     "fn-59-workspace-native-note-creation-and-open-or-create"
   ],
   "id": "fn-61-document-structure-navigation-and-section-addressability",
+  "impl_review_rounds": {},
   "next_task": 5,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "ready": true,
   "spec_path": ".flow/specs/fn-61-document-structure-navigation-and-section-addressability.md",
   "status": "open",
   "title": "Document structure navigation and section addressability",
-  "updated_at": "2026-08-02T20:57:42.656595Z"
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-08-02T21:41:50.420550Z"
 }
