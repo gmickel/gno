@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+- Gave packed resident shutdown the same lifecycle headroom as the product's
+  admission-drain and model-disposal path, preventing Linux release smoke from
+  killing a healthy model-backed server at the old 10-second boundary.
+
 ## [1.30.3] - 2026-08-02
 
 ### Changed

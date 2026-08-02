@@ -67,6 +67,10 @@ export const JSON_HEADERS = {
   "content-type": "application/json",
 };
 const START_TIMEOUT_MS = 60_000;
+// Resident disposal can spend up to two 5s admission-drain windows before
+// releasing model resources. Linux CI needs headroom beyond that product
+// deadline, especially after a model-backed smoke run.
+const STOP_TIMEOUT_MS = 30_000;
 
 export function isExpectedResidentShutdownExit(
   platform: NodeJS.Platform,
@@ -173,16 +177,17 @@ export async function waitForStatus(
 
 export async function stopResident(
   residentProcess: RunningProcess,
-  label: string
+  label: string,
+  timeoutMs = STOP_TIMEOUT_MS
 ): Promise<void> {
   if (residentProcess.child.exitCode === null) {
     residentProcess.child.kill("SIGTERM");
   }
   const exitCode = await Promise.race([
     residentProcess.child.exited,
-    Bun.sleep(10_000).then(() => {
+    Bun.sleep(timeoutMs).then(() => {
       residentProcess.child.kill("SIGKILL");
-      throw new Error(`${label} did not exit within 10 seconds`);
+      throw new Error(`${label} did not exit within ${timeoutMs}ms`);
     }),
   ]);
   const [stdout, stderr] = await Promise.all([

@@ -4,6 +4,7 @@ import {
   isExpectedResidentShutdownExit,
   isValidPackedWarmModelReuse,
   type ResidentStatus,
+  stopResident,
   waitForStatus,
 } from "../../scripts/package-smoke-resident-support";
 
@@ -63,6 +64,26 @@ describe("packed resident shutdown exits", () => {
     expect((startupError as Error).message).toContain("resident stdout");
     expect((startupError as Error).message).toContain("resident stderr");
     expect(performance.now() - startedAt).toBeLessThan(5000);
+  });
+
+  test("allows graceful shutdown beyond the old proportional deadline", async () => {
+    const child = Bun.spawn(
+      [
+        process.execPath,
+        "-e",
+        "process.on('SIGTERM', () => setTimeout(() => process.exit(0), 75)); setInterval(() => {}, 1000)",
+      ],
+      { stdout: "pipe", stderr: "pipe" }
+    );
+    const running = {
+      child,
+      stdout: new Response(child.stdout).text(),
+      stderr: new Response(child.stderr).text(),
+    };
+
+    await Bun.sleep(25);
+    await stopResident(running, "delayed resident", 500);
+    expect(child.exitCode).toBe(0);
   });
 });
 
