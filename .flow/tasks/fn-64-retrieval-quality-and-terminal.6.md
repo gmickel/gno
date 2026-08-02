@@ -31,11 +31,8 @@ Adding `--no-graph` drops the same query to ~2.4s internal timing, so the bottle
 - [ ] Add regression coverage for graph expansion latency/SQL scope where practical.
 
 ## Done summary
-
-TBD
-
+Replaced collection-wide query graph construction with a seed-scoped, batched outgoing-link/backlink lookup. Restored graph expansion as the default for balanced and thorough CLI, Ask, Context, MCP, REST, and SDK retrieval, with `--no-graph`, `graph: false`, `noGraph: true`, and fast mode as explicit opt-outs. Updated public docs, hosted-site source, packaged agent skill guidance, and GordonsVault retrieval instructions.
 ## Evidence
-
-- Commits:
-- Tests:
+- Commits: 1e176045
+- Tests: bun test (3616 pass, 2 skip, 0 fail), bun run lint:check, bun run docs:verify (15 pass, 2 model-cache skips), bun run eval (80%, threshold 70%), bun run eval:hybrid (86%, threshold 70%), bun run test:package, autoresearch gno skill eval (100%, 47/47), snapshot CLI default graph stage 172.58ms; --no-graph 0.33ms
 - PRs:
