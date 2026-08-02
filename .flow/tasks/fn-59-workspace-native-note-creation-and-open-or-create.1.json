@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-59-workspace-native-note-creation-and-open-or-create",
   "spec_path": ".flow/tasks/fn-59-workspace-native-note-creation-and-open-or-create.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Define shared note-creation resolver and place-aware API contract",
   "updated_at": "2026-04-05T12:10:00Z"
 }

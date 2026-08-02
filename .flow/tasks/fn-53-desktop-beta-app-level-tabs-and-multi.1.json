@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-53-desktop-beta-app-level-tabs-and-multi",
   "spec_path": ".flow/tasks/fn-53-desktop-beta-app-level-tabs-and-multi.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add persistent app-level tab workspace foundation",
   "updated_at": "2026-03-22T22:09:08.953417Z"
 }

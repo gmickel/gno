@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-111-collection-egress-policies",
   "spec_path": ".flow/tasks/fn-111-collection-egress-policies.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Enforce policy at every current network-capable boundary",
   "updated_at": "2026-07-25T03:27:58.771883Z"
 }

@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-19",
   "spec_path": ".flow/tasks/fn-19.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement: Enforce maxBytes limit before file read (stat-base",
   "updated_at": "2026-01-09T11:24:15.070381Z"
 }

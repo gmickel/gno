@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-110-file-and-export-first-source-adapters",
   "spec_path": ".flow/tasks/fn-110-file-and-export-first-source-adapters.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement JSONL and transcript export adapters",
   "updated_at": "2026-07-21T22:07:13.889565Z"
 }

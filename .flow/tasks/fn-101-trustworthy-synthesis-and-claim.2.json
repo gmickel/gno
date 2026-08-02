@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-101-trustworthy-synthesis-and-claim",
   "spec_path": ".flow/tasks/fn-101-trustworthy-synthesis-and-claim.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add bounded semantic claim-to-evidence verification",
   "updated_at": "2026-07-21T22:07:09.934710Z"
 }

@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-42-desktop-beta-onboarding-and-health",
   "spec_path": ".flow/tasks/fn-42-desktop-beta-onboarding-and-health.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement first-run onboarding and health center",
   "updated_at": "2026-03-22T21:09:09.944200Z"
 }

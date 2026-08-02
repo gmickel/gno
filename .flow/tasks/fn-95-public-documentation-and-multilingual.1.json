@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-95-public-documentation-and-multilingual",
   "spec_path": ".flow/tasks/fn-95-public-documentation-and-multilingual.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Create the public-truth manifest and drift verifier",
   "updated_at": "2026-07-21T21:55:25.178072Z"
 }

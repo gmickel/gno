@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-105-verified-folder-setup",
   "spec_path": ".flow/tasks/fn-105-verified-folder-setup.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Build the resumable setup orchestrator and receipt",
   "updated_at": "2026-07-24T02:32:56.334824Z"
 }

@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-21",
   "spec_path": ".flow/tasks/fn-21.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement: Upgrade to proper router (nuqs?)",
   "updated_at": "2026-01-09T11:24:15.381312Z"
 }

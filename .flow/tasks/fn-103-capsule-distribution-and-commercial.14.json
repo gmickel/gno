@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-103-capsule-distribution-and-commercial",
   "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.14.md",
-  "status": "todo",
+  "status": "done",
   "title": "Close production launch verifier integrity gaps",
   "updated_at": "2026-07-23T21:12:32.645760Z"
 }

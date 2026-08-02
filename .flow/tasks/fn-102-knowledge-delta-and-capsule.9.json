@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-102-knowledge-delta-and-capsule",
   "spec_path": ".flow/tasks/fn-102-knowledge-delta-and-capsule.9.md",
-  "status": "todo",
+  "status": "done",
   "title": "CAS saved Capsule verification persistence",
   "updated_at": "2026-07-23T17:00:52.498750Z"
 }

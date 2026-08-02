@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-101-trustworthy-synthesis-and-claim",
   "spec_path": ".flow/tasks/fn-101-trustworthy-synthesis-and-claim.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Run adversarial outcome gates and ship truthful verification docs",
   "updated_at": "2026-07-21T22:07:10.158269Z"
 }

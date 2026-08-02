@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-45-desktop-beta-workspace-navigation",
   "spec_path": ".flow/tasks/fn-45-desktop-beta-workspace-navigation.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add persistent recents and favorites surfaces",
   "updated_at": "2026-03-22T22:03:03.590929Z"
 }

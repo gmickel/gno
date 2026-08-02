@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-26",
   "spec_path": ".flow/tasks/fn-26.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement: Add absPath to search results with --source flag",
   "updated_at": "2026-01-09T11:24:16.161875Z"
 }

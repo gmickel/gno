@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-103-capsule-distribution-and-commercial",
   "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.13.md",
-  "status": "todo",
+  "status": "done",
   "title": "Remove pilot cohort identity from public reports",
   "updated_at": "2026-07-23T21:12:31.272033Z"
 }

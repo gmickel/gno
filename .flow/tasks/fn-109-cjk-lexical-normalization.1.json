@@ -5,7 +5,7 @@
   "priority": null,
   "spec": "fn-109-cjk-lexical-normalization",
   "spec_path": ".flow/tasks/fn-109-cjk-lexical-normalization.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Select and record the benchmark-proven lexical representation",
   "updated_at": "2026-07-24T21:25:30.795421Z"
 }

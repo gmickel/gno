@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-94-retrieval-proven-setup-and-connector",
   "spec_path": ".flow/tasks/fn-94-retrieval-proven-setup-and-connector.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Define activation receipt and lexical proof core",
   "updated_at": "2026-07-21T21:55:24.100935Z"
 }

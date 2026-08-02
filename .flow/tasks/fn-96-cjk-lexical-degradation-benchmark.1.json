@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-96-cjk-lexical-degradation-benchmark",
   "spec_path": ".flow/tasks/fn-96-cjk-lexical-degradation-benchmark.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Build licensed CJK corpora qrels and validation",
   "updated_at": "2026-07-21T21:55:26.038872Z"
 }

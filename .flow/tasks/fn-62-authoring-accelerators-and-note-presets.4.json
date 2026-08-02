@@ -11,7 +11,7 @@
   "priority": 1,
   "spec": "fn-62-authoring-accelerators-and-note-presets",
   "spec_path": ".flow/tasks/fn-62-authoring-accelerators-and-note-presets.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Polish preset docs website and end-to-end authoring coverage",
   "updated_at": "2026-04-05T12:10:00Z"
 }

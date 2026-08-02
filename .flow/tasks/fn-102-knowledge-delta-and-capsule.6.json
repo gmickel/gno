@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-102-knowledge-delta-and-capsule",
   "spec_path": ".flow/tasks/fn-102-knowledge-delta-and-capsule.6.md",
-  "status": "todo",
+  "status": "done",
   "title": "Resolve PR 143 review findings",
   "updated_at": "2026-07-23T16:12:03.808122Z"
 }

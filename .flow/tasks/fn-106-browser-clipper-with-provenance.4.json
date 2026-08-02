@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-106-browser-clipper-with-provenance",
   "spec_path": ".flow/tasks/fn-106-browser-clipper-with-provenance.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Package test and document the local clipper",
   "updated_at": "2026-07-21T22:08:27.769716Z"
 }

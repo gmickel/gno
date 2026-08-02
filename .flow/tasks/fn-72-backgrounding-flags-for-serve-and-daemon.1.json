@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-72-backgrounding-flags-for-serve-and-daemon",
   "spec_path": ".flow/tasks/fn-72-backgrounding-flags-for-serve-and-daemon.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Spec updates + process-status schema + contract test",
   "updated_at": "2026-04-21T19:50:52.103287Z"
 }

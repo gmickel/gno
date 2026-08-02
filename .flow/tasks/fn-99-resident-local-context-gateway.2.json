@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-99-resident-local-context-gateway",
   "spec_path": ".flow/tasks/fn-99-resident-local-context-gateway.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add stateful Streamable HTTP MCP transport",
   "updated_at": "2026-07-23T01:27:29.897041Z"
 }

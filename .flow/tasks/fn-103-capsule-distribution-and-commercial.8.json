@@ -10,7 +10,7 @@
   "priority": 8,
   "spec": "fn-103-capsule-distribution-and-commercial",
   "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.8.md",
-  "status": "todo",
+  "status": "done",
   "title": "Reject invalid public artifact enums at the trust boundary",
   "updated_at": "2026-07-23T19:13:12.945883Z"
 }

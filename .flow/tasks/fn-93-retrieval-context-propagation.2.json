@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-93-retrieval-context-propagation",
   "spec_path": ".flow/tasks/fn-93-retrieval-context-propagation.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Propagate context through every retrieval pipeline",
   "updated_at": "2026-07-21T21:55:23.448563Z"
 }

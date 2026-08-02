@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-16",
   "spec_path": ".flow/tasks/fn-16.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement: Add GET /api/jobs/active endpoint",
   "updated_at": "2026-01-09T11:24:14.609649Z"
 }

@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-100-private-retrieval-learning-loop",
   "spec_path": ".flow/tasks/fn-100-private-retrieval-learning-loop.5.md",
-  "status": "todo",
+  "status": "done",
   "title": "Complete privacy migration documentation and regression gates",
   "updated_at": "2026-07-21T22:08:25.760149Z"
 }

@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-22",
   "spec_path": ".flow/tasks/fn-22.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement: Research Mode",
   "updated_at": "2026-01-09T11:24:15.537310Z"
 }

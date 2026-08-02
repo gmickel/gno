@@ -8,7 +8,7 @@
   "priority": 2,
   "spec": "fn-74-upstream-freshness-and-code-retrieval",
   "spec_path": ".flow/tasks/fn-74-upstream-freshness-and-code-retrieval.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Evaluate and upgrade sqlite-vec",
   "updated_at": "2026-04-24T12:28:46.613907Z"
 }

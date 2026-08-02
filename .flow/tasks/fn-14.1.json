@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-14",
   "spec_path": ".flow/tasks/fn-14.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement: Custom Agents",
   "updated_at": "2026-01-09T11:24:14.309373Z"
 }

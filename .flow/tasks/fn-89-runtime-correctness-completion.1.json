@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-89-runtime-correctness-completion",
   "spec_path": ".flow/tasks/fn-89-runtime-correctness-completion.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Fix indexed URI reads in MCP and SDK",
   "updated_at": "2026-07-21T12:08:49.336406Z"
 }

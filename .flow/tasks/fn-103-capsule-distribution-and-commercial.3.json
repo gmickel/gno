@@ -11,7 +11,7 @@
   "priority": null,
   "spec": "fn-103-capsule-distribution-and-commercial",
   "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Publish the reproducible three-way agent outcome demo",
   "updated_at": "2026-07-21T22:07:11.043205Z"
 }

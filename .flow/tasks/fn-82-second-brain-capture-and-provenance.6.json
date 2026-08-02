@@ -13,7 +13,7 @@
   "priority": 6,
   "spec": "fn-82-second-brain-capture-and-provenance",
   "spec_path": ".flow/tasks/fn-82-second-brain-capture-and-provenance.6.md",
-  "status": "todo",
+  "status": "done",
   "title": "Close docs hosted site skill and golden parity tests",
   "updated_at": "2026-06-04T22:44:51.129561Z"
 }

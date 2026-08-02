@@ -8,7 +8,7 @@
   "priority": 10,
   "spec": "fn-1",
   "spec_path": ".flow/tasks/fn-1.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "T13.13: Update README + website for Raycast",
   "updated_at": "2026-01-09T11:24:16.644546Z"
 }

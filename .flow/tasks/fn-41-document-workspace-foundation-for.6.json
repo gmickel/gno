@@ -11,7 +11,7 @@
   "priority": 6,
   "spec": "fn-41-document-workspace-foundation-for",
   "spec_path": ".flow/tasks/fn-41-document-workspace-foundation-for.6.md",
-  "status": "todo",
+  "status": "done",
   "title": "Build the fast Cmd/Ctrl+K workspace switcher",
   "updated_at": "2026-03-22T06:52:11.143565Z"
 }

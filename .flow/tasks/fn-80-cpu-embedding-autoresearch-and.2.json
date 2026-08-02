@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-80-cpu-embedding-autoresearch-and",
   "spec_path": ".flow/tasks/fn-80-cpu-embedding-autoresearch-and.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add real CPU embedding benchmark path",
   "updated_at": "2026-05-25T16:52:12.963796Z"
 }

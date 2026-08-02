@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-34-evaluate-next-generation-retrieval",
   "spec_path": ".flow/tasks/fn-34-evaluate-next-generation-retrieval.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Benchmark Qwen 3.5 and other candidate local bases",
   "updated_at": "2026-03-09T00:14:58.691962Z"
 }

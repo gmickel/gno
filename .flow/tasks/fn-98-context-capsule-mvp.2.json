@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-98-context-capsule-mvp",
   "spec_path": ".flow/tasks/fn-98-context-capsule-mvp.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Build deterministic evidence planning and budget selection",
   "updated_at": "2026-07-21T22:08:30.470950Z"
 }

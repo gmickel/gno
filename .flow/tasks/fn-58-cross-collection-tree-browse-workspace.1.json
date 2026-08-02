@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-58-cross-collection-tree-browse-workspace",
   "spec_path": ".flow/tasks/fn-58-cross-collection-tree-browse-workspace.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add browse tree data model and derivation layer",
   "updated_at": "2026-04-03T19:32:32.193515Z"
 }

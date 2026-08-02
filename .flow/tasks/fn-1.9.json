@@ -8,7 +8,7 @@
   "priority": 10,
   "spec": "fn-1",
   "spec_path": ".flow/tasks/fn-1.9.md",
-  "status": "todo",
+  "status": "done",
   "title": "T13.2: CLI wrapper module",
   "updated_at": "2026-01-09T11:24:17.271218Z"
 }

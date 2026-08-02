@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-32-upgrade-node-llama-cpp-to-autoattempt",
   "spec_path": ".flow/tasks/fn-32-upgrade-node-llama-cpp-to-autoattempt.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Upgrade node-llama-cpp and adopt autoAttempt build",
   "updated_at": "2026-03-08T14:53:03.404364Z"
 }

@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-33-ask-cli-query-mode-parity",
   "spec_path": ".flow/tasks/fn-33-ask-cli-query-mode-parity.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add query mode support to gno ask CLI",
   "updated_at": "2026-03-08T19:37:51.308968Z"
 }

@@ -12,7 +12,7 @@
   "priority": null,
   "spec": "fn-99-resident-local-context-gateway",
   "spec_path": ".flow/tasks/fn-99-resident-local-context-gateway.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Unify lifecycle health concurrency and client visibility",
   "updated_at": "2026-07-23T01:27:30.236798Z"
 }

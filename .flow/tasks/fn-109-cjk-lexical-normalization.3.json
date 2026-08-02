@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-109-cjk-lexical-normalization",
   "spec_path": ".flow/tasks/fn-109-cjk-lexical-normalization.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Use identical bounded analysis at index and query time",
   "updated_at": "2026-07-21T22:04:34.648951Z"
 }

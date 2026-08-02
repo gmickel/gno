@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-107-project-local-retrieval-profiles",
   "spec_path": ".flow/tasks/fn-107-project-local-retrieval-profiles.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Apply project profiles idempotently without implicit deletion",
   "updated_at": "2026-07-21T22:00:55.407084Z"
 }

@@ -10,7 +10,7 @@
   "priority": 10,
   "spec": "fn-103-capsule-distribution-and-commercial",
   "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.10.md",
-  "status": "todo",
+  "status": "done",
   "title": "Harden Context Capsule demo artifact integrity",
   "updated_at": "2026-07-23T20:23:23.729670Z"
 }

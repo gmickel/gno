@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-41-document-workspace-foundation-for",
   "spec_path": ".flow/tasks/fn-41-document-workspace-foundation-for.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Define the safe document capability contract",
   "updated_at": "2026-03-22T06:52:10.642498Z"
 }

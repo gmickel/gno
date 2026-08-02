@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-101-trustworthy-synthesis-and-claim",
   "spec_path": ".flow/tasks/fn-101-trustworthy-synthesis-and-claim.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Define claim verification semantics and deterministic hygiene",
   "updated_at": "2026-07-21T22:07:09.715469Z"
 }

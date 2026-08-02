@@ -8,7 +8,7 @@
   "priority": 2,
   "spec": "fn-37-productionize-fine-tuned-retrieval",
   "spec_path": ".flow/tasks/fn-37-productionize-fine-tuned-retrieval.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Document fine-tuned model workflow",
   "updated_at": "2026-03-09T12:41:59.622631Z"
 }

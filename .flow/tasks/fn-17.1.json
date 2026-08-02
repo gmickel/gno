@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-17",
   "spec_path": ".flow/tasks/fn-17.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement: Review and update CLI defaults",
   "updated_at": "2026-01-09T11:24:14.758141Z"
 }

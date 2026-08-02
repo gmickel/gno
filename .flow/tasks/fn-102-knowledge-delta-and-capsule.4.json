@@ -11,7 +11,7 @@
   "priority": null,
   "spec": "fn-102-knowledge-delta-and-capsule",
   "spec_path": ".flow/tasks/fn-102-knowledge-delta-and-capsule.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Register saved Capsules and reverify affected evidence",
   "updated_at": "2026-07-21T22:07:10.383254Z"
 }

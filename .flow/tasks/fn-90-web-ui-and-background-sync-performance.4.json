@@ -11,7 +11,7 @@
   "priority": null,
   "spec": "fn-90-web-ui-and-background-sync-performance",
   "spec_path": ".flow/tasks/fn-90-web-ui-and-background-sync-performance.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Keep projection responsive and verify production timings",
   "updated_at": "2026-07-21T12:08:52.386374Z"
 }

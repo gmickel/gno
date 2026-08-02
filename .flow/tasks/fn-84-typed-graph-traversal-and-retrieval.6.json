@@ -11,7 +11,7 @@
   "priority": null,
   "spec": "fn-84-typed-graph-traversal-and-retrieval",
   "spec_path": ".flow/tasks/fn-84-typed-graph-traversal-and-retrieval.6.md",
-  "status": "todo",
+  "status": "done",
   "title": "MCP tools: gno_graph_query + gno_query_diagnose",
   "updated_at": "2026-06-05T22:50:02.701182Z"
 }

@@ -8,7 +8,7 @@
   "priority": 30,
   "spec": "fn-1",
   "spec_path": ".flow/tasks/fn-1.20.md",
-  "status": "todo",
+  "status": "done",
   "title": "T13.21: AI model preset selector",
   "updated_at": "2026-01-09T11:24:18.388783Z"
 }

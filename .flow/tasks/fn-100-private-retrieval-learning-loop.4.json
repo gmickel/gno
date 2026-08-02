@@ -11,7 +11,7 @@
   "priority": null,
   "spec": "fn-100-private-retrieval-learning-loop",
   "spec_path": ".flow/tasks/fn-100-private-retrieval-learning-loop.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Export qrels and replay candidate retrieval pipelines",
   "updated_at": "2026-07-23T08:14:41.936429Z"
 }

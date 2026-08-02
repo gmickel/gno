@@ -7,7 +7,7 @@
   "priority": null,
   "spec": "fn-108-explainable-content-type-search-boosts",
   "spec_path": ".flow/tasks/fn-108-explainable-content-type-search-boosts.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Complete cross-surface schemas invalidation and configuration UX",
   "updated_at": "2026-07-24T19:23:47.738637Z"
 }

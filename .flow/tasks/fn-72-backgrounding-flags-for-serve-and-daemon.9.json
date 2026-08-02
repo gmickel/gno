@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-72-backgrounding-flags-for-serve-and-daemon",
   "spec_path": ".flow/tasks/fn-72-backgrounding-flags-for-serve-and-daemon.9.md",
-  "status": "todo",
+  "status": "done",
   "title": "Spike: validate Bun detach + unref + stdio fd on this repo",
   "updated_at": "2026-04-21T20:24:27.029858Z"
 }

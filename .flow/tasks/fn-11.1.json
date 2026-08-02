@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-11",
   "spec_path": ".flow/tasks/fn-11.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement: Setup React component testing infrastructure",
   "updated_at": "2026-04-03T13:35:26.105260Z"
 }

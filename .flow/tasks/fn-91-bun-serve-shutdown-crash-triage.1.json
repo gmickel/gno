@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-91-bun-serve-shutdown-crash-triage",
   "spec_path": ".flow/tasks/fn-91-bun-serve-shutdown-crash-triage.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Reproduce classify and eliminate serve shutdown crash",
   "updated_at": "2026-07-21T12:08:51.679204Z"
 }

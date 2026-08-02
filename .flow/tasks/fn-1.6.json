@@ -8,7 +8,7 @@
   "priority": 10,
   "spec": "fn-1",
   "spec_path": ".flow/tasks/fn-1.6.md",
-  "status": "todo",
+  "status": "done",
   "title": "T13.17: Store submission assets",
   "updated_at": "2026-01-09T11:24:16.985952Z"
 }

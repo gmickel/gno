@@ -11,7 +11,7 @@
   "priority": null,
   "spec": "fn-98-context-capsule-mvp",
   "spec_path": ".flow/tasks/fn-98-context-capsule-mvp.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement non-mutating Capsule verification",
   "updated_at": "2026-07-21T21:58:18.310981Z"
 }

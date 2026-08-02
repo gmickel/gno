@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-106-browser-clipper-with-provenance",
   "spec_path": ".flow/tasks/fn-106-browser-clipper-with-provenance.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Define clip payload sanitization and capture provenance",
   "updated_at": "2026-07-24T08:57:48.640005Z"
 }

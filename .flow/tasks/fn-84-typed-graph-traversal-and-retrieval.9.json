@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-84-typed-graph-traversal-and-retrieval",
   "spec_path": ".flow/tasks/fn-84-typed-graph-traversal-and-retrieval.9.md",
-  "status": "todo",
+  "status": "done",
   "title": "Behavior-preserving extractions: graph resolver + ref-parser to core",
   "updated_at": "2026-06-05T23:10:23.452225Z"
 }

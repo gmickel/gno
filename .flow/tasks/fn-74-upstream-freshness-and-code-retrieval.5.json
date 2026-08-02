@@ -8,7 +8,7 @@
   "priority": 4,
   "spec": "fn-74-upstream-freshness-and-code-retrieval",
   "spec_path": ".flow/tasks/fn-74-upstream-freshness-and-code-retrieval.5.md",
-  "status": "todo",
+  "status": "done",
   "title": "Improve MCP ergonomics and agent guidance",
   "updated_at": "2026-04-24T12:29:12.667767Z"
 }

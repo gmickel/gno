@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-90-web-ui-and-background-sync-performance",
   "spec_path": ".flow/tasks/fn-90-web-ui-and-background-sync-performance.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Project typed edges once per full sync",
   "updated_at": "2026-07-21T12:08:50.469298Z"
 }

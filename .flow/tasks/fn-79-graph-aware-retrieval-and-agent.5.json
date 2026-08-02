@@ -3,12 +3,14 @@
   "claim_note": "",
   "claimed_at": null,
   "created_at": "2026-05-09T11:18:33.505346Z",
-  "depends_on": ["fn-79-graph-aware-retrieval-and-agent.4"],
+  "depends_on": [
+    "fn-79-graph-aware-retrieval-and-agent.4"
+  ],
   "id": "fn-79-graph-aware-retrieval-and-agent.5",
   "priority": 5,
   "spec": "fn-79-graph-aware-retrieval-and-agent",
   "spec_path": ".flow/tasks/fn-79-graph-aware-retrieval-and-agent.5.md",
-  "status": "todo",
+  "status": "done",
   "title": "Community detection and graph-analysis integration",
   "updated_at": "2026-05-09T11:20:02.614097Z"
 }

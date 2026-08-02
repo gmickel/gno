@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-31-intent-steering-and-rerank-controls",
   "spec_path": ".flow/tasks/fn-31-intent-steering-and-rerank-controls.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement intent-aware retrieval steering and rerank controls",
   "updated_at": "2026-03-08T06:18:13.947885Z"
 }

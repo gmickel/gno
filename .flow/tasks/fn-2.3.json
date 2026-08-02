@@ -8,7 +8,7 @@
   "priority": 30,
   "spec": "fn-2",
   "spec_path": ".flow/tasks/fn-2.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Unicode-safe wiki matching",
   "updated_at": "2026-01-09T11:24:18.630184Z"
 }

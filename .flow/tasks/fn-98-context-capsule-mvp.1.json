@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-98-context-capsule-mvp",
   "spec_path": ".flow/tasks/fn-98-context-capsule-mvp.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Freeze the Context Capsule V1 contract and canonical identity",
   "updated_at": "2026-07-21T21:58:17.655232Z"
 }

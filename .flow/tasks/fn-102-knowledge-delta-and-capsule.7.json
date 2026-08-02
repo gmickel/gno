@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-102-knowledge-delta-and-capsule",
   "spec_path": ".flow/tasks/fn-102-knowledge-delta-and-capsule.7.md",
-  "status": "todo",
+  "status": "done",
   "title": "Close saved Capsule scheduler registration race",
   "updated_at": "2026-07-23T16:44:13.896636Z"
 }

@@ -8,7 +8,7 @@
   "priority": 10,
   "spec": "fn-1",
   "spec_path": ".flow/tasks/fn-1.8.md",
-  "status": "todo",
+  "status": "done",
   "title": "T13.1: Extension scaffold",
   "updated_at": "2026-01-09T11:24:17.184232Z"
 }

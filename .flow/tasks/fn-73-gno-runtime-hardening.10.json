@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-73-gno-runtime-hardening",
   "spec_path": ".flow/tasks/fn-73-gno-runtime-hardening.10.md",
-  "status": "todo",
+  "status": "done",
   "title": "Keep serve available when PDF conversion fails",
   "updated_at": "2026-07-21T09:13:15.940830Z"
 }

@@ -11,7 +11,7 @@
   "priority": null,
   "spec": "fn-83-second-brain-page-types-and-synthesis",
   "spec_path": ".flow/tasks/fn-83-second-brain-page-types-and-synthesis.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Frontmatter type to canonical contentType inference + search exposure",
   "updated_at": "2026-06-05T09:06:38.875789Z"
 }

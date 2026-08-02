@@ -12,7 +12,7 @@
   "priority": 4,
   "spec": "fn-70-embedding-compatibility-and-query-batching",
   "spec_path": ".flow/tasks/fn-70-embedding-compatibility-and-query-batching.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Document re-embed implications and benchmark outcomes",
   "updated_at": "2026-04-07T09:05:00Z"
 }

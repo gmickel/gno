@@ -11,7 +11,7 @@
   "priority": null,
   "spec": "fn-72-backgrounding-flags-for-serve-and-daemon",
   "spec_path": ".flow/tasks/fn-72-backgrounding-flags-for-serve-and-daemon.7.md",
-  "status": "todo",
+  "status": "done",
   "title": "Update docs/ (CLI, DAEMON, WEB-UI, QUICKSTART, TROUBLESHOOTING, README, CHANGELOG)",
   "updated_at": "2026-04-21T20:12:36.216696Z"
 }

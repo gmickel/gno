@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-73-gno-runtime-hardening",
   "spec_path": ".flow/tasks/fn-73-gno-runtime-hardening.13.md",
-  "status": "todo",
+  "status": "done",
   "title": "Make typed-edge projection incremental and non-blocking",
   "updated_at": "2026-07-21T10:10:26.542667Z"
 }

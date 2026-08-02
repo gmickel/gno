@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-50-desktop-beta-native-runtime-evaluation",
   "spec_path": ".flow/tasks/fn-50-desktop-beta-native-runtime-evaluation.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Run Electrobun fit spike",
   "updated_at": "2026-03-22T16:33:55.173985Z"
 }

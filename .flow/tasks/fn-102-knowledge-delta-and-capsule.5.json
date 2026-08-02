@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-102-knowledge-delta-and-capsule",
   "spec_path": ".flow/tasks/fn-102-knowledge-delta-and-capsule.5.md",
-  "status": "todo",
+  "status": "done",
   "title": "Complete delta schemas lifecycle tests and documentation",
   "updated_at": "2026-07-21T22:08:26.653480Z"
 }

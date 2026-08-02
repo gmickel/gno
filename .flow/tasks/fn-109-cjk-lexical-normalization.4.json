@@ -7,7 +7,7 @@
   "priority": null,
   "spec": "fn-109-cjk-lexical-normalization",
   "spec_path": ".flow/tasks/fn-109-cjk-lexical-normalization.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Prove promotion gates rollback packaging and truthful claims",
   "updated_at": "2026-07-24T21:25:52.960252Z"
 }

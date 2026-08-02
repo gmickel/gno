@@ -11,7 +11,7 @@
   "priority": 4,
   "spec": "fn-67-evaluate-qwen3-embedding-06b-gguf-for",
   "spec_path": ".flow/tasks/fn-67-evaluate-qwen3-embedding-06b-gguf-for.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Publish benchmark outcome and default-model recommendation if warranted",
   "updated_at": "2026-04-06T12:22:48.281452Z"
 }

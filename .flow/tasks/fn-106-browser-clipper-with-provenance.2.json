@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-106-browser-clipper-with-provenance",
   "spec_path": ".flow/tasks/fn-106-browser-clipper-with-provenance.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add secure loopback clipper pairing and capture endpoints",
   "updated_at": "2026-07-24T08:57:49.150712Z"
 }

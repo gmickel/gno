@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-99-resident-local-context-gateway",
   "spec_path": ".flow/tasks/fn-99-resident-local-context-gateway.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Extract one resident runtime and shared MCP tool context",
   "updated_at": "2026-07-23T01:27:29.725635Z"
 }

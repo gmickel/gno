@@ -8,7 +8,7 @@
   "priority": 20,
   "spec": "fn-1",
   "spec_path": ".flow/tasks/fn-1.19.md",
-  "status": "todo",
+  "status": "done",
   "title": "T13.20: Thoroughness selector (search depth control)",
   "updated_at": "2026-01-09T11:24:18.297652Z"
 }

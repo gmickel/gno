@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-49-desktop-beta-runtime-and-model-bootstrap",
   "spec_path": ".flow/tasks/fn-49-desktop-beta-runtime-and-model-bootstrap.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Expose runtime and model bootstrap status",
   "updated_at": "2026-03-22T21:34:44.761411Z"
 }

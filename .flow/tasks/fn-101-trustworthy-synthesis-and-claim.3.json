@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-101-trustworthy-synthesis-and-claim",
   "spec_path": ".flow/tasks/fn-101-trustworthy-synthesis-and-claim.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Integrate verified synthesis across Ask surfaces",
   "updated_at": "2026-07-21T22:08:25.986169Z"
 }

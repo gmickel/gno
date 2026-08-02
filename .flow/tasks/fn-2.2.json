@@ -8,7 +8,7 @@
   "priority": 20,
   "spec": "fn-2",
   "spec_path": ".flow/tasks/fn-2.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Batch resolveLinks per collection",
   "updated_at": "2026-01-09T11:24:18.548268Z"
 }

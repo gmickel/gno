@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-104-project-aware-retrieval-affinity",
   "spec_path": ".flow/tasks/fn-104-project-aware-retrieval-affinity.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Expose explicit affinity inputs across CLI SDK REST and MCP",
   "updated_at": "2026-07-21T22:08:26.877102Z"
 }

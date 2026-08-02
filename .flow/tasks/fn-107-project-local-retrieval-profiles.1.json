@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-107-project-local-retrieval-profiles",
   "spec_path": ".flow/tasks/fn-107-project-local-retrieval-profiles.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Define the versioned project profile schema and compiler",
   "updated_at": "2026-07-21T22:00:54.974156Z"
 }

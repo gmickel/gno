@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-8",
   "spec_path": ".flow/tasks/fn-8.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement: Scheduled Indexing",
   "updated_at": "2026-01-09T11:24:13.404495Z"
 }

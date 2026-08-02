@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-51-desktop-beta-shell-packaging-and-os",
   "spec_path": ".flow/tasks/fn-51-desktop-beta-shell-packaging-and-os.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Scaffold Electrobun shell packaging and launch glue",
   "updated_at": "2026-03-22T21:41:18.580315Z"
 }

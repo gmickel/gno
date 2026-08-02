@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-4",
   "spec_path": ".flow/tasks/fn-4.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add Hermes skill install target",
   "updated_at": "2026-06-16T10:10:01.017544Z"
 }

@@ -11,7 +11,7 @@
   "priority": 5,
   "spec": "fn-82-second-brain-capture-and-provenance",
   "spec_path": ".flow/tasks/fn-82-second-brain-capture-and-provenance.5.md",
-  "status": "todo",
+  "status": "done",
   "title": "Wire Web UI quick capture to provenance flow",
   "updated_at": "2026-06-04T22:44:50.960269Z"
 }

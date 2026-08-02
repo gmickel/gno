@@ -8,7 +8,7 @@
   "priority": 30,
   "spec": "fn-1",
   "spec_path": ".flow/tasks/fn-1.7.md",
-  "status": "todo",
+  "status": "done",
   "title": "T13.18: CLAUDE.md for gno-raycast",
   "updated_at": "2026-01-09T11:24:17.084076Z"
 }

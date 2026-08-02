@@ -10,7 +10,7 @@
   "priority": 7,
   "spec": "fn-103-capsule-distribution-and-commercial",
   "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.7.md",
-  "status": "todo",
+  "status": "done",
   "title": "Scope public agent snapshots and rollback by owner",
   "updated_at": "2026-07-23T19:13:12.767221Z"
 }

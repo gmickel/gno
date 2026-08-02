@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-94-retrieval-proven-setup-and-connector",
   "spec_path": ".flow/tasks/fn-94-retrieval-proven-setup-and-connector.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Lock activation parity privacy and documentation",
   "updated_at": "2026-07-22T02:56:24.362253Z"
 }

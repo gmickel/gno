@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-107-project-local-retrieval-profiles",
   "spec_path": ".flow/tasks/fn-107-project-local-retrieval-profiles.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement safe discovery check show and diff",
   "updated_at": "2026-07-21T22:07:12.577854Z"
 }

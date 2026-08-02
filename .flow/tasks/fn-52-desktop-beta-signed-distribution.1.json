@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-52-desktop-beta-signed-distribution",
   "spec_path": ".flow/tasks/fn-52-desktop-beta-signed-distribution.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Scaffold desktop distribution readiness and rollout docs",
   "updated_at": "2026-03-23T04:14:01.537628Z"
 }

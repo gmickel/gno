@@ -78,7 +78,7 @@
     },
     {
       "path": "flowctl_tracker/lifecycle/verbs.py",
-      "sha256": "4b0300543616bab87a45c0505a050e1058964eed7dacea26e39911e5c5ec6152"
+      "sha256": "a019952fc74c7e74872993ceb56f25ce6cf0e617773ebbbacc7c023bfcad51f3"
     },
     {
       "path": "flowctl_tracker/providers/__init__.py",

@@ -7,7 +7,7 @@
   "priority": null,
   "spec": "fn-108-explainable-content-type-search-boosts",
   "spec_path": ".flow/tasks/fn-108-explainable-content-type-search-boosts.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Run adversarial promotion evals and replace no-op documentation",
   "updated_at": "2026-07-24T20:11:04.895757Z"
 }

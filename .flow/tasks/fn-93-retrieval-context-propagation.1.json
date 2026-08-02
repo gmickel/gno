@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-93-retrieval-context-propagation",
   "spec_path": ".flow/tasks/fn-93-retrieval-context-propagation.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Build the canonical scoped-context resolver",
   "updated_at": "2026-07-21T21:55:23.234119Z"
 }

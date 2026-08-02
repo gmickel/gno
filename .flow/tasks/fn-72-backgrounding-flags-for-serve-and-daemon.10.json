@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-72-backgrounding-flags-for-serve-and-daemon",
   "spec_path": ".flow/tasks/fn-72-backgrounding-flags-for-serve-and-daemon.10.md",
-  "status": "todo",
+  "status": "done",
   "title": "Synchronize SIGKILL fallback integration fixture",
   "updated_at": "2026-08-02T16:57:42.196539Z"
 }

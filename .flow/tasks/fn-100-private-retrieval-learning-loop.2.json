@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-100-private-retrieval-learning-loop",
   "spec_path": ".flow/tasks/fn-100-private-retrieval-learning-loop.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Propagate trace identity through retrieval evidence and outcomes",
   "updated_at": "2026-07-21T22:07:09.277337Z"
 }

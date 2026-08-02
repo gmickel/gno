@@ -7,7 +7,7 @@
   "priority": null,
   "spec": "fn-111-collection-egress-policies",
   "spec_path": ".flow/tasks/fn-111-collection-egress-policies.5.md",
-  "status": "todo",
+  "status": "done",
   "title": "Expose policy configuration checks and denials across surfaces",
   "updated_at": "2026-07-25T07:08:13.618852Z"
 }

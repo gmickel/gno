@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-56-windows-packaging-and-runtime",
   "spec_path": ".flow/tasks/fn-56-windows-packaging-and-runtime.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Validate Windows runtime and SQLite extension story",
   "updated_at": "2026-03-27T19:48:28.217137Z"
 }

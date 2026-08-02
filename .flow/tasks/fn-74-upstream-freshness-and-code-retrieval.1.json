@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-74-upstream-freshness-and-code-retrieval",
   "spec_path": ".flow/tasks/fn-74-upstream-freshness-and-code-retrieval.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Evaluate and upgrade node-llama-cpp",
   "updated_at": "2026-04-24T12:28:39.088686Z"
 }

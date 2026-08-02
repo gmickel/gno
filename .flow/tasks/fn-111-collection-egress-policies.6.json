@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-111-collection-egress-policies",
   "spec_path": ".flow/tasks/fn-111-collection-egress-policies.6.md",
-  "status": "todo",
+  "status": "done",
   "title": "Prove migration adversarial enforcement and public security docs",
   "updated_at": "2026-07-21T22:08:29.353825Z"
 }

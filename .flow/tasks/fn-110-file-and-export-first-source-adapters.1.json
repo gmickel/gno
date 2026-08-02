@@ -5,7 +5,7 @@
   "priority": null,
   "spec": "fn-110-file-and-export-first-source-adapters",
   "spec_path": ".flow/tasks/fn-110-file-and-export-first-source-adapters.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add the streaming multi-record ingestion adapter contract",
   "updated_at": "2026-07-24T22:07:29.590252Z"
 }

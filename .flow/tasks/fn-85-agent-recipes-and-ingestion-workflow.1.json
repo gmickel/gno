@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-85-agent-recipes-and-ingestion-workflow",
   "spec_path": ".flow/tasks/fn-85-agent-recipes-and-ingestion-workflow.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Skill recipe packaging and discovery",
   "updated_at": "2026-06-06T13:28:12.827423Z"
 }

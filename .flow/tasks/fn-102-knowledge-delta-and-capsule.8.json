@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-102-knowledge-delta-and-capsule",
   "spec_path": ".flow/tasks/fn-102-knowledge-delta-and-capsule.8.md",
-  "status": "todo",
+  "status": "done",
   "title": "Suppress placeholder conversion-failure journal creates",
   "updated_at": "2026-07-23T16:49:31.800768Z"
 }

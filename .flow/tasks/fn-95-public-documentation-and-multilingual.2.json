@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-95-public-documentation-and-multilingual",
   "spec_path": ".flow/tasks/fn-95-public-documentation-and-multilingual.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Reconcile repository claims with measured evidence",
   "updated_at": "2026-07-21T22:08:30.013803Z"
 }

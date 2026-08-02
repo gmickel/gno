@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-35-build-retrieval-fine-tuning-sandbox",
   "spec_path": ".flow/tasks/fn-35-build-retrieval-fine-tuning-sandbox.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Design the retrieval fine-tuning sandbox",
   "updated_at": "2026-03-09T00:14:58.778143Z"
 }

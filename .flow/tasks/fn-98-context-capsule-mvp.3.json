@@ -7,7 +7,7 @@
   "priority": null,
   "spec": "fn-98-context-capsule-mvp",
   "spec_path": ".flow/tasks/fn-98-context-capsule-mvp.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Compile exact evidence spans with trust boundaries",
   "updated_at": "2026-07-22T20:55:54.097613Z"
 }

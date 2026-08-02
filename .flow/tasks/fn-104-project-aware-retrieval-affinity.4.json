@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-104-project-aware-retrieval-affinity",
   "spec_path": ".flow/tasks/fn-104-project-aware-retrieval-affinity.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Gate affinity with agentic evals schemas and documentation",
   "updated_at": "2026-07-21T22:08:27.097157Z"
 }

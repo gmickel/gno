@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-111-collection-egress-policies",
   "spec_path": ".flow/tasks/fn-111-collection-egress-policies.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Build conservative destination and network-zone classification",
   "updated_at": "2026-07-21T22:08:28.889093Z"
 }

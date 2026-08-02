@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-102-knowledge-delta-and-capsule",
   "spec_path": ".flow/tasks/fn-102-knowledge-delta-and-capsule.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Expose changes diff and impact through shared read surfaces",
   "updated_at": "2026-07-21T22:08:26.427787Z"
 }

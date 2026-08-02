@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-73-gno-runtime-hardening",
   "spec_path": ".flow/tasks/fn-73-gno-runtime-hardening.12.md",
-  "status": "todo",
+  "status": "done",
   "title": "Optimize and deduplicate Web UI status reads",
   "updated_at": "2026-07-21T10:10:26.109544Z"
 }

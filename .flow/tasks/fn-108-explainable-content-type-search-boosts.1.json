@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-108-explainable-content-type-search-boosts",
   "spec_path": ".flow/tasks/fn-108-explainable-content-type-search-boosts.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Normalize bound and fingerprint searchBoost configuration",
   "updated_at": "2026-07-21T22:04:33.082083Z"
 }

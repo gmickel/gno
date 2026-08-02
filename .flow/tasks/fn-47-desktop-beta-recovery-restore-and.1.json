@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-47-desktop-beta-recovery-restore-and",
   "spec_path": ".flow/tasks/fn-47-desktop-beta-recovery-restore-and.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add visible local history and restore flow",
   "updated_at": "2026-03-23T04:07:35.599159Z"
 }

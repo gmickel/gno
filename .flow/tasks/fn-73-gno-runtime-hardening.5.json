@@ -8,7 +8,7 @@
   "priority": 5,
   "spec": "fn-73-gno-runtime-hardening",
   "spec_path": ".flow/tasks/fn-73-gno-runtime-hardening.5.md",
-  "status": "todo",
+  "status": "done",
   "title": "Embedding input guardrail",
   "updated_at": "2026-04-24T08:30:17.206400Z"
 }

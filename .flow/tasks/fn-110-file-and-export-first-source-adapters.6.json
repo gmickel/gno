@@ -13,7 +13,7 @@
   "priority": null,
   "spec": "fn-110-file-and-export-first-source-adapters",
   "spec_path": ".flow/tasks/fn-110-file-and-export-first-source-adapters.6.md",
-  "status": "todo",
+  "status": "done",
   "title": "Complete record metadata parity security packaging and support docs",
   "updated_at": "2026-07-21T22:08:28.667982Z"
 }

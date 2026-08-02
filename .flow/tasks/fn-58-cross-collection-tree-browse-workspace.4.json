@@ -11,7 +11,7 @@
   "priority": 4,
   "spec": "fn-58-cross-collection-tree-browse-workspace",
   "spec_path": ".flow/tasks/fn-58-cross-collection-tree-browse-workspace.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Persist tab-scoped browse tree state and restore deep-link context",
   "updated_at": "2026-04-03T19:32:47.809420Z"
 }

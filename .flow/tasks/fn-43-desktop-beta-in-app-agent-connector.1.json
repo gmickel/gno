@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-43-desktop-beta-in-app-agent-connector",
   "spec_path": ".flow/tasks/fn-43-desktop-beta-in-app-agent-connector.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add in-app connector status and installer actions",
   "updated_at": "2026-03-22T21:46:06.977041Z"
 }

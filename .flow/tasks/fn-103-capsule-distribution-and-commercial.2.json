@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-103-capsule-distribution-and-commercial",
   "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Serve llms manifests Markdown and evidence safely on gno.sh",
   "updated_at": "2026-07-21T22:07:10.823167Z"
 }

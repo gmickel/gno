@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-102-knowledge-delta-and-capsule",
   "spec_path": ".flow/tasks/fn-102-knowledge-delta-and-capsule.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add transactional bounded document change journal",
   "updated_at": "2026-07-21T21:58:22.878185Z"
 }

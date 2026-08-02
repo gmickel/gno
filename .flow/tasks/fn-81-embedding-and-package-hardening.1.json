@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-81-embedding-and-package-hardening",
   "spec_path": ".flow/tasks/fn-81-embedding-and-package-hardening.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add vector fingerprints to freshness contract",
   "updated_at": "2026-05-26T11:14:37.512443Z"
 }

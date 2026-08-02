@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-104-project-aware-retrieval-affinity",
   "spec_path": ".flow/tasks/fn-104-project-aware-retrieval-affinity.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Apply one bounded explainable affinity score",
   "updated_at": "2026-07-21T22:00:51.910764Z"
 }

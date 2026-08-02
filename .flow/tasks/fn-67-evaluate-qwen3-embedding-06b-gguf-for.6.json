@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-67-evaluate-qwen3-embedding-06b-gguf-for",
   "spec_path": ".flow/tasks/fn-67-evaluate-qwen3-embedding-06b-gguf-for.6.md",
-  "status": "todo",
+  "status": "done",
   "title": "Record Nemotron comparison and refresh Qwen candidates",
   "updated_at": "2026-07-21T09:13:16.624687Z"
 }

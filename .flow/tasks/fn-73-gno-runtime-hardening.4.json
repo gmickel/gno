@@ -8,7 +8,7 @@
   "priority": 4,
   "spec": "fn-73-gno-runtime-hardening",
   "spec_path": ".flow/tasks/fn-73-gno-runtime-hardening.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Runtime vector guidance",
   "updated_at": "2026-04-24T08:30:17.078887Z"
 }

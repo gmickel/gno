@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-12",
   "spec_path": ".flow/tasks/fn-12.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement: Graph View",
   "updated_at": "2026-01-09T11:24:14.013350Z"
 }

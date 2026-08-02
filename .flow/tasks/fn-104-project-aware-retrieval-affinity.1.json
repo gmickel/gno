@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-104-project-aware-retrieval-affinity",
   "spec_path": ".flow/tasks/fn-104-project-aware-retrieval-affinity.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Build trusted project-root resolution and affinity metadata",
   "updated_at": "2026-07-21T22:00:51.686532Z"
 }

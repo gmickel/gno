@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-46-desktop-beta-file-lifecycle-and-finder",
   "spec_path": ".flow/tasks/fn-46-desktop-beta-file-lifecycle-and-finder.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add rename, trash, and reveal flows for local files",
   "updated_at": "2026-03-22T22:13:20.950227Z"
 }

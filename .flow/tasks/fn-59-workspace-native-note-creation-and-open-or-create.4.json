@@ -11,7 +11,7 @@
   "priority": 1,
   "spec": "fn-59-workspace-native-note-creation-and-open-or-create",
   "spec_path": ".flow/tasks/fn-59-workspace-native-note-creation-and-open-or-create.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Polish note-creation docs website and end-to-end coverage",
   "updated_at": "2026-04-05T12:10:00Z"
 }

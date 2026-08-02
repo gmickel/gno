@@ -8,7 +8,7 @@
   "priority": 3,
   "spec": "fn-37-productionize-fine-tuned-retrieval",
   "spec_path": ".flow/tasks/fn-37-productionize-fine-tuned-retrieval.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add alternate-base sweep path",
   "updated_at": "2026-03-09T12:41:59.630655Z"
 }

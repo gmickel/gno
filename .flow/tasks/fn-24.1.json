@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-24",
   "spec_path": ".flow/tasks/fn-24.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement: Shareable Indexes",
   "updated_at": "2026-01-09T11:24:15.848441Z"
 }

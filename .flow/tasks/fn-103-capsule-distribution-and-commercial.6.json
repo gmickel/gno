@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-103-capsule-distribution-and-commercial",
   "spec_path": ".flow/tasks/fn-103-capsule-distribution-and-commercial.6.md",
-  "status": "todo",
+  "status": "done",
   "title": "Close encrypted publish artifact review finding",
   "updated_at": "2026-07-23T18:21:02.276440Z"
 }

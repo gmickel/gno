@@ -8,7 +8,7 @@
   "priority": 9,
   "spec": "fn-73-gno-runtime-hardening",
   "spec_path": ".flow/tasks/fn-73-gno-runtime-hardening.9.md",
-  "status": "todo",
+  "status": "done",
   "title": "Docs website and smoke validation",
   "updated_at": "2026-04-24T08:30:17.665278Z"
 }

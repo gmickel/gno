@@ -11,7 +11,7 @@
   "priority": null,
   "spec": "fn-106-browser-clipper-with-provenance",
   "spec_path": ".flow/tasks/fn-106-browser-clipper-with-provenance.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Build the minimal browser extension preview workflow",
   "updated_at": "2026-07-21T22:07:12.361236Z"
 }
