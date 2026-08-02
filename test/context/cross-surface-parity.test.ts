@@ -271,6 +271,29 @@ describe("Context Capsule REST/MCP parity", () => {
     ).toThrow("tagsAll contains an invalid tag");
   });
 
+  test("enables graph retrieval by default outside the fast depth policy", () => {
+    const normalizeGraph = (
+      depthPolicy: "fast" | "balanced" | "thorough",
+      graph?: boolean
+    ) =>
+      normalizeContextBuildInput(
+        {
+          goal: "Find linked launch evidence",
+          budgetTokens: 1000,
+          depthPolicy,
+          graph,
+        },
+        "default",
+        new Date("2026-07-22T12:00:00.000Z"),
+        ["notes"]
+      ).graph;
+
+    expect(normalizeGraph("balanced")).toBe(true);
+    expect(normalizeGraph("thorough")).toBe(true);
+    expect(normalizeGraph("fast")).toBe(false);
+    expect(normalizeGraph("balanced", false)).toBe(false);
+  });
+
   test("keeps full REST/application payloads and emits the production MCP projection once", async () => {
     const direct = await buildContextCapsule(
       { ...buildInput, indexName: "default" },

@@ -186,6 +186,46 @@ const addEdgeCandidate = (
   scores.set(neighborDocid, current + score);
 };
 
+const loadGraphLinks = async (
+  store: StorePort,
+  seedDocumentIds: number[],
+  options: {
+    collection?: string;
+    includeSimilar?: boolean;
+  }
+): Promise<
+  { ok: true; links: GraphLink[] } | { ok: false; reason: string }
+> => {
+  if (typeof store.getGraphNeighborsForSeeds === "function") {
+    const neighborsResult = await store.getGraphNeighborsForSeeds({
+      seedDocumentIds,
+      collection: options.collection,
+      limitEdges: GRAPH_EDGE_LIMIT,
+    });
+    if (!neighborsResult.ok) {
+      return { ok: false, reason: "graph_query_failed" };
+    }
+    return { ok: true, links: neighborsResult.value.links };
+  }
+
+  if (typeof store.getGraph !== "function") {
+    return { ok: false, reason: "graph_unavailable" };
+  }
+
+  // Compatibility fallback for mocks/adapters without the scoped method.
+  const graphResult = await store.getGraph({
+    collection: options.collection,
+    limitNodes: GRAPH_NODE_LIMIT,
+    limitEdges: GRAPH_EDGE_LIMIT,
+    includeSimilar: options.includeSimilar ?? false,
+    linkedOnly: true,
+  });
+  if (!graphResult.ok) {
+    return { ok: false, reason: "graph_query_failed" };
+  }
+  return { ok: true, links: graphResult.value.links };
+};
+
 /**
  * Expand top retrieval candidates through one-hop graph neighbors.
  */
@@ -225,7 +265,10 @@ export async function expandGraphCandidates(
     meta.fallbackReasons.push("graph_no_seed_candidates");
     return { candidates: [], meta };
   }
-  if (typeof store.getGraph !== "function") {
+  const hasScopedNeighbors =
+    typeof store.getGraphNeighborsForSeeds === "function";
+  const hasFullGraph = typeof store.getGraph === "function";
+  if (!hasScopedNeighbors && !hasFullGraph) {
     meta.fallbackReasons.push("graph_unavailable");
     return { candidates: [], meta };
   }
@@ -277,25 +320,23 @@ export async function expandGraphCandidates(
     return { candidates: [], meta };
   }
 
-  const graphResult = await store.getGraph({
+  const seedDocumentIds = [...seedByDocid.values()].map(({ doc }) => doc.id);
+  const linksResult = await loadGraphLinks(store, seedDocumentIds, {
     collection: options.collection,
-    limitNodes: GRAPH_NODE_LIMIT,
-    limitEdges: GRAPH_EDGE_LIMIT,
-    includeSimilar: options.includeSimilar ?? false,
-    linkedOnly: true,
+    includeSimilar: options.includeSimilar,
   });
-  if (!graphResult.ok) {
-    meta.fallbackReasons.push("graph_query_failed");
+  if (!linksResult.ok) {
+    meta.fallbackReasons.push(linksResult.reason);
     return { candidates: [], meta };
   }
-  if (graphResult.value.links.length === 0) {
+  if (linksResult.links.length === 0) {
     meta.fallbackReasons.push("graph_empty");
     return { candidates: [], meta };
   }
 
   const neighborScores = new Map<string, number>();
   const edgeConfidence = { ...EMPTY_EDGE_CONFIDENCE };
-  for (const link of graphResult.value.links) {
+  for (const link of linksResult.links) {
     const sourceSeed = seedByDocid.get(link.source);
     const targetSeed = seedByDocid.get(link.target);
     if (sourceSeed && !seedDocids.has(link.target)) {

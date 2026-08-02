@@ -889,6 +889,30 @@ export interface GetGraphOptions {
   similarTopK?: number;
 }
 
+/** Options for seed-scoped one-hop graph neighbor lookup (query-time expansion). */
+export interface GetGraphNeighborsOptions {
+  /** Seed document primary keys; implementations clamp to a small bound (≤5). */
+  seedDocumentIds: number[];
+  /** Filter neighbors to a single collection */
+  collection?: string;
+  /** Max edges to return (default 10000) */
+  limitEdges?: number;
+}
+
+/** Result of seed-scoped one-hop graph neighbor lookup. */
+export interface GraphNeighborsResult {
+  /** One-hop wiki/markdown edges touching the seeds (no similarity edges). */
+  links: GraphLink[];
+  meta: {
+    /** Seeds that were actually resolved (active docs only). */
+    seedDocumentIds: number[];
+    /** Link rows examined during scoped resolution (for latency regressions). */
+    examinedLinkRows: number;
+    /** Edges returned after merge/cap. */
+    returnedEdges: number;
+  };
+}
+
 /** Direction for bounded typed-edge graph traversal. */
 export type GraphQueryDirection = "out" | "in" | "both";
 
@@ -1972,6 +1996,15 @@ export interface StorePort {
    * Two-phase SQL: compute degrees, then fetch edges for top N nodes.
    */
   getGraph(options?: GetGraphOptions): Promise<StoreResult<GraphResult>>;
+
+  /**
+   * Seed-scoped one-hop graph neighbors for query-time expansion.
+   * Resolves only outgoing/backlink edges for ≤5 seed document IDs.
+   * Optional: mocks may omit this and fall back to getGraph.
+   */
+  getGraphNeighborsForSeeds?(
+    options: GetGraphNeighborsOptions
+  ): Promise<StoreResult<GraphNeighborsResult>>;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Status

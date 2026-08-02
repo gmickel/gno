@@ -101,8 +101,9 @@ exact evidence handoff. Use `gno_ask` only when a local closed-evidence answer
 is specifically useful, and pass the literal boolean `verify: true`; it
 abstains unless every substantive claim is supported. This is a support
 classification against the retained Capsule, not a guarantee that the corpus
-is complete or its sources are true. Pass `graph: true` only when linked context
-is worth the extra latency. Check `gno_status` first when freshness or
+is complete or its sources are true. Bounded graph expansion is on by default;
+set `graph: false` or `noGraph: true` only for an explicit BM25/vector-only path.
+Check `gno_status` first when freshness or
 embeddings may be stale. Use `gno_query_diagnose` when a known target document
 should have appeared but did not.
 

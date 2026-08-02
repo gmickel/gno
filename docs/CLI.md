@@ -300,7 +300,7 @@ gno query "auth" --fast              # Fastest: ~0.7s
 gno query "auth" --thorough          # Full pipeline: ~5-8s
 gno query "auth" --tags-all work,backend   # Filter by tags
 gno query "performance" --intent "web performance and latency"
-gno query "auth" --graph             # Enable graph-neighbor candidates
+gno query "auth" --no-graph          # Disable graph-neighbor candidates
 gno query diagnose "Alice Acme" --target gno://notes/people/alice.md --json
 gno query "auth flow" --query-mode term:"jwt refresh token" --query-mode intent:"how refresh token rotation works"
 gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
@@ -317,7 +317,7 @@ gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 - **Strong signal detection**: Skips expensive LLM expansion when BM25 has confident match
 - **2× weight for original query**: Prevents dilution by LLM-generated variants
 - **Tiered top-rank bonus**: +0.05 for #1, +0.02 for #2-3
-- **Graph-aware expansion**: Adds capped one-hop neighbors from top seeds; explicit links outrank inferred, ambiguous, and similarity edges
+- **Graph-aware expansion**: Adds capped one-hop wiki/markdown neighbors from top seeds; explicit links outrank inferred or ambiguous matches
 - **Chunk-level reranking**: Best chunk per doc (4K max) for 25× faster reranking
 - **Lexical top-hit protection**: Preserves original BM25 #1 exact hits against rerank-only demotion
 - **Bounded content-type ranking**: One configured `searchBoost` contributes at
@@ -330,8 +330,8 @@ Additional options:
 - `--thorough` - Use the widest retrieval/rerank budget (slower, best recall)
 - `--no-expand` - Disable query expansion
 - `--no-rerank` - Disable cross-encoder reranking
-- `--graph` - Enable bounded one-hop graph neighbor expansion
-- `--no-graph` - Compatibility no-op; graph expansion is off unless `--graph` is passed
+- `--graph` - Explicitly enable the default bounded one-hop graph neighbor expansion
+- `--no-graph` - Disable graph neighbor expansion
 - `--intent <text>` - Disambiguating context for ambiguous queries. Steers expansion, rerank chunk/snippet choice, and disables strong-signal bypass, but is not searched directly.
 - `--exclude <values>` - Hard-prune docs containing any comma-separated term in title/path/body
 - `-C, --candidate-limit <n>` - Max candidates passed to reranking (default: 20)
@@ -368,7 +368,7 @@ reported as skipped while fusion remains active with `sourceCount: 1`.
 - Existing calls keep working (`gno query "..."`, `--fast`, `--thorough`, `--no-expand`, `--no-rerank`).
 - `--intent` is orthogonal to `--query-mode`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `--query-mode` is opt-in for explicit intent control and replaces generated expansion for that query.
-- Graph-neighbor expansion is opt-in: pass `--graph` when linked context matters. If graph data, embeddings, or similarity edges are unavailable, query falls back to the normal BM25/vector path.
+- Graph-neighbor expansion is on by default in balanced and thorough retrieval. Pass `--no-graph` for pure BM25/vector retrieval; `--fast` also skips graph expansion. The query resolves only outgoing links and backlinks touching the top seeds; semantic similarity stays in the vector stage. If graph data is unavailable, query falls back to the normal BM25/vector path.
 - Use `term` for exact lexical constraints, `intent` for semantic reformulations, and `hyde` for one hypothetical answer passage.
 - Multi-line structured query documents are also supported. See [Structured Query Syntax](./SYNTAX.md).
 - In terminal output, `gno search`, `gno vsearch`, and `gno query` can wrap the visible `gno://...` URI in an OSC 8 hyperlink when stdout is a TTY. Configure the target with `editorUriTemplate` in `~/.config/gno/index.yml` or override it with `GNO_EDITOR_URI_TEMPLATE`. Env override wins. If unset, GNO falls back to `file://` links using absolute paths when available.
@@ -438,6 +438,7 @@ gno ask "explain the auth flow" --answer --show-sources
 gno ask "explain the auth flow" --verify --show-sources
 gno ask "quick lookup" --fast            # Fastest retrieval
 gno ask "complex topic" --thorough       # Best recall
+gno ask "pure vector/lexical" --no-graph  # Skip graph expansion
 gno ask "performance" --intent "web latency and vitals"
 gno ask "performance" --query-mode term:"web performance budgets" --query-mode intent:"latency and vitals" --no-answer
 gno ask $'term: web performance budgets\nintent: latency and vitals' --no-answer
@@ -466,6 +467,8 @@ judgment.
 general factual guarantee. It cannot prove that the corpus is complete or that
 the underlying sources are true. Plain `gno ask`, `--no-answer`, and the
 existing `--answer` full-document workflow remain compatible and unchanged.
+Balanced and thorough Ask retrieval uses bounded graph expansion by default;
+`--no-graph` and `--fast` skip it.
 
 **Configured guidance**: Structured `search`, `vsearch`, `query`, and `ask`
 results may include `context`. It contains matching user configuration ordered
@@ -937,13 +940,15 @@ Compile a goal into a deterministic, citation-complete evidence Capsule:
 gno context build "launch decision" --budget 12000 --json
 gno context build "compare the proposals" --budget 16000 --collection work --md
 gno context build "release evidence" --budget 12000 --fast --json --output capsule.json
+gno context build "pure vector/lexical" --budget 12000 --no-graph --json
 ```
 
 The budget applies to the complete canonical payload, not separately to each
 document. Evidence keeps exact canonical-mirror line ranges and source, mirror,
 and passage hashes. Selection collapses duplicates, rewards uncovered query
 facets, and records every omission and gap. `--fast` avoids model loading;
-default and `--thorough` use available semantic/rerank capabilities and record
+default and `--thorough` use available semantic/rerank capabilities plus
+bounded graph expansion and record
 fallbacks when attempted but unavailable. The persisted retrieval plan records
 normalized author/language/query-mode filters, effective limits, graph request,
 and requested/attempted/outcome state. A capability that was not requested is

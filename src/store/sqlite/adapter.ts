@@ -55,10 +55,12 @@ import type {
   EgressAuditStatusResult,
   FtsResult,
   FtsSearchOptions,
+  GetGraphNeighborsOptions,
   GetGraphOptions,
   GraphEdgeConfidence,
   GraphEdgeAudit,
   GraphLinkType,
+  GraphNeighborsResult,
   GraphQueryOptions,
   GraphQueryTraversalRows,
   GraphReportNode,
@@ -112,6 +114,10 @@ import {
 } from "../../config/types";
 import { analyzeGraphCommunities } from "../../core/graph-analysis";
 import {
+  classifyResolvedGraphEdge,
+  mergeGraphEdgeAudit,
+} from "../../core/graph-edge-confidence";
+import {
   buildWikiBestMatchSubquery,
   buildWikiBestRankMatchCountSubquery,
   buildWikiBestRankSubquery,
@@ -155,6 +161,7 @@ import {
   purgeEgressAuditReceipts as purgeStoredEgressAuditReceipts,
 } from "./egress-audit-store";
 import { loadFts5Snowball } from "./fts5-snowball";
+import { queryGraphNeighborsForSeeds } from "./graph-neighbors";
 import {
   appendExportManifest as appendStoredTraceExportManifest,
   getBoundedTrace as getBoundedStoredTrace,
@@ -4154,6 +4161,27 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   // Graph
   // ─────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Seed-scoped one-hop neighbors for query-time graph expansion.
+   * Does not rebuild the full collection graph or similarity edges.
+   */
+  async getGraphNeighborsForSeeds(
+    options: GetGraphNeighborsOptions
+  ): Promise<StoreResult<GraphNeighborsResult>> {
+    try {
+      const db = this.ensureOpen();
+      return ok(queryGraphNeighborsForSeeds(db, options));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get seed graph neighbors",
+        cause
+      );
+    }
+  }
+
   async getGraph(options?: GetGraphOptions): Promise<StoreResult<GraphResult>> {
     try {
       const db = this.ensureOpen();
@@ -4460,87 +4488,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const selectedDocids = new Set(nodes.map((node) => node.id));
       const nodeDocids = new Set(nodes.map((node) => node.id));
 
-      const confidenceRank: Record<GraphEdgeConfidence, number> = {
-        explicit: 1,
-        inferred: 2,
-        ambiguous: 3,
-        similarity: 4,
-      };
-      const classifyResolvedEdge = (
-        linkType: "wiki" | "markdown",
-        matchRank: number | null,
-        matchCount: number | null
-      ): { confidence: GraphEdgeConfidence; audit: GraphEdgeAudit } => {
-        if (linkType === "markdown") {
-          return {
-            confidence: "explicit",
-            audit: { resolution: "exact-path", matchCount: 1 },
-          };
-        }
-
-        const count = matchCount ?? 0;
-        if (count > 1) {
-          return {
-            confidence: "ambiguous",
-            audit: {
-              resolution: "ambiguous-fallback",
-              matchCount: count,
-            },
-          };
-        }
-
-        if (matchRank === 1 || matchRank === 2) {
-          return {
-            confidence: "explicit",
-            audit: { resolution: "exact-title", matchCount: count || 1 },
-          };
-        }
-        if (matchRank === 5 || matchRank === 6) {
-          return {
-            confidence: "explicit",
-            audit: { resolution: "exact-path", matchCount: count || 1 },
-          };
-        }
-
-        return {
-          confidence: "inferred",
-          audit: { resolution: "path-fallback", matchCount: count || 1 },
-        };
-      };
-      const mergeAudit = (
-        current: {
-          type: GraphLinkType;
-          weight: number;
-          confidence: GraphEdgeConfidence;
-          audit: GraphEdgeAudit;
-        },
-        nextConfidence: GraphEdgeConfidence,
-        nextAudit: GraphEdgeAudit
-      ): void => {
-        if (
-          confidenceRank[nextConfidence] < confidenceRank[current.confidence]
-        ) {
-          current.confidence = nextConfidence;
-          current.audit = {
-            ...nextAudit,
-            matchCount: Math.max(
-              current.audit.matchCount ?? 0,
-              nextAudit.matchCount ?? 0
-            ),
-          };
-          return;
-        }
-        if (
-          nextAudit.matchCount !== undefined &&
-          (current.audit.matchCount ?? 0) < nextAudit.matchCount
-        ) {
-          current.audit = {
-            ...current.audit,
-            matchCount: nextAudit.matchCount,
-          };
-        }
-      };
-
       const edgeMap = new Map<
         string,
         {
@@ -4558,7 +4505,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           continue;
         }
         const key = `${row.source_docid}:${row.target_docid}:${row.link_type}`;
-        const { confidence, audit } = classifyResolvedEdge(
+        const { confidence, audit } = classifyResolvedGraphEdge(
           row.link_type,
           row.match_rank,
           row.match_count
@@ -4566,7 +4513,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         const existing = edgeMap.get(key);
         if (existing) {
           existing.weight += 1;
-          mergeAudit(existing, confidence, audit);
+          mergeGraphEdgeAudit(existing, confidence, audit);
         } else {
           edgeMap.set(key, {
             type: row.link_type,

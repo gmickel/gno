@@ -373,7 +373,7 @@ export const normalizeContextBuildInput = (
     minScore: input.minScore ?? null,
     since: temporalRange.since,
     until: temporalRange.until,
-    graph: input.graph ?? false,
+    graph: input.graph ?? depthPolicy !== "fast",
     noRerank: input.noRerank ?? false,
     limit,
     candidateLimit,

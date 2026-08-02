@@ -151,6 +151,8 @@ const createGraphStore = (
     >;
     chunkSeqs?: Record<string, number[]>;
     onGetDocumentsByDocids?: (docids: string[]) => void;
+    onGetGraph?: () => void;
+    onGetGraphNeighborsForSeeds?: (seedDocumentIds: number[]) => void;
   } = {}
 ): Partial<StorePort> => {
   const hashes = options.docs ?? ["seed", "explicit", "inferred", "ambiguous"];
@@ -165,10 +167,36 @@ const createGraphStore = (
       ok: true as const,
       value: (options.fts ?? ["seed"]).map((hash) => makeFtsResult(hash, 0)),
     }),
-    getGraph: async () => ({
-      ok: true as const,
-      value: makeGraph(links, hashes.map(graphNode)),
-    }),
+    getGraph: async () => {
+      options.onGetGraph?.();
+      return {
+        ok: true as const,
+        value: makeGraph(links, hashes.map(graphNode)),
+      };
+    },
+    getGraphNeighborsForSeeds: async (neighborOptions) => {
+      options.onGetGraphNeighborsForSeeds?.(neighborOptions.seedDocumentIds);
+      const seedDocids = new Set(
+        neighborOptions.seedDocumentIds.map((id) => {
+          const doc = [...docs.values()].find((entry) => entry.id === id);
+          return doc?.docid;
+        })
+      );
+      const scopedLinks = links.filter(
+        (link) => seedDocids.has(link.source) || seedDocids.has(link.target)
+      );
+      return {
+        ok: true as const,
+        value: {
+          links: scopedLinks,
+          meta: {
+            seedDocumentIds: neighborOptions.seedDocumentIds,
+            examinedLinkRows: scopedLinks.length,
+            returnedEdges: scopedLinks.length,
+          },
+        },
+      };
+    },
     getDocumentByDocid: async (docid) => {
       return { ok: true as const, value: docs.get(docid) ?? null };
     },
@@ -927,7 +955,52 @@ describe("searchHybrid targeted document lookup", () => {
     expect(result.value.results[1]?.source.relPath).toBe("hash_a.md");
   });
 
-  test("skips graph expansion by default", async () => {
+  test("skips graph expansion when explicitly opted out", async () => {
+    const store = createGraphStore([
+      {
+        source: "#seed",
+        target: "#explicit",
+        type: "wiki",
+        weight: 1,
+        confidence: "explicit",
+        audit: { resolution: "exact-title", matchCount: 1 },
+      },
+    ]);
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "seed query",
+      {
+        graph: false,
+        noExpand: true,
+        noRerank: true,
+        limit: 2,
+        explain: true,
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.value.results.map((r) => r.source.relPath)).not.toContain(
+      "explicit.md"
+    );
+    expect(result.value.meta.graphExpansion?.enabled).toBe(false);
+    expect(result.value.meta.graphExpansion?.fallbackReasons).toContain(
+      "graph_disabled"
+    );
+  });
+
+  test("expands one-hop graph neighbors by default when embeddings are unavailable", async () => {
     const store = createGraphStore([
       {
         source: "#seed",
@@ -950,45 +1023,6 @@ describe("searchHybrid targeted document lookup", () => {
       },
       "seed query",
       { noExpand: true, noRerank: true, limit: 2, explain: true }
-    );
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
-
-    expect(result.value.results.map((r) => r.source.relPath)).not.toContain(
-      "explicit.md"
-    );
-    expect(result.value.meta.graphExpansion?.enabled).toBe(false);
-    expect(result.value.meta.graphExpansion?.fallbackReasons).toContain(
-      "graph_disabled"
-    );
-  });
-
-  test("expands one-hop graph neighbors when explicitly enabled and embeddings are unavailable", async () => {
-    const store = createGraphStore([
-      {
-        source: "#seed",
-        target: "#explicit",
-        type: "wiki",
-        weight: 1,
-        confidence: "explicit",
-        audit: { resolution: "exact-title", matchCount: 1 },
-      },
-    ]);
-
-    const result = await searchHybrid(
-      {
-        store: store as StorePort,
-        config: {} as Config,
-        vectorIndex: null,
-        embedPort: null,
-        expandPort: null,
-        rerankPort: null,
-      },
-      "seed query",
-      { graph: true, noExpand: true, noRerank: true, limit: 2, explain: true }
     );
 
     expect(result.ok).toBe(true);
@@ -1504,5 +1538,135 @@ describe("searchHybrid targeted document lookup", () => {
       "explicit.md"
     );
     expect(result.value.meta.reranked).toBe(true);
+  });
+
+  test("prefers seed-scoped graph neighbors and skips full getGraph", async () => {
+    let scopedCalls = 0;
+    let fullGraphCalls = 0;
+    const seedDocumentIds: number[] = [];
+    const store = createGraphStore(
+      [
+        {
+          source: "#seed",
+          target: "#explicit",
+          type: "wiki",
+          weight: 1,
+          confidence: "explicit",
+          audit: { resolution: "exact-title", matchCount: 1 },
+        },
+      ],
+      {
+        onGetGraphNeighborsForSeeds: (ids) => {
+          scopedCalls += 1;
+          seedDocumentIds.push(...ids);
+        },
+        onGetGraph: () => {
+          fullGraphCalls += 1;
+        },
+      }
+    );
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "seed query",
+      { graph: true, noExpand: true, noRerank: true, limit: 2, explain: true }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(scopedCalls).toBe(1);
+    expect(fullGraphCalls).toBe(0);
+    expect(seedDocumentIds).toEqual([1]);
+    expect(result.value.meta.graphExpansion?.enabled).toBe(true);
+    expect(result.value.results.map((r) => r.source.relPath)).toContain(
+      "explicit.md"
+    );
+  });
+
+  test("falls back to getGraph when scoped neighbors are unavailable", async () => {
+    let fullGraphCalls = 0;
+    const docs = new Map([
+      ["#seed", makeDoc(1, "seed")],
+      ["#explicit", makeDoc(2, "explicit")],
+    ]);
+    const store: Partial<StorePort> = {
+      searchFts: async () => ({
+        ok: true as const,
+        value: [makeFtsResult("seed", 0)],
+      }),
+      getDocumentsByMirrorHashes: async (hashes) => ({
+        ok: true as const,
+        value: hashes
+          .map((hash) => docs.get(`#${hash}`))
+          .filter((doc): doc is DocumentRow => Boolean(doc)),
+      }),
+      getDocumentsByDocids: async (docids) => ({
+        ok: true as const,
+        value: docids
+          .map((docid) => docs.get(docid))
+          .filter((doc): doc is DocumentRow => Boolean(doc)),
+      }),
+      getCollections: async () => ({
+        ok: true as const,
+        value: TEST_COLLECTIONS,
+      }),
+      getChunksBatch: async (hashes) => ({
+        ok: true as const,
+        value: new Map(
+          hashes.map((hash) => [hash, [makeChunk(hash, 0)]] as const)
+        ),
+      }),
+      getGraph: async () => {
+        fullGraphCalls += 1;
+        return {
+          ok: true as const,
+          value: makeGraph(
+            [
+              {
+                source: "#seed",
+                target: "#explicit",
+                type: "wiki",
+                weight: 1,
+                confidence: "explicit",
+                audit: { resolution: "exact-title", matchCount: 1 },
+              },
+            ],
+            [graphNode("seed"), graphNode("explicit")]
+          ),
+        };
+      },
+    };
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "seed query",
+      { graph: true, noExpand: true, noRerank: true, limit: 2 }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(fullGraphCalls).toBe(1);
+    expect(result.value.meta.graphExpansion?.enabled).toBe(true);
+    expect(result.value.results.map((r) => r.source.relPath)).toContain(
+      "explicit.md"
+    );
   });
 });

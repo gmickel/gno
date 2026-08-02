@@ -244,7 +244,7 @@ export type HybridSearchOptions = SearchOptions & {
   explain?: boolean;
   /** Enable bounded one-hop graph candidate expansion */
   graph?: boolean;
-  /** Compatibility no-op unless graph is also true */
+  /** Explicitly disable graph neighbor expansion */
   noGraph?: boolean;
   /** Language hint for prompt selection (does NOT filter retrieval, only affects expansion prompts) */
   queryLanguageHint?: string;

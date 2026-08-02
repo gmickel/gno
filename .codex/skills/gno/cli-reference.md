@@ -233,19 +233,19 @@ gno query <query> [options]
 
 | Flag         | Time  | Description                    |
 | ------------ | ----- | ------------------------------ |
-| `--fast`     | ~0.7s | Skip expansion and rerank      |
-| (default)    | ~2-3s | Skip expansion, with reranking |
-| `--thorough` | ~5-8s | Full pipeline with expansion   |
+| `--fast`     | ~0.7s | Skip expansion, graph, rerank  |
+| (default)    | ~2-3s | Balanced, graph + reranking    |
+| `--thorough` | ~5-8s | Wider expansion + graph/rerank |
 
 Additional options:
 
-| Option        | Description                       |
-| ------------- | --------------------------------- |
-| `--no-expand` | Disable query expansion           |
-| `--no-rerank` | Disable reranking                 |
-| `--graph`     | Enable graph-neighbor candidates  |
-| `--no-graph`  | Compatibility no-op by default    |
-| `--explain`   | Print retrieval details to stderr |
+| Option        | Description                                |
+| ------------- | ------------------------------------------ |
+| `--no-expand` | Disable query expansion                    |
+| `--no-rerank` | Disable reranking                          |
+| `--graph`     | Explicitly enable default graph candidates |
+| `--no-graph`  | Disable graph-neighbor candidates          |
+| `--explain`   | Print retrieval details to stderr          |
 
 ### gno ask
 

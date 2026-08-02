@@ -191,7 +191,7 @@ export const buildVerifiedAsk = async (
       minScore: options.minScore,
       since: options.since,
       until: options.until,
-      graph: Boolean(options.graph && !options.noGraph),
+      graph: options.graph !== false && options.noGraph !== true,
       noRerank: options.noRerank,
       limit: options.limit ?? DEFAULT_VERIFIED_ASK_LIMIT,
       candidateLimit: options.candidateLimit,

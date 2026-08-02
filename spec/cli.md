@@ -1173,8 +1173,8 @@ gno query diagnose <query> --target <doc> [-n <num>] [--min-score <num>] [-c <co
 |--------|------|-------------|
 | `--no-expand` | boolean | Disable query expansion |
 | `--no-rerank` | boolean | Disable cross-encoder reranking |
-| `--graph` | boolean | Enable bounded one-hop graph neighbor expansion |
-| `--no-graph` | boolean | Compatibility no-op; graph expansion is off unless `--graph` is passed |
+| `--graph` | boolean | Explicitly enable the default bounded one-hop graph neighbor expansion |
+| `--no-graph` | boolean | Disable graph neighbor expansion |
 | `--intent` | string | Disambiguating context for ambiguous queries; steers expansion, rerank chunk/snippet choice, and disables strong-signal bypass without being searched directly |
 | `--exclude` | string | Hard-prune docs containing any comma-separated term in title/path/body |
 | `-C, --candidate-limit` | integer | Max candidates passed to reranking (default 20) |
@@ -1188,11 +1188,11 @@ gno query diagnose <query> --target <doc> [-n <num>] [--min-score <num>] [-c <co
 **Compatibility / Migration:**
 
 - Legacy query invocations remain valid (`gno query "<text>"`, `--fast`, `--thorough`, `--no-expand`, `--no-rerank`).
-- `--fast` skips query expansion and reranking. Graph expansion is already off unless `--graph` is passed.
+- `--fast` skips query expansion, graph expansion, and reranking.
 - `--intent` is orthogonal to `--query-mode`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `--query-mode` is optional and additive to the command surface.
 - If one or more `--query-mode` entries are provided, generated expansion is bypassed and provided entries are used as retrieval intents.
-- By default, `gno query` does not expand through the document graph. Use `--graph` to add a capped one-hop graph-neighbor candidate set after BM25/vector retrieval. Explicit links are weighted above inferred, ambiguous, or similarity edges.
+- By default, balanced and thorough `gno query` retrieval adds a capped one-hop wiki/markdown-neighbor candidate set after BM25/vector retrieval. Use `--no-graph` to disable it. Query-time expansion resolves only links touching the top seeds; semantic similarity remains the vector stage's responsibility. Explicit links are weighted above inferred or ambiguous link matches.
 
 **Diagnose Output:**
 
@@ -1285,7 +1285,7 @@ Human-friendly query with citations-first output and optional grounded answer.
 **Synopsis:**
 
 ```bash
-gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--query-mode <mode:text>]... [-C <num>] [--answer|--verify] [--no-answer] [--max-answer-tokens <n>] [--context-budget-tokens <n>] [--context-budget-bytes <n>] [--min-score <score>] [--graph] [--no-expand] [--no-rerank] [--explain] [--show-sources] [--json|--md]
+gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--query-mode <mode:text>]... [-C <num>] [--answer|--verify] [--no-answer] [--max-answer-tokens <n>] [--context-budget-tokens <n>] [--context-budget-bytes <n>] [--min-score <score>] [--graph|--no-graph] [--no-expand] [--no-rerank] [--explain] [--show-sources] [--json|--md]
 ```
 
 **Options:**
@@ -1299,7 +1299,8 @@ gno ask <query> [-n <num>] [-c <collection>] [--lang <bcp47>] [--since <date>] [
 | `--context-budget-tokens` | integer  | 12000   | Global token budget for verified Context evidence                                  |
 | `--context-budget-bytes`  | integer  | none    | Optional global byte budget for verified Context evidence                          |
 | `--min-score`             | number   | none    | Minimum retrieval score from 0 through 1                                           |
-| `--graph`                 | boolean  | false   | Include bounded graph expansion in verified Context retrieval                      |
+| `--graph`                 | boolean  | true    | Include bounded graph expansion in verified Context retrieval                      |
+| `--no-graph`              | boolean  | false   | Disable graph expansion                                                            |
 | `--since`                 | string   | none    | Modified-at lower bound (ISO date/time or relative token)                          |
 | `--until`                 | string   | none    | Modified-at upper bound (ISO date/time or relative token)                          |
 | `--category`              | string   | none    | Filter to docs with matching category/content type (comma-separated)               |
@@ -1666,7 +1667,7 @@ written to stderr.
 **Synopsis:**
 
 ```bash
-gno context build "<goal>" --budget <tokens> [--collection <name>] [--project-root <path>]... [--no-project-affinity] [--fast|--thorough] [--json|--md] [--output <file>]
+gno context build "<goal>" --budget <tokens> [--collection <name>] [--project-root <path>]... [--no-project-affinity] [--graph|--no-graph] [--fast|--thorough] [--json|--md] [--output <file>]
 ```
 
 `--budget` is the global token ceiling. `--bytes` optionally sets a separate
@@ -1683,6 +1684,8 @@ Project affinity defaults to the trusted process cwd/repository. Repeatable
 `--project-root` values replace that default, are normalized/deduplicated, and
 are capped at 16. `--no-project-affinity` disables the soft signal and cannot
 be combined with explicit roots.
+Balanced and thorough Context retrieval request bounded graph expansion by
+default. `--no-graph` disables it; `--fast` also keeps the graph stage off.
 
 JSON is the canonical V1 payload. Markdown is a readable projection of that
 same payload and hard-delimits each untrusted evidence passage. Passage,

@@ -373,17 +373,17 @@ Not all searches are equal. Original queries get **2× weight** to prevent dilut
 
 ## Graph-Aware Candidate Expansion
 
-`gno query --graph` uses the document graph as a retrieval adjunct. After BM25 and vector candidates are found, GNO takes the top seeds, follows a bounded one-hop set of graph neighbors, and feeds those added candidates back through fusion and reranking.
+`gno query` uses the document graph as a retrieval adjunct by default. After BM25 and vector candidates are found, GNO takes the top seeds, follows a bounded one-hop set of graph neighbors, and feeds those added candidates back through fusion and reranking.
 
-This is not graph traversal mode. Missing graph data, missing embeddings, or unavailable similarity edges degrade to the normal hybrid path. Explicit wiki/markdown links are weighted above inferred path fallbacks, ambiguous matches, and vector-similarity edges.
+This is not graph traversal mode. Query-time expansion resolves only outgoing wiki/markdown links and backlinks touching the top seeds; it does not rebuild the collection graph, and semantic similarity remains the vector stage's responsibility. Missing graph data degrades to the normal hybrid path. Explicit links are weighted above inferred path fallbacks and ambiguous matches.
 
-Use `gno query "topic" --graph --explain` to inspect graph activity:
+Use `gno query "topic" --explain` to inspect graph activity:
 
 ```text
 [explain] graph: seeds=5, candidates=4/20, explicit=3, inferred=1, ambiguous=0, similarity=0
 ```
 
-Graph expansion is off by default for latency. Omit `--graph` when you need pure BM25/vector retrieval without graph-neighbor candidates.
+Graph expansion is on by default in balanced and thorough retrieval. Use `--no-graph` for pure BM25/vector retrieval without graph-neighbor candidates; `--fast` also skips it.
 
 ### Tiered Top-Rank Bonus
 

@@ -158,6 +158,7 @@ Collection names are case-insensitive on input and normalized to lowercase in re
   for one goal. It compiles exact source spans, coverage gaps, omissions, and
   verification fingerprints in one call.
 - Prefer `gno_query` for normal questions. It is the default hybrid path and returns `uri`, `docid`, snippets, and `line` anchors for follow-up reads.
+- Bounded graph expansion is part of normal `gno_query` retrieval. Set `graph: false`, `noGraph: true`, or `fast: true` only when the caller explicitly wants to skip it.
 - Use `gno_search` for exact phrases, filenames, identifiers, error messages, and known symbols.
 - Use `gno_vsearch` for semantic similarity when wording differs and embeddings are current.
 - Use `intent` to disambiguate short or overloaded terms without changing the searched text.
@@ -675,13 +676,13 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
     },
     "noGraph": {
       "type": "boolean",
-      "description": "Compatibility no-op unless graph is also true",
+      "description": "Disable graph neighbor expansion",
       "default": false
     },
     "graph": {
       "type": "boolean",
       "description": "Enable bounded one-hop graph neighbor expansion",
-      "default": false
+      "default": true
     },
     "fast": {
       "type": "boolean",
@@ -734,7 +735,7 @@ Compatibility / migration notes:
 - `intent` is orthogonal to `queryModes`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `candidateLimit` tunes rerank cost without changing retrieval contracts.
 - `exclude` hard-prunes matching docs after retrieval using title/path/body text.
-- `gno_query` does not use graph expansion by default. Set `graph: true` to add capped one-hop graph neighbors after initial retrieval. Explicit links receive stronger treatment than inferred, ambiguous, or similarity edges.
+- `gno_query` uses graph expansion by default. Set `graph: false` or `noGraph: true` to disable capped one-hop wiki/markdown neighbors. Query-time expansion resolves only links touching the top seeds; semantic similarity remains in vector retrieval. Explicit links receive stronger treatment than inferred or ambiguous link matches.
 - `queryModes` is optional; use it only when clients need explicit retrieval intent control.
 - When `queryModes` is present, generated expansion is skipped and provided entries are used directly.
 

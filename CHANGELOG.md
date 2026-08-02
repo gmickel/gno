@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+- Reduced query graph expansion from collection-wide graph resolution to
+  a seed-scoped, batched outgoing-link/backlink lookup. On a measured
+  1,636-document index, the graph stage fell from more than 84 seconds to
+  178–249 milliseconds while preserving one-hop confidence and candidate
+  scoring.
+- Restored bounded graph expansion as the default for balanced and thorough
+  query, Ask, Context, MCP, REST, and SDK retrieval. Use `--no-graph`,
+  `graph: false`, or fast mode for an explicit low-latency opt-out.
+
 ## [1.30.5] - 2026-08-02
 
 ### Fixed

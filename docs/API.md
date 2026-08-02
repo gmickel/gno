@@ -2315,7 +2315,7 @@ details. The endpoint does not persist the Capsule.
   "queryModes": [{ "mode": "term", "text": "launch owner" }],
   "author": "Mina",
   "lang": "en",
-  "graph": false,
+  "graph": true,
   "limit": 8,
   "candidateLimit": 32,
   "budgetTokens": 12000,
@@ -2333,6 +2333,9 @@ model setup. Tag filters are NFC-normalized, lowercased, deduplicated, and
 validated. `limit` caps the merged result pool across all collections;
 `candidateLimit` is distributed across collection retrievals so rerank and
 graph work remains one global budget.
+Balanced and thorough Context requests enable bounded graph expansion when
+`graph` is omitted. Set `graph: false`, or select `depthPolicy: "fast"`, to
+skip it.
 
 JSON responses are the canonical Capsule bytes. `format: "md"` returns the
 shared readable Markdown projection (`text/markdown`) with exact passage bytes
@@ -2432,8 +2435,8 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 | `noExpand`       | boolean | false   | Disable query expansion                                                                                                          |
 | `noRerank`       | boolean | false   | Disable cross-encoder reranking                                                                                                  |
 | `explain`        | boolean | false   | Include per-result retrieval scoring details                                                                                     |
-| `graph`          | boolean | false   | Enable bounded one-hop graph neighbor expansion                                                                                  |
-| `noGraph`        | boolean | false   | Compatibility no-op unless `graph` is also true                                                                                  |
+| `graph`          | boolean | true    | Enable bounded one-hop graph neighbor expansion                                                                                  |
+| `noGraph`        | boolean | false   | Disable graph neighbor expansion                                                                                                 |
 | `tagsAll`        | string  | —       | Comma-separated tags (must have ALL)                                                                                             |
 | `tagsAny`        | string  | —       | Comma-separated tags (must have ANY)                                                                                             |
 
@@ -2443,7 +2446,7 @@ Combined BM25 + vector search with optional reranking. **Recommended for best re
 - `intent` is orthogonal to `queryModes`: intent steers scoring/prompting, while query modes inject caller-provided retrieval expansions.
 - `queryModes` is optional and only needed for explicit retrieval intent control.
 - If `queryModes` is provided, generated expansion is skipped and provided entries are used directly.
-- By default, `/api/query` does not expand through the document graph. Set `graph` to `true` to add capped one-hop graph neighbors after initial retrieval. Explicit links are weighted above inferred, ambiguous, and similarity edges.
+- By default, `/api/query` adds capped one-hop wiki/markdown neighbors after initial retrieval. Set `graph` to `false` or `noGraph` to `true` to disable it. Query-time expansion resolves only links touching the top seeds; semantic similarity remains in vector retrieval. Explicit links are weighted above inferred or ambiguous matches.
 - `query` can also be a multi-line structured query document using `term:`, `intent:`, and `hyde:` lines. See [Structured Query Syntax](./SYNTAX.md).
 
 **Response**:

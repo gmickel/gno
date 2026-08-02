@@ -110,7 +110,7 @@ export const MCP_TOOL_DESCRIPTIONS = {
   vsearch:
     "Vector semantic search. Finds conceptually similar docs with different wording. Structured results preserve optional user-configured context guidance. Best after embeddings are current; use intent to disambiguate short terms. Use gno_query for default hybrid retrieval.",
   query:
-    "Hybrid search (BM25 + vector + optional expansion/reranking). Recommended default. Structured results preserve optional user-configured context guidance with source identity. Use intent for ambiguous terms, queryModes to combine term/intent/hyde strategies, fast=true for quick lookup, thorough=true when recall matters, and candidateLimit to trade latency for coverage.",
+    "Hybrid search (BM25 + vector + default bounded graph expansion + optional query expansion/reranking). Recommended default. Structured results preserve optional user-configured context guidance with source identity. Use intent for ambiguous terms, queryModes to combine term/intent/hyde strategies, fast=true or graph=false for quick lookup, thorough=true when recall matters, and candidateLimit to trade latency for coverage.",
   queryDiagnose:
     "Diagnose why one target document does or does not appear for a query. Use when an important doc is missing, a filter may exclude it, or you need stage-by-stage BM25/vector/fusion/graph/rerank evidence before changing retrieval strategy.",
   get: "Retrieve one document by gno:// URI, docid (#abc123), or collection/path. After search results include line, pass fromLine and lineCount to fetch only the relevant range before expanding to the full document.",
@@ -559,7 +559,9 @@ export const queryInputSchema = z.object({
   fast: z
     .boolean()
     .default(false)
-    .describe("Skip expansion and reranking (~0.7s). Use for quick lookups"),
+    .describe(
+      "Skip query expansion, graph expansion, and reranking (~0.7s). Use for quick lookups"
+    ),
   thorough: z
     .boolean()
     .default(false)
@@ -574,14 +576,11 @@ export const queryInputSchema = z.object({
     .boolean()
     .optional()
     .describe("Override: enable/disable cross-encoder reranking"),
-  noGraph: z
-    .boolean()
-    .optional()
-    .describe("Compatibility no-op unless graph is also true"),
+  noGraph: z.boolean().optional().describe("Disable graph neighbor expansion"),
   graph: z
     .boolean()
     .optional()
-    .describe("Enable bounded one-hop graph neighbor expansion"),
+    .describe("Enable bounded one-hop graph neighbor expansion (default)"),
   explain: z
     .boolean()
     .optional()

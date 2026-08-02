@@ -155,7 +155,7 @@ User query
 ### Retrieval V2 Controls
 
 - **Structured query modes**: callers can pass explicit `term`, `intent`, and `hyde` entries.
-- **Graph expansion**: when `--graph` is passed, hybrid query uses the current document graph as a bounded candidate-generation signal. It starts from top BM25/vector seeds, follows one-hop neighbors, caps added candidates, and weights explicit links above inferred, ambiguous, or similarity edges.
+- **Graph expansion**: balanced and thorough hybrid queries use seed-scoped wiki/markdown links as a bounded candidate-generation signal by default. The stage starts from top BM25/vector seeds, resolves only their outgoing links and backlinks, caps added candidates, and weights explicit links above inferred or ambiguous matches. Semantic similarity remains in the vector stage; query expansion never rebuilds the full collection graph. `--no-graph` and `--fast` skip the stage.
 - **Compatibility**: existing query calls still work; structured modes are opt-in.
 - **Mode behavior**: when structured modes are present, generated expansion is skipped for that query.
 

@@ -71,6 +71,9 @@ For tasks that need a complete, bounded evidence handoff, start with
 omission counts, and capability fallbacks into one deterministic Capsule. Use
 `gno_context_verify` before reusing a saved Capsule. GNO does not save Capsules
 implicitly.
+Balanced and thorough `gno_context`, `gno_query`, and `gno_ask` retrieval use
+bounded graph expansion by default. Set `graph: false` or `noGraph: true`, or
+use fast mode, for an explicit graph-free request.
 
 For `gno_context`, MCP text is the compact, versioned
 `gno-context-agent-v1` projection delivered once to the model. The complete
@@ -1110,9 +1113,9 @@ explain: true
 
 **Search modes** (via parameters):
 
-- **Default**: Preset-aware balanced mode. On `slim` / `slim-tuned`, expansion + reranking; on larger presets, reranking only by default (~2-3s)
-- `fast: true`: Skip both expansion and reranking (~0.7s)
-- `thorough: true`: Expansion + wider rerank pool (~5-8s)
+- **Default**: Preset-aware balanced mode with bounded graph expansion. On `slim` / `slim-tuned`, query expansion + reranking; on larger presets, reranking only by default (~2-3s)
+- `fast: true`: Skip query expansion, graph expansion, and reranking (~0.7s)
+- `thorough: true`: Query expansion + graph expansion + wider rerank pool (~5-8s)
 
 **Agent retry strategy**: Use default mode first. If no relevant results:
 
@@ -1133,6 +1136,7 @@ Optional steering controls:
 - `intent`: disambiguating context for ambiguous queries. It steers expansion, reranking, and snippet selection without being searched directly.
 - `candidateLimit`: max candidates sent to reranking. Lower it for faster responses on CPU-heavy or low-memory setups.
 - `exclude`: hard-prune docs containing any excluded term in title/path/body.
+- `graph`: defaults to `true`; set `false` (or `noGraph: true`) for BM25/vector-only retrieval.
 - `explain`: include per-result scoring details. Active content-type rules add
   the factor, raw/base score, bounded and combined contributions, final score,
   rule source, and full ranking-rules fingerprint. `gno_ask` accepts the same

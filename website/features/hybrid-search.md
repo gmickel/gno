@@ -55,7 +55,7 @@ The `query` command combines both methods using RRF, a proven algorithm that mer
 gno query "authentication best practices"
 ```
 
-`gno query --graph` also uses the document graph as a bounded retrieval signal. It starts from the top BM25/vector seeds, adds capped one-hop neighbors, and weights explicit wiki/markdown links above inferred, ambiguous, or similarity edges before reranking. Graph expansion is off by default for low-latency queries.
+`gno query` also uses document links as a bounded retrieval signal by default. It starts from the top BM25/vector seeds, resolves only their outgoing wiki/markdown links and backlinks, adds capped one-hop neighbors, and weights explicit links above inferred or ambiguous matches before reranking. Semantic similarity remains in the vector stage, so query-time expansion never rebuilds the full collection graph. Use `--no-graph` or `--fast` when you want to skip the graph stage.
 
 When stdout is a TTY, GNO can also wrap the visible `gno://...` result URI in a clickable terminal hyperlink that resolves to the source file path, with best-effort line hints when available.
 
