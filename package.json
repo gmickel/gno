@@ -179,7 +179,7 @@
     "lucide-react": "1.27.0",
     "markitdown-ts": "0.0.10",
     "minimatch": "10.2.6",
-    "nanoid": "5.1.6",
+    "nanoid": "6.0.0",
     "node-llama-cpp": "3.19.1",
     "officeparser": "6.0.4",
     "pdfjs-dist": "5.7.284",
