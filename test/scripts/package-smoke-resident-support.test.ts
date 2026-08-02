@@ -124,6 +124,46 @@ describe("packed warm model reuse validation", () => {
     expect(isValidPackedWarmModelReuse(before, after, 4)).toBe(true);
   });
 
+  test("accepts exactly one recovery load during concurrent reuse", () => {
+    const before = models({
+      loadedModels: 0,
+      leaseAcquisitions: 5,
+      leaseReleases: 5,
+      loadAttempts: 1,
+      loadSuccesses: 0,
+      loadFailures: 1,
+    });
+    const after = models({
+      loadedModels: 1,
+      leaseAcquisitions: 9,
+      leaseReleases: 9,
+      loadAttempts: 2,
+      loadSuccesses: 1,
+      loadFailures: 1,
+    });
+    expect(isValidPackedWarmModelReuse(before, after, 4)).toBe(true);
+  });
+
+  test("rejects more than one recovery load during concurrent reuse", () => {
+    const before = models({
+      loadedModels: 0,
+      leaseAcquisitions: 5,
+      leaseReleases: 5,
+      loadAttempts: 1,
+      loadSuccesses: 0,
+      loadFailures: 1,
+    });
+    const after = models({
+      loadedModels: 1,
+      leaseAcquisitions: 9,
+      leaseReleases: 9,
+      loadAttempts: 3,
+      loadSuccesses: 2,
+      loadFailures: 1,
+    });
+    expect(isValidPackedWarmModelReuse(before, after, 4)).toBe(false);
+  });
+
   const recoveredBefore = models({
     leaseAcquisitions: 2,
     leaseReleases: 2,

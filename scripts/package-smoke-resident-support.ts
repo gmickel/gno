@@ -327,10 +327,9 @@ export function residentOwnershipState(status: ResidentStatus): object {
 }
 
 /**
- * Accept settled warm reuse even after a recovered prior load failure
- * (e.g. loadAttempts=2, loadSuccesses=1, loadFailures=1, loadedModels=1).
- * Reject unloaded/unsuccessful pre-state, inconsistent counters, new loads
- * during reuse, unbalanced leases, or leftover active/inflight state.
+ * Accept settled warm reuse and one recovery load after a prior failed warmup.
+ * Reject inconsistent counters, more than one recovery load, new failures,
+ * unbalanced leases, or leftover active/inflight state.
  */
 export function isValidPackedWarmModelReuse(
   before: ResidentStatus["models"],
@@ -344,16 +343,23 @@ export function isValidPackedWarmModelReuse(
     before.activeLeases === 0 &&
     before.leaseAcquisitions === before.leaseReleases &&
     before.inflightLoads === 0;
-  if (!beforeSettled) {
-    return false;
-  }
+  const beforeRecoverable =
+    before.loadedModels === 0 &&
+    before.loadSuccesses === 0 &&
+    before.loadAttempts === before.loadFailures &&
+    before.loadFailures >= 1 &&
+    before.activeLeases === 0 &&
+    before.leaseAcquisitions === before.leaseReleases &&
+    before.inflightLoads === 0;
+  if (!(beforeSettled || beforeRecoverable)) return false;
 
   const acquired = after.leaseAcquisitions - before.leaseAcquisitions;
   const released = after.leaseReleases - before.leaseReleases;
+  const expectedLoadDelta = beforeRecoverable ? 1 : 0;
   return (
-    after.loadedModels === before.loadedModels &&
-    after.loadAttempts === before.loadAttempts &&
-    after.loadSuccesses === before.loadSuccesses &&
+    after.loadedModels === 1 &&
+    after.loadAttempts === before.loadAttempts + expectedLoadDelta &&
+    after.loadSuccesses === before.loadSuccesses + expectedLoadDelta &&
     after.loadFailures === before.loadFailures &&
     acquired === expectedLeaseCount &&
     released === acquired &&
