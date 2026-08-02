@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-60-reference-safe-file-operations-and-refactors",
   "spec_path": ".flow/tasks/fn-60-reference-safe-file-operations-and-refactors.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Ship reference-aware rename and duplicate flows for editable notes",
   "updated_at": "2026-04-05T12:10:00Z"
 }

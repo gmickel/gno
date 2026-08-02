@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-60-reference-safe-file-operations-and-refactors",
   "spec_path": ".flow/tasks/fn-60-reference-safe-file-operations-and-refactors.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add move and create-folder flows to Browse with reference safety",
   "updated_at": "2026-04-05T12:10:00Z"
 }

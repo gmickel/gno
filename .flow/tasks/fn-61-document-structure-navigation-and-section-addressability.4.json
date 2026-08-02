@@ -11,7 +11,7 @@
   "priority": 1,
   "spec": "fn-61-document-structure-navigation-and-section-addressability",
   "spec_path": ".flow/tasks/fn-61-document-structure-navigation-and-section-addressability.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Polish section-navigation docs website and end-to-end coverage",
   "updated_at": "2026-04-05T12:10:00Z"
 }

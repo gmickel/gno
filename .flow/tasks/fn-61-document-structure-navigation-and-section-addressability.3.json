@@ -11,7 +11,7 @@
   "priority": 1,
   "spec": "fn-61-document-structure-navigation-and-section-addressability",
   "spec_path": ".flow/tasks/fn-61-document-structure-navigation-and-section-addressability.3.md",
-  "status": "todo",
+  "status": "done",
   "title": "Ship section deep links and copy-link actions across document surfaces",
   "updated_at": "2026-04-05T12:10:00Z"
 }

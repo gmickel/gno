@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-61-document-structure-navigation-and-section-addressability",
   "spec_path": ".flow/tasks/fn-61-document-structure-navigation-and-section-addressability.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Build shared heading extraction and stable section anchor contract",
   "updated_at": "2026-04-05T12:10:00Z"
 }

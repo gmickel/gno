@@ -8,7 +8,7 @@
   "priority": 1,
   "spec": "fn-60-reference-safe-file-operations-and-refactors",
   "spec_path": ".flow/tasks/fn-60-reference-safe-file-operations-and-refactors.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Define shared refactor planner for editable note file operations",
   "updated_at": "2026-04-05T12:10:00Z"
 }

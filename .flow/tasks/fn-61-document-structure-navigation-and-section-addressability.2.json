@@ -10,7 +10,7 @@
   "priority": 1,
   "spec": "fn-61-document-structure-navigation-and-section-addressability",
   "spec_path": ".flow/tasks/fn-61-document-structure-navigation-and-section-addressability.2.md",
-  "status": "todo",
+  "status": "done",
   "title": "Add outline pane and section navigation to DocView",
   "updated_at": "2026-04-05T12:10:00Z"
 }
