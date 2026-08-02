@@ -17,6 +17,7 @@ import type {
 } from "../../src/store/types";
 
 import { getContentTypeBoostMetadata } from "../../src/pipeline/content-type-boost";
+import { expandGraphCandidates } from "../../src/pipeline/graph-retrieval";
 import { searchHybrid } from "../../src/pipeline/hybrid";
 import { getProjectAffinityMetadata } from "../../src/pipeline/project-affinity";
 import {
@@ -276,6 +277,68 @@ const TEST_COLLECTIONS: CollectionRow[] = [
 ];
 
 describe("searchHybrid targeted document lookup", () => {
+  test("caps mirror-expanded graph seeds before scoped loading", async () => {
+    const capturedSeedIds: number[][] = [];
+    const seedDocs = Array.from({ length: 6 }, (_, index) => ({
+      ...makeDoc(6 - index, "shared-seed"),
+      docid: `#seed-${6 - index}`,
+      relPath: `seed-${6 - index}.md`,
+    }));
+    const neighbor = makeDoc(7, "neighbor");
+    const store: Partial<StorePort> = {
+      getDocumentsByMirrorHashes: async () => ({
+        ok: true as const,
+        value: seedDocs,
+      }),
+      getGraphNeighborsForSeeds: async ({ seedDocumentIds }) => {
+        capturedSeedIds.push(seedDocumentIds);
+        return {
+          ok: true as const,
+          value: {
+            links: [
+              {
+                source: "#seed-1",
+                target: neighbor.docid,
+                type: "wiki",
+                weight: 1,
+                confidence: "explicit",
+                audit: { resolution: "exact-title", matchCount: 1 },
+              },
+            ],
+            meta: {
+              seedDocumentIds,
+              examinedLinkRows: 1,
+              returnedEdges: 1,
+            },
+          },
+        };
+      },
+      getDocumentsByDocids: async () => ({
+        ok: true as const,
+        value: [neighbor],
+      }),
+      getChunksBatch: async () => ({
+        ok: true as const,
+        value: new Map([["neighbor", [makeChunk("neighbor", 0)]]]),
+      }),
+    };
+
+    const result = await expandGraphCandidates(store as StorePort, [
+      {
+        mirrorHash: "shared-seed",
+        seq: 0,
+        bm25Rank: 1,
+        vecRank: null,
+        fusionScore: 1,
+        sources: ["bm25"],
+      },
+    ]);
+
+    expect(capturedSeedIds).toEqual([[1, 2, 3, 4, 5]]);
+    expect(result.meta.seedCount).toBe(5);
+    expect(result.candidates).toEqual([{ mirrorHash: "neighbor", seq: 0 }]);
+  });
+
   test("refreshes planner ranks after auxiliary ordering for Capsule consumers", async () => {
     const plain = makeDoc(1, "plain");
     const decision = makeDoc(2, "decision", {

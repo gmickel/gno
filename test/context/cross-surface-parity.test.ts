@@ -271,7 +271,7 @@ describe("Context Capsule REST/MCP parity", () => {
     ).toThrow("tagsAll contains an invalid tag");
   });
 
-  test("enables graph retrieval by default outside the fast depth policy", () => {
+  test("enables graph outside fast and keeps fast retrieval lexical-only", () => {
     const normalizeGraph = (
       depthPolicy: "fast" | "balanced" | "thorough",
       graph?: boolean
@@ -291,6 +291,7 @@ describe("Context Capsule REST/MCP parity", () => {
     expect(normalizeGraph("balanced")).toBe(true);
     expect(normalizeGraph("thorough")).toBe(true);
     expect(normalizeGraph("fast")).toBe(false);
+    expect(normalizeGraph("fast", true)).toBe(false);
     expect(normalizeGraph("balanced", false)).toBe(false);
   });
 

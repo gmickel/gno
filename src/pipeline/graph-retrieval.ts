@@ -291,8 +291,7 @@ export async function expandGraphCandidates(
     return { candidates: [], meta };
   }
 
-  const seedByDocid = new Map<string, { doc: DocumentRow; rank: number }>();
-  const seedDocids = new Set<string>();
+  const rankedSeedDocs: Array<{ doc: DocumentRow; rank: number }> = [];
   for (const doc of seedDocsResult.value) {
     if (!doc.mirrorHash) {
       continue;
@@ -311,11 +310,27 @@ export async function expandGraphCandidates(
     if (rank <= 0) {
       continue;
     }
-    seedByDocid.set(doc.docid, { doc, rank });
-    seedDocids.add(doc.docid);
+    rankedSeedDocs.push({ doc, rank });
   }
-  meta.seedCount = seedDocids.size;
-  if (seedDocids.size === 0) {
+  rankedSeedDocs.sort(
+    (left, right) =>
+      left.rank - right.rank ||
+      left.doc.id - right.doc.id ||
+      left.doc.docid.localeCompare(right.doc.docid)
+  );
+
+  const seedByDocid = new Map<string, { doc: DocumentRow; rank: number }>();
+  for (const seed of rankedSeedDocs) {
+    if (seedByDocid.size >= GRAPH_SEED_LIMIT) {
+      break;
+    }
+    if (!seedByDocid.has(seed.doc.docid)) {
+      seedByDocid.set(seed.doc.docid, seed);
+    }
+  }
+  const seedDocids = new Set(seedByDocid.keys());
+  meta.seedCount = seedByDocid.size;
+  if (seedByDocid.size === 0) {
     meta.fallbackReasons.push("graph_seed_lookup_empty");
     return { candidates: [], meta };
   }

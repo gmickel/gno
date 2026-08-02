@@ -74,6 +74,15 @@ const wikiKeysForSeed = (seed: SeedDocRow): Set<string> => {
   return keySet;
 };
 
+const matchesWikiKey = (targetRefNorm: string, keys: Set<string>): boolean => {
+  for (const key of keys) {
+    if (targetRefNorm === key || targetRefNorm.endsWith(`/${key}`)) {
+      return true;
+    }
+  }
+  return false;
+};
+
 const loadSeeds = (db: Database, seedDocumentIds: number[]): SeedDocRow[] => {
   const uniqueIds = [...new Set(seedDocumentIds)]
     .filter((id) => Number.isInteger(id) && id > 0)
@@ -101,52 +110,54 @@ const collectIncomingCandidateLinks = (
   let examinedLinkRows = 0;
   const seedIdSet = new Set(seeds.map((seed) => seed.id));
 
+  const wikiKeysByCollection = new Map<string, Set<string>>();
   for (const seed of seeds) {
-    const keySet = wikiKeysForSeed(seed);
-    const wikiConditions: string[] = [];
-    const wikiParams: string[] = [];
-
-    for (const key of keySet) {
-      wikiConditions.push("dl.target_ref_norm = ?");
-      wikiParams.push(key);
-      wikiConditions.push(
-        `(substr(dl.target_ref_norm, -length(?)) = ?
-          AND (length(dl.target_ref_norm) = length(?)
-            OR substr(dl.target_ref_norm, -length(?) - 1, 1) = '/'))`
-      );
-      wikiParams.push(key, key, key, key);
+    const keys = wikiKeysByCollection.get(seed.collection) ?? new Set<string>();
+    for (const key of wikiKeysForSeed(seed)) {
+      keys.add(key);
     }
+    wikiKeysByCollection.set(seed.collection, keys);
+  }
 
-    if (wikiConditions.length > 0) {
-      const wikiRows = db
-        .query<RawLinkRow & { source_doc_id: number }, string[]>(
-          `SELECT dl.id, dl.source_doc_id, src.docid AS source_docid,
-             src.collection AS source_collection, dl.target_ref_norm,
-             dl.target_collection, dl.link_type
-           FROM doc_links dl
-           JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
-           WHERE dl.link_type = 'wiki'
-             AND (${wikiConditions.join(" OR ")})
-             AND (
-               (dl.target_collection IS NULL AND src.collection = ?)
-               OR dl.target_collection = ?
-             )
-             ${collection ? "AND src.collection = ?" : ""}`
-        )
-        .all(
-          ...wikiParams,
-          seed.collection,
-          seed.collection,
-          ...(collection ? [collection] : [])
-        );
-      examinedLinkRows += wikiRows.length;
-      for (const row of wikiRows) {
-        if (!seedIdSet.has(row.source_doc_id)) {
-          linksById.set(row.id, row);
-        }
+  const targetCollections = [...wikiKeysByCollection.keys()];
+  if (targetCollections.length > 0) {
+    const collectionPlaceholders = targetCollections.map(() => "?").join(",");
+    const wikiRows = db
+      .query<RawLinkRow & { source_doc_id: number }, string[]>(
+        `SELECT dl.id, dl.source_doc_id, src.docid AS source_docid,
+           src.collection AS source_collection, dl.target_ref_norm,
+           dl.target_collection, dl.link_type
+         FROM doc_links dl
+         JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
+         WHERE dl.link_type = 'wiki'
+           AND (
+             (dl.target_collection IS NULL
+               AND src.collection IN (${collectionPlaceholders}))
+             OR dl.target_collection IN (${collectionPlaceholders})
+           )
+           ${collection ? "AND src.collection = ?" : ""}`
+      )
+      .all(
+        ...targetCollections,
+        ...targetCollections,
+        ...(collection ? [collection] : [])
+      );
+    examinedLinkRows += wikiRows.length;
+
+    for (const row of wikiRows) {
+      const targetCollection = row.target_collection ?? row.source_collection;
+      const keys = wikiKeysByCollection.get(targetCollection);
+      if (
+        keys &&
+        !seedIdSet.has(row.source_doc_id) &&
+        matchesWikiKey(row.target_ref_norm, keys)
+      ) {
+        linksById.set(row.id, row);
       }
     }
+  }
 
+  for (const seed of seeds) {
     const mdRows = db
       .query<RawLinkRow & { source_doc_id: number }, string[]>(
         `SELECT dl.id, dl.source_doc_id, src.docid AS source_docid,

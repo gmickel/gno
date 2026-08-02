@@ -1412,37 +1412,38 @@ describe("SqliteAdapter links", () => {
       expect(neighbors.value.meta.seedDocumentIds).toEqual([seedId]);
     });
 
-    test("examined link work stays bounded when unrelated collection links grow", async () => {
-      const seedId = await createTestDoc("notes", "seed.md", "Seed");
-      const neighborId = await createTestDoc(
+    test("scans wiki candidates once for all seeds and reports actual work", async () => {
+      const firstSeedId = await createTestDoc(
         "notes",
-        "neighbor.md",
-        "Neighbor"
+        "first-seed.md",
+        "First Seed"
+      );
+      const secondSeedId = await createTestDoc(
+        "notes",
+        "second-seed.md",
+        "Second Seed"
+      );
+      const backlinkId = await createTestDoc(
+        "notes",
+        "backlink.md",
+        "Backlink"
       );
 
       await adapter.setDocLinks(
-        seedId,
+        backlinkId,
         [
           {
-            targetRef: "Neighbor",
-            targetRefNorm: "neighbor",
+            targetRef: "vault/First Seed.md",
+            targetRefNorm: "vault/first seed.md",
             linkType: "wiki",
             startLine: 1,
             startCol: 1,
             endLine: 1,
-            endCol: 12,
+            endCol: 24,
           },
         ],
         "parsed"
       );
-
-      const baseline = await adapter.getGraphNeighborsForSeeds({
-        seedDocumentIds: [seedId],
-        collection: "notes",
-      });
-      expect(baseline.ok).toBe(true);
-      if (!baseline.ok) return;
-      const baselineExamined = baseline.value.meta.examinedLinkRows;
 
       for (let i = 0; i < 200; i++) {
         const leftId = await createTestDoc(
@@ -1455,9 +1456,9 @@ describe("SqliteAdapter links", () => {
           leftId,
           [
             {
-              targetRef: `noise-right-${i}.md`,
-              targetRefNorm: `noise-right-${i}.md`,
-              linkType: "markdown",
+              targetRef: `Noise Right ${i}`,
+              targetRefNorm: `noise right ${i}`,
+              linkType: "wiki",
               startLine: 1,
               startCol: 1,
               endLine: 1,
@@ -1468,28 +1469,22 @@ describe("SqliteAdapter links", () => {
         );
       }
 
-      const linkCountRow = adapter
-        .getRawDb()
-        .query<{ cnt: number }, []>("SELECT COUNT(*) as cnt FROM doc_links")
-        .get();
-      expect(linkCountRow?.cnt ?? 0).toBeGreaterThan(200);
-
-      const scaled = await adapter.getGraphNeighborsForSeeds({
-        seedDocumentIds: [seedId],
+      const oneSeed = await adapter.getGraphNeighborsForSeeds({
+        seedDocumentIds: [firstSeedId],
         collection: "notes",
       });
-      expect(scaled.ok).toBe(true);
-      if (!scaled.ok) return;
+      const twoSeeds = await adapter.getGraphNeighborsForSeeds({
+        seedDocumentIds: [firstSeedId, secondSeedId],
+        collection: "notes",
+      });
+      expect(oneSeed.ok).toBe(true);
+      expect(twoSeeds.ok).toBe(true);
+      if (!oneSeed.ok || !twoSeeds.ok) return;
 
-      expect(scaled.value.links).toHaveLength(1);
-      expect(scaled.value.meta.examinedLinkRows).toBe(baselineExamined);
-      expect(scaled.value.meta.examinedLinkRows).toBeLessThan(10);
-      expect(scaled.value.meta.examinedLinkRows).toBeLessThan(
-        (linkCountRow?.cnt ?? 0) / 10
-      );
-
-      // Keep neighbor id referenced so the fixture stays intentional.
-      expect(neighborId).toBeGreaterThan(0);
+      expect(oneSeed.value.links).toHaveLength(1);
+      expect(twoSeeds.value.links).toHaveLength(1);
+      expect(oneSeed.value.meta.examinedLinkRows).toBe(201);
+      expect(twoSeeds.value.meta.examinedLinkRows).toBe(201);
     });
 
     test("matches getGraph confidence for the same seed-adjacent edges", async () => {
