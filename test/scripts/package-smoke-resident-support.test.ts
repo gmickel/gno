@@ -67,13 +67,23 @@ describe("packed resident shutdown exits", () => {
   });
 
   test("allows graceful shutdown beyond the old proportional deadline", async () => {
+    let markReady: (() => void) | undefined;
+    const ready = new Promise<void>((resolve) => {
+      markReady = resolve;
+    });
     const child = Bun.spawn(
       [
         process.execPath,
         "-e",
-        "process.on('SIGTERM', () => setTimeout(() => process.exit(0), 75)); setInterval(() => {}, 1000)",
+        "process.on('SIGTERM', () => setTimeout(() => process.exit(0), 75)); process.send?.('ready'); setInterval(() => {}, 1000)",
       ],
-      { stdout: "pipe", stderr: "pipe" }
+      {
+        stdout: "pipe",
+        stderr: "pipe",
+        ipc(message) {
+          if (message === "ready") markReady?.();
+        },
+      }
     );
     const running = {
       child,
@@ -81,7 +91,7 @@ describe("packed resident shutdown exits", () => {
       stderr: new Response(child.stderr).text(),
     };
 
-    await Bun.sleep(25);
+    await ready;
     await stopResident(running, "delayed resident", 500);
     expect(child.exitCode).toBe(0);
   });
