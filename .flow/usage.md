@@ -15,9 +15,14 @@ Task tracking for AI agents. All state lives in `.flow/`.
 
 - Specs: `fn-N-slug` where slug is derived from title (e.g., fn-1-add-oauth, fn-2-fix-login-bug)
 - Tasks: `fn-N-slug.M` (e.g., fn-1-add-oauth.1, fn-2-fix-login-bug.2)
+- Charts share the native `fn-N` domain with specs (never the same id)
 - Tracker-keyed ids coexist and resolve (`wor-17-slug`, `gh-123-slug`, `gl-456-slug`). Default: `config set tracker.specIds tracker`.
 
 **Backwards compatibility**: Legacy formats `fn-N`, `fn-N-xxx`, `fn-N.M`, and `fn-N-xxx.M` still work.
+
+## Chart (optional pre-capture discovery)
+
+One oversized/unclear idea; one decision (`<chart-id>.D<n>`) per invocation; never a pilot stage. `chart frontier` is the sole work-mode selection input; `chart claim` then `chart resolve --answer-file` close it; every work invocation ends with one greppable `CHART_VERDICT=...` line. Chart never writes specs; capture ingests the briefing.
 
 ## Common Commands
 
@@ -67,7 +72,7 @@ claude -p "<self-contained prompt>" --output-format text --allowedTools "Read,Ba
 # the prompt, so `grok -p --always-approve "..."` misparses (live-verified failure mode).
 # Model + effort are separate flags: `-m grok-4.5 --reasoning-effort high` (NOT `-m grok-4.5-high`).
 grok -m grok-4.5 --reasoning-effort high -p "<self-contained prompt>" </dev/null             # read-only one-shot
-grok --permission-mode acceptEdits -m grok-4.5 --reasoning-effort high -p "<self-contained prompt>" </dev/null  # WRITE mode (edits files - run inside a trusted git dir; --always-approve = blanket). Extras: --check, --best-of-n N, --json-schema. Grok 4.5 = fast + cheap first-draft; route to bulk/implementation, not UI or final taste-critical work.
+grok --always-approve --no-plan -m grok-4.5 --reasoning-effort high -p "<self-contained prompt>" </dev/null  # WRITE mode (blanket; trusted git dir ONLY - acceptEdits skips Bash and silently truncates shell-using tasks). Extras: --check, --best-of-n N, --json-schema. Grok 4.5 = fast cheap first-draft; bulk/implementation, never taste-critical work.
 ```
 
 The codex bridge also works FROM a Codex host (same-family self-bridge): `codex exec -m gpt-5.6-terra -c model_reasoning_effort=medium "<prompt>"` steers a different GPT tier reliably even where `spawn_agent`/Multi-Agent-V2 per-spawn model steering is broken (openai/codex#33268 and friends, Jul 2026). Keep the child prompt flat - no nested subagents.
@@ -78,7 +83,7 @@ Harness-relative: every direction works — from Claude Code the bridges are `co
 
 **Cursor host** — agent-frontmatter tiering is ignored on Cursor; orchestration lives in AGENTS.md + caller-side pins (setup scaffolds both). Distinct from the headless `cursor` CLI backend below.
 
-- **Pin grammar:** Cursor slugs (e.g. `claude-opus-5-thinking-high`, `gpt-5.6-sol-high`); bracket params where the host accepts them. Slugs are volatile — enumerate via host catalog or `cursor-agent --list-models`; re-run `/flow-next:setup` to refresh.
+- **Pin grammar:** Cursor slugs (e.g. `claude-opus-5-thinking-high`, `gpt-5.6-sol-high`); bracket params where the host accepts them. Slugs are volatile — enumerate via host catalog or `cursor-agent --list-models`; re-run `$flow-next-setup` to refresh.
 - **Tier degrade:** `agents/*.md` family aliases (`haiku`/`sonnet`/`opus`) resolve to **inherit** (session model) on Cursor; no alias-to-slug rewrite exists or is planned. Caller-side pins are the escape hatch.
 - **`review.backend host`:** bare only (`host:<model>` rejected). Pins live in the AGENTS.md model-routing section — **not** on the backend string. Host-native fresh-context subagent; preferred from inside Cursor.
 - **≠ `cursor` CLI backend:** `review.backend cursor:…` / `cursor-agent` is a separate headless subprocess path (multi-family reach from outside Cursor; circular from inside).
@@ -87,7 +92,7 @@ Harness-relative: every direction works — from Claude Code the bridges are `co
 ```bash
 # In-session impl + host review (cross-family pin from AGENTS.md model-routing)
 .flow/bin/flowctl config set review.backend host     # or per-run: --review=host
-# /flow-next:work fn-12  → session implements; host review pins e.g. gpt-5.6-sol-high when writer is Claude-family
+# $flow-next-work fn-12  → session implements; host review pins e.g. gpt-5.6-sol-high when writer is Claude-family
 
 # Bridges FROM a Cursor host (same recipes as above, reverse direction)
 claude -p "<self-contained prompt>" --output-format text --allowedTools "Read,Bash" </dev/null
@@ -101,7 +106,7 @@ codex exec -s read-only --skip-git-repo-check "<prompt>" </dev/null
 # bridge with deterministic rails for unattended loops; its task and spec paths are the brief.
 # Delegate implementation to codex (host keeps gating/git/review; codex only writes code)
 .flow/bin/flowctl config set work.delegate codex     # value MUST be `codex` to activate (OFF by default, consent-gated)
-# …or per-run, no config:  /flow-next:work fn-1-add-oauth delegate:codex
+# …or per-run, no config:  $flow-next-work fn-1-add-oauth delegate:codex
 # Steer the delegate: work.delegateModel (default gpt-5.6-terra, passed as -m) +
 # work.delegateEffort (default medium, passed as -c model_reasoning_effort=)
 
@@ -116,7 +121,7 @@ codex exec -s read-only --skip-git-repo-check "<prompt>" </dev/null
 Work the ready specs — decide per spec by complexity: auth/migration tasks you
 implement yourself; plain CRUD is delegated (delegate:codex). Reviews from codex either way.
 
-Run /flow-next:work fn-12 with delegate:codex. If a task's review comes back
+Run $flow-next-work fn-12 with delegate:codex. If a task's review comes back
 NEEDS_WORK twice, stop delegating it and implement it yourself on the session model.
 ```
 

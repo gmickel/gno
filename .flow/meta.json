@@ -3,10 +3,10 @@
   "schema_version": 3,
   "setup": {
     "block_hashes": {
-      "AGENTS.md": "de6b082414e956b3b8e2c02b2f7823bcabc1b18b96f56b3095191265d4e06d07"
+      "AGENTS.md": "74478984dade77a42ef78a359bd8f4253370636644f82ba2a36b818b8301c568"
     }
   },
-  "setup_date": "2026-07-26T11:57:11Z",
+  "setup_date": "2026-08-02T20:30:34Z",
   "setup_mode": "copy",
-  "setup_version": "3.5.0"
+  "setup_version": "3.13.0"
 }

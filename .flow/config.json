@@ -1,8 +1,13 @@
 {
+  "$schema": "https://flow-next.dev/schema/flow-config.schema.json",
   "artifacts": {
     "html": {
       "enabled": false
     }
+  },
+  "chart": {
+    "claimStaleAfter": 24,
+    "maxDecisions": 12
   },
   "land": {
     "automatedReviewers": "",
@@ -31,7 +36,7 @@
         "codex": "gpt-5.6-sol:medium"
       }
     },
-    "verifiedAt": "2026-07-26",
+    "verifiedAt": "2026-08-02",
     "verifiedWith": "codex 0.145.0; cursor-agent 2026.07.23-e383d2b; grok 0.2.112; copilot 1.0.75"
   },
   "pilot": {
@@ -53,6 +58,7 @@
     "github": false
   },
   "tracker": {
+    "charts": "off",
     "conflictTiebreak": "always-ask",
     "enabled": true,
     "perEvent": {

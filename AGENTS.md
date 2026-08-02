@@ -464,21 +464,21 @@ Work is NOT complete until pushed to remote.
 This project uses Flow-Next. Use `.flow/bin/flowctl` for ALL task tracking. Do NOT create markdown TODOs or use TodoWrite. Re-anchor (re-read spec + task status) before every task.
 
 ```bash
-.flow/bin/flowctl list                # specs + tasks
-.flow/bin/flowctl show fn-N.M         # view task
-.flow/bin/flowctl start fn-N.M        # claim -> implement -> commit
+.flow/bin/flowctl list # specs + tasks
+.flow/bin/flowctl show fn-N.M # view task
+.flow/bin/flowctl start fn-N.M # claim -> implement -> commit
 .flow/bin/flowctl done fn-N.M --summary-file s.md --evidence-json e.json
 # e.json: {"commits": ["<sha>"], "tests": ["<command>"], "prs": []}
 ```
 
-**Creating a spec:** write it directly - do NOT use `/flow-next:plan` (task breakdown only). Scaffold cascade (first match wins): `SPEC.md` -> `spec.md` -> `.flow/templates/spec.md` -> bundled template.
+**Creating a spec:** write it directly - do NOT use `$flow-next-plan` (task breakdown only). Scaffold cascade (first match wins): `SPEC.md` -> `spec.md` -> `.flow/templates/spec.md` -> bundled template.
 
 ```bash
 .flow/bin/flowctl spec create --title "Short title" --json
 .flow/bin/flowctl spec set-plan <spec-id> --file plan.md
 ```
 
-Then `/flow-next:plan <spec-id>`.
+Then `$flow-next-plan <spec-id>`.
 
 **More:** `.flow/bin/flowctl --help` or `.flow/usage.md`
 <!-- END FLOW-NEXT -->
@@ -618,6 +618,7 @@ Rankings: higher is better. **Cost** means subscription headroom, not token pric
 
 | Model | Cost | Speed | Intelligence | Taste |
 |---|---:|---:|---:|---:|
+| opus-5 @ medium | 5 | 4 | 9 | 9 |
 | fable-5 | 2 | 2 | 10 | 9 |
 | opus-4.8 | 4 | 3 | 7 | 8 |
 | gpt-5.6-sol | 8 | 5 | 9 | 6 |
@@ -633,7 +634,8 @@ Default orchestration:
 - Planning and review stay in-harness. Use native agents or subagents where useful. Never shell out to `codex`, `cursor-agent`, `grok`, Copilot, or RepoPrompt for planning or review.
 - Implementation defaults to Grok 4.5 through exactly one editing bridge:
   - Cursor quota available: `cursor-agent -p --force --model cursor-grok-4.5-high "<self-contained implementation brief>"`
-  - Grok quota available: `grok --permission-mode acceptEdits -m grok-4.5-high -p "<self-contained implementation brief>"`
+  - Grok quota available: `grok --always-approve --no-plan -m grok-4.5 --reasoning-effort high -p "<self-contained implementation brief>"`
+- Do not use Grok `acceptEdits` for shell-using implementation tasks; it can skip Bash and silently truncate the work.
 - Pick the bridge with usable quota. If it returns an authentication, rate-limit, credit, or quota error, try the other bridge once. Do not run both speculatively.
 - Run implementation bridges in the foreground from the verified repository root. Give them a self-contained task brief: scope, relevant paths, requirements, acceptance criteria, tests, and explicit prohibitions.
 - Grok edits code only. The host retains task state, review, validation, documentation reconciliation, commits, pushes, releases, and tracker updates.
