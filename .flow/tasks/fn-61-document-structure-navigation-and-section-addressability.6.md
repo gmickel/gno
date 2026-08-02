@@ -36,9 +36,8 @@ Existing `/api/doc/:id/sections` and SDK `getSections()` stay backward compatibl
 - [ ] Shared fixtures prove schema and semantic parity across REST/SDK.
 - [ ] Focused API/SDK tests, specs/docs, and lint pass.
 ## Done summary
-TBD
-
+Exposed bounded SectionTargetV1 creation and conservative resolution through versioned REST and SDK contracts while preserving the existing sections endpoint and getSections API. Added shared canonical citation projection, closed untrusted-input validation, fail-closed transport bounds, schemas, docs, and cross-surface parity regressions.
 ## Evidence
 - Commits:
-- Tests:
+- Tests: bun test focused section REST/SDK/core/schema matrix (47 pass, 0 fail), bun run lint:check (clean), bun scripts/docs-verify.ts (15 pass, 2 model-cache skips, 0 fail), bun test (3664 pass, 2 platform skips, 0 fail)
 - PRs:

@@ -94,6 +94,10 @@ import {
 } from "./routes/links";
 import { createMcpHttpGateway } from "./routes/mcp";
 import {
+  handleCreateSectionTarget,
+  handleResolveSectionTarget,
+} from "./routes/section-targets";
+import {
   handleTraceDelete,
   handleTraceExport,
   handleTraceLabel,
@@ -1167,6 +1171,36 @@ export async function startServer(
             return withSecurityHeaders(
               await handleResidentRead(runtime as ResidentRuntime, req, () =>
                 handleDocSections(store, id, req)
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/doc/:id/section-targets": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const parts = new URL(req.url).pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleCreateSectionTarget(store, id, req)
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/doc/:id/section-targets/resolve": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const parts = new URL(req.url).pathname.split("/");
+            const id = decodeURIComponent(parts[3] || "");
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleResolveSectionTarget(store, id, req)
               ),
               isDev
             );

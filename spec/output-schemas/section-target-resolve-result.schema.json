@@ -1,0 +1,194 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/section-target-resolve-result@1.0",
+  "title": "GNO Section Target Resolve Result",
+  "description": "Conservative section-target resolution result shared by REST and SDK. Citation is present only for navigable exact/recovered statuses. Diagnostics candidates are filtered/capped without truncating identity strings.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "status",
+        "currentFingerprint",
+        "target",
+        "diagnostics",
+        "citation"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "status": {
+          "type": "string",
+          "enum": ["exact", "recovered"]
+        },
+        "currentFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "target": {
+          "$ref": "gno://schemas/section-target@1.0"
+        },
+        "diagnostics": {
+          "$ref": "#/definitions/diagnostics"
+        },
+        "citation": {
+          "$ref": "#/definitions/citation"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "status",
+        "currentFingerprint",
+        "target",
+        "diagnostics"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ambiguous", "stale", "missing"]
+        },
+        "currentFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "target": {
+          "$ref": "gno://schemas/section-target@1.0"
+        },
+        "diagnostics": {
+          "$ref": "#/definitions/diagnostics"
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "safePositiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "safeNonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "candidates": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "anchor",
+              "line",
+              "title",
+              "headingPath",
+              "occurrence"
+            ],
+            "properties": {
+              "anchor": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "line": {
+                "$ref": "#/definitions/safePositiveInteger"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "headingPath": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 6,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                }
+              },
+              "occurrence": {
+                "$ref": "#/definitions/safePositiveInteger"
+              }
+            }
+          }
+        },
+        "candidateCount": {
+          "$ref": "#/definitions/safeNonNegativeInteger",
+          "description": "Total candidate count before transport filtering/capping"
+        },
+        "candidatesTruncated": {
+          "type": "boolean",
+          "description": "True when any candidate was omitted by bounds filtering or the 32-item cap"
+        }
+      },
+      "dependencies": {
+        "candidates": ["candidateCount", "candidatesTruncated"],
+        "candidateCount": ["candidatesTruncated", "candidates"],
+        "candidatesTruncated": ["candidateCount", "candidates"]
+      }
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "anchor",
+        "title",
+        "lineStart",
+        "lineEnd",
+        "sourceFingerprint"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "anchor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "lineStart": {
+          "$ref": "#/definitions/safePositiveInteger"
+        },
+        "lineEnd": {
+          "$ref": "#/definitions/safePositiveInteger"
+        },
+        "sourceFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

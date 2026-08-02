@@ -85,6 +85,9 @@ async function loadAllSchemas(): Promise<void> {
     "collection-egress-policy-set",
     "collection-egress-check",
     "egress-audit-management",
+    "section-target",
+    "section-target-create-result",
+    "section-target-resolve-result",
   ];
 
   for (const name of schemaFiles) {

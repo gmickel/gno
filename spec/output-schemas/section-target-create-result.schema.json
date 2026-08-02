@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/section-target-create-result@1.0",
+  "title": "GNO Section Target Create Result",
+  "description": "Response from creating a durable SectionTargetV1 against a stored document. Canonical uri always comes from the resolved document.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["uri", "target"],
+  "properties": {
+    "uri": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "description": "Canonical stored document URI"
+    },
+    "target": {
+      "$ref": "gno://schemas/section-target@1.0"
+    }
+  }
+}

@@ -52,7 +52,13 @@ import type {
   RetrievalTraceListResult,
   RetrievalTracePurgeResult as RetrievalTraceManagementPurgeResult,
 } from "../core/retrieval-trace-management";
-import type { DocumentSection } from "../core/sections";
+import type {
+  DocumentSection,
+  SectionTargetCreateResult,
+  SectionTargetCreateSelector,
+  SectionTargetResolveResult,
+  SectionTargetV1,
+} from "../core/sections";
 import type { SyncResult } from "../ingestion";
 import type { DownloadPolicy } from "../llm/policy";
 import type {
@@ -67,10 +73,15 @@ import type { IndexStatus } from "../store/types";
 export type {
   AskResult,
   Config,
+  DocumentSection,
   DownloadPolicy,
   IndexStatus,
   SearchOptions,
   SearchResults,
+  SectionTargetCreateResult,
+  SectionTargetCreateSelector,
+  SectionTargetResolveResult,
+  SectionTargetV1,
   SyncResult,
 };
 export type { AskOptions, HybridSearchOptions } from "../pipeline/types";
@@ -345,5 +356,22 @@ export interface GnoClient {
     options: GnoDuplicateNoteOptions
   ): Promise<GnoRefactorNoteResult>;
   getSections(ref: string): Promise<DocumentSection[]>;
+  /**
+   * Create a durable SectionTargetV1 for a heading in a stored document.
+   * Provide exactly one of `anchor` or `line`. Canonical URI comes from the
+   * resolved stored document, never from the caller.
+   */
+  createSectionTarget(
+    ref: string,
+    selector: SectionTargetCreateSelector
+  ): Promise<SectionTargetCreateResult>;
+  /**
+   * Conservatively resolve a SectionTargetV1 against a stored document.
+   * Navigable results include citation evidence; ambiguous/stale/missing do not.
+   */
+  resolveSectionTarget(
+    ref: string,
+    target: SectionTargetV1
+  ): Promise<SectionTargetResolveResult>;
   close(): Promise<void>;
 }

@@ -36,3 +36,25 @@ export {
   isNavigableSectionResolution,
   resolveSectionTarget,
 } from "./section-target-resolve";
+
+export type {
+  SectionCitationV1,
+  SectionResolutionDiagnostics,
+  SectionTargetCreateResult,
+  SectionTargetCreateSelector,
+  SectionTargetResolveResult,
+  TransportValidationResult,
+} from "./section-target-transport";
+export {
+  CANONICAL_URI_EXCEEDS_TRANSPORT_BOUNDS,
+  CITATION_EXCEEDS_TRANSPORT_BOUNDS,
+  SECTION_TARGET_TRANSPORT_BOUNDS,
+  isTransportBoundedCandidate,
+  isTransportBoundedCanonicalUri,
+  isTransportBoundedCitation,
+  parseSectionTargetCreateSelector,
+  parseSectionTargetResolveBody,
+  parseSectionTargetV1,
+  projectSectionTargetCreateResult,
+  projectSectionTargetResolveResult,
+} from "./section-target-transport";

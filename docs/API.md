@@ -48,38 +48,40 @@ CLI.
 
 ### Read Operations
 
-| Endpoint                 | Method | Description                                                 |
-| :----------------------- | :----- | :---------------------------------------------------------- |
-| `/api/health`            | GET    | Health check                                                |
-| `/api/status`            | GET    | Index statistics, onboarding, health, background, bootstrap |
-| `/api/resident/status`   | GET    | Redacted resident lifecycle and bounded counters            |
-| `/api/capabilities`      | GET    | Available features                                          |
-| `/api/collections`       | GET    | List collections                                            |
-| `/api/connectors`        | GET    | Detect in-app connector install state                       |
-| `/api/connectors/verify` | POST   | Explicit read-only connector retrieval proof                |
-| `/api/docs`              | GET    | List documents                                              |
-| `/api/docs/autocomplete` | GET    | Title/path suggestions for wiki-linking and quick switcher  |
-| `/api/note-presets`      | GET    | List note presets and scaffold previews                     |
-| `/api/doc`               | GET    | Get document content                                        |
-| `/api/doc-asset`         | GET    | Get the original source file bytes (Range-capable)          |
-| `/api/doc/:id/sections`  | GET    | Get extracted heading/section structure                     |
-| `/api/events`            | GET    | Server-sent document change events                          |
-| `/api/doc/:id/links`     | GET    | Get outgoing links from doc                                 |
-| `/api/doc/:id/backlinks` | GET    | Get docs linking to this                                    |
-| `/api/doc/:id/similar`   | GET    | Find semantically similar                                   |
-| `/api/graph`             | GET    | Knowledge graph of links                                    |
-| `/api/graph/query`       | POST   | Bounded typed-edge graph traversal                          |
-| `/api/tags`              | GET    | List tags with counts                                       |
-| `/api/search`            | POST   | BM25 keyword search                                         |
-| `/api/query`             | POST   | Hybrid search                                               |
-| `/api/query/diagnose`    | POST   | Diagnose why a target document does or does not retrieve    |
-| `/api/ask`               | POST   | AI-powered Q&A                                              |
-| `/api/context`           | POST   | Compile a deterministic, budgeted evidence Capsule          |
-| `/api/context/verify`    | POST   | Verify a saved Capsule against the active index             |
-| `/api/presets`           | GET    | List model presets                                          |
-| `/api/presets`           | POST   | Switch preset                                               |
-| `/api/models/status`     | GET    | Download status                                             |
-| `/api/models/pull`       | POST   | Start model download                                        |
+| Endpoint                               | Method | Description                                                 |
+| :------------------------------------- | :----- | :---------------------------------------------------------- |
+| `/api/health`                          | GET    | Health check                                                |
+| `/api/status`                          | GET    | Index statistics, onboarding, health, background, bootstrap |
+| `/api/resident/status`                 | GET    | Redacted resident lifecycle and bounded counters            |
+| `/api/capabilities`                    | GET    | Available features                                          |
+| `/api/collections`                     | GET    | List collections                                            |
+| `/api/connectors`                      | GET    | Detect in-app connector install state                       |
+| `/api/connectors/verify`               | POST   | Explicit read-only connector retrieval proof                |
+| `/api/docs`                            | GET    | List documents                                              |
+| `/api/docs/autocomplete`               | GET    | Title/path suggestions for wiki-linking and quick switcher  |
+| `/api/note-presets`                    | GET    | List note presets and scaffold previews                     |
+| `/api/doc`                             | GET    | Get document content                                        |
+| `/api/doc-asset`                       | GET    | Get the original source file bytes (Range-capable)          |
+| `/api/doc/:id/sections`                | GET    | Get extracted heading/section structure                     |
+| `/api/doc/:id/section-targets`         | POST   | Create a durable SectionTargetV1 for a heading              |
+| `/api/doc/:id/section-targets/resolve` | POST   | Conservatively resolve a SectionTargetV1                    |
+| `/api/events`                          | GET    | Server-sent document change events                          |
+| `/api/doc/:id/links`                   | GET    | Get outgoing links from doc                                 |
+| `/api/doc/:id/backlinks`               | GET    | Get docs linking to this                                    |
+| `/api/doc/:id/similar`                 | GET    | Find semantically similar                                   |
+| `/api/graph`                           | GET    | Knowledge graph of links                                    |
+| `/api/graph/query`                     | POST   | Bounded typed-edge graph traversal                          |
+| `/api/tags`                            | GET    | List tags with counts                                       |
+| `/api/search`                          | POST   | BM25 keyword search                                         |
+| `/api/query`                           | POST   | Hybrid search                                               |
+| `/api/query/diagnose`                  | POST   | Diagnose why a target document does or does not retrieve    |
+| `/api/ask`                             | POST   | AI-powered Q&A                                              |
+| `/api/context`                         | POST   | Compile a deterministic, budgeted evidence Capsule          |
+| `/api/context/verify`                  | POST   | Verify a saved Capsule against the active index             |
+| `/api/presets`                         | GET    | List model presets                                          |
+| `/api/presets`                         | POST   | Switch preset                                               |
+| `/api/models/status`                   | GET    | Download status                                             |
+| `/api/models/pull`                     | POST   | Start model download                                        |
 
 ### Write Operations
 
@@ -1479,6 +1481,104 @@ admitted when it connects. GNO rechecks that epoch before every document event
 and heartbeat. After policy rotation, the stream suppresses document URI,
 collection, and relative-path metadata, sends a content-free
 `EGRESS_POLICY_CHANGED` retry event, closes, and unsubscribes.
+
+---
+
+### Document Sections
+
+```http
+GET /api/doc/:id/sections
+```
+
+Returns the extracted heading/section structure for a document. Shape is
+unchanged: `{ "sections": [ { "anchor", "level", "line", "title" }, ... ] }`.
+
+### Create Section Target
+
+```http
+POST /api/doc/:id/section-targets
+Content-Type: application/json
+
+{ "anchor": "setup" }
+```
+
+Create a bounded, versioned `SectionTargetV1` for one heading. Provide exactly
+one selector: `anchor` **or** `line` (1-based heading line). The canonical
+document URI always comes from the resolved stored document — never from the
+caller.
+
+**Response** (`section-target-create-result.schema.json`):
+
+```json
+{
+  "uri": "gno://notes/pilot.md",
+  "target": {
+    "schemaVersion": "1",
+    "document": { "uri": "gno://notes/pilot.md" },
+    "anchor": "setup",
+    "headingPath": ["Guide", "Setup"],
+    "occurrence": 1,
+    "quote": {
+      "exact": "Install Bun first.",
+      "prefix": "\n\n",
+      "suffix": "\n"
+    },
+    "sourceFingerprint": "…64-char sha256…",
+    "hints": { "line": 3, "startOffset": 20, "endOffset": 38 }
+  }
+}
+```
+
+Validation failures (missing/both selectors, malformed JSON, oversized body)
+return `400`. Unknown section → `404`. Faithful target that cannot fit bounds →
+`422`. Stored canonical document URI that exceeds transport `uri` maxLength
+(`1024`) → `422` `VALIDATION` before target creation (never truncated).
+
+### Resolve Section Target
+
+```http
+POST /api/doc/:id/section-targets/resolve
+Content-Type: application/json
+
+{ "target": { "schemaVersion": "1", "...": "…" } }
+```
+
+Conservatively resolve a previously created target against the stored document.
+Statuses: `exact`, `recovered`, `ambiguous`, `stale`, `missing`. A URI mismatch
+between the target and the stored document yields `missing` with
+`diagnostics.reason: "document_uri_mismatch"`.
+
+Navigable (`exact` / `recovered`) responses include `citation` with canonical
+`uri`, current `anchor`/`title`, inclusive `lineStart`/`lineEnd`, and
+`sourceFingerprint`. Non-navigable responses omit `citation` and any navigation
+fields. If a navigable citation cannot fit transport bounds without truncating
+identity, the result becomes non-navigable `stale` with
+`diagnostics.reason: "citation_exceeds_transport_bounds"`. If the stored
+canonical document URI itself exceeds transport `uri` maxLength, resolve returns
+`422` `VALIDATION` before projection (top-level `uri` is not truncated; citation
+fail-closed does not repair it). Ambiguous/stale candidate lists are filtered to
+schema bounds (no identity truncation), capped at 32 items, and report
+`candidateCount` / `candidatesTruncated`.
+
+**Response** (`section-target-resolve-result.schema.json`):
+
+```json
+{
+  "uri": "gno://notes/pilot.md",
+  "status": "exact",
+  "currentFingerprint": "…",
+  "target": { "schemaVersion": "1" },
+  "diagnostics": {},
+  "citation": {
+    "uri": "gno://notes/pilot.md",
+    "anchor": "setup",
+    "title": "Setup",
+    "lineStart": 3,
+    "lineEnd": 6,
+    "sourceFingerprint": "…"
+  }
+}
+```
 
 ---
 

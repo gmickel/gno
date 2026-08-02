@@ -28,6 +28,7 @@ export type { IndexStatus } from "../store/types";
 export { GnoSdkError, sdkError } from "./errors";
 export { createGnoClient } from "./client";
 export type {
+  DocumentSection,
   GnoAskOptions,
   GnoCaptureOptions,
   GnoCaptureResult,
@@ -64,6 +65,10 @@ export type {
   KnowledgeImpactInput,
   KnowledgeImpactResult,
   ListKnowledgeChangesInput,
+  SectionTargetCreateResult,
+  SectionTargetCreateSelector,
+  SectionTargetResolveResult,
+  SectionTargetV1,
 } from "./types";
 export {
   ContextCapsuleContractError,

@@ -10,7 +10,7 @@
   "priority": 2,
   "spec": "fn-61-document-structure-navigation-and-section-addressability",
   "spec_path": ".flow/tasks/fn-61-document-structure-navigation-and-section-addressability.6.md",
-  "status": "todo",
+  "status": "done",
   "title": "Expose section target creation and resolution through REST and SDK",
-  "updated_at": "2026-08-02T20:57:43.369097Z"
+  "updated_at": "2026-08-02T23:33:28.572206Z"
 }

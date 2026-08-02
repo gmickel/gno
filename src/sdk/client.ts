@@ -47,6 +47,10 @@ import type {
   KnowledgeImpactInput,
   KnowledgeImpactResult,
   ListKnowledgeChangesInput,
+  SectionTargetCreateResult,
+  SectionTargetCreateSelector,
+  SectionTargetResolveResult,
+  SectionTargetV1,
 } from "./types";
 
 import {
@@ -122,7 +126,17 @@ import {
   RETRIEVAL_TRACE_METADATA,
   type RetrievalTraceSession,
 } from "../core/retrieval-trace-session";
-import { extractSections } from "../core/sections";
+import {
+  CANONICAL_URI_EXCEEDS_TRANSPORT_BOUNDS,
+  createSectionTarget as createSectionTargetCore,
+  extractSections,
+  isTransportBoundedCanonicalUri,
+  parseSectionTargetCreateSelector,
+  parseSectionTargetV1,
+  projectSectionTargetCreateResult,
+  projectSectionTargetResolveResult,
+  resolveSectionTarget as resolveSectionTargetCore,
+} from "../core/sections";
 import { normalizeStructuredQueryInput } from "../core/structured-query";
 import { parseAndValidateTagFilter } from "../core/tags";
 import {
@@ -1833,6 +1847,62 @@ class GnoClientImpl implements GnoClient {
     this.assertOpen();
     const document = await getDocumentByRef(this.store, this.config, ref, {});
     return extractSections(document.content);
+  }
+
+  async createSectionTarget(
+    ref: string,
+    selector: SectionTargetCreateSelector
+  ): Promise<SectionTargetCreateResult> {
+    this.assertOpen();
+    const parsed = parseSectionTargetCreateSelector(selector);
+    if (!parsed.ok) {
+      throw sdkError("VALIDATION", parsed.error);
+    }
+    const document = await getDocumentByRef(this.store, this.config, ref, {});
+    // Top-level response uri shares schema maxLength — reject before create.
+    if (!isTransportBoundedCanonicalUri(document.uri)) {
+      throw sdkError("VALIDATION", CANONICAL_URI_EXCEEDS_TRANSPORT_BOUNDS);
+    }
+    // Canonical identity from stored document — never from caller.
+    const target = await createSectionTargetCore({
+      content: document.content,
+      uri: document.uri,
+      ...parsed.value,
+    });
+    if (!target) {
+      const sections = extractSections(document.content);
+      const matched =
+        parsed.value.anchor !== undefined
+          ? sections.some((section) => section.anchor === parsed.value.anchor)
+          : sections.some((section) => section.line === parsed.value.line);
+      if (!matched) {
+        throw sdkError("NOT_FOUND", "Section not found");
+      }
+      throw sdkError("VALIDATION", "Section target exceeds size bounds");
+    }
+    return projectSectionTargetCreateResult(document.uri, target);
+  }
+
+  async resolveSectionTarget(
+    ref: string,
+    target: SectionTargetV1
+  ): Promise<SectionTargetResolveResult> {
+    this.assertOpen();
+    const parsed = parseSectionTargetV1(target);
+    if (!parsed.ok) {
+      throw sdkError("VALIDATION", parsed.error);
+    }
+    const document = await getDocumentByRef(this.store, this.config, ref, {});
+    // Top-level uri must fit schema — citation fail-closed does not repair it.
+    if (!isTransportBoundedCanonicalUri(document.uri)) {
+      throw sdkError("VALIDATION", CANONICAL_URI_EXCEEDS_TRANSPORT_BOUNDS);
+    }
+    const resolution = await resolveSectionTargetCore({
+      content: document.content,
+      target: parsed.value,
+      uri: document.uri,
+    });
+    return projectSectionTargetResolveResult(document.uri, resolution);
   }
 
   async close(): Promise<void> {

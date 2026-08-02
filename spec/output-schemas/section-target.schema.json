@@ -53,6 +53,7 @@
     "occurrence": {
       "type": "integer",
       "minimum": 1,
+      "maximum": 9007199254740991,
       "description": "1-based occurrence among sections with the same headingPath"
     },
     "quote": {
@@ -90,16 +91,19 @@
         "line": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 9007199254740991,
           "description": "1-based heading line at capture"
         },
         "startOffset": {
           "type": "integer",
           "minimum": 0,
+          "maximum": 9007199254740991,
           "description": "UTF-16 code-unit start offset of the exact quote at capture"
         },
         "endOffset": {
           "type": "integer",
           "minimum": 0,
+          "maximum": 9007199254740991,
           "description": "UTF-16 code-unit end offset of the exact quote at capture"
         }
       }

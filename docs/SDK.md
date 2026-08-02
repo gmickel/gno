@@ -336,6 +336,38 @@ supplied. Case and canonically equivalent Unicode spellings share one
 NFC/case-folded identity. Its 242-byte UTF-8 budget keeps the complete
 `index-<identity>.sqlite` filename within the portable 255-byte component limit.
 
+### Sections / Section Targets
+
+```ts
+const sections = await client.getSections("notes/pilot.md");
+
+const created = await client.createSectionTarget("notes/pilot.md", {
+  anchor: "setup",
+});
+// or: { line: 3 } — exactly one selector
+
+const resolved = await client.resolveSectionTarget(
+  "notes/pilot.md",
+  created.target
+);
+if (resolved.status === "exact" || resolved.status === "recovered") {
+  console.log(resolved.citation?.anchor, resolved.citation?.lineStart);
+} else {
+  console.log(resolved.status, resolved.diagnostics.reason);
+}
+```
+
+`getSections()` stays backward compatible. `createSectionTarget` /
+`resolveSectionTarget` share the same projection as the REST endpoints
+(`section-target-create-result` / `section-target-resolve-result` schemas):
+canonical stored URI, conservative status, and citation only when navigable.
+Ambiguous, stale, and missing results never include citation/navigation fields.
+Oversized navigable citations fail closed to `stale` with
+`citation_exceeds_transport_bounds`. If the stored canonical document URI exceeds
+transport `uri` maxLength, create/resolve throw SDK `VALIDATION` before
+projection (never truncating `target.document.uri`). Diagnostics candidates are
+filtered/capped (32 max) with explicit `candidateCount` / `candidatesTruncated`.
+
 ### Capture
 
 Capture a note with provenance and receive the shared capture receipt.
