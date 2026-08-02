@@ -56,7 +56,7 @@ function makeFakeDoc(numPages: number) {
         width: 200 * scale,
         height: 280 * scale,
         scale,
-        convertToViewportRectangle: (r: number[]) => r,
+        convertToViewportPoint: (x: number, y: number) => [x, y],
       }),
       getTextContent: async () => ({ items: [], styles: {} }),
       getAnnotations: async () => [],
@@ -764,7 +764,7 @@ describe("PdfViewer", () => {
         width: 200 * scale,
         height: 280 * scale,
         scale,
-        convertToViewportRectangle: (rect: number[]) => rect,
+        convertToViewportPoint: (x: number, y: number) => [x, y],
       }),
       getTextContent: async () => ({ items: [], styles: {} }),
       getAnnotations: async () => [

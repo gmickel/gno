@@ -37,7 +37,7 @@ async function main(): Promise<void> {
   await mkdir(collectionDir, { recursive: true });
   await Bun.write(
     join(collectionDir, "smoke-note.md"),
-    "# Smoke Test Note\n\nThis note powers the browser smoke test.\n\nsmoke-search-needle\n"
+    "# Smoke Test Note\n\nThis note powers the browser smoke test.\n\n```ts\nconst smoke = true;\n```\n\nsmoke-search-needle\n"
   );
   await mkdir(join(collectionDir, "projects"), { recursive: true });
   await Bun.write(
@@ -152,6 +152,11 @@ async function main(): Promise<void> {
       await page.waitForURL(/\/doc\?/);
       await page
         .getByText("This note powers the browser smoke test.")
+        .first()
+        .waitFor();
+      await page
+        .locator("code")
+        .getByText("const smoke = true;")
         .first()
         .waitFor();
       console.log("Web UI smoke passed");

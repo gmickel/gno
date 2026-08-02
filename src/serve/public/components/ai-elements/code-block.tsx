@@ -1,3 +1,5 @@
+import type { ShikiTransformer } from "shiki/types";
+
 import { CheckIcon, CopyIcon } from "lucide-react";
 import {
   type ComponentProps,
@@ -8,7 +10,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { codeToHtml, type ShikiTransformer } from "shiki";
+import { type BundledLanguage, createHighlighter } from "shiki";
+import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 
 import { resolveCodeLanguage } from "../../lib/code-language";
 import { cn } from "../../lib/utils";
@@ -29,6 +32,20 @@ interface CodeBlockContextType {
 const CodeBlockContext = createContext<CodeBlockContextType>({
   code: "",
 });
+
+const highlighterPromise = createHighlighter({
+  engine: createJavaScriptRegexEngine(),
+  langs: ["text"],
+  themes: ["one-light", "one-dark-pro"],
+});
+
+async function getHighlighter(language: BundledLanguage | "text") {
+  const highlighter = await highlighterPromise;
+  if (!highlighter.getLoadedLanguages().includes(language)) {
+    await highlighter.loadLanguage(language);
+  }
+  return highlighter;
+}
 
 function createLineTransformer(
   showLineNumbers: boolean,
@@ -82,39 +99,40 @@ export async function highlightCode(
   language: string,
   showLineNumbers = false,
   highlightedLines: number[] = []
-) {
+): Promise<[string, string]> {
   const resolvedLanguage = resolveCodeLanguage(language);
   const transformers: ShikiTransformer[] =
     showLineNumbers || highlightedLines.length > 0
       ? [createLineTransformer(showLineNumbers, highlightedLines)]
       : [];
+  const highlighter = await getHighlighter(resolvedLanguage);
 
   try {
-    return await Promise.all([
-      codeToHtml(code, {
+    return [
+      highlighter.codeToHtml(code, {
         lang: resolvedLanguage,
         theme: "one-light",
         transformers,
       }),
-      codeToHtml(code, {
+      highlighter.codeToHtml(code, {
         lang: resolvedLanguage,
         theme: "one-dark-pro",
         transformers,
       }),
-    ]);
+    ];
   } catch {
-    return await Promise.all([
-      codeToHtml(code, {
+    return [
+      highlighter.codeToHtml(code, {
         lang: "text",
         theme: "one-light",
         transformers,
       }),
-      codeToHtml(code, {
+      highlighter.codeToHtml(code, {
         lang: "text",
         theme: "one-dark-pro",
         transformers,
       }),
-    ]);
+    ];
   }
 }
 

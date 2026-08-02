@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Changed
+
+- Updated Commander to 15.0.0, lucide-react to 1.28.0, nanoid to 6.0.0,
+  officeparser to 7.5.0, and PDF.js to 6.2.108.
+
+### Fixed
+
+- Restored Markdown and code-block rendering under the strict Web UI CSP by
+  using Shiki's JavaScript regex engine instead of its WebAssembly engine.
+- Migrated PDF document teardown and annotation coordinates to the PDF.js 6
+  loading-task and point-transform APIs.
+- Preserved PowerPoint speaker-note extraction with officeparser 7's async
+  text renderer.
+- Corrected the README and legacy website release markers for v1.30.2.
 
 ## [1.30.2] - 2026-08-02
 

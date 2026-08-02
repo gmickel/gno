@@ -47,11 +47,10 @@ type LoadOwnership = {
 /**
  * Load a PDF document from a same-origin asset URL.
  *
- * Teardown ownership (I3-04): loadingTask.destroy() owns the transport for a
- * load that never handed a proxy to the viewer. Once the proxy is viewer-owned,
- * we destroy the proxy exactly once and do not also call loadingTask.destroy.
- * documentDestroy is emitted exactly once per successfully loaded viewer
- * instance, never for rejected/never-loaded attempts.
+ * Teardown ownership (I3-04): loadingTask.destroy() owns the transport for the
+ * entire load lifecycle. documentDestroy is emitted exactly once per
+ * successfully loaded viewer instance, never for rejected/never-loaded
+ * attempts.
  */
 export function usePdfDocument(
   url: string | null,
@@ -125,29 +124,12 @@ export function usePdfDocument(
 
     /**
      * Idempotent teardown for this load.
-     * - Never-loaded / rejected: destroy loading task only; no documentDestroy.
-     * - Viewer-owned success: destroy proxy once + documentDestroy once.
-     * - Stale late-resolved orphan (never viewer-owned): destroy proxy only.
+     * - Always destroy the loading task exactly once.
+     * - Emit documentDestroy only for a viewer-owned success.
+     * - A stale late resolution needs no separate proxy cleanup: the loading
+     *   task already owns and destroys its transport.
      */
-    const teardown = (opts?: {
-      orphanProxy?: PDFDocumentProxy | null;
-      reason: "cleanup" | "stale-orphan";
-    }): void => {
-      if (ownership.tornDown && !opts?.orphanProxy) {
-        return;
-      }
-
-      if (opts?.orphanProxy && opts.reason === "stale-orphan") {
-        // Resolved after we already tore down the load attempt — destroy the
-        // orphan proxy only; never emit documentDestroy (never viewer-owned).
-        try {
-          void opts.orphanProxy.destroy();
-        } catch {
-          // ignore
-        }
-        return;
-      }
-
+    const teardown = (): void => {
       if (ownership.tornDown) {
         return;
       }
@@ -157,33 +139,23 @@ export function usePdfDocument(
       ownership.viewerDoc = null;
 
       if (viewerDoc) {
-        // Viewer owned the proxy: destroy it once. Do not also destroy the
-        // loading task (that would double-destroy the same transport).
-        try {
-          void viewerDoc.destroy();
-        } catch {
-          // ignore
-        }
         if (!ownership.destroyMetricEmitted) {
           ownership.destroyMetricEmitted = true;
           metrics.recordDocumentDestroy({ docId: ownership.docId });
         }
-        return;
       }
 
-      // Never handed a proxy to the viewer — loading task owns the transport.
       try {
-        void ownership.task.destroy();
+        void ownership.task.destroy().catch(() => undefined);
       } catch {
         // ignore
       }
-      // No documentDestroy for never-loaded / rejected attempts.
     };
 
     loadingTask.promise
       .then(async (pdf) => {
         if (isStale()) {
-          teardown({ orphanProxy: pdf, reason: "stale-orphan" });
+          teardown();
           return;
         }
         ownership.viewerDoc = pdf;
@@ -203,14 +175,14 @@ export function usePdfDocument(
         setDoc(null);
         setNumPages(0);
         setFirstPageReady(false);
-        teardown({ reason: "cleanup" });
+        teardown();
       });
 
     return () => {
       if (ownershipRef.current === ownership) {
         ownershipRef.current = null;
       }
-      teardown({ reason: "cleanup" });
+      teardown();
     };
   }, [url, retryToken, getDocument, classifyPdfError, getPdfMetrics]);
 

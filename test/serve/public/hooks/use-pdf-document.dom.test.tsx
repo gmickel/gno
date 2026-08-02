@@ -28,8 +28,6 @@ function deferred<T>(): Deferred<T> {
 
 type FakeDoc = {
   numPages: number;
-  destroy: ReturnType<typeof mock>;
-  destroyed: boolean;
 };
 
 type FakeTask = {
@@ -93,14 +91,7 @@ function fakeGetDocument(params: GnoGetDocumentParams): GnoDocumentLoadingTask {
 }
 
 function makeDoc(numPages: number): FakeDoc {
-  const doc: FakeDoc = {
-    numPages,
-    destroyed: false,
-    destroy: mock(async () => {
-      doc.destroyed = true;
-    }),
-  };
-  return doc;
+  return { numPages };
 }
 
 function undestroyedTasks(): FakeTask[] {
@@ -192,7 +183,7 @@ describe("use-pdf-document", () => {
     expect(destroyEvents).toEqual([last.gnoDocId]);
   });
 
-  test("success unmount: proxy destroy once, documentDestroy once, no task.destroy after ownership", async () => {
+  test("success unmount: task destroy once and documentDestroy once", async () => {
     const { result, unmount } = renderHook(() =>
       usePdfDocument("/ok.pdf", deps)
     );
@@ -204,9 +195,7 @@ describe("use-pdf-document", () => {
     await waitFor(() => expect(result.current.status).toBe("ready"));
 
     unmount();
-    expect(pdf.destroy).toHaveBeenCalledTimes(1);
-    // Once viewer-owned, loadingTask.destroy is not the owner path
-    expect(task.destroy).not.toHaveBeenCalled();
+    expect(task.destroy).toHaveBeenCalledTimes(1);
     expect(destroyEvents).toEqual([task.gnoDocId]);
     expect(metrics.recordDocumentDestroy).toHaveBeenCalledTimes(1);
   });
@@ -251,14 +240,14 @@ describe("use-pdf-document", () => {
     await act(async () => {
       first.deferred.resolve(orphanA);
     });
-    // orphan proxy destroyed, not viewer state
+    // stale resolution does not overwrite viewer state or emit a metric
     expect(result.current.numPages).toBe(2);
-    expect(orphanA.destroy).toHaveBeenCalledTimes(1);
+    expect(first.destroy).toHaveBeenCalledTimes(1);
     expect(destroyEvents).not.toContain(first.gnoDocId);
 
     unmount();
     expect(destroyEvents).toEqual([second.gnoDocId]);
-    expect(pdfB.destroy).toHaveBeenCalledTimes(1);
+    expect(second.destroy).toHaveBeenCalledTimes(1);
   });
 
   test("retry race: superseded reject LAST cannot overwrite; destroy exact", async () => {
@@ -290,7 +279,7 @@ describe("use-pdf-document", () => {
     expect(destroyEvents).toEqual([second.gnoDocId]);
   });
 
-  test("stale late resolution after unmount: orphan destroy, no documentDestroy", async () => {
+  test("stale late resolution after unmount: task remains singly destroyed, no documentDestroy", async () => {
     const { unmount } = renderHook(() => usePdfDocument("/late.pdf", deps));
     const task = getDocumentCalls[0]!;
     unmount();
@@ -301,7 +290,7 @@ describe("use-pdf-document", () => {
     await act(async () => {
       task.deferred.resolve(orphan);
     });
-    expect(orphan.destroy).toHaveBeenCalledTimes(1);
+    expect(task.destroy).toHaveBeenCalledTimes(1);
     expect(destroyEvents.length).toBe(0);
   });
 
@@ -361,6 +350,6 @@ describe("use-pdf-document", () => {
     unmount();
     unmount();
     expect(destroyEvents).toEqual([task.gnoDocId]);
-    expect(pdf.destroy).toHaveBeenCalledTimes(1);
+    expect(task.destroy).toHaveBeenCalledTimes(1);
   });
 });

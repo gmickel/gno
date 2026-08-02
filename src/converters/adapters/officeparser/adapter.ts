@@ -1,6 +1,6 @@
 /**
  * officeparser adapter for PPTX conversion.
- * Uses parseOffice() v6 API with Buffer for in-memory extraction.
+ * Uses parseOffice() v7 API with Buffer for in-memory extraction.
  */
 
 import { parseOffice } from "officeparser";
@@ -76,12 +76,16 @@ export const officeparserAdapter: Converter = {
     try {
       // Zero-copy Buffer view (input.bytes is immutable by contract)
       const buffer = toBuffer(input.bytes);
-      // v6 API: parseOffice returns AST, use .toText() for plain text
+      // v7's async text renderer preserves notes while keeping the previous
+      // plain-text layout and omitting image placeholders.
       const ast = await parseOffice(buffer, {
         newlineDelimiter: "\n",
         ignoreNotes: false, // Include speaker notes
       });
-      const text = ast.toText();
+      const { value: text } = await ast.to("text", {
+        includeImages: false,
+        textConfig: { preserveLayout: false, renderNotes: true },
+      });
 
       if (!text || text.trim().length === 0) {
         return {

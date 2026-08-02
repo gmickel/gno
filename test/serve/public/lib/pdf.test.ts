@@ -361,7 +361,6 @@ describe("__gnoPdfMetrics channel", () => {
       expect(taskSmuggled.gnoDocId).toMatch(/^d\d+$/);
       const smuggledDoc = await taskSmuggled.promise;
       expect(smuggledDoc.numPages).toBe(5);
-      await smuggledDoc.destroy();
       await taskSmuggled.destroy();
 
       // Await BOTH loading-task promises — genuine success required
@@ -431,9 +430,7 @@ describe("__gnoPdfMetrics channel", () => {
       expect(exported).toContain(task1.gnoDocId);
       expect(exported).toContain(task2.gnoDocId);
 
-      // Destroy proxies then loading tasks (order per pdfjs lifecycle)
-      await doc1.destroy();
-      await doc2.destroy();
+      // Loading tasks own document transport teardown in PDF.js 6.
       await task1.destroy();
       await task2.destroy();
     } finally {

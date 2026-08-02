@@ -94,12 +94,8 @@ class FakeTextLayer {
   }
 }
 
-const convertToViewportRectangle = (rect: number[]) => {
-  const x1 = rect[0] ?? 0;
-  const y1 = rect[1] ?? 0;
-  const x2 = rect[2] ?? 0;
-  const y2 = rect[3] ?? 0;
-  return [x1, 800 - y2, x2, 800 - y1];
+const convertToViewportPoint = (x: number, y: number) => {
+  return [x, 800 - y];
 };
 
 type Deferred<T> = {
@@ -123,7 +119,7 @@ type PageProxy = {
     width: number;
     height: number;
     scale: number;
-    convertToViewportRectangle: typeof convertToViewportRectangle;
+    convertToViewportPoint: typeof convertToViewportPoint;
   };
   getTextContent: () => Promise<unknown>;
   getAnnotations: () => Promise<unknown[]>;
@@ -151,7 +147,7 @@ function makePageProxy(ctl: DocCtl): PageProxy {
       width: 200 * scale,
       height: 300 * scale,
       scale,
-      convertToViewportRectangle,
+      convertToViewportPoint,
     }),
     getTextContent: async () => {
       ctl.getTextCalls += 1;
@@ -261,7 +257,7 @@ function makeDoc(
         width: viewportSize.width * scale,
         height: viewportSize.height * scale,
         scale,
-        convertToViewportRectangle,
+        convertToViewportPoint,
       }),
       getTextContent: async () => ({ items: [], styles: {} }),
       getAnnotations: async () => annots,

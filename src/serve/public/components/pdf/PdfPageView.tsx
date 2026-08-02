@@ -304,7 +304,8 @@ export function PdfPageView({
         if (!rect || rect.length < 4) {
           continue;
         }
-        const [x1, y1, x2, y2] = viewport.convertToViewportRectangle(rect);
+        const [x1, y1] = viewport.convertToViewportPoint(rect[0]!, rect[1]!);
+        const [x2, y2] = viewport.convertToViewportPoint(rect[2]!, rect[3]!);
         const left = Math.min(x1, x2);
         const top = Math.min(y1, y2);
         const w = Math.abs(x1 - x2);

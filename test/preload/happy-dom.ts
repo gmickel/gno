@@ -50,6 +50,7 @@ bindGlobal(
 );
 bindGlobal("DOMParser", windowInstance.DOMParser);
 bindGlobal("HTMLElement", windowInstance.HTMLElement);
+bindGlobal("HTMLFormElement", windowInstance.HTMLFormElement);
 bindGlobal("Element", windowInstance.Element);
 bindGlobal("Node", windowInstance.Node);
 bindGlobal("Text", windowInstance.Text);
