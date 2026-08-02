@@ -48,19 +48,8 @@ Ship Windows support for the new flags. Bun's `detached: true` on Windows maps t
 - [ ] Integration test for `--stop` passes on Windows (using `taskkill` path)
 
 ## Done summary
-
-Blocked:
-Dropped by scope decision on 2026-04-21. Windows native detach (`taskkill` fallback, Bun Windows detach quirks) is not worth the risk or maintenance. Windows users who want backgrounding should use WSL.
-
-The small amount of Windows work that remained (clean `VALIDATION` error when `--detach` is invoked on Windows + one test case) was folded into:
-
-- fn-72.2 — helper throws clean error on `process.platform === "win32"`
-- fn-72.5 — test case 7 asserts the error message and WSL guidance
-
-Keep this task in the epic as a blocked marker so the decision is visible in history. Do not reopen without a scope conversation.
-
+Closed by the documented scope decision: native Windows detach remains unsupported; Windows users receive validation guidance to use WSL. The task explicitly said not to reopen without a new scope decision.
 ## Evidence
-
 - Commits:
-- Tests:
+- Tests: bun test test/cli/detach.integration.test.ts (Windows validation case retained; platform case skipped on macOS), v1.30.4 publish workflow 30750726932: Windows matrix success
 - PRs:

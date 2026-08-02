@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-28.md",
-  "status": "open",
+  "status": "done",
   "title": "File deletion from Web UI (not just unindex)",
-  "updated_at": "2026-01-09T11:24:16.400538Z"
+  "updated_at": "2026-08-02T17:01:47.395828Z"
 }

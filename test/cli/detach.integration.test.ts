@@ -720,12 +720,21 @@ describe("detach integration (Unix)", () => {
       await mkdir(dirname(pidFile), { recursive: true });
 
       const stubbornScript = join(testDir, "stubborn.mjs");
+      // Install the SIGTERM swallower BEFORE announcing readiness. Without
+      // this handshake, Bun can deliver --stop's SIGTERM before process.on
+      // runs, which falsely fails the SIGKILL-escalation assertion.
       await writeFile(
         stubbornScript,
         `process.on("SIGTERM", () => { /* swallow */ });
+         process.send?.("ready");
          setInterval(() => {}, 1000);`
       );
 
+      // Bun IPC readiness (same pattern as package-smoke-resident-support).
+      let markReady: (() => void) | undefined;
+      const ready = new Promise<void>((resolve) => {
+        markReady = resolve;
+      });
       const child = Bun.spawn({
         cmd: [process.execPath, stubbornScript],
         stdout: "ignore",
@@ -733,9 +742,41 @@ describe("detach integration (Unix)", () => {
         // Detach so killing the test runner doesn't take the child with it
         // accidentally; we kill it explicitly via --stop.
         detached: true,
+        ipc(message) {
+          if (message === "ready") {
+            markReady?.();
+          }
+        },
       });
       child.unref();
       spawnedPids.add(child.pid);
+
+      // Bounded wait: if the child never handshakes, fail fast and let
+      // afterEach SIGKILL it — do not hang the suite or race into --stop.
+      const readinessTimeoutMs = 5_000;
+      let readinessTimer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          ready,
+          new Promise<never>((_, reject) => {
+            readinessTimer = setTimeout(() => {
+              reject(
+                new Error(
+                  `stubborn child SIGTERM handler readiness timed out after ${readinessTimeoutMs}ms`
+                )
+              );
+            }, readinessTimeoutMs);
+            readinessTimer.unref?.();
+          }),
+        ]);
+      } catch (err) {
+        bestEffortKill(child.pid);
+        throw err;
+      } finally {
+        if (readinessTimer !== undefined) {
+          clearTimeout(readinessTimer);
+        }
+      }
 
       const payload = {
         pid: child.pid,
