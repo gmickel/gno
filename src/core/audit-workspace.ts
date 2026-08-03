@@ -219,7 +219,6 @@ const observeDocument = async (
     const incompleteFrontmatter =
       readFrontmatter &&
       markdownSource &&
-      beforeSize > AUDIT_FRONTMATTER_BYTES &&
       FRONTMATTER_OPEN.test(frontmatter) &&
       !FRONTMATTER_COMPLETE.test(frontmatter);
     const afterMtime = file.lastModified;

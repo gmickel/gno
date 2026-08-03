@@ -346,6 +346,28 @@ describe("gno audit CLI", () => {
     }
   });
 
+  test("treats short unterminated frontmatter as unavailable", async () => {
+    await Bun.write(
+      join(notes, "unterminated.md"),
+      "---\nsource:\n  kind: web\n# Missing closing delimiter\n"
+    );
+    expect(await runCli(["bun", "gno", "index", "--no-embed"])).toBe(0);
+
+    const result = await audit({ category: "provenance" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.exitCode).toBe(5);
+      expect(result.report.status).toBe("partial");
+      expect(result.report.rules).toContainEqual(
+        expect.objectContaining({
+          ruleId: "provenance.capture-source",
+          status: "unavailable",
+          skipReason: "source_unavailable",
+        })
+      );
+    }
+  });
+
   test("reports unavailable sources and repeated snapshot drift as partial", async () => {
     await rename(notes, join(root, "offline-notes"));
     const unavailableProvenance = await audit({ category: "provenance" });
