@@ -211,11 +211,13 @@ const BMFF_MAX_BOXES = 512;
 /**
  * Bounded recursive BMFF scan for HEIF/AVIF `ispe` (Image Spatial Extents).
  * Handles nested containers, `meta` FullBox payload, and 64-bit size fields.
+ * The input is already bounded by the attachment byte limit, so scan it all;
+ * valid files may place arbitrarily large metadata boxes before `meta`.
  */
 const parseAvifDimensions = (
   bytes: Uint8Array
 ): { width: number; height: number } | null => {
-  const limit = Math.min(bytes.length, RASTER_HEADER_PROBE_BYTES);
+  const limit = bytes.length;
 
   const scanRange = (
     start: number,
@@ -243,7 +245,7 @@ const parseAvifDimensions = (
       if (size < headerSize) return null;
       if (offset + headerSize > end) return null;
 
-      // Clamp to available probe bytes so large boxes remain scannable.
+      // Clamp to the validated input boundary so malformed boxes cannot escape it.
       const boxEnd = Math.min(offset + size, end);
 
       if (type === "ispe") {
@@ -436,7 +438,43 @@ const isCompleteGif = (bytes: Uint8Array): boolean => {
   return false;
 };
 
-/** RIFF size/chunk walk; VP8X is metadata and cannot stand in for image data. */
+const isWebpImageChunk = (
+  bytes: Uint8Array,
+  type: string,
+  dataStart: number,
+  size: number
+): boolean =>
+  (type === "VP8 " &&
+    size >= 10 &&
+    bytes[dataStart + 3] === 0x9d &&
+    bytes[dataStart + 4] === 0x01 &&
+    bytes[dataStart + 5] === 0x2a) ||
+  (type === "VP8L" && size >= 5 && bytes[dataStart] === 0x2f);
+
+const animationFrameHasImageData = (
+  bytes: Uint8Array,
+  dataStart: number,
+  size: number
+): boolean => {
+  if (size < 16) return false;
+  const frameEnd = dataStart + size;
+  let offset = dataStart + 16;
+  let sawImageData = false;
+  while (offset + 8 <= frameEnd) {
+    const type = asciiSlice(bytes, offset, offset + 4);
+    const chunkSize = readU32LE(bytes, offset + 4);
+    const chunkDataStart = offset + 8;
+    const paddedEnd = chunkDataStart + chunkSize + (chunkSize % 2);
+    if (paddedEnd < chunkDataStart || paddedEnd > frameEnd) return false;
+    if (isWebpImageChunk(bytes, type, chunkDataStart, chunkSize)) {
+      sawImageData = true;
+    }
+    offset = paddedEnd;
+  }
+  return sawImageData && offset === frameEnd;
+};
+
+/** RIFF size/chunk walk; metadata and empty animation frames are not image data. */
 const isCompleteWebp = (bytes: Uint8Array): boolean => {
   if (bytes.length < 20 || readU32LE(bytes, 4) + 8 !== bytes.length) {
     return false;
@@ -449,15 +487,9 @@ const isCompleteWebp = (bytes: Uint8Array): boolean => {
     const dataStart = offset + 8;
     const paddedEnd = dataStart + size + (size % 2);
     if (paddedEnd < dataStart || paddedEnd > bytes.length) return false;
-    const isVp8 =
-      type === "VP8 " &&
-      size >= 10 &&
-      bytes[dataStart + 3] === 0x9d &&
-      bytes[dataStart + 4] === 0x01 &&
-      bytes[dataStart + 5] === 0x2a;
-    const isVp8l = type === "VP8L" && size >= 5 && bytes[dataStart] === 0x2f;
-    const isAnimationFrame = type === "ANMF" && size >= 16;
-    if (isVp8 || isVp8l || isAnimationFrame) {
+    const isAnimationFrame =
+      type === "ANMF" && animationFrameHasImageData(bytes, dataStart, size);
+    if (isWebpImageChunk(bytes, type, dataStart, size) || isAnimationFrame) {
       sawImageData = true;
     }
     offset = paddedEnd;

@@ -11,6 +11,7 @@ import {
 } from "../../src/publish/attachment-raster";
 import {
   AVIF_1X1,
+  bmffBox,
   buildAvif,
   concatBytes,
   GIF_1X1,
@@ -392,6 +393,24 @@ describe("attachment raster validation", () => {
     });
   });
 
+  test("finds AVIF dimensions after more than 64 KiB of metadata", () => {
+    const original = buildAvif(32, 16);
+    const ftypSize = 20;
+    const withLargeMetadata = concatBytes(
+      original.subarray(0, ftypSize),
+      bmffBox("free", new Uint8Array(70_000)),
+      original.subarray(ftypSize)
+    );
+
+    expect(withLargeMetadata.byteLength).toBeGreaterThan(65_536);
+    expect(validateRasterBytesStructural(withLargeMetadata)).toMatchObject({
+      ok: true,
+      mediaType: "image/avif",
+      width: 32,
+      height: 16,
+    });
+  });
+
   test("rejects SVG, truncated headers, and dimension limit violations", () => {
     const svg = new TextEncoder().encode(
       '<svg xmlns="http://www.w3.org/2000/svg"/>'
@@ -450,6 +469,20 @@ describe("attachment raster validation", () => {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     ]);
     expect(validateRasterBytesStructural(vp8xHeaderOnly).ok).toBe(false);
+
+    const vp8xWithEmptyAnimationFrame = Uint8Array.from([
+      0x52, 0x49, 0x46, 0x46, 0x2e, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,
+      0x56, 0x50, 0x38, 0x58, 0x0a, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41, 0x4e, 0x4d, 0x46, 0x10, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ]);
+    expect(
+      validateRasterBytesStructural(vp8xWithEmptyAnimationFrame)
+    ).toMatchObject({
+      ok: false,
+      code: "ASSET_CORRUPT",
+    });
   });
 
   test("AVIF parser descends meta FullBox nesting and rejects malformed boxes", () => {
