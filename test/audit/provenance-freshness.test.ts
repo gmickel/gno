@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
+import type { DocumentRow } from "../../src/store/types";
+
 import {
   evaluateFreshnessAudit,
   type AuditFreshnessDocument,
@@ -8,6 +10,29 @@ import {
   evaluateProvenanceAudit,
   type AuditProvenanceDocument,
 } from "../../src/core/audit-provenance";
+import { groupAuditPhysicalSources } from "../../src/core/audit-workspace";
+
+test("groups shared logical-record containers into one physical observation", () => {
+  const documents = Array.from(
+    { length: 10_000 },
+    (_, index) =>
+      ({
+        collection: "notes",
+        relPath: `.gno/records/export.jsonl/${index}.md`,
+        recordKey: `record-${index}`,
+        recordSourcePath: "exports/export.jsonl",
+        sourceExt: ".jsonl",
+      }) as DocumentRow
+  );
+  expect(groupAuditPhysicalSources(documents)).toEqual([
+    {
+      key: '["notes","exports/export.jsonl"]',
+      collection: "notes",
+      relPath: "exports/export.jsonl",
+      markdownSource: false,
+    },
+  ]);
+});
 
 const provenanceDocument = (
   overrides: Partial<AuditProvenanceDocument> = {}

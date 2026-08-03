@@ -812,6 +812,19 @@ describe("SqliteAdapter", () => {
       expect(result.value.map((document) => document.recordKey)).toEqual([
         "one",
       ]);
+
+      const auditResult = await adapter.listDocumentsForAudit({
+        collections: [],
+        pathPrefixes: ["export.jsonl"],
+        tags: [],
+        limit: 100,
+      });
+      expect(auditResult.ok).toBe(true);
+      if (!auditResult.ok) return;
+      expect(auditResult.value.total).toBe(1);
+      expect(
+        auditResult.value.documents.map((document) => document.recordKey)
+      ).toEqual(["one"]);
     });
 
     test("gets documents by mirror hashes with active-only default", async () => {

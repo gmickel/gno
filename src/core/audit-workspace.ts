@@ -147,6 +147,45 @@ const mapConcurrent = async <T, R>(
   return output;
 };
 
+export interface AuditPhysicalSourceDescriptor {
+  key: string;
+  collection: string;
+  relPath: string;
+  markdownSource: boolean;
+}
+
+/** Collapse logical records that share one physical export/container. */
+export const groupAuditPhysicalSources = (
+  documents: readonly DocumentRow[]
+): AuditPhysicalSourceDescriptor[] => {
+  const grouped = new Map<string, AuditPhysicalSourceDescriptor>();
+  for (const document of documents) {
+    const recordSourcePath = document.recordSourcePath?.trim();
+    const relPath =
+      document.recordKey != null && recordSourcePath
+        ? recordSourcePath
+        : document.relPath;
+    const key = JSON.stringify([document.collection, relPath]);
+    const markdownSource = MARKDOWN_SOURCE_EXTENSIONS.has(
+      document.sourceExt.toLowerCase()
+    );
+    const existing = grouped.get(key);
+    if (existing) {
+      existing.markdownSource ||= markdownSource;
+    } else {
+      grouped.set(key, {
+        key,
+        collection: document.collection,
+        relPath,
+        markdownSource,
+      });
+    }
+  }
+  return [...grouped.values()].sort((left, right) =>
+    left.key < right.key ? -1 : left.key > right.key ? 1 : 0
+  );
+};
+
 const observeDocument = async (
   document: DocumentRow,
   roots: ReadonlyMap<string, string>,
@@ -388,39 +427,51 @@ const captureWorkspaceFingerprints = async (
   const inspectProvenance = options.categories.includes("provenance");
   const roots = collectionPathMap(options.collections);
   const sourceStats = needsSourceFingerprint
-    ? await mapConcurrent(selected.documents, async (document) => {
-        const root = roots.get(document.collection);
-        if (!root) return { uri: document.uri, state: "unavailable" };
-        const recordSourcePath = document.recordSourcePath?.trim();
-        const physicalRelPath =
-          document.recordKey != null && recordSourcePath
-            ? recordSourcePath
-            : document.relPath;
-        const file = Bun.file(join(root, physicalRelPath));
-        try {
-          const exists = await file.exists();
-          if (!exists) return { uri: document.uri, state: "missing" };
-          const hash = inspectFreshness
-            ? await hashBlob(file, options.signal)
-            : inspectProvenance &&
-                MARKDOWN_SOURCE_EXTENSIONS.has(document.sourceExt.toLowerCase())
-              ? await hashBlob(
-                  file.slice(0, AUDIT_FRONTMATTER_BYTES),
-                  options.signal
-                )
-              : null;
-          return {
-            uri: document.uri,
-            state: "readable",
-            size: file.size,
-            mtime: file.lastModified,
-            hash,
-          };
-        } catch (cause) {
-          if (options.signal?.aborted) throw cause;
-          return { uri: document.uri, state: "unavailable" };
+    ? await mapConcurrent(
+        groupAuditPhysicalSources(selected.documents),
+        async (source) => {
+          const root = roots.get(source.collection);
+          if (!root)
+            return {
+              collection: source.collection,
+              path: source.relPath,
+              state: "unavailable",
+            };
+          const file = Bun.file(join(root, source.relPath));
+          try {
+            const exists = await file.exists();
+            if (!exists)
+              return {
+                collection: source.collection,
+                path: source.relPath,
+                state: "missing",
+              };
+            const hash = inspectFreshness
+              ? await hashBlob(file, options.signal)
+              : inspectProvenance && source.markdownSource
+                ? await hashBlob(
+                    file.slice(0, AUDIT_FRONTMATTER_BYTES),
+                    options.signal
+                  )
+                : null;
+            return {
+              collection: source.collection,
+              path: source.relPath,
+              state: "readable",
+              size: file.size,
+              mtime: file.lastModified,
+              hash,
+            };
+          } catch (cause) {
+            if (options.signal?.aborted) throw cause;
+            return {
+              collection: source.collection,
+              path: source.relPath,
+              state: "unavailable",
+            };
+          }
         }
-      })
+      )
     : [];
   // Link audits fingerprint the same unscoped bounded graph capture the rules
   // use, so concurrent doc_links / resolution changes retry or report
