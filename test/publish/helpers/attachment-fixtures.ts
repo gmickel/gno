@@ -5,7 +5,7 @@
  */
 
 // node:fs/promises mkdir/rm/writeFile — structural ops; no Bun equivalent
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 // node:os tmpdir — no Bun equivalent
 import { tmpdir } from "node:os";
 // node:path dirname/join — no Bun path utils
@@ -98,11 +98,7 @@ export const AVIF_1X1 = buildAvif(1, 1);
 const roots: string[] = [];
 
 export const makeRoot = async (): Promise<string> => {
-  const root = join(
-    tmpdir(),
-    `gno-attach-${Date.now()}-${Math.random().toString(16).slice(2)}`
-  );
-  await mkdir(root, { recursive: true });
+  const root = await mkdtemp(join(tmpdir(), "gno-attach-"));
   roots.push(root);
   return root;
 };

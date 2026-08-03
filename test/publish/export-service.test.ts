@@ -3,7 +3,7 @@
  */
 import { afterEach, describe, expect, test } from "bun:test";
 // node:fs/promises — structural ops; no Bun equivalent
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 // node:os tmpdir — no Bun equivalent
 import { tmpdir } from "node:os";
 // node:path join — no Bun path utils
@@ -66,11 +66,7 @@ const buildDocument = (
 
 describe("exportPublishArtifact attachment bundling", () => {
   test("bundles local rasters into v1 artifacts with assetSummary", async () => {
-    const root = join(
-      tmpdir(),
-      `gno-export-attach-${Date.now()}-${Math.random().toString(16).slice(2)}`
-    );
-    await mkdir(root, { recursive: true });
+    const root = await mkdtemp(join(tmpdir(), "gno-export-attach-"));
     roots.push(root);
     await writeFile(join(root, "dot.png"), PNG_1X1);
 
@@ -142,11 +138,7 @@ describe("exportPublishArtifact attachment bundling", () => {
   });
 
   test("preserves legacy asset-free behavior when no local images exist", async () => {
-    const root = join(
-      tmpdir(),
-      `gno-export-free-${Date.now()}-${Math.random().toString(16).slice(2)}`
-    );
-    await mkdir(root, { recursive: true });
+    const root = await mkdtemp(join(tmpdir(), "gno-export-free-"));
     roots.push(root);
 
     const published = buildDocument({
@@ -207,11 +199,7 @@ describe("exportPublishArtifact attachment bundling", () => {
   });
 
   test("bundles rasters into encrypted v2 plaintext with truthful assetSummary", async () => {
-    const root = join(
-      tmpdir(),
-      `gno-export-enc-${Date.now()}-${Math.random().toString(16).slice(2)}`
-    );
-    await mkdir(root, { recursive: true });
+    const root = await mkdtemp(join(tmpdir(), "gno-export-enc-"));
     roots.push(root);
     await writeFile(join(root, "dot.png"), PNG_1X1);
 
