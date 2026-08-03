@@ -135,6 +135,24 @@ describe("gno_audit MCP tool", () => {
     );
   });
 
+  test("projects runtime failures as MCP errors rather than clean reports", async () => {
+    const result = await handleAudit(
+      auditInputSchema.parse({ collections: ["missing"] }),
+      context
+    );
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toEqual({
+      error: "RUNTIME",
+      message: "Collection not found: missing",
+    });
+    expect(result.content).toContainEqual(
+      expect.objectContaining({
+        type: "text",
+        text: expect.stringContaining("Collection not found: missing"),
+      })
+    );
+  });
+
   test("closes input and advertises independently verified read-only behavior", () => {
     expect(auditInputSchema.safeParse({ unknown: true }).success).toBe(false);
     expect(AUDIT_MCP_ANNOTATIONS).toEqual({

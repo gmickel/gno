@@ -170,6 +170,16 @@ describe("gno audit CLI", () => {
     expect(mutations).toBe(2);
   });
 
+  test("uses exit 2 when the configured index is unavailable", async () => {
+    await rename(getIndexDbPath(), join(root, "offline-index.sqlite"));
+    expect(await audit({ category: "all" })).toEqual({
+      success: false,
+      invalid: false,
+      error: expect.stringContaining("Index database not found"),
+    });
+    expect(await runCli(["bun", "gno", "audit", "--json"])).toBe(2);
+  });
+
   test("writes an explicitly requested private report artifact", async () => {
     const reportPath = join(root, "audit.json");
     const code = await runCli([

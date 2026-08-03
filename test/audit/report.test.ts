@@ -163,6 +163,29 @@ describe("knowledge integrity audit contract", () => {
     expect(result.exit).toBe("partial");
   });
 
+  test("runner failures return a versioned failed report and runtime exit", async () => {
+    const result = await runAudit({
+      scope,
+      capabilities,
+      captureFingerprints: () => {
+        throw new Error("fingerprint source unavailable");
+      },
+      rules: [],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.report.status).toBe("failed");
+    expect(result.report.rules).toEqual([
+      expect.objectContaining({
+        ruleId: "audit.runner",
+        status: "unavailable",
+        message: "fingerprint source unavailable",
+      }),
+    ]);
+    expect(result.exit).toBe("runtime");
+    expect(auditExitCode(result.exit)).toBe(2);
+  });
+
   test("rejects invalid limits before evaluating rules", async () => {
     let evaluated = false;
     const result = await runAudit({
