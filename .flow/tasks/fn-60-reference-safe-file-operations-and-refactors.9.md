@@ -40,9 +40,8 @@ Repository docs and gno.sh are separate truth surfaces. A green build is not liv
 
 
 ## Done summary
-TBD
-
+Completed adversarial, failure-path, migration, documentation, skill, hosted-site, and real runtime verification for reference-safe rename/move. Added a shared grammar fixture matrix, deterministic disposable-workspace QA harness, stale-plan/lock/rollback/sync-pending proofs, and corrected schema-version assertions for migration 26. Reconciled README, API, SDK, MCP, Web UI, CHANGELOG, project/user skill guidance, and gno.sh truth surfaces. Live Web UI QA proved exact-digest rename and move, reference rewrites, byte preservation, and unrelated-file immutability.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 9165ab26
+- Tests: bun test test/core/file-refactor-adversarial.test.ts test/core/file-refactors.test.ts test/core/file-refactor-impact.test.ts test/core/file-refactor-planner.test.ts (40 pass), bun scripts/file-refactor-adversarial-qa.ts (6/6 pass), bun test test/store/clipper-store.test.ts test/store/adapter.test.ts (50 pass), bun run prerelease (3826 pass, 2 platform/E2E skips, 0 fail; docs/package/sentinel pass), bun run eval (103 evals, 80%, threshold 70%), bun run test:e2e (Web UI smoke passed), gno skill autoresearch (47/47, 100%), live disposable Web UI rename/move QA with POST 200, exact plan digest, reference rewrite, byte/hash preservation, and zero browser errors, gno.sh bun run check && bun run typecheck && bun run build; driven desktop/mobile docs and feature-page QA
 - PRs:
