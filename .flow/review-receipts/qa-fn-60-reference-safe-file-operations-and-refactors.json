@@ -1,0 +1,54 @@
+{
+  "branch": "codex/fn-60-reference-safe-file-operations-and-refactors",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "92b95ef53ae4f0a57738ecd84d2782b7cdff4ad6",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-dea0fd344486677fc38f419d461fe6e14da61208bbc6291e881c0f14dc1a02e8"
+  },
+  "head_sha": "92b95ef53ae4f0a57738ecd84d2782b7cdff4ad6",
+  "id": "fn-60-reference-safe-file-operations-and-refactors",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 7,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      }
+    ],
+    "total": 7
+  },
+  "timestamp": "2026-08-03T06:37:40Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
