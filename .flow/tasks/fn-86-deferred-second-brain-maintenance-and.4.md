@@ -39,9 +39,8 @@ Expose the shared runner through `gno audit` human/JSON CLI and one read-only MC
 
 
 ## Done summary
-TBD
-
+Implemented one deterministic audit report across CLI and MCP with collection/path/tag filters, bounded findings, honest cancellation and exit states, enforced read-only SQLite access, terminal progress, and explicit policy controls. Added adaptive bulk graph-target resolution for inventory-scale audits while preserving the existing ranked resolver semantics. Split the audit contract/report/runner into focused modules.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 813c1dd6
+- Tests: bun run lint, bun test test/audit test/cli/commands/audit.test.ts test/mcp/tools/audit.test.ts test/spec/schemas (284 pass), real default index: gno audit all --max-findings 100 --json (61,528 document/rule observations, 7,205 exact findings, 100 returned, report 122ms, wall 0.21s, exit 4), live resolver parity: 2,325 unique targets, 0 mismatches between SQL and bulk paths, performance hill climb: real link audit 12.71s before to 0.17s after
 - PRs:
