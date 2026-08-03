@@ -117,10 +117,25 @@ interface BacktickRun {
 }
 
 /** CommonMark code spans close only on a backtick run of equal length. */
-const collectInlineCodeRanges = (markdown: string): ExcludedRange[] => {
+const collectInlineCodeRanges = (
+  markdown: string,
+  excludedRanges: ExcludedRange[]
+): ExcludedRange[] => {
   const runs: BacktickRun[] = [];
   let cursor = 0;
+  let excludedIndex = 0;
   while (cursor < markdown.length) {
+    while (
+      excludedRanges[excludedIndex] &&
+      excludedRanges[excludedIndex]!.end <= cursor
+    ) {
+      excludedIndex += 1;
+    }
+    const excluded = excludedRanges[excludedIndex];
+    if (excluded && cursor >= excluded.start && cursor < excluded.end) {
+      cursor = excluded.end;
+      continue;
+    }
     if (markdown[cursor] !== "`") {
       cursor += 1;
       continue;
@@ -196,10 +211,7 @@ export function getExcludedRanges(markdown: string): ExcludedRange[] {
   // 2. Fenced code blocks (backtick + tilde, CommonMark matching rules)
   ranges.push(...collectFencedCodeRanges(markdown));
 
-  // 3. Inline code
-  ranges.push(...collectInlineCodeRanges(markdown));
-
-  // 4. HTML comments
+  // 3. HTML comments
   HTML_COMMENT_REGEX.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = HTML_COMMENT_REGEX.exec(markdown)) !== null) {
@@ -209,6 +221,11 @@ export function getExcludedRanges(markdown: string): ExcludedRange[] {
       kind: "html_comment",
     });
   }
+
+  // 4. Inline code. Pair delimiters only in visible prose so unmatched
+  // backticks inside already-excluded blocks cannot consume later content.
+  ranges.sort((a, b) => a.start - b.start);
+  ranges.push(...collectInlineCodeRanges(markdown, ranges));
 
   // Sort by start position for efficient lookup
   ranges.sort((a, b) => a.start - b.start);

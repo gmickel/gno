@@ -156,6 +156,28 @@ done`;
         "`` ` ![x](../secret.png) ` ``"
       );
     });
+
+    test("does not pair unmatched fenced backticks with later prose", () => {
+      const markdown = [
+        "~~~md",
+        "unmatched `",
+        "~~~",
+        "visible [link](note.md)",
+        "then `code`",
+      ].join("\n");
+      const ranges = getExcludedRanges(markdown);
+      const inlines = ranges.filter((range) => range.kind === "inline_code");
+
+      expect(inlines).toHaveLength(1);
+      expect(markdown.slice(inlines[0]!.start, inlines[0]!.end)).toBe("`code`");
+      expect(
+        rangeIntersectsExcluded(
+          markdown.indexOf("[link]"),
+          markdown.indexOf("[link]") + "[link]".length,
+          ranges
+        )
+      ).toBe(false);
+    });
   });
 
   describe("HTML comments", () => {
