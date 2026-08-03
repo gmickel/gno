@@ -2,7 +2,7 @@
   "branch": "fn-61-document-structure-navigation-and-section-addressability",
   "findings": {
     "backend": "interactive",
-    "headSha": "d8502ef7c1f080bfe555753cdf2fee76b6e38f5d",
+    "headSha": "3888a3dbdba544f2b226e7294e4992fdd358a27b",
     "items": [
       {
         "body": "At the 375px QA viewport, DocView retains a 960px canvas and forces 585px horizontal overflow; document content and QuickSwitcher remain usable. (surface: src/serve/public/pages/DocView.tsx)",
@@ -23,7 +23,7 @@
     "schemaVersion": 1,
     "sourceReceiptId": "review-6f104c464183b71b361c00284a9699c82a923fe08f1ce39a97df99f3b4bfdff8"
   },
-  "head_sha": "d8502ef7c1f080bfe555753cdf2fee76b6e38f5d",
+  "head_sha": "3888a3dbdba544f2b226e7294e4992fdd358a27b",
   "id": "fn-61-document-structure-navigation-and-section-addressability",
   "mode": "interactive",
   "open_p0p1": [],
@@ -58,7 +58,7 @@
     ],
     "total": 6
   },
-  "timestamp": "2026-08-03T00:50:00Z",
+  "timestamp": "2026-08-03T01:12:29Z",
   "type": "qa_verdict",
   "verdict": "SHIP"
 }
