@@ -128,9 +128,34 @@ describe("rewriteAttachmentsInMarkdown", () => {
         (d) =>
           d.code === "ASSET_CORRUPT" &&
           d.sourceRef.includes("fake.avif") &&
-          d.message.includes("AV1-decodable")
+          d.message.includes("image-decodable")
       )
     ).toBe(true);
+  });
+
+  test("strips raw Markdown URL suffixes before resolving local filenames", async () => {
+    const root = await makeRoot();
+    await writeBytes(join(root, "photo.png"), PNG_1X1);
+    await writeBytes(join(root, "literal#name.png"), PNG_1X1);
+    const index = await buildAttachmentBasenameIndex(root);
+
+    const result = await rewriteAttachmentsInMarkdown(
+      [
+        "![fragment](photo.png#preview)",
+        "![query](photo.png?raw=1)",
+        "![encoded](literal%23name.png)",
+      ].join("\n"),
+      {
+        basenameIndex: index,
+        collectionRoot: root,
+        noteSlug: "suffixes",
+        sourceRelPath: "suffixes.md",
+      }
+    );
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.markdown.match(/gno-asset:/gu)).toHaveLength(3);
+    expect(result.payloads.size).toBe(1);
   });
 
   test("keeps non-asset Markdown bytes byte-identical when no local assets rewrite", async () => {

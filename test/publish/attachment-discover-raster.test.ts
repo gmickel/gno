@@ -20,6 +20,35 @@ import {
   writeU32BE,
 } from "./helpers/attachment-fixtures";
 
+const pngWithInvalidCompressedData = (): Uint8Array => {
+  const bytes = new Uint8Array(PNG_1X1);
+  let offset = 8;
+  while (offset + 12 <= bytes.length) {
+    const length =
+      (((bytes[offset] ?? 0) << 24) |
+        ((bytes[offset + 1] ?? 0) << 16) |
+        ((bytes[offset + 2] ?? 0) << 8) |
+        (bytes[offset + 3] ?? 0)) >>>
+      0;
+    const type = String.fromCharCode(...bytes.subarray(offset + 4, offset + 8));
+    if (type === "IDAT") {
+      const dataStart = offset + 8;
+      bytes[dataStart] = 0;
+      let crc = 0xffffffff;
+      for (const value of bytes.subarray(offset + 4, dataStart + length)) {
+        crc ^= value;
+        for (let bit = 0; bit < 8; bit += 1) {
+          crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+        }
+      }
+      bytes.set(writeU32BE((crc ^ 0xffffffff) >>> 0), dataStart + length);
+      return bytes;
+    }
+    offset += 12 + length;
+  }
+  throw new Error("PNG fixture has no IDAT chunk");
+};
+
 describe("attachment discover parser", () => {
   test("parses angle-bracket, nested parens, escapes, titles, Unicode, Obsidian aliases", () => {
     const markdown = [
@@ -198,7 +227,16 @@ describe("attachment raster validation", () => {
     expect(validateRasterBytesStructural(badSize).ok).toBe(false);
   });
 
-  test("AVIF producer decodability rejects fabricated mdat and accepts real AV1", async () => {
+  test("producer decodability rejects invalid compressed pixels and accepts real rasters", async () => {
+    const invalidPng = pngWithInvalidCompressedData();
+    expect(validateRasterBytesStructural(invalidPng).ok).toBe(true);
+    const invalidPngResult = await validateRasterDecodable(invalidPng);
+    expect(invalidPngResult).toMatchObject({
+      ok: false,
+      code: "ASSET_CORRUPT",
+      message: "image/png payload is not image-decodable",
+    });
+
     const fabricated = buildAvif(1, 1);
     expect(fabricated.byteLength).toBe(77);
     expect(validateRasterBytesStructural(fabricated).ok).toBe(true);
@@ -206,15 +244,22 @@ describe("attachment raster validation", () => {
     expect(fabricatedDecodable.ok).toBe(false);
     if (!fabricatedDecodable.ok) {
       expect(fabricatedDecodable.code).toBe("ASSET_CORRUPT");
-      expect(fabricatedDecodable.message).toContain("AV1-decodable");
+      expect(fabricatedDecodable.message).toContain("image-decodable");
     }
 
-    const real = await validateRasterDecodable(AVIF_1X1);
-    expect(real).toMatchObject({
-      ok: true,
-      mediaType: "image/avif",
-      width: 1,
-      height: 1,
-    });
+    for (const [bytes, mediaType] of [
+      [PNG_1X1, "image/png"],
+      [JPEG_1X1, "image/jpeg"],
+      [GIF_1X1, "image/gif"],
+      [WEBP_1X1, "image/webp"],
+      [AVIF_1X1, "image/avif"],
+    ] as const) {
+      expect(await validateRasterDecodable(bytes)).toMatchObject({
+        ok: true,
+        mediaType,
+        width: 1,
+        height: 1,
+      });
+    }
   });
 });

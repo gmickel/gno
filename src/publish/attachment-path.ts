@@ -97,6 +97,16 @@ export interface AttachmentPathContext {
   sourceRelPath: string;
 }
 
+const stripMarkdownUrlSuffix = (sourceRef: string): string => {
+  const fragmentIndex = sourceRef.indexOf("#");
+  const queryIndex = sourceRef.indexOf("?");
+  const suffixIndexes = [fragmentIndex, queryIndex].filter(
+    (index) => index >= 0
+  );
+  if (suffixIndexes.length === 0) return sourceRef;
+  return sourceRef.slice(0, Math.min(...suffixIndexes));
+};
+
 export const resolveCandidateRelPath = (
   sourceRef: string,
   ctx: AttachmentPathContext,
@@ -104,7 +114,12 @@ export const resolveCandidateRelPath = (
 ):
   | { ok: true; relPath: string }
   | { ok: false; diagnostic: AttachmentDiagnostic } => {
-  const decoded = safePercentDecode(sourceRef);
+  // Markdown destinations follow URL semantics: raw query/fragment suffixes
+  // are not part of the local filename. Split before percent-decoding so an
+  // encoded literal `%23` or `%3F` can still address a real filename.
+  const pathSourceRef =
+    kind === "markdown" ? stripMarkdownUrlSuffix(sourceRef) : sourceRef;
+  const decoded = safePercentDecode(pathSourceRef);
   if (decoded === null || decoded.trim() === "") {
     return {
       ok: false,
