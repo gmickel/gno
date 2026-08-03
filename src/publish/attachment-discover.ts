@@ -11,7 +11,10 @@ import {
   type ExcludedRange,
   rangeIntersectsExcluded,
 } from "../ingestion/strip";
-import { collectAttachmentExcludedRanges } from "./attachment-exclusions";
+import {
+  collectAttachmentExcludedRanges,
+  stripAttachmentContainerPrefixes,
+} from "./attachment-exclusions";
 
 export interface DiscoveredImageRef {
   /** Raw alt/alias text between brackets (as authored). */
@@ -338,6 +341,13 @@ const parseReferenceDefinitionStart = (
   return null;
 };
 
+const lineAllowsFollowingDefinition = (line: string): boolean =>
+  line.trim().length === 0 ||
+  /^ {0,3}#{1,6}(?:[ \t]|$)/u.test(line) ||
+  /^ {0,3}(?:`{3,}|~{3,})/u.test(line) ||
+  /^ {0,3}(?:=+|-+)[ \t]*$/u.test(line) ||
+  /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/u.test(line);
+
 const collectReferenceDefinitions = (
   markdown: string,
   excluded: ExcludedRange[]
@@ -345,13 +355,31 @@ const collectReferenceDefinitions = (
   const definitions = new Map<string, string>();
   const ranges: ExcludedRange[] = [];
   let start = 0;
+  let previousContainerKey = "";
+  let previousLineAllowsDefinition = true;
   while (start <= markdown.length) {
     const newline = markdown.indexOf("\n", start);
     const lineEnd = newline === -1 ? markdown.length : newline;
-    const line = markdown.slice(start, lineEnd).replace(/\r$/u, "");
-    const definition = parseReferenceDefinitionStart(line);
+    const physicalLine = markdown.slice(start, lineEnd).replace(/\r$/u, "");
+    const stripped = stripAttachmentContainerPrefixes(physicalLine);
+    const containerStartsBlock =
+      stripped.containerKey.length > 0 &&
+      stripped.containerKey !== previousContainerKey;
+    const definition =
+      previousLineAllowsDefinition || containerStartsBlock
+        ? parseReferenceDefinitionStart(stripped.content)
+        : null;
     let end = lineEnd;
     if (!definition) {
+      const lineIsExcludedBlock = excluded.some(
+        (range) =>
+          range.kind !== "inline_code" &&
+          range.start <= start &&
+          range.end >= lineEnd
+      );
+      previousLineAllowsDefinition =
+        lineIsExcludedBlock || lineAllowsFollowingDefinition(stripped.content);
+      previousContainerKey = stripped.containerKey;
       if (newline === -1) break;
       start = newline + 1;
       continue;
@@ -363,10 +391,13 @@ const collectReferenceDefinitions = (
       const continuationEndIndex = markdown.indexOf("\n", continuationStart);
       const continuationEnd =
         continuationEndIndex === -1 ? markdown.length : continuationEndIndex;
-      const continuation = markdown
+      const continuationLine = markdown
         .slice(continuationStart, continuationEnd)
-        .replace(/\r$/u, "")
-        .match(/^ {0,3}(\S.*)$/u);
+        .replace(/\r$/u, "");
+      const continuation =
+        stripAttachmentContainerPrefixes(continuationLine).content.match(
+          /^ {0,3}(\S.*)$/u
+        );
       if (continuation) {
         remainder = continuation[1] ?? "";
         end = continuationEnd;
@@ -405,10 +436,12 @@ const collectReferenceDefinitions = (
         const titleStart = end + 1;
         const titleEndIndex = markdown.indexOf("\n", titleStart);
         const titleEnd = titleEndIndex === -1 ? markdown.length : titleEndIndex;
-        const titleLine = markdown
+        const physicalTitleLine = markdown
           .slice(titleStart, titleEnd)
-          .replace(/\r$/u, "")
-          .replace(/^ {0,3}/u, "");
+          .replace(/\r$/u, "");
+        const titleLine = stripAttachmentContainerPrefixes(
+          physicalTitleLine
+        ).content.replace(/^ {0,3}/u, "");
         const afterTitle = skipOptionalTitle(titleLine, 0);
         if (afterTitle !== null && afterTitle === titleLine.length) {
           end = titleEnd;
@@ -419,6 +452,8 @@ const collectReferenceDefinitions = (
         definitions.set(label, decodeHtmlEntitiesOnce(parsed.dest.trim()));
       }
     }
+    previousLineAllowsDefinition = true;
+    previousContainerKey = stripped.containerKey;
     if (newline === -1) break;
     start = newline + 1;
   }

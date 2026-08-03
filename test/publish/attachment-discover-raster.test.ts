@@ -200,6 +200,24 @@ describe("attachment discover parser", () => {
     ).toEqual(["real.png"]);
   });
 
+  test("resolves container definitions without letting definitions interrupt paragraphs", () => {
+    const markdown = [
+      "> [quoted]: quoted.png",
+      "![quote][quoted]",
+      "",
+      "- [listed]: listed.png",
+      "![list][listed]",
+      "",
+      "paragraph",
+      "[literal]: ../private.png",
+      "",
+      "![literal][literal]",
+    ].join("\n");
+    expect(
+      discoverImageOccurrences(markdown).map((item) => item.sourceRef)
+    ).toEqual(["quoted.png", "listed.png"]);
+  });
+
   test("skips image-looking Markdown inside raw HTML blocks", () => {
     const markdown = [
       "<script>",

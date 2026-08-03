@@ -9,20 +9,25 @@ const lineAllowsIndentedCodeStart = (line: string): boolean =>
   /^ {0,3}(?:=+|-+)[ \t]*$/u.test(line) ||
   /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/u.test(line);
 
-const stripContainerPrefixes = (line: string): string => {
+export const stripAttachmentContainerPrefixes = (
+  line: string
+): { containerKey: string; content: string } => {
   let content = line;
+  let containerKey = "";
   while (true) {
     const quote = /^ {0,3}>[ \t]?/u.exec(content)?.[0];
     if (quote) {
       content = content.slice(quote.length);
+      containerKey += ">";
       continue;
     }
     const list = /^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]/u.exec(content)?.[0];
     if (list) {
       content = content.slice(list.length);
+      containerKey += "L";
       continue;
     }
-    return content;
+    return { containerKey, content };
   }
 };
 
@@ -39,7 +44,7 @@ const collectIndentedCodeRanges = (markdown: string): ExcludedRange[] => {
     const physicalLine = rawLine.endsWith("\r")
       ? rawLine.slice(0, -1)
       : rawLine;
-    const line = stripContainerPrefixes(physicalLine);
+    const line = stripAttachmentContainerPrefixes(physicalLine).content;
     const lineBlank = line.trim().length === 0;
     const lineIndented = /^(?: {4}|\t)/u.test(line);
 
