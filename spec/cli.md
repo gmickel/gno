@@ -692,6 +692,44 @@ projection.
 content-free decision, lineage, partial disclosure, audit metadata, and
 remediation contract.
 
+### gno audit
+
+Read-only, offline knowledge-integrity audits. This command is distinct from
+`gno egress-audit`: it examines workspace links, declared provenance
+requirements, and source/index freshness without persisting findings or
+modifying notes, configuration, index rows, graph edges, or daemon state.
+
+```bash
+gno audit [links|provenance|freshness|all] [--collection <name>...] \
+  [--path <prefix>...] [--tag <tag>...] [--max-findings <n>] \
+  [--json] [--output <path>]
+```
+
+The default category is `all`; `--max-findings` defaults to 100 and is bounded
+to 1–1000. Truncation limits returned findings but preserves exact totals.
+`--output` writes only the requested report artifact with local file
+permissions. Human output renders the same report represented by
+`audit-report.schema.json`.
+
+Rule statuses are `pass`, `fail`, `skip`, `unavailable`, and `inconclusive`.
+Report statuses are `complete`, `partial`, `changed_during_audit`, and `failed`.
+A skipped, unavailable, inconclusive, or changing check is never rendered as
+healthy.
+
+**Exit Codes:**
+
+- `0` — complete and clean
+- `1` — invalid input
+- `2` — runtime failure
+- `4` — complete report with findings
+- `5` — partial, inconclusive, unavailable, or changed-during-audit evidence
+
+The JSON contract is versioned as `gno://schemas/audit-report@1.0`. Finding IDs
+are stable SHA-256 identities derived from rule, normalized subject/location,
+and load-bearing evidence. Wall-clock timing and traversal order do not affect
+identity. A source/index fingerprint change causes one bounded retry and then
+`changed_during_audit`; it can never produce a clean exit.
+
 ### gno egress-audit
 
 Manage local content-free policy decision receipts:

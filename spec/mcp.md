@@ -152,6 +152,24 @@ Collection names are case-insensitive on input and normalized to lowercase in re
 
 ## Tools
 
+### Knowledge integrity audit contract
+
+`gno_audit` is a read-only, offline tool that returns the same
+`gno://schemas/audit-report@1.0` report as `gno audit`. Its closed input accepts
+`category` (`links`, `provenance`, `freshness`, or `all`), collection/path/tag
+filters, and `maxFindings` (1–1000). The tool is annotated with
+`readOnlyHint: true`; the implementation must additionally prove that it never
+modifies source files, config, index rows, graph edges, daemon state, or a
+persisted audit baseline.
+
+Rules report `pass`, `fail`, `skip`, `unavailable`, or `inconclusive`; reports
+are `complete`, `partial`, `changed_during_audit`, or `failed`. Unavailable or
+changing evidence never appears healthy. Stable finding IDs are derived from
+rule, normalized subject/location, and evidence fingerprint. Responses are
+canonically ordered and bounded while retaining exact pre-truncation totals.
+This knowledge audit is distinct from the content-free `gno_egress_audit_*`
+receipt-management tools.
+
 ### Agent Retrieval Playbook
 
 - Prefer `gno_context` when the agent needs a complete, bounded evidence handoff
