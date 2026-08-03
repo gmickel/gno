@@ -39,9 +39,8 @@ This is not the existing egress audit and must not reuse its name ambiguously. N
 
 
 ## Done summary
-TBD
-
+Defined the versioned, deterministic, read-only knowledge-audit report contract. Added canonical stable finding identities, honest rule/report/exit taxonomies, bounded evidence and finding output, snapshot drift retry semantics, a non-mutating write guard, CLI/MCP contract text, and the closed JSON schema.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 24cf9802
+- Tests: bun test test/audit/report.test.ts (6 pass), bun test test/spec/schemas (258 pass), bun run lint:check
 - PRs:
