@@ -27,6 +27,18 @@ const skipAsciiWhitespace = (text: string, index: number): number => {
   return i;
 };
 
+const isEscapedMarker = (text: string, index: number): boolean => {
+  let backslashes = 0;
+  for (
+    let cursor = index - 1;
+    cursor >= 0 && text[cursor] === "\\";
+    cursor -= 1
+  ) {
+    backslashes += 1;
+  }
+  return backslashes % 2 === 1;
+};
+
 const parseObsidianTarget = (
   raw: string
 ): { alias: string; pathPart: string } => {
@@ -246,6 +258,10 @@ export const discoverImageOccurrences = (
   while (i < markdown.length) {
     const bang = markdown.indexOf("!", i);
     if (bang < 0) break;
+    if (isEscapedMarker(markdown, bang)) {
+      i = bang + 1;
+      continue;
+    }
 
     let parsed: DiscoveredImageRef | null = null;
     if (markdown.slice(bang, bang + 3) === "![[") {

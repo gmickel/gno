@@ -24,10 +24,8 @@ import {
   type PublishAssetDiagnosticCode,
   type SupportedRasterMediaType,
 } from "./artifact-asset-contract";
-import {
-  matchGnoAssetTokens,
-  parseGnoAssetSentinel,
-} from "./artifact-asset-sniff";
+import { parseGnoAssetSentinel } from "./artifact-asset-sniff";
+import { discoverImageOccurrences } from "./attachment-discover";
 import { validateRasterBytesStructural } from "./attachment-raster";
 
 const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/u;
@@ -62,12 +60,13 @@ export const collectMarkdownSentinels = (
   markdown: string
 ): ContractFailure | { ok: true; ids: Set<string> } => {
   const ids = new Set<string>();
-  for (const token of matchGnoAssetTokens(markdown)) {
-    const parsed = parseGnoAssetSentinel(token);
+  for (const occurrence of discoverImageOccurrences(markdown)) {
+    if (!occurrence.sourceRef.startsWith("gno-asset:")) continue;
+    const parsed = parseGnoAssetSentinel(occurrence.sourceRef);
     if (!parsed.ok) {
       return fail(
         "ASSET_SENTINEL_INVALID",
-        `Invalid gno-asset sentinel grammar: "${token}"`
+        `Invalid gno-asset sentinel grammar: "${occurrence.sourceRef}"`
       );
     }
     ids.add(parsed.assetId);

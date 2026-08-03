@@ -110,6 +110,21 @@ describe("attachment discover parser", () => {
     expect(found).toHaveLength(1);
     expect(found[0]?.sourceRef).toBe("real.png");
   });
+
+  test("ignores escaped image markers while preserving even-backslash images", () => {
+    const markdown = [
+      "\\![literal](../private.png)",
+      "\\![[literal-private.png]]",
+      "\\\\![active](real.png)",
+    ].join("\n");
+    const found = discoverImageOccurrences(markdown);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({
+      alt: "active",
+      kind: "markdown",
+      sourceRef: "real.png",
+    });
+  });
 });
 
 describe("attachment raster validation", () => {

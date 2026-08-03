@@ -263,6 +263,30 @@ describe("publish artifact asset contract", () => {
     }
   });
 
+  test("ignores gno-asset text outside renderable image destinations", async () => {
+    const artifact = (await loadJson("valid-small-raster-v1.json")) as Record<
+      string,
+      unknown
+    >;
+    const spaces = artifact.spaces as Array<{
+      notes: Array<{ markdown: string }>;
+    }>;
+    spaces[0]!.notes[0]!.markdown += [
+      "",
+      "Literal gno-asset: mention.",
+      "[link](gno-asset:)",
+      "`![inline](gno-asset:)`",
+      "```text",
+      "![fenced](gno-asset:)",
+      "```",
+      "\\![escaped](gno-asset:)",
+      "![external](https://example.test/gno-asset:bad)",
+      "<!-- ![commented](gno-asset:) -->",
+    ].join("\n");
+
+    expect(validatePublishAssetContract(artifact).ok).toBe(true);
+  });
+
   test("enforces sourceRef 1..1024 before traversal normalization", async () => {
     const artifact = (await loadJson("valid-small-raster-v1.json")) as Record<
       string,
