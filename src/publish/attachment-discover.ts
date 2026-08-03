@@ -15,6 +15,7 @@ export interface DiscoveredImageRef {
   kind: "markdown" | "obsidian";
   sourceRef: string;
   start: number;
+  title?: string | null;
 }
 
 export interface DiscoverImageOptions {
@@ -30,11 +31,12 @@ interface PositionedNode {
     start: { offset?: number };
   };
   type: string;
+  title?: string | null;
   url?: string;
 }
 
 interface MarkdownScan {
-  definitions: Map<string, string>;
+  definitions: Map<string, { title: string | null; url: string }>;
   excluded: ExcludedRange[];
   images: DiscoveredImageRef[];
   references: PositionedNode[];
@@ -50,7 +52,8 @@ const nodeOffsets = (
 
 const markdownImage = (
   node: PositionedNode,
-  sourceRef: string
+  sourceRef: string,
+  title: string | null
 ): DiscoveredImageRef | null => {
   const offsets = nodeOffsets(node);
   if (!offsets) return null;
@@ -60,6 +63,7 @@ const markdownImage = (
     kind: "markdown",
     sourceRef,
     start: offsets.start,
+    title,
   };
 };
 
@@ -89,9 +93,12 @@ const scanMarkdownAst = (markdown: string): MarkdownScan => {
       node.url !== undefined &&
       !scan.definitions.has(node.identifier)
     ) {
-      scan.definitions.set(node.identifier, node.url);
+      scan.definitions.set(node.identifier, {
+        title: node.title ?? null,
+        url: node.url,
+      });
     } else if (node.type === "image" && node.url !== undefined) {
-      const image = markdownImage(node, node.url);
+      const image = markdownImage(node, node.url, node.title ?? null);
       if (image) scan.images.push(image);
     } else if (node.type === "imageReference") {
       scan.references.push(node);
@@ -101,9 +108,9 @@ const scanMarkdownAst = (markdown: string): MarkdownScan => {
   visit(root);
 
   for (const reference of scan.references) {
-    const sourceRef = scan.definitions.get(reference.identifier ?? "");
-    if (sourceRef === undefined) continue;
-    const image = markdownImage(reference, sourceRef);
+    const definition = scan.definitions.get(reference.identifier ?? "");
+    if (definition === undefined) continue;
+    const image = markdownImage(reference, definition.url, definition.title);
     if (image) scan.images.push(image);
   }
   return scan;

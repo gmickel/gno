@@ -88,7 +88,9 @@ describe("rewriteAttachmentsInMarkdown", () => {
     expect(result.markdown).toContain("![alias](gno-asset:");
     expect(result.markdown).toContain("![spaces](gno-asset:");
     expect(result.markdown).toContain("![nested](gno-asset:");
-    expect(result.markdown).toContain("![titled](gno-asset:");
+    expect(result.markdown).toMatch(
+      /!\[titled\]\(gno-asset:[a-f0-9]{64} "caption"\)/u
+    );
     expect(result.markdown).toContain("![ext](https://cdn.example/a.png)");
     expect(result.markdown).toContain("![proto](//cdn.example/b.png)");
     expect(result.markdown).toContain("```\n![[dot.png]]\n```");
@@ -318,6 +320,30 @@ describe("rewriteAttachmentsInMarkdown", () => {
     } catch (error) {
       expect(String(error)).toMatch(/ASSET_TRAVERSAL/);
     }
+  });
+
+  test("does not follow an in-root directory symlink into private assets", async () => {
+    const root = await makeRoot();
+    await mkdir(join(root, "_internal"), { recursive: true });
+    await writeBytes(join(root, "_internal", "secret.png"), PNG_1X1);
+    await symlink(join(root, "_internal"), join(root, "public"));
+
+    const result = await rewriteAttachmentsInMarkdown(
+      "![x](public/secret.png)",
+      {
+        basenameIndex: await buildAttachmentBasenameIndex(root),
+        collectionRoot: root,
+        noteSlug: "n",
+        sourceRelPath: "n.md",
+      }
+    );
+
+    expect(result.payloads.size).toBe(0);
+    expect(result.markdown).toBe("");
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ code: "ASSET_MISSING" }),
+    ]);
+    expect(result.diagnostics[0]?.message).not.toContain("_internal");
   });
 
   test("rejects MIME spoof, data URLs, SVG, and non-raster basenames", async () => {

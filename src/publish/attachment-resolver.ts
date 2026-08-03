@@ -70,13 +70,18 @@ const isDataUrl = (value: string): boolean =>
 const escapeMarkdownImageAlt = (value: string): string =>
   value.replace(/[\\[\]]/gu, "\\$&");
 
+const formatMarkdownImageTitle = (value: string | null | undefined): string =>
+  value === null || value === undefined
+    ? ""
+    : ` "${value.replace(/[\\"]/gu, "\\$&")}"`;
+
 const rewriteOccurrence = (
   occurrence: ImageOccurrence,
   assetId: string
 ): string => {
   const sentinel = formatGnoAssetSentinel(assetId);
   if (occurrence.kind === "markdown") {
-    return `![${escapeMarkdownImageAlt(occurrence.alt)}](${sentinel})`;
+    return `![${escapeMarkdownImageAlt(occurrence.alt)}](${sentinel}${formatMarkdownImageTitle(occurrence.title)})`;
   }
   const alias = occurrence.alt.trim();
   const display = alias.length > 0 && !/^\d+$/u.test(alias) ? alias : "";

@@ -12,6 +12,7 @@ import {
   join,
   normalize,
   posix as pathPosix,
+  relative,
   sep,
 } from "node:path";
 
@@ -268,6 +269,15 @@ export async function assertContainedFile(
   if (!isCanonicalPathContained(rootReal, absReal)) {
     throw new Error(
       `ASSET_TRAVERSAL: symlink escape outside collection root (${sourceRef})`
+    );
+  }
+  const canonicalRelPath = relative(rootReal, absReal).split(sep).join("/");
+  if (isPrivateAttachmentRelPath(canonicalRelPath)) {
+    return diagnostic(
+      "ASSET_MISSING",
+      "Attachment not found",
+      noteSlug,
+      sourceRef
     );
   }
   return { absPath: absReal };
