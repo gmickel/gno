@@ -6,6 +6,7 @@
  * @module src/publish/attachment-discover
  */
 
+import { decodeHtmlEntitiesOnce } from "../converters/adapters/shared/html-text";
 import {
   type ExcludedRange,
   rangeIntersectsExcluded,
@@ -28,6 +29,26 @@ const isAsciiWhitespace = (ch: string): boolean =>
 const skipAsciiWhitespace = (text: string, index: number): number => {
   let i = index;
   while (i < text.length && isAsciiWhitespace(text[i] ?? "")) i += 1;
+  return i;
+};
+
+const skipResourceWhitespace = (text: string, index: number): number | null => {
+  let i = index;
+  let sawLineEnding = false;
+  while (i < text.length) {
+    const ch = text[i] ?? "";
+    if (ch === " " || ch === "\t") {
+      i += 1;
+      continue;
+    }
+    if (ch === "\n" || ch === "\r") {
+      if (sawLineEnding) return null;
+      sawLineEnding = true;
+      i += ch === "\r" && text[i + 1] === "\n" ? 2 : 1;
+      continue;
+    }
+    break;
+  }
   return i;
 };
 
@@ -221,7 +242,9 @@ const parseMarkdownImageAt = (
   let i = linkText.next;
   if (text[i] !== "(") return null;
   i += 1;
-  i = skipAsciiWhitespace(text, i);
+  const destinationStart = skipResourceWhitespace(text, i);
+  if (destinationStart === null) return null;
+  i = destinationStart;
 
   let destResult: { dest: string; next: number } | null;
   if (text[i] === "<") {
@@ -231,12 +254,16 @@ const parseMarkdownImageAt = (
   }
   if (!destResult) return null;
   i = destResult.next;
-  i = skipAsciiWhitespace(text, i);
+  const afterDestination = skipResourceWhitespace(text, i);
+  if (afterDestination === null) return null;
+  i = afterDestination;
 
   if (text[i] === '"' || text[i] === "'" || text[i] === "(") {
     const afterTitle = skipOptionalTitle(text, i);
     if (afterTitle === null) return null;
-    i = skipAsciiWhitespace(text, afterTitle);
+    const afterTitleWhitespace = skipResourceWhitespace(text, afterTitle);
+    if (afterTitleWhitespace === null) return null;
+    i = afterTitleWhitespace;
   }
 
   if (text[i] !== ")") return null;
@@ -244,29 +271,60 @@ const parseMarkdownImageAt = (
     alt: linkText.alt,
     end: i + 1,
     kind: "markdown",
-    sourceRef: destResult.dest.trim(),
+    sourceRef: decodeHtmlEntitiesOnce(destResult.dest.trim()),
     start: bangIndex,
   };
 };
 
 const normalizeReferenceLabel = (label: string): string =>
-  label
+  decodeHtmlEntitiesOnce(label)
     .replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~])/gu, "$1")
     .trim()
     .replace(/[ \t\r\n]+/gu, " ")
     .toLowerCase();
+
+const parseReferenceDefinitionStart = (
+  line: string
+): { label: string; remainder: string } | null => {
+  const indent = /^ {0,3}/u.exec(line)?.[0].length ?? 0;
+  if (line[indent] !== "[") return null;
+  let cursor = indent + 1;
+  const labelStart = cursor;
+  while (cursor < line.length) {
+    if (line[cursor] === "\\" && cursor + 1 < line.length) {
+      cursor += 2;
+      continue;
+    }
+    if (line[cursor] === "]" && line[cursor + 1] === ":") {
+      return {
+        label: line.slice(labelStart, cursor),
+        remainder: line.slice(cursor + 2).replace(/^[ \t]*/u, ""),
+      };
+    }
+    cursor += 1;
+  }
+  return null;
+};
 
 const collectReferenceDefinitions = (
   markdown: string,
   excluded: ExcludedRange[]
 ): Map<string, string> => {
   const definitions = new Map<string, string>();
-  const pattern = /^ {0,3}\[([^\]\r\n]+)\]:[ \t]*(.*)$/gmu;
-  for (const match of markdown.matchAll(pattern)) {
-    const start = match.index;
-    let end = start + match[0].length;
-    const label = normalizeReferenceLabel(match[1] ?? "");
-    let remainder = match[2] ?? "";
+  let start = 0;
+  while (start <= markdown.length) {
+    const newline = markdown.indexOf("\n", start);
+    const lineEnd = newline === -1 ? markdown.length : newline;
+    const line = markdown.slice(start, lineEnd).replace(/\r$/u, "");
+    const definition = parseReferenceDefinitionStart(line);
+    let end = lineEnd;
+    if (!definition) {
+      if (newline === -1) break;
+      start = newline + 1;
+      continue;
+    }
+    const label = normalizeReferenceLabel(definition.label);
+    let remainder = definition.remainder;
     if (!remainder && markdown[end] === "\n") {
       const continuationStart = end + 1;
       const continuationEndIndex = markdown.indexOf("\n", continuationStart);
@@ -281,13 +339,20 @@ const collectReferenceDefinitions = (
         end = continuationEnd;
       }
     }
-    if (rangeIntersectsExcluded(start, end, excluded)) continue;
-    if (!label || !remainder) continue;
+    if (rangeIntersectsExcluded(start, end, excluded) || !label || !remainder) {
+      if (newline === -1) break;
+      start = newline + 1;
+      continue;
+    }
     const parsed =
       remainder[0] === "<"
         ? parseAngleDestination(remainder, 0)
         : parseUnbracketedDestination(remainder, 0);
-    if (!parsed?.dest) continue;
+    if (!parsed?.dest) {
+      if (newline === -1) break;
+      start = newline + 1;
+      continue;
+    }
     let cursor = skipAsciiWhitespace(remainder, parsed.next);
     if (
       remainder[cursor] === '"' ||
@@ -295,11 +360,18 @@ const collectReferenceDefinitions = (
       remainder[cursor] === "("
     ) {
       const afterTitle = skipOptionalTitle(remainder, cursor);
-      if (afterTitle === null) continue;
+      if (afterTitle === null) {
+        if (newline === -1) break;
+        start = newline + 1;
+        continue;
+      }
       cursor = skipAsciiWhitespace(remainder, afterTitle);
     }
-    if (cursor !== remainder.length) continue;
-    if (!definitions.has(label)) definitions.set(label, parsed.dest.trim());
+    if (cursor === remainder.length && !definitions.has(label)) {
+      definitions.set(label, decodeHtmlEntitiesOnce(parsed.dest.trim()));
+    }
+    if (newline === -1) break;
+    start = newline + 1;
   }
   return definitions;
 };

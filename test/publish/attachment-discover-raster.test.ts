@@ -180,6 +180,13 @@ describe("attachment discover parser", () => {
     ]);
   });
 
+  test("resolves escaped brackets in reference labels", () => {
+    const markdown = "![hero][a\\]b]\n\n[a\\]b]: images/hero.png\n";
+    expect(discoverImageOccurrences(markdown)).toMatchObject([
+      { sourceRef: "images/hero.png" },
+    ]);
+  });
+
   test("skips image-looking Markdown inside raw HTML blocks", () => {
     const markdown = [
       "<script>",
@@ -224,6 +231,33 @@ describe("attachment discover parser", () => {
       "_ _ _",
       "    ![underscore](../private-too.png)",
       "",
+      "![active](real.png)",
+    ].join("\n");
+    expect(
+      discoverImageOccurrences(markdown).map((item) => item.sourceRef)
+    ).toEqual(["real.png"]);
+  });
+
+  test("skips multi-backtick spans and container-indented code", () => {
+    const markdown = [
+      "`` ` ![span](../private.png) ` ``",
+      "",
+      ">     ![quote](../private-too.png)",
+      "",
+      "-     ![list](../private-three.png)",
+      "",
+      "![active](real.png)",
+    ].join("\n");
+    expect(
+      discoverImageOccurrences(markdown).map((item) => item.sourceRef)
+    ).toEqual(["real.png"]);
+  });
+
+  test("does not cross blank lines while parsing inline image resources", () => {
+    const markdown = [
+      "![literal](",
+      "",
+      "../private.png)",
       "![active](real.png)",
     ].join("\n");
     expect(

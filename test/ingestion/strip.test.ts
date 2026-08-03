@@ -147,6 +147,15 @@ done`;
       const inlines = ranges.filter((r) => r.kind === "inline_code");
       expect(inlines.length).toBe(0);
     });
+
+    test("matches equal-length delimiters across inner backtick runs", () => {
+      const markdown = "Use `` ` ![x](../secret.png) ` `` safely.";
+      const ranges = getExcludedRanges(markdown);
+      const inline = ranges.find((range) => range.kind === "inline_code");
+      expect(markdown.slice(inline!.start, inline!.end)).toBe(
+        "`` ` ![x](../secret.png) ` ``"
+      );
+    });
   });
 
   describe("HTML comments", () => {

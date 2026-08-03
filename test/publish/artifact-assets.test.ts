@@ -289,6 +289,35 @@ describe("publish artifact asset contract", () => {
       ok: false,
       diagnostic: { code: "ASSET_SENTINEL_INVALID" },
     });
+
+    spaces[0]!.notes[0]!.markdown = "![dot][a\\]b]\n\n[a\\]b]: gno-asset:\n";
+    expect(validatePublishAssetContract(artifact)).toMatchObject({
+      ok: false,
+      diagnostic: { code: "ASSET_SENTINEL_INVALID" },
+    });
+  });
+
+  test("decodes Markdown character references before sentinel validation", async () => {
+    const artifact = (await loadJson("legacy-asset-free-v1.json")) as Record<
+      string,
+      unknown
+    >;
+    const spaces = artifact.spaces as Array<{
+      notes: Array<{ markdown: string }>;
+    }>;
+    for (const destination of [
+      "gno&#45;asset:",
+      "gno-asset&#58;",
+      "gno-asset&colon;",
+    ]) {
+      spaces[0]!.notes[0]!.markdown = `![x](${destination})`;
+      expect(validatePublishAssetContract(artifact)).toMatchObject({
+        ok: false,
+        diagnostic: { code: "ASSET_SENTINEL_INVALID" },
+      });
+    }
+    spaces[0]!.notes[0]!.markdown = "![x](gno&amp;#45;asset:)";
+    expect(validatePublishAssetContract(artifact).ok).toBe(true);
   });
 
   test("ignores gno-asset text outside renderable image destinations", async () => {

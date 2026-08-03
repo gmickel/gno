@@ -61,12 +61,13 @@ export const collectMarkdownSentinels = (
 ): ContractFailure | { ok: true; ids: Set<string> } => {
   const ids = new Set<string>();
   for (const occurrence of discoverImageOccurrences(markdown)) {
-    if (!occurrence.sourceRef.startsWith("gno-asset:")) continue;
-    const parsed = parseGnoAssetSentinel(occurrence.sourceRef);
+    const sourceRef = occurrence.sourceRef;
+    if (!sourceRef.startsWith("gno-asset:")) continue;
+    const parsed = parseGnoAssetSentinel(sourceRef);
     if (!parsed.ok) {
       return fail(
         "ASSET_SENTINEL_INVALID",
-        `Invalid gno-asset sentinel grammar: "${occurrence.sourceRef}"`
+        `Invalid gno-asset sentinel grammar: "${sourceRef}"`
       );
     }
     ids.add(parsed.assetId);

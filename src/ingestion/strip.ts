@@ -45,9 +45,6 @@ const FENCE_OPEN_REGEX = /^ {0,3}(`{3,}|~{3,})(.*)$/u;
 /** CommonMark fence closer: matching character, length ≥ opener, trailing space/tabs only. */
 const FENCE_CLOSE_REGEX = /^ {0,3}(`{3,}|~{3,})[\t ]*$/u;
 
-/** Inline code (backticks, non-greedy) */
-const INLINE_CODE_REGEX = /`[^`\n]+`/g;
-
 /** HTML comments */
 const HTML_COMMENT_REGEX = /<!--[\s\S]*?-->/g;
 
@@ -113,6 +110,67 @@ const collectFencedCodeRanges = (markdown: string): ExcludedRange[] => {
   return ranges;
 };
 
+interface BacktickRun {
+  end: number;
+  length: number;
+  start: number;
+}
+
+/** CommonMark code spans close only on a backtick run of equal length. */
+const collectInlineCodeRanges = (markdown: string): ExcludedRange[] => {
+  const runs: BacktickRun[] = [];
+  let cursor = 0;
+  while (cursor < markdown.length) {
+    if (markdown[cursor] !== "`") {
+      cursor += 1;
+      continue;
+    }
+    const start = cursor;
+    while (markdown[cursor] === "`") cursor += 1;
+    let backslashes = 0;
+    for (let i = start - 1; i >= 0 && markdown[i] === "\\"; i -= 1) {
+      backslashes += 1;
+    }
+    if (backslashes % 2 === 0) {
+      runs.push({ start, end: cursor, length: cursor - start });
+    }
+  }
+
+  const nextMatchingRun = Array.from<number | undefined>({
+    length: runs.length,
+  });
+  const latestByLength = new Map<number, number>();
+  for (let index = runs.length - 1; index >= 0; index -= 1) {
+    const run = runs[index];
+    if (!run) continue;
+    nextMatchingRun[index] = latestByLength.get(run.length);
+    latestByLength.set(run.length, index);
+  }
+
+  const ranges: ExcludedRange[] = [];
+  let index = 0;
+  while (index < runs.length) {
+    const closeIndex = nextMatchingRun[index];
+    const opener = runs[index];
+    if (closeIndex === undefined || !opener) {
+      index += 1;
+      continue;
+    }
+    const closer = runs[closeIndex];
+    if (!closer) {
+      index += 1;
+      continue;
+    }
+    ranges.push({
+      start: opener.start,
+      end: closer.end,
+      kind: "inline_code",
+    });
+    index = closeIndex + 1;
+  }
+  return ranges;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Functions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,18 +197,11 @@ export function getExcludedRanges(markdown: string): ExcludedRange[] {
   ranges.push(...collectFencedCodeRanges(markdown));
 
   // 3. Inline code
-  INLINE_CODE_REGEX.lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = INLINE_CODE_REGEX.exec(markdown)) !== null) {
-    ranges.push({
-      start: match.index,
-      end: match.index + match[0].length,
-      kind: "inline_code",
-    });
-  }
+  ranges.push(...collectInlineCodeRanges(markdown));
 
   // 4. HTML comments
   HTML_COMMENT_REGEX.lastIndex = 0;
+  let match: RegExpExecArray | null;
   while ((match = HTML_COMMENT_REGEX.exec(markdown)) !== null) {
     ranges.push({
       start: match.index,
