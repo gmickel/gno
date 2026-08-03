@@ -314,6 +314,15 @@ describe("rewriteAttachmentsInMarkdown", () => {
     ]);
   });
 
+  test("applies glob directory exclusions while building basename indexes", async () => {
+    const root = await makeRoot();
+    await writeBytes(join(root, "images", "shared.png"), PNG_1X1);
+    await writeBytes(join(root, "vendor", "nested", "shared.png"), PNG_1X1);
+
+    const index = await buildAttachmentBasenameIndex(root, ["vendor/**"]);
+    expect(index.get("shared.png")).toEqual(["images/shared.png"]);
+  });
+
   test("resolves a Markdown destination with exactly one percent-decode", async () => {
     const root = await makeRoot();
     await writeBytes(join(root, "photo%20.png"), PNG_1X1);

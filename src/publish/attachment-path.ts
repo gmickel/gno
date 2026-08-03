@@ -97,10 +97,11 @@ export async function buildAttachmentBasenameIndex(
     }
     for await (const entry of directory) {
       const rel = relDir ? `${relDir}/${entry.name}` : entry.name;
-      if (
-        isPrivateAttachmentRelPath(rel) ||
-        matchesCollectionExclusion(rel, collectionExcludes)
-      ) {
+      const excluded =
+        matchesCollectionExclusion(rel, collectionExcludes) ||
+        (entry.isDirectory() &&
+          matchesCollectionExclusion(`${rel}/`, collectionExcludes));
+      if (isPrivateAttachmentRelPath(rel) || excluded) {
         continue;
       }
       if (entry.isDirectory()) {
