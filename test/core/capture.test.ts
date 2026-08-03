@@ -3,6 +3,8 @@ import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { CaptureSource } from "../../src/core/capture";
+
 import {
   buildCaptureReceipt,
   extractCaptureSourceFromFrontmatter,
@@ -388,6 +390,28 @@ describe("capture core", () => {
       { field: "source.observedAt", reason: "invalid" },
       { field: "source.publishedAt", reason: "invalid" },
     ]);
+  });
+
+  test("rejects non-string optional capture source fields", () => {
+    for (const field of [
+      "title",
+      "docid",
+      "mime",
+      "ext",
+      "author",
+      "site",
+      "externalId",
+    ] as const) {
+      const source = {
+        kind: "web",
+        capturedAt: "2026-06-04T12:34:56.000Z",
+        [field]: 123,
+      } as unknown as Partial<CaptureSource>;
+      expect(validateDeclaredCaptureProvenance(source)).toContainEqual({
+        field: `source.${field}`,
+        reason: "invalid",
+      });
+    }
   });
 
   test("preserves and rejects non-string capturedAt scalars", () => {

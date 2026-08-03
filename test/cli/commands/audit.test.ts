@@ -565,6 +565,44 @@ describe("gno audit CLI", () => {
     }
   });
 
+  test("detects logical-record container drift during freshness audit", async () => {
+    const database = new Database(getIndexDbPath());
+    database.run(
+      `UPDATE documents
+       SET rel_path = ?, uri = ?, source_hash = ?, record_key = ?,
+           record_source_path = ?
+       WHERE rel_path = ?`,
+      [
+        ".gno/records/jsonl/b.md",
+        "gno://notes/.gno/records/jsonl/b.md",
+        "record-specific-hash",
+        "record-b",
+        "b.md",
+        "b.md",
+      ]
+    );
+    database.close();
+
+    let mutations = 0;
+    const changed = await audit({
+      category: "freshness",
+      onProgress: async ({ phase, completed }) => {
+        if (phase !== "snapshot" || completed === 0) return;
+        mutations += 1;
+        await Bun.write(
+          join(notes, "b.md"),
+          mutations % 2 === 0 ? "# B\n" : "# Changed container\n"
+        );
+      },
+    });
+    expect(changed.success).toBe(true);
+    if (changed.success) {
+      expect(changed.exitCode).toBe(5);
+      expect(changed.report.status).toBe("changed_during_audit");
+    }
+    expect(mutations).toBe(2);
+  });
+
   test("detects indexed provenance drift without source revision changes", async () => {
     const database = new Database(getIndexDbPath());
     const revisionsBefore = database

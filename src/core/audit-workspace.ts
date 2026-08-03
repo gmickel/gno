@@ -391,7 +391,12 @@ const captureWorkspaceFingerprints = async (
     ? await mapConcurrent(selected.documents, async (document) => {
         const root = roots.get(document.collection);
         if (!root) return { uri: document.uri, state: "unavailable" };
-        const file = Bun.file(join(root, document.relPath));
+        const recordSourcePath = document.recordSourcePath?.trim();
+        const physicalRelPath =
+          document.recordKey != null && recordSourcePath
+            ? recordSourcePath
+            : document.relPath;
+        const file = Bun.file(join(root, physicalRelPath));
         try {
           const exists = await file.exists();
           if (!exists) return { uri: document.uri, state: "missing" };
@@ -447,6 +452,7 @@ const captureWorkspaceFingerprints = async (
         converterId: document.converterId,
         converterVersion: document.converterVersion,
         recordKey: document.recordKey ?? null,
+        recordSourcePath: document.recordSourcePath ?? null,
         recordSourceLocator: document.recordSourceLocator ?? null,
         recordAdapterFingerprint: document.recordAdapterFingerprint ?? null,
         recordMetadata: document.recordMetadata ?? null,

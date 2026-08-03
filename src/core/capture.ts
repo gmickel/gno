@@ -222,6 +222,13 @@ export const validateDeclaredCaptureProvenance = (
       issues.push({ field: `source.${field}`, reason: "invalid" });
     }
   }
+  for (const field of CAPTURE_SOURCE_STRING_KEYS) {
+    if (URL_SOURCE_FIELDS.has(field) || field === "publishedAt") continue;
+    const value = source[field as keyof CaptureSource];
+    if (value !== undefined && value !== null && typeof value !== "string") {
+      issues.push({ field: `source.${field}`, reason: "invalid" });
+    }
+  }
   if (
     source.browserClip !== undefined &&
     !browserClipProvenanceSchema.safeParse(source.browserClip).success
