@@ -3071,7 +3071,11 @@ artifact.
 
 Optional `visibility` values are `public`, `secret-link`, `invite-only`, and
 `encrypted`. Encrypted export also requires `encryptionPassphrase`. The
-response contains `artifact`, `fileName`, `uploadUrl`, and sanitizer `warnings`.
+response contains `artifact`, `fileName`, `uploadUrl`, sanitizer `warnings`,
+and deterministic `assetSummary` egress accounting. `assetSummary` reports
+asset/reference counts, raw and encoded bytes, deduplication savings, external
+image count, diagnostics, and exact final upload bytes; asset-free exports
+return the same shape with zero counts.
 
 Public artifact spaces carry a manifest conforming to
 `gno://schemas/publish-artifact@1.0`: a stable projection revision, sorted

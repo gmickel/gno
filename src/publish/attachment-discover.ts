@@ -26,6 +26,16 @@ export interface DiscoveredImageRef {
 const isAsciiWhitespace = (ch: string): boolean =>
   ch === " " || ch === "\t" || ch === "\n" || ch === "\r";
 
+const isAsciiPunctuation = (ch: string): boolean => {
+  const code = ch.charCodeAt(0);
+  return (
+    (code >= 0x21 && code <= 0x2f) ||
+    (code >= 0x3a && code <= 0x40) ||
+    (code >= 0x5b && code <= 0x60) ||
+    (code >= 0x7b && code <= 0x7e)
+  );
+};
+
 const skipAsciiWhitespace = (text: string, index: number): number => {
   let i = index;
   while (i < text.length && isAsciiWhitespace(text[i] ?? "")) i += 1;
@@ -155,8 +165,14 @@ const parseUnbracketedDestination = (
   while (i < text.length) {
     const ch = text[i] ?? "";
     if (ch === "\\" && i + 1 < text.length) {
-      dest += text[i + 1] ?? "";
-      i += 2;
+      const next = text[i + 1] ?? "";
+      if (isAsciiPunctuation(next)) {
+        dest += next;
+        i += 2;
+      } else {
+        dest += ch;
+        i += 1;
+      }
       continue;
     }
     if (ch === "(") {
@@ -193,8 +209,14 @@ const parseAngleDestination = (
   while (i < text.length) {
     const ch = text[i] ?? "";
     if (ch === "\\" && i + 1 < text.length) {
-      dest += text[i + 1] ?? "";
-      i += 2;
+      const next = text[i + 1] ?? "";
+      if (isAsciiPunctuation(next)) {
+        dest += next;
+        i += 2;
+      } else {
+        dest += ch;
+        i += 1;
+      }
       continue;
     }
     if (ch === "\n" || ch === "\r") return null;
@@ -216,10 +238,20 @@ const skipOptionalTitle = (text: string, start: number): number | null => {
   while (i < text.length) {
     const ch = text[i] ?? "";
     if (ch === "\\" && i + 1 < text.length) {
-      i += 2;
+      i += isAsciiPunctuation(text[i + 1] ?? "") ? 2 : 1;
       continue;
     }
-    if (ch === "\n" || ch === "\r") return null;
+    if (ch === "\n" || ch === "\r") {
+      let afterLineEnding = ch === "\r" && text[i + 1] === "\n" ? i + 2 : i + 1;
+      while (text[afterLineEnding] === " " || text[afterLineEnding] === "\t") {
+        afterLineEnding += 1;
+      }
+      if (text[afterLineEnding] === "\n" || text[afterLineEnding] === "\r") {
+        return null;
+      }
+      i = afterLineEnding;
+      continue;
+    }
     if (ch === closer) return i + 1;
     i += 1;
   }

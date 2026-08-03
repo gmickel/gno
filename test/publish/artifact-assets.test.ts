@@ -318,6 +318,12 @@ describe("publish artifact asset contract", () => {
     }
     spaces[0]!.notes[0]!.markdown = "![x](gno&amp;#45;asset:)";
     expect(validatePublishAssetContract(artifact).ok).toBe(true);
+
+    spaces[0]!.notes[0]!.markdown = '![x](gno-asset: "first\nsecond")';
+    expect(validatePublishAssetContract(artifact)).toMatchObject({
+      ok: false,
+      diagnostic: { code: "ASSET_SENTINEL_INVALID" },
+    });
   });
 
   test("ignores gno-asset text outside renderable image destinations", async () => {

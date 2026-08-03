@@ -55,7 +55,7 @@ describe("attachment discover parser", () => {
       '![plain](dot.png "title")',
       "![spaces](<Pasted image 1.png>)",
       "![nested](dir/(parens)/café.png)",
-      "![esc](path\\ with\\ space.png)",
+      "![esc](path\\[with\\].png)",
       "![titled](a.png 'single')",
       "![paren-title](b.png (caption))",
       "![[Pasted image 1.png|hero]]",
@@ -67,7 +67,7 @@ describe("attachment discover parser", () => {
       "dot.png",
       "Pasted image 1.png",
       "dir/(parens)/café.png",
-      "path with space.png",
+      "path[with].png",
       "a.png",
       "b.png",
       "Pasted image 1.png",
@@ -276,6 +276,18 @@ describe("attachment discover parser", () => {
     expect(
       discoverImageOccurrences(markdown).map((item) => item.sourceRef)
     ).toEqual(["real.png"]);
+  });
+
+  test("permits nonblank multiline titles and preserves non-punctuation backslashes", () => {
+    const markdown = [
+      '![multiline](gno-asset: "first',
+      'second")',
+      "![backslash](foo\\q.png)",
+    ].join("\n");
+    expect(discoverImageOccurrences(markdown)).toMatchObject([
+      { sourceRef: "gno-asset:" },
+      { sourceRef: "foo\\q.png" },
+    ]);
   });
 });
 
