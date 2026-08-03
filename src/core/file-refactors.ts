@@ -1,7 +1,9 @@
 /**
- * Shared file refactor planning helpers.
+ * Shared file refactor planning helpers and reference-safe contract exports.
  *
- * Browser-safe path planning, with warning generation based on known link data.
+ * Browser-safe path planning and warning generation based on known link data.
+ * Versioned preview/apply contracts live in `file-refactor-contract.ts` and are
+ * re-exported here for a stable import path.
  *
  * @module src/core/file-refactors
  */
@@ -10,6 +12,42 @@
 import { posix as pathPosix } from "node:path";
 
 import { validateRelPath } from "./validation";
+
+export {
+  applyDestinationOnlyEdit,
+  compareExaminedReferences,
+  compareUtf16CodeUnits,
+  computeFileRefactorPlanDigest,
+  deriveCanApply,
+  FILE_REFACTOR_APPLY_CONFIRMATION,
+  FILE_REFACTOR_MUTATION_BOUNDARY,
+  FILE_REFACTOR_REASON_CODES,
+  FILE_REFACTOR_SCHEMA_VERSION,
+  fingerprintUtf8Content,
+  isBytePreservedOutsideSpan,
+  isContentPreservedOutsideSpan,
+  sortExaminedReferences,
+  stableStringify,
+  summarizeReferenceClassifications,
+  type FileRefactorAffectedDocument,
+  type FileRefactorApplyRequest,
+  type FileRefactorApplyResult,
+  type FileRefactorApplyStatus,
+  type FileRefactorConflictPolicy,
+  type FileRefactorDestinationSpan,
+  type FileRefactorDocumentRef,
+  type FileRefactorExaminedReference,
+  type FileRefactorFilesystemState,
+  type FileRefactorIndexConvergenceState,
+  type FileRefactorMutationBoundary,
+  type FileRefactorOperation,
+  type FileRefactorPreconditions,
+  type FileRefactorPreviewPlan,
+  type FileRefactorReasonCode,
+  type FileRefactorReferenceClassification,
+  type FileRefactorReferenceKind,
+  type FileRefactorSafetySummary,
+} from "./file-refactor-contract";
 
 export interface RefactorWarningSummary {
   warnings: string[];

@@ -3448,6 +3448,25 @@ Error codes match exit codes: `VALIDATION` (exit 1), `RUNTIME` (exit 2), `NOT_RU
 
 ---
 
+## Workspace file refactors (non-CLI)
+
+Reference-safe note rename and same-collection move use a transport-neutral
+preview/apply contract defined in `src/core/file-refactors.ts` and frozen as:
+
+- `gno://schemas/file-refactor-preview@1.0`
+- `gno://schemas/file-refactor-apply-result@1.0`
+
+Surfaces that adapt the contract are REST/Web UI, SDK, and write-gated MCP
+(`gno_rename_note`, `gno_move_note`). This specification intentionally does
+**not** add a CLI command family or generic action bus for refactors.
+Duplicate-note and create-folder keep their existing shipped semantics and do
+not retarget inbound references.
+
+The contract separates durable filesystem commit/rollback from post-commit
+index convergence. A successful filesystem refactor is never rolled back solely
+because reindexing is temporarily unavailable
+(`applied_with_sync_pending`).
+
 ## See Also
 
 - [MCP Specification](./mcp.md)

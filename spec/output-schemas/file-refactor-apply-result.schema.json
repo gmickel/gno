@@ -1,0 +1,305 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/file-refactor-apply-result@1.0",
+  "title": "GNO File Refactor Apply Result",
+  "description": "Terminal result for reference-safe rename/move apply. Filesystem commit/rollback is modeled separately from post-commit index convergence; recovery metadata is content-free. Status discriminates valid filesystem/index/reason combinations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "planDigest",
+    "operation",
+    "source",
+    "target",
+    "filesystem",
+    "indexConvergence"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "applied",
+        "applied_with_sync_pending",
+        "conflict",
+        "stale_plan",
+        "unsupported",
+        "failed_rolled_back"
+      ]
+    },
+    "planDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "operation": {
+      "type": "string",
+      "enum": ["rename", "move"]
+    },
+    "source": {
+      "$ref": "#/definitions/documentRef"
+    },
+    "target": {
+      "$ref": "#/definitions/documentRef"
+    },
+    "reasonCode": {
+      "$ref": "#/definitions/reasonCode"
+    },
+    "filesystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["committed", "rolled_back", "unchanged", "recovery_required"]
+        },
+        "recoveryJournalId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Opaque journal id only — never embeds note content"
+        }
+      }
+    },
+    "indexConvergence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["converged", "pending", "not_attempted", "skipped"]
+        },
+        "recoveryInstruction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Content-free instruction to finish index convergence"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "documentRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "relPath", "collection"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "relPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "collection": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "reasonCode": {
+      "type": "string",
+      "enum": [
+        "ambiguous_resolution",
+        "unsupported_syntax",
+        "malformed_syntax",
+        "stale_plan",
+        "capability_denied",
+        "occupied_target",
+        "sync_pending",
+        "cross_collection_unsupported",
+        "unsafe_target",
+        "external_destination",
+        "code_fence_context",
+        "inline_code_context",
+        "html_context",
+        "duplicate_basename_ambiguity",
+        "unicode_normalization_mismatch",
+        "destination_unchanged",
+        "read_only_document",
+        "relative_path_recalculated",
+        "reference_definition_site",
+        "filesystem_commit_failed",
+        "rollback_recovery_required"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "const": "applied"
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "reasonCode": false,
+          "filesystem": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "committed"
+              }
+            }
+          },
+          "indexConvergence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["state"],
+            "properties": {
+              "state": {
+                "const": "converged"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "const": "applied_with_sync_pending"
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "type": "object",
+        "required": ["reasonCode"],
+        "properties": {
+          "reasonCode": {
+            "const": "sync_pending"
+          },
+          "filesystem": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "committed"
+              }
+            }
+          },
+          "indexConvergence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["state", "recoveryInstruction"],
+            "properties": {
+              "state": {
+                "const": "pending"
+              },
+              "recoveryInstruction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": ["conflict", "stale_plan", "unsupported"]
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "type": "object",
+        "required": ["reasonCode"],
+        "properties": {
+          "filesystem": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "unchanged"
+              }
+            }
+          },
+          "indexConvergence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["state"],
+            "properties": {
+              "state": {
+                "enum": ["not_attempted", "skipped"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "const": "stale_plan"
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "type": "object",
+        "required": ["reasonCode"],
+        "properties": {
+          "reasonCode": {
+            "const": "stale_plan"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "const": "failed_rolled_back"
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "type": "object",
+        "required": ["reasonCode"],
+        "properties": {
+          "filesystem": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "enum": ["rolled_back", "recovery_required"]
+              }
+            }
+          },
+          "indexConvergence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["state"],
+            "properties": {
+              "state": {
+                "enum": ["not_attempted", "skipped"]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

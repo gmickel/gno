@@ -1798,6 +1798,28 @@ Create a folder inside an existing collection (write-enabled).
 
 Rename an editable note in place (write-enabled).
 
+Same-collection rename is covered by the transport-neutral reference-safe
+refactor contract (`src/core/file-refactors.ts`). Preview and apply share one
+versioned schema pair across MCP, REST/SDK, and UI adapters:
+
+- Preview plan: `gno://schemas/file-refactor-preview@1.0`
+- Apply result: `gno://schemas/file-refactor-apply-result@1.0`
+
+The preview enumerates examined wiki/Markdown references with classifications
+and stable reason codes, destination-only edit spans, precondition fingerprints,
+a deterministic `planDigest`, safety summary, and `canApply`. Apply requires the
+exact `planDigest` plus confirmation token `apply`. Terminal statuses are
+`applied`, `applied_with_sync_pending`, `conflict`, `stale_plan`, `unsupported`,
+and `failed_rolled_back`.
+
+Filesystem commit (moved note + accepted reference rewrites) is an atomic
+all-or-rollback boundary. Index/link convergence runs only after a durable
+filesystem commit and is **not** the same transaction; reindex failure returns
+`applied_with_sync_pending` without rolling back committed files.
+
+MCP annotations remain hints, not authorization. Write gating and destructive
+confirmation still apply. No generic action-bus tool is introduced.
+
 **Input Schema:**
 
 ```json
@@ -1811,11 +1833,21 @@ Rename an editable note in place (write-enabled).
 }
 ```
 
+**Output Schema (reference-safe apply path):** `gno://schemas/file-refactor-apply-result@1.0`
+
 ---
 
 ### gno_move_note
 
 Move an editable note to another folder in the same collection (write-enabled).
+
+Cross-collection moves are out of scope and fail closed with
+`cross_collection_unsupported`. Preview/apply semantics, destination-only edit
+spans, stale-plan protection, and the filesystem-vs-index mutation boundary match
+`gno_rename_note` and use the same schemas:
+
+- Preview plan: `gno://schemas/file-refactor-preview@1.0`
+- Apply result: `gno://schemas/file-refactor-apply-result@1.0`
 
 **Input Schema:**
 
@@ -1830,6 +1862,8 @@ Move an editable note to another folder in the same collection (write-enabled).
   "required": ["ref", "folderPath"]
 }
 ```
+
+**Output Schema (reference-safe apply path):** `gno://schemas/file-refactor-apply-result@1.0`
 
 ---
 
@@ -2243,6 +2277,8 @@ Output schemas include version in `$id`:
 
 - `gno://schemas/search-result@1.0`
 - `gno://schemas/capture-receipt@1.0`
+- `gno://schemas/file-refactor-preview@1.0`
+- `gno://schemas/file-refactor-apply-result@1.0`
 
 Clients should check schema version for compatibility.
 

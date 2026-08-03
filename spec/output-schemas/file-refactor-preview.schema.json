@@ -1,0 +1,393 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/file-refactor-preview@1.0",
+  "title": "GNO File Refactor Preview Plan",
+  "description": "Transport-neutral, versioned preview plan for reference-safe rename and same-collection move. Destination-only edit spans; filesystem atomicity is separate from post-commit index convergence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "operation",
+    "conflictPolicy",
+    "source",
+    "target",
+    "affectedDocuments",
+    "examinedReferences",
+    "preconditions",
+    "planDigest",
+    "safety",
+    "canApply",
+    "mutationBoundary"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "operation": {
+      "type": "string",
+      "enum": ["rename", "move"]
+    },
+    "conflictPolicy": {
+      "type": "string",
+      "enum": ["fail"]
+    },
+    "source": {
+      "$ref": "#/definitions/documentRef"
+    },
+    "target": {
+      "$ref": "#/definitions/documentRef"
+    },
+    "affectedDocuments": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "$ref": "#/definitions/affectedDocument"
+      }
+    },
+    "examinedReferences": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": {
+        "$ref": "#/definitions/examinedReference"
+      }
+    },
+    "preconditions": {
+      "$ref": "#/definitions/preconditions"
+    },
+    "planDigest": {
+      "$ref": "#/definitions/sha256"
+    },
+    "safety": {
+      "$ref": "#/definitions/safetySummary"
+    },
+    "canApply": {
+      "type": "boolean"
+    },
+    "mutationBoundary": {
+      "$ref": "#/definitions/mutationBoundary"
+    }
+  },
+  "definitions": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "reasonCode": {
+      "type": "string",
+      "enum": [
+        "ambiguous_resolution",
+        "unsupported_syntax",
+        "malformed_syntax",
+        "stale_plan",
+        "capability_denied",
+        "occupied_target",
+        "sync_pending",
+        "cross_collection_unsupported",
+        "unsafe_target",
+        "external_destination",
+        "code_fence_context",
+        "inline_code_context",
+        "html_context",
+        "duplicate_basename_ambiguity",
+        "unicode_normalization_mismatch",
+        "destination_unchanged",
+        "read_only_document",
+        "relative_path_recalculated",
+        "reference_definition_site",
+        "filesystem_commit_failed",
+        "rollback_recovery_required"
+      ]
+    },
+    "documentRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "relPath", "collection"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "relPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "collection": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "destinationSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coordinateSpace",
+        "startOffset",
+        "endOffset",
+        "originalDestination",
+        "replacementDestination"
+      ],
+      "properties": {
+        "coordinateSpace": {
+          "const": "utf16_code_units"
+        },
+        "startOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "endOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "originalDestination": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "replacementDestination": {
+          "type": "string",
+          "maxLength": 4096
+        }
+      }
+    },
+    "examinedReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentUri", "documentRelPath", "kind", "classification"],
+      "properties": {
+        "documentUri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "documentRelPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["wiki", "markdown", "markdown_definition", "opaque"]
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "rewriteable",
+            "unchanged",
+            "ambiguous",
+            "unsupported",
+            "malformed",
+            "invalid"
+          ]
+        },
+        "reasonCode": {
+          "$ref": "#/definitions/reasonCode"
+        },
+        "originalDestination": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "proposedDestination": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "edit": {
+          "$ref": "#/definitions/destinationSpan"
+        },
+        "startLine": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "startCol": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "endLine": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "endCol": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "affectedDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "relPath", "contentFingerprint", "edits", "examined"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "relPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "contentFingerprint": {
+          "$ref": "#/definitions/sha256"
+        },
+        "edits": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "$ref": "#/definitions/destinationSpan"
+          }
+        },
+        "examined": {
+          "type": "array",
+          "maxItems": 100000,
+          "items": {
+            "$ref": "#/definitions/examinedReference"
+          }
+        }
+      }
+    },
+    "preconditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceContentFingerprint",
+        "affectedContentFingerprints",
+        "targetPathFingerprint"
+      ],
+      "properties": {
+        "sourceContentFingerprint": {
+          "$ref": "#/definitions/sha256"
+        },
+        "affectedContentFingerprints": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["uri", "fingerprint"],
+            "properties": {
+              "uri": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              },
+              "fingerprint": {
+                "$ref": "#/definitions/sha256"
+              }
+            }
+          }
+        },
+        "targetPathFingerprint": {
+          "$ref": "#/definitions/sha256"
+        }
+      }
+    },
+    "safetySummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rewriteableCount",
+        "unchangedCount",
+        "ambiguousCount",
+        "unsupportedCount",
+        "malformedCount",
+        "invalidCount",
+        "blockingReasonCodes",
+        "warnings",
+        "backlinkCount",
+        "wikiLinkCount",
+        "markdownLinkCount"
+      ],
+      "properties": {
+        "rewriteableCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unchangedCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "ambiguousCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unsupportedCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "malformedCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "invalidCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "blockingReasonCodes": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/definitions/reasonCode"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "string",
+            "maxLength": 512
+          }
+        },
+        "backlinkCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "wikiLinkCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "markdownLinkCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "mutationBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filesystemCommit",
+        "indexConvergence",
+        "syncFailureDoesNotRollbackFilesystem"
+      ],
+      "properties": {
+        "filesystemCommit": {
+          "const": "atomic_all_or_rollback"
+        },
+        "indexConvergence": {
+          "const": "post_commit_separate"
+        },
+        "syncFailureDoesNotRollbackFilesystem": {
+          "const": true
+        }
+      }
+    }
+  }
+}
