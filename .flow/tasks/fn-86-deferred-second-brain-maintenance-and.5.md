@@ -40,9 +40,8 @@ This task cannot add repairs, contradiction detection, scheduling, or hidden per
 
 
 ## Done summary
-TBD
-
+Verified audit utility and safety against the live query-only index, fixed two provenance false-positive classes, reconciled CLI/MCP/config/troubleshooting/README/changelog/skill truth surfaces, added hosted-site pages and captured desktop/mobile QA evidence, and documented the separate maintenance-discovery decision boundary.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 774a8899
+- Tests: bun test (3936 pass, 2 skip, 0 fail), bun run eval (80%, threshold 70%), bun run prerelease, bun run lint:check, gno.sh: bun run fix && bun run check && bun run typecheck && bun run build, agent-browser local prerender QA at desktop and 390x844
 - PRs:
