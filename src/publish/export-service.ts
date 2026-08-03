@@ -186,7 +186,10 @@ async function exportCollectionArtifact(
   const contentByHash = contentResult.value;
   const tagsByDocId = tagsResult.value;
   const visibility = resolveVisibility(options.visibility);
-  const basenameIndex = await buildAttachmentBasenameIndex(collection.path);
+  const basenameIndex = await buildAttachmentBasenameIndex(
+    collection.path,
+    collection.exclude
+  );
 
   const acc: NoteBuildAccumulator = {
     diagnostics: [],
@@ -214,6 +217,7 @@ async function exportCollectionArtifact(
     const slug = deriveExportedSlug(doc);
     const sanitized = await sanitizeNoteMarkdown({
       basenameIndex,
+      collectionExcludes: collection.exclude,
       collectionRoot: collection.path,
       existingAssetIds: new Set(acc.payloads.keys()),
       existingEncodedAssetBytes: acc.encodedAssetBytes,
@@ -331,11 +335,12 @@ async function exportDocumentArtifact(
   const bundleAttachments = collection !== null;
   const basenameIndex =
     bundleAttachments && collection
-      ? await buildAttachmentBasenameIndex(collection.path)
+      ? await buildAttachmentBasenameIndex(collection.path, collection.exclude)
       : null;
 
   const sanitized = await sanitizeNoteMarkdown({
     basenameIndex,
+    collectionExcludes: collection?.exclude,
     collectionRoot: bundleAttachments && collection ? collection.path : null,
     noteSlug: slug,
     rawMarkdown,

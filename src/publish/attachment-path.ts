@@ -18,6 +18,7 @@ import {
 
 import type { AttachmentDiagnostic } from "./attachment-types";
 
+import { matchesCollectionExclusion } from "../core/path-rules";
 import { isCanonicalPathContained } from "../core/validation";
 
 const compareCodeUnits = (left: string, right: string): number => {
@@ -67,7 +68,8 @@ export const extensionOf = (relPath: string): string => {
  * missing. Byte validation still decides whether any match may be bundled.
  */
 export async function buildAttachmentBasenameIndex(
-  collectionRoot: string
+  collectionRoot: string,
+  collectionExcludes: readonly string[] = []
 ): Promise<Map<string, string[]>> {
   let rootReal: string;
   try {
@@ -84,7 +86,12 @@ export async function buildAttachmentBasenameIndex(
     followSymlinks: false,
   })) {
     const rel = match.split(sep).join("/");
-    if (isPrivateAttachmentRelPath(rel)) continue;
+    if (
+      isPrivateAttachmentRelPath(rel) ||
+      matchesCollectionExclusion(rel, collectionExcludes)
+    ) {
+      continue;
+    }
     const base = pathPosix.basename(rel);
     const bucket = index.get(base) ?? [];
     bucket.push(rel);
@@ -98,6 +105,7 @@ export async function buildAttachmentBasenameIndex(
 
 export interface AttachmentPathContext {
   basenameIndex: Map<string, string[]>;
+  collectionExcludes?: readonly string[];
   noteSlug: string;
   sourceRelPath: string;
 }
@@ -207,7 +215,10 @@ export const resolveCandidateRelPath = (
       ),
     };
   }
-  if (isPrivateAttachmentRelPath(joined)) {
+  if (
+    isPrivateAttachmentRelPath(joined) ||
+    matchesCollectionExclusion(joined, ctx.collectionExcludes ?? [])
+  ) {
     return {
       ok: false,
       diagnostic: diagnostic(

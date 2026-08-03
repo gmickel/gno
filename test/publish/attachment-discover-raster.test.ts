@@ -370,6 +370,28 @@ describe("attachment raster validation", () => {
     });
   });
 
+  test("finds JPEG dimensions after more than 64 KiB of metadata", () => {
+    const appPayload = new Uint8Array(65_533);
+    const appSegment = concatBytes(
+      Uint8Array.of(0xff, 0xe2, 0xff, 0xff),
+      appPayload
+    );
+    const withLargeMetadata = concatBytes(
+      JPEG_1X1.subarray(0, 2),
+      appSegment,
+      appSegment,
+      JPEG_1X1.subarray(2)
+    );
+
+    expect(withLargeMetadata.byteLength).toBeGreaterThan(65_536);
+    expect(validateRasterBytesStructural(withLargeMetadata)).toMatchObject({
+      ok: true,
+      mediaType: "image/jpeg",
+      width: 1,
+      height: 1,
+    });
+  });
+
   test("rejects SVG, truncated headers, and dimension limit violations", () => {
     const svg = new TextEncoder().encode(
       '<svg xmlns="http://www.w3.org/2000/svg"/>'

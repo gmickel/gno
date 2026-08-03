@@ -7,6 +7,7 @@ import { mkdir, symlink } from "node:fs/promises";
 // node:path join — no Bun path utils
 import { join } from "node:path";
 
+import { DEFAULT_EXCLUDES } from "../../src/config/types";
 import {
   encodeBytesToBase64,
   sha256BytesHex,
@@ -285,6 +286,32 @@ describe("rewriteAttachmentsInMarkdown", () => {
     expect(
       result.diagnostics.map((item) => item.message).join(" ")
     ).not.toContain("_internal");
+  });
+
+  test("applies collection exclusions to basename and explicit paths", async () => {
+    const root = await makeRoot();
+    await writeBytes(join(root, "images", "shared.png"), PNG_1X1);
+    await writeBytes(join(root, "node_modules", "shared.png"), PNG_1X1);
+
+    const index = await buildAttachmentBasenameIndex(root, DEFAULT_EXCLUDES);
+    expect(index.get("shared.png")).toEqual(["images/shared.png"]);
+
+    const result = await rewriteAttachmentsInMarkdown(
+      "![[shared.png]]\n![excluded](node_modules/shared.png)",
+      {
+        basenameIndex: index,
+        collectionExcludes: DEFAULT_EXCLUDES,
+        collectionRoot: root,
+        noteSlug: "excluded",
+        sourceRelPath: "note.md",
+      }
+    );
+
+    expect(result.payloads.size).toBe(1);
+    expect(result.markdown.match(/gno-asset:/gu)).toHaveLength(1);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ code: "ASSET_MISSING" }),
+    ]);
   });
 
   test("hard-fails traversal before reading bytes", async () => {

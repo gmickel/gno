@@ -134,7 +134,7 @@ const parseJpegDimensions = (
   bytes: Uint8Array
 ): { width: number; height: number } | null => {
   let offset = 2;
-  const limit = Math.min(bytes.length, RASTER_HEADER_PROBE_BYTES);
+  const limit = bytes.length;
   while (offset + 9 < limit) {
     if (bytes[offset] !== 0xff) return null;
     const marker = bytes[offset + 1] ?? 0;

@@ -43,6 +43,7 @@ export interface NoteBuildAccumulator {
 
 export async function sanitizeNoteMarkdown(input: {
   basenameIndex: Map<string, string[]> | null;
+  collectionExcludes?: readonly string[];
   collectionRoot: string | null;
   existingAssetIds?: ReadonlySet<string>;
   existingEncodedAssetBytes?: number;
@@ -60,6 +61,7 @@ export async function sanitizeNoteMarkdown(input: {
   if (input.basenameIndex && input.collectionRoot) {
     const sanitized = await sanitizePublishMarkdown(input.rawMarkdown, {
       basenameIndex: input.basenameIndex,
+      collectionExcludes: input.collectionExcludes,
       collectionRoot: input.collectionRoot,
       existingAssetIds: input.existingAssetIds,
       existingEncodedAssetBytes: input.existingEncodedAssetBytes,
