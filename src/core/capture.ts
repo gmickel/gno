@@ -194,9 +194,13 @@ export const validateDeclaredCaptureProvenance = (
   if (!source.kind) issues.push({ field: "source.kind", reason: "missing" });
   else if (!VALID_SOURCE_KINDS.has(source.kind))
     issues.push({ field: "source.kind", reason: "invalid" });
-  if (!source.capturedAt)
+  const capturedAt = source.capturedAt as unknown;
+  if (capturedAt === undefined || capturedAt === null || capturedAt === "")
     issues.push({ field: "source.capturedAt", reason: "missing" });
-  else if (Number.isNaN(new Date(source.capturedAt).getTime()))
+  else if (
+    typeof capturedAt !== "string" ||
+    Number.isNaN(new Date(capturedAt).getTime())
+  )
     issues.push({ field: "source.capturedAt", reason: "invalid" });
   for (const field of ["observedAt", "publishedAt"] as const) {
     const value = source[field];
@@ -521,6 +525,14 @@ function shouldSkipNestedFrontmatterLine(line: string): boolean {
   return line.startsWith("  ") || line.trim() === "";
 }
 
+const parseFrontmatterScalar = (rawValue: string): unknown => {
+  try {
+    return (Bun.YAML.parse(`value: ${rawValue}`) as { value?: unknown }).value;
+  } catch {
+    return stripYamlString(rawValue);
+  }
+};
+
 export function extractCaptureSourceFromFrontmatter(
   content: string
 ): Partial<CaptureSource> {
@@ -611,7 +623,7 @@ export function extractCaptureSourceFromFrontmatter(
           }
           continue;
         }
-        source[nestedKey] = stripYamlString(nestedValue) as never;
+        source[nestedKey] = parseFrontmatterScalar(nestedValue) as never;
       }
     }
   }

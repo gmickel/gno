@@ -462,9 +462,11 @@ export const runWorkspaceAudit = async (
     collections: normalizeValues(options.collectionFilters).map(
       normalizeCollectionName
     ),
-    paths: normalizeValues(options.pathFilters).map((path) =>
-      path.replace(/^\/+/, "")
-    ),
+    // A root-like prefix means the whole selected collection. Remove it from
+    // both selection and reported scope instead of producing an empty match.
+    paths: normalizeValues(options.pathFilters)
+      .map((path) => path.replace(/^\/+/, ""))
+      .filter((path) => path.length > 0),
     tags: normalizeValues(options.tagFilters).map(normalizeTag),
   };
   const scope: AuditScope = {

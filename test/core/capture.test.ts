@@ -346,6 +346,20 @@ describe("capture core", () => {
     ]);
   });
 
+  test("preserves and rejects non-string capturedAt scalars", () => {
+    for (const content of [
+      "---\nsource:\n  kind: web\n  capturedAt: 123\n---\n",
+      "---\nsource: { kind: web, capturedAt: 123 }\n---\n",
+    ]) {
+      const source = extractCaptureSourceFromFrontmatter(content);
+      expect(source.capturedAt as unknown).toBe(123);
+      expect(validateDeclaredCaptureProvenance(source)).toContainEqual({
+        field: "source.capturedAt",
+        reason: "invalid",
+      });
+    }
+  });
+
   test("distinguishes capture provenance from ordinary source lists", () => {
     expect(
       hasDeclaredCaptureSource(

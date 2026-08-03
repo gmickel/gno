@@ -155,6 +155,19 @@ describe("gno audit CLI", () => {
     });
   });
 
+  test("treats a root-like path filter as the unfiltered collection root", async () => {
+    const unfiltered = await audit({ category: "links" });
+    const rootFiltered = await audit({ category: "links", paths: ["/"] });
+    expect(unfiltered.success).toBe(true);
+    expect(rootFiltered.success).toBe(true);
+    if (!(unfiltered.success && rootFiltered.success)) return;
+    expect(rootFiltered.report.scope.paths).toEqual([]);
+    expect(rootFiltered.report.counts.examined).toEqual(
+      unfiltered.report.counts.examined
+    );
+    expect(rootFiltered.report.rules).toEqual(unfiltered.report.rules);
+  });
+
   test("retains incoming links when a path filter narrows audit scope", async () => {
     await mkdir(join(notes, "scoped"));
     await Bun.write(
