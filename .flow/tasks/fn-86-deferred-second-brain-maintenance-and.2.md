@@ -39,9 +39,8 @@ External URLs are not broken local links. “Orphan” depends on explicit roots
 
 
 ## Done summary
-TBD
-
+Added deterministic link-integrity auditing over a bounded set-oriented snapshot. The audit reuses the graph resolver for exact, inferred, ambiguous, and unresolved evidence; applies explicit root, ignore-prefix, and mirror-duplicate orphan policy; excludes external parser boundaries; preserves exact totals under truncation; and proves read-only indexed/batched behavior.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: bea024cb
+- Tests: bun test test/audit/links.test.ts test/audit/report.test.ts test/store/links.test.ts test/ingestion/sync-links.test.ts (78 pass), bun run lint:check
 - PRs:
