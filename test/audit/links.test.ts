@@ -1,0 +1,232 @@
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import type { DocLinkInput, DocumentInput } from "../../src/store/types";
+
+import { evaluateLinkAudit } from "../../src/core/audit-links";
+import { parseLinks } from "../../src/core/links";
+import { buildLineOffsets } from "../../src/ingestion/position";
+import { getExcludedRanges } from "../../src/ingestion/strip";
+import { SqliteAdapter } from "../../src/store/sqlite/adapter";
+import { captureAuditLinkSnapshot } from "../../src/store/sqlite/graph-link-resolver";
+import { safeRm } from "../helpers/cleanup";
+
+describe("link integrity audit", () => {
+  let tempDirectory: string;
+  let adapter: SqliteAdapter;
+
+  beforeEach(async () => {
+    tempDirectory = await mkdtemp(join(tmpdir(), "gno-audit-links-"));
+    adapter = new SqliteAdapter();
+    const opened = await adapter.open(
+      join(tempDirectory, "index.db"),
+      "porter"
+    );
+    expect(opened.ok).toBe(true);
+    const synced = await adapter.syncCollections([
+      {
+        name: "notes",
+        path: tempDirectory,
+        pattern: "**/*.md",
+        include: [],
+        exclude: [],
+      },
+    ]);
+    expect(synced.ok).toBe(true);
+  });
+
+  afterEach(async () => {
+    await adapter.close();
+    await safeRm(tempDirectory);
+  });
+
+  const addDocument = async (
+    relPath: string,
+    title: string,
+    mirrorHash = `mirror-${relPath}`
+  ): Promise<number> => {
+    const document: DocumentInput = {
+      collection: "notes",
+      relPath,
+      sourceHash: `source-${relPath}`,
+      sourceMime: "text/markdown",
+      sourceExt: ".md",
+      sourceSize: 100,
+      sourceMtime: "2026-08-03T12:00:00.000Z",
+      title,
+      mirrorHash,
+      ingestVersion: 3,
+    };
+    const result = await adapter.upsertDocument(document);
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value.id;
+  };
+
+  test("uses the graph resolver for exact, ambiguous, and unresolved evidence", async () => {
+    const sourceId = await addDocument("source.md", "Source");
+    await addDocument("projects/task.md", "Task");
+    await addDocument("archive/task.md", "Task");
+    await addDocument("guide.md", "Guide");
+    const links: DocLinkInput[] = [
+      {
+        targetRef: "task.md",
+        targetRefNorm: "task.md",
+        targetAnchor: "Next",
+        linkType: "wiki",
+        startLine: 2,
+        startCol: 1,
+        endLine: 2,
+        endCol: 18,
+      },
+      {
+        targetRef: "missing.md",
+        targetRefNorm: "missing.md",
+        linkType: "markdown",
+        startLine: 3,
+        startCol: 1,
+        endLine: 3,
+        endCol: 20,
+      },
+      {
+        targetRef: "guide.md",
+        targetRefNorm: "guide.md",
+        linkType: "markdown",
+        startLine: 4,
+        startCol: 1,
+        endLine: 4,
+        endCol: 18,
+      },
+    ];
+    expect((await adapter.setDocLinks(sourceId, links, "parsed")).ok).toBe(
+      true
+    );
+
+    const database = adapter.getRawDb();
+    const changesBefore = database
+      .query<{ changes: number }, []>("SELECT total_changes() AS changes")
+      .get()?.changes;
+    const snapshot = captureAuditLinkSnapshot(database);
+    const changesAfter = database
+      .query<{ changes: number }, []>("SELECT total_changes() AS changes")
+      .get()?.changes;
+    const rules = evaluateLinkAudit(snapshot, {
+      rootUris: ["gno://notes/source.md"],
+      ignorePathPrefixes: [],
+    });
+    const unresolved = rules.find(
+      ({ ruleId }) => ruleId === "links.local-targets"
+    );
+    const ambiguous = rules.find(
+      ({ ruleId }) => ruleId === "links.ambiguous-targets"
+    );
+    expect(unresolved?.findings).toHaveLength(1);
+    expect(unresolved?.findings?.[0]?.message).toContain("Broken local link");
+    expect(ambiguous?.findings).toHaveLength(1);
+    expect(ambiguous?.findings?.[0]?.evidence[0]?.detail).toContain(
+      '"matchCount":2'
+    );
+    expect(snapshot.metrics.batchedResolution).toBe(true);
+    expect(snapshot.metrics.linkRowsExamined).toBe(3);
+    expect(changesAfter).toBe(changesBefore);
+  });
+
+  test("applies explicit roots, ignored prefixes, and mirror duplicate policy", async () => {
+    await addDocument("root.md", "Root");
+    await addDocument("ignored/draft.md", "Draft");
+    await addDocument("mirror-a.md", "Mirror A", "same-mirror");
+    await addDocument("mirror-b.md", "Mirror B", "same-mirror");
+    await addDocument("orphan.md", "Orphan");
+
+    const rules = evaluateLinkAudit(
+      captureAuditLinkSnapshot(adapter.getRawDb()),
+      {
+        rootUris: ["gno://notes/root.md"],
+        ignorePathPrefixes: ["ignored"],
+      }
+    );
+    const orphans = rules.find(({ ruleId }) => ruleId === "links.orphans");
+    expect(orphans?.findings?.map(({ subject }) => subject)).toEqual([
+      "gno://notes/orphan.md",
+    ]);
+  });
+
+  test("parser excludes external URLs while retaining path-style and fragment links", () => {
+    const markdown =
+      "[web](https://example.com) [[Folder/Note.md#Part]] [local](./guide.md#Install)";
+    const links = parseLinks(
+      markdown,
+      buildLineOffsets(markdown),
+      getExcludedRanges(markdown)
+    );
+    expect(links).toHaveLength(2);
+    expect(links.map(({ targetRef }) => targetRef)).toEqual([
+      "Folder/Note.md",
+      "./guide.md",
+    ]);
+    expect(links.map(({ targetAnchor }) => targetAnchor)).toEqual([
+      "Part",
+      "Install",
+    ]);
+  });
+
+  test("bounded snapshots retain exact totals and become inconclusive", async () => {
+    const sourceId = await addDocument("source.md", "Source");
+    const links: DocLinkInput[] = Array.from({ length: 20 }, (_, index) => ({
+      targetRef: `missing-${index}.md`,
+      targetRefNorm: `missing-${index}.md`,
+      linkType: "markdown",
+      startLine: index + 1,
+      startCol: 1,
+      endLine: index + 1,
+      endCol: 10,
+    }));
+    expect((await adapter.setDocLinks(sourceId, links, "parsed")).ok).toBe(
+      true
+    );
+    const snapshot = captureAuditLinkSnapshot(adapter.getRawDb(), {
+      maxLinks: 5,
+    });
+    expect(snapshot.links).toHaveLength(5);
+    expect(snapshot.totals.links).toBe(20);
+    expect(snapshot.truncated.links).toBe(true);
+    const rules = evaluateLinkAudit(snapshot, {
+      rootUris: ["gno://notes/source.md"],
+      ignorePathPrefixes: [],
+    });
+    expect(
+      rules.every(
+        ({ status }) => status === "inconclusive" || status === "pass"
+      )
+    ).toBe(true);
+  });
+
+  test("source and target lookups retain supporting indexes", () => {
+    const indexes = adapter
+      .getRawDb()
+      .query<{ name: string }, []>("PRAGMA index_list('doc_links')")
+      .all()
+      .map(({ name }) => name);
+    expect(indexes.some((name) => name.includes("source"))).toBe(true);
+    const documentIndexes = adapter
+      .getRawDb()
+      .query<{ name: string }, []>("PRAGMA index_list('documents')")
+      .all()
+      .map(({ name }) => name);
+    expect(documentIndexes.length).toBeGreaterThan(0);
+  });
+
+  test("collection and path filters stay bound and exact", async () => {
+    await addDocument("projects/one.md", "One");
+    await addDocument("archive/two.md", "Two");
+    const snapshot = captureAuditLinkSnapshot(adapter.getRawDb(), {
+      collections: ["notes"],
+      pathPrefixes: ["projects"],
+    });
+    expect(snapshot.totals.documents).toBe(1);
+    expect(snapshot.documents.map(({ relPath }) => relPath)).toEqual([
+      "projects/one.md",
+    ]);
+  });
+});

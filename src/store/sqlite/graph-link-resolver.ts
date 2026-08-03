@@ -22,6 +22,56 @@ export interface ResolvedGraphLinkTarget {
 }
 
 const MAX_SQL_PARAMS = 900;
+export const AUDIT_LINK_SNAPSHOT_MAX_DOCUMENTS = 50_000;
+export const AUDIT_LINK_SNAPSHOT_MAX_LINKS = 50_000;
+
+export interface AuditLinkSnapshotDocument {
+  id: number;
+  docid: string;
+  uri: string;
+  collection: string;
+  relPath: string;
+  title: string | null;
+  mirrorHash: string | null;
+}
+
+export interface AuditLinkSnapshotLink {
+  sourceId: number;
+  sourceDocid: string;
+  sourceUri: string;
+  sourceCollection: string;
+  sourceRelPath: string;
+  targetRef: string;
+  targetRefNorm: string;
+  targetAnchor: string | null;
+  targetCollection: string;
+  linkType: "wiki" | "markdown";
+  startLine: number;
+  startCol: number;
+  endLine: number;
+  endCol: number;
+  resolved: ResolvedGraphLinkTarget | null;
+}
+
+export interface AuditLinkSnapshot {
+  documents: AuditLinkSnapshotDocument[];
+  links: AuditLinkSnapshotLink[];
+  totals: { documents: number; links: number };
+  truncated: { documents: boolean; links: boolean };
+  metrics: {
+    documentRowsExamined: number;
+    linkRowsExamined: number;
+    uniqueTargetsResolved: number;
+    batchedResolution: true;
+  };
+}
+
+export interface AuditLinkSnapshotOptions {
+  collections?: readonly string[];
+  pathPrefixes?: readonly string[];
+  maxDocuments?: number;
+  maxLinks?: number;
+}
 
 const chunkArray = <T>(items: T[], chunkSize: number): T[][] => {
   const chunks: T[][] = [];
@@ -238,4 +288,177 @@ export function resolveGraphLinkTargets(
   return originalToUniqueIndex.map(
     (uniqueIndex) => uniqueResults[uniqueIndex] ?? null
   );
+}
+
+/**
+ * Capture one bounded, read-only link inventory using set-oriented SQL and the
+ * same target resolver as graph expansion. No query is issued per finding.
+ */
+export function captureAuditLinkSnapshot(
+  db: Database,
+  options: AuditLinkSnapshotOptions = {}
+): AuditLinkSnapshot {
+  const maxDocuments = Math.max(
+    1,
+    Math.min(
+      AUDIT_LINK_SNAPSHOT_MAX_DOCUMENTS,
+      options.maxDocuments ?? AUDIT_LINK_SNAPSHOT_MAX_DOCUMENTS
+    )
+  );
+  const maxLinks = Math.max(
+    1,
+    Math.min(
+      AUDIT_LINK_SNAPSHOT_MAX_LINKS,
+      options.maxLinks ?? AUDIT_LINK_SNAPSHOT_MAX_LINKS
+    )
+  );
+  const conditions = ["d.active = 1"];
+  const params: string[] = [];
+  const collections = [...new Set(options.collections ?? [])]
+    .map((value) => value.normalize("NFC").trim())
+    .filter(Boolean)
+    .sort();
+  if (collections.length > 0) {
+    conditions.push(
+      `d.collection IN (${collections.map(() => "?").join(",")})`
+    );
+    params.push(...collections);
+  }
+  const prefixes = [...new Set(options.pathPrefixes ?? [])]
+    .map((value) => value.normalize("NFC").trim().replace(/^\/+/, ""))
+    .filter(Boolean)
+    .sort();
+  if (prefixes.length > 0) {
+    conditions.push(
+      `(${prefixes.map(() => "d.rel_path = ? OR d.rel_path LIKE ? ESCAPE '\\'").join(" OR ")})`
+    );
+    for (const prefix of prefixes) {
+      const escaped = prefix
+        .replaceAll("\\", "\\\\")
+        .replaceAll("%", "\\%")
+        .replaceAll("_", "\\_");
+      params.push(prefix, `${escaped}/%`);
+    }
+  }
+  const where = conditions.join(" AND ");
+  const totalDocuments =
+    db
+      .query<{ count: number }, string[]>(
+        `SELECT COUNT(*) AS count FROM documents d WHERE ${where}`
+      )
+      .get(...params)?.count ?? 0;
+  const documentRows = db
+    .query<
+      {
+        id: number;
+        docid: string;
+        uri: string;
+        collection: string;
+        rel_path: string;
+        title: string | null;
+        mirror_hash: string | null;
+      },
+      (string | number)[]
+    >(
+      `SELECT d.id, d.docid, d.uri, d.collection, d.rel_path, d.title, d.mirror_hash
+       FROM documents d WHERE ${where} ORDER BY d.id LIMIT ?`
+    )
+    .all(...params, maxDocuments);
+  const totalLinks =
+    db
+      .query<{ count: number }, string[]>(
+        `SELECT COUNT(*) AS count
+         FROM doc_links dl
+         JOIN documents d ON d.id = dl.source_doc_id
+         WHERE ${where}`
+      )
+      .get(...params)?.count ?? 0;
+  const rawLinks = db
+    .query<
+      {
+        source_id: number;
+        source_docid: string;
+        source_uri: string;
+        source_collection: string;
+        source_rel_path: string;
+        target_ref: string;
+        target_ref_norm: string;
+        target_anchor: string | null;
+        target_collection: string | null;
+        link_type: "wiki" | "markdown";
+        start_line: number;
+        start_col: number;
+        end_line: number;
+        end_col: number;
+      },
+      (string | number)[]
+    >(
+      `SELECT d.id AS source_id, d.docid AS source_docid,
+              d.uri AS source_uri, d.collection AS source_collection,
+              d.rel_path AS source_rel_path, dl.target_ref,
+              dl.target_ref_norm, dl.target_anchor, dl.target_collection,
+              dl.link_type, dl.start_line, dl.start_col,
+              dl.end_line, dl.end_col
+       FROM doc_links dl
+       JOIN documents d ON d.id = dl.source_doc_id
+       WHERE ${where}
+       ORDER BY d.id, dl.start_line, dl.start_col, dl.id
+       LIMIT ?`
+    )
+    .all(...params, maxLinks);
+  const targets = rawLinks.map((row) => ({
+    targetRefNorm: row.target_ref_norm,
+    targetCollection: row.target_collection ?? row.source_collection,
+    linkType: row.link_type,
+  }));
+  const resolutions = resolveGraphLinkTargets(db, targets);
+  const uniqueTargetsResolved = new Set(
+    targets.map((target) =>
+      JSON.stringify([
+        target.linkType,
+        target.targetCollection,
+        target.targetRefNorm,
+      ])
+    )
+  ).size;
+
+  return {
+    documents: documentRows.map((row) => ({
+      id: row.id,
+      docid: row.docid,
+      uri: row.uri,
+      collection: row.collection,
+      relPath: row.rel_path,
+      title: row.title,
+      mirrorHash: row.mirror_hash,
+    })),
+    links: rawLinks.map((row, index) => ({
+      sourceId: row.source_id,
+      sourceDocid: row.source_docid,
+      sourceUri: row.source_uri,
+      sourceCollection: row.source_collection,
+      sourceRelPath: row.source_rel_path,
+      targetRef: row.target_ref,
+      targetRefNorm: row.target_ref_norm,
+      targetAnchor: row.target_anchor,
+      targetCollection: row.target_collection ?? row.source_collection,
+      linkType: row.link_type,
+      startLine: row.start_line,
+      startCol: row.start_col,
+      endLine: row.end_line,
+      endCol: row.end_col,
+      resolved: resolutions[index] ?? null,
+    })),
+    totals: { documents: totalDocuments, links: totalLinks },
+    truncated: {
+      documents: totalDocuments > documentRows.length,
+      links: totalLinks > rawLinks.length,
+    },
+    metrics: {
+      documentRowsExamined: documentRows.length,
+      linkRowsExamined: rawLinks.length,
+      uniqueTargetsResolved,
+      batchedResolution: true,
+    },
+  };
 }
