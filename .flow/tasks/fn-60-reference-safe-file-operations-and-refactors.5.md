@@ -39,9 +39,8 @@ The plan must be useful before any mutation and invalidated by changed source co
 
 
 ## Done summary
-TBD
-
+Frozen the versioned, transport-neutral reference-refactor preview/apply contract for rename and same-collection move. Added closed schemas, deterministic cross-platform ordering and digests, fail-closed safety classification, destination-only edit semantics, discriminated terminal receipts, and a representative parser/refactor fixture matrix while preserving shipped path-planner compatibility.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 99ab9e5a3d44cac45fbec157dcba106763258fd9
+- Tests: bun test test/core/file-refactors.test.ts (13 pass), bun test test/core/links.test.ts (53 pass), bun test test/spec/schemas (258 pass), bun run lint:check
 - PRs:
