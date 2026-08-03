@@ -238,6 +238,34 @@ describe("rewriteAttachmentsInMarkdown", () => {
     expect(result.markdown.includes("![[")).toBe(false);
   });
 
+  test("never resolves Obsidian basenames or encoded paths into private files", async () => {
+    const root = await makeRoot();
+    await mkdir(join(root, "_internal"), { recursive: true });
+    await writeBytes(join(root, "_internal", "secret.png"), PNG_1X1);
+    const index = await buildAttachmentBasenameIndex(root);
+
+    expect(index.has("secret.png")).toBe(false);
+    const result = await rewriteAttachmentsInMarkdown(
+      "![[secret.png]]\n![encoded](_internal%2Fsecret.png)",
+      {
+        basenameIndex: index,
+        collectionRoot: root,
+        noteSlug: "private",
+        sourceRelPath: "private.md",
+      }
+    );
+
+    expect(result.payloads.size).toBe(0);
+    expect(result.markdown.trim()).toBe("");
+    expect(result.diagnostics).toHaveLength(2);
+    expect(
+      result.diagnostics.every((item) => item.code === "ASSET_MISSING")
+    ).toBe(true);
+    expect(
+      result.diagnostics.map((item) => item.message).join(" ")
+    ).not.toContain("_internal");
+  });
+
   test("hard-fails traversal before reading bytes", async () => {
     const root = await makeRoot();
     const index = await buildAttachmentBasenameIndex(root);

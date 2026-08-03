@@ -25,6 +25,9 @@ const compareCodeUnits = (left: string, right: string): number => {
   return 0;
 };
 
+const isPrivateAttachmentRelPath = (relPath: string): boolean =>
+  relPath.split("/").some((segment) => segment.toLowerCase() === "_internal");
+
 export const diagnostic = (
   code: AttachmentDiagnostic["code"],
   message: string,
@@ -80,6 +83,7 @@ export async function buildAttachmentBasenameIndex(
     followSymlinks: false,
   })) {
     const rel = match.split(sep).join("/");
+    if (isPrivateAttachmentRelPath(rel)) continue;
     const base = pathPosix.basename(rel);
     const bucket = index.get(base) ?? [];
     bucket.push(rel);
@@ -197,6 +201,17 @@ export const resolveCandidateRelPath = (
       diagnostic: diagnostic(
         "ASSET_TRAVERSAL",
         "Image reference escapes the approved collection root",
+        ctx.noteSlug,
+        sourceRef
+      ),
+    };
+  }
+  if (isPrivateAttachmentRelPath(joined)) {
+    return {
+      ok: false,
+      diagnostic: diagnostic(
+        "ASSET_MISSING",
+        "Attachment not found",
         ctx.noteSlug,
         sourceRef
       ),
