@@ -39,9 +39,8 @@ A secret path or opaque object key is not authorization. Secret asset responses 
 
 
 ## Done summary
-TBD
-
+Implemented capability-bound bundled raster delivery for public and secret readers. Reader projection validates complete manifests, rewrites asset sentinels to generation-bound URLs, and strips internal storage keys. Public delivery uses immutable caching and ETags; secret delivery reauthorizes the token on every request and uses private no-store caching. Both paths validate snapshot, generation, digest, media type, stored bytes, and manifest identity before serving. Missing or unauthorized resources share one hardened response.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: ec05865aafcace9d824e11fcd65b1794791b13bb
+- Tests: bun run check, bun run typecheck, bun run test (185 passed, 5 skipped), bun run build, live built-server curl: public and secret misses both 404 with identical body and no-store/CSP/nosniff/CORP headers
 - PRs:
