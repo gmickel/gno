@@ -35,12 +35,15 @@ import {
   extractCaptureSourceFromFrontmatter,
   hasDeclaredCaptureSource,
 } from "./capture";
+import { MARKDOWN_SOURCE_EXTENSIONS } from "./document-capabilities";
 import { normalizeTag } from "./tags";
 import { normalizeCollectionName } from "./validation";
 
 export const AUDIT_WORKSPACE_MAX_DOCUMENTS = 10_000;
 const AUDIT_SOURCE_CONCURRENCY = 16;
 const AUDIT_FRONTMATTER_BYTES = 64 * 1024;
+const FRONTMATTER_OPEN = /^---\r?\n/;
+const FRONTMATTER_COMPLETE = /^---\r?\n[\s\S]*?(?:\r?\n)?---(?:\r?\n|$)/;
 
 export interface WorkspaceAuditOptions {
   store: SqliteAdapter;
@@ -129,9 +132,13 @@ const selectDocuments = async (
   };
 };
 
-const hashBlob = async (file: Blob): Promise<string> => {
+const hashBlob = async (file: Blob, signal?: AbortSignal): Promise<string> => {
   const hasher = new Bun.CryptoHasher("sha256");
-  for await (const chunk of file.stream()) hasher.update(chunk);
+  signal?.throwIfAborted();
+  for await (const chunk of file.stream()) {
+    signal?.throwIfAborted();
+    hasher.update(chunk);
+  }
   return hasher.digest("hex");
 };
 
@@ -162,7 +169,8 @@ const observeDocument = async (
   document: DocumentRow,
   roots: ReadonlyMap<string, string>,
   readFrontmatter: boolean,
-  inspectFreshness: boolean
+  inspectFreshness: boolean,
+  signal?: AbortSignal
 ): Promise<WorkspaceDocumentSnapshot> => {
   const root = roots.get(document.collection);
   if (!root) {
@@ -217,12 +225,21 @@ const observeDocument = async (
     // indexed metadata — metadata-preserving restores can drift without a
     // stat change.
     const observedHash = inspectFreshness
-      ? await hashBlob(file)
+      ? await hashBlob(file, signal)
       : document.sourceHash;
+    const markdownSource = MARKDOWN_SOURCE_EXTENSIONS.has(
+      document.sourceExt.toLowerCase()
+    );
     const frontmatter =
-      readFrontmatter && document.sourceExt.toLowerCase() === ".md"
+      readFrontmatter && markdownSource
         ? await file.slice(0, AUDIT_FRONTMATTER_BYTES).text()
         : "";
+    const incompleteFrontmatter =
+      readFrontmatter &&
+      markdownSource &&
+      beforeSize > AUDIT_FRONTMATTER_BYTES &&
+      FRONTMATTER_OPEN.test(frontmatter) &&
+      !FRONTMATTER_COMPLETE.test(frontmatter);
     const afterMtime = file.lastModified;
     const afterSize = file.size;
     return {
@@ -230,9 +247,12 @@ const observeDocument = async (
       provenance: {
         uri: document.uri,
         relPath: document.relPath,
-        sourceState: "readable",
-        captureSourceDeclared: hasDeclaredCaptureSource(frontmatter),
-        captureSource: extractCaptureSourceFromFrontmatter(frontmatter),
+        sourceState: incompleteFrontmatter ? "unreadable" : "readable",
+        captureSourceDeclared:
+          !incompleteFrontmatter && hasDeclaredCaptureSource(frontmatter),
+        captureSource: incompleteFrontmatter
+          ? undefined
+          : extractCaptureSourceFromFrontmatter(frontmatter),
         record: document,
       },
       freshness: {
@@ -252,7 +272,8 @@ const observeDocument = async (
         },
       },
     };
-  } catch {
+  } catch (cause) {
+    if (signal?.aborted) throw cause;
     return {
       document,
       provenance: {
@@ -319,7 +340,8 @@ const loadWorkspaceSnapshot = async (
           document,
           roots,
           options.categories.includes("provenance"),
-          options.categories.includes("freshness")
+          options.categories.includes("freshness"),
+          options.signal
         )
       )
     : [];
@@ -348,6 +370,7 @@ const captureWorkspaceFingerprints = async (
   options: WorkspaceAuditOptions,
   filters: { collections: string[]; paths: string[]; tags: string[] }
 ): Promise<AuditFingerprints> => {
+  options.signal?.throwIfAborted();
   const selected = await selectDocuments(options.store, filters);
   const needsSourceFingerprint =
     options.categories.includes("provenance") ||
@@ -363,9 +386,13 @@ const captureWorkspaceFingerprints = async (
         const exists = await file.exists();
         if (!exists) return { uri: document.uri, state: "missing" };
         const hash = inspectFreshness
-          ? await hashBlob(file)
-          : inspectProvenance && document.sourceExt.toLowerCase() === ".md"
-            ? await hashBlob(file.slice(0, AUDIT_FRONTMATTER_BYTES))
+          ? await hashBlob(file, options.signal)
+          : inspectProvenance &&
+              MARKDOWN_SOURCE_EXTENSIONS.has(document.sourceExt.toLowerCase())
+            ? await hashBlob(
+                file.slice(0, AUDIT_FRONTMATTER_BYTES),
+                options.signal
+              )
             : null;
         return {
           uri: document.uri,
@@ -460,6 +487,7 @@ export const runWorkspaceAudit = async (
       llmDisabled: true,
     },
     captureFingerprints: () => captureWorkspaceFingerprints(options, filters),
+    signal: options.signal,
     maxFindings: options.maxFindings,
     rules: [
       async ({ attempt }) => {

@@ -176,6 +176,55 @@ describe("gno audit CLI", () => {
     }
   });
 
+  test("audits every Markdown extension and discloses capped frontmatter", async () => {
+    const incompleteSource =
+      "---\nsource:\n  kind: web\n---\n# Capture provenance\n";
+    await Bun.write(join(notes, "capture-markdown.md"), incompleteSource);
+    await Bun.write(join(notes, "capture-mdx.md"), incompleteSource);
+    await Bun.write(
+      join(notes, "oversized.md"),
+      `---\nsource:\n  kind: web\npadding: ${"x".repeat(70_000)}\n---\n# Oversized\n`
+    );
+    expect(await runCli(["bun", "gno", "index", "--no-embed"])).toBe(0);
+    const database = new Database(getIndexDbPath());
+    for (const [from, to] of [
+      ["capture-markdown.md", "capture.markdown"],
+      ["capture-mdx.md", "capture.mdx"],
+      ["oversized.md", "oversized.mdx"],
+    ] as const) {
+      await rename(join(notes, from), join(notes, to));
+      database.run(
+        "UPDATE documents SET rel_path = ?, uri = ?, source_ext = ? WHERE rel_path = ?",
+        [to, `gno://notes/${to}`, to.slice(to.lastIndexOf(".")), from]
+      );
+    }
+    database.close();
+
+    const result = await audit({ category: "provenance" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.exitCode).toBe(5);
+      expect(result.report.status).toBe("partial");
+      expect(
+        result.report.findings
+          .filter(({ ruleId }) => ruleId === "provenance.capture-source")
+          .map(({ subject }) => subject)
+      ).toEqual(
+        expect.arrayContaining([
+          "gno://notes/capture.markdown",
+          "gno://notes/capture.mdx",
+        ])
+      );
+      expect(result.report.rules).toContainEqual(
+        expect.objectContaining({
+          ruleId: "provenance.capture-source",
+          status: "unavailable",
+          skipReason: "source_unavailable",
+        })
+      );
+    }
+  });
+
   test("reports unavailable sources and repeated snapshot drift as partial", async () => {
     await rename(notes, join(root, "offline-notes"));
     const unavailableProvenance = await audit({ category: "provenance" });

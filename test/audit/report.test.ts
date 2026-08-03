@@ -142,6 +142,61 @@ describe("knowledge integrity audit contract", () => {
     expect(auditExitCode(result.exit)).toBe(5);
   });
 
+  test("cancellation skips pending fingerprint passes", async () => {
+    const beforeStart = new AbortController();
+    beforeStart.abort();
+    let captures = 0;
+    const cancelledBeforeStart = await runAudit({
+      scope,
+      capabilities,
+      captureFingerprints: () => {
+        captures += 1;
+        return fingerprints;
+      },
+      rules: [],
+      signal: beforeStart.signal,
+    });
+    expect(captures).toBe(0);
+    expect(cancelledBeforeStart.ok).toBe(true);
+    if (cancelledBeforeStart.ok) {
+      expect(cancelledBeforeStart.report.status).toBe("partial");
+      expect(cancelledBeforeStart.report.rules[0]).toMatchObject({
+        ruleId: "audit.cancelled",
+        skipReason: "cancelled",
+      });
+    }
+
+    const duringRules = new AbortController();
+    const cancelledDuringRules = await runAudit({
+      scope,
+      capabilities,
+      captureFingerprints: () => {
+        captures += 1;
+        return fingerprints;
+      },
+      rules: [
+        () => {
+          duringRules.abort();
+          return {
+            ruleId: "links.local-targets",
+            category: "links",
+            status: "pass",
+            message: "Temporary result",
+          };
+        },
+      ],
+      signal: duringRules.signal,
+    });
+    expect(captures).toBe(1);
+    expect(cancelledDuringRules.ok).toBe(true);
+    if (cancelledDuringRules.ok) {
+      expect(cancelledDuringRules.report.status).toBe("partial");
+      expect(cancelledDuringRules.report.rules).toEqual([
+        expect.objectContaining({ ruleId: "audit.cancelled" }),
+      ]);
+    }
+  });
+
   test("unavailable evidence is partial rather than healthy", async () => {
     const result = await runAudit({
       scope,

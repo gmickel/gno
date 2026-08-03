@@ -332,13 +332,31 @@ export async function runAudit(input: AuditRunInput): Promise<AuditRunResult> {
   let snapshotChanged = false;
   let failed = false;
   let failureMessage = "Audit failed";
+  const cancellationRule = (): AuditRuleResult =>
+    materializeRule({
+      ruleId: "audit.cancelled",
+      category: scopeResult.scope.categories[0] ?? "links",
+      status: "inconclusive",
+      message: "Audit was cancelled",
+      findings: [],
+      findingCount: 0,
+      skipReason: "cancelled",
+    });
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    if (input.signal?.aborted) {
+      lastRules = [cancellationRule()];
+      break;
+    }
     const snapshotStarted = monotonicNow();
     let before: AuditFingerprints;
     try {
       before = normalizeFingerprints(await input.captureFingerprints());
     } catch (cause) {
+      if (input.signal?.aborted) {
+        lastRules = [cancellationRule()];
+        break;
+      }
       failed = true;
       failureMessage =
         cause instanceof Error
@@ -361,6 +379,10 @@ export async function runAudit(input: AuditRunInput): Promise<AuditRunResult> {
       const contributions = await collectContributions(input.rules, ruleCtx);
       lastRules = contributions.map(materializeRule);
     } catch (cause) {
+      if (input.signal?.aborted) {
+        lastRules = [cancellationRule()];
+        break;
+      }
       failed = true;
       failureMessage =
         cause instanceof Error ? cause.message : "Audit rule evaluation failed";
@@ -368,11 +390,20 @@ export async function runAudit(input: AuditRunInput): Promise<AuditRunResult> {
     }
     rulesMs += Math.max(0, monotonicNow() - rulesStarted);
 
+    if (input.signal?.aborted) {
+      lastRules = [cancellationRule()];
+      break;
+    }
+
     const afterStarted = monotonicNow();
     let after: AuditFingerprints;
     try {
       after = normalizeFingerprints(await input.captureFingerprints());
     } catch (cause) {
+      if (input.signal?.aborted) {
+        lastRules = [cancellationRule()];
+        break;
+      }
       failed = true;
       failureMessage =
         cause instanceof Error

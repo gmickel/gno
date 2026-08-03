@@ -284,6 +284,7 @@ export interface AuditRunInput {
   gnoVersion?: string;
   clock?: () => Date;
   monotonicNow?: () => number;
+  signal?: AbortSignal;
 }
 
 export type AuditRunResult =

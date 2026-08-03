@@ -12,10 +12,14 @@ export interface DocumentCapabilities {
   reason?: string;
 }
 
-const EDITABLE_EXTENSIONS = new Set([
+export const MARKDOWN_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
   ".md",
   ".markdown",
   ".mdx",
+]);
+
+const EDITABLE_EXTENSIONS = new Set([
+  ...MARKDOWN_SOURCE_EXTENSIONS,
   ".txt",
   ".text",
 ]);
@@ -57,7 +61,7 @@ export function getDocumentCapabilities(input: {
   }
   const editable =
     EDITABLE_EXTENSIONS.has(ext) || isTextLikeMime(input.sourceMime);
-  const tagsWriteback = ext === ".md" || ext === ".markdown" || ext === ".mdx";
+  const tagsWriteback = MARKDOWN_SOURCE_EXTENSIONS.has(ext);
 
   if (editable) {
     return {
@@ -89,12 +93,9 @@ export function deriveEditableCopyRelPath(
   const baseName = parsed.name || "copy";
   const existing = new Set(existingRelPaths);
 
-  const baseCandidate =
-    parsed.ext.toLowerCase() === ".md" ||
-    parsed.ext.toLowerCase() === ".markdown" ||
-    parsed.ext.toLowerCase() === ".mdx"
-      ? `${prefix}${baseName}.copy.md`
-      : `${prefix}${baseName}.md`;
+  const baseCandidate = MARKDOWN_SOURCE_EXTENSIONS.has(parsed.ext.toLowerCase())
+    ? `${prefix}${baseName}.copy.md`
+    : `${prefix}${baseName}.md`;
 
   if (!existing.has(baseCandidate)) {
     return baseCandidate;
