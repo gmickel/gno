@@ -39,9 +39,8 @@ Both repos require their own commits, PRs, gates, and rollback points. Productio
 - [ ] All repo/hosted docs, handoff/PRD/checklist, schemas, CHANGELOG, product copy, and skill agree; driven local and authorized production QA evidence is retained.
 
 ## Done summary
-TBD
-
+Added a real GNO publish-artifact producer and a cross-repo gno.sh consumer smoke that proves public, secret-link, encrypted, and legacy asset-free interoperability. The smoke renders real image DOM, verifies visibility-specific URL projection, ensures encrypted raster bytes remain ciphertext-only until Blob URL creation, and avoids production DB/object storage. Reconciled GNO docs/spec/skills/CHANGELOG and gno.sh handoff/PRD/checklist/hosted product copy. Local hosted-doc QA covered desktop and mobile rendering.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: d21b169d, 7600bc3
+- Tests: GNO: bun run prerelease, GNO: bun test test/publish/export-service.test.ts (3 pass), GNO: bun run docs:verify (15 pass, 2 model-dependent skips), GNO skill autoresearch: 47/47 (100%), gno.sh: bun run check, gno.sh: bun run typecheck, gno.sh: bun run test (185 pass, 5 DB integration skips), gno.sh: bun run build (92 pages prerendered), gno.sh: GNO_REPO=/tmp/gno-pilot.0WHbYY bun run smoke:publish:gno, Local browser QA: publish docs/feature desktop and 390x844 mobile, no overflow
 - PRs:
