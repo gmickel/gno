@@ -87,6 +87,16 @@ const scanMarkdownAst = (markdown: string): MarkdownScan => {
     ) {
       scan.excluded.push({ ...offsets, kind: "inline_code" });
     }
+    if (offsets && node.type === "link") {
+      const childEnds = (node.children ?? [])
+        .map((child) => nodeOffsets(child)?.end)
+        .filter((offset): offset is number => offset !== undefined);
+      scan.excluded.push({
+        start: childEnds.length === 0 ? offsets.start : Math.max(...childEnds),
+        end: offsets.end,
+        kind: "inline_code",
+      });
+    }
     if (
       node.type === "definition" &&
       node.identifier !== undefined &&

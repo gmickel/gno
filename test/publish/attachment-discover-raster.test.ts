@@ -126,6 +126,17 @@ describe("attachment discover parser", () => {
     });
   });
 
+  test("skips Obsidian-looking text in inline link resources only", () => {
+    const markdown = [
+      '[docs](https://example.com/![[../destination.png]] "![[../title.png]]")',
+      "[![[visible.png]]](https://example.com)",
+    ].join("\n");
+
+    expect(
+      discoverImageOccurrences(markdown).map((item) => item.sourceRef)
+    ).toEqual(["visible.png"]);
+  });
+
   test("skips standalone indented code without hiding paragraph continuations", () => {
     const markdown = [
       "    ![code](../private.png)",
