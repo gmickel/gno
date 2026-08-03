@@ -53,6 +53,16 @@ export const safePercentDecode = (value: string): string | null => {
   return current;
 };
 
+const percentDecodeOnce = (value: string): string | null => {
+  if (!/%[0-9a-fA-F]{2}/u.test(value)) return value;
+  try {
+    const decoded = decodeURIComponent(value);
+    return decoded.includes("\0") ? null : decoded;
+  } catch {
+    return null;
+  }
+};
+
 export const extensionOf = (relPath: string): string => {
   const base = pathPosix.basename(relPath);
   const dot = base.lastIndexOf(".");
@@ -132,8 +142,9 @@ export const resolveCandidateRelPath = (
   // encoded literal `%23` or `%3F` can still address a real filename.
   const pathSourceRef =
     kind === "markdown" ? stripMarkdownUrlSuffix(sourceRef) : sourceRef;
-  const decoded = safePercentDecode(pathSourceRef);
-  if (decoded === null || decoded.trim() === "") {
+  const decoded = percentDecodeOnce(pathSourceRef);
+  const securityDecoded = safePercentDecode(pathSourceRef);
+  if (decoded === null || securityDecoded === null || decoded.trim() === "") {
     return {
       ok: false,
       diagnostic: diagnostic(
@@ -144,7 +155,11 @@ export const resolveCandidateRelPath = (
       ),
     };
   }
-  if (decoded.includes("\0") || decoded.includes("\\")) {
+  if (
+    decoded.includes("\0") ||
+    decoded.includes("\\") ||
+    securityDecoded.includes("\\")
+  ) {
     return {
       ok: false,
       diagnostic: diagnostic(
@@ -155,7 +170,12 @@ export const resolveCandidateRelPath = (
       ),
     };
   }
-  if (isAbsolute(decoded) || pathPosix.isAbsolute(decoded)) {
+  if (
+    isAbsolute(decoded) ||
+    pathPosix.isAbsolute(decoded) ||
+    isAbsolute(securityDecoded) ||
+    pathPosix.isAbsolute(securityDecoded)
+  ) {
     return {
       ok: false,
       diagnostic: diagnostic(
@@ -200,10 +220,16 @@ export const resolveCandidateRelPath = (
   const joined = pathPosix.normalize(
     pathPosix.join(baseDir === "." ? "" : baseDir, decoded)
   );
+  const securityJoined = pathPosix.normalize(
+    pathPosix.join(baseDir === "." ? "" : baseDir, securityDecoded)
+  );
   if (
     joined.startsWith("..") ||
     joined.split("/").includes("..") ||
-    pathPosix.isAbsolute(joined)
+    pathPosix.isAbsolute(joined) ||
+    securityJoined.startsWith("..") ||
+    securityJoined.split("/").includes("..") ||
+    pathPosix.isAbsolute(securityJoined)
   ) {
     return {
       ok: false,
@@ -236,7 +262,8 @@ export async function assertContainedFile(
   collectionRoot: string,
   relPath: string,
   noteSlug: string,
-  sourceRef: string
+  sourceRef: string,
+  collectionExcludes: readonly string[] = []
 ): Promise<{ absPath: string } | AttachmentDiagnostic> {
   const rootReal = await realpath(normalize(collectionRoot));
   const absLexical = normalize(join(rootReal, ...relPath.split("/")));
@@ -283,7 +310,10 @@ export async function assertContainedFile(
     );
   }
   const canonicalRelPath = relative(rootReal, absReal).split(sep).join("/");
-  if (isPrivateAttachmentRelPath(canonicalRelPath)) {
+  if (
+    isPrivateAttachmentRelPath(canonicalRelPath) ||
+    matchesCollectionExclusion(canonicalRelPath, collectionExcludes)
+  ) {
     return diagnostic(
       "ASSET_MISSING",
       "Attachment not found",

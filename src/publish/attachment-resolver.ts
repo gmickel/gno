@@ -208,7 +208,8 @@ export async function rewriteAttachmentsInMarkdown(
       ctx.collectionRoot,
       resolved.relPath,
       ctx.noteSlug,
-      ref
+      ref,
+      ctx.collectionExcludes
     );
     if ("code" in contained) {
       diagnostics.push(contained);

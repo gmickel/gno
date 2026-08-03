@@ -314,6 +314,27 @@ describe("rewriteAttachmentsInMarkdown", () => {
     ]);
   });
 
+  test("resolves a Markdown destination with exactly one percent-decode", async () => {
+    const root = await makeRoot();
+    await writeBytes(join(root, "photo%20.png"), PNG_1X1);
+    await writeBytes(join(root, "photo .png"), JPEG_1X1);
+
+    const result = await rewriteAttachmentsInMarkdown(
+      "![literal](photo%2520.png)",
+      {
+        basenameIndex: await buildAttachmentBasenameIndex(root),
+        collectionRoot: root,
+        noteSlug: "encoded",
+        sourceRelPath: "note.md",
+      }
+    );
+
+    expect(result.diagnostics).toEqual([]);
+    expect([...result.payloads.values()]).toEqual([
+      expect.objectContaining({ sha256: sha256BytesHex(PNG_1X1) }),
+    ]);
+  });
+
   test("hard-fails traversal before reading bytes", async () => {
     const root = await makeRoot();
     const index = await buildAttachmentBasenameIndex(root);
@@ -371,6 +392,31 @@ describe("rewriteAttachmentsInMarkdown", () => {
       expect.objectContaining({ code: "ASSET_MISSING" }),
     ]);
     expect(result.diagnostics[0]?.message).not.toContain("_internal");
+  });
+
+  test("reapplies exclusions after resolving an in-root directory symlink", async () => {
+    const root = await makeRoot();
+    await mkdir(join(root, "secrets"), { recursive: true });
+    await writeBytes(join(root, "secrets", "secret.png"), PNG_1X1);
+    await symlink(join(root, "secrets"), join(root, "public"));
+
+    const result = await rewriteAttachmentsInMarkdown(
+      "![x](public/secret.png)",
+      {
+        basenameIndex: await buildAttachmentBasenameIndex(root, ["secrets"]),
+        collectionExcludes: ["secrets"],
+        collectionRoot: root,
+        noteSlug: "n",
+        sourceRelPath: "n.md",
+      }
+    );
+
+    expect(result.payloads.size).toBe(0);
+    expect(result.markdown).toBe("");
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ code: "ASSET_MISSING" }),
+    ]);
+    expect(result.diagnostics[0]?.message).not.toContain("secrets");
   });
 
   test("rejects MIME spoof, data URLs, SVG, and non-raster basenames", async () => {
