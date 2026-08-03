@@ -38,9 +38,8 @@ Use `Bun.file()` for bytes. Extension/MIME are hints only. Traversal and symlink
 - [ ] Bun-first unit/integration tests, schemas, and lint checks pass.
 
 ## Done summary
-TBD
-
+Implemented the Bun-first GNO producer path for bundled raster images. Publish export now discovers parser-aware Markdown and Obsidian image references, confines local files to the collection root, rejects traversal and symlinks before reads, validates real PNG/JPEG/GIF/WebP/AVIF bytes and dimensions, deduplicates by SHA-256 while retaining ownership, rewrites only successful references to deterministic gno-asset sentinels, reports stable diagnostics and exact raw/base64/final serialized bytes, and rejects envelopes over 100 MiB. CLI JSON, human output, and the publish-export API include assetSummary. Encrypted v2 remains asset-free for task 3.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 4cff0d1f
+- Tests: bun run lint:check, bun test test/publish test/cli/publish-export.test.ts test/serve/routes/publish-export.test.ts test/spec/schemas (300 pass, 0 fail), bun run prerelease (3851 pass, 2 skip, 0 fail; docs 15 pass; package smoke and real-index sentinel pass)
 - PRs:
