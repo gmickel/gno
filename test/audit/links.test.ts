@@ -10,6 +10,7 @@ import { parseLinks } from "../../src/core/links";
 import { buildLineOffsets } from "../../src/ingestion/position";
 import { getExcludedRanges } from "../../src/ingestion/strip";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
+import { resolveGraphLinkTargetsBulk } from "../../src/store/sqlite/graph-link-bulk-resolver";
 import { captureAuditLinkSnapshot } from "../../src/store/sqlite/graph-link-resolver";
 import { safeRm } from "../helpers/cleanup";
 
@@ -281,6 +282,24 @@ describe("link integrity audit", () => {
     expect(
       snapshot.links.filter(({ resolved }) => resolved === null)
     ).toHaveLength(127);
+  });
+
+  test("bulk resolver declines before materializing an oversized index", async () => {
+    await addDocument("one.md", "One");
+    await addDocument("two.md", "Two");
+    expect(
+      resolveGraphLinkTargetsBulk(
+        adapter.getRawDb(),
+        [
+          {
+            targetRefNorm: "one.md",
+            targetCollection: "notes",
+            linkType: "wiki",
+          },
+        ],
+        1
+      )
+    ).toBeNull();
   });
 
   test("source and target lookups retain supporting indexes", () => {

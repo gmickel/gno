@@ -650,6 +650,21 @@ export const hasDeclaredCaptureSource = (content: string): boolean => {
     "externalId",
     "browserClip",
   ]);
+  try {
+    const parsed = Bun.YAML.parse(lines.join("\n")) as { source?: unknown };
+    if (
+      parsed.source !== null &&
+      typeof parsed.source === "object" &&
+      !Array.isArray(parsed.source)
+    ) {
+      const keys = Object.keys(parsed.source);
+      if (keys.length === 0 || keys.some((key) => captureKeys.has(key))) {
+        return true;
+      }
+    }
+  } catch {
+    // Fall through to the declaration-preserving line parser below.
+  }
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     if (line === undefined) continue;

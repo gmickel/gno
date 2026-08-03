@@ -287,7 +287,12 @@ export function resolveGraphLinkTargets(
   }
 
   if (uniqueTargets.length > BULK_RESOLUTION_THRESHOLD) {
-    return resolveGraphLinkTargetsBulk(db, targets);
+    const bulkResults = resolveGraphLinkTargetsBulk(db, uniqueTargets);
+    if (bulkResults) {
+      return originalToUniqueIndex.map(
+        (uniqueIndex) => bulkResults[uniqueIndex] ?? null
+      );
+    }
   }
 
   const uniqueResults = resolveGraphLinkTargetsSql(db, uniqueTargets);

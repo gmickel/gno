@@ -20,6 +20,8 @@ interface IndexedDocument {
 
 type Lookup = Map<string, IndexedDocument[]>;
 
+export const GRAPH_LINK_BULK_MAX_DOCUMENTS = 100_000;
+
 const lookupKey = (collection: string, value: string): string =>
   `${collection}\0${value}`;
 
@@ -81,8 +83,13 @@ const resolved = (
  */
 export const resolveGraphLinkTargetsBulk = (
   db: Database,
-  targets: readonly GraphLinkTarget[]
-): Array<ResolvedGraphLinkTarget | null> => {
+  targets: readonly GraphLinkTarget[],
+  maxDocuments = GRAPH_LINK_BULK_MAX_DOCUMENTS
+): Array<ResolvedGraphLinkTarget | null> | null => {
+  const boundedMaxDocuments = Math.max(
+    1,
+    Math.min(GRAPH_LINK_BULK_MAX_DOCUMENTS, maxDocuments)
+  );
   const rows = db
     .query<
       {
@@ -93,15 +100,19 @@ export const resolveGraphLinkTargetsBulk = (
         rel_norm: string;
         rel_raw: string;
       },
-      []
+      [number]
     >(
       `SELECT id, docid, collection, lower(trim(title)) AS title_norm,
               lower(rel_path) AS rel_norm, rel_path AS rel_raw
        FROM documents
        WHERE active = 1
-       ORDER BY id`
+       ORDER BY id
+       LIMIT ?`
     )
-    .all();
+    .all(boundedMaxDocuments + 1);
+  // The fast lookup-table path is intentionally bounded. Callers fall back to
+  // set-oriented SQL batches when the active index exceeds this memory cap.
+  if (rows.length > boundedMaxDocuments) return null;
   const titleExact: Lookup = new Map();
   const relExact: Lookup = new Map();
   const relExactRaw: Lookup = new Map();

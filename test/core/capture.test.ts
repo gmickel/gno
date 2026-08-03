@@ -322,14 +322,18 @@ describe("capture core", () => {
   });
 
   test("extracts and recognizes inline capture source mappings", () => {
-    const content = "---\nsource: { kind: web }\n---\n";
-    const source = extractCaptureSourceFromFrontmatter(content);
-    expect(hasDeclaredCaptureSource(content)).toBe(true);
-    expect(source.kind).toBe("web");
-    expect(validateDeclaredCaptureProvenance(source)).toContainEqual({
-      field: "source.capturedAt",
-      reason: "missing",
-    });
+    for (const content of [
+      "---\nsource: { kind: web }\n---\n",
+      "---\nsource: { kind: web } # imported\n---\n",
+    ]) {
+      const source = extractCaptureSourceFromFrontmatter(content);
+      expect(hasDeclaredCaptureSource(content)).toBe(true);
+      expect(source.kind).toBe("web");
+      expect(validateDeclaredCaptureProvenance(source)).toContainEqual({
+        field: "source.capturedAt",
+        reason: "missing",
+      });
+    }
   });
 
   test("validates optional declared provenance timestamps", () => {
