@@ -130,6 +130,7 @@ describe("attachment discover parser", () => {
     const markdown = [
       '[docs](https://example.com/![[../destination.png]] "![[../title.png]]")',
       "<https://example.com/![[../autolink.png]]>",
+      "https://example.com/![[../literal-autolink.png]]",
       "[![[visible.png]]](https://example.com)",
     ].join("\n");
 

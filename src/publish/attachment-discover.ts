@@ -1,6 +1,8 @@
 /** CommonMark + Obsidian image discovery for publish attachments. */
 
 import { fromMarkdown } from "mdast-util-from-markdown";
+import { gfmFromMarkdown } from "mdast-util-gfm";
+import { gfm } from "micromark-extension-gfm";
 
 import {
   type ExcludedRange,
@@ -68,7 +70,10 @@ const markdownImage = (
 };
 
 const scanMarkdownAst = (markdown: string): MarkdownScan => {
-  const root = fromMarkdown(markdown) as PositionedNode;
+  const root = fromMarkdown(markdown, {
+    extensions: [gfm()],
+    mdastExtensions: [gfmFromMarkdown()],
+  }) as PositionedNode;
   const scan: MarkdownScan = {
     definitions: new Map(),
     excluded: [],
