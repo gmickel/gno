@@ -18,6 +18,10 @@ export const AUDIT_MAX_GUIDANCE_PER_FINDING = 4;
 export const AUDIT_MAX_EVIDENCE_DETAIL_CHARS = 512;
 export const AUDIT_MAX_MESSAGE_CHARS = 512;
 export const AUDIT_MAX_GUIDANCE_CHARS = 256;
+export const AUDIT_MAX_CODE_CHARS = 128;
+export const AUDIT_MAX_IDENTIFIER_CHARS = 2048;
+export const AUDIT_MAX_SCOPE_ITEMS = 256;
+export const AUDIT_MAX_SCOPE_VALUE_CHARS = 256;
 /** Bounded snapshot retries before `changed_during_audit`. */
 export const AUDIT_MAX_SNAPSHOT_ATTEMPTS = 2;
 

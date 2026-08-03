@@ -184,6 +184,16 @@ describe("gno_audit MCP tool", () => {
       error: "RUNTIME",
       message: "path filters must be at most 2048 characters",
     });
+
+    const tag = await handleAudit(
+      auditInputSchema.parse({ category: "links", tags: ["x".repeat(257)] }),
+      context
+    );
+    expect(tag.isError).toBe(true);
+    expect(tag.structuredContent).toEqual({
+      error: "RUNTIME",
+      message: "tags entries must be at most 256 characters",
+    });
   });
 
   test("closes input and advertises independently verified read-only behavior", () => {

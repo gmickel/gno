@@ -19,6 +19,8 @@ import {
   AUDIT_MAX_EVIDENCE_PER_FINDING,
   AUDIT_MAX_GUIDANCE_CHARS,
   AUDIT_MAX_GUIDANCE_PER_FINDING,
+  AUDIT_MAX_CODE_CHARS,
+  AUDIT_MAX_IDENTIFIER_CHARS,
   AUDIT_MAX_MESSAGE_CHARS,
 } from "./audit-contract";
 
@@ -82,22 +84,23 @@ export const normalizeAuditText = (value: string): string =>
 
 export const boundAuditText = (value: string, maxChars: number): string => {
   const normalized = normalizeAuditText(value);
-  if (normalized.length <= maxChars) return normalized;
-  return normalized.slice(0, maxChars);
+  const characters = Array.from(normalized);
+  if (characters.length <= maxChars) return normalized;
+  return characters.slice(0, maxChars).join("");
 };
 
 const boundEvidence = (evidence: readonly AuditEvidence[]): AuditEvidence[] => {
   const bounded: AuditEvidence[] = [];
   for (const item of evidence.slice(0, AUDIT_MAX_EVIDENCE_PER_FINDING)) {
     const next: AuditEvidence = {
-      kind: normalizeAuditText(item.kind),
+      kind: boundAuditText(item.kind, AUDIT_MAX_CODE_CHARS),
       summary: boundAuditText(item.summary, AUDIT_MAX_MESSAGE_CHARS),
     };
     if (item.uri !== undefined) {
-      next.uri = normalizeAuditText(item.uri);
+      next.uri = boundAuditText(item.uri, AUDIT_MAX_IDENTIFIER_CHARS);
     }
     if (item.path !== undefined) {
-      next.path = normalizeAuditText(item.path);
+      next.path = boundAuditText(item.path, AUDIT_MAX_IDENTIFIER_CHARS);
     }
     if (item.detail !== undefined) {
       next.detail = boundAuditText(
@@ -153,11 +156,11 @@ export const materializeAuditFinding = (
   category: AuditCategory,
   draft: AuditFindingDraft
 ): AuditFinding => {
-  const subject = normalizeAuditText(draft.subject);
+  const subject = boundAuditText(draft.subject, AUDIT_MAX_IDENTIFIER_CHARS);
   const location =
     draft.location === undefined || draft.location === null
       ? null
-      : normalizeAuditText(draft.location);
+      : boundAuditText(draft.location, AUDIT_MAX_IDENTIFIER_CHARS);
   const evidence = boundEvidence(draft.evidence);
   const evidenceFingerprint = fingerprintAuditEvidence(evidence);
   return {
@@ -167,7 +170,7 @@ export const materializeAuditFinding = (
       location,
       evidenceFingerprint,
     }),
-    ruleId: normalizeAuditText(ruleId),
+    ruleId: boundAuditText(ruleId, AUDIT_MAX_CODE_CHARS),
     category,
     severity: draft.severity,
     subject,

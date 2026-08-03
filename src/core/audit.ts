@@ -23,8 +23,12 @@ import {
   AUDIT_CATEGORIES,
   AUDIT_DEFAULT_MAX_FINDINGS,
   AUDIT_FORBIDDEN_STORE_METHODS,
+  AUDIT_MAX_CODE_CHARS,
   AUDIT_MAX_FINDINGS_LIMIT,
+  AUDIT_MAX_IDENTIFIER_CHARS,
   AUDIT_MAX_MESSAGE_CHARS,
+  AUDIT_MAX_SCOPE_ITEMS,
+  AUDIT_MAX_SCOPE_VALUE_CHARS,
   AUDIT_MAX_SNAPSHOT_ATTEMPTS,
   AUDIT_RULE_SET_VERSION,
   AUDIT_SCHEMA_VERSION,
@@ -59,6 +63,9 @@ export const normalizeAuditScope = (
   if (indexName.length < 1) {
     return { ok: false, error: "indexName is required" };
   }
+  if (Array.from(indexName).length > 64) {
+    return { ok: false, error: "indexName must be at most 64 characters" };
+  }
 
   const categories =
     scope.categories.length === 0
@@ -88,6 +95,25 @@ export const normalizeAuditScope = (
   const tags = [...new Set(scope.tags.map((item) => normalizeAuditText(item)))]
     .filter((item) => item.length > 0)
     .sort(compareAuditCodeUnits);
+
+  for (const [name, values, maxChars] of [
+    ["collections", collections, AUDIT_MAX_SCOPE_VALUE_CHARS],
+    ["paths", paths, AUDIT_MAX_IDENTIFIER_CHARS],
+    ["tags", tags, AUDIT_MAX_SCOPE_VALUE_CHARS],
+  ] as const) {
+    if (values.length > AUDIT_MAX_SCOPE_ITEMS) {
+      return {
+        ok: false,
+        error: `${name} must contain at most ${AUDIT_MAX_SCOPE_ITEMS} values`,
+      };
+    }
+    if (values.some((value) => Array.from(value).length > maxChars)) {
+      return {
+        ok: false,
+        error: `${name} entries must be at most ${maxChars} characters`,
+      };
+    }
+  }
 
   return {
     ok: true,
@@ -151,9 +177,10 @@ const defaultCapabilities = (
 const materializeRule = (
   contribution: AuditRuleContribution
 ): AuditRuleResult => {
+  const ruleId = boundAuditText(contribution.ruleId, AUDIT_MAX_CODE_CHARS);
   const findings = (contribution.findings ?? [])
     .map((draft) =>
-      materializeAuditFinding(contribution.ruleId, contribution.category, draft)
+      materializeAuditFinding(ruleId, contribution.category, draft)
     )
     .sort(compareAuditFindings);
 
@@ -163,7 +190,7 @@ const materializeRule = (
   }
 
   return {
-    ruleId: normalizeAuditText(contribution.ruleId),
+    ruleId,
     category: contribution.category,
     status,
     message: boundAuditText(contribution.message, AUDIT_MAX_MESSAGE_CHARS),

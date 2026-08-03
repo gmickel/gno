@@ -113,6 +113,53 @@ describe("knowledge integrity audit contract", () => {
     );
   });
 
+  test("bounds identifier-bearing finding fields to the closed schema", async () => {
+    const oversized = "x".repeat(3000);
+    const result = await runAudit({
+      scope,
+      capabilities,
+      captureFingerprints: () => fingerprints,
+      rules: [
+        () => ({
+          ruleId: oversized,
+          category: "links",
+          status: "fail",
+          message: "Oversized identifier evidence",
+          findings: [
+            {
+              subject: oversized,
+              location: oversized,
+              severity: "warning",
+              message: "Bound every identifier",
+              evidence: [
+                {
+                  kind: oversized,
+                  summary: "Oversized indexed path",
+                  uri: oversized,
+                  path: oversized,
+                },
+              ],
+            },
+          ],
+        }),
+      ],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const [materialized] = result.report.findings;
+    expect(materialized?.ruleId).toHaveLength(128);
+    expect(materialized?.subject).toHaveLength(2048);
+    expect(materialized?.location).toHaveLength(2048);
+    expect(materialized?.evidence[0]?.kind).toHaveLength(128);
+    expect(materialized?.evidence[0]?.uri).toHaveLength(2048);
+    expect(materialized?.evidence[0]?.path).toHaveLength(2048);
+
+    const ajv = new Ajv({ strict: true, allErrors: true });
+    addFormats(ajv);
+    const validate = ajv.compile(schema);
+    expect(validate(result.report), JSON.stringify(validate.errors)).toBe(true);
+  });
+
   test("bounded retries report changed_during_audit and never clean", async () => {
     let capture = 0;
     const result = await runAudit({

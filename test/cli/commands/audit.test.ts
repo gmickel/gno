@@ -220,6 +220,16 @@ describe("gno audit CLI", () => {
     });
   });
 
+  test("rejects tags beyond the report scope bound", async () => {
+    expect(await audit({ category: "links", tags: ["x".repeat(257)] })).toEqual(
+      {
+        success: false,
+        invalid: true,
+        error: "tags entries must be at most 256 characters",
+      }
+    );
+  });
+
   test("retains incoming links when a path filter narrows audit scope", async () => {
     await mkdir(join(notes, "scoped"));
     await Bun.write(
