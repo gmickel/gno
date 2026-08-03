@@ -10,6 +10,7 @@ import {
   hashCaptureContent,
   mergeCaptureFrontmatter,
   planCapture,
+  validateDeclaredCaptureProvenance,
 } from "../../src/core/capture";
 import { writeCapturePlanFile } from "../../src/core/capture-write";
 
@@ -298,6 +299,26 @@ describe("capture core", () => {
     expect(source.docid).toBe("#abc");
     expect(source.kind).toBe("file");
     expect(source.uri).toBe("gno://notes/source.pdf");
+  });
+
+  test("retains invalid browser clip declarations for provenance audits", () => {
+    for (const declaration of ['{"sourceUrl":"not-a-url"}', "{bad-json}"]) {
+      const source = extractCaptureSourceFromFrontmatter(
+        [
+          "---",
+          "source:",
+          '  kind: "web"',
+          '  capturedAt: "2026-06-04T12:34:56.000Z"',
+          `  browserClip: ${declaration}`,
+          "---",
+          "",
+        ].join("\n")
+      );
+      expect(validateDeclaredCaptureProvenance(source)).toContainEqual({
+        field: "source.browserClip",
+        reason: "invalid",
+      });
+    }
   });
 
   test("distinguishes capture provenance from ordinary source lists", () => {

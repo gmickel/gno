@@ -274,6 +274,28 @@ describe("gno audit CLI", () => {
     expect(mutations).toBe(2);
   });
 
+  test("reports an unreadable source as unavailable instead of failing", async () => {
+    const sourcePath = join(notes, "a.md");
+    await chmod(sourcePath, 0o000);
+    try {
+      const result = await audit({ category: "provenance" });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.exitCode).toBe(5);
+        expect(result.report.status).toBe("partial");
+        expect(result.report.rules).toContainEqual(
+          expect.objectContaining({
+            ruleId: "provenance.capture-source",
+            status: "unavailable",
+            skipReason: "source_unavailable",
+          })
+        );
+      }
+    } finally {
+      await chmod(sourcePath, 0o644);
+    }
+  });
+
   test("detects graph drift without document revision changes", async () => {
     const database = new Database(getIndexDbPath());
     const revisionsBefore = database
@@ -344,6 +366,34 @@ describe("gno audit CLI", () => {
         )
         .get("a.md")
     ).toEqual(revisionsBefore);
+    database.close();
+  });
+
+  test("detects record metadata drift without source revision changes", async () => {
+    const database = new Database(getIndexDbPath());
+    let mutations = 0;
+    const changed = await audit({
+      category: "provenance",
+      onProgress: ({ phase, completed }) => {
+        if (phase !== "snapshot" || completed === 0) return;
+        mutations += 1;
+        const declared = mutations % 2 === 1;
+        database.run(
+          "UPDATE documents SET record_metadata = ?, record_anchors = ? WHERE rel_path = ?",
+          [
+            declared ? '{"title":"changed"}' : null,
+            declared ? '[{"kind":"page","value":"1"}]' : null,
+            "a.md",
+          ]
+        );
+      },
+    });
+    expect(changed.success).toBe(true);
+    if (changed.success) {
+      expect(changed.exitCode).toBe(5);
+      expect(changed.report.status).toBe("changed_during_audit");
+    }
+    expect(mutations).toBe(2);
     database.close();
   });
 

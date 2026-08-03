@@ -573,9 +573,13 @@ export function extractCaptureSourceFromFrontmatter(
           try {
             const parsed = JSON.parse(nestedValue) as unknown;
             const provenance = browserClipProvenanceSchema.safeParse(parsed);
-            if (provenance.success) source.browserClip = provenance.data;
+            // Retain invalid declarations so provenance audits can report them.
+            // Runtime consumers only inspect known fields via optional chaining.
+            source.browserClip = provenance.success
+              ? provenance.data
+              : (parsed as BrowserClipProvenance);
           } catch {
-            // Ignore malformed optional browser provenance.
+            source.browserClip = {} as BrowserClipProvenance;
           }
           continue;
         }

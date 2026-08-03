@@ -383,24 +383,29 @@ const captureWorkspaceFingerprints = async (
         const root = roots.get(document.collection);
         if (!root) return { uri: document.uri, state: "unavailable" };
         const file = Bun.file(join(root, document.relPath));
-        const exists = await file.exists();
-        if (!exists) return { uri: document.uri, state: "missing" };
-        const hash = inspectFreshness
-          ? await hashBlob(file, options.signal)
-          : inspectProvenance &&
-              MARKDOWN_SOURCE_EXTENSIONS.has(document.sourceExt.toLowerCase())
-            ? await hashBlob(
-                file.slice(0, AUDIT_FRONTMATTER_BYTES),
-                options.signal
-              )
-            : null;
-        return {
-          uri: document.uri,
-          state: "readable",
-          size: file.size,
-          mtime: file.lastModified,
-          hash,
-        };
+        try {
+          const exists = await file.exists();
+          if (!exists) return { uri: document.uri, state: "missing" };
+          const hash = inspectFreshness
+            ? await hashBlob(file, options.signal)
+            : inspectProvenance &&
+                MARKDOWN_SOURCE_EXTENSIONS.has(document.sourceExt.toLowerCase())
+              ? await hashBlob(
+                  file.slice(0, AUDIT_FRONTMATTER_BYTES),
+                  options.signal
+                )
+              : null;
+          return {
+            uri: document.uri,
+            state: "readable",
+            size: file.size,
+            mtime: file.lastModified,
+            hash,
+          };
+        } catch (cause) {
+          if (options.signal?.aborted) throw cause;
+          return { uri: document.uri, state: "unavailable" };
+        }
       })
     : [];
   // Link audits fingerprint the same unscoped bounded graph capture the rules
@@ -434,6 +439,8 @@ const captureWorkspaceFingerprints = async (
         recordKey: document.recordKey ?? null,
         recordSourceLocator: document.recordSourceLocator ?? null,
         recordAdapterFingerprint: document.recordAdapterFingerprint ?? null,
+        recordMetadata: document.recordMetadata ?? null,
+        recordAnchors: document.recordAnchors ?? null,
       })),
       total: selected.total,
       linkGraph,
