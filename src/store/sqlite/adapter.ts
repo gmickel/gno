@@ -1581,6 +1581,67 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async listDocumentsForAudit(options: {
+    collections: readonly string[];
+    pathPrefixes: readonly string[];
+    tags: readonly string[];
+    limit: number;
+  }): Promise<StoreResult<{ documents: DocumentRow[]; total: number }>> {
+    try {
+      const db = this.ensureOpen();
+      const conditions = ["d.active = 1"];
+      const params: (string | number)[] = [];
+      if (options.collections.length > 0) {
+        conditions.push("d.collection IN (SELECT value FROM json_each(?))");
+        params.push(JSON.stringify(options.collections));
+      }
+      if (options.pathPrefixes.length > 0) {
+        conditions.push(`EXISTS (
+          SELECT 1 FROM json_each(?) prefix
+          WHERE d.rel_path = prefix.value
+             OR d.rel_path LIKE
+               replace(replace(replace(prefix.value, '\\', '\\\\'), '%', '\\%'), '_', '\\_') || '/%'
+               ESCAPE '\\'
+        )`);
+        params.push(JSON.stringify(options.pathPrefixes));
+      }
+      if (options.tags.length > 0) {
+        conditions.push(`NOT EXISTS (
+          SELECT 1 FROM json_each(?) requested_tag
+          WHERE NOT EXISTS (
+            SELECT 1 FROM doc_tags dt
+            WHERE dt.document_id = d.id AND dt.tag = requested_tag.value
+          )
+        )`);
+        params.push(JSON.stringify(options.tags));
+      }
+      const where = conditions.join(" AND ");
+      const total =
+        db
+          .query<{ count: number }, (string | number)[]>(
+            `SELECT COUNT(*) AS count FROM documents d WHERE ${where}`
+          )
+          .get(...params)?.count ?? 0;
+      const rows = db
+        .query<DbDocumentRow, (string | number)[]>(
+          `SELECT d.* FROM documents d
+           WHERE ${where}
+           ORDER BY d.id
+           LIMIT ?`
+        )
+        .all(...params, options.limit);
+      return ok({ documents: rows.map(mapDocumentRow), total });
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to select bounded audit documents",
+        cause
+      );
+    }
+  }
+
   async listRecordDocuments(
     collection: string,
     sourcePath: string

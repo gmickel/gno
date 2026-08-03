@@ -350,6 +350,14 @@ describe("gno audit CLI", () => {
     database.close();
   });
 
+  test("does not read the graph for a source-only audit", async () => {
+    const database = new Database(getIndexDbPath());
+    database.run("DROP TABLE doc_links");
+    database.close();
+    const result = await audit({ category: "provenance" });
+    expect(result.success).toBe(true);
+  });
+
   test("detects indexed provenance drift without source revision changes", async () => {
     const database = new Database(getIndexDbPath());
     const revisionsBefore = database

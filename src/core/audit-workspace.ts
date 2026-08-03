@@ -86,12 +86,6 @@ const normalizeValues = (values: readonly string[] | undefined): string[] =>
     .filter(Boolean)
     .sort();
 
-const pathMatches = (relPath: string, prefixes: readonly string[]): boolean =>
-  prefixes.length === 0 ||
-  prefixes.some(
-    (prefix) => relPath === prefix || relPath.startsWith(`${prefix}/`)
-  );
-
 const collectionPathMap = (
   collections: readonly Collection[]
 ): Map<string, string> =>
@@ -105,30 +99,17 @@ const selectDocuments = async (
     tags: readonly string[];
   }
 ): Promise<{ documents: DocumentRow[]; total: number; truncated: boolean }> => {
-  const listed = await store.listDocuments();
+  const listed = await store.listDocumentsForAudit({
+    collections: options.collections,
+    pathPrefixes: options.paths,
+    tags: options.tags,
+    limit: AUDIT_WORKSPACE_MAX_DOCUMENTS,
+  });
   if (!listed.ok) throw new Error(listed.error.message);
-  let candidates = listed.value.filter(
-    (document) =>
-      document.active &&
-      (options.collections.length === 0 ||
-        options.collections.includes(document.collection)) &&
-      pathMatches(document.relPath, options.paths)
-  );
-  if (options.tags.length > 0 && candidates.length > 0) {
-    const tags = await store.getTagsBatch(candidates.map(({ id }) => id));
-    if (!tags.ok) throw new Error(tags.error.message);
-    candidates = candidates.filter((document) => {
-      const documentTags = new Set(
-        (tags.value.get(document.id) ?? []).map(({ tag }) => tag)
-      );
-      return options.tags.every((tag) => documentTags.has(tag));
-    });
-  }
-  candidates.sort((left, right) => left.id - right.id);
   return {
-    documents: candidates.slice(0, AUDIT_WORKSPACE_MAX_DOCUMENTS),
-    total: candidates.length,
-    truncated: candidates.length > AUDIT_WORKSPACE_MAX_DOCUMENTS,
+    documents: listed.value.documents,
+    total: listed.value.total,
+    truncated: listed.value.total > AUDIT_WORKSPACE_MAX_DOCUMENTS,
   };
 };
 
@@ -350,9 +331,23 @@ const loadWorkspaceSnapshot = async (
     completed: selected.documents.length,
     total: selected.total,
   });
-  // Capture the bounded graph before narrowing the document scope so incoming
-  // edges from outside a collection/path filter still prevent false orphans.
-  const rawLinks = captureAuditLinkSnapshot(options.store.getRawDb());
+  // Capture the bounded graph before narrowing link scope so incoming edges
+  // from outside a filter still prevent false orphans. Source-only audits do
+  // not touch the unrelated graph.
+  const rawLinks = options.categories.includes("links")
+    ? captureAuditLinkSnapshot(options.store.getRawDb())
+    : {
+        documents: [],
+        links: [],
+        totals: { documents: 0, links: 0 },
+        truncated: { documents: false, links: false },
+        metrics: {
+          documentRowsExamined: 0,
+          linkRowsExamined: 0,
+          uniqueTargetsResolved: 0,
+          batchedResolution: true as const,
+        },
+      };
   const selectedIds = new Set(selected.documents.map(({ id }) => id));
   return {
     documents: observed,
