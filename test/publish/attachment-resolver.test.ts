@@ -101,6 +101,25 @@ describe("rewriteAttachmentsInMarkdown", () => {
     expect(ids).toEqual([...ids].sort());
   });
 
+  test("re-escapes decoded closing brackets in Markdown image alt text", async () => {
+    const root = await makeRoot();
+    await writeBytes(join(root, "dot.png"), PNG_1X1);
+
+    const result = await rewriteAttachmentsInMarkdown(
+      "![a\\]b](dot.png)\n![a&#93;b](dot.png)\n",
+      {
+        basenameIndex: await buildAttachmentBasenameIndex(root),
+        collectionRoot: root,
+        noteSlug: "demo",
+        sourceRelPath: "demo.md",
+      }
+    );
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.markdown.match(/!\[a\\\]b\]\(gno-asset:/gu)).toHaveLength(2);
+    expect(result.payloads.size).toBe(1);
+  });
+
   test("producer path rejects fabricated AVIF that only looks structurally complete", async () => {
     const root = await makeRoot();
     const fabricated = buildAvif(1, 1);

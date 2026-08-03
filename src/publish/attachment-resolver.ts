@@ -67,13 +67,16 @@ const isExternalDestination = (value: string): boolean => {
 const isDataUrl = (value: string): boolean =>
   value.trim().toLowerCase().startsWith("data:");
 
+const escapeMarkdownImageAlt = (value: string): string =>
+  value.replace(/[\\[\]]/gu, "\\$&");
+
 const rewriteOccurrence = (
   occurrence: ImageOccurrence,
   assetId: string
 ): string => {
   const sentinel = formatGnoAssetSentinel(assetId);
   if (occurrence.kind === "markdown") {
-    return `![${occurrence.alt}](${sentinel})`;
+    return `![${escapeMarkdownImageAlt(occurrence.alt)}](${sentinel})`;
   }
   const alias = occurrence.alt.trim();
   const display = alias.length > 0 && !/^\d+$/u.test(alias) ? alias : "";
