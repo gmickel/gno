@@ -58,3 +58,13 @@ export {
   projectSectionTargetCreateResult,
   projectSectionTargetResolveResult,
 } from "./section-target-transport";
+
+export type { SectionTargetLinkDecodeFailure } from "./section-target-link";
+export {
+  SECTION_TARGET_LINK_MAX_ENCODED_CHARS,
+  SECTION_TARGET_LINK_PARAM,
+  SECTION_TARGET_LINK_VERSION,
+  classifySectionTargetLinkDecodeFailure,
+  decodeSectionTargetLinkParam,
+  encodeSectionTargetLinkParam,
+} from "./section-target-link";

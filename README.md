@@ -723,7 +723,7 @@ Full-featured markdown editor with:
 
 ![GNO Document Viewer](./assets/screenshots/webui-doc-view.jpg)
 
-View documents with full context: outgoing links, backlinks, section outline, and AI-powered related notes sidebar.
+View documents with full context: outgoing links, backlinks, section outline, and AI-powered related notes sidebar. Outline copy-link stays human-readable (`#anchor`); an optional citation link adds a bounded durable selector for conservative recovery after edits.
 
 ### Browse Workspace
 

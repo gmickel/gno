@@ -679,11 +679,21 @@ The document view includes a collapsible sidebar with link information:
 
 ### Document Outline
 
-Long notes now expose a heading-aware outline in the facts rail:
+Long notes expose a heading-aware outline in the facts rail:
 
 - jump to sections quickly
-- copy deep links to section anchors
+- copy readable deep links to section anchors (`/doc?uri=…#anchor`)
+- optionally copy a citation link that adds a bounded, versioned `st`
+  selector for durable recovery
 - keep a live sense of where you are in long notes
+
+Readable `#anchor` links remain the human default and stay compatible with
+older bookmarks. Citation links are for local/agent citation safety: they
+carry bounded quote/context evidence, never a full section body, and resolve
+conservatively. Exact and uniquely recovered targets navigate to the current
+anchor and show a short status; ambiguous, stale, missing, or invalid
+selectors never navigate and never silently cite a different section.
+Quick Switcher section jumps continue to use readable anchors only.
 
 ### Wiki Link Autocomplete
 

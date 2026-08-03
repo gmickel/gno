@@ -41,4 +41,17 @@ describe("deep link helpers", () => {
       lineEnd: 14,
     });
   });
+
+  test("parseDocumentDeepLink ignores additive citation selectors", () => {
+    expect(
+      parseDocumentDeepLink(
+        "?uri=gno%3A%2F%2Fnotes%2Freadme.md&view=rendered&st=1.abc"
+      )
+    ).toEqual({
+      uri: "gno://notes/readme.md",
+      view: "rendered",
+      lineStart: undefined,
+      lineEnd: undefined,
+    });
+  });
 });

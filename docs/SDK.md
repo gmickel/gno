@@ -368,6 +368,10 @@ transport `uri` maxLength, create/resolve throw SDK `VALIDATION` before
 projection (never truncating `target.document.uri`). Diagnostics candidates are
 filtered/capped (32 max) with explicit `candidateCount` / `candidatesTruncated`.
 
+Readable Web UI `#anchor` links stay compatible and are the human default.
+Durable targets are for citation-safe create/resolve — not a replacement for
+`getSections()` navigation.
+
 ### Capture
 
 Capture a note with provenance and receive the shared capture receipt.

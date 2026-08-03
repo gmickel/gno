@@ -1580,6 +1580,11 @@ schema bounds (no identity truncation), capped at 32 items, and report
 }
 ```
 
+Human Web UI copy-link uses readable `#anchor` fragments only. Optional UI
+citation links add a bounded versioned `st` query param for local recovery;
+they must not be treated as a public sharing format. Agents should prefer
+`gno_section` / REST create+resolve over scraping `st` from URLs.
+
 ---
 
 ### Get Document Links

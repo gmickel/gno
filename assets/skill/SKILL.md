@@ -329,6 +329,7 @@ When using GNO through MCP, prefer this retrieval order:
 5. Use graph/link expansion for relationship context: `gno_graph_query` for typed relationship traversal, `gno_graph_neighbors` for nearby documents, `gno_graph_path` for "how are X and Y connected?", `gno_links`/`gno_backlinks` for one-document link expansion, and `gno_similar` for semantic neighbors. Prefer explicit or typed edges over inferred, ambiguous, or similarity edges when confidence matters.
 6. Use `gno_query_diagnose` when a known target document should have appeared but did not; it reports BM25/vector/fusion/graph/rerank stage presence and filter state.
 7. Use `gno_get` with `fromLine`/`lineCount` for targeted reads, or `gno_multi_get` to batch top refs.
+8. Use `gno_section` only when you need a durable section locator or must re-resolve one after edits. Prefer search → `gno_get` for ordinary retrieval. `action=create` needs `ref` plus exactly one of `anchor`|`line`; `action=resolve` needs `ref` plus `target`. Cite or open content only for `exact`/`recovered` results, then follow the tool's ready-to-use `gno_get` guidance (`fromLine = lineStart`; `lineCount = lineEnd - lineStart + 1`). Never navigate or cite `ambiguous`/`stale`/`missing`.
 
 For a caller-owned canonical Capsule that should stay fresh locally:
 
@@ -370,6 +371,7 @@ Use narrower tools when the request tells you to:
 - `gno_graph_neighbors`: relationship/corpus-navigation questions around a known document
 - `gno_graph_path`: "how are X and Y connected?" questions
 - `gno_query_diagnose`: why a named target did or did not surface for a query
+- `gno_section`: create/resolve a durable section target when citation identity matters after edits; follow navigable citations with `gno_get`. Not the default retrieval path.
 
 For ambiguous terms, pass `intent` instead of bloating the query text. For typed retrieval, use `queryModes`: `term` for lexical anchors, `intent` for disambiguation, one `hyde` for a hypothetical answer/document.
 

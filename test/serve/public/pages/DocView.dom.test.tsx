@@ -2,6 +2,7 @@ import { cleanup, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { useEffect, useRef } from "react";
 
+import { extractSections } from "../../../../src/core/sections";
 import { apiOk, renderWithUser, setTestLocation } from "../../../helpers/dom";
 
 const apiFetch = mock(async (..._args: unknown[]) => apiOk<unknown>({}));
@@ -36,7 +37,18 @@ void mock.module(
 );
 
 void mock.module("../../../../src/serve/public/components/editor", () => ({
-  MarkdownPreview: ({ content }: { content: string }) => <div>{content}</div>,
+  MarkdownPreview: ({ content }: { content: string }) => (
+    <div>
+      {extractSections(content).map((section) => (
+        <div
+          data-section-anchor={section.anchor}
+          id={section.anchor}
+          key={section.anchor}
+        />
+      ))}
+      <div>{content}</div>
+    </div>
+  ),
 }));
 
 void mock.module(
@@ -790,5 +802,216 @@ describe("DocView PDF integration (fn-112.5)", () => {
       )
     ).toBeTruthy();
     expect(screen.queryByTestId("pdf-no-extracted-text")).toBeNull();
+  });
+});
+
+const SECTION_OUTLINE_URI = "gno://work/notes/pilot.md";
+const SECTION_OUTLINE_CONTENT = [
+  "# Guide",
+  "",
+  "## Setup",
+  "",
+  "Install Bun first.",
+  "Then run tests.",
+  "",
+  "## Usage",
+  "",
+  "Call createSectionTarget.",
+].join("\n");
+
+function mockSectionOutlineDoc() {
+  apiFetch.mockImplementation(async (...args: unknown[]) => {
+    const endpoint = typeof args[0] === "string" ? args[0] : "";
+    if (endpoint.startsWith("/api/doc?uri=")) {
+      return apiOk({
+        docid: "outline-1",
+        uri: SECTION_OUTLINE_URI,
+        title: "Guide",
+        content: SECTION_OUTLINE_CONTENT,
+        contentAvailable: true,
+        collection: "work",
+        relPath: "notes/pilot.md",
+        tags: [],
+        source: {
+          mime: "text/markdown",
+          ext: ".md",
+          modifiedAt: "2026-08-03T10:00:00.000Z",
+          sizeBytes: 180,
+          sourceHash: "outline-hash",
+        },
+        capabilities: {
+          editable: true,
+          tagsEditable: true,
+          tagsWriteback: true,
+          canCreateEditableCopy: false,
+          mode: "editable",
+        },
+      });
+    }
+    if (endpoint.includes("/links")) {
+      return apiOk({ links: [] });
+    }
+    return apiOk({});
+  });
+}
+
+function installClipboardMock(writeText: (text: string) => Promise<void>) {
+  const clipboard = window.navigator.clipboard as {
+    writeText: (text: string) => Promise<void>;
+    readText: () => Promise<string>;
+  };
+  const previousWriteText = clipboard.writeText.bind(clipboard);
+  const calls: string[] = [];
+  clipboard.writeText = async (text: string) => {
+    calls.push(text);
+    await writeText(text);
+  };
+  return {
+    calls,
+    restore: () => {
+      clipboard.writeText = previousWriteText;
+    },
+  };
+}
+
+describe("DocView outline section links (fn-61.7)", () => {
+  let restoreClipboard: (() => void) | null = null;
+
+  afterEach(() => {
+    restoreClipboard?.();
+    restoreClipboard = null;
+    cleanup();
+  });
+
+  beforeEach(() => {
+    apiFetch.mockReset();
+    mockSectionOutlineDoc();
+    setTestLocation(
+      `/doc?uri=${encodeURIComponent(SECTION_OUTLINE_URI)}&view=rendered`
+    );
+  });
+
+  test("outline exposes readable and citation controls with distinct copy payloads", async () => {
+    const clipboard = installClipboardMock(async () => undefined);
+    restoreClipboard = clipboard.restore;
+
+    const { default: DocView } =
+      await import("../../../../src/serve/public/pages/DocView");
+    const { user } = renderWithUser(
+      <DocView navigate={mock(() => undefined)} />
+    );
+
+    await screen.findByText("Outline");
+    const readable = await screen.findByRole("button", {
+      name: "Copy link to Setup",
+    });
+    const citation = screen.getByRole("button", {
+      name: "Copy local citation link to Setup",
+    });
+    expect(readable).toBeTruthy();
+    expect(citation).toBeTruthy();
+
+    await user.click(readable);
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(
+        "Copied section link"
+      );
+    });
+    expect(clipboard.calls).toHaveLength(1);
+    expect(clipboard.calls[0]).toContain("#setup");
+    expect(clipboard.calls[0]).not.toContain("st=");
+
+    await user.click(citation);
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(
+        "Copied citation link"
+      );
+    });
+    expect(clipboard.calls).toHaveLength(2);
+    expect(clipboard.calls[1]).toContain("#setup");
+    expect(clipboard.calls[1]).toMatch(/[?&]st=1\./u);
+    expect(clipboard.calls[1]!.length).toBeLessThan(4000);
+  });
+
+  test("clipboard rejection shows unavailable feedback without copied-success", async () => {
+    const clipboard = installClipboardMock(async () => {
+      throw new Error("clipboard denied");
+    });
+    restoreClipboard = clipboard.restore;
+
+    const { default: DocView } =
+      await import("../../../../src/serve/public/pages/DocView");
+    const { user } = renderWithUser(
+      <DocView navigate={mock(() => undefined)} />
+    );
+
+    await screen.findByText("Outline");
+    await user.click(
+      await screen.findByRole("button", { name: "Copy link to Setup" })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(
+        "Could not copy link"
+      );
+    });
+    expect(clipboard.calls).toHaveLength(1);
+    expect(screen.queryByText("Copied section link")).toBeNull();
+    expect(screen.queryByText("Copied citation link")).toBeNull();
+  });
+
+  test("invalid citation selector blocks hash navigation at the DocView boundary", async () => {
+    const scrolledIds: string[] = [];
+    const proto = window.HTMLElement.prototype;
+    const originalScrollDescriptor = Object.getOwnPropertyDescriptor(
+      proto,
+      "scrollIntoView"
+    );
+    proto.scrollIntoView = function scrollIntoViewSpy(
+      this: HTMLElement,
+      ..._args: unknown[]
+    ) {
+      if (this.id) {
+        scrolledIds.push(this.id);
+      }
+    };
+
+    try {
+      setTestLocation(
+        `/doc?uri=${encodeURIComponent(SECTION_OUTLINE_URI)}&view=rendered&st=1.not-valid-base64!!!#setup`
+      );
+
+      const { default: DocView } =
+        await import("../../../../src/serve/public/pages/DocView");
+      renderWithUser(<DocView navigate={mock(() => undefined)} />);
+
+      await screen.findByText("Outline");
+      await waitFor(() => {
+        expect(screen.getByRole("status").textContent).toBe(
+          "Invalid section citation — not navigating"
+        );
+      });
+
+      // Flush any pending rAF scroll attempts from mount effects.
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+      });
+
+      expect(scrolledIds).not.toContain("setup");
+      expect(window.location.search).toContain("st=1.not-valid-base64");
+      expect(window.location.hash).toBe("#setup");
+    } finally {
+      if (originalScrollDescriptor) {
+        Object.defineProperty(
+          proto,
+          "scrollIntoView",
+          originalScrollDescriptor
+        );
+      }
+    }
   });
 });

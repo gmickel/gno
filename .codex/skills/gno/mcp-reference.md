@@ -107,6 +107,12 @@ Check `gno_status` first when freshness or
 embeddings may be stale. Use `gno_query_diagnose` when a known target document
 should have appeared but did not.
 
+Use `gno_section` only when durable section identity matters (create/resolve a
+`SectionTargetV1`). Prefer ordinary `gno_query` → `gno_get` retrieval first.
+Exact/recovered results include citation lines and ready-to-use `gno_get`
+guidance (`fromLine = lineStart`; `lineCount = lineEnd - lineStart + 1`). Never
+cite or navigate ambiguous/stale/missing results.
+
 Use graph tools for relationship context: `gno_graph` for corpus report/stats,
 community summaries,
 `gno_graph_query` for bounded typed-edge traversal,

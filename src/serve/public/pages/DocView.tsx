@@ -13,6 +13,7 @@ import {
   LinkIcon,
   Loader2Icon,
   PencilIcon,
+  QuoteIcon,
   Share2Icon,
   SquareArrowOutUpRightIcon,
   TextIcon,
@@ -83,6 +84,15 @@ import {
   downloadPublishArtifactFile,
   type PublishExportResponse,
 } from "../lib/publish-export";
+import {
+  buildReadableSectionUrl,
+  createCitationSectionUrl,
+  readSectionTargetLinkParam,
+  resolveSectionLinkNavigation,
+  SECTION_LINK_NOTICE_COPY,
+  stripSectionTargetLinkParam,
+  type SectionLinkNoticeKind,
+} from "../lib/section-links";
 import { subscribeWorkspaceActionRequest } from "../lib/workspace-events";
 
 /** Lazy so pdfjs is never pulled for non-PDF documents. */
@@ -389,9 +399,13 @@ export default function DocView({ navigate }: PageProps) {
   const [activeSectionAnchor, setActiveSectionAnchor] = useState<string | null>(
     null
   );
+  const [sectionLinkNotice, setSectionLinkNotice] =
+    useState<SectionLinkNoticeKind | null>(null);
+  const [blockHashNavigation, setBlockHashNavigation] = useState(false);
 
   // Request sequencing - ignore stale responses on rapid navigation
   const requestIdRef = useRef(0);
+  const sectionResolveRequestRef = useRef(0);
   const latestDocEvent = useDocEvents();
 
   // App remounts page on route/query changes, so URI is stable per render.
@@ -402,6 +416,10 @@ export default function DocView({ navigate }: PageProps) {
   const currentUri = currentTarget.uri;
   const currentHash = useMemo(
     () => window.location.hash.replace(/^#/u, ""),
+    []
+  );
+  const encodedSectionTarget = useMemo(
+    () => readSectionTargetLinkParam(window.location.search),
     []
   );
   const highlightedLines = useMemo(() => {
@@ -564,7 +582,78 @@ export default function DocView({ navigate }: PageProps) {
   }, []);
 
   useEffect(() => {
-    if (!currentHash || showRawView || loading) {
+    if (!sectionLinkNotice) {
+      return;
+    }
+    const timer = window.setTimeout(() => setSectionLinkNotice(null), 3200);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [sectionLinkNotice]);
+
+  useEffect(() => {
+    if (!doc?.content || loading || !encodedSectionTarget) {
+      return;
+    }
+
+    const requestId = ++sectionResolveRequestRef.current;
+    const content = doc.content;
+    void resolveSectionLinkNavigation({
+      content,
+      uri: doc.uri,
+      encodedTarget: encodedSectionTarget,
+      hashAnchor: currentHash,
+    }).then((result) => {
+      if (requestId !== sectionResolveRequestRef.current) {
+        return;
+      }
+      setBlockHashNavigation(result.blockHashNavigation);
+      if (result.notice) {
+        setSectionLinkNotice(result.notice);
+      }
+      if (result.cleanCitationParam) {
+        const cleanedSearch = stripSectionTargetLinkParam(
+          window.location.search
+        );
+        const nextHash = result.navigateAnchor
+          ? `#${result.navigateAnchor}`
+          : window.location.hash;
+        window.history.replaceState(
+          {},
+          "",
+          `${window.location.pathname}${cleanedSearch}${nextHash}`
+        );
+      }
+      if (result.blockHashNavigation || !result.navigateAnchor) {
+        return;
+      }
+      if (showRawView) {
+        return;
+      }
+      requestAnimationFrame(() => {
+        document
+          .getElementById(result.navigateAnchor ?? "")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        setActiveSectionAnchor(result.navigateAnchor);
+      });
+    });
+  }, [
+    currentHash,
+    doc?.content,
+    doc?.uri,
+    encodedSectionTarget,
+    loading,
+    showRawView,
+  ]);
+
+  useEffect(() => {
+    if (
+      blockHashNavigation ||
+      encodedSectionTarget ||
+      !currentHash ||
+      showRawView ||
+      loading
+    ) {
       return;
     }
 
@@ -574,12 +663,91 @@ export default function DocView({ navigate }: PageProps) {
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
       setActiveSectionAnchor(currentHash);
     });
-  }, [currentHash, loading, showRawView]);
+  }, [
+    blockHashNavigation,
+    currentHash,
+    encodedSectionTarget,
+    loading,
+    showRawView,
+  ]);
 
   const breadcrumbs = doc ? parseBreadcrumbs(doc.collection, doc.relPath) : [];
   const sections = useMemo(
     () => extractSections(parsedContent.body),
     [parsedContent.body]
+  );
+
+  const copyReadableSectionLink = useCallback(
+    (anchor: string) => {
+      if (!doc) {
+        return;
+      }
+      void navigator.clipboard
+        .writeText(
+          buildReadableSectionUrl(window.location.origin, {
+            uri: doc.uri,
+            view: "rendered",
+            anchor,
+          })
+        )
+        .then(() => {
+          setSectionLinkNotice("copied_link");
+        })
+        .catch(() => {
+          setSectionLinkNotice("clipboard_unavailable");
+        });
+    },
+    [doc]
+  );
+
+  const copyCitationSectionLink = useCallback(
+    async (anchor: string) => {
+      const content = doc?.content;
+      if (!doc || !content) {
+        return;
+      }
+      const citationUrl = await createCitationSectionUrl({
+        origin: window.location.origin,
+        uri: doc.uri,
+        content,
+        anchor,
+        view: "rendered",
+      });
+      if (!citationUrl) {
+        setSectionLinkNotice("citation_unavailable");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(citationUrl);
+        setSectionLinkNotice("copied_citation");
+      } catch {
+        setSectionLinkNotice("clipboard_unavailable");
+      }
+    },
+    [doc]
+  );
+
+  const jumpToSection = useCallback(
+    (anchor: string) => {
+      setShowRawView(false);
+      setBlockHashNavigation(false);
+      requestAnimationFrame(() => {
+        document.getElementById(anchor)?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        window.history.replaceState(
+          {},
+          "",
+          `${buildDocDeepLink({
+            uri: doc?.uri ?? "",
+            view: "rendered",
+          })}#${anchor}`
+        );
+        setActiveSectionAnchor(anchor);
+      });
+    },
+    [doc?.uri]
   );
 
   useEffect(() => {
@@ -1170,8 +1338,19 @@ export default function DocView({ navigate }: PageProps) {
         <>
           <div className="mx-3 border-border/20 border-t" />
           <div className="px-3 py-3">
-            <div className="mb-2 font-mono text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">
-              Outline
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="font-mono text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">
+                Outline
+              </div>
+              {sectionLinkNotice && (
+                <div
+                  aria-live="polite"
+                  className="min-w-0 truncate font-mono text-[10px] text-muted-foreground/70"
+                  role="status"
+                >
+                  {SECTION_LINK_NOTICE_COPY[sectionLinkNotice]}
+                </div>
+              )}
             </div>
             <div className="w-full min-w-0 max-w-full space-y-0.5 overflow-x-hidden">
               {sections.map((section) => (
@@ -1185,25 +1364,9 @@ export default function DocView({ navigate }: PageProps) {
                   style={{ paddingLeft: `${section.level * 7}px` }}
                 >
                   <button
-                    className="flex w-full min-w-0 max-w-full cursor-pointer items-start gap-2 overflow-hidden rounded px-1 py-0.5 pr-7 text-left text-xs transition-colors hover:bg-muted/20 hover:text-foreground"
+                    className="flex w-full min-w-0 max-w-full cursor-pointer items-start gap-2 overflow-hidden rounded px-1 py-0.5 pr-12 text-left text-xs transition-colors hover:bg-muted/20 hover:text-foreground"
                     onClick={() => {
-                      setShowRawView(false);
-                      requestAnimationFrame(() => {
-                        document
-                          .getElementById(section.anchor)
-                          ?.scrollIntoView({
-                            behavior: "smooth",
-                            block: "start",
-                          });
-                        window.history.replaceState(
-                          {},
-                          "",
-                          `${buildDocDeepLink({
-                            uri: doc?.uri ?? "",
-                            view: "rendered",
-                          })}#${section.anchor}`
-                        );
-                      });
+                      jumpToSection(section.anchor);
                     }}
                     type="button"
                   >
@@ -1221,20 +1384,40 @@ export default function DocView({ navigate }: PageProps) {
                       </TooltipContent>
                     </Tooltip>
                   </button>
-                  <button
-                    className="absolute top-1 right-1 cursor-pointer rounded p-1 opacity-0 transition-all hover:bg-muted/20 hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(
-                        `${window.location.origin}${buildDocDeepLink({
-                          uri: doc?.uri ?? "",
-                          view: "rendered",
-                        })}#${section.anchor}`
-                      );
-                    }}
-                    type="button"
-                  >
-                    <CopyIcon className="size-3" />
-                  </button>
+                  <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 transition-all focus-within:opacity-100 group-hover:opacity-100">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          aria-label={`Copy link to ${section.title}`}
+                          className="cursor-pointer rounded p-1 hover:bg-muted/20 hover:text-foreground"
+                          onClick={() => {
+                            copyReadableSectionLink(section.anchor);
+                          }}
+                          type="button"
+                        >
+                          <CopyIcon className="size-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">Copy link</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          aria-label={`Copy local citation link to ${section.title}`}
+                          className="cursor-pointer rounded p-1 hover:bg-muted/20 hover:text-foreground"
+                          onClick={() => {
+                            void copyCitationSectionLink(section.anchor);
+                          }}
+                          type="button"
+                        >
+                          <QuoteIcon className="size-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        Copy local citation link
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
               ))}
             </div>
