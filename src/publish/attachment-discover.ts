@@ -15,6 +15,7 @@ import {
   collectAttachmentExcludedRanges,
   stripAttachmentContainerPrefixes,
 } from "./attachment-exclusions";
+import { parseObsidianEmbedAt } from "./attachment-obsidian";
 
 export interface DiscoveredImageRef {
   /** Raw alt/alias text between brackets (as authored). */
@@ -75,48 +76,6 @@ const isEscapedMarker = (text: string, index: number): boolean => {
     backslashes += 1;
   }
   return backslashes % 2 === 1;
-};
-
-const parseObsidianTarget = (
-  raw: string
-): { alias: string; pathPart: string } => {
-  const pipe = raw.indexOf("|");
-  const pathWithFrag = pipe >= 0 ? raw.slice(0, pipe) : raw;
-  const alias = pipe >= 0 ? raw.slice(pipe + 1).trim() : "";
-  const hash = pathWithFrag.indexOf("#");
-  const pathPart = (
-    hash >= 0 ? pathWithFrag.slice(0, hash) : pathWithFrag
-  ).trim();
-  return { alias, pathPart };
-};
-
-/**
- * Parse `![[...]]` starting at bangIndex (`!`). Returns null if malformed.
- */
-const parseObsidianEmbedAt = (
-  text: string,
-  bangIndex: number
-): DiscoveredImageRef | null => {
-  if (text.slice(bangIndex, bangIndex + 3) !== "![[") return null;
-  let i = bangIndex + 3;
-  let raw = "";
-  while (i < text.length) {
-    const ch = text[i] ?? "";
-    if (ch === "]" && text[i + 1] === "]") {
-      const parsed = parseObsidianTarget(raw);
-      return {
-        alt: parsed.alias,
-        end: i + 2,
-        kind: "obsidian",
-        sourceRef: parsed.pathPart,
-        start: bangIndex,
-      };
-    }
-    if (ch === "\n" || ch === "\r") return null;
-    raw += ch;
-    i += 1;
-  }
-  return null;
 };
 
 /**
