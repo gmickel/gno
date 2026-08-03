@@ -21,12 +21,12 @@ import {
 } from "./artifact-asset-parse";
 
 type NoteIndex = {
-  markdownBySlug: Map<string, string>;
+  markdownBySlug: Map<string, string[]>;
   slugs: Set<string>;
 };
 
 const collectNoteIndex = (artifact: Record<string, unknown>): NoteIndex => {
-  const markdownBySlug = new Map<string, string>();
+  const markdownBySlug = new Map<string, string[]>();
   const slugs = new Set<string>();
   const spaces = Array.isArray(artifact.spaces) ? artifact.spaces : [];
   for (const space of spaces) {
@@ -40,16 +40,17 @@ const collectNoteIndex = (artifact: Record<string, unknown>): NoteIndex => {
       if (typeof noteRecord.slug !== "string") continue;
       slugs.add(noteRecord.slug);
       if (typeof noteRecord.markdown === "string") {
-        markdownBySlug.set(noteRecord.slug, noteRecord.markdown);
+        const markdownEntries = markdownBySlug.get(noteRecord.slug) ?? [];
+        markdownEntries.push(noteRecord.markdown);
+        markdownBySlug.set(noteRecord.slug, markdownEntries);
       }
     }
   }
   return { markdownBySlug, slugs };
 };
 
-const collectNoteMarkdown = (notes: NoteIndex): Array<string> => [
-  ...notes.markdownBySlug.values(),
-];
+const collectNoteMarkdown = (notes: NoteIndex): Array<string> =>
+  [...notes.markdownBySlug.values()].flat();
 
 const validateReferenceOwnership = (
   assets: Array<PublishArtifactAsset>,
@@ -154,14 +155,16 @@ export const validatePublishAssetContract = (
 
   const referencedIds = new Set<string>();
   const sentinelOwners = new Map<string, Set<string>>();
-  for (const [slug, markdown] of notes.markdownBySlug.entries()) {
-    const sentinels = collectMarkdownSentinels(markdown);
-    if (!sentinels.ok) return sentinels;
-    for (const id of sentinels.ids) {
-      referencedIds.add(id);
-      const owners = sentinelOwners.get(id) ?? new Set<string>();
-      owners.add(slug);
-      sentinelOwners.set(id, owners);
+  for (const [slug, markdownEntries] of notes.markdownBySlug.entries()) {
+    for (const markdown of markdownEntries) {
+      const sentinels = collectMarkdownSentinels(markdown);
+      if (!sentinels.ok) return sentinels;
+      for (const id of sentinels.ids) {
+        referencedIds.add(id);
+        const owners = sentinelOwners.get(id) ?? new Set<string>();
+        owners.add(slug);
+        sentinelOwners.set(id, owners);
+      }
     }
   }
 

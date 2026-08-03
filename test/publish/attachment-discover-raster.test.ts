@@ -125,6 +125,18 @@ describe("attachment discover parser", () => {
       sourceRef: "real.png",
     });
   });
+
+  test("skips standalone indented code without hiding paragraph continuations", () => {
+    const markdown = [
+      "    ![code](../private.png)",
+      "",
+      "paragraph",
+      "    ![active](real.png)",
+    ].join("\n");
+    const found = discoverImageOccurrences(markdown);
+    expect(found).toHaveLength(1);
+    expect(found[0]?.sourceRef).toBe("real.png");
+  });
 });
 
 describe("attachment raster validation", () => {

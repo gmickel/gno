@@ -6,7 +6,11 @@
  * @module src/publish/attachment-discover
  */
 
-import { getExcludedRanges, rangeIntersectsExcluded } from "../ingestion/strip";
+import {
+  type ExcludedRange,
+  getExcludedRanges,
+  rangeIntersectsExcluded,
+} from "../ingestion/strip";
 
 export interface DiscoveredImageRef {
   /** Raw alt/alias text between brackets (as authored). */
@@ -37,6 +41,49 @@ const isEscapedMarker = (text: string, index: number): boolean => {
     backslashes += 1;
   }
   return backslashes % 2 === 1;
+};
+
+/** CommonMark indented code blocks cannot interrupt a paragraph. */
+const collectIndentedCodeRanges = (markdown: string): ExcludedRange[] => {
+  const ranges: ExcludedRange[] = [];
+  let blockStart: number | null = null;
+  let offset = 0;
+  let previousLineBlank = true;
+
+  while (offset <= markdown.length) {
+    const nextNewline = markdown.indexOf("\n", offset);
+    const lineEnd = nextNewline === -1 ? markdown.length : nextNewline;
+    const rawLine = markdown.slice(offset, lineEnd);
+    const logicalLine = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine;
+    const lineBlank = logicalLine.trim().length === 0;
+    const lineIndented = /^(?: {4}|\t)/u.test(logicalLine);
+
+    if (blockStart !== null) {
+      if (!(lineIndented || lineBlank)) {
+        ranges.push({
+          start: blockStart,
+          end: offset,
+          kind: "fenced_code",
+        });
+        blockStart = null;
+      }
+    } else if (lineIndented && previousLineBlank) {
+      blockStart = offset;
+    }
+
+    previousLineBlank = lineBlank;
+    if (nextNewline === -1) break;
+    offset = nextNewline + 1;
+  }
+
+  if (blockStart !== null) {
+    ranges.push({
+      start: blockStart,
+      end: markdown.length,
+      kind: "fenced_code",
+    });
+  }
+  return ranges;
 };
 
 const parseObsidianTarget = (
@@ -252,7 +299,10 @@ const parseMarkdownImageAt = (
 export const discoverImageOccurrences = (
   markdown: string
 ): DiscoveredImageRef[] => {
-  const excluded = getExcludedRanges(markdown);
+  const excluded = [
+    ...getExcludedRanges(markdown),
+    ...collectIndentedCodeRanges(markdown),
+  ].sort((left, right) => left.start - right.start);
   const found: DiscoveredImageRef[] = [];
   let i = 0;
   while (i < markdown.length) {

@@ -287,6 +287,22 @@ describe("publish artifact asset contract", () => {
     expect(validatePublishAssetContract(artifact).ok).toBe(true);
   });
 
+  test("retains sentinel ownership across duplicate artifact note slugs", async () => {
+    const artifact = (await loadJson("valid-small-raster-v1.json")) as Record<
+      string,
+      unknown
+    >;
+    const spaces = artifact.spaces as Array<{
+      notes: Array<{ markdown: string; slug: string }>;
+    }>;
+    spaces[0]!.notes.push({ markdown: "No image here", slug: "atlas" });
+
+    expect(validatePublishAssetContract(artifact)).toMatchObject({
+      ok: true,
+      classification: "bundled-raster-v1",
+    });
+  });
+
   test("enforces sourceRef 1..1024 before traversal normalization", async () => {
     const artifact = (await loadJson("valid-small-raster-v1.json")) as Record<
       string,
