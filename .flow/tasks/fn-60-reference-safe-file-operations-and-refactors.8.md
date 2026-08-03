@@ -39,9 +39,8 @@ Surface parity means a shared semantic result, not a generic action endpoint. A 
 - [ ] Focused REST/UI tests and lint pass.
 
 ## Done summary
-TBD
-
+Moved REST rename/move preview and apply onto the canonical parser-backed refactor planner/service while preserving operation-specific route paths and duplicate/folder behavior. Added mandatory exact digest confirmation, typed HTTP outcomes, sync-pending success handling, and an accessible Web UI impact preview with affected documents, exact rewrites, unresolved references, safety state, and confirmation gating.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: d66a8ea2
+- Tests: bun test test/serve (647 pass), bun test test/serve/api-docs-lifecycle.test.ts test/serve/file-refactor-http.test.ts test/serve/public/components/RefactorImpactPreview.dom.test.tsx test/core/file-refactor-planner.test.ts (43 pass), bun run typecheck, bun run lint:check, git diff --check
 - PRs:
