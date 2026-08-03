@@ -17,6 +17,7 @@ import { evaluateEgressPolicy } from "../core/egress-policy";
 export const MCP_HTTP_EGRESS_TOOLS = {
   gno_add_collection: "metadata",
   gno_ask: "capsule",
+  gno_audit: "metadata",
   gno_backlinks: "metadata",
   gno_capture: "metadata",
   gno_changes: "metadata",

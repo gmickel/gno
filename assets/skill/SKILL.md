@@ -313,6 +313,23 @@ at the remote service. For gno.sh, supported private links can be revoked or
 expired in Studio; public-space deletion is not yet self-service, so request
 takedown. Encrypted gno.sh shares are client-encrypted and never server-decrypted.
 
+## Read-Only Knowledge Integrity Audits
+
+Use `gno audit [links|provenance|freshness|all] --json` or read-only MCP
+`gno_audit` only when the user asks what needs attention in a workspace. These
+offline audits inspect parsed local links, explicitly declared capture/logical-
+record provenance, and observable source/index freshness. They never repair,
+rewrite, persist findings, judge factual truth, or replace retrieval.
+
+Treat exit `4` as a complete report with findings. Exit `5` or report status
+`partial`/`changed_during_audit` means evidence is unavailable, inconclusive,
+cancelled, truncated, or repeatedly changed—never healthy. Preserve stable
+finding IDs and exact totals when summarizing bounded results. Age is only a
+review signal when `maxAgeDays`/`--max-age-days` is explicitly supplied. Apply
+collection/path/tag scope and orphan roots/ignore prefixes only from the user's
+request. `gno egress-audit` is separate: it manages content-free transport-
+policy receipts.
+
 ## MCP Retrieval Strategy
 
 For a long-lived client that supports Streamable HTTP, start one resident owner
@@ -377,6 +394,8 @@ Use narrower tools when the request tells you to:
 - `gno_search`: exact phrase, filename, identifier, stack trace, error text
 - `gno_vsearch`: conceptual similarity when exact wording differs
 - `gno_status`: stale results, missing embeddings, vector unavailable
+- `gno_audit`: explicit offline workspace-integrity review; report findings and
+  partial evidence, never mutate or imply repairs
 - `gno_graph`: graph report/stats, hubs, isolates, unresolved links, edge confidence/audit, communities, unfamiliar corpus overview
 - `gno_graph_query`: bounded typed-edge traversal from a known document
 - `gno_graph_neighbors`: relationship/corpus-navigation questions around a known document

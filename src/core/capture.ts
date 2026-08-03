@@ -589,7 +589,44 @@ export function extractCaptureSourceFromFrontmatter(
 /** Whether a note explicitly declares the CaptureSource frontmatter contract. */
 export const hasDeclaredCaptureSource = (content: string): boolean => {
   const { lines } = splitFrontmatter(content);
-  return lines.some((line) => /^source\s*:\s*(?:\{\s*\})?\s*$/u.test(line));
+  const captureKeys = new Set<string>([
+    "kind",
+    "capturedAt",
+    "url",
+    "docid",
+    "uri",
+    "mime",
+    "ext",
+    "title",
+    "author",
+    "canonicalUrl",
+    "site",
+    "publishedAt",
+    "observedAt",
+    "externalId",
+    "browserClip",
+  ]);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line === undefined) continue;
+    if (/^source\s*:\s*\{\s*\}\s*$/u.test(line)) return true;
+    if (!/^source\s*:\s*$/u.test(line)) continue;
+    for (
+      let nestedIndex = index + 1;
+      nestedIndex < lines.length;
+      nestedIndex += 1
+    ) {
+      const nested = lines[nestedIndex];
+      if (!nested?.startsWith("  ")) break;
+      const colonIndex = nested.indexOf(":");
+      if (colonIndex <= 0) continue;
+      const nestedKey = nested
+        .slice(0, colonIndex)
+        .trim() as keyof CaptureSource;
+      if (captureKeys.has(nestedKey)) return true;
+    }
+  }
+  return false;
 };
 
 function sourceFrontmatterLines(source: CaptureSource): string[] {

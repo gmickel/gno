@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp, rename } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -117,6 +117,22 @@ describe("gno_audit MCP tool", () => {
         skipReason: "cancelled",
       }),
     ]);
+  });
+
+  test("projects unavailable source evidence through the same partial status", async () => {
+    await rename(notes, join(root, "offline-notes"));
+    const result = await handleAudit(
+      auditInputSchema.parse({ category: "freshness" }),
+      context
+    );
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent?.status).toBe("partial");
+    expect(result.structuredContent?.rules).toContainEqual(
+      expect.objectContaining({
+        ruleId: "freshness.source-readable",
+        status: "unavailable",
+      })
+    );
   });
 
   test("closes input and advertises independently verified read-only behavior", () => {

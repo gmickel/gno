@@ -6,6 +6,7 @@ import { join } from "node:path";
 import {
   buildCaptureReceipt,
   extractCaptureSourceFromFrontmatter,
+  hasDeclaredCaptureSource,
   hashCaptureContent,
   mergeCaptureFrontmatter,
   planCapture,
@@ -297,6 +298,20 @@ describe("capture core", () => {
     expect(source.docid).toBe("#abc");
     expect(source.kind).toBe("file");
     expect(source.uri).toBe("gno://notes/source.pdf");
+  });
+
+  test("distinguishes capture provenance from ordinary source lists", () => {
+    expect(
+      hasDeclaredCaptureSource(
+        "---\nsource:\n  - https://example.com/one\n  - https://example.com/two\n---\n"
+      )
+    ).toBe(false);
+    expect(
+      hasDeclaredCaptureSource(
+        '---\nsource:\n  kind: "web"\n  capturedAt: "2026-06-04T12:34:56.000Z"\n---\n'
+      )
+    ).toBe(true);
+    expect(hasDeclaredCaptureSource("---\nsource: {}\n---\n")).toBe(true);
   });
 
   test("builds receipt with explicit sync and embed statuses", () => {

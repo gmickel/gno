@@ -55,7 +55,7 @@ export interface WorkspaceAuditOptions {
   orphanIgnorePrefixes?: readonly string[];
   signal?: AbortSignal;
   now?: Date;
-  onProgress?: (progress: WorkspaceAuditProgress) => void;
+  onProgress?: (progress: WorkspaceAuditProgress) => void | Promise<void>;
 }
 
 export interface WorkspaceAuditProgress {
@@ -320,7 +320,7 @@ const loadWorkspaceSnapshot = async (
         )
       )
     : [];
-  options.onProgress?.({
+  await options.onProgress?.({
     phase: "snapshot",
     completed: selected.documents.length,
     total: selected.total,
@@ -408,7 +408,7 @@ export const runWorkspaceAudit = async (
     tags: filters.tags,
     indexName: options.indexName,
   };
-  options.onProgress?.({ phase: "snapshot", completed: 0, total: 1 });
+  await options.onProgress?.({ phase: "snapshot", completed: 0, total: 1 });
   const snapshots = new Map<number, Promise<WorkspaceSnapshot>>();
   const snapshotFor = (attempt: number): Promise<WorkspaceSnapshot> => {
     const existing = snapshots.get(attempt);
@@ -455,7 +455,7 @@ export const runWorkspaceAudit = async (
           };
         }
         const contributions = [];
-        options.onProgress?.({
+        await options.onProgress?.({
           phase: "rules",
           completed: 0,
           total: options.categories.length,
@@ -467,7 +467,7 @@ export const runWorkspaceAudit = async (
               ignorePathPrefixes: options.orphanIgnorePrefixes ?? [],
             })
           );
-          options.onProgress?.({
+          await options.onProgress?.({
             phase: "rules",
             completed: 1,
             total: options.categories.length,
@@ -480,7 +480,7 @@ export const runWorkspaceAudit = async (
               { truncated: snapshot.truncated }
             )
           );
-          options.onProgress?.({
+          await options.onProgress?.({
             phase: "rules",
             completed: Number(options.categories.includes("links")) + 1,
             total: options.categories.length,
@@ -497,7 +497,7 @@ export const runWorkspaceAudit = async (
               }
             )
           );
-          options.onProgress?.({
+          await options.onProgress?.({
             phase: "rules",
             completed: options.categories.length,
             total: options.categories.length,
@@ -507,7 +507,7 @@ export const runWorkspaceAudit = async (
       },
     ],
   });
-  options.onProgress?.({ phase: "complete", completed: 1, total: 1 });
+  await options.onProgress?.({ phase: "complete", completed: 1, total: 1 });
   return result;
 };
 

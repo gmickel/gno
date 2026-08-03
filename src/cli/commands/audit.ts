@@ -29,7 +29,7 @@ export interface AuditCommandOptions {
   orphanRoots?: string[];
   orphanIgnorePrefixes?: string[];
   signal?: AbortSignal;
-  onProgress?: (progress: WorkspaceAuditProgress) => void;
+  onProgress?: (progress: WorkspaceAuditProgress) => void | Promise<void>;
 }
 
 export type AuditCommandResult =

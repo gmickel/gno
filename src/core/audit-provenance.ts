@@ -4,7 +4,10 @@ import type { AuditFindingDraft, AuditRuleContribution } from "./audit";
 import type { CaptureSource } from "./capture";
 
 import { validateDeclaredCaptureProvenance } from "./capture";
-import { validateDeclaredRecordProvenance } from "./record-metadata";
+import {
+  hasDeclaredRecordProvenance,
+  validateDeclaredRecordProvenance,
+} from "./record-metadata";
 
 export const PROVENANCE_AUDIT_MAX_FINDINGS_PER_RULE = 1000;
 
@@ -71,12 +74,7 @@ export const evaluateProvenanceAudit = (
       }
     }
     const recordIssues = validateDeclaredRecordProvenance(document.record);
-    if (
-      recordIssues.length > 0 ||
-      Object.values(document.record).some(
-        (value) => value !== undefined && value !== null
-      )
-    ) {
+    if (hasDeclaredRecordProvenance(document.record)) {
       declaredRecordDocuments += 1;
     }
     for (const issue of recordIssues) {

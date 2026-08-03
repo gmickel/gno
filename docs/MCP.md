@@ -146,10 +146,28 @@ Collection boundary tools use the same policy contract on every transport:
   acknowledgement. Stale and replayed confirmations fail closed.
 - `gno_egress_audit_list|show|status` inspect content-free local receipts;
   `gno_egress_audit_delete|purge` are write-enabled local cleanup controls.
+- `gno_audit` runs an offline read-only workspace integrity report; it is not an
+  egress receipt-management tool.
 
 Collection policy never replaces bearer authentication or the MCP write flag.
 Trace export resolves exact trace lineage and checks policy before creating or
 reusing an export receipt.
+
+### `gno_audit`
+
+`gno_audit` returns the same versioned report as CLI `gno audit` for `links`,
+`provenance`, `freshness`, or `all`. Optional `collections`, `paths`, and `tags`
+scope the scan. `maxFindings` is 1–1000; exact totals and truncation remain in
+the report. `maxAgeDays`, `orphanRoots`, and `orphanIgnorePrefixes` are explicit
+run policy, not persisted configuration.
+
+The tool is annotated read-only, destructive-false, and idempotent, and the
+implementation independently performs only query-only SQLite and source reads.
+Cancellation returns partial/inconclusive evidence. Missing or unreadable
+sources are unavailable—not healthy. Stable finding IDs can be diffed across
+runs, but GNO stores no audit baseline and offers no repair/apply action in v1.
+The response can contain local paths/headings/evidence, so apply the same local
+disclosure judgment as other retrieval tools.
 
 Trace management intentionally keeps three independent decisions:
 

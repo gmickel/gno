@@ -185,6 +185,24 @@ Policy decisions create bounded, content-free local audit receipts. Use
 codes and redacted collection identity, never query text, document content,
 credentials, target URLs, or sensitive absolute paths.
 
+### Knowledge-integrity audit policy
+
+Knowledge-integrity audits are intentionally run-scoped in v1. There is no
+configuration key, persisted baseline, suppression list, schedule, or automatic
+repair. Supply an age review threshold only when wanted:
+
+```bash
+gno audit freshness --max-age-days 90
+gno audit links --orphan-root gno://notes/index.md \
+  --orphan-ignore-prefix templates --orphan-ignore-prefix archive
+```
+
+The equivalent MCP fields are `maxAgeDays`, `orphanRoots`, and
+`orphanIgnorePrefixes`. Age is a review signal, not a factual-truth judgment.
+`gno audit` reads the effective collection definitions from this config but
+does not change them. Do not confuse its content-bearing local findings with
+the content-free egress policy receipts above.
+
 ## Resident HTTP MCP Gateway
 
 `gno serve` and `gno daemon` expose `/mcp`. The default configuration binds

@@ -48,6 +48,7 @@ describe("provenance completeness audit", () => {
       uri: "gno://notes/ordinary.md",
       captureSourceDeclared: false,
       captureSource: undefined,
+      record: { converterId: "markdown", converterVersion: "1" },
     });
     const incompleteCapture = provenanceDocument({
       captureSource: { url: "not-a-url" },
@@ -82,6 +83,9 @@ describe("provenance completeness audit", () => {
     ]);
     expect(
       capture?.findings?.some(({ subject }) => subject === ordinary.uri)
+    ).toBe(false);
+    expect(
+      record?.findings?.some(({ subject }) => subject === ordinary.uri)
     ).toBe(false);
   });
 

@@ -917,6 +917,30 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | gno mcp
 
 Should return valid JSON-RPC response.
 
+### Audit exits 5 or reports partial evidence
+
+`gno audit` never converts missing evidence into a clean result. Inspect the
+rule `status`, `message`, and `skipReason` in JSON:
+
+```bash
+gno audit --json
+gno audit freshness --json
+```
+
+- `source-readable` unavailable: restore/mount the collection path and verify
+  file permissions, then rerun.
+- `snapshot_truncated`: narrow with `--collection`, `--path`, or `--tag`.
+- `changed_during_audit`: stop concurrent bulk edits/indexing and rerun; GNO
+  already made one bounded retry.
+- `cancelled`: rerun without interrupting if a complete result is required.
+- missing index/runtime failure: run `gno index`, then retry the audit.
+
+Exit `4` means the report is complete and findings exist; it is not a command
+failure. Exit `5` means evidence is partial, unavailable, inconclusive,
+cancelled, or repeatedly changed. `gno audit` never repairs findings. Review
+the evidence and choose any follow-up explicitly. `gno egress-audit` is a
+different command for local transport-policy receipts.
+
 ## Permission Issues
 
 ### Cannot Write Config

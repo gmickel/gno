@@ -34,14 +34,21 @@ export interface RecordProvenanceIssue {
   reason: "missing";
 }
 
+/** Generic converter identity alone does not declare a logical-record contract. */
+export const hasDeclaredRecordProvenance = (
+  source: RecordMetadataSource
+): boolean =>
+  source.recordKey != null ||
+  source.recordSourceLocator != null ||
+  source.recordAdapterFingerprint != null ||
+  source.recordMetadata != null ||
+  source.recordAnchors != null;
+
 /** Validate completeness only when logical-record provenance is declared. */
 export const validateDeclaredRecordProvenance = (
   source: RecordMetadataSource
 ): RecordProvenanceIssue[] => {
-  const declared = RECORD_PROVENANCE_REQUIRED_FIELDS.some(
-    (field) => source[field] !== undefined && source[field] !== null
-  );
-  if (!declared) return [];
+  if (!hasDeclaredRecordProvenance(source)) return [];
   return RECORD_PROVENANCE_REQUIRED_FIELDS.filter(
     (field) => !source[field]
   ).map((field) => ({ field, reason: "missing" as const }));

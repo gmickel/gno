@@ -174,6 +174,10 @@ gno daemon --detach  # headless indexing + resident MCP gateway
   `local_only`, `lan`, or `remote` boundary that follows mixed and derived
   evidence through resident serving, inference, publishing, exports, Capsules,
   and traces. Authentication never overrides policy.
+- **Read-only integrity audits**: `gno audit` and MCP `gno_audit` inspect local
+  links, declared provenance, and source/index freshness offline. Stable,
+  bounded findings distinguish complete, partial, unavailable, and changing
+  evidence without repairing or persisting anything.
 - **Schema-lite content types**: optional `contentTypes` rules map configured
   frontmatter `type` values or path prefixes to canonical `contentType` metadata
   in JSON search/query results and can apply one bounded, explainable
@@ -945,7 +949,8 @@ graph TD
 | **Local LLM**        | AI answers via llama.cpp, no API keys                                                       |
 | **Remote Inference** | Optional HTTP endpoints for embedding, reranking, expansion, and generation                 |
 | **Privacy First**    | Fail-closed per-collection egress policy; no telemetry; explicit network use                |
-| **MCP Server**       | 10 automatic client targets; 25 read-only tools, 40 with writes enabled                     |
+| **MCP Server**       | 10 automatic client targets; 32 read-only tools, 50 with writes enabled                     |
+| **Integrity Audits** | Offline link, declared-provenance, and freshness reports with stable IDs                    |
 | **Knowledge Delta**  | Bounded metadata history, structural diffs, and dependency impact paths                     |
 | **Context Capsules** | Deterministic evidence bundles plus saved-file freshness reverification                     |
 | **Verified Ask**     | Claim-by-claim evidence checks with explicit abstention                                     |

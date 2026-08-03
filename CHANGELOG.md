@@ -9,7 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added deterministic, offline `gno audit` and read-only MCP `gno_audit` for
+  link integrity, declared provenance completeness, and source/index freshness.
+  Reports use stable finding IDs, exact totals under bounded output, explicit
+  partial/unavailable/change states, and never persist or repair findings.
+
 ### Changed
+
+- Large link audits now switch to a semantics-equivalent linear bulk resolver;
+  the default live index link audit fell from 12.71 seconds to 0.17 seconds
+  while matching all 2,325 unique SQL-resolved targets exactly.
 
 ### Fixed
 

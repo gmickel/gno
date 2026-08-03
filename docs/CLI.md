@@ -34,33 +34,34 @@ never raw roots.
 
 ## Quick Reference
 
-| Command          | Description                       |
-| ---------------- | --------------------------------- |
-| `gno init`       | Initialize config and database    |
-| `gno setup`      | Add a folder and prove retrieval  |
-| `gno index`      | Full index (sync + embed)         |
-| `gno update`     | Sync files from disk (no embed)   |
-| `gno embed`      | Generate embeddings only          |
-| `gno search`     | BM25 full-text search             |
-| `gno vsearch`    | Vector similarity search          |
-| `gno query`      | Hybrid search (BM25 + vector)     |
-| `gno bench`      | Benchmark retrieval fixtures      |
-| `gno ask`        | Search with AI answer             |
-| `gno get`        | Retrieve document content         |
-| `gno ls`         | List indexed documents            |
-| `gno daemon`     | Headless continuous indexing      |
-| `gno links`      | List outgoing links from document |
-| `gno backlinks`  | List documents linking to target  |
-| `gno similar`    | Find semantically similar docs    |
-| `gno graph`      | Export knowledge graph            |
-| `gno serve`      | Start web UI server               |
-| `gno mcp`        | Start MCP server for AI clients   |
-| `gno models`     | Manage models (list, pull, use)   |
-| `gno skill`      | Install GNO skill for AI agents   |
-| `gno tags`       | Manage document tags              |
-| `gno completion` | Shell tab completion              |
-| `gno vec`        | Vector index maintenance          |
-| `gno doctor`     | Check system health               |
+| Command          | Description                         |
+| ---------------- | ----------------------------------- |
+| `gno init`       | Initialize config and database      |
+| `gno setup`      | Add a folder and prove retrieval    |
+| `gno index`      | Full index (sync + embed)           |
+| `gno update`     | Sync files from disk (no embed)     |
+| `gno embed`      | Generate embeddings only            |
+| `gno search`     | BM25 full-text search               |
+| `gno vsearch`    | Vector similarity search            |
+| `gno query`      | Hybrid search (BM25 + vector)       |
+| `gno bench`      | Benchmark retrieval fixtures        |
+| `gno ask`        | Search with AI answer               |
+| `gno get`        | Retrieve document content           |
+| `gno ls`         | List indexed documents              |
+| `gno daemon`     | Headless continuous indexing        |
+| `gno links`      | List outgoing links from document   |
+| `gno backlinks`  | List documents linking to target    |
+| `gno similar`    | Find semantically similar docs      |
+| `gno graph`      | Export knowledge graph              |
+| `gno audit`      | Read-only workspace integrity audit |
+| `gno serve`      | Start web UI server                 |
+| `gno mcp`        | Start MCP server for AI clients     |
+| `gno models`     | Manage models (list, pull, use)     |
+| `gno skill`      | Install GNO skill for AI agents     |
+| `gno tags`       | Manage document tags                |
+| `gno completion` | Shell tab completion                |
+| `gno vec`        | Vector index maintenance            |
+| `gno doctor`     | Check system health                 |
 
 ## Global Flags
 
@@ -719,6 +720,36 @@ gno egress-audit purge
 
 Audit inspection/deletion remains local and usable even when an outbound action
 is denied.
+
+### gno audit
+
+Inspect knowledge integrity without changing notes, config, the index, graph
+edges, or daemon state:
+
+```bash
+gno audit
+gno audit links --collection notes --path projects --max-findings 100
+gno audit provenance --json
+gno audit freshness --max-age-days 90 --output audit.json
+```
+
+The default `all` run evaluates parsed local links, explicitly declared capture
+and logical-record provenance, and observable source/index freshness. External
+URLs are outside the local-link graph. Age is only a review signal when
+`--max-age-days` is supplied; it is never presented as proof that content is
+false. Use repeatable `--orphan-root` and `--orphan-ignore-prefix` inputs for an
+explicit orphan policy.
+
+`--max-findings` defaults to 100 and is capped at 1000. Returned findings are
+bounded while `counts.findings.total` remains exact. JSON finding IDs are stable
+for identical rule, subject/location, and evidence. Terminal human mode reports
+progress on stderr; JSON, `--quiet`, and `--no-progress` suppress it. `Ctrl-C`
+returns partial evidence rather than a false clean report.
+
+Exit codes: `0` clean, `1` invalid input, `2` runtime failure, `4` complete with
+findings, and `5` partial, unavailable, inconclusive, cancelled, or repeatedly
+changed during the run. This command is unrelated to `gno egress-audit`, which
+manages content-free transport-policy receipts.
 
 ### gno embed
 
