@@ -1,7 +1,6 @@
 const NAMED_ENTITIES = new Map<string, string>([
   ["amp", "&"],
   ["apos", "'"],
-  ["colon", ":"],
   ["gt", ">"],
   ["lt", "<"],
   ["quot", '"'],

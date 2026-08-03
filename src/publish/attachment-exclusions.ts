@@ -145,10 +145,13 @@ const collectRawHtmlBlockRanges = (markdown: string): ExcludedRange[] => {
 };
 
 export const collectAttachmentExcludedRanges = (
-  markdown: string
+  markdown: string,
+  excludeFrontmatter = true
 ): ExcludedRange[] =>
   [
-    ...getExcludedRanges(markdown),
+    ...getExcludedRanges(markdown).filter(
+      (range) => excludeFrontmatter || range.kind !== "frontmatter"
+    ),
     ...collectIndentedCodeRanges(markdown),
     ...collectRawHtmlBlockRanges(markdown),
   ].sort((left, right) => left.start - right.start);

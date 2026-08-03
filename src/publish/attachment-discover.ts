@@ -6,7 +6,8 @@
  * @module src/publish/attachment-discover
  */
 
-import { decodeHtmlEntitiesOnce } from "../converters/adapters/shared/html-text";
+import { decodeString } from "micromark-util-decode-string";
+
 import {
   type ExcludedRange,
   rangeIntersectsExcluded,
@@ -25,6 +26,10 @@ export interface DiscoveredImageRef {
   /** Destination / embed path used for resolution (unescaped). */
   sourceRef: string;
   start: number;
+}
+
+export interface DiscoverImageOptions {
+  excludeFrontmatter?: boolean;
 }
 
 const isAsciiWhitespace = (ch: string): boolean =>
@@ -91,6 +96,17 @@ const parseLinkText = (
   const altStart = i;
   while (i < text.length) {
     const ch = text[i] ?? "";
+    if (ch === "\n" || ch === "\r") {
+      let afterLineEnding = ch === "\r" && text[i + 1] === "\n" ? i + 2 : i + 1;
+      while (text[afterLineEnding] === " " || text[afterLineEnding] === "\t") {
+        afterLineEnding += 1;
+      }
+      if (text[afterLineEnding] === "\n" || text[afterLineEnding] === "\r") {
+        return null;
+      }
+      i = afterLineEnding;
+      continue;
+    }
     if (ch === "\\" && i + 1 < text.length) {
       i += 2;
       continue;
@@ -265,13 +281,13 @@ const parseMarkdownImageAt = (
     alt: linkText.alt,
     end: i + 1,
     kind: "markdown",
-    sourceRef: decodeHtmlEntitiesOnce(destResult.dest.trim()),
+    sourceRef: decodeString(destResult.dest.trim()),
     start: bangIndex,
   };
 };
 
 const normalizeReferenceLabel = (label: string): string =>
-  decodeHtmlEntitiesOnce(label)
+  decodeString(label)
     .replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~])/gu, "$1")
     .trim()
     .replace(/[ \t\r\n]+/gu, " ")
@@ -408,7 +424,7 @@ const collectReferenceDefinitions = (
       }
       ranges.push({ start, end, kind: "html_comment" });
       if (!definitions.has(label)) {
-        definitions.set(label, decodeHtmlEntitiesOnce(parsed.dest.trim()));
+        definitions.set(label, decodeString(parsed.dest.trim()));
       }
     }
     previousLineAllowsDefinition = true;
@@ -452,9 +468,13 @@ const parseReferenceImageAt = (
  * Results are sorted by start offset (stable for equal starts by end).
  */
 export const discoverImageOccurrences = (
-  markdown: string
+  markdown: string,
+  options: DiscoverImageOptions = {}
 ): DiscoveredImageRef[] => {
-  const baseExcluded = collectAttachmentExcludedRanges(markdown);
+  const baseExcluded = collectAttachmentExcludedRanges(
+    markdown,
+    options.excludeFrontmatter ?? true
+  );
   const references = collectReferenceDefinitions(markdown, baseExcluded);
   const excluded = [...baseExcluded, ...references.ranges].sort(
     (left, right) => left.start - right.start

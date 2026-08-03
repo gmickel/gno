@@ -178,6 +178,7 @@
     "jsonc-parser": "3.3.1",
     "lucide-react": "1.28.0",
     "markitdown-ts": "0.0.10",
+    "micromark-util-decode-string": "2.0.1",
     "minimatch": "10.2.6",
     "nanoid": "6.0.0",
     "node-llama-cpp": "3.19.1",

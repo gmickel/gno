@@ -60,7 +60,9 @@ export const collectMarkdownSentinels = (
   markdown: string
 ): ContractFailure | { ok: true; ids: Set<string> } => {
   const ids = new Set<string>();
-  for (const occurrence of discoverImageOccurrences(markdown)) {
+  for (const occurrence of discoverImageOccurrences(markdown, {
+    excludeFrontmatter: false,
+  })) {
     const sourceRef = occurrence.sourceRef;
     if (!sourceRef.startsWith("gno-asset:")) continue;
     const parsed = parseGnoAssetSentinel(sourceRef);

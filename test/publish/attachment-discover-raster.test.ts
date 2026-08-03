@@ -296,15 +296,29 @@ describe("attachment discover parser", () => {
     ).toEqual(["real.png"]);
   });
 
+  test("does not cross blank lines inside image labels", () => {
+    const markdown = [
+      "![literal",
+      "",
+      "](../private.png)",
+      "![active](real.png)",
+    ].join("\n");
+    expect(
+      discoverImageOccurrences(markdown).map((item) => item.sourceRef)
+    ).toEqual(["real.png"]);
+  });
+
   test("permits nonblank multiline titles and preserves non-punctuation backslashes", () => {
     const markdown = [
       '![multiline](gno-asset: "first',
       'second")',
       "![backslash](foo\\q.png)",
+      "![entity](photo&copy;.png)",
     ].join("\n");
     expect(discoverImageOccurrences(markdown)).toMatchObject([
       { sourceRef: "gno-asset:" },
       { sourceRef: "foo\\q.png" },
+      { sourceRef: "photo©.png" },
     ]);
   });
 });

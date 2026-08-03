@@ -303,6 +303,21 @@ describe("publish artifact asset contract", () => {
     });
   });
 
+  test("does not treat arbitrary artifact thematic breaks as frontmatter", async () => {
+    const artifact = (await loadJson("legacy-asset-free-v1.json")) as Record<
+      string,
+      unknown
+    >;
+    const spaces = artifact.spaces as Array<{
+      notes: Array<{ markdown: string }>;
+    }>;
+    spaces[0]!.notes[0]!.markdown = "---\n[a]: gno-asset:\n---\n\n![x][a]\n";
+    expect(validatePublishAssetContract(artifact)).toMatchObject({
+      ok: false,
+      diagnostic: { code: "ASSET_SENTINEL_INVALID" },
+    });
+  });
+
   test("decodes Markdown character references before sentinel validation", async () => {
     const artifact = (await loadJson("legacy-asset-free-v1.json")) as Record<
       string,
