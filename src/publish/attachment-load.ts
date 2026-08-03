@@ -14,7 +14,8 @@ import { MAX_PUBLISH_UPLOAD_BYTES } from "./artifact-asset-contract";
 import { diagnostic, extensionOf } from "./attachment-path";
 import {
   RASTER_HEADER_PROBE_BYTES,
-  validateRasterBytes,
+  validateRasterBytesStructural,
+  validateRasterDecodable,
 } from "./attachment-raster";
 
 const SUPPORTED_EXT = new Set([
@@ -72,7 +73,8 @@ export async function readAndValidateAsset(
   const header = new Uint8Array(
     await file.slice(0, Math.min(size, RASTER_HEADER_PROBE_BYTES)).arrayBuffer()
   );
-  const headerCheck = validateRasterBytes(header);
+  // Header probe uses structural checks only (sync, cheap reject).
+  const headerCheck = validateRasterBytesStructural(header);
   if (!headerCheck.ok) {
     const rejectEarly =
       headerCheck.code === "ASSET_DIMENSION_INVALID" ||
@@ -101,7 +103,8 @@ export async function readAndValidateAsset(
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const validated = validateRasterBytes(bytes);
+  // Full producer path: structural + AVIF AV1 decodability before bundling.
+  const validated = await validateRasterDecodable(bytes);
   if (!validated.ok) {
     if (
       validated.code === "ASSET_UNSUPPORTED_FORMAT" &&

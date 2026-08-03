@@ -3,7 +3,7 @@
  *
  * Identifies regions to exclude from link/tag extraction:
  * - YAML frontmatter
- * - Fenced code blocks
+ * - Fenced code blocks (CommonMark backtick and tilde fences)
  * - Inline code
  * - HTML comments
  *
@@ -39,14 +39,79 @@ export interface ExcludedRange {
 /** Frontmatter at start of file (YAML between --- delimiters) */
 const FRONTMATTER_REGEX = /^---\r?\n[\s\S]*?(?:\r?\n)?---(?:\r?\n|$)/;
 
-/** Fenced code blocks (``` with optional language) */
-const FENCED_CODE_REGEX = /^```[^\n]*\n[\s\S]*?^```/gm;
+/** CommonMark fence opener: 0–3 spaces, then 3+ backticks or tildes + info. */
+const FENCE_OPEN_REGEX = /^ {0,3}(`{3,}|~{3,})(.*)$/u;
+
+/** CommonMark fence closer: matching character, length ≥ opener, trailing space/tabs only. */
+const FENCE_CLOSE_REGEX = /^ {0,3}(`{3,}|~{3,})[\t ]*$/u;
 
 /** Inline code (backticks, non-greedy) */
 const INLINE_CODE_REGEX = /`[^`\n]+`/g;
 
 /** HTML comments */
 const HTML_COMMENT_REGEX = /<!--[\s\S]*?-->/g;
+
+interface OpenFence {
+  marker: "`" | "~";
+  length: number;
+  start: number;
+}
+
+/**
+ * Collect CommonMark fenced code ranges (backtick and tilde). A closer must
+ * use the same character and be at least as long as the opener; when omitted,
+ * CommonMark extends the fenced block through end of input.
+ */
+const collectFencedCodeRanges = (markdown: string): ExcludedRange[] => {
+  const ranges: ExcludedRange[] = [];
+  let offset = 0;
+  let open: OpenFence | null = null;
+
+  while (offset <= markdown.length) {
+    const nextNl = markdown.indexOf("\n", offset);
+    const lineEnd = nextNl === -1 ? markdown.length : nextNl;
+    const rawLine = markdown.slice(offset, lineEnd);
+    const logical = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine;
+
+    if (open) {
+      const closeRun = FENCE_CLOSE_REGEX.exec(logical)?.[1];
+      if (
+        closeRun &&
+        closeRun[0] === open.marker &&
+        closeRun.length >= open.length
+      ) {
+        const end = nextNl === -1 ? markdown.length : nextNl + 1;
+        ranges.push({ start: open.start, end, kind: "fenced_code" });
+        open = null;
+      }
+    } else {
+      const openMatch = FENCE_OPEN_REGEX.exec(logical);
+      const run = openMatch?.[1];
+      const suffix = openMatch?.[2] ?? "";
+      // Backtick info strings cannot contain backticks (CommonMark).
+      if (run && !(run[0] === "`" && suffix.includes("`"))) {
+        open = {
+          marker: run[0] as OpenFence["marker"],
+          length: run.length,
+          start: offset,
+        };
+      }
+    }
+
+    if (nextNl === -1) break;
+    offset = nextNl + 1;
+  }
+
+  if (open) {
+    ranges.push({
+      start: open.start,
+      end: markdown.length,
+      kind: "fenced_code",
+    });
+  }
+
+  return ranges;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Functions
@@ -70,19 +135,12 @@ export function getExcludedRanges(markdown: string): ExcludedRange[] {
     });
   }
 
-  // 2. Fenced code blocks
-  FENCED_CODE_REGEX.lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = FENCED_CODE_REGEX.exec(markdown)) !== null) {
-    ranges.push({
-      start: match.index,
-      end: match.index + match[0].length,
-      kind: "fenced_code",
-    });
-  }
+  // 2. Fenced code blocks (backtick + tilde, CommonMark matching rules)
+  ranges.push(...collectFencedCodeRanges(markdown));
 
   // 3. Inline code
   INLINE_CODE_REGEX.lastIndex = 0;
+  let match: RegExpExecArray | null;
   while ((match = INLINE_CODE_REGEX.exec(markdown)) !== null) {
     ranges.push({
       start: match.index,

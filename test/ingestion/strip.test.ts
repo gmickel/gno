@@ -80,7 +80,48 @@ unclosed code
 no closing fence`;
       const ranges = getExcludedRanges(markdown);
       const codeBlocks = ranges.filter((r) => r.kind === "fenced_code");
-      expect(codeBlocks.length).toBe(0);
+      expect(codeBlocks).toHaveLength(1);
+      expect(markdown.slice(codeBlocks[0]!.start, codeBlocks[0]!.end)).toBe(
+        markdown
+      );
+    });
+
+    test("identifies CommonMark tilde fences with matching closer length", () => {
+      const markdown = `before
+~~~md
+![secret](../escape.png)
+~~~
+after
+~~~~long
+![also](x.png)
+~~~
+still open
+~~~~
+done`;
+      const ranges = getExcludedRanges(markdown);
+      const codeBlocks = ranges.filter((r) => r.kind === "fenced_code");
+      expect(codeBlocks.length).toBe(2);
+      expect(
+        markdown.slice(codeBlocks[0]!.start, codeBlocks[0]!.end)
+      ).toContain("~~~md");
+      expect(
+        markdown.slice(codeBlocks[0]!.start, codeBlocks[0]!.end)
+      ).toContain("../escape.png");
+      expect(
+        markdown.slice(codeBlocks[1]!.start, codeBlocks[1]!.end)
+      ).toContain("~~~~long");
+      // Shorter ~~~ must not close the ~~~~ opener early.
+      expect(
+        markdown.slice(codeBlocks[1]!.start, codeBlocks[1]!.end)
+      ).toContain("still open");
+    });
+
+    test("does not close backtick fences with tilde closers", () => {
+      const markdown = "```\n![x](a.png)\n~~~\n";
+      const ranges = getExcludedRanges(markdown);
+      const fenced = ranges.filter((r) => r.kind === "fenced_code");
+      expect(fenced).toHaveLength(1);
+      expect(markdown.slice(fenced[0]!.start, fenced[0]!.end)).toBe(markdown);
     });
   });
 

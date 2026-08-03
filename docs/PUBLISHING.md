@@ -75,14 +75,19 @@ export, or changing local policy removed independently retained remote copies.
 
 Publish export discovers local raster images referenced from Markdown
 (`![alt](path)`) and Obsidian embeds (`![[image.png]]`), confines them to the
-collection root, validates real PNG/JPEG/GIF/WebP/AVIF bytes, deduplicates by
-SHA-256, and rewrites successful references to deterministic `gno-asset:<sha256>`
-sentinels. External `https://` image URLs stay as-is. Unsupported formats (SVG,
-PDF, HTML, data URLs), missing files, traversal, and MIME spoofs are omitted
-with diagnostics — they never become raw sentinels in the artifact.
+collection root, validates real PNG/JPEG/GIF/WebP/AVIF bytes (AVIF requires
+AV1-decodable media at producer/file-ingress, not merely a structural BMFF
+container), deduplicates by SHA-256, and rewrites successful references to
+deterministic `gno-asset:<sha256>` sentinels. External `https://` image URLs
+stay as-is. Unsupported formats (SVG, PDF, HTML, data URLs), missing files,
+traversal, and MIME spoofs are omitted with diagnostics — they never become
+raw sentinels in the artifact. Image examples inside CommonMark backtick or
+tilde fenced code are not discovered or rewritten.
 
 Exact final serialized upload bytes (JSON including base64/encryption overhead)
-are enforced against the **100 MiB** ceiling. Successful exports report an
+are enforced against the **100 MiB** ceiling (authoritative gate for both
+plaintext and encrypted envelopes; ciphertext field bounds align to that
+budget and never replace final-envelope measurement). Successful exports report an
 `assetSummary` (CLI `--json` and `POST /api/publish/export`) with asset/ref
 counts, raw/encoded/final bytes, dedup savings, external image count, and
 diagnostics. Asset-free notes omit `assets` / `requiredCapabilities`.

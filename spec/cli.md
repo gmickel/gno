@@ -1955,7 +1955,11 @@ success payloads (CLI `--json` and `POST /api/publish/export`) MUST include a
 deterministic `assetSummary` with asset/ref counts, raw/encoded/final UTF-8
 upload bytes, dedup savings, external image count, and unresolved/unsupported
 diagnostics. Exact final serialized upload bytes MUST be enforced against the
-100 MiB ceiling before returning. Asset-free exports omit `assets` /
+100 MiB ceiling before returning. Encrypted V2 ciphertext string bounds MUST
+align to that same 100 MiB final-envelope budget and MUST NOT replace exact
+final serialized measurement as the authoritative upload gate. Producer
+ingress MUST require AV1-decodable AVIF payloads (structural BMFF alone is
+insufficient). Asset-free exports omit `assets` /
 `requiredCapabilities` and report zero asset counts.
 
 Secret-link and invite-only V1 spaces MUST NOT contain a manifest or agent

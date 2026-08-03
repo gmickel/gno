@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Aligned encrypted publish ciphertext field bounds to the 100 MiB final
+  envelope budget, recognized CommonMark tilde fences during attachment
+  discovery, rejected bare `gno-asset:` sentinels, enforced `sourceRef`
+  1..1024, and required AV1-decodable AVIF at producer ingress.
+
 ## [1.32.0] - 2026-08-03
 
 ### Added

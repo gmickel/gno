@@ -2,6 +2,9 @@
  * Bounded raster signature + dimension validation for publish attachments.
  * Extension/MIME are untrusted; only sniffed bytes decide media type.
  *
+ * Structural validation is synchronous and closed-parser safe.
+ * AVIF AV1 decodability is a separate async producer/file-ingress check.
+ *
  * @module src/publish/attachment-raster
  */
 
@@ -511,10 +514,12 @@ const isCompleteRaster = (
 };
 
 /**
- * Validate raster bytes: signature sniff + bounded dimension parse.
- * Caller should reject oversized files before reading full content when possible.
+ * Synchronous structural raster validation: signature sniff, bounded
+ * dimensions, and container completeness. Does **not** prove AV1
+ * decodability for AVIF — producers must also await
+ * `validateRasterDecodable` before bundling.
  */
-export const validateRasterBytes = (
+export const validateRasterBytesStructural = (
   bytes: Uint8Array
 ): RasterValidationResult => {
   if (bytes.byteLength === 0) {
@@ -567,4 +572,47 @@ export const validateRasterBytes = (
     mediaType,
     width: dims.width,
   };
+};
+
+const MAX_AVIF_DECODE_INPUT_PIXELS =
+  MAX_RASTER_DIMENSION_PX * MAX_RASTER_DIMENSION_PX;
+
+/**
+ * Prove AVIF payloads contain a decodable AV1 image via a bounded 1×1 decode.
+ * Bun has no native image decoder; sharp provides the cross-platform AV1 path.
+ * Call only after structural dimension/bomb checks. Avoids retaining decoded
+ * pixel buffers beyond the 1×1 probe.
+ */
+const assertAvifAv1Decodable = async (
+  bytes: Uint8Array,
+  structural: RasterValidationOk
+): Promise<RasterValidationResult> => {
+  try {
+    // sharp — Bun has no native AV1/image decoder; pin exact version in package.json.
+    const sharp = (await import("sharp")).default;
+    await sharp(bytes, {
+      failOn: "error",
+      limitInputPixels: MAX_AVIF_DECODE_INPUT_PIXELS,
+    })
+      .resize(1, 1, { fit: "fill" })
+      .raw()
+      .toBuffer();
+    return structural;
+  } catch {
+    return fail("ASSET_CORRUPT", "image/avif payload is not AV1-decodable");
+  }
+};
+
+/**
+ * Producer/file-ingress validation: structural checks, then AVIF AV1
+ * decodability. Closed artifact parsers must keep using
+ * `validateRasterBytesStructural` only (sync).
+ */
+export const validateRasterDecodable = async (
+  bytes: Uint8Array
+): Promise<RasterValidationResult> => {
+  const structural = validateRasterBytesStructural(bytes);
+  if (!structural.ok) return structural;
+  if (structural.mediaType !== "image/avif") return structural;
+  return assertAvifAv1Decodable(bytes, structural);
 };

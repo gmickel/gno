@@ -6,6 +6,10 @@
 
 export const MAX_PUBLISH_UPLOAD_BYTES = 100 * 1024 * 1024;
 
+/** Schema bounds for asset reference sourceRef (publish-artifact.schema.json). */
+export const MIN_SOURCE_REF_LENGTH = 1;
+export const MAX_SOURCE_REF_LENGTH = 1024;
+
 export const BUNDLED_RASTER_ASSETS_CAPABILITY =
   "bundled-raster-assets@1" as const;
 

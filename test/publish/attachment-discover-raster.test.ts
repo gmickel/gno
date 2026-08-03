@@ -5,7 +5,10 @@ import { describe, expect, test } from "bun:test";
 
 import { MAX_RASTER_DIMENSION_PX } from "../../src/publish/artifact-assets";
 import { discoverImageOccurrences } from "../../src/publish/attachment-discover";
-import { validateRasterBytes } from "../../src/publish/attachment-raster";
+import {
+  validateRasterBytesStructural,
+  validateRasterDecodable,
+} from "../../src/publish/attachment-raster";
 import {
   AVIF_1X1,
   buildAvif,
@@ -64,35 +67,49 @@ describe("attachment discover parser", () => {
     expect(found).toHaveLength(1);
     expect(found[0]?.sourceRef).toBe("real.png");
   });
+
+  test("skips CommonMark tilde-fenced images without traversal diagnostics", () => {
+    const markdown = [
+      "intro",
+      "~~~md",
+      "![secret](../escape/dot.png)",
+      "![[../escape/wikilink.png]]",
+      "~~~",
+      "![ok](real.png)",
+    ].join("\n");
+    const found = discoverImageOccurrences(markdown);
+    expect(found).toHaveLength(1);
+    expect(found[0]?.sourceRef).toBe("real.png");
+  });
 });
 
 describe("attachment raster validation", () => {
   test("accepts PNG/JPEG/GIF/WebP/AVIF signatures and dimensions", () => {
-    expect(validateRasterBytes(PNG_1X1)).toMatchObject({
+    expect(validateRasterBytesStructural(PNG_1X1)).toMatchObject({
       ok: true,
       mediaType: "image/png",
       width: 1,
       height: 1,
     });
-    expect(validateRasterBytes(JPEG_1X1)).toMatchObject({
+    expect(validateRasterBytesStructural(JPEG_1X1)).toMatchObject({
       ok: true,
       mediaType: "image/jpeg",
       width: 1,
       height: 1,
     });
-    expect(validateRasterBytes(GIF_1X1)).toMatchObject({
+    expect(validateRasterBytesStructural(GIF_1X1)).toMatchObject({
       ok: true,
       mediaType: "image/gif",
       width: 1,
       height: 1,
     });
-    expect(validateRasterBytes(WEBP_1X1)).toMatchObject({
+    expect(validateRasterBytesStructural(WEBP_1X1)).toMatchObject({
       ok: true,
       mediaType: "image/webp",
       width: 1,
       height: 1,
     });
-    expect(validateRasterBytes(AVIF_1X1)).toMatchObject({
+    expect(validateRasterBytesStructural(AVIF_1X1)).toMatchObject({
       ok: true,
       mediaType: "image/avif",
       width: 1,
@@ -104,13 +121,17 @@ describe("attachment raster validation", () => {
     const svg = new TextEncoder().encode(
       '<svg xmlns="http://www.w3.org/2000/svg"/>'
     );
-    expect(validateRasterBytes(svg).ok).toBe(false);
+    expect(validateRasterBytesStructural(svg).ok).toBe(false);
 
-    expect(validateRasterBytes(PNG_1X1.subarray(0, 8)).ok).toBe(false);
-    expect(validateRasterBytes(AVIF_1X1.subarray(0, 12)).ok).toBe(false);
-    expect(validateRasterBytes(new Uint8Array([0xff, 0xd8, 0xff])).ok).toBe(
+    expect(validateRasterBytesStructural(PNG_1X1.subarray(0, 8)).ok).toBe(
       false
     );
+    expect(validateRasterBytesStructural(AVIF_1X1.subarray(0, 12)).ok).toBe(
+      false
+    );
+    expect(
+      validateRasterBytesStructural(new Uint8Array([0xff, 0xd8, 0xff])).ok
+    ).toBe(false);
 
     const bomb = new Uint8Array(PNG_1X1);
     // IHDR width/height at offsets 16/20 — set above MAX_RASTER_DIMENSION_PX
@@ -123,14 +144,14 @@ describe("attachment raster validation", () => {
     bomb[21] = bomb[17];
     bomb[22] = bomb[18];
     bomb[23] = bomb[19];
-    const bombed = validateRasterBytes(bomb);
+    const bombed = validateRasterBytesStructural(bomb);
     expect(bombed.ok).toBe(false);
     if (!bombed.ok) expect(bombed.code).toBe("ASSET_DIMENSION_INVALID");
 
     const zeroGif = new Uint8Array(GIF_1X1);
     zeroGif[6] = 0;
     zeroGif[7] = 0;
-    const zeroed = validateRasterBytes(zeroGif);
+    const zeroed = validateRasterBytesStructural(zeroGif);
     expect(zeroed.ok).toBe(false);
     if (!zeroed.ok) expect(zeroed.code).toBe("ASSET_DIMENSION_INVALID");
   });
@@ -138,14 +159,14 @@ describe("attachment raster validation", () => {
   test("rejects header-only and truncated containers for every raster type", () => {
     const fabricatedPngPrefix = new Uint8Array(24);
     fabricatedPngPrefix.set(PNG_1X1.subarray(0, 24));
-    expect(validateRasterBytes(fabricatedPngPrefix)).toMatchObject({
+    expect(validateRasterBytesStructural(fabricatedPngPrefix)).toMatchObject({
       ok: false,
       code: "ASSET_CORRUPT",
     });
 
     for (const complete of [PNG_1X1, JPEG_1X1, GIF_1X1, WEBP_1X1, AVIF_1X1]) {
       const truncated = complete.subarray(0, complete.length - 1);
-      expect(validateRasterBytes(truncated).ok).toBe(false);
+      expect(validateRasterBytesStructural(truncated).ok).toBe(false);
     }
 
     const vp8xHeaderOnly = Uint8Array.from([
@@ -153,12 +174,12 @@ describe("attachment raster validation", () => {
       0x56, 0x50, 0x38, 0x58, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     ]);
-    expect(validateRasterBytes(vp8xHeaderOnly).ok).toBe(false);
+    expect(validateRasterBytesStructural(vp8xHeaderOnly).ok).toBe(false);
   });
 
   test("AVIF parser descends meta FullBox nesting and rejects malformed boxes", () => {
     const wide = buildAvif(32, 16);
-    expect(validateRasterBytes(wide)).toMatchObject({
+    expect(validateRasterBytesStructural(wide)).toMatchObject({
       ok: true,
       width: 32,
       height: 16,
@@ -166,7 +187,7 @@ describe("attachment raster validation", () => {
 
     // Truncate inside meta so ispe is incomplete
     const truncated = wide.subarray(0, wide.length - 4);
-    expect(validateRasterBytes(truncated).ok).toBe(false);
+    expect(validateRasterBytesStructural(truncated).ok).toBe(false);
 
     // Declared size smaller than header
     const badSize = concatBytes(
@@ -174,6 +195,26 @@ describe("attachment raster validation", () => {
       new TextEncoder().encode("ftyp"),
       new TextEncoder().encode("avif")
     );
-    expect(validateRasterBytes(badSize).ok).toBe(false);
+    expect(validateRasterBytesStructural(badSize).ok).toBe(false);
+  });
+
+  test("AVIF producer decodability rejects fabricated mdat and accepts real AV1", async () => {
+    const fabricated = buildAvif(1, 1);
+    expect(fabricated.byteLength).toBe(77);
+    expect(validateRasterBytesStructural(fabricated).ok).toBe(true);
+    const fabricatedDecodable = await validateRasterDecodable(fabricated);
+    expect(fabricatedDecodable.ok).toBe(false);
+    if (!fabricatedDecodable.ok) {
+      expect(fabricatedDecodable.code).toBe("ASSET_CORRUPT");
+      expect(fabricatedDecodable.message).toContain("AV1-decodable");
+    }
+
+    const real = await validateRasterDecodable(AVIF_1X1);
+    expect(real).toMatchObject({
+      ok: true,
+      mediaType: "image/avif",
+      width: 1,
+      height: 1,
+    });
   });
 });

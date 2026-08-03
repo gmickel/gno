@@ -12,8 +12,10 @@ import {
   MAX_PUBLISH_UPLOAD_BYTES,
   MAX_RASTER_DIMENSION_PX,
   MAX_REQUIRED_CAPABILITY_LENGTH,
+  MAX_SOURCE_REF_LENGTH,
   MIN_RASTER_DIMENSION_PX,
   MIN_REQUIRED_CAPABILITY_LENGTH,
+  MIN_SOURCE_REF_LENGTH,
   PUBLISH_ASSET_NOTE_SLUG_PATTERN,
   SUPPORTED_RASTER_MEDIA_TYPES,
   type PublishArtifactAsset,
@@ -26,7 +28,7 @@ import {
   matchGnoAssetTokens,
   parseGnoAssetSentinel,
 } from "./artifact-asset-sniff";
-import { validateRasterBytes } from "./attachment-raster";
+import { validateRasterBytesStructural } from "./attachment-raster";
 
 const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/u;
 const TRAVERSAL_PATTERN = /(?:^|[\\/])\.\.(?:[\\/]|$)|^\/|^[a-zA-Z]:[\\/]/u;
@@ -94,7 +96,22 @@ const validateSourceRef = (
   sourceRef: string,
   field: string
 ): ContractFailure | null => {
-  if (typeof sourceRef !== "string" || sourceRef.trim().length === 0) {
+  if (typeof sourceRef !== "string") {
+    return fail("ASSET_CORRUPT", `${field} must be a string`);
+  }
+  // Enforce schema 1..1024 bound before percent-decode / traversal normalization.
+  // JSON Schema maxLength counts Unicode code points, not UTF-16 code units.
+  const sourceRefLength = Array.from(sourceRef).length;
+  if (
+    sourceRefLength < MIN_SOURCE_REF_LENGTH ||
+    sourceRefLength > MAX_SOURCE_REF_LENGTH
+  ) {
+    return fail(
+      "ASSET_CORRUPT",
+      `${field} must be ${MIN_SOURCE_REF_LENGTH}..${MAX_SOURCE_REF_LENGTH} characters`
+    );
+  }
+  if (sourceRef.trim().length === 0) {
     return fail("ASSET_TRAVERSAL", `${field} must not be blank`);
   }
   for (const form of expandSourceRefForms(sourceRef)) {
@@ -273,7 +290,9 @@ const readClosedAsset = (
       `${field}.sha256 does not match payload bytes`
     );
   }
-  const validatedRaster = validateRasterBytes(decoded.bytes);
+  // Closed-object parse stays synchronous: structural validation only.
+  // Producer/file-ingress paths must await validateRasterDecodable separately.
+  const validatedRaster = validateRasterBytesStructural(decoded.bytes);
   if (!validatedRaster.ok) {
     return fail(validatedRaster.code, `${field} ${validatedRaster.message}`);
   }

@@ -69,7 +69,7 @@ export const bmffBox = (
   );
 };
 
-/** Synthetic AVIF builder for parser-only malformed/dimension cases. */
+/** Synthetic AVIF builder for structural-only malformed/dimension cases (not AV1-decodable). */
 export const buildAvif = (width: number, height: number): Uint8Array => {
   const ispe = bmffBox(
     "ispe",

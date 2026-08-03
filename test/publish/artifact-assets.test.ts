@@ -7,6 +7,7 @@ import {
   MAX_PUBLISH_UPLOAD_BYTES,
   MAX_RASTER_DIMENSION_PX,
   MAX_REQUIRED_CAPABILITY_LENGTH,
+  MAX_SOURCE_REF_LENGTH,
   PUBLISH_ASSET_LIFECYCLE_TERMINALS,
   PUBLISH_ASSET_VISIBILITY,
   measureSerializedUploadBytes,
@@ -14,6 +15,10 @@ import {
   sniffRasterMediaType,
   validatePublishAssetContract,
 } from "../../src/publish/artifact-assets";
+import {
+  encryptedCiphertextCharLengthAllowed,
+  MAX_ENCRYPTED_CIPHERTEXT_BASE64_LENGTH,
+} from "../../src/publish/artifact-validation";
 import {
   assertInvalid,
   assertValid,
@@ -234,6 +239,86 @@ describe("publish artifact asset contract", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.diagnostic.code).toBe("ASSET_SENTINEL_INVALID");
+    }
+  });
+
+  test("rejects bare gno-asset: destinations as ASSET_SENTINEL_INVALID", async () => {
+    const artifact = (await loadJson("valid-small-raster-v1.json")) as Record<
+      string,
+      unknown
+    >;
+    const spaces = artifact.spaces as Array<{
+      notes: Array<{ markdown: string }>;
+    }>;
+    spaces[0]!.notes[0]!.markdown = "![x](gno-asset:)\n";
+    // Drop assets so the failure is the bare sentinel, not missing bytes.
+    delete artifact.assets;
+    delete artifact.requiredCapabilities;
+
+    const result = validatePublishAssetContract(artifact);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostic.code).toBe("ASSET_SENTINEL_INVALID");
+      expect(result.diagnostic.message).toContain("gno-asset:");
+    }
+  });
+
+  test("enforces sourceRef 1..1024 before traversal normalization", async () => {
+    const artifact = (await loadJson("valid-small-raster-v1.json")) as Record<
+      string,
+      unknown
+    >;
+    const assets = artifact.assets as Array<{
+      references: Array<{ noteSlug: string; sourceRef: string }>;
+    }>;
+    const accepted = `${"a".repeat(MAX_SOURCE_REF_LENGTH - 4)}.png`;
+    expect(accepted.length).toBe(MAX_SOURCE_REF_LENGTH);
+    assets[0]!.references[0]!.sourceRef = accepted;
+    expect(validatePublishAssetContract(artifact).ok).toBe(true);
+
+    assets[0]!.references[0]!.sourceRef = `${accepted}x`;
+    expect(assets[0]!.references[0]!.sourceRef.length).toBe(
+      MAX_SOURCE_REF_LENGTH + 1
+    );
+    const rejected = validatePublishAssetContract(artifact);
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) {
+      expect(rejected.diagnostic.code).toBe("ASSET_CORRUPT");
+      expect(rejected.diagnostic.message).toContain(
+        `1..${MAX_SOURCE_REF_LENGTH} characters`
+      );
+    }
+
+    const unicodeAccepted = `${"a".repeat(MAX_SOURCE_REF_LENGTH - 1)}😀`;
+    assets[0]!.references[0]!.sourceRef = unicodeAccepted;
+    expect(Array.from(unicodeAccepted)).toHaveLength(MAX_SOURCE_REF_LENGTH);
+    expect(validatePublishAssetContract(artifact).ok).toBe(true);
+  });
+
+  test("aligns encrypted ciphertext char budget to the 100 MiB envelope", async () => {
+    const staleCeiling = 67_108_864;
+    expect(MAX_ENCRYPTED_CIPHERTEXT_BASE64_LENGTH).toBe(
+      MAX_PUBLISH_UPLOAD_BYTES
+    );
+    expect(MAX_ENCRYPTED_CIPHERTEXT_BASE64_LENGTH).toBeGreaterThan(
+      staleCeiling
+    );
+    // Formerly rejected length is now within the ciphertext field budget.
+    expect(encryptedCiphertextCharLengthAllowed(staleCeiling + 1)).toBe(true);
+    expect(encryptedCiphertextCharLengthAllowed(MAX_PUBLISH_UPLOAD_BYTES)).toBe(
+      true
+    );
+    expect(
+      encryptedCiphertextCharLengthAllowed(MAX_PUBLISH_UPLOAD_BYTES + 1)
+    ).toBe(false);
+    // Exact final serialized measurement remains the authoritative oversize gate.
+    const artifact = await loadJson("valid-encrypted-v2.json");
+    const oversize = validatePublishAssetContract(artifact, {
+      serializedUploadBytes: MAX_PUBLISH_UPLOAD_BYTES + 1,
+    });
+    expect(oversize.ok).toBe(false);
+    if (!oversize.ok) {
+      expect(oversize.diagnostic.code).toBe("ENVELOPE_OVERSIZE");
     }
   });
 

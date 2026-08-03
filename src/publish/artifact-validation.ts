@@ -4,10 +4,26 @@
  * @module src/publish/artifact-validation
  */
 
+import { MAX_PUBLISH_UPLOAD_BYTES } from "./artifact-asset-contract";
+
 export const MAX_PUBLISH_SLUG_LENGTH = 80;
-export const MAX_ENCRYPTED_CIPHERTEXT_BASE64_LENGTH = 67_108_864;
+/**
+ * Ciphertext base64 character ceiling aligned to the 100 MiB final-envelope
+ * budget. Exact final serialized UTF-8 measurement remains the authoritative
+ * upload gate; this bound only prevents a single field from exceeding what the
+ * envelope itself could ever carry.
+ */
+export const MAX_ENCRYPTED_CIPHERTEXT_BASE64_LENGTH = MAX_PUBLISH_UPLOAD_BYTES;
 export const MAX_ENCRYPTED_KEY_MATERIAL_BASE64_LENGTH = 1024;
 export const MAX_ENCRYPTED_SECRET_TOKEN_LENGTH = 512;
+
+/** Length-only seam for ciphertext budget tests (avoids allocating huge strings). */
+export const encryptedCiphertextCharLengthAllowed = (
+  charLength: number
+): boolean =>
+  Number.isSafeInteger(charLength) &&
+  charLength >= 1 &&
+  charLength <= MAX_ENCRYPTED_CIPHERTEXT_BASE64_LENGTH;
 
 const PUBLISH_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/u;
 const BASE64_PATTERN =
@@ -89,6 +105,20 @@ const requireBase64 = (
   maxLength: number
 ): string => {
   const result = requireBoundedNonblankString(value, field, maxLength);
+  if (!BASE64_PATTERN.test(result)) {
+    throw new Error(`${field} must be valid base64`);
+  }
+  return result;
+};
+
+const requireEncryptedCiphertext = (value: unknown): string => {
+  const field = "encryptedPayload.ciphertext";
+  const result = requireNonblankString(value, field);
+  if (!encryptedCiphertextCharLengthAllowed(result.length)) {
+    throw new Error(
+      `${field} must not exceed ${MAX_ENCRYPTED_CIPHERTEXT_BASE64_LENGTH} characters`
+    );
+  }
   if (!BASE64_PATTERN.test(result)) {
     throw new Error(`${field} must be valid base64`);
   }
@@ -217,11 +247,7 @@ export const validateAndProjectEncryptedPublishInput = (
 
   return {
     encryptedPayload: {
-      ciphertext: requireBase64(
-        payload.ciphertext,
-        "encryptedPayload.ciphertext",
-        MAX_ENCRYPTED_CIPHERTEXT_BASE64_LENGTH
-      ),
+      ciphertext: requireEncryptedCiphertext(payload.ciphertext),
       iterations,
       iv: requireBase64(
         payload.iv,

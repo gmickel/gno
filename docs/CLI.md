@@ -1186,10 +1186,12 @@ the positive safe-integer KDF iteration count, route/source identity, and the
 bounded opaque token before export.
 
 Resolved local PNG, JPEG, GIF, WebP, and AVIF references are content-addressed,
-deduplicated, and bundled into the artifact; public HTTPS images remain
-external. `--json` and the local API report asset/ref counts, raw and encoded
-bytes, dedup savings, exact final upload bytes, and unresolved or unsupported
-diagnostics. The final serialized body is capped at 100 MiB. Encrypted exports
+deduplicated, and bundled into the artifact (AVIF must be AV1-decodable at
+producer ingress); public HTTPS images remain external. `--json` and the local
+API report asset/ref counts, raw and encoded bytes, dedup savings, exact final
+upload bytes, and unresolved or unsupported diagnostics. The final serialized
+body is capped at 100 MiB (ciphertext field bounds align to that envelope
+budget; exact final UTF-8 measurement remains authoritative). Encrypted exports
 place bundled raster bytes only inside ciphertext. gno.sh currently serves
 bundled images for public, secret-link, and encrypted readers; invite-only
 image delivery remains fail-closed.

@@ -888,9 +888,11 @@ export pipeline runs a sanitizer over each note's markdown. It:
 - converts `[[Target|Alias]]` to the alias text, and `[[Target]]` to the
   tail segment of the target
 - resolves local `![[image.png]]` / Markdown image refs for PNG/JPEG/GIF/WebP/
-  AVIF into content-addressed `gno-asset:<sha256>` sentinels (deduped; exact
-  100 MiB serialized ceiling); preserves external HTTPS images; drops
-  unsupported/missing/unsafe refs with diagnostics
+  AVIF (AVIF must be AV1-decodable at producer ingress) into content-addressed
+  `gno-asset:<sha256>` sentinels (deduped; exact 100 MiB serialized ceiling;
+  ciphertext field bounds align to that envelope); preserves external HTTPS
+  images; skips fenced code (backtick and tilde); drops unsupported/missing/
+  unsafe refs with diagnostics
 - refuses to export a note whose frontmatter contains `publish: false`
   (single-note export errors; collection export silently skips)
 

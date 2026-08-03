@@ -24,6 +24,7 @@ import {
 } from "../../src/publish/attachment-resolver";
 import {
   AVIF_1X1,
+  buildAvif,
   cleanupAttachmentRoots,
   GIF_1X1,
   JPEG_1X1,
@@ -98,6 +99,38 @@ describe("rewriteAttachmentsInMarkdown", () => {
     const assets = buildDeterministicAssets(result.payloads);
     const ids = assets.map((asset) => asset.id);
     expect(ids).toEqual([...ids].sort());
+  });
+
+  test("producer path rejects fabricated AVIF that only looks structurally complete", async () => {
+    const root = await makeRoot();
+    const fabricated = buildAvif(1, 1);
+    expect(fabricated.byteLength).toBe(77);
+    await writeBytes(join(root, "fake.avif"), fabricated);
+    await writeBytes(join(root, "real.avif"), AVIF_1X1);
+
+    const index = await buildAttachmentBasenameIndex(root);
+    const result = await rewriteAttachmentsInMarkdown(
+      "![fake](fake.avif)\n![real](real.avif)\n",
+      {
+        basenameIndex: index,
+        collectionRoot: root,
+        noteSlug: "atlas",
+        sourceRelPath: "atlas.md",
+      }
+    );
+    expect(result.payloads.size).toBe(1);
+    expect([...result.payloads.values()][0]?.mediaType).toBe("image/avif");
+    expect(result.markdown).toContain("![real](gno-asset:");
+    // Failed embeds are stripped (never rewritten to a sentinel).
+    expect(result.markdown).not.toContain("fake.avif");
+    expect(
+      result.diagnostics.some(
+        (d) =>
+          d.code === "ASSET_CORRUPT" &&
+          d.sourceRef.includes("fake.avif") &&
+          d.message.includes("AV1-decodable")
+      )
+    ).toBe(true);
   });
 
   test("keeps non-asset Markdown bytes byte-identical when no local assets rewrite", async () => {
