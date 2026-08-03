@@ -8,6 +8,7 @@ import type { ContextHolder } from "../../src/serve/routes/api";
 import type { DocumentRow, StoreResult } from "../../src/store/types";
 
 import {
+  createMemoryFileRefactorJournal,
   FILE_REFACTOR_APPLY_CONFIRMATION,
   FILE_REFACTOR_SCHEMA_VERSION,
 } from "../../src/core/file-refactors";
@@ -50,6 +51,7 @@ function createMockStore(
   }
 ) {
   const docs = Array.isArray(docsInput) ? docsInput : [docsInput];
+  const refactorJournal = createMemoryFileRefactorJournal();
   return {
     getDocumentByDocid(id: string) {
       const doc = docs.find((entry) => entry.docid === id);
@@ -70,6 +72,35 @@ function createMockStore(
         return overrides.markInactive();
       }
       return Promise.resolve({ ok: true as const, value: 1 });
+    },
+    async createFileRefactorPreparedReceipt(
+      draft: Parameters<typeof refactorJournal.createPreparedReceipt>[0]
+    ) {
+      return {
+        ok: true as const,
+        value: await refactorJournal.createPreparedReceipt(draft),
+      };
+    },
+    async advanceFileRefactorReceipt(
+      journalId: string,
+      update: Parameters<typeof refactorJournal.advanceReceipt>[1]
+    ) {
+      return {
+        ok: true as const,
+        value: await refactorJournal.advanceReceipt(journalId, update),
+      };
+    },
+    async getFileRefactorReceiptById(journalId: string) {
+      return {
+        ok: true as const,
+        value: await refactorJournal.getReceiptById(journalId),
+      };
+    },
+    async getLatestFileRefactorReceiptByPlanDigest(planDigest: string) {
+      return {
+        ok: true as const,
+        value: await refactorJournal.getLatestReceiptByPlanDigest(planDigest),
+      };
     },
   };
 }
@@ -387,6 +418,52 @@ describe("document lifecycle API", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { warning?: string };
     expect(body.warning).toContain("index refresh failed");
+  });
+
+  test("rename treats reported sync file errors as sync-pending", async () => {
+    const doc = createDoc(tmpDir);
+    await writeFile(join(tmpDir, "doc.md"), "# Hello");
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = createMockStore(doc);
+    const applyFields = await previewApplyFields({
+      ctxHolder,
+      store,
+      doc,
+      operation: "rename",
+      name: "renamed.md",
+    });
+
+    const response = await handleRenameDoc(
+      ctxHolder,
+      store as never,
+      doc.docid,
+      new Request("http://localhost/api/docs/abc123/rename", {
+        method: "POST",
+        body: JSON.stringify({ name: "renamed.md", ...applyFields }),
+      }),
+      {
+        syncCollection: async () =>
+          ({
+            filesErrored: 1,
+            errors: [{ relPath: "renamed.md", code: "IO", message: "no" }],
+          }) as never,
+      }
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { status: string };
+    expect(body.status).toBe("applied_with_sync_pending");
+    expect(await Bun.file(join(tmpDir, "renamed.md")).exists()).toBe(true);
   });
 
   test("trash returns error when markInactive fails after file move", async () => {

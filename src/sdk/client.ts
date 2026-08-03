@@ -34,10 +34,12 @@ import type {
   GnoIndexResult,
   GnoIndexStatus,
   GnoListOptions,
+  GnoMoveNoteApplyOptions,
   GnoMoveNoteOptions,
   GnoMultiGetOptions,
   GnoQueryOptions,
   GnoRefactorNoteResult,
+  GnoRenameNoteApplyOptions,
   GnoRenameNoteOptions,
   GnoSearchOptions,
   GnoUpdateOptions,
@@ -86,20 +88,23 @@ import { writeCapturePlanFile } from "../core/capture-write";
 import { projectCollectionEgressPolicy } from "../core/collection-egress-policy-projection";
 import { CollectionEgressPolicyService } from "../core/collection-egress-policy-service";
 import { applyConfigChange } from "../core/config-mutation";
+import { getDocumentCapabilities } from "../core/document-capabilities";
 import { EgressAuditService } from "../core/egress-audit";
 import { authorizeCurrentEgress } from "../core/egress-authorization";
+import { atomicWrite, copyFilePath, createFolderPath } from "../core/file-ops";
 import {
-  atomicWrite,
-  copyFilePath,
-  createFolderPath,
-  renameFilePath,
-} from "../core/file-ops";
-import {
+  applyCanonicalFileRefactor,
+  assertFileRefactorSyncConverged,
+  buildCanonicalRefactorPlan,
+  buildDurableFileRefactorApplyDeps,
   buildRefactorWarnings,
+  parseRefactorApplyConfirmation,
   planCreateFolder,
   planDuplicateRefactor,
-  planMoveRefactor,
-  planRenameRefactor,
+  resolveMoveTarget,
+  resolveRenameTarget,
+  type FileRefactorApplyResult,
+  type FileRefactorPreviewPlan,
 } from "../core/file-refactors";
 import { resolveEffectiveIndex } from "../core/indexed-reference";
 import {
@@ -332,6 +337,52 @@ class GnoClientImpl implements GnoClient {
       throw sdkError("VALIDATION", `Collection not found: ${collection}`);
     }
     return filtered;
+  }
+
+  private requireRefactorApplyConfirmation(options: {
+    schemaVersion?: unknown;
+    planDigest?: unknown;
+    confirmation?: unknown;
+  }) {
+    const parsed = parseRefactorApplyConfirmation(options);
+    if ("error" in parsed) {
+      throw sdkError("VALIDATION", parsed.message);
+    }
+    return parsed;
+  }
+
+  private async prepareRefactorSource(ref: string) {
+    const doc = await getDocumentByRef(this.store, this.config, ref, {});
+    const stored = await this.store.getDocumentByUri(doc.uri);
+    if (!stored.ok || !stored.value) {
+      throw sdkError("NOT_FOUND", "Document not found");
+    }
+    const storedDoc = stored.value;
+    const collection = this.getCollections(storedDoc.collection)[0];
+    if (!collection) {
+      throw sdkError(
+        "VALIDATION",
+        `Collection not found: ${storedDoc.collection}`
+      );
+    }
+    const capabilities = getDocumentCapabilities({
+      sourceExt: storedDoc.sourceExt,
+      sourceMime: storedDoc.sourceMime,
+      contentAvailable: storedDoc.mirrorHash !== null,
+      recordKey: storedDoc.recordKey,
+    });
+    if (!capabilities.editable) {
+      throw sdkError(
+        "VALIDATION",
+        capabilities.reason ?? "Document is read-only in place."
+      );
+    }
+    return {
+      storedDoc,
+      collection,
+      sourceFullPath: `${collection.path}/${storedDoc.relPath}`,
+      editable: capabilities.editable,
+    };
   }
 
   private async createRuntimePorts(options: {
@@ -1657,125 +1708,126 @@ class GnoClientImpl implements GnoClient {
     };
   }
 
-  async renameNote(
+  async previewRenameNote(
     options: GnoRenameNoteOptions
-  ): Promise<GnoRefactorNoteResult> {
+  ): Promise<FileRefactorPreviewPlan> {
     this.assertOpen();
-    const doc = await getDocumentByRef(
-      this.store,
-      this.config,
-      options.ref,
-      {}
-    );
-    const stored = await this.store.getDocumentByUri(doc.uri);
-    if (!stored.ok || !stored.value) {
-      throw sdkError("NOT_FOUND", "Document not found");
-    }
-    const storedDoc = stored.value;
-    const collection = this.getCollections(storedDoc.collection)[0];
-    if (!collection) {
-      throw sdkError(
-        "VALIDATION",
-        `Collection not found: ${storedDoc.collection}`
-      );
-    }
-    const plan = planRenameRefactor({
-      collection: collection.name,
-      currentRelPath: storedDoc.relPath,
+    const prepared = await this.prepareRefactorSource(options.ref);
+    const target = resolveRenameTarget({
+      collection: prepared.collection.name,
+      currentRelPath: prepared.storedDoc.relPath,
       nextName: options.name,
     });
-    const currentPath = `${collection.path}/${storedDoc.relPath}`;
-    const nextPath = `${collection.path}/${plan.nextRelPath}`;
-    await renameFilePath(currentPath, nextPath);
-    await defaultSyncService.syncCollection(
-      collection,
-      this.store,
-      withContentTypeRules({ runUpdateCmd: false }, this.config)
-    );
-    const linksResult = await this.store.getLinksForDoc(storedDoc.id);
-    const backlinksResult = await this.store.getBacklinksForDoc(storedDoc.id);
-    if (!linksResult.ok || !backlinksResult.ok) {
-      throw sdkError("STORE", "Failed to compute refactor warnings");
-    }
-    return {
-      uri: plan.nextUri,
-      path: nextPath,
-      relPath: plan.nextRelPath,
-      warnings: buildRefactorWarnings(
-        {
-          backlinks: backlinksResult.value.length,
-          wikiLinks: linksResult.value.filter(
-            (entry) => entry.linkType === "wiki"
-          ).length,
-          markdownLinks: linksResult.value.filter(
-            (entry) => entry.linkType === "markdown"
-          ).length,
-        },
-        { filenameChanged: true }
-      ).warnings,
-    };
+    return buildCanonicalRefactorPlan({
+      operation: "rename",
+      doc: prepared.storedDoc,
+      collection: prepared.collection,
+      sourceFullPath: prepared.sourceFullPath,
+      target,
+      store: this.store,
+      sourceEditable: prepared.editable,
+    });
   }
 
-  async moveNote(options: GnoMoveNoteOptions): Promise<GnoRefactorNoteResult> {
+  async previewMoveNote(
+    options: GnoMoveNoteOptions
+  ): Promise<FileRefactorPreviewPlan> {
     this.assertOpen();
-    const doc = await getDocumentByRef(
-      this.store,
-      this.config,
-      options.ref,
-      {}
-    );
-    const stored = await this.store.getDocumentByUri(doc.uri);
-    if (!stored.ok || !stored.value) {
-      throw sdkError("NOT_FOUND", "Document not found");
-    }
-    const storedDoc = stored.value;
-    const collection = this.getCollections(storedDoc.collection)[0];
-    if (!collection) {
-      throw sdkError(
-        "VALIDATION",
-        `Collection not found: ${storedDoc.collection}`
-      );
-    }
-    const plan = planMoveRefactor({
-      collection: collection.name,
-      currentRelPath: storedDoc.relPath,
+    const prepared = await this.prepareRefactorSource(options.ref);
+    const target = resolveMoveTarget({
+      collection: prepared.collection.name,
+      currentRelPath: prepared.storedDoc.relPath,
       folderPath: options.folderPath,
       nextName: options.name,
     });
-    const currentPath = `${collection.path}/${storedDoc.relPath}`;
-    const nextPath = `${collection.path}/${plan.nextRelPath}`;
-    await mkdir(dirname(nextPath), { recursive: true });
-    await renameFilePath(currentPath, nextPath);
-    await defaultSyncService.syncCollection(
-      collection,
-      this.store,
-      withContentTypeRules({ runUpdateCmd: false }, this.config)
-    );
-    const linksResult = await this.store.getLinksForDoc(storedDoc.id);
-    const backlinksResult = await this.store.getBacklinksForDoc(storedDoc.id);
-    if (!linksResult.ok || !backlinksResult.ok) {
-      throw sdkError("STORE", "Failed to compute refactor warnings");
-    }
-    return {
-      uri: plan.nextUri,
-      path: nextPath,
-      relPath: plan.nextRelPath,
-      warnings: buildRefactorWarnings(
-        {
-          backlinks: backlinksResult.value.length,
-          wikiLinks: linksResult.value.filter(
-            (entry) => entry.linkType === "wiki"
-          ).length,
-          markdownLinks: linksResult.value.filter(
-            (entry) => entry.linkType === "markdown"
-          ).length,
+    return buildCanonicalRefactorPlan({
+      operation: "move",
+      doc: prepared.storedDoc,
+      collection: prepared.collection,
+      sourceFullPath: prepared.sourceFullPath,
+      target,
+      store: this.store,
+      sourceEditable: prepared.editable,
+    });
+  }
+
+  async renameNote(
+    options: GnoRenameNoteApplyOptions
+  ): Promise<FileRefactorApplyResult> {
+    this.assertOpen();
+    const confirmation = this.requireRefactorApplyConfirmation(options);
+    const prepared = await this.prepareRefactorSource(options.ref);
+    const target = resolveRenameTarget({
+      collection: prepared.collection.name,
+      currentRelPath: prepared.storedDoc.relPath,
+      nextName: options.name,
+    });
+    const plan = await buildCanonicalRefactorPlan({
+      operation: "rename",
+      doc: prepared.storedDoc,
+      collection: prepared.collection,
+      sourceFullPath: prepared.sourceFullPath,
+      target,
+      store: this.store,
+      sourceEditable: prepared.editable,
+    });
+    const apply = await applyCanonicalFileRefactor({
+      plan,
+      confirmation,
+      deps: buildDurableFileRefactorApplyDeps({
+        collection: prepared.collection,
+        store: this.store,
+        syncAfterCommit: async () => {
+          const syncResult = await defaultSyncService.syncCollection(
+            prepared.collection,
+            this.store,
+            withContentTypeRules({ runUpdateCmd: false }, this.config)
+          );
+          assertFileRefactorSyncConverged(syncResult);
         },
-        {
-          folderChanged: true,
-          filenameChanged: Boolean(options.name),
-        }
-      ).warnings,
-    };
+      }),
+    });
+    return apply;
+  }
+
+  async moveNote(
+    options: GnoMoveNoteApplyOptions
+  ): Promise<FileRefactorApplyResult> {
+    this.assertOpen();
+    const confirmation = this.requireRefactorApplyConfirmation(options);
+    const prepared = await this.prepareRefactorSource(options.ref);
+    const target = resolveMoveTarget({
+      collection: prepared.collection.name,
+      currentRelPath: prepared.storedDoc.relPath,
+      folderPath: options.folderPath,
+      nextName: options.name,
+    });
+    const plan = await buildCanonicalRefactorPlan({
+      operation: "move",
+      doc: prepared.storedDoc,
+      collection: prepared.collection,
+      sourceFullPath: prepared.sourceFullPath,
+      target,
+      store: this.store,
+      sourceEditable: prepared.editable,
+    });
+    const apply = await applyCanonicalFileRefactor({
+      plan,
+      confirmation,
+      deps: buildDurableFileRefactorApplyDeps({
+        collection: prepared.collection,
+        store: this.store,
+        syncAfterCommit: async () => {
+          const syncResult = await defaultSyncService.syncCollection(
+            prepared.collection,
+            this.store,
+            withContentTypeRules({ runUpdateCmd: false }, this.config)
+          );
+          assertFileRefactorSyncConverged(syncResult);
+        },
+      }),
+    });
+    return apply;
   }
 
   async duplicateNote(

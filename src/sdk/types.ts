@@ -33,6 +33,10 @@ import type {
   EgressAuditStatusResult,
 } from "../core/egress-audit";
 import type {
+  FileRefactorApplyResult,
+  FileRefactorPreviewPlan,
+} from "../core/file-refactor-contract";
+import type {
   KnowledgeChangesResult,
   KnowledgeDiffResult,
   KnowledgeImpactInput,
@@ -262,6 +266,22 @@ export interface GnoMoveNoteOptions {
   name?: string;
 }
 
+/** Canonical apply confirmation — preview first, then pass exact digest. */
+export interface GnoFileRefactorApplyConfirmation {
+  schemaVersion: "1.0";
+  planDigest: string;
+  confirmation: "apply";
+}
+
+export interface GnoRenameNoteApplyOptions
+  extends GnoRenameNoteOptions, GnoFileRefactorApplyConfirmation {}
+
+export interface GnoMoveNoteApplyOptions
+  extends GnoMoveNoteOptions, GnoFileRefactorApplyConfirmation {}
+
+export type GnoFileRefactorPreviewPlan = FileRefactorPreviewPlan;
+export type GnoFileRefactorApplyResult = FileRefactorApplyResult;
+
 export interface GnoDuplicateNoteOptions {
   ref: string;
   folderPath?: string;
@@ -350,8 +370,18 @@ export interface GnoClient {
   capture(options: GnoCaptureOptions): Promise<GnoCaptureResult>;
   createNote(options: GnoCreateNoteOptions): Promise<GnoCreateNoteResult>;
   createFolder(options: GnoCreateFolderOptions): Promise<GnoCreateFolderResult>;
-  renameNote(options: GnoRenameNoteOptions): Promise<GnoRefactorNoteResult>;
-  moveNote(options: GnoMoveNoteOptions): Promise<GnoRefactorNoteResult>;
+  previewRenameNote(
+    options: GnoRenameNoteOptions
+  ): Promise<GnoFileRefactorPreviewPlan>;
+  previewMoveNote(
+    options: GnoMoveNoteOptions
+  ): Promise<GnoFileRefactorPreviewPlan>;
+  renameNote(
+    options: GnoRenameNoteApplyOptions
+  ): Promise<GnoFileRefactorApplyResult>;
+  moveNote(
+    options: GnoMoveNoteApplyOptions
+  ): Promise<GnoFileRefactorApplyResult>;
   duplicateNote(
     options: GnoDuplicateNoteOptions
   ): Promise<GnoRefactorNoteResult>;

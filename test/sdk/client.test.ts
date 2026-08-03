@@ -602,12 +602,21 @@ describe("SDK client", () => {
       folderPath: "generated",
       content: "# Rename Me\n",
     });
-    const renamed = await client.renameNote({
+    const preview = await client.previewRenameNote({
       ref: created.uri,
       name: "renamed.md",
     });
+    expect(preview.canApply).toBe(true);
+    const renamed = await client.renameNote({
+      ref: created.uri,
+      name: "renamed.md",
+      schemaVersion: preview.schemaVersion,
+      planDigest: preview.planDigest,
+      confirmation: "apply",
+    });
 
-    expect(renamed.relPath).toBe("generated/renamed.md");
+    expect(renamed.target.relPath).toBe("generated/renamed.md");
+    expect(renamed.status).toBe("applied");
   });
 
   test("moves notes through the SDK", async () => {
@@ -617,12 +626,47 @@ describe("SDK client", () => {
       folderPath: "generated",
       content: "# Move Me\n",
     });
-    const moved = await client.moveNote({
+    const preview = await client.previewMoveNote({
       ref: created.uri,
       folderPath: "generated/archive",
     });
+    expect(preview.canApply).toBe(true);
+    const moved = await client.moveNote({
+      ref: created.uri,
+      folderPath: "generated/archive",
+      schemaVersion: preview.schemaVersion,
+      planDigest: preview.planDigest,
+      confirmation: "apply",
+    });
 
-    expect(moved.relPath).toBe("generated/archive/move-me.md");
+    expect(moved.target.relPath).toBe("generated/archive/move-me.md");
+    expect(moved.status).toBe("applied");
+  });
+
+  test("rejects SDK apply without an exact plan digest", async () => {
+    const created = await client.createNote({
+      collection: "fixtures",
+      title: "Stale Rename",
+      folderPath: "generated",
+      content: "# Stale Rename\n",
+    });
+    const result = await client.renameNote({
+      ref: created.uri,
+      name: "stale-renamed.md",
+      schemaVersion: "1.0",
+      planDigest: "0".repeat(64),
+      confirmation: "apply",
+    });
+    expect(result.status).toBe("stale_plan");
+  });
+
+  test("SDK runtime cannot bypass explicit apply confirmation", async () => {
+    expect(
+      client.renameNote({
+        ref: "fixtures/authentication.md",
+        name: "renamed.md",
+      } as never)
+    ).rejects.toMatchObject({ code: "VALIDATION" });
   });
 
   test("duplicates notes through the SDK", async () => {

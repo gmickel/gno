@@ -95,6 +95,10 @@ import {
   handleDuplicateNote,
   handleMoveNote,
   handleRenameNote,
+  MOVE_NOTE_MCP_ANNOTATIONS,
+  moveNoteInputSchema,
+  RENAME_NOTE_MCP_ANNOTATIONS,
+  renameNoteInputSchema,
 } from "./workspace-write";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -396,17 +400,6 @@ const createFolderInputSchema = z.object({
   collection: z.string().min(1, "Collection cannot be empty"),
   name: z.string().min(1, "Folder name cannot be empty"),
   parentPath: z.string().optional(),
-});
-
-const renameNoteInputSchema = z.object({
-  ref: z.string().min(1, "ref cannot be empty"),
-  name: z.string().min(1, "name cannot be empty"),
-});
-
-const moveNoteInputSchema = z.object({
-  ref: z.string().min(1, "ref cannot be empty"),
-  folderPath: z.string().min(1, "folderPath cannot be empty"),
-  name: z.string().optional(),
 });
 
 const duplicateNoteInputSchema = z.object({
@@ -1351,17 +1344,25 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleCreateFolder(args, ctx)
     );
 
-    server.tool(
+    server.registerTool(
       "gno_rename_note",
-      "Rename an editable note in place.",
-      renameNoteInputSchema.shape,
+      {
+        description:
+          'Preview or apply a reference-safe rename of an editable note. Use action=preview first, then action=apply with the exact planDigest, confirmation="apply", confirm=true, and schemaVersion="1.0". Annotations are hints only; --enable-write remains authoritative.',
+        inputSchema: renameNoteInputSchema,
+        annotations: RENAME_NOTE_MCP_ANNOTATIONS,
+      },
       (args) => handleRenameNote(args, ctx)
     );
 
-    server.tool(
+    server.registerTool(
       "gno_move_note",
-      "Move an editable note to another folder in the same collection.",
-      moveNoteInputSchema.shape,
+      {
+        description:
+          'Preview or apply a reference-safe same-collection move of an editable note. Use action=preview first, then action=apply with the exact planDigest, confirmation="apply", confirm=true, and schemaVersion="1.0". Annotations are hints only; --enable-write remains authoritative.',
+        inputSchema: moveNoteInputSchema,
+        annotations: MOVE_NOTE_MCP_ANNOTATIONS,
+      },
       (args) => handleMoveNote(args, ctx)
     );
 

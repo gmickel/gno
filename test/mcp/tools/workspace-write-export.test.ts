@@ -93,7 +93,11 @@ describe("workspace write logical export records", () => {
     } as unknown as ToolContext;
 
     const result = await handleRenameNote(
-      { ref: doc.uri, name: "renamed.vtt" },
+      {
+        action: "preview",
+        ref: doc.uri,
+        name: "renamed.vtt",
+      },
       context
     );
 

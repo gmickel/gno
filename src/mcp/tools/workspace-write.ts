@@ -8,6 +8,7 @@
 import { mkdir } from "node:fs/promises";
 // node:path for dirname/join (no Bun path utils)
 import { dirname, join } from "node:path";
+import { z } from "zod";
 
 import type { Collection } from "../../config/types";
 import type { ToolContext } from "../server";
@@ -15,17 +16,22 @@ import type { ToolContext } from "../server";
 import { getDocumentCapabilities } from "../../core/document-capabilities";
 import { MCP_ERRORS } from "../../core/errors";
 import { withWriteLock } from "../../core/file-lock";
+import { copyFilePath, createFolderPath } from "../../core/file-ops";
 import {
-  copyFilePath,
-  createFolderPath,
-  renameFilePath,
-} from "../../core/file-ops";
-import {
+  applyCanonicalFileRefactor,
+  assertFileRefactorSyncConverged,
+  buildCanonicalRefactorPlan,
+  buildDurableFileRefactorApplyDeps,
   buildRefactorWarnings,
+  FILE_REFACTOR_APPLY_CONFIRMATION,
+  FILE_REFACTOR_SCHEMA_VERSION,
+  parseRefactorApplyConfirmation,
   planCreateFolder,
   planDuplicateRefactor,
-  planMoveRefactor,
-  planRenameRefactor,
+  resolveMoveTarget,
+  resolveRenameTarget,
+  type FileRefactorApplyResult,
+  type FileRefactorPreviewPlan,
 } from "../../core/file-refactors";
 import { recordContentMutation } from "../../core/mutation-generations";
 import { defaultSyncService, withContentTypeRules } from "../../ingestion";
@@ -37,22 +43,71 @@ interface CreateFolderInput {
   parentPath?: string;
 }
 
-interface RenameNoteInput {
-  ref: string;
-  name: string;
-}
-
-interface MoveNoteInput {
-  ref: string;
-  folderPath: string;
-  name?: string;
-}
-
 interface DuplicateNoteInput {
   ref: string;
   folderPath?: string;
   name?: string;
 }
+
+const refactorPreviewActionSchema = z.literal("preview");
+const refactorApplyActionSchema = z.literal("apply");
+
+export const renameNoteInputSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: refactorPreviewActionSchema,
+    ref: z.string().min(1, "ref cannot be empty"),
+    name: z.string().min(1, "name cannot be empty"),
+  }),
+  z.object({
+    action: refactorApplyActionSchema,
+    ref: z.string().min(1, "ref cannot be empty"),
+    name: z.string().min(1, "name cannot be empty"),
+    schemaVersion: z.literal(FILE_REFACTOR_SCHEMA_VERSION),
+    planDigest: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/, "planDigest must be a lowercase SHA-256"),
+    confirmation: z.literal(FILE_REFACTOR_APPLY_CONFIRMATION),
+    confirm: z.literal(true),
+  }),
+]);
+
+export const moveNoteInputSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: refactorPreviewActionSchema,
+    ref: z.string().min(1, "ref cannot be empty"),
+    folderPath: z.string().min(1, "folderPath cannot be empty"),
+    name: z.string().optional(),
+  }),
+  z.object({
+    action: refactorApplyActionSchema,
+    ref: z.string().min(1, "ref cannot be empty"),
+    folderPath: z.string().min(1, "folderPath cannot be empty"),
+    name: z.string().optional(),
+    schemaVersion: z.literal(FILE_REFACTOR_SCHEMA_VERSION),
+    planDigest: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/, "planDigest must be a lowercase SHA-256"),
+    confirmation: z.literal(FILE_REFACTOR_APPLY_CONFIRMATION),
+    confirm: z.literal(true),
+  }),
+]);
+
+export type RenameNoteInput = z.infer<typeof renameNoteInputSchema>;
+export type MoveNoteInput = z.infer<typeof moveNoteInputSchema>;
+
+export const RENAME_NOTE_MCP_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
+  openWorldHint: false,
+} as const;
+
+export const MOVE_NOTE_MCP_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
+  openWorldHint: false,
+} as const;
 
 function resolveCollection(ctx: ToolContext, name: string): Collection {
   const normalized = name.trim().toLowerCase();
@@ -156,6 +211,136 @@ function ensureEditable(doc: {
       }`
     );
   }
+  return capabilities;
+}
+
+function requireWriteEnabled(ctx: ToolContext): void {
+  if (!ctx.enableWrite) {
+    throw new Error("Write tools disabled. Start MCP with --enable-write.");
+  }
+}
+
+function requireApplyConfirmation(args: {
+  schemaVersion: unknown;
+  planDigest: unknown;
+  confirmation: unknown;
+  confirm: unknown;
+}) {
+  if (args.confirm !== true) {
+    throw new Error(
+      `${MCP_ERRORS.INVALID_INPUT.code}: confirm must be true to apply`
+    );
+  }
+  const parsed = parseRefactorApplyConfirmation(args);
+  if ("error" in parsed) {
+    throw new Error(`${parsed.error}: ${parsed.message}`);
+  }
+  return parsed;
+}
+
+function formatPreviewSummary(plan: FileRefactorPreviewPlan): string {
+  return `Preview ${plan.operation}: ${plan.source.relPath} → ${plan.target.relPath} (digest ${plan.planDigest.slice(0, 12)}…, canApply=${plan.canApply})`;
+}
+
+function formatApplySummary(result: FileRefactorApplyResult): string {
+  return `${result.operation} ${result.status}: ${result.source.relPath} → ${result.target.relPath}`;
+}
+
+async function previewOrApplyRename(
+  args: RenameNoteInput,
+  ctx: ToolContext
+): Promise<FileRefactorPreviewPlan | FileRefactorApplyResult> {
+  requireWriteEnabled(ctx);
+  const doc = await resolveDocByRef(ctx, args.ref);
+  const capabilities = ensureEditable(doc);
+  const collection = resolveCollection(ctx, doc.collection);
+  const target = resolveRenameTarget({
+    collection: collection.name,
+    currentRelPath: doc.relPath,
+    nextName: args.name,
+  });
+  const plan = await buildCanonicalRefactorPlan({
+    operation: "rename",
+    doc,
+    collection,
+    sourceFullPath: join(collection.path, doc.relPath),
+    target,
+    store: ctx.store,
+    sourceEditable: capabilities.editable,
+  });
+
+  if (args.action === "preview") {
+    return plan;
+  }
+
+  const confirmation = requireApplyConfirmation(args);
+  // Collection-scoped lock lives inside applyFileRefactor — do not wrap with
+  // ctx.writeLockPath (avoids double-locking incompatible with REST/SDK).
+  return applyCanonicalFileRefactor({
+    plan,
+    confirmation,
+    deps: buildDurableFileRefactorApplyDeps({
+      collection,
+      store: ctx.store,
+      syncAfterCommit: async () => {
+        const syncResult = await defaultSyncService.syncCollection(
+          collection,
+          ctx.store,
+          withContentTypeRules({ runUpdateCmd: false }, ctx.config)
+        );
+        assertFileRefactorSyncConverged(syncResult);
+        recordContentMutation(syncResult, ctx.markContentMutation);
+      },
+    }),
+  });
+}
+
+async function previewOrApplyMove(
+  args: MoveNoteInput,
+  ctx: ToolContext
+): Promise<FileRefactorPreviewPlan | FileRefactorApplyResult> {
+  requireWriteEnabled(ctx);
+  const doc = await resolveDocByRef(ctx, args.ref);
+  const capabilities = ensureEditable(doc);
+  const collection = resolveCollection(ctx, doc.collection);
+  const target = resolveMoveTarget({
+    collection: collection.name,
+    currentRelPath: doc.relPath,
+    folderPath: args.folderPath,
+    nextName: args.name,
+  });
+  const plan = await buildCanonicalRefactorPlan({
+    operation: "move",
+    doc,
+    collection,
+    sourceFullPath: join(collection.path, doc.relPath),
+    target,
+    store: ctx.store,
+    sourceEditable: capabilities.editable,
+  });
+
+  if (args.action === "preview") {
+    return plan;
+  }
+
+  const confirmation = requireApplyConfirmation(args);
+  return applyCanonicalFileRefactor({
+    plan,
+    confirmation,
+    deps: buildDurableFileRefactorApplyDeps({
+      collection,
+      store: ctx.store,
+      syncAfterCommit: async () => {
+        const syncResult = await defaultSyncService.syncCollection(
+          collection,
+          ctx.store,
+          withContentTypeRules({ runUpdateCmd: false }, ctx.config)
+        );
+        assertFileRefactorSyncConverged(syncResult);
+        recordContentMutation(syncResult, ctx.markContentMutation);
+      },
+    }),
+  });
 }
 
 export function handleCreateFolder(
@@ -166,9 +351,7 @@ export function handleCreateFolder(
     ctx,
     "gno_create_folder",
     async () => {
-      if (!ctx.enableWrite) {
-        throw new Error("Write tools disabled. Start MCP with --enable-write.");
-      }
+      requireWriteEnabled(ctx);
 
       return withWriteLock(ctx.writeLockPath, async () => {
         const collection = resolveCollection(ctx, args.collection);
@@ -196,40 +379,11 @@ export function handleRenameNote(
   return runTool(
     ctx,
     "gno_rename_note",
-    async () => {
-      if (!ctx.enableWrite) {
-        throw new Error("Write tools disabled. Start MCP with --enable-write.");
-      }
-
-      return withWriteLock(ctx.writeLockPath, async () => {
-        const doc = await resolveDocByRef(ctx, args.ref);
-        ensureEditable(doc);
-        const collection = resolveCollection(ctx, doc.collection);
-        const plan = planRenameRefactor({
-          collection: collection.name,
-          currentRelPath: doc.relPath,
-          nextName: args.name,
-        });
-        const currentPath = join(collection.path, doc.relPath);
-        const nextPath = join(collection.path, plan.nextRelPath);
-        await renameFilePath(currentPath, nextPath);
-        const syncResult = await defaultSyncService.syncCollection(
-          collection,
-          ctx.store,
-          withContentTypeRules({ runUpdateCmd: false }, ctx.config)
-        );
-        recordContentMutation(syncResult, ctx.markContentMutation);
-        return {
-          uri: plan.nextUri,
-          relPath: plan.nextRelPath,
-          warnings: buildRefactorWarnings(
-            await getRefactorSnapshot(ctx, doc.id),
-            { filenameChanged: true }
-          ).warnings,
-        };
-      });
-    },
-    (data) => `Renamed note to ${data.relPath}`
+    async () => previewOrApplyRename(args, ctx),
+    (data) =>
+      "planDigest" in data && "canApply" in data
+        ? formatPreviewSummary(data)
+        : formatApplySummary(data)
   );
 }
 
@@ -240,45 +394,11 @@ export function handleMoveNote(
   return runTool(
     ctx,
     "gno_move_note",
-    async () => {
-      if (!ctx.enableWrite) {
-        throw new Error("Write tools disabled. Start MCP with --enable-write.");
-      }
-
-      return withWriteLock(ctx.writeLockPath, async () => {
-        const doc = await resolveDocByRef(ctx, args.ref);
-        ensureEditable(doc);
-        const collection = resolveCollection(ctx, doc.collection);
-        const plan = planMoveRefactor({
-          collection: collection.name,
-          currentRelPath: doc.relPath,
-          folderPath: args.folderPath,
-          nextName: args.name,
-        });
-        const currentPath = join(collection.path, doc.relPath);
-        const nextPath = join(collection.path, plan.nextRelPath);
-        await mkdir(dirname(nextPath), { recursive: true });
-        await renameFilePath(currentPath, nextPath);
-        const syncResult = await defaultSyncService.syncCollection(
-          collection,
-          ctx.store,
-          withContentTypeRules({ runUpdateCmd: false }, ctx.config)
-        );
-        recordContentMutation(syncResult, ctx.markContentMutation);
-        return {
-          uri: plan.nextUri,
-          relPath: plan.nextRelPath,
-          warnings: buildRefactorWarnings(
-            await getRefactorSnapshot(ctx, doc.id),
-            {
-              folderChanged: true,
-              filenameChanged: Boolean(args.name),
-            }
-          ).warnings,
-        };
-      });
-    },
-    (data) => `Moved note to ${data.relPath}`
+    async () => previewOrApplyMove(args, ctx),
+    (data) =>
+      "planDigest" in data && "canApply" in data
+        ? formatPreviewSummary(data)
+        : formatApplySummary(data)
   );
 }
 
@@ -290,9 +410,7 @@ export function handleDuplicateNote(
     ctx,
     "gno_duplicate_note",
     async () => {
-      if (!ctx.enableWrite) {
-        throw new Error("Write tools disabled. Start MCP with --enable-write.");
-      }
+      requireWriteEnabled(ctx);
 
       return withWriteLock(ctx.writeLockPath, async () => {
         const doc = await resolveDocByRef(ctx, args.ref);

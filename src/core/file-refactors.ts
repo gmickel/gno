@@ -71,6 +71,28 @@ export {
   type FileRefactorSyncCallback,
 } from "./file-refactor-service";
 
+export {
+  applyCanonicalFileRefactor,
+  assertFileRefactorSyncConverged,
+  buildCanonicalRefactorPlan,
+  buildDurableFileRefactorApplyDeps,
+  collectionRefactorLockPath,
+  FILE_REFACTOR_COLLECTION_LOCK_NAME,
+  parseRefactorApplyConfirmation,
+  resolveMoveTarget,
+  resolveRenameTarget,
+  type BuildCanonicalRefactorPlanInput,
+  type FileRefactorPathTarget,
+  type ParsedRefactorApplyConfirmation,
+} from "./file-refactor-adapter";
+
+export {
+  planMoveRefactor,
+  planRenameRefactor,
+  type MovePlan,
+  type RenamePlan,
+} from "./file-refactor-paths";
+
 export interface RefactorWarningSummary {
   warnings: string[];
   backlinkCount: number;
@@ -82,16 +104,6 @@ export interface RefactorLinkSnapshot {
   backlinks: number;
   wikiLinks: number;
   markdownLinks: number;
-}
-
-export interface RenamePlan {
-  nextRelPath: string;
-  nextUri: string;
-}
-
-export interface MovePlan {
-  nextRelPath: string;
-  nextUri: string;
 }
 
 export interface DuplicatePlan {
@@ -149,50 +161,6 @@ function nextAvailableRelPath(relPath: string, existing: Set<string>): string {
     }
     counter += 1;
   }
-}
-
-export function planRenameRefactor(input: {
-  collection: string;
-  currentRelPath: string;
-  nextName: string;
-}): RenamePlan {
-  const current = validateRelPath(input.currentRelPath);
-  const directory = pathPosix.dirname(current);
-  const currentExt = pathPosix.extname(current);
-  const nextFilename = pathPosix.extname(input.nextName)
-    ? input.nextName
-    : `${input.nextName}${currentExt}`;
-  const nextRelPath =
-    directory === "."
-      ? validateRelPath(nextFilename)
-      : validateRelPath(`${directory}/${nextFilename}`);
-
-  return {
-    nextRelPath,
-    nextUri: `gno://${input.collection}/${nextRelPath}`,
-  };
-}
-
-export function planMoveRefactor(input: {
-  collection: string;
-  currentRelPath: string;
-  folderPath: string;
-  nextName?: string;
-}): MovePlan {
-  const current = validateRelPath(input.currentRelPath);
-  const safeFolder = validateRelPath(input.folderPath).replace(
-    /^\.\/|\/+$/g,
-    ""
-  );
-  const filename = input.nextName?.trim() || pathPosix.basename(current);
-  const nextRelPath = safeFolder
-    ? validateRelPath(`${safeFolder}/${filename}`)
-    : validateRelPath(filename);
-
-  return {
-    nextRelPath,
-    nextUri: `gno://${input.collection}/${nextRelPath}`,
-  };
 }
 
 export function planDuplicateRefactor(input: {

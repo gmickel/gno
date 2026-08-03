@@ -1808,32 +1808,66 @@ versioned schema pair across MCP, REST/SDK, and UI adapters:
 The preview enumerates examined wiki/Markdown references with classifications
 and stable reason codes, destination-only edit spans, precondition fingerprints,
 a deterministic `planDigest`, safety summary, and `canApply`. Apply requires the
-exact `planDigest` plus confirmation token `apply`. Terminal statuses are
-`applied`, `applied_with_sync_pending`, `conflict`, `stale_plan`, `unsupported`,
-and `failed_rolled_back`.
+exact `planDigest`, confirmation token `apply`, `confirm: true`, and
+`schemaVersion: "1.0"`. Apply never silently preview-and-confirms. Terminal
+statuses are `applied`, `applied_with_sync_pending`, `conflict`, `stale_plan`,
+`unsupported`, and `failed_rolled_back`.
 
 Filesystem commit (moved note + accepted reference rewrites) is an atomic
 all-or-rollback boundary. Index/link convergence runs only after a durable
 filesystem commit and is **not** the same transaction; reindex failure returns
 `applied_with_sync_pending` without rolling back committed files.
 
-MCP annotations remain hints, not authorization. Write gating and destructive
-confirmation still apply. No generic action-bus tool is introduced.
+MCP annotations remain hints, not authorization. Write gating (`--enable-write`)
+and destructive confirmation (`confirm: true` + `confirmation: "apply"`) still
+apply. No generic action-bus tool is introduced.
 
 **Input Schema:**
 
 ```json
 {
   "type": "object",
-  "properties": {
-    "ref": { "type": "string" },
-    "name": { "type": "string" }
-  },
-  "required": ["ref", "name"]
+  "oneOf": [
+    {
+      "properties": {
+        "action": { "const": "preview" },
+        "ref": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["action", "ref", "name"],
+      "additionalProperties": false
+    },
+    {
+      "properties": {
+        "action": { "const": "apply" },
+        "ref": { "type": "string" },
+        "name": { "type": "string" },
+        "schemaVersion": { "const": "1.0" },
+        "planDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "confirmation": { "const": "apply" },
+        "confirm": { "const": true }
+      },
+      "required": [
+        "action",
+        "ref",
+        "name",
+        "schemaVersion",
+        "planDigest",
+        "confirmation",
+        "confirm"
+      ],
+      "additionalProperties": false
+    }
+  ]
 }
 ```
 
-**Output Schema (reference-safe apply path):** `gno://schemas/file-refactor-apply-result@1.0`
+**Output Schema:**
+
+- `action=preview` → `gno://schemas/file-refactor-preview@1.0` (content-free plan)
+- `action=apply` → `gno://schemas/file-refactor-apply-result@1.0` (content-free receipt)
+
+Missing or incorrect apply confirmation fails before mutation.
 
 ---
 
@@ -1854,16 +1888,49 @@ spans, stale-plan protection, and the filesystem-vs-index mutation boundary matc
 ```json
 {
   "type": "object",
-  "properties": {
-    "ref": { "type": "string" },
-    "folderPath": { "type": "string" },
-    "name": { "type": "string" }
-  },
-  "required": ["ref", "folderPath"]
+  "oneOf": [
+    {
+      "properties": {
+        "action": { "const": "preview" },
+        "ref": { "type": "string" },
+        "folderPath": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["action", "ref", "folderPath"],
+      "additionalProperties": false
+    },
+    {
+      "properties": {
+        "action": { "const": "apply" },
+        "ref": { "type": "string" },
+        "folderPath": { "type": "string" },
+        "name": { "type": "string" },
+        "schemaVersion": { "const": "1.0" },
+        "planDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "confirmation": { "const": "apply" },
+        "confirm": { "const": true }
+      },
+      "required": [
+        "action",
+        "ref",
+        "folderPath",
+        "schemaVersion",
+        "planDigest",
+        "confirmation",
+        "confirm"
+      ],
+      "additionalProperties": false
+    }
+  ]
 }
 ```
 
-**Output Schema (reference-safe apply path):** `gno://schemas/file-refactor-apply-result@1.0`
+**Output Schema:**
+
+- `action=preview` → `gno://schemas/file-refactor-preview@1.0` (content-free plan)
+- `action=apply` → `gno://schemas/file-refactor-apply-result@1.0` (content-free receipt)
+
+Missing or incorrect apply confirmation fails before mutation.
 
 ---
 

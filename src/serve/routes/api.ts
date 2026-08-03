@@ -75,6 +75,7 @@ import {
   trashFilePath,
 } from "../../core/file-ops";
 import {
+  assertFileRefactorSyncConverged,
   buildRefactorWarnings,
   planCreateFolder,
   planDuplicateRefactor,
@@ -2517,13 +2518,14 @@ export async function handleRenameDoc(
         collection,
         store,
         syncAfterCommit: async () => {
-          await syncResidentCollection(
+          const syncResult = await syncResidentCollection(
             ctxHolder,
             collection,
             store,
             withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
             syncCollection
           );
+          assertFileRefactorSyncConverged(syncResult);
         },
       }),
       signal: req.signal,
@@ -2898,13 +2900,14 @@ export async function handleMoveDoc(
         collection,
         store,
         syncAfterCommit: async () => {
-          await syncResidentCollection(
+          const syncResult = await syncResidentCollection(
             ctxHolder,
             collection,
             store,
             withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
             syncCollection
           );
+          assertFileRefactorSyncConverged(syncResult);
         },
       }),
       signal: req.signal,
