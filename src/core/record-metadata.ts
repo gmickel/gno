@@ -21,6 +21,32 @@ interface RecordMetadataSource {
   recordAdapterFingerprint?: string | null;
 }
 
+export const RECORD_PROVENANCE_REQUIRED_FIELDS = [
+  "recordKey",
+  "recordSourceLocator",
+  "converterId",
+  "converterVersion",
+  "recordAdapterFingerprint",
+] as const;
+
+export interface RecordProvenanceIssue {
+  field: (typeof RECORD_PROVENANCE_REQUIRED_FIELDS)[number];
+  reason: "missing";
+}
+
+/** Validate completeness only when logical-record provenance is declared. */
+export const validateDeclaredRecordProvenance = (
+  source: RecordMetadataSource
+): RecordProvenanceIssue[] => {
+  const declared = RECORD_PROVENANCE_REQUIRED_FIELDS.some(
+    (field) => source[field] !== undefined && source[field] !== null
+  );
+  if (!declared) return [];
+  return RECORD_PROVENANCE_REQUIRED_FIELDS.filter(
+    (field) => !source[field]
+  ).map((field) => ({ field, reason: "missing" as const }));
+};
+
 /** Project only bounded, collection-relative logical-record provenance. */
 export const projectRecordEvidenceMetadata = (
   source: RecordMetadataSource

@@ -176,6 +176,52 @@ const CAPTURE_SOURCE_STRING_KEYS = new Set([
   "externalId",
 ]);
 
+export const CAPTURE_PROVENANCE_REQUIRED_FIELDS = [
+  "kind",
+  "capturedAt",
+] as const;
+
+export interface CaptureProvenanceIssue {
+  field: string;
+  reason: "missing" | "invalid";
+}
+
+/** Validate only fields declared by the CaptureSource contract. */
+export const validateDeclaredCaptureProvenance = (
+  source: Partial<CaptureSource>
+): CaptureProvenanceIssue[] => {
+  const issues: CaptureProvenanceIssue[] = [];
+  if (!source.kind) issues.push({ field: "source.kind", reason: "missing" });
+  else if (!VALID_SOURCE_KINDS.has(source.kind))
+    issues.push({ field: "source.kind", reason: "invalid" });
+  if (!source.capturedAt)
+    issues.push({ field: "source.capturedAt", reason: "missing" });
+  else if (Number.isNaN(new Date(source.capturedAt).getTime()))
+    issues.push({ field: "source.capturedAt", reason: "invalid" });
+  for (const field of URL_SOURCE_FIELDS) {
+    const value = source[field as keyof CaptureSource];
+    if (value === undefined) continue;
+    if (typeof value !== "string") {
+      issues.push({ field: `source.${field}`, reason: "invalid" });
+      continue;
+    }
+    try {
+      new URL(value);
+    } catch {
+      issues.push({ field: `source.${field}`, reason: "invalid" });
+    }
+  }
+  if (
+    source.browserClip !== undefined &&
+    !browserClipProvenanceSchema.safeParse(source.browserClip).success
+  ) {
+    issues.push({ field: "source.browserClip", reason: "invalid" });
+  }
+  return issues.sort((left, right) =>
+    left.field < right.field ? -1 : left.field > right.field ? 1 : 0
+  );
+};
+
 function normalizeContentForHash(content: string): string {
   return content.replace(/\r\n/g, "\n").trim();
 }

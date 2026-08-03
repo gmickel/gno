@@ -7,6 +7,7 @@ import type {
 import type { AuditFindingDraft, AuditRuleContribution } from "./audit";
 
 export const LINK_AUDIT_RULE_VERSION = "1.0" as const;
+export const LINK_AUDIT_MAX_FINDINGS_PER_RULE = 1000;
 
 export interface AuditOrphanPolicy {
   rootUris: readonly string[];
@@ -163,7 +164,8 @@ export const evaluateLinkAudit = (
       message: partial
         ? "Local target scan was truncated"
         : `${unresolved.length} unresolved or broken local links`,
-      findings: unresolved,
+      findings: unresolved.slice(0, LINK_AUDIT_MAX_FINDINGS_PER_RULE),
+      findingCount: unresolved.length,
       skipReason: partial ? "snapshot_truncated" : null,
     },
     {
@@ -174,7 +176,8 @@ export const evaluateLinkAudit = (
       message: partial
         ? "Ambiguous target scan was truncated"
         : `${ambiguous.length} ambiguous local links`,
-      findings: ambiguous,
+      findings: ambiguous.slice(0, LINK_AUDIT_MAX_FINDINGS_PER_RULE),
+      findingCount: ambiguous.length,
       skipReason: partial ? "snapshot_truncated" : null,
     },
     {
@@ -185,7 +188,8 @@ export const evaluateLinkAudit = (
       message: partial
         ? "Orphan scan was truncated"
         : `${orphanFindings.length} policy-defined orphan documents`,
-      findings: orphanFindings,
+      findings: orphanFindings.slice(0, LINK_AUDIT_MAX_FINDINGS_PER_RULE),
+      findingCount: orphanFindings.length,
       skipReason: partial ? "snapshot_truncated" : null,
     },
     {
@@ -196,6 +200,7 @@ export const evaluateLinkAudit = (
       message:
         "External URLs and parser-excluded malformed references are outside the local target graph",
       findings: [],
+      findingCount: 0,
       skipReason: null,
     },
   ];

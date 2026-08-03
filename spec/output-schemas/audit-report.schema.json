@@ -191,6 +191,7 @@
         "status",
         "message",
         "findings",
+        "findingCount",
         "examinedCount",
         "durationMs",
         "skipReason"
@@ -205,6 +206,7 @@
           "maxItems": 1000,
           "items": { "$ref": "#/definitions/finding" }
         },
+        "findingCount": { "type": "integer", "minimum": 0 },
         "examinedCount": { "type": "integer", "minimum": 0 },
         "durationMs": { "type": "integer", "minimum": 0 },
         "skipReason": { "type": ["string", "null"], "maxLength": 512 }

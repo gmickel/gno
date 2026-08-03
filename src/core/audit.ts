@@ -179,6 +179,8 @@ export interface AuditRuleResult {
   status: AuditRuleStatus;
   message: string;
   findings: AuditFinding[];
+  /** Exact findings before the bounded per-rule payload. */
+  findingCount: number;
   examinedCount: number;
   durationMs: number;
   skipReason: string | null;
@@ -259,6 +261,8 @@ export interface AuditRuleContribution {
   status: AuditRuleStatus;
   message: string;
   findings?: AuditFindingDraft[];
+  /** Exact findings before any evaluator-side payload cap. */
+  findingCount?: number;
   examinedCount?: number;
   durationMs?: number;
   skipReason?: string | null;
@@ -695,6 +699,10 @@ const materializeRule = (
     status,
     message: boundText(contribution.message, AUDIT_MAX_MESSAGE_CHARS),
     findings,
+    findingCount: Math.max(
+      findings.length,
+      contribution.findingCount ?? findings.length
+    ),
     examinedCount: Math.max(0, contribution.examinedCount ?? 0),
     durationMs: Math.max(0, Math.round(contribution.durationMs ?? 0)),
     skipReason:
@@ -751,7 +759,11 @@ const buildReportFromRules = (input: {
     uniqueFindings.push(finding);
   }
 
-  const truncated = uniqueFindings.length > input.maxFindings;
+  const exactFindingCount = rules.reduce(
+    (sum, rule) => sum + rule.findingCount,
+    0
+  );
+  const truncated = exactFindingCount > input.maxFindings;
   const returnedFindings = truncated
     ? uniqueFindings.slice(0, input.maxFindings)
     : uniqueFindings;
@@ -777,7 +789,7 @@ const buildReportFromRules = (input: {
     counts: {
       rules: tallyAuditRuleCounts(rules),
       findings: {
-        total: uniqueFindings.length,
+        total: exactFindingCount,
         returned: returnedFindings.length,
         truncated,
       },
@@ -925,6 +937,7 @@ export async function runAudit(input: AuditRunInput): Promise<AuditRunResult> {
           status: "unavailable",
           message: failureMessage,
           findings: [],
+          findingCount: 0,
           examinedCount: 0,
           durationMs: 0,
           skipReason: failureMessage,
@@ -957,6 +970,7 @@ export async function runAudit(input: AuditRunInput): Promise<AuditRunResult> {
             message:
               "Source or index fingerprints changed during audit; results are not authoritative",
             findings: [] as AuditFinding[],
+            findingCount: 0,
             examinedCount: 0,
             durationMs: 0,
             skipReason: "changed_during_audit",
