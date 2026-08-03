@@ -100,6 +100,25 @@ describe("provenance completeness audit", () => {
     expect(rules.flatMap(({ findings }) => findings ?? [])).toEqual([]);
   });
 
+  test("marks capture provenance unavailable when source evidence is unreadable", () => {
+    const rules = evaluateProvenanceAudit([
+      provenanceDocument({
+        sourceState: "missing",
+        captureSourceDeclared: false,
+        captureSource: undefined,
+      }),
+    ]);
+    expect(
+      rules.find(({ ruleId }) => ruleId === "provenance.capture-source")
+    ).toMatchObject({
+      status: "unavailable",
+      skipReason: "source_unavailable",
+    });
+    expect(
+      rules.find(({ ruleId }) => ruleId === "provenance.logical-record")?.status
+    ).toBe("skip");
+  });
+
   test("caps payloads while retaining exact finding counts", () => {
     const documents = Array.from({ length: 1200 }, (_, index) =>
       provenanceDocument({

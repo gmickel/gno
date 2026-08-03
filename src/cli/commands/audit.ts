@@ -1,5 +1,8 @@
 /** Read-only knowledge-integrity audit CLI adapter. */
 
+// node:fs/promises chmod has no Bun equivalent for securing an existing file.
+import { chmod } from "node:fs/promises";
+
 import type {
   AuditCategory,
   AuditReport,
@@ -15,6 +18,8 @@ import {
   serializeAuditReportCanonical,
 } from "../../core/audit";
 import { runWorkspaceAudit } from "../../core/audit-workspace";
+import { normalizeTag, validateTag } from "../../core/tags";
+import { normalizeCollectionName } from "../../core/validation";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 
 export interface AuditCommandOptions {
@@ -79,7 +84,18 @@ export const audit = async (
     return { success: false, invalid: true, error: configResult.error.message };
   }
   const config = configResult.value;
-  const requestedCollections = options.collections ?? [];
+  const requestedCollections = (options.collections ?? []).map(
+    normalizeCollectionName
+  );
+  const requestedTags = (options.tags ?? []).map(normalizeTag);
+  const invalidTag = requestedTags.find((tag) => !validateTag(tag));
+  if (invalidTag) {
+    return {
+      success: false,
+      invalid: true,
+      error: `Invalid tag: "${invalidTag}"`,
+    };
+  }
   const knownCollections = new Set(
     config.collections.map((collection) => collection.name)
   );
@@ -115,7 +131,7 @@ export const audit = async (
       categories,
       collectionFilters: requestedCollections,
       pathFilters: options.paths,
-      tagFilters: options.tags,
+      tagFilters: requestedTags,
       maxFindings: options.maxFindings,
       agePolicy:
         options.maxAgeDays === undefined
@@ -179,4 +195,5 @@ export const writeAuditReport = async (
     createPath: false,
     mode: 0o600,
   });
+  await chmod(path, 0o600);
 };

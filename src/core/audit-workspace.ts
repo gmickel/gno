@@ -35,6 +35,8 @@ import {
   extractCaptureSourceFromFrontmatter,
   hasDeclaredCaptureSource,
 } from "./capture";
+import { normalizeTag } from "./tags";
+import { normalizeCollectionName } from "./validation";
 
 export const AUDIT_WORKSPACE_MAX_DOCUMENTS = 10_000;
 const AUDIT_SOURCE_CONCURRENCY = 16;
@@ -169,6 +171,7 @@ const observeDocument = async (
       provenance: {
         uri: document.uri,
         relPath: document.relPath,
+        sourceState: "unreadable",
         captureSourceDeclared: false,
         record: document,
       },
@@ -192,6 +195,7 @@ const observeDocument = async (
         provenance: {
           uri: document.uri,
           relPath: document.relPath,
+          sourceState: "missing",
           captureSourceDeclared: false,
           record: document,
         },
@@ -229,6 +233,7 @@ const observeDocument = async (
       provenance: {
         uri: document.uri,
         relPath: document.relPath,
+        sourceState: "readable",
         captureSourceDeclared: hasDeclaredCaptureSource(frontmatter),
         captureSource: extractCaptureSourceFromFrontmatter(frontmatter),
         record: document,
@@ -256,6 +261,7 @@ const observeDocument = async (
       provenance: {
         uri: document.uri,
         relPath: document.relPath,
+        sourceState: "unreadable",
         captureSourceDeclared: false,
         record: document,
       },
@@ -325,10 +331,9 @@ const loadWorkspaceSnapshot = async (
     completed: selected.documents.length,
     total: selected.total,
   });
-  const rawLinks = captureAuditLinkSnapshot(options.store.getRawDb(), {
-    collections: filters.collections,
-    pathPrefixes: filters.paths,
-  });
+  // Capture the bounded graph before narrowing the document scope so incoming
+  // edges from outside a collection/path filter still prevent false orphans.
+  const rawLinks = captureAuditLinkSnapshot(options.store.getRawDb());
   const selectedIds = new Set(selected.documents.map(({ id }) => id));
   return {
     documents: observed,
@@ -395,11 +400,13 @@ export const runWorkspaceAudit = async (
   options: WorkspaceAuditOptions
 ): Promise<AuditRunResult> => {
   const filters = {
-    collections: normalizeValues(options.collectionFilters),
+    collections: normalizeValues(options.collectionFilters).map(
+      normalizeCollectionName
+    ),
     paths: normalizeValues(options.pathFilters).map((path) =>
       path.replace(/^\/+/, "")
     ),
-    tags: normalizeValues(options.tagFilters),
+    tags: normalizeValues(options.tagFilters).map(normalizeTag),
   };
   const scope: AuditScope = {
     categories: [...options.categories],

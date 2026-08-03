@@ -100,6 +100,17 @@ describe("gno_audit MCP tool", () => {
     expect(totalChanges(store)).toBe(before);
   });
 
+  test("normalizes case-insensitive collection filters", async () => {
+    const result = await handleAudit(
+      auditInputSchema.parse({ category: "links", collections: [" Notes "] }),
+      context
+    );
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent?.scope).toMatchObject({
+      collections: ["notes"],
+    });
+  });
+
   test("returns explicit partial cancellation instead of false clean", async () => {
     const controller = new AbortController();
     controller.abort();

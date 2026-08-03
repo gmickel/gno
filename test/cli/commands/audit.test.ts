@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rename } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rename, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -134,8 +134,61 @@ describe("gno audit CLI", () => {
     });
   });
 
+  test("normalizes and validates tag filters", async () => {
+    await Bun.write(
+      join(notes, "tagged.md"),
+      "---\ntags: [project]\n---\n# Tagged\n\n[[B]]\n"
+    );
+    expect(await runCli(["bun", "gno", "index", "--no-embed"])).toBe(0);
+    const normalized = await audit({ category: "links", tags: [" Project "] });
+    expect(normalized.success).toBe(true);
+    if (normalized.success) {
+      expect(normalized.report.scope.tags).toEqual(["project"]);
+      expect(normalized.report.counts.examined.documents).toBeGreaterThan(0);
+    }
+    expect(await audit({ category: "links", tags: ["bad tag"] })).toEqual({
+      success: false,
+      invalid: true,
+      error: 'Invalid tag: "bad tag"',
+    });
+  });
+
+  test("retains incoming links when a path filter narrows audit scope", async () => {
+    await mkdir(join(notes, "scoped"));
+    await Bun.write(
+      join(notes, "outside.md"),
+      "# Outside\n\n[[scoped/inside]]\n"
+    );
+    await Bun.write(join(notes, "scoped", "inside.md"), "# Inside\n");
+    expect(await runCli(["bun", "gno", "index", "--no-embed"])).toBe(0);
+    const scoped = await audit({ category: "links", paths: ["scoped"] });
+    expect(scoped.success).toBe(true);
+    if (scoped.success) {
+      expect(
+        scoped.report.findings.some(
+          ({ ruleId, subject }) =>
+            ruleId === "links.orphans" &&
+            subject === "gno://notes/scoped/inside.md"
+        )
+      ).toBe(false);
+    }
+  });
+
   test("reports unavailable sources and repeated snapshot drift as partial", async () => {
     await rename(notes, join(root, "offline-notes"));
+    const unavailableProvenance = await audit({ category: "provenance" });
+    expect(unavailableProvenance.success).toBe(true);
+    if (unavailableProvenance.success) {
+      expect(unavailableProvenance.exitCode).toBe(5);
+      expect(unavailableProvenance.report.status).toBe("partial");
+      expect(unavailableProvenance.report.rules).toContainEqual(
+        expect.objectContaining({
+          ruleId: "provenance.capture-source",
+          status: "unavailable",
+          skipReason: "source_unavailable",
+        })
+      );
+    }
     const unavailable = await audit({ category: "freshness" });
     expect(unavailable.success).toBe(true);
     if (unavailable.success) {
@@ -182,6 +235,8 @@ describe("gno audit CLI", () => {
 
   test("writes an explicitly requested private report artifact", async () => {
     const reportPath = join(root, "audit.json");
+    await Bun.write(reportPath, "pre-existing\n");
+    await chmod(reportPath, 0o644);
     const code = await runCli([
       "bun",
       "gno",
@@ -195,5 +250,6 @@ describe("gno audit CLI", () => {
     expect(JSON.parse(await Bun.file(reportPath).text()).schemaVersion).toBe(
       "1.0"
     );
+    expect((await stat(reportPath)).mode & 0o777).toBe(0o600);
   });
 });

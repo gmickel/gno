@@ -14,6 +14,7 @@ export const PROVENANCE_AUDIT_MAX_FINDINGS_PER_RULE = 1000;
 export interface AuditProvenanceDocument {
   uri: string;
   relPath: string;
+  sourceState?: "readable" | "missing" | "unreadable";
   captureSource?: Partial<CaptureSource>;
   captureSourceDeclared: boolean;
   record: {
@@ -57,7 +58,14 @@ export const evaluateProvenanceAudit = (
   const recordFindings: AuditFindingDraft[] = [];
   let declaredCaptureDocuments = 0;
   let declaredRecordDocuments = 0;
+  let unavailableCaptureSources = 0;
   for (const document of documents) {
+    if (
+      document.sourceState !== undefined &&
+      document.sourceState !== "readable"
+    ) {
+      unavailableCaptureSources += 1;
+    }
     if (document.captureSourceDeclared) {
       declaredCaptureDocuments += 1;
       for (const issue of validateDeclaredCaptureProvenance(
@@ -92,36 +100,44 @@ export const evaluateProvenanceAudit = (
   const result = (
     ruleId: string,
     findings: AuditFindingDraft[],
-    declaredDocuments: number
+    declaredDocuments: number,
+    unavailableDocuments = 0
   ): AuditRuleContribution => ({
     ruleId,
     category: "provenance",
     status: truncated
       ? "inconclusive"
-      : findings.length > 0
-        ? "fail"
-        : declaredDocuments === 0
-          ? "skip"
-          : "pass",
+      : unavailableDocuments > 0
+        ? "unavailable"
+        : findings.length > 0
+          ? "fail"
+          : declaredDocuments === 0
+            ? "skip"
+            : "pass",
     message: truncated
       ? "Provenance scan was truncated"
-      : declaredDocuments === 0
-        ? "No documents declared this provenance contract"
-        : `${findings.length} declared provenance completeness issues`,
+      : unavailableDocuments > 0
+        ? `${unavailableDocuments} source files could not be inspected for declared capture provenance`
+        : declaredDocuments === 0
+          ? "No documents declared this provenance contract"
+          : `${findings.length} declared provenance completeness issues`,
     findings: findings.slice(0, PROVENANCE_AUDIT_MAX_FINDINGS_PER_RULE),
     findingCount: findings.length,
     examinedCount: documents.length,
     skipReason: truncated
       ? "snapshot_truncated"
-      : declaredDocuments === 0
-        ? "contract_not_declared"
-        : null,
+      : unavailableDocuments > 0
+        ? "source_unavailable"
+        : declaredDocuments === 0
+          ? "contract_not_declared"
+          : null,
   });
   return [
     result(
       "provenance.capture-source",
       captureFindings,
-      declaredCaptureDocuments
+      declaredCaptureDocuments,
+      unavailableCaptureSources
     ),
     result(
       "provenance.logical-record",

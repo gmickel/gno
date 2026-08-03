@@ -7,6 +7,8 @@ import type { ToolContext } from "../server";
 
 import { AUDIT_CATEGORIES } from "../../core/audit";
 import { runWorkspaceAudit } from "../../core/audit-workspace";
+import { normalizeTag, validateTag } from "../../core/tags";
+import { normalizeCollectionName } from "../../core/validation";
 import { runTool, type ToolResult } from "./index";
 
 export const auditInputSchema = z
@@ -57,7 +59,13 @@ export const handleAudit = (
     ctx,
     "gno_audit",
     async () => {
-      const missingCollection = input.collections.find(
+      const normalizedCollections = input.collections.map(
+        normalizeCollectionName
+      );
+      const normalizedTags = input.tags.map(normalizeTag);
+      const invalidTag = normalizedTags.find((tag) => !validateTag(tag));
+      if (invalidTag) throw new Error(`Invalid tag: "${invalidTag}"`);
+      const missingCollection = normalizedCollections.find(
         (name) =>
           !ctx.collections.some((collection) => collection.name === name)
       );
@@ -70,9 +78,9 @@ export const handleAudit = (
         collections: ctx.collections,
         indexName: ctx.indexName,
         categories: categoriesFor(input.category),
-        collectionFilters: input.collections,
+        collectionFilters: normalizedCollections,
         pathFilters: input.paths,
-        tagFilters: input.tags,
+        tagFilters: normalizedTags,
         maxFindings: input.maxFindings,
         agePolicy:
           input.maxAgeDays === undefined
