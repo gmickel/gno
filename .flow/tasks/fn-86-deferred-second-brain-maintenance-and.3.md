@@ -39,9 +39,8 @@ Missing provenance is a completeness finding, not a truth verdict. Age is a sign
 
 
 ## Done summary
-TBD
-
+Added provenance completeness rules limited to explicitly declared capture and logical-record contracts, plus observable freshness rules for source readability, source/index hash drift, indexed-revision errors, and opt-in age review signals. Bounded per-rule payloads retain exact counts, and changed/truncated evidence is inconclusive rather than healthy.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: ebb983c3
+- Tests: bun test test/audit test/core/capture.test.ts test/spec/schemas (291 pass), bun run lint:check
 - PRs:
