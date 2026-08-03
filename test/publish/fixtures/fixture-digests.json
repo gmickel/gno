@@ -1,0 +1,28 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "absolute-source-ref.json": "736531323a84a28dc7326802db104da6d014f7fb69c52090962b7668f9e3412d",
+    "bad-note-ownership.json": "1a9eb9997c3d7e8700a5328460efaf07091c3bc08ff579b4e50c0f72e82b0293",
+    "conflicting-asset.json": "76690bb6aecb96f8086aa69956c8df1ae1ee760d83c8678b26a2d75af2eab790",
+    "corpus.json": "55c211544c4292d7b6d966d456de611396f27de62c2f74e582c8fb31071d6af2",
+    "corrupt-asset.json": "f459fef95f6fc2c6a73187de1343864d6b73bc59cc6b7b86a4a1aeb19f46c666",
+    "double-encoded-traversal.json": "779f0bf9511a325a35f81121e0e030aec064f97773879f836db34006920b4e7a",
+    "duplicate-asset-id.json": "bf82168f643045493a836920b8c1fa54554eb05d58edd4fbb69f31c625ad087d",
+    "duplicate-capability.json": "dfdb083c650e40aaeea16b74d221f4c6966b8fc122fd5a010d7fe9873f663481",
+    "empty-capability.json": "c489102812772ca16794f47cd79c9c642e6650343029ce28d149e7d903ef1576",
+    "encoded-traversal.json": "da8e3a20c465798c62022906bcc1130b3a3bb968d957a2e93188fcc8091e195c",
+    "legacy-asset-free-v1.json": "adbc474f5bd320e08f3770ce064bb822368705157f0ffa14ad392bf3a220a683",
+    "mime-spoof.json": "2ac928b2cc1b51242fdbfc54d10e4430f31c453b3881b69a3fb75f70f0fcd1dd",
+    "missing-asset.json": "0c3f2515e12843cc5280e697451177f4605c221f0b31edfe6b607ca402b778aa",
+    "nul-source-ref.json": "6f778b2f7f3645200afa1a2768eda8da63690ae7d6da8aa80b78c88df0271e05",
+    "overlong-capability.json": "5f52c06137bb3f3a40d68888ea4dd0a80f7501b26d04ad39c31a7b4d976cdc03",
+    "oversize-envelope.json": "3abdeb097fee49915513a5a78b0cb900d8b7a9feb16f8d1f8ae8102ee7cf8055",
+    "percent-nul-source-ref.json": "3457edd4e395ecfade7f22c2dba54108e5f6116a85c0be5be9331c48221eff17",
+    "raw-sentinel.json": "0d128d8bab53fc107746454899f5feb7d894316ae859829214e40d241e0e789e",
+    "traversal.json": "88a7603ce292e4637db2b97577f3ecb6ecabb7b9acd247120a7b905e9721700a",
+    "unsupported-capability.json": "128f26e6c24459d54cb37c63dc94aaf5dc5d57c41a19a983ec7cc179a4e382f8",
+    "unsupported-svg.json": "7db1165dd2a9e8fe1b1d7fb4be072c74f36b4cf6398185d85d312b865cd070a5",
+    "valid-encrypted-v2.json": "35a03822b627392a918953ee4f1997c874c4f2ce79b4be2a05fb366935b56936",
+    "valid-small-raster-v1.json": "772040949c9fda00dd10d4328442a6c8475dfbe6d14caabd8b796a69a8e3d38f"
+  }
+}

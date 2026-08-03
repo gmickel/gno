@@ -1,0 +1,99 @@
+{
+  "egressLineage": {
+    "effectivePolicy": "remote",
+    "digest": "6cc08d8c781481951b4d5fe23aed491c6e72145d9b966720a581e3c1ab6f0f7a",
+    "sources": [
+      {
+        "collection": "atlas",
+        "policy": "remote",
+        "source": "explicit"
+      }
+    ]
+  },
+  "exportedAt": "2026-08-03T00:00:00.000Z",
+  "source": "atlas",
+  "spaces": [
+    {
+      "homeNoteSlug": "atlas",
+      "notes": [
+        {
+          "markdown": "# Atlas\n\n![x](gno-asset:900fbe934249ad120004bd24adf66aad8817d89586273c0cc50e187bddebb601)\n",
+          "slug": "atlas",
+          "summary": "Fixture note.",
+          "title": "Atlas",
+          "metadata": {}
+        }
+      ],
+      "routeSlug": "atlas",
+      "sourceType": "note",
+      "summary": "Fixture note.",
+      "title": "Atlas",
+      "manifest": {
+        "capabilities": {
+          "capsuleEvidence": true,
+          "exactLineCitations": true,
+          "llmsTxt": true,
+          "markdownDocuments": true
+        },
+        "documents": [
+          {
+            "byteLength": 90,
+            "contentHash": "57e1d065315723c31f166380036e5791d82abc719dcf6888ae3080cbb88a5333",
+            "evidence": {
+              "uri": "gno://public/atlas/atlas.md",
+              "docid": "#57e1d065",
+              "startLine": 1,
+              "endLine": 4,
+              "sourceHash": "57e1d065315723c31f166380036e5791d82abc719dcf6888ae3080cbb88a5333",
+              "mirrorHash": "57e1d065315723c31f166380036e5791d82abc719dcf6888ae3080cbb88a5333",
+              "passageHash": "57e1d065315723c31f166380036e5791d82abc719dcf6888ae3080cbb88a5333",
+              "evidenceId": "ac642d8adba5ba3657fd20879cac3a147c27835a46a06e91cdea73cc0cde197d",
+              "locator": "./atlas.md#L1-L4"
+            },
+            "lineCount": 4,
+            "markdownPath": "./atlas.md",
+            "slug": "atlas",
+            "summary": "Fixture note.",
+            "title": "Atlas"
+          }
+        ],
+        "egressLineage": {
+          "effectivePolicy": "remote",
+          "digest": "6cc08d8c781481951b4d5fe23aed491c6e72145d9b966720a581e3c1ab6f0f7a",
+          "sources": [
+            {
+              "collection": "atlas",
+              "policy": "remote",
+              "source": "explicit"
+            }
+          ]
+        },
+        "generatedAt": "2026-08-03T00:00:00.000Z",
+        "projectionRevision": "7ed2d06c6faa72dfa31d83d201171ab5d55fcb682b412fb095983b0f1f2a6739",
+        "schemaVersion": "1.0",
+        "visibility": "public"
+      },
+      "visibility": "public"
+    }
+  ],
+  "version": 1,
+  "requiredCapabilities": ["bundled-raster-assets@1"],
+  "assets": [
+    {
+      "byteLength": 41,
+      "data": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4=",
+      "encoding": "base64",
+      "height": 1,
+      "id": "900fbe934249ad120004bd24adf66aad8817d89586273c0cc50e187bddebb601",
+      "mediaType": "image/svg+xml",
+      "references": [
+        {
+          "noteSlug": "atlas",
+          "sourceRef": "attachments/icon.svg"
+        }
+      ],
+      "sha256": "900fbe934249ad120004bd24adf66aad8817d89586273c0cc50e187bddebb601",
+      "width": 1
+    }
+  ]
+}

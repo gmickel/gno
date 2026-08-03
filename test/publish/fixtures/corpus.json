@@ -1,0 +1,159 @@
+{
+  "capability": "bundled-raster-assets@1",
+  "maxUploadBytes": 104857600,
+  "pngSha256": "c414cd0e204de974f73753c7e28d7638e7b3691bb8b1a2bab6b25bb7fed7ce77",
+  "fixtures": [
+    {
+      "id": "legacy-asset-free-v1",
+      "file": "legacy-asset-free-v1.json",
+      "expect": "accept",
+      "kind": "artifact"
+    },
+    {
+      "id": "valid-small-raster-v1",
+      "file": "valid-small-raster-v1.json",
+      "expect": "accept",
+      "kind": "artifact"
+    },
+    {
+      "id": "valid-encrypted-v2",
+      "file": "valid-encrypted-v2.json",
+      "expect": "accept",
+      "kind": "artifact",
+      "classification": "encrypted-client-payload"
+    },
+    {
+      "id": "missing-asset",
+      "file": "missing-asset.json",
+      "expect": "reject",
+      "code": "ASSET_MISSING",
+      "kind": "artifact"
+    },
+    {
+      "id": "conflicting-asset",
+      "file": "conflicting-asset.json",
+      "expect": "reject",
+      "code": "ASSET_CONFLICT",
+      "kind": "artifact"
+    },
+    {
+      "id": "duplicate-asset-id",
+      "file": "duplicate-asset-id.json",
+      "expect": "reject",
+      "code": "ASSET_CONFLICT",
+      "kind": "artifact"
+    },
+    {
+      "id": "bad-note-ownership",
+      "file": "bad-note-ownership.json",
+      "expect": "reject",
+      "code": "ASSET_MISSING",
+      "kind": "artifact"
+    },
+    {
+      "id": "encoded-traversal",
+      "file": "encoded-traversal.json",
+      "expect": "reject",
+      "code": "ASSET_TRAVERSAL",
+      "kind": "artifact"
+    },
+    {
+      "id": "double-encoded-traversal",
+      "file": "double-encoded-traversal.json",
+      "expect": "reject",
+      "code": "ASSET_TRAVERSAL",
+      "kind": "artifact"
+    },
+    {
+      "id": "absolute-source-ref",
+      "file": "absolute-source-ref.json",
+      "expect": "reject",
+      "code": "ASSET_TRAVERSAL",
+      "kind": "artifact"
+    },
+    {
+      "id": "nul-source-ref",
+      "file": "nul-source-ref.json",
+      "expect": "reject",
+      "code": "ASSET_TRAVERSAL",
+      "kind": "artifact"
+    },
+    {
+      "id": "percent-nul-source-ref",
+      "file": "percent-nul-source-ref.json",
+      "expect": "reject",
+      "code": "ASSET_TRAVERSAL",
+      "kind": "artifact"
+    },
+    {
+      "id": "raw-sentinel",
+      "file": "raw-sentinel.json",
+      "expect": "reject",
+      "code": "ASSET_SENTINEL_RAW",
+      "kind": "artifact"
+    },
+    {
+      "id": "traversal",
+      "file": "traversal.json",
+      "expect": "reject",
+      "code": "ASSET_TRAVERSAL",
+      "kind": "artifact"
+    },
+    {
+      "id": "mime-spoof",
+      "file": "mime-spoof.json",
+      "expect": "reject",
+      "code": "ASSET_MIME_SPOOF",
+      "kind": "artifact"
+    },
+    {
+      "id": "corrupt-asset",
+      "file": "corrupt-asset.json",
+      "expect": "reject",
+      "code": "ASSET_CORRUPT",
+      "kind": "artifact"
+    },
+    {
+      "id": "unsupported-capability",
+      "file": "unsupported-capability.json",
+      "expect": "reject",
+      "code": "CAPABILITY_UNSUPPORTED",
+      "kind": "artifact"
+    },
+    {
+      "id": "duplicate-capability",
+      "file": "duplicate-capability.json",
+      "expect": "reject",
+      "code": "CAPABILITY_UNSUPPORTED",
+      "kind": "artifact"
+    },
+    {
+      "id": "empty-capability",
+      "file": "empty-capability.json",
+      "expect": "reject",
+      "code": "CAPABILITY_UNSUPPORTED",
+      "kind": "artifact"
+    },
+    {
+      "id": "overlong-capability",
+      "file": "overlong-capability.json",
+      "expect": "reject",
+      "code": "CAPABILITY_UNSUPPORTED",
+      "kind": "artifact"
+    },
+    {
+      "id": "unsupported-svg",
+      "file": "unsupported-svg.json",
+      "expect": "reject",
+      "code": "ASSET_UNSUPPORTED_FORMAT",
+      "kind": "artifact"
+    },
+    {
+      "id": "oversize-envelope",
+      "file": "oversize-envelope.json",
+      "expect": "reject",
+      "code": "ENVELOPE_OVERSIZE",
+      "kind": "oversize-meta"
+    }
+  ]
+}

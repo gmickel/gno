@@ -6,6 +6,10 @@
 
 import type { EgressLineage } from "../core/egress-provenance";
 import type { DocumentRow } from "../store/types";
+import type {
+  KnownPublishRequiredCapability,
+  PublishArtifactAsset,
+} from "./artifact-assets";
 
 import { deriveDocid } from "../app/constants";
 import {
@@ -26,6 +30,26 @@ import {
 
 export { MAX_PUBLISH_SLUG_LENGTH } from "./artifact-validation";
 export { buildExportedMetadata } from "./metadata";
+export type {
+  PublishArtifactAsset,
+  PublishArtifactAssetReference,
+  SupportedRasterMediaType,
+} from "./artifact-assets";
+export {
+  BUNDLED_RASTER_ASSETS_CAPABILITY,
+  GNO_ASSET_SENTINEL_PATTERN,
+  MAX_PUBLISH_UPLOAD_BYTES,
+  PUBLISH_ASSET_DIAGNOSTIC_CODES,
+  PUBLISH_ASSET_LIFECYCLE_TERMINALS,
+  PUBLISH_ASSET_VISIBILITY,
+  SUPPORTED_RASTER_MEDIA_TYPES,
+  formatGnoAssetSentinel,
+  measureArtifactUploadBytes,
+  measureSerializedUploadBytes,
+  parseGnoAssetSentinel,
+  sniffRasterMediaType,
+  validatePublishAssetContract,
+} from "./artifact-assets";
 
 export type PublishVisibility =
   | "encrypted"
@@ -122,8 +146,10 @@ export interface EncryptedPublishArtifactSpace {
 }
 
 export interface PublishArtifactV1 {
+  assets?: PublishArtifactAsset[];
   egressLineage: EgressLineage;
   exportedAt: string;
+  requiredCapabilities?: KnownPublishRequiredCapability[];
   source: string;
   spaces: PublishArtifactSpace[];
   version: 1;
@@ -132,6 +158,7 @@ export interface PublishArtifactV1 {
 export interface PublishArtifactV2 {
   egressLineage: EgressLineage;
   exportedAt: string;
+  requiredCapabilities?: KnownPublishRequiredCapability[];
   source: string;
   spaces: EncryptedPublishArtifactSpace[];
   version: 2;

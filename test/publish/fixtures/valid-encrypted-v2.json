@@ -1,0 +1,31 @@
+{
+  "egressLineage": {
+    "effectivePolicy": "remote",
+    "digest": "6cc08d8c781481951b4d5fe23aed491c6e72145d9b966720a581e3c1ab6f0f7a",
+    "sources": [
+      {
+        "collection": "atlas",
+        "policy": "remote",
+        "source": "explicit"
+      }
+    ]
+  },
+  "exportedAt": "2026-08-03T00:00:00.000Z",
+  "source": "atlas",
+  "spaces": [
+    {
+      "encryptedPayload": {
+        "ciphertext": "eyJhc3NldFBsYWNlbWVudCI6ImVuY3J5cHRlZC1jbGllbnQtcGF5bG9hZCIsImFzc2V0cyI6W3siYnl0ZUxlbmd0aCI6NzAsImRhdGEiOiJpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQUVBQUFBQkNBWUFBQUFmRmNTSkFBQUFEVWxFUVZSNDJtUDh6OEJRRHdBRWhRR0FoS21NSVFBQUFBQkpSVTVFcmtKZ2dnPT0iLCJlbmNvZGluZyI6ImJhc2U2NCIsImhlaWdodCI6MSwiaWQiOiJjNDE0Y2QwZTIwNGRlOTc0ZjczNzUzYzdlMjhkNzYzOGU3YjM2OTFiYjhiMWEyYmFiNmIyNWJiN2ZlZDdjZTc3IiwibWVkaWFUeXBlIjoiaW1hZ2UvcG5nIiwicmVmZXJlbmNlcyI6W3sibm90ZVNsdWciOiJhdGxhcyIsInNvdXJjZVJlZiI6ImF0dGFjaG1lbnRzL2RvdC5wbmcifV0sInNoYTI1NiI6ImM0MTRjZDBlMjA0ZGU5NzRmNzM3NTNjN2UyOGQ3NjM4ZTdiMzY5MWJiOGIxYTJiYWI2YjI1YmI3ZmVkN2NlNzciLCJ3aWR0aCI6MX1dLCJub3RlcyI6W3sibWFya2Rvd24iOiIjIEF0bGFzXG5cbiFbZG90XShnbm8tYXNzZXQ6YzQxNGNkMGUyMDRkZTk3NGY3Mzc1M2M3ZTI4ZDc2MzhlN2IzNjkxYmI4YjFhMmJhYjZiMjViYjdmZWQ3Y2U3NylcbiIsIm1ldGFkYXRhIjp7fSwic2x1ZyI6ImF0bGFzIiwic3VtbWFyeSI6IkZpeHR1cmUgbm90ZS4iLCJ0aXRsZSI6IkF0bGFzIn1dfQ==",
+        "iterations": 210000,
+        "iv": "aXY=",
+        "salt": "c2FsdA=="
+      },
+      "routeSlug": "atlas",
+      "secretToken": "opaque-token",
+      "sourceType": "note",
+      "visibility": "encrypted"
+    }
+  ],
+  "version": 2,
+  "requiredCapabilities": ["bundled-raster-assets@1"]
+}
