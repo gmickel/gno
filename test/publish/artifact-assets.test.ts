@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   BUNDLED_RASTER_ASSETS_CAPABILITY,
   MAX_PUBLISH_UPLOAD_BYTES,
+  MAX_RASTER_DIMENSION_PX,
   MAX_REQUIRED_CAPABILITY_LENGTH,
   PUBLISH_ASSET_LIFECYCLE_TERMINALS,
   PUBLISH_ASSET_VISIBILITY,
@@ -47,6 +48,40 @@ const loadJson = async (name: string): Promise<unknown> =>
 
 const decodeBase64 = (data: string): Uint8Array =>
   Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
+
+const artifactWithPng = (
+  bytes: Uint8Array,
+  dimensions: { height: number; width: number }
+): Record<string, unknown> => {
+  const id = sha256BytesHex(bytes);
+  return {
+    assets: [
+      {
+        byteLength: bytes.byteLength,
+        data: bytes.toBase64(),
+        encoding: "base64",
+        height: dimensions.height,
+        id,
+        mediaType: "image/png",
+        references: [{ noteSlug: "atlas", sourceRef: "attachments/dot.png" }],
+        sha256: id,
+        width: dimensions.width,
+      },
+    ],
+    requiredCapabilities: [BUNDLED_RASTER_ASSETS_CAPABILITY],
+    spaces: [
+      {
+        notes: [
+          {
+            markdown: `![dot](gno-asset:${id})`,
+            slug: "atlas",
+          },
+        ],
+      },
+    ],
+    version: 1,
+  };
+};
 
 describe("publish artifact asset contract", () => {
   test("freezes visibility, lifecycle, and capability vocabulary", () => {
@@ -143,6 +178,42 @@ describe("publish artifact asset contract", () => {
         expect(typeof result.diagnostic.code).toBe("string");
         expect(result.diagnostic.message.length).toBeGreaterThan(0);
       }
+    }
+  });
+
+  test("derives bounded dimensions from raster bytes instead of trusting descriptors", () => {
+    const png = decodeBase64(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    );
+    const mismatched = validatePublishAssetContract(
+      artifactWithPng(png, {
+        height: MAX_RASTER_DIMENSION_PX,
+        width: MAX_RASTER_DIMENSION_PX,
+      })
+    );
+    expect(mismatched.ok).toBe(false);
+    if (!mismatched.ok) {
+      expect(mismatched.diagnostic.code).toBe("ASSET_DIMENSION_INVALID");
+      expect(mismatched.diagnostic.message).toContain(
+        `declared ${MAX_RASTER_DIMENSION_PX}x${MAX_RASTER_DIMENSION_PX} but bytes are 1x1`
+      );
+    }
+
+    const oversizedBytes = new Uint8Array(png);
+    const oversizedWidth = MAX_RASTER_DIMENSION_PX + 1;
+    oversizedBytes[16] = (oversizedWidth >>> 24) & 0xff;
+    oversizedBytes[17] = (oversizedWidth >>> 16) & 0xff;
+    oversizedBytes[18] = (oversizedWidth >>> 8) & 0xff;
+    oversizedBytes[19] = oversizedWidth & 0xff;
+    const oversized = validatePublishAssetContract(
+      artifactWithPng(oversizedBytes, { height: 1, width: 1 })
+    );
+    expect(oversized.ok).toBe(false);
+    if (!oversized.ok) {
+      expect(oversized.diagnostic.code).toBe("ASSET_DIMENSION_INVALID");
+      expect(oversized.diagnostic.message).toContain(
+        `exceed ${MAX_RASTER_DIMENSION_PX}px limit`
+      );
     }
   });
 

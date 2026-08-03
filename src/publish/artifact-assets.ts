@@ -44,6 +44,7 @@ export {
   decodeBase64ToBytes,
   measureArtifactUploadBytes,
   measureSerializedUploadBytes,
+  serializePublishArtifact,
   sha256BytesHex,
 } from "./artifact-asset-codec";
 export {

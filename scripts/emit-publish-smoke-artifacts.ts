@@ -12,11 +12,13 @@ import { tmpdir } from "node:os"; // no Bun equivalent
 import { join } from "node:path"; // no Bun path utils
 
 import type { Collection } from "../src/config/types";
+import type { PublishArtifact } from "../src/publish/artifact";
 import type { DocumentRow, StorePort, TagRow } from "../src/store/types";
 
 import {
   BUNDLED_RASTER_ASSETS_CAPABILITY,
   measureArtifactUploadBytes,
+  serializePublishArtifact,
   validatePublishAssetContract,
 } from "../src/publish/artifact-assets";
 import { exportPublishArtifact } from "../src/publish/export-service";
@@ -89,6 +91,13 @@ const buildStore = (published: DocumentRow, markdown: string): StorePort => {
 
 const writeJson = async (path: string, value: unknown): Promise<void> => {
   await Bun.write(path, `${JSON.stringify(value, null, 2)}\n`);
+};
+
+const writePublishArtifact = async (
+  path: string,
+  artifact: PublishArtifact
+): Promise<void> => {
+  await Bun.write(path, serializePublishArtifact(artifact));
 };
 
 const main = async (): Promise<void> => {
@@ -182,13 +191,19 @@ const main = async (): Promise<void> => {
       throw new Error("public artifact missing bundled-raster-assets@1");
     }
 
-    await writeJson(join(outDir, "public-raster.json"), publicExport.artifact);
-    await writeJson(join(outDir, "secret-raster.json"), secretExport.artifact);
-    await writeJson(
+    await writePublishArtifact(
+      join(outDir, "public-raster.json"),
+      publicExport.artifact
+    );
+    await writePublishArtifact(
+      join(outDir, "secret-raster.json"),
+      secretExport.artifact
+    );
+    await writePublishArtifact(
       join(outDir, "encrypted-raster.json"),
       encryptedExport.artifact
     );
-    await writeJson(
+    await writePublishArtifact(
       join(outDir, "legacy-asset-free.json"),
       legacyExport.artifact
     );

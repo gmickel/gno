@@ -9,6 +9,8 @@
  * @module src/publish/obsidian-sanitize
  */
 
+import { discoverImageOccurrences } from "./attachment-discover";
+import { safePercentDecode } from "./attachment-path";
 import {
   rewriteAttachmentsInMarkdown,
   type AttachmentDiagnostic,
@@ -25,6 +27,7 @@ const ALIASED_WIKILINK = /\[\[([^\]|]+)\|([^\]]+)\]\]/g;
 const BARE_WIKILINK = /\[\[([^\]]+)\]\]/g;
 const TAIL_SEGMENT = /[^/]+$/;
 const BLOCK_ID_SUFFIX = /#\^?[\w-]+$/;
+const EXTERNAL_DESTINATION = /^(?:\/\/|[a-z][a-z0-9+.-]*:)/iu;
 
 export interface SanitizeWarning {
   kind:
@@ -75,6 +78,53 @@ const deriveLinkDisplay = (target: string): string => {
   const withoutBlockId = raw.replace(BLOCK_ID_SUFFIX, "").trim();
   const tail = withoutBlockId.match(TAIL_SEGMENT)?.[0] ?? withoutBlockId;
   return tail.trim() || raw;
+};
+
+const isPrivateImageReference = (sourceRef: string): boolean => {
+  const trimmed = sourceRef.trim();
+  if (EXTERNAL_DESTINATION.test(trimmed)) {
+    return false;
+  }
+  const decoded = safePercentDecode(trimmed);
+  if (decoded === null) {
+    return false;
+  }
+  return (
+    decoded
+      .split(/[?#]/u, 1)[0]
+      ?.split("/")
+      .some((segment) => segment.toLowerCase() === "_internal") ?? false
+  );
+};
+
+/**
+ * Remove private image references before attachment resolution can read bytes
+ * or replace the authored path with an opaque gno-asset sentinel.
+ */
+const stripPrivateImageReferences = (
+  body: string
+): { markdown: string; warnings: SanitizeWarning[] } => {
+  const replacements = discoverImageOccurrences(body)
+    .filter((occurrence) => isPrivateImageReference(occurrence.sourceRef))
+    .map((occurrence) => ({
+      detail: occurrence.sourceRef.trim(),
+      end: occurrence.end,
+      start: occurrence.start,
+    }));
+  let markdown = body;
+  for (const replacement of [...replacements].sort(
+    (left, right) => right.start - left.start
+  )) {
+    markdown =
+      markdown.slice(0, replacement.start) + markdown.slice(replacement.end);
+  }
+  return {
+    markdown,
+    warnings: replacements.map((replacement) => ({
+      detail: replacement.detail,
+      kind: "internal-reference-stripped" as const,
+    })),
+  };
 };
 
 const applyWikilinkSanitize = (
@@ -179,8 +229,9 @@ export async function sanitizePublishMarkdown(
   attachmentCtx: AttachmentResolveContext
 ): Promise<PublishSanitizeResult> {
   const { body, frontmatter } = splitFrontmatter(source);
+  const privateImages = stripPrivateImageReferences(body);
   const rewritten: AttachmentRewriteResult = await rewriteAttachmentsInMarkdown(
-    body,
+    privateImages.markdown,
     attachmentCtx
   );
   const sanitized = applyWikilinkSanitize(rewritten.markdown, {
@@ -192,7 +243,7 @@ export async function sanitizePublishMarkdown(
     markdown: `${frontmatter}${sanitized.markdown}`,
     payloads: rewritten.payloads,
     preDedupRawBytes: rewritten.preDedupRawBytes,
-    warnings: sanitized.warnings,
+    warnings: [...privateImages.warnings, ...sanitized.warnings],
   };
 }
 

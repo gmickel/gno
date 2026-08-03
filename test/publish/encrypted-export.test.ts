@@ -8,6 +8,7 @@ import {
   BUNDLED_RASTER_ASSETS_CAPABILITY,
   buildEncryptedPublishArtifact,
   measureArtifactUploadBytes,
+  serializePublishArtifact,
   validatePublishAssetContract,
 } from "../../src/publish/artifact";
 import { encodeBytesToBase64 } from "../../src/publish/artifact-asset-codec";
@@ -160,7 +161,9 @@ describe("encrypted-export asset payload", () => {
     expect(outer).not.toContain("dot.png");
     expect(outer).not.toContain(markdown);
     expectContractClassification(artifact, "encrypted-client-payload");
-    expect(measureArtifactUploadBytes(artifact)).toBe(outer.length);
+    expect(measureArtifactUploadBytes(artifact)).toBe(
+      new TextEncoder().encode(serializePublishArtifact(artifact)).byteLength
+    );
 
     const decrypted =
       await decryptEncryptedArtifactPayload<EncryptedReaderSpaceData>(

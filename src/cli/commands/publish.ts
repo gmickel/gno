@@ -4,7 +4,8 @@
  * @module src/cli/commands/publish
  */
 
-import { mkdir, writeFile } from "node:fs/promises";
+// node:fs/promises — directory creation has no Bun-native equivalent.
+import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { join } from "node:path";
 
@@ -16,7 +17,11 @@ import type { PublishAssetEgressSummary } from "../../publish/attachment-resolve
 import type { SanitizeWarning } from "../../publish/obsidian-sanitize";
 
 import { resolveDownloadsDir } from "../../core/user-dirs";
-import { derivePublishArtifactFilename, slugify } from "../../publish/artifact";
+import {
+  derivePublishArtifactFilename,
+  serializePublishArtifact,
+  slugify,
+} from "../../publish/artifact";
 import { exportPublishArtifact } from "../../publish/export-service";
 import { formatSanitizeWarnings } from "../../publish/obsidian-sanitize";
 import { initStore } from "./shared";
@@ -64,6 +69,15 @@ export async function buildDefaultPublishExportPath(
     downloadsDir,
     `${fileName}-${formatExportDateStamp(artifact.exportedAt)}.json`
   );
+}
+
+/** Write exactly the canonical byte sequence used by upload-size accounting. */
+export async function writePublishArtifactFile(
+  outPath: string,
+  artifact: PublishArtifact
+): Promise<void> {
+  await mkdir(dirname(outPath), { recursive: true });
+  await Bun.write(outPath, serializePublishArtifact(artifact));
 }
 
 export async function publishExport(
@@ -119,8 +133,7 @@ export async function publishExport(
     const outPath =
       options.out?.trim() || (await buildDefaultPublishExportPath(artifact));
 
-    await mkdir(dirname(outPath), { recursive: true });
-    await writeFile(outPath, JSON.stringify(artifact, null, 2));
+    await writePublishArtifactFile(outPath, artifact);
 
     return {
       success: true,

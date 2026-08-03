@@ -57,5 +57,19 @@ const UTF8 = new TextEncoder();
 export const measureSerializedUploadBytes = (serializedBody: string): number =>
   UTF8.encode(serializedBody).byteLength;
 
+/**
+ * Canonical on-disk/upload serialization for publish artifacts.
+ *
+ * Byte-budget enforcement and every artifact writer must use this exact
+ * representation so `finalUploadBytes` describes the bytes handed to gno.sh.
+ */
+export const serializePublishArtifact = (artifact: unknown): string => {
+  const serialized = JSON.stringify(artifact, null, 2);
+  if (serialized === undefined) {
+    throw new TypeError("Publish artifact is not JSON-serializable");
+  }
+  return serialized;
+};
+
 export const measureArtifactUploadBytes = (artifact: unknown): number =>
-  measureSerializedUploadBytes(JSON.stringify(artifact));
+  measureSerializedUploadBytes(serializePublishArtifact(artifact));

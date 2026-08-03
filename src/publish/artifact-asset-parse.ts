@@ -25,8 +25,8 @@ import {
 import {
   matchGnoAssetTokens,
   parseGnoAssetSentinel,
-  sniffRasterMediaType,
 } from "./artifact-asset-sniff";
+import { validateRasterBytes } from "./attachment-raster";
 
 const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/u;
 const TRAVERSAL_PATTERN = /(?:^|[\\/])\.\.(?:[\\/]|$)|^\/|^[a-zA-Z]:[\\/]/u;
@@ -273,17 +273,23 @@ const readClosedAsset = (
       `${field}.sha256 does not match payload bytes`
     );
   }
-  const sniffed = sniffRasterMediaType(decoded.bytes);
-  if (!sniffed) {
-    return fail(
-      "ASSET_UNSUPPORTED_FORMAT",
-      `${field} payload does not match a supported raster signature`
-    );
+  const validatedRaster = validateRasterBytes(decoded.bytes);
+  if (!validatedRaster.ok) {
+    return fail(validatedRaster.code, `${field} ${validatedRaster.message}`);
   }
-  if (sniffed !== record.mediaType) {
+  if (validatedRaster.mediaType !== record.mediaType) {
     return fail(
       "ASSET_MIME_SPOOF",
-      `${field} declared ${record.mediaType} but bytes sniff as ${sniffed}`
+      `${field} declared ${record.mediaType} but bytes sniff as ${validatedRaster.mediaType}`
+    );
+  }
+  if (
+    validatedRaster.width !== record.width ||
+    validatedRaster.height !== record.height
+  ) {
+    return fail(
+      "ASSET_DIMENSION_INVALID",
+      `${field} declared ${record.width}x${record.height} but bytes are ${validatedRaster.width}x${validatedRaster.height}`
     );
   }
 

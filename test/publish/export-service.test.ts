@@ -15,6 +15,8 @@ import type { DocumentRow, StorePort, TagRow } from "../../src/store/types";
 import {
   BUNDLED_RASTER_ASSETS_CAPABILITY,
   measureArtifactUploadBytes,
+  measureSerializedUploadBytes,
+  serializePublishArtifact,
   validatePublishAssetContract,
 } from "../../src/publish/artifact-assets";
 import { exportPublishArtifact } from "../../src/publish/export-service";
@@ -129,6 +131,12 @@ describe("exportPublishArtifact attachment bundling", () => {
     expect(assetSummary.encodedBytes).toBeGreaterThan(0);
     expect(assetSummary.finalUploadBytes).toBe(
       measureArtifactUploadBytes(artifact)
+    );
+    expect(assetSummary.finalUploadBytes).toBe(
+      measureSerializedUploadBytes(serializePublishArtifact(artifact))
+    );
+    expect(assetSummary.finalUploadBytes).toBeGreaterThan(
+      measureSerializedUploadBytes(JSON.stringify(artifact))
     );
     expect(Array.isArray(assetSummary.diagnostics)).toBe(true);
     expect(warnings.some((w) => w.kind === "image-embed-dropped")).toBe(false);

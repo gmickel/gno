@@ -47,6 +47,7 @@ export {
   measureArtifactUploadBytes,
   measureSerializedUploadBytes,
   parseGnoAssetSentinel,
+  serializePublishArtifact,
   sniffRasterMediaType,
   validatePublishAssetContract,
 } from "./artifact-assets";

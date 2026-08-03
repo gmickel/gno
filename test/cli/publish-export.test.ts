@@ -1,9 +1,14 @@
 import { describe, expect, it } from "bun:test";
+// node:fs/promises — temporary directory lifecycle has no Bun-native equivalent.
+import { mkdtemp, rm } from "node:fs/promises";
+// node:os — no Bun temporary-directory helper.
+import { tmpdir } from "node:os";
 import { join, win32 } from "node:path";
 
 import {
   buildDefaultPublishExportPath,
   formatPublishExport,
+  writePublishArtifactFile,
 } from "../../src/cli/commands/publish";
 import { resolveDownloadsDir } from "../../src/core/user-dirs";
 import {
@@ -16,6 +21,8 @@ import {
   deriveExportedSummary,
   deriveExportedTitle,
   MAX_PUBLISH_SLUG_LENGTH,
+  measureArtifactUploadBytes,
+  serializePublishArtifact,
 } from "../../src/publish/artifact";
 import { buildEncryptedArtifactPayload } from "../../src/publish/encrypted-export";
 
@@ -168,6 +175,32 @@ describe("publish export helpers", () => {
     expect(await buildDefaultPublishExportPath(artifact)).toEndWith(
       join("Downloads", "atlas-20260410.json")
     );
+  });
+
+  it("writes the exact canonical bytes reported by finalUploadBytes", async () => {
+    const root = await mkdtemp(join(tmpdir(), "gno-publish-write-"));
+    try {
+      const artifact = buildPublishArtifact({
+        notes: [{ ...PUBLISH_NOTE, markdown: "# Atlas\n\nGrüezi 👋" }],
+        routeSlug: "atlas",
+        sourceType: "collection",
+        summary: "Atlas summary",
+        title: "Atlas",
+        visibility: "public",
+      });
+      const outPath = join(root, "nested", "atlas.json");
+
+      await writePublishArtifactFile(outPath, artifact);
+
+      const written = await Bun.file(outPath).text();
+      expect(written).toBe(serializePublishArtifact(artifact));
+      expect(new TextEncoder().encode(written).byteLength).toBe(
+        measureArtifactUploadBytes(artifact)
+      );
+      expect(written).toContain('\n  "exportedAt"');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("formats successful export output with the next step", () => {
