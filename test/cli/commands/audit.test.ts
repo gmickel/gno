@@ -277,6 +277,26 @@ describe("gno audit CLI", () => {
     }
   });
 
+  test("canonicalizes equivalent orphan policies in the rules fingerprint", async () => {
+    const first = await audit({
+      category: "links",
+      orphanRoots: ["gno://notes/b.md", "gno://notes/a.md"],
+      orphanIgnorePrefixes: ["drafts", "archive", "drafts"],
+    });
+    const second = await audit({
+      category: "links",
+      orphanRoots: ["gno://notes/a.md", "gno://notes/b.md", "gno://notes/a.md"],
+      orphanIgnorePrefixes: ["archive", "drafts"],
+    });
+    expect(first.success).toBe(true);
+    expect(second.success).toBe(true);
+    if (first.success && second.success) {
+      expect(first.report.fingerprints.rules).toBe(
+        second.report.fingerprints.rules
+      );
+    }
+  });
+
   test("audits every Markdown extension and discloses capped frontmatter", async () => {
     const incompleteSource =
       "---\nsource:\n  kind: web\n---\n# Capture provenance\n";

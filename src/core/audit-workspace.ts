@@ -445,8 +445,8 @@ const captureWorkspaceFingerprints = async (
       ruleSet: AUDIT_RULE_SET_VERSION,
       categories: options.categories,
       agePolicy: options.agePolicy ?? null,
-      orphanRoots: options.orphanRoots ?? [],
-      orphanIgnorePrefixes: options.orphanIgnorePrefixes ?? [],
+      orphanRoots: normalizeValues(options.orphanRoots),
+      orphanIgnorePrefixes: normalizeValues(options.orphanIgnorePrefixes),
     }),
   };
 };
