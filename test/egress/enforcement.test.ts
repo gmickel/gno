@@ -173,6 +173,32 @@ describe("network boundary policy enforcement", () => {
     ).toThrow(EgressDeniedError);
   });
 
+  test("scopes remote audits to the requested collection array", () => {
+    const collections = [
+      collection("public", "remote"),
+      collection("private", "local_only"),
+    ];
+    const request = (requested: string[]) => ({
+      method: "tools/call",
+      params: {
+        name: "gno_audit",
+        arguments: { collections: requested },
+      },
+    });
+    const context = {
+      authenticated: true,
+      destinationZone: "remote" as const,
+      operationAuthorized: true,
+    };
+
+    expect(() =>
+      enforceHttpMcpEgress(request([" Public "]), collections, context)
+    ).not.toThrow();
+    expect(() =>
+      enforceHttpMcpEgress(request(["private"]), collections, context)
+    ).toThrow(EgressDeniedError);
+  });
+
   test("attributes a batch denial to the exact denied member", async () => {
     const batch = [
       { jsonrpc: "2.0", id: 1, method: "ping" },

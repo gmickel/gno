@@ -213,15 +213,12 @@ const observeDocument = async (
     }
     const beforeMtime = file.lastModified;
     const beforeSize = file.size;
-    const indexedMtime = Date.parse(document.sourceMtime);
-    const statUnchanged =
-      beforeSize === document.sourceSize &&
-      Number.isFinite(indexedMtime) &&
-      beforeMtime === indexedMtime;
-    const observedHash =
-      !inspectFreshness || statUnchanged
-        ? document.sourceHash
-        : await hashFile(file);
+    // Freshness must hash readable bytes even when size/mtime still match the
+    // indexed metadata — metadata-preserving restores can drift without a
+    // stat change.
+    const observedHash = inspectFreshness
+      ? await hashFile(file)
+      : document.sourceHash;
     const frontmatter =
       readFrontmatter && document.sourceExt.toLowerCase() === ".md"
         ? await file.slice(0, AUDIT_FRONTMATTER_BYTES).text()
@@ -367,6 +364,12 @@ const captureWorkspaceFingerprints = async (
           : { uri: document.uri, state: "missing" };
       })
     : [];
+  // Link audits fingerprint the same unscoped bounded graph capture the rules
+  // use, so concurrent doc_links / resolution changes retry or report
+  // changed_during_audit even when document revision fields are unchanged.
+  const linkGraph = options.categories.includes("links")
+    ? captureAuditLinkSnapshot(options.store.getRawDb())
+    : null;
   return {
     config: hashAuditCanonical({
       collections: options.collections.map(({ name, path, pattern }) => ({
@@ -385,6 +388,7 @@ const captureWorkspaceFingerprints = async (
         lastErrorCode: document.lastErrorCode,
       })),
       total: selected.total,
+      linkGraph,
     }),
     rules: hashAuditCanonical({
       ruleSet: AUDIT_RULE_SET_VERSION,

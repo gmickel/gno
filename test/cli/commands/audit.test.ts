@@ -1,5 +1,7 @@
+import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { chmod, mkdir, mkdtemp, rename, stat } from "node:fs/promises";
+// node:fs/promises provides filesystem metadata mutation with no Bun equivalent.
+import { chmod, mkdir, mkdtemp, rename, stat, utimes } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -221,6 +223,76 @@ describe("gno audit CLI", () => {
       expect(changed.report.status).toBe("changed_during_audit");
     }
     expect(mutations).toBe(2);
+  });
+
+  test("detects graph drift without document revision changes", async () => {
+    const database = new Database(getIndexDbPath());
+    const revisionsBefore = database
+      .query<
+        { id: number; source_hash: string; indexed_at: string | null },
+        []
+      >("SELECT id, source_hash, indexed_at FROM documents ORDER BY id")
+      .all();
+    let mutations = 0;
+    const changed = await audit({
+      category: "links",
+      onProgress: ({ phase, completed }) => {
+        if (phase !== "snapshot" || completed === 0) return;
+        mutations += 1;
+        const target = mutations % 2 === 0 ? "b" : "missing";
+        database.run(
+          "UPDATE doc_links SET target_ref = ?, target_ref_norm = ?",
+          [target, target]
+        );
+      },
+    });
+    expect(changed.success).toBe(true);
+    if (changed.success) {
+      expect(changed.exitCode).toBe(5);
+      expect(changed.report.status).toBe("changed_during_audit");
+    }
+    expect(mutations).toBe(2);
+    expect(
+      database
+        .query<
+          { id: number; source_hash: string; indexed_at: string | null },
+          []
+        >("SELECT id, source_hash, indexed_at FROM documents ORDER BY id")
+        .all()
+    ).toEqual(revisionsBefore);
+    database.close();
+  });
+
+  test("hashes freshness bytes even when size and mtime match the index", async () => {
+    const database = new Database(getIndexDbPath(), { readonly: true });
+    const indexed = database
+      .query<{ source_mtime: string; source_size: number }, [string]>(
+        "SELECT source_mtime, source_size FROM documents WHERE rel_path = ?"
+      )
+      .get("a.md");
+    database.close();
+    if (!indexed) throw new Error("Expected indexed a.md");
+
+    const sourcePath = join(notes, "a.md");
+    await Bun.write(sourcePath, "# X\n\n[[B]]\n");
+    const indexedTime = new Date(indexed.source_mtime);
+    await utimes(sourcePath, indexedTime, indexedTime);
+    const current = await stat(sourcePath);
+    expect(current.size).toBe(indexed.source_size);
+    expect(current.mtime.toISOString()).toBe(indexed.source_mtime);
+
+    const result = await audit({ category: "freshness" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.exitCode).toBe(4);
+      expect(result.report.status).toBe("complete");
+      expect(result.report.findings).toContainEqual(
+        expect.objectContaining({
+          ruleId: "freshness.source-index-drift",
+          subject: "gno://notes/a.md",
+        })
+      );
+    }
   });
 
   test("uses exit 2 when the configured index is unavailable", async () => {

@@ -126,6 +126,13 @@ const requestedCollections = (
   const names = new Set<string>();
   const direct = args.collection;
   if (typeof direct === "string") names.add(direct.trim().toLowerCase());
+  if (record?.name === "gno_audit" && Array.isArray(args.collections)) {
+    for (const value of args.collections) {
+      if (typeof value !== "string") continue;
+      const normalized = value.trim().toLowerCase();
+      if (normalized) names.add(normalized);
+    }
+  }
   for (const key of ["ref", "target", "from", "to", "root", "uri"]) {
     const collection = collectionFromRef(args[key]);
     if (collection) names.add(collection);
