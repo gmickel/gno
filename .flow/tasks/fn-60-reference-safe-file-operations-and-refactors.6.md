@@ -38,9 +38,8 @@ Reference-style Markdown edits occur at definitions. Relative links are recomput
 
 
 ## Done summary
-TBD
-
+Implemented a bounded, deterministic parser-backed rename/move impact planner. It resolves complete bounded catalogs without first-match ambiguity, inventories self-links and conservative opaque/code/HTML/embed forms, preserves exact destination spans and encoding, respects document edit capabilities, and fails closed for unsafe paths, missing content, truncation, overlap, ambiguity, or unsupported references.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: be627631
+- Tests: bun test test/core/file-refactor-impact.test.ts test/core/file-refactor-planner.test.ts (21 pass), bun test test/core/links.test.ts (54 pass), bun test test/store/links.test.ts (42 pass), bun run lint:check
 - PRs:
