@@ -542,12 +542,14 @@ describe("attachment raster validation", () => {
 
   test("producer decodability rejects invalid compressed pixels and accepts real rasters", async () => {
     const invalidPng = pngWithInvalidCompressedData();
-    expect(validateRasterBytesStructural(invalidPng).ok).toBe(true);
+    expect(validateRasterBytesStructural(invalidPng)).toMatchObject({
+      ok: false,
+      code: "ASSET_CORRUPT",
+    });
     const invalidPngResult = await validateRasterDecodable(invalidPng);
     expect(invalidPngResult).toMatchObject({
       ok: false,
       code: "ASSET_CORRUPT",
-      message: "image/png payload is not image-decodable",
     });
 
     const fabricated = buildAvif(1, 1);

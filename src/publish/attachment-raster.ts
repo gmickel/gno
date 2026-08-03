@@ -306,10 +306,92 @@ const parseDimensions = (
  * IHDR prefix from crossing the boundary as an image. CRCs, image data, the
  * terminal IEND chunk, and no trailing bytes are required.
  */
+const pngPasses = [
+  [0, 0, 8, 8],
+  [4, 0, 8, 8],
+  [0, 4, 4, 8],
+  [2, 0, 4, 4],
+  [0, 2, 2, 4],
+  [1, 0, 2, 2],
+  [0, 1, 1, 2],
+] as const;
+
+const validatePngPixels = (
+  bytes: Uint8Array,
+  idatChunks: readonly Uint8Array[]
+): boolean => {
+  const width = readU32BE(bytes, 16);
+  const height = readU32BE(bytes, 20);
+  const bitDepth = bytes[24] ?? 0;
+  const colorType = bytes[25] ?? 0;
+  const interlace = bytes[28] ?? 0;
+  const channels = new Map([
+    [0, 1],
+    [2, 3],
+    [3, 1],
+    [4, 2],
+    [6, 4],
+  ]).get(colorType);
+  const validDepths = new Map<number, readonly number[]>([
+    [0, [1, 2, 4, 8, 16]],
+    [2, [8, 16]],
+    [3, [1, 2, 4, 8]],
+    [4, [8, 16]],
+    [6, [8, 16]],
+  ]).get(colorType);
+  if (
+    channels === undefined ||
+    !validDepths?.includes(bitDepth) ||
+    bytes[26] !== 0 ||
+    bytes[27] !== 0 ||
+    (interlace !== 0 && interlace !== 1)
+  ) {
+    return false;
+  }
+  const passes = interlace === 0 ? ([[0, 0, 1, 1]] as const) : pngPasses;
+  const rowLengths: number[] = [];
+  for (const [startX, startY, stepX, stepY] of passes) {
+    const passWidth = width <= startX ? 0 : Math.ceil((width - startX) / stepX);
+    const passHeight =
+      height <= startY ? 0 : Math.ceil((height - startY) / stepY);
+    if (passWidth === 0 || passHeight === 0) continue;
+    const rowBytes = Math.ceil((passWidth * channels * bitDepth) / 8);
+    for (let row = 0; row < passHeight; row += 1) rowLengths.push(rowBytes);
+  }
+  const compressedLength = idatChunks.reduce(
+    (total, chunk) => total + chunk.length,
+    0
+  );
+  const compressed = new Uint8Array(compressedLength);
+  let compressedOffset = 0;
+  for (const chunk of idatChunks) {
+    compressed.set(chunk, compressedOffset);
+    compressedOffset += chunk.length;
+  }
+  let inflated: Uint8Array;
+  try {
+    inflated = Bun.inflateSync(compressed, { windowBits: 15 });
+  } catch {
+    return false;
+  }
+  const expectedLength = rowLengths.reduce(
+    (total, length) => total + length + 1,
+    0
+  );
+  if (inflated.length !== expectedLength) return false;
+  let rowOffset = 0;
+  for (const rowLength of rowLengths) {
+    if ((inflated[rowOffset] ?? 5) > 4) return false;
+    rowOffset += rowLength + 1;
+  }
+  return rowOffset === inflated.length;
+};
+
 const isCompletePng = (bytes: Uint8Array): boolean => {
   let offset = 8;
   let chunkIndex = 0;
   let sawIdat = false;
+  const idatChunks: Uint8Array[] = [];
   while (offset + 12 <= bytes.length) {
     const dataLength = readU32BE(bytes, offset);
     const typeStart = offset + 4;
@@ -324,9 +406,17 @@ const isCompletePng = (bytes: Uint8Array): boolean => {
     if (chunkIndex === 0 && (type !== "IHDR" || dataLength !== 13)) {
       return false;
     }
-    if (type === "IDAT") sawIdat = true;
+    if (type === "IDAT") {
+      sawIdat = true;
+      idatChunks.push(bytes.subarray(dataStart, dataEnd));
+    }
     if (type === "IEND") {
-      return dataLength === 0 && sawIdat && chunkEnd === bytes.length;
+      return (
+        dataLength === 0 &&
+        sawIdat &&
+        chunkEnd === bytes.length &&
+        validatePngPixels(bytes, idatChunks)
+      );
     }
     offset = chunkEnd;
     chunkIndex += 1;
