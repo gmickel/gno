@@ -26,10 +26,10 @@ diagnose can emit the closed, redacted `query-diagnose@1.1` affinity metadata.
 ## Overview
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and
-resources. GNO registers 25 tools in default read-only mode and 40 when writes
+resources. GNO registers 26 tools in default read-only mode and 41 when writes
 are explicitly enabled:
 
-- **Tools (read)**: gno_context, gno_context_verify, gno_ask, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_multi_get, gno_status, gno_changes, gno_diff, gno_impact, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
+- **Tools (read)**: gno_context, gno_context_verify, gno_ask, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_section, gno_multi_get, gno_status, gno_changes, gno_diff, gno_impact, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
 - **Tools (write, opt-in)**: gno_trace_label, gno_trace_export, gno_trace_delete, gno_trace_purge, gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note
 - **Tools (jobs)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
@@ -106,6 +106,7 @@ Use the narrower tools when the request is explicit:
 | `gno_query`          | Default choice; mixed lexical + semantic + reranked retrieval                   | `gno_multi_get` for top URIs                        |
 | `gno_query_diagnose` | Important target doc is missing or you need stage-by-stage retrieval evidence   | Adjust filters/query mode, then retry `gno_query`   |
 | `gno_get`            | One known `gno://` URI, `#docid`, or `collection/path`                          | Use `fromLine` + `lineCount` first                  |
+| `gno_section`        | Create/resolve a durable section target; cite only exact/recovered              | Follow citation lines with `gno_get`                |
 | `gno_multi_get`      | Batch several top result refs or glob-matched docs                              | Keep `maxBytes` bounded                             |
 | `gno_status`         | Results look stale, vector search fails, or embeddings may be missing           | Run write-enabled `gno_index` or `gno_embed`        |
 
@@ -1214,6 +1215,29 @@ path separators, controls, and platform-invalid punctuation are rejected before
 filesystem access. Case and canonically equivalent Unicode spellings share one
 NFC/case-folded identity. Its 242-byte UTF-8 budget keeps the complete
 `index-<identity>.sqlite` filename within the portable 255-byte component limit.
+
+### gno_section
+
+Create or resolve a durable `SectionTargetV1` against one indexed document.
+
+```
+action: "create"
+ref: "gno://notes/pilot.md"
+anchor: "setup"   # or line: 3 — exactly one selector
+```
+
+```
+action: "resolve"
+ref: "gno://notes/pilot.md"
+target: { schemaVersion: "1", ... }
+```
+
+Always registered and read-only: no document writes and no target persistence.
+Uses the shared core create/resolve/transport contract. Exact/recovered results
+include citation evidence (canonical URI, current anchor/title, inclusive line
+range, fingerprint). Ambiguous/stale/missing omit citation and are not safe to
+navigate or cite. Model-visible text includes serialized JSON plus `gno_get`
+`fromLine`/`lineCount` follow-up guidance for navigable ranges.
 
 ### gno_multi_get
 

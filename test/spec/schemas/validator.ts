@@ -88,6 +88,7 @@ async function loadAllSchemas(): Promise<void> {
     "section-target",
     "section-target-create-result",
     "section-target-resolve-result",
+    "section",
   ];
 
   for (const name of schemaFiles) {

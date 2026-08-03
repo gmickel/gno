@@ -92,6 +92,7 @@ describe("gno_capture MCP", () => {
 
     expect(names).not.toContain("gno_capture");
     expect(names).toContain("gno_search");
+    expect(names).toContain("gno_section");
     expect(names).toContain("gno_trace_list");
     expect(names).toContain("gno_trace_show");
     expect(names).not.toContain("gno_trace_label");

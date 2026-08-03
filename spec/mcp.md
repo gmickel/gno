@@ -166,6 +166,7 @@ Collection names are case-insensitive on input and normalized to lowercase in re
 - Use `gno_query_diagnose` when a specific important document is missing from results or when you need per-stage retrieval evidence before changing query strategy.
 - Use `gno_graph_query` for bounded typed-edge traversal over `doc_edges`; keep `gno_graph_neighbors`/`gno_graph_path` for the legacy graph projection.
 - After search/query returns a `line`, call `gno_get` with `fromLine` and `lineCount` before fetching whole documents.
+- Use `gno_section` to create or resolve durable section targets; only cite/navigate on exact/recovered citations, then follow with `gno_get` line ranges.
 - Use `gno_multi_get` to batch the top result refs. Keep `maxBytes` bounded to avoid flooding client context.
 - Check `gno_status` when results look stale, vector search is unavailable, or embedding backlog may explain missing results.
 
@@ -897,6 +898,67 @@ contain `..`. Invalid names are rejected before filesystem access. NFC/case-
 folded equivalents share one logical identity. The canonical identity is
 limited to 242 UTF-8 bytes so `index-<identity>.sqlite` stays within the portable
 255-byte filename-component limit.
+
+---
+
+### gno_section
+
+Read-only create/resolve for durable `SectionTargetV1` locators against one
+indexed document. Always registered (independent of `enableWrite`). Does not
+write documents, persist targets, or fork the shared parser/resolver.
+
+Uses the active indexed store content and the shared core
+create/resolve/transport projection (same bounds, closed validation, and
+fail-closed citation semantics as REST/SDK). Canonical document URI always
+comes from the stored document — never from the caller.
+
+**Annotations (descriptive only):**
+`readOnlyHint: true`, `destructiveHint: false`, `idempotentHint: true`,
+`openWorldHint: false`. Authorization remains server-side; annotations do not
+grant or deny writes. `gno_section` is not in `MCP_WRITE_TOOL_NAMES`.
+
+**Input Schema (closed, action-discriminated):**
+
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action", "ref"],
+  "properties": {
+    "action": { "enum": ["create", "resolve"] },
+    "ref": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "anchor": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "line": { "type": "integer", "minimum": 1 },
+    "target": { "$ref": "gno://schemas/section-target@1.0" }
+  }
+}
+```
+
+The published MCP discovery schema is one closed object because the SDK cannot
+reliably publish/validate Zod unions for tool schemas. Server-side refinements
+enforce the action branches: create requires exactly one of `anchor` or `line`
+(1-based heading line) and forbids `target`; resolve requires a closed
+`SectionTargetV1` and forbids `anchor`/`line`. Unknown fields, unknown actions,
+inverted offsets, and oversized values fail closed before core resolution or
+document reads.
+
+**Output Schema:** `gno://schemas/section@1.0`
+
+Action-discriminated structured output wrapping the shared create/resolve
+result semantics:
+
+- `action: "create"` → `{ schemaVersion:"1.0", action, uri, target }`
+- `action: "resolve"` + `exact`/`recovered` → includes `citation` with
+  canonical `uri`, current `anchor`/`title`, inclusive `lineStart`/`lineEnd`,
+  and `sourceFingerprint`
+- `action: "resolve"` + `ambiguous`/`stale`/`missing` → omits `citation`;
+  model-visible text states the result is not safe to navigate or cite
+
+Model-visible `content[0].text` includes the serialized structured JSON for
+MCP 2025-11-25 hosts that ignore `structuredContent`, plus concise `gno_get`
+`fromLine`/`lineCount` follow-up guidance when a navigable citation is present.
+
+Existing `gno_get` input/output and line-range behavior are unchanged.
 
 ---
 

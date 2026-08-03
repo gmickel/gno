@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/section@1.0",
+  "title": "GNO MCP Section Tool Result",
+  "description": "Action-discriminated MCP gno_section structured output. Create returns the shared create-result semantics; resolve returns the shared resolve-result semantics (citation only for exact/recovered).",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "action", "uri", "target"],
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0"
+        },
+        "action": {
+          "const": "create"
+        },
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "target": {
+          "$ref": "gno://schemas/section-target@1.0"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "action",
+        "uri",
+        "status",
+        "currentFingerprint",
+        "target",
+        "diagnostics",
+        "citation"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0"
+        },
+        "action": {
+          "const": "resolve"
+        },
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "status": {
+          "type": "string",
+          "enum": ["exact", "recovered"]
+        },
+        "currentFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "target": {
+          "$ref": "gno://schemas/section-target@1.0"
+        },
+        "diagnostics": {
+          "$ref": "gno://schemas/section-target-resolve-result@1.0#/definitions/diagnostics"
+        },
+        "citation": {
+          "$ref": "gno://schemas/section-target-resolve-result@1.0#/definitions/citation"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "action",
+        "uri",
+        "status",
+        "currentFingerprint",
+        "target",
+        "diagnostics"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0"
+        },
+        "action": {
+          "const": "resolve"
+        },
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ambiguous", "stale", "missing"]
+        },
+        "currentFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "target": {
+          "$ref": "gno://schemas/section-target@1.0"
+        },
+        "diagnostics": {
+          "$ref": "gno://schemas/section-target-resolve-result@1.0#/definitions/diagnostics"
+        }
+      }
+    }
+  ]
+}

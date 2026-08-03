@@ -39,9 +39,8 @@ No MCP write, target persistence, or parser fork. An ambiguous/stale target cann
 
 
 ## Done summary
-TBD
-
+Added the read-only gno_section MCP tool for durable section-target creation and conservative resolution, with closed schemas, stdio/HTTP parity, fail-closed citation behavior, documentation, and explicit egress classification.
 ## Evidence
 - Commits:
-- Tests:
+- Tests: bun test test/egress/enforcement.test.ts test/mcp/tools/sections.test.ts test/mcp/http-parity.test.ts (32 pass), bun run lint:check (clean), bun scripts/docs-verify.ts (15 pass, 2 model-cache skips), bun test (3682 pass, 2 platform/opt-in skips, 0 fail)
 - PRs:

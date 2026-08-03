@@ -13,8 +13,17 @@ import type { DocumentInput } from "../../src/store/types";
 
 import { createMcpServerSurface } from "../../src/mcp/context";
 import { HttpMcpTransport } from "../../src/mcp/http-transport";
+import { SECTION_MCP_ANNOTATIONS } from "../../src/mcp/tools/sections";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
+
+const SECTION_FIXTURE_CONTENT = [
+  "# Shared fixture",
+  "",
+  "## Setup",
+  "",
+  "Transport-neutral evidence.",
+].join("\n");
 
 describe("stdio and HTTP MCP parity", () => {
   let root: string;
@@ -41,14 +50,13 @@ describe("stdio and HTTP MCP parity", () => {
       },
     ];
     expect((await store.syncCollections(collections)).ok).toBe(true);
-    const fixtureContent = "# Shared fixture\n\nTransport-neutral evidence.";
     const fixture: DocumentInput = {
       collection: "notes",
       relPath: "fixture.md",
       sourceHash: "http-parity-fixture",
       sourceMime: "text/markdown",
       sourceExt: ".md",
-      sourceSize: fixtureContent.length,
+      sourceSize: SECTION_FIXTURE_CONTENT.length,
       sourceMtime: new Date(0).toISOString(),
       title: "Shared fixture",
       mirrorHash: "http-parity-fixture",
@@ -56,7 +64,8 @@ describe("stdio and HTTP MCP parity", () => {
     };
     expect((await store.upsertDocument(fixture)).ok).toBe(true);
     expect(
-      (await store.upsertContent(fixture.mirrorHash!, fixtureContent)).ok
+      (await store.upsertContent(fixture.mirrorHash!, SECTION_FIXTURE_CONTENT))
+        .ok
     ).toBe(true);
 
     const config: Config = {
@@ -132,6 +141,42 @@ describe("stdio and HTTP MCP parity", () => {
     expect(httpTools).toEqual(stdioTools);
     expect(httpResources).toEqual(stdioResources);
 
+    const sectionTool = stdioTools.tools.find(
+      (tool) => tool.name === "gno_section"
+    );
+    expect(sectionTool).toBeDefined();
+    expect(sectionTool?.annotations).toEqual(SECTION_MCP_ANNOTATIONS);
+    expect(sectionTool?.inputSchema).toMatchObject({
+      type: "object",
+      additionalProperties: false,
+    });
+    expect(sectionTool?.inputSchema.required).toEqual(
+      expect.arrayContaining(["action", "ref"])
+    );
+    expect(sectionTool?.inputSchema.properties).toMatchObject({
+      action: expect.anything(),
+      ref: expect.anything(),
+      anchor: expect.anything(),
+      line: expect.anything(),
+      target: expect.anything(),
+    });
+    expect(sectionTool?.outputSchema).toMatchObject({
+      type: "object",
+      additionalProperties: false,
+    });
+    expect(sectionTool?.outputSchema?.required).toEqual(
+      expect.arrayContaining(["schemaVersion", "action", "uri", "target"])
+    );
+    expect(sectionTool?.outputSchema?.properties).toMatchObject({
+      schemaVersion: expect.anything(),
+      action: expect.anything(),
+      uri: expect.anything(),
+      target: expect.anything(),
+      status: expect.anything(),
+      citation: expect.anything(),
+      diagnostics: expect.anything(),
+    });
+
     const [stdioStatus, httpStatus] = await Promise.all([
       stdioClient.callTool({ name: "gno_status", arguments: {} }),
       httpClient.callTool({ name: "gno_status", arguments: {} }),
@@ -143,5 +188,55 @@ describe("stdio and HTTP MCP parity", () => {
       httpClient.readResource({ uri: "gno://notes/fixture.md" }),
     ]);
     expect(httpTags).toEqual(stdioTags);
+
+    const createArgs = {
+      action: "create",
+      ref: "gno://notes/fixture.md",
+      anchor: "setup",
+    };
+    const [stdioCreate, httpCreate] = await Promise.all([
+      stdioClient.callTool({ name: "gno_section", arguments: createArgs }),
+      httpClient.callTool({ name: "gno_section", arguments: createArgs }),
+    ]);
+    expect(stdioCreate.isError).not.toBe(true);
+    expect(httpCreate).toEqual(stdioCreate);
+    expect(stdioCreate.structuredContent).toMatchObject({
+      schemaVersion: "1.0",
+      action: "create",
+      uri: "gno://notes/fixture.md",
+    });
+    const createdTarget = (
+      stdioCreate.structuredContent as {
+        target: Record<string, unknown>;
+      }
+    ).target;
+
+    const resolveArgs = {
+      action: "resolve",
+      ref: "gno://notes/fixture.md",
+      target: createdTarget,
+    };
+    const [stdioResolve, httpResolve] = await Promise.all([
+      stdioClient.callTool({ name: "gno_section", arguments: resolveArgs }),
+      httpClient.callTool({ name: "gno_section", arguments: resolveArgs }),
+    ]);
+    expect(stdioResolve.isError).not.toBe(true);
+    expect(httpResolve).toEqual(stdioResolve);
+    expect(stdioResolve.structuredContent).toMatchObject({
+      schemaVersion: "1.0",
+      action: "resolve",
+      status: "exact",
+      uri: "gno://notes/fixture.md",
+      citation: {
+        uri: "gno://notes/fixture.md",
+        anchor: "setup",
+      },
+    });
+    const citation = (
+      stdioResolve.structuredContent as {
+        citation: { lineStart: number; lineEnd: number };
+      }
+    ).citation;
+    expect(citation.lineEnd).toBeGreaterThanOrEqual(citation.lineStart);
   });
 });

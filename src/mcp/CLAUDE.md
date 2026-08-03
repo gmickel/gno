@@ -13,6 +13,7 @@ src/mcp/
 │   ├── vsearch.ts     # gno_vsearch (vector)
 │   ├── query.ts       # gno_query (hybrid)
 │   ├── get.ts         # gno_get (single doc)
+│   ├── sections.ts    # gno_section (section target create/resolve)
 │   ├── multi-get.ts   # gno_multi_get (batch)
 │   └── status.ts      # gno_status
 └── resources/         # Resource implementations

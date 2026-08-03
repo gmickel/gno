@@ -67,6 +67,12 @@ import { handleMultiGet } from "./multi-get";
 import { handleQuery, handleQueryDiagnose } from "./query";
 import { handleRemoveCollection } from "./remove-collection";
 import { handleSearch } from "./search";
+import {
+  handleSection,
+  SECTION_MCP_ANNOTATIONS,
+  sectionInputSchema,
+  sectionOutputSchema,
+} from "./sections";
 import { handleStatus } from "./status";
 import { handleSync } from "./sync";
 import {
@@ -116,6 +122,8 @@ export const MCP_TOOL_DESCRIPTIONS = {
   get: "Retrieve one document by gno:// URI, docid (#abc123), or collection/path. After search results include line, pass fromLine and lineCount to fetch only the relevant range before expanding to the full document.",
   multiGet:
     "Retrieve multiple documents by refs array or glob pattern. Use after gno_search/gno_query to batch top result URIs/docids; set maxBytes and lineNumbers to control context size.",
+  section:
+    "Create or resolve a durable SectionTargetV1 against one indexed document. action=create needs ref plus exactly one of anchor|line; action=resolve needs ref plus target. Exact/recovered include citation (uri, anchor, title, inclusive lines, fingerprint); ambiguous/stale/missing omit citation and are not safe to navigate or cite. Read-only — does not write or persist targets. Follow navigable ranges with gno_get fromLine/lineCount.",
   status:
     "Get index health: collection count, document count, chunk count, embedding backlog, and per-collection stats. Check first when vector/hybrid results look stale or unavailable.",
   context:
@@ -1062,6 +1070,17 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     MCP_TOOL_DESCRIPTIONS.get,
     getInputSchema.shape,
     (args) => handleGet(args, ctx)
+  );
+
+  server.registerTool(
+    "gno_section",
+    {
+      description: MCP_TOOL_DESCRIPTIONS.section,
+      inputSchema: sectionInputSchema,
+      outputSchema: sectionOutputSchema,
+      annotations: SECTION_MCP_ANNOTATIONS,
+    },
+    (args) => handleSection(args, ctx)
   );
 
   server.tool(

@@ -53,6 +53,7 @@ export const MCP_HTTP_EGRESS_TOOLS = {
   gno_remove_collection: "metadata",
   gno_rename_note: "metadata",
   gno_search: "snippet",
+  gno_section: "metadata",
   gno_similar: "snippet",
   gno_status: "metadata",
   gno_sync: "metadata",
