@@ -538,6 +538,22 @@ export function extractCaptureSourceFromFrontmatter(
 ): Partial<CaptureSource> {
   const { lines } = splitFrontmatter(content);
   const source: Partial<CaptureSource> = {};
+  let parsedSourceMapping = false;
+  try {
+    const parsed = Bun.YAML.parse(lines.join("\n")) as { source?: unknown };
+    if (
+      parsed.source !== null &&
+      typeof parsed.source === "object" &&
+      !Array.isArray(parsed.source)
+    ) {
+      parsedSourceMapping = true;
+      for (const [key, value] of Object.entries(parsed.source)) {
+        source[key as keyof CaptureSource] = value as never;
+      }
+    }
+  } catch {
+    // Invalid YAML falls through to the declaration-preserving parser below.
+  }
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     if (line === undefined) {
@@ -568,6 +584,9 @@ export function extractCaptureSourceFromFrontmatter(
       continue;
     }
     if (key !== "source") {
+      continue;
+    }
+    if (parsedSourceMapping) {
       continue;
     }
     if (rawValue) {

@@ -321,6 +321,46 @@ describe("capture core", () => {
     }
   });
 
+  test("extracts valid source mappings at their declared YAML indentation", () => {
+    const source = extractCaptureSourceFromFrontmatter(
+      [
+        "---",
+        "source:",
+        " kind: web",
+        ' capturedAt: "2026-06-04T12:34:56.000Z"',
+        "---",
+        "",
+      ].join("\n")
+    );
+
+    expect(source).toMatchObject({
+      kind: "web",
+      capturedAt: "2026-06-04T12:34:56.000Z",
+    });
+    expect(validateDeclaredCaptureProvenance(source)).toEqual([]);
+  });
+
+  test("retains block browser clip mappings for provenance validation", () => {
+    const source = extractCaptureSourceFromFrontmatter(
+      [
+        "---",
+        "source:",
+        "  kind: web",
+        '  capturedAt: "2026-06-04T12:34:56.000Z"',
+        "  browserClip:",
+        '    schemaVersion: "0.9"',
+        "---",
+        "",
+      ].join("\n")
+    );
+
+    expect(source.browserClip as unknown).toEqual({ schemaVersion: "0.9" });
+    expect(validateDeclaredCaptureProvenance(source)).toContainEqual({
+      field: "source.browserClip",
+      reason: "invalid",
+    });
+  });
+
   test("extracts and recognizes inline capture source mappings", () => {
     for (const content of [
       "---\nsource: { kind: web }\n---\n",
