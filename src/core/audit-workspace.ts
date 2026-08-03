@@ -458,15 +458,16 @@ const captureWorkspaceFingerprints = async (
 export const runWorkspaceAudit = async (
   options: WorkspaceAuditOptions
 ): Promise<AuditRunResult> => {
+  const normalizedPaths = normalizeValues(options.pathFilters).map((path) =>
+    path.replace(/^\/+/, "")
+  );
   const filters = {
     collections: normalizeValues(options.collectionFilters).map(
       normalizeCollectionName
     ),
     // A root-like prefix means the whole selected collection. Remove it from
     // both selection and reported scope instead of producing an empty match.
-    paths: normalizeValues(options.pathFilters)
-      .map((path) => path.replace(/^\/+/, ""))
-      .filter((path) => path.length > 0),
+    paths: normalizedPaths.includes("") ? [] : normalizedPaths,
     tags: normalizeValues(options.tagFilters).map(normalizeTag),
   };
   const scope: AuditScope = {

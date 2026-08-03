@@ -157,7 +157,10 @@ describe("gno audit CLI", () => {
 
   test("treats a root-like path filter as the unfiltered collection root", async () => {
     const unfiltered = await audit({ category: "links" });
-    const rootFiltered = await audit({ category: "links", paths: ["/"] });
+    const rootFiltered = await audit({
+      category: "links",
+      paths: ["/", "a.md"],
+    });
     expect(unfiltered.success).toBe(true);
     expect(rootFiltered.success).toBe(true);
     if (!(unfiltered.success && rootFiltered.success)) return;
