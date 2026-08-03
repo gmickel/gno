@@ -383,7 +383,7 @@ export function captureAuditLinkSnapshot(
         `SELECT COUNT(*) AS count
          FROM doc_links dl
          JOIN documents d ON d.id = dl.source_doc_id
-         WHERE ${where}`
+         WHERE ${where} AND dl.source = 'parsed'`
       )
       .get(...params)?.count ?? 0;
   const rawLinks = db
@@ -414,7 +414,7 @@ export function captureAuditLinkSnapshot(
               dl.end_line, dl.end_col
        FROM doc_links dl
        JOIN documents d ON d.id = dl.source_doc_id
-       WHERE ${where}
+       WHERE ${where} AND dl.source = 'parsed'
        ORDER BY d.id, dl.start_line, dl.start_col, dl.id
        LIMIT ?`
     )

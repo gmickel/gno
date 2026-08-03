@@ -307,6 +307,19 @@ const filterLinkSnapshot = (
   };
 };
 
+const emptyLinkSnapshot = (): AuditLinkSnapshot => ({
+  documents: [],
+  links: [],
+  totals: { documents: 0, links: 0 },
+  truncated: { documents: false, links: false },
+  metrics: {
+    documentRowsExamined: 0,
+    linkRowsExamined: 0,
+    uniqueTargetsResolved: 0,
+    batchedResolution: true,
+  },
+});
+
 const loadWorkspaceSnapshot = async (
   options: WorkspaceAuditOptions,
   filters: { collections: string[]; paths: string[]; tags: string[] }
@@ -335,20 +348,10 @@ const loadWorkspaceSnapshot = async (
   // Capture the bounded graph before narrowing link scope so incoming edges
   // from outside a filter still prevent false orphans. Source-only audits do
   // not touch the unrelated graph.
-  const rawLinks = options.categories.includes("links")
-    ? captureAuditLinkSnapshot(options.store.getRawDb())
-    : {
-        documents: [],
-        links: [],
-        totals: { documents: 0, links: 0 },
-        truncated: { documents: false, links: false },
-        metrics: {
-          documentRowsExamined: 0,
-          linkRowsExamined: 0,
-          uniqueTargetsResolved: 0,
-          batchedResolution: true as const,
-        },
-      };
+  const rawLinks =
+    options.categories.includes("links") && selected.documents.length > 0
+      ? captureAuditLinkSnapshot(options.store.getRawDb())
+      : emptyLinkSnapshot();
   const selectedIds = new Set(selected.documents.map(({ id }) => id));
   return {
     documents: observed,
@@ -407,9 +410,10 @@ const captureWorkspaceFingerprints = async (
   // Link audits fingerprint the same unscoped bounded graph capture the rules
   // use, so concurrent doc_links / resolution changes retry or report
   // changed_during_audit even when document revision fields are unchanged.
-  const linkGraph = options.categories.includes("links")
-    ? captureAuditLinkSnapshot(options.store.getRawDb())
-    : null;
+  const linkGraph =
+    options.categories.includes("links") && selected.documents.length > 0
+      ? captureAuditLinkSnapshot(options.store.getRawDb())
+      : null;
   return {
     config: hashAuditCanonical({
       collections: options.collections.map(({ name, path, pattern }) => ({

@@ -203,6 +203,85 @@ describe("link integrity audit", () => {
     ).toBe(true);
   });
 
+  test("selects the canonical finding subset before evaluator caps", () => {
+    const targets = Array.from(
+      { length: 1001 },
+      (_, index) => `missing-${index.toString().padStart(4, "0")}.md`
+    );
+    const snapshotFor = (orderedTargets: string[]) => ({
+      documents: [
+        {
+          id: 1,
+          docid: "#source",
+          uri: "gno://notes/source.md",
+          collection: "notes",
+          relPath: "source.md",
+          title: "Source",
+          mirrorHash: "source-mirror",
+        },
+      ],
+      links: orderedTargets.map((targetRef) => ({
+        sourceId: 1,
+        sourceDocid: "#source",
+        sourceUri: "gno://notes/source.md",
+        sourceCollection: "notes",
+        sourceRelPath: "source.md",
+        targetRef,
+        targetRefNorm: targetRef,
+        targetAnchor: null,
+        targetCollection: "notes",
+        linkType: "markdown" as const,
+        startLine: 1,
+        startCol: 1,
+        endLine: 1,
+        endCol: 1,
+        resolved: null,
+      })),
+      totals: { documents: 1, links: orderedTargets.length },
+      truncated: { documents: false, links: false },
+      metrics: {
+        documentRowsExamined: 1,
+        linkRowsExamined: orderedTargets.length,
+        uniqueTargetsResolved: orderedTargets.length,
+        batchedResolution: true as const,
+      },
+    });
+    const findingsFor = (orderedTargets: string[]) =>
+      evaluateLinkAudit(snapshotFor(orderedTargets), {
+        rootUris: ["gno://notes/source.md"],
+        ignorePathPrefixes: [],
+      }).find(({ ruleId }) => ruleId === "links.local-targets")?.findings;
+
+    expect(findingsFor(targets)).toEqual(findingsFor([...targets].reverse()));
+    expect(findingsFor(targets)).toHaveLength(1000);
+  });
+
+  test("captures only parsed links for integrity evaluation", async () => {
+    const sourceId = await addDocument("source.md", "Source");
+    const link = (targetRef: string): DocLinkInput => ({
+      targetRef,
+      targetRefNorm: targetRef,
+      linkType: "markdown",
+      startLine: 1,
+      startCol: 1,
+      endLine: 1,
+      endCol: 10,
+    });
+    expect(
+      (await adapter.setDocLinks(sourceId, [link("parsed.md")], "parsed")).ok
+    ).toBe(true);
+    expect(
+      (await adapter.setDocLinks(sourceId, [link("suggested.md")], "suggested"))
+        .ok
+    ).toBe(true);
+
+    const snapshot = captureAuditLinkSnapshot(adapter.getRawDb());
+    expect(snapshot.totals.links).toBe(1);
+    expect(snapshot.links.map(({ targetRef }) => targetRef)).toEqual([
+      "parsed.md",
+    ]);
+  });
+
   test("bulk resolver preserves ranked results above the adaptive threshold", async () => {
     const sourceId = await addDocument("source.md", "Source");
     await addDocument("projects/task.md", "Task");

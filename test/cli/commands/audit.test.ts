@@ -463,6 +463,23 @@ describe("gno audit CLI", () => {
     expect(result.success).toBe(true);
   });
 
+  test("does not read the global graph for an empty filtered link scope", async () => {
+    const database = new Database(getIndexDbPath());
+    database.run("DROP TABLE doc_links");
+    database.close();
+
+    const result = await audit({
+      category: "links",
+      paths: ["does-not-exist"],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.exitCode).toBe(0);
+      expect(result.report.status).toBe("complete");
+      expect(result.report.counts.findings.total).toBe(0);
+    }
+  });
+
   test("detects indexed provenance drift without source revision changes", async () => {
     const database = new Database(getIndexDbPath());
     const revisionsBefore = database

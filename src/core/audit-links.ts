@@ -19,6 +19,22 @@ export interface AuditOrphanPolicy {
 const compareText = (left: string, right: string): number =>
   left < right ? -1 : left > right ? 1 : 0;
 
+const compareFindingDrafts = (
+  left: AuditFindingDraft,
+  right: AuditFindingDraft
+): number =>
+  compareText(left.subject, right.subject) ||
+  compareText(left.location ?? "", right.location ?? "") ||
+  compareText(left.message, right.message) ||
+  compareText(JSON.stringify(left.evidence), JSON.stringify(right.evidence));
+
+const boundedFindings = (
+  findings: readonly AuditFindingDraft[]
+): AuditFindingDraft[] =>
+  [...findings]
+    .sort(compareFindingDrafts)
+    .slice(0, LINK_AUDIT_MAX_FINDINGS_PER_RULE);
+
 const lineLocation = (line: number, column: number): string =>
   `L${line}:C${column}`;
 
@@ -173,7 +189,7 @@ export const evaluateLinkAudit = (
       message: partial
         ? "Local target scan was truncated"
         : `${unresolved.length} unresolved or broken local links`,
-      findings: unresolved.slice(0, LINK_AUDIT_MAX_FINDINGS_PER_RULE),
+      findings: boundedFindings(unresolved),
       findingCount: unresolved.length,
       skipReason: partial ? "snapshot_truncated" : null,
     },
@@ -185,7 +201,7 @@ export const evaluateLinkAudit = (
       message: partial
         ? "Ambiguous target scan was truncated"
         : `${ambiguous.length} ambiguous local links`,
-      findings: ambiguous.slice(0, LINK_AUDIT_MAX_FINDINGS_PER_RULE),
+      findings: boundedFindings(ambiguous),
       findingCount: ambiguous.length,
       skipReason: partial ? "snapshot_truncated" : null,
     },
@@ -197,7 +213,7 @@ export const evaluateLinkAudit = (
       message: partial
         ? "Orphan scan was truncated"
         : `${orphanFindings.length} policy-defined orphan documents`,
-      findings: orphanFindings.slice(0, LINK_AUDIT_MAX_FINDINGS_PER_RULE),
+      findings: boundedFindings(orphanFindings),
       findingCount: orphanFindings.length,
       skipReason: partial ? "snapshot_truncated" : null,
     },
