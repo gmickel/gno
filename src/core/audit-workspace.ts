@@ -177,7 +177,14 @@ const observeDocument = async (
       },
     };
   }
-  const file = Bun.file(join(root, document.relPath));
+  const recordSourcePath = document.recordSourcePath?.trim();
+  const logicalRecord =
+    document.recordKey != null &&
+    recordSourcePath !== undefined &&
+    recordSourcePath.length > 0;
+  const file = Bun.file(
+    join(root, logicalRecord ? recordSourcePath : document.relPath)
+  );
   try {
     if (!(await file.exists())) {
       return {
@@ -206,9 +213,12 @@ const observeDocument = async (
     // Freshness must hash readable bytes even when size/mtime still match the
     // indexed metadata — metadata-preserving restores can drift without a
     // stat change.
-    const observedHash = inspectFreshness
-      ? await hashBlob(file, signal)
-      : document.sourceHash;
+    const observedHash =
+      inspectFreshness && !logicalRecord
+        ? await hashBlob(file, signal)
+        : inspectFreshness
+          ? null
+          : document.sourceHash;
     const markdownSource = MARKDOWN_SOURCE_EXTENSIONS.has(
       document.sourceExt.toLowerCase()
     );
@@ -248,6 +258,7 @@ const observeDocument = async (
           state: "readable",
           hash: observedHash,
           mtime: new Date(afterMtime).toISOString(),
+          byteComparable: !logicalRecord,
           changedDuringRead:
             beforeMtime !== afterMtime || beforeSize !== afterSize,
         },
@@ -480,7 +491,7 @@ export const runWorkspaceAudit = async (
     };
   }
   const normalizedPaths = normalizeValues(normalizedPathInputs).map((path) =>
-    path.replace(/^\/+/, "")
+    path.replace(/^\/+|\/+$/g, "")
   );
   const filters = {
     collections: normalizeValues(options.collectionFilters).map(

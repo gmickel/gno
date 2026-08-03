@@ -18,6 +18,8 @@ export interface AuditFreshnessDocument {
     state: "readable" | "missing" | "unreadable";
     hash: string | null;
     mtime: string | null;
+    /** Logical records use their physical container only for readability. */
+    byteComparable?: boolean;
     changedDuringRead?: boolean;
   };
 }
@@ -113,6 +115,7 @@ export const evaluateFreshnessAudit = (
       continue;
     }
     if (
+      document.source.byteComparable !== false &&
       document.source.hash !== null &&
       document.source.hash !== document.indexedSourceHash
     ) {
@@ -172,6 +175,10 @@ export const evaluateFreshnessAudit = (
   }
   const truncated = options.truncated === true;
   const inconclusive = truncated || changedDuringRead;
+  const byteComparableCount = documents.filter(
+    ({ source }) => source.byteComparable !== false
+  ).length;
+  const excludedLogicalRecords = documents.length - byteComparableCount;
   const reason = changedDuringRead
     ? "source_changed_during_read"
     : truncated
@@ -192,11 +199,11 @@ export const evaluateFreshnessAudit = (
     rule({
       ruleId: "freshness.source-index-drift",
       findings: drift,
-      examinedCount: documents.length,
+      examinedCount: byteComparableCount,
       inconclusive,
       message: inconclusive
         ? "Source/index drift evidence changed or was truncated"
-        : `${drift.length} source revisions differ from the index`,
+        : `${drift.length} source revisions differ from the index${excludedLogicalRecords > 0 ? `; ${excludedLogicalRecords} logical records excluded from byte comparison` : ""}`,
       reason,
     }),
     rule({

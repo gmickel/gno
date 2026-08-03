@@ -171,6 +171,27 @@ describe("gno audit CLI", () => {
     expect(rootFiltered.report.rules).toEqual(unfiltered.report.rules);
   });
 
+  test("normalizes trailing slashes in directory path filters", async () => {
+    await mkdir(join(notes, "projects"), { recursive: true });
+    await Bun.write(join(notes, "projects", "plan.md"), "# Plan\n");
+    expect(await runCli(["bun", "gno", "index", "--no-embed"])).toBe(0);
+
+    const bare = await audit({ category: "freshness", paths: ["projects"] });
+    const trailing = await audit({
+      category: "freshness",
+      paths: ["/projects/"],
+    });
+    expect(bare.success).toBe(true);
+    expect(trailing.success).toBe(true);
+    if (bare.success && trailing.success) {
+      expect(trailing.report.scope.paths).toEqual(["projects"]);
+      expect(trailing.report.counts.examined).toEqual(
+        bare.report.counts.examined
+      );
+      expect(trailing.report.fingerprints).toEqual(bare.report.fingerprints);
+    }
+  });
+
   test("matches path prefixes case-sensitively", async () => {
     await mkdir(join(notes, "case-scope"));
     await Bun.write(join(notes, "case-scope", "lower.md"), "# Lower\n");
@@ -499,6 +520,48 @@ describe("gno audit CLI", () => {
       expect(result.exitCode).toBe(0);
       expect(result.report.status).toBe("complete");
       expect(result.report.counts.findings.total).toBe(0);
+    }
+  });
+
+  test("checks logical records through their physical source container", async () => {
+    const database = new Database(getIndexDbPath());
+    database.run(
+      `UPDATE documents
+       SET rel_path = ?, uri = ?, source_hash = ?, record_key = ?,
+           record_source_path = ?, record_source_locator = ?,
+           converter_id = ?, converter_version = ?, record_adapter_fingerprint = ?
+       WHERE rel_path = ?`,
+      [
+        ".gno/records/jsonl/b.md",
+        "gno://notes/.gno/records/jsonl/b.md",
+        "record-specific-hash",
+        "record-b",
+        "b.md",
+        "line:1",
+        "jsonl",
+        "1",
+        "adapter-v1",
+        "b.md",
+      ]
+    );
+    database.close();
+
+    const result = await audit({ category: "freshness" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.exitCode).toBe(0);
+      expect(result.report.status).toBe("complete");
+      expect(result.report.findings).toEqual([]);
+      expect(
+        result.report.rules.find(
+          ({ ruleId }) => ruleId === "freshness.source-index-drift"
+        )
+      ).toMatchObject({
+        examinedCount: 1,
+        message:
+          "0 source revisions differ from the index; 1 logical records excluded from byte comparison",
+        status: "pass",
+      });
     }
   });
 
