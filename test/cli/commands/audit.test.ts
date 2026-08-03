@@ -263,6 +263,41 @@ describe("gno audit CLI", () => {
     database.close();
   });
 
+  test("detects indexed provenance drift without source revision changes", async () => {
+    const database = new Database(getIndexDbPath());
+    const revisionsBefore = database
+      .query<{ source_hash: string; indexed_at: string | null }, [string]>(
+        "SELECT source_hash, indexed_at FROM documents WHERE rel_path = ?"
+      )
+      .get("a.md");
+    let mutations = 0;
+    const changed = await audit({
+      category: "provenance",
+      onProgress: ({ phase, completed }) => {
+        if (phase !== "snapshot" || completed === 0) return;
+        mutations += 1;
+        database.run("UPDATE documents SET record_key = ? WHERE rel_path = ?", [
+          `record-${mutations}`,
+          "a.md",
+        ]);
+      },
+    });
+    expect(changed.success).toBe(true);
+    if (changed.success) {
+      expect(changed.exitCode).toBe(5);
+      expect(changed.report.status).toBe("changed_during_audit");
+    }
+    expect(mutations).toBe(2);
+    expect(
+      database
+        .query<{ source_hash: string; indexed_at: string | null }, [string]>(
+          "SELECT source_hash, indexed_at FROM documents WHERE rel_path = ?"
+        )
+        .get("a.md")
+    ).toEqual(revisionsBefore);
+    database.close();
+  });
+
   test("hashes freshness bytes even when size and mtime match the index", async () => {
     const database = new Database(getIndexDbPath(), { readonly: true });
     const indexed = database
@@ -293,6 +328,39 @@ describe("gno audit CLI", () => {
         })
       );
     }
+  });
+
+  test("detects same-stat source changes during freshness audit", async () => {
+    const database = new Database(getIndexDbPath(), { readonly: true });
+    const indexed = database
+      .query<{ source_mtime: string }, [string]>(
+        "SELECT source_mtime FROM documents WHERE rel_path = ?"
+      )
+      .get("a.md");
+    database.close();
+    if (!indexed) throw new Error("Expected indexed a.md");
+
+    const sourcePath = join(notes, "a.md");
+    const indexedTime = new Date(indexed.source_mtime);
+    let mutations = 0;
+    const changed = await audit({
+      category: "freshness",
+      onProgress: async ({ phase, completed }) => {
+        if (phase !== "snapshot" || completed === 0) return;
+        mutations += 1;
+        await Bun.write(
+          sourcePath,
+          mutations % 2 === 0 ? "# A\n\n[[B]]\n" : "# X\n\n[[B]]\n"
+        );
+        await utimes(sourcePath, indexedTime, indexedTime);
+      },
+    });
+    expect(changed.success).toBe(true);
+    if (changed.success) {
+      expect(changed.exitCode).toBe(5);
+      expect(changed.report.status).toBe("changed_during_audit");
+    }
+    expect(mutations).toBe(2);
   });
 
   test("uses exit 2 when the configured index is unavailable", async () => {

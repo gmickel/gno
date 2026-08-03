@@ -129,7 +129,7 @@ const selectDocuments = async (
   };
 };
 
-const hashFile = async (file: Bun.BunFile): Promise<string> => {
+const hashBlob = async (file: Blob): Promise<string> => {
   const hasher = new Bun.CryptoHasher("sha256");
   for await (const chunk of file.stream()) hasher.update(chunk);
   return hasher.digest("hex");
@@ -217,7 +217,7 @@ const observeDocument = async (
     // indexed metadata — metadata-preserving restores can drift without a
     // stat change.
     const observedHash = inspectFreshness
-      ? await hashFile(file)
+      ? await hashBlob(file)
       : document.sourceHash;
     const frontmatter =
       readFrontmatter && document.sourceExt.toLowerCase() === ".md"
@@ -352,6 +352,8 @@ const captureWorkspaceFingerprints = async (
   const needsSourceFingerprint =
     options.categories.includes("provenance") ||
     options.categories.includes("freshness");
+  const inspectFreshness = options.categories.includes("freshness");
+  const inspectProvenance = options.categories.includes("provenance");
   const roots = collectionPathMap(options.collections);
   const sourceStats = needsSourceFingerprint
     ? await mapConcurrent(selected.documents, async (document) => {
@@ -359,9 +361,19 @@ const captureWorkspaceFingerprints = async (
         if (!root) return { uri: document.uri, state: "unavailable" };
         const file = Bun.file(join(root, document.relPath));
         const exists = await file.exists();
-        return exists
-          ? { uri: document.uri, size: file.size, mtime: file.lastModified }
-          : { uri: document.uri, state: "missing" };
+        if (!exists) return { uri: document.uri, state: "missing" };
+        const hash = inspectFreshness
+          ? await hashBlob(file)
+          : inspectProvenance && document.sourceExt.toLowerCase() === ".md"
+            ? await hashBlob(file.slice(0, AUDIT_FRONTMATTER_BYTES))
+            : null;
+        return {
+          uri: document.uri,
+          state: "readable",
+          size: file.size,
+          mtime: file.lastModified,
+          hash,
+        };
       })
     : [];
   // Link audits fingerprint the same unscoped bounded graph capture the rules
@@ -383,9 +395,18 @@ const captureWorkspaceFingerprints = async (
     index: hashAuditCanonical({
       documents: selected.documents.map((document) => ({
         uri: document.uri,
+        relPath: document.relPath,
+        sourceExt: document.sourceExt,
         sourceHash: document.sourceHash,
-        indexedAt: document.indexedAt,
+        sourceMtime: document.sourceMtime,
+        contentType: document.contentType ?? null,
+        indexedAt: document.indexedAt ?? null,
         lastErrorCode: document.lastErrorCode,
+        converterId: document.converterId,
+        converterVersion: document.converterVersion,
+        recordKey: document.recordKey ?? null,
+        recordSourceLocator: document.recordSourceLocator ?? null,
+        recordAdapterFingerprint: document.recordAdapterFingerprint ?? null,
       })),
       total: selected.total,
       linkGraph,
