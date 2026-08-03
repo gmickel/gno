@@ -38,9 +38,8 @@ Raw `gno-asset:` sentinels must never reach rendered HTML. “Secret” is an au
 - [ ] Focused schema/fixture tests and both repos' lint/type checks pass.
 
 ## Done summary
-TBD
-
+Froze the backward-compatible bundled-raster-assets@1 contract across GNO and gno.sh with strict capability negotiation, integrity-checked raster descriptors, sentinel resolution, exact serialized-byte accounting, visibility/lifecycle vocabulary, browser-safe consumer validation, and a byte-identical hostile fixture corpus.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: e7d5c0e5, gno.sh:a8bda87
+- Tests: bun test test/publish/artifact-assets.test.ts, bun run lint:check, gno.sh: bun test src/lib/publish-artifact-assets.test.ts src/lib/publish-artifact-client.test.ts, gno.sh: bun run check, gno.sh: bun run typecheck, gno.sh: bun run build, diff -qr shared fixture directories
 - PRs:

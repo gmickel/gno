@@ -1,5 +1,5 @@
 {
-  "branch_name": "fn-71-bundled-image-attachments-in-publish-export",
+  "branch_name": "codex/fn-71-bundled-image-attachments-in-publish-export",
   "completion_review_status": "unknown",
   "completion_reviewed_at": null,
   "created_at": "2026-04-20T15:00:00Z",
@@ -28,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-08-02T21:41:50.903466Z"
+  "updated_at": "2026-08-03T07:13:10.981143Z"
 }
