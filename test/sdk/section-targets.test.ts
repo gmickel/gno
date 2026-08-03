@@ -12,7 +12,8 @@ import {
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdir, writeFile } from "node:fs/promises";
+// Bun has no atomic temporary-directory creation API.
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -43,7 +44,7 @@ describe("SDK section targets", () => {
   let notesDir: string;
 
   beforeAll(async () => {
-    testDir = join(tmpdir(), `gno-sdk-section-targets-${Date.now()}`);
+    testDir = await mkdtemp(join(tmpdir(), "gno-sdk-section-targets-"));
     notesDir = join(testDir, "notes");
     await mkdir(notesDir, { recursive: true });
 
