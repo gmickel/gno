@@ -14,6 +14,11 @@ import type {
 } from "../config/types";
 import type { RecordAnchor, RecordMetadata } from "../converters/types";
 import type { EgressLineage } from "../core/egress-provenance";
+import type {
+  FileRefactorJournalAdvance,
+  FileRefactorRecoveryReceipt,
+  FileRefactorRecoveryReceiptDraft,
+} from "../core/file-refactor-journal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Error Types
@@ -1755,6 +1760,27 @@ export interface StorePort {
 
   /** Purge the journal while retaining a cursor-expiry boundary. */
   purgeDocumentChanges(): Promise<StoreResult<DocumentChangePurgeResult>>;
+
+  /** Create a content-free prepared file-refactor recovery receipt. */
+  createFileRefactorPreparedReceipt(
+    draft: FileRefactorRecoveryReceiptDraft
+  ): Promise<StoreResult<FileRefactorRecoveryReceipt>>;
+
+  /** Advance phase/state on a file-refactor recovery receipt. */
+  advanceFileRefactorReceipt(
+    journalId: string,
+    update: FileRefactorJournalAdvance
+  ): Promise<StoreResult<FileRefactorRecoveryReceipt>>;
+
+  /** Load one file-refactor recovery receipt by journal id. */
+  getFileRefactorReceiptById(
+    journalId: string
+  ): Promise<StoreResult<FileRefactorRecoveryReceipt | null>>;
+
+  /** Latest receipt for a plan digest (deterministic retry/recovery lookup). */
+  getLatestFileRefactorReceiptByPlanDigest(
+    planDigest: string
+  ): Promise<StoreResult<FileRefactorRecoveryReceipt | null>>;
 
   /** Register one user-owned Capsule file and its metadata-only evidence refs. */
   upsertSavedCapsuleRegistration(

@@ -62,6 +62,15 @@ export {
   type FileRefactorSnapshotLike,
 } from "./file-refactor-from-snapshot";
 
+export {
+  applyFileRefactor,
+  createMemoryFileRefactorJournal,
+  journalPortFromStore,
+  type ApplyFileRefactorDeps,
+  type FileRefactorBoundaryHook,
+  type FileRefactorSyncCallback,
+} from "./file-refactor-service";
+
 export interface RefactorWarningSummary {
   warnings: string[];
   backlinkCount: number;

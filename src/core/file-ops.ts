@@ -27,13 +27,25 @@ export async function atomicWrite(
   }
 }
 
+type AtomicCreateContent =
+  | string
+  | Blob
+  | ArrayBuffer
+  | Uint8Array
+  | ReturnType<typeof Bun.file>;
+
+/**
+ * Exclusively create `path` via temp write + hard-link.
+ * EEXIST (including a pre-existing symlink) fails closed without following it.
+ */
 export async function atomicCreate(
   path: string,
-  content: string
+  content: AtomicCreateContent
 ): Promise<void> {
   const tempPath = `${path}.tmp.${crypto.randomUUID()}`;
   await Bun.write(tempPath, content);
   try {
+    // node:fs/promises link — exclusive create; no Bun equivalent
     await link(tempPath, path);
   } catch (e) {
     await unlink(tempPath).catch(() => {
@@ -76,6 +88,122 @@ export async function copyFilePath(
 
 export async function createFolderPath(path: string): Promise<void> {
   await mkdir(path, { recursive: true });
+}
+
+/** Sibling staging/backup path beside a user file (never under a different root). */
+export function siblingRefactorPath(
+  path: string,
+  kind: "stage" | "backup",
+  token: string
+): string {
+  return `${path}.gno-rf-${kind}.${token}`;
+}
+
+/**
+ * Exclusively create a stage artifact. Pre-existing symlink/file at stagePath
+ * fails closed (EEXIST) and is never followed/overwritten.
+ */
+export async function writeStagedFileContent(
+  stagePath: string,
+  content: string
+): Promise<void> {
+  await atomicCreate(stagePath, content);
+}
+
+/**
+ * Exclusively copy live bytes into a sibling backup path.
+ * Pre-existing symlink/file at backupPath fails closed (EEXIST).
+ */
+export async function backupFileToSibling(
+  sourcePath: string,
+  backupPath: string
+): Promise<void> {
+  await atomicCreate(backupPath, Bun.file(sourcePath));
+}
+
+/**
+ * Replace an existing path from a staged sibling via rename.
+ * Callers must verify live fingerprints before invoking.
+ */
+export async function commitStagedFileReplace(
+  stagePath: string,
+  targetPath: string
+): Promise<void> {
+  await rename(stagePath, targetPath);
+}
+
+/**
+ * Create a new target from a staged sibling without overwrite.
+ * Uses hard-link create semantics so an occupied target fails closed.
+ */
+export async function commitStagedFileExclusive(
+  stagePath: string,
+  targetPath: string
+): Promise<void> {
+  // node:fs/promises link — exclusive create; no Bun equivalent
+  await link(stagePath, targetPath);
+  await unlink(stagePath).catch(() => {
+    /* stage cleanup best-effort after durable target exists */
+  });
+}
+
+/** @deprecated Prefer commitStagedFileReplace / commitStagedFileExclusive. */
+export async function commitStagedFile(
+  stagePath: string,
+  targetPath: string
+): Promise<void> {
+  await commitStagedFileReplace(stagePath, targetPath);
+}
+
+/**
+ * Restore original bytes by replacing the target path itself (rename),
+ * never following a symlink that may have been swapped onto the target.
+ */
+export async function restoreFileFromBackup(
+  backupPath: string,
+  targetPath: string
+): Promise<void> {
+  const tempPath = `${targetPath}.gno-rf-restore.${crypto.randomUUID()}`;
+  await Bun.write(tempPath, Bun.file(backupPath));
+  try {
+    // node:fs/promises rename — replaces the directory entry (symlink-safe)
+    await rename(tempPath, targetPath);
+  } catch (error) {
+    await unlink(tempPath).catch(() => {
+      /* ignore cleanup errors */
+    });
+    throw error;
+  }
+}
+
+function isEnoent(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    (error as NodeJS.ErrnoException).code === "ENOENT"
+  );
+}
+
+/** Best-effort cleanup removal; ignores all errors (never used for commit). */
+export async function removePathIfExists(path: string): Promise<void> {
+  // node:fs/promises unlink — structure op, no Bun equivalent
+  await unlink(path).catch(() => {
+    /* ignore cleanup errors */
+  });
+}
+
+/**
+ * Required removal: ignores only ENOENT. Permission/I/O failures throw so
+ * callers cannot report success with both source and target present.
+ */
+export async function removePathRequired(path: string): Promise<void> {
+  // node:fs/promises unlink — structure op, no Bun equivalent
+  try {
+    await unlink(path);
+  } catch (error) {
+    if (isEnoent(error)) return;
+    throw error;
+  }
 }
 
 type TrashFileDeps = {

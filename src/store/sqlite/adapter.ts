@@ -17,6 +17,11 @@ import { basename } from "node:path";
 
 import type { EgressLineage } from "../../core/egress-provenance";
 import type {
+  FileRefactorJournalAdvance,
+  FileRefactorRecoveryReceipt,
+  FileRefactorRecoveryReceiptDraft,
+} from "../../core/file-refactor-journal";
+import type {
   ActivationIndexDocument,
   ActivationIndexIdentity,
   ActivationIndexSnapshot,
@@ -167,6 +172,12 @@ import {
   listEgressAuditReceipts as listStoredEgressAuditReceipts,
   purgeEgressAuditReceipts as purgeStoredEgressAuditReceipts,
 } from "./egress-audit-store";
+import {
+  advanceFileRefactorReceipt as advanceStoredFileRefactorReceipt,
+  createFileRefactorPreparedReceipt as createStoredFileRefactorPreparedReceipt,
+  getFileRefactorReceiptById as getStoredFileRefactorReceiptById,
+  getLatestFileRefactorReceiptByPlanDigest as getStoredLatestFileRefactorReceiptByPlanDigest,
+} from "./file-refactor-journal-store";
 import { loadFts5Snowball } from "./fts5-snowball";
 import { queryGraphNeighborsForSeeds } from "./graph-neighbors";
 import {
@@ -1965,6 +1976,38 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     StoreResult<DocumentChangePurgeResult>
   > {
     return purgeStoredDocumentChanges(this.ensureOpen());
+  }
+
+  async createFileRefactorPreparedReceipt(
+    draft: FileRefactorRecoveryReceiptDraft
+  ): Promise<StoreResult<FileRefactorRecoveryReceipt>> {
+    return createStoredFileRefactorPreparedReceipt(this.ensureOpen(), draft);
+  }
+
+  async advanceFileRefactorReceipt(
+    journalId: string,
+    update: FileRefactorJournalAdvance
+  ): Promise<StoreResult<FileRefactorRecoveryReceipt>> {
+    return advanceStoredFileRefactorReceipt(
+      this.ensureOpen(),
+      journalId,
+      update
+    );
+  }
+
+  async getFileRefactorReceiptById(
+    journalId: string
+  ): Promise<StoreResult<FileRefactorRecoveryReceipt | null>> {
+    return getStoredFileRefactorReceiptById(this.ensureOpen(), journalId);
+  }
+
+  async getLatestFileRefactorReceiptByPlanDigest(
+    planDigest: string
+  ): Promise<StoreResult<FileRefactorRecoveryReceipt | null>> {
+    return getStoredLatestFileRefactorReceiptByPlanDigest(
+      this.ensureOpen(),
+      planDigest
+    );
   }
 
   async upsertSavedCapsuleRegistration(
