@@ -445,13 +445,26 @@ const isWebpImageChunk = (
   type: string,
   dataStart: number,
   size: number
-): boolean =>
-  (type === "VP8 " &&
-    size >= 10 &&
-    bytes[dataStart + 3] === 0x9d &&
-    bytes[dataStart + 4] === 0x01 &&
-    bytes[dataStart + 5] === 0x2a) ||
-  (type === "VP8L" && size >= 5 && bytes[dataStart] === 0x2f);
+): boolean => {
+  if (type === "VP8 ") {
+    if (
+      size <= 10 ||
+      bytes[dataStart + 3] !== 0x9d ||
+      bytes[dataStart + 4] !== 0x01 ||
+      bytes[dataStart + 5] !== 0x2a
+    ) {
+      return false;
+    }
+    const frameTag =
+      (bytes[dataStart] ?? 0) |
+      ((bytes[dataStart + 1] ?? 0) << 8) |
+      ((bytes[dataStart + 2] ?? 0) << 16);
+    const firstPartitionLength = frameTag >>> 5;
+    return firstPartitionLength > 0 && 10 + firstPartitionLength < size;
+  }
+  // VP8L's five-byte signature/dimension header must be followed by image data.
+  return type === "VP8L" && size > 5 && bytes[dataStart] === 0x2f;
+};
 
 const animationFrameHasImageData = (
   bytes: Uint8Array,

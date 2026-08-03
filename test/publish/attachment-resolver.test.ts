@@ -104,6 +104,25 @@ describe("rewriteAttachmentsInMarkdown", () => {
     expect(ids).toEqual([...ids].sort());
   });
 
+  test("bundles Obsidian embeds with table-escaped alias separators", async () => {
+    const root = await makeRoot();
+    await writeBytes(join(root, "photo.png"), PNG_1X1);
+
+    const result = await rewriteAttachmentsInMarkdown(
+      "| image |\n| --- |\n| ![[photo.png\\|100]] |",
+      {
+        basenameIndex: await buildAttachmentBasenameIndex(root),
+        collectionRoot: root,
+        noteSlug: "table",
+        sourceRelPath: "table.md",
+      }
+    );
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.payloads.size).toBe(1);
+    expect(result.markdown).toContain("![](gno-asset:");
+  });
+
   test("re-escapes decoded closing brackets in Markdown image alt text", async () => {
     const root = await makeRoot();
     await writeBytes(join(root, "dot.png"), PNG_1X1);

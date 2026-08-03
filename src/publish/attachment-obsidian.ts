@@ -5,9 +5,12 @@ import type { DiscoveredImageRef } from "./attachment-discover";
 const parseObsidianTarget = (
   raw: string
 ): { alias: string; pathPart: string } => {
-  const pipe = raw.indexOf("|");
-  const pathWithFrag = pipe >= 0 ? raw.slice(0, pipe) : raw;
-  const alias = pipe >= 0 ? raw.slice(pipe + 1).trim() : "";
+  // Markdown tables require Obsidian's separator pipes to be escaped. Restore
+  // those escapes before applying Obsidian's target|alias grammar.
+  const normalized = raw.replaceAll("\\|", "|");
+  const pipe = normalized.indexOf("|");
+  const pathWithFrag = pipe >= 0 ? normalized.slice(0, pipe) : normalized;
+  const alias = pipe >= 0 ? normalized.slice(pipe + 1).trim() : "";
   const hash = pathWithFrag.indexOf("#");
   const pathPart = (
     hash >= 0 ? pathWithFrag.slice(0, hash) : pathWithFrag
