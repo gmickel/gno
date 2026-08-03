@@ -168,6 +168,18 @@ describe("attachment discover parser", () => {
     ).toEqual(["images/hero.png", "images/hero.png", "images/hero.png"]);
   });
 
+  test("resolves reference definitions with continuation-line destinations", () => {
+    const markdown = [
+      "![hero][asset]",
+      "",
+      "[asset]:",
+      "  images/hero.png",
+    ].join("\n");
+    expect(discoverImageOccurrences(markdown)).toMatchObject([
+      { sourceRef: "images/hero.png" },
+    ]);
+  });
+
   test("skips image-looking Markdown inside raw HTML blocks", () => {
     const markdown = [
       "<script>",
@@ -181,6 +193,36 @@ describe("attachment discover parser", () => {
       "<div>",
       "![div](../private-three.png)",
       "</div>",
+      "",
+      "<?php",
+      "![instruction](../private-four.png)",
+      "?>",
+      "",
+      "<!DOCTYPE html",
+      "![declaration](../private-five.png)",
+      ">",
+      "",
+      "<![CDATA[",
+      "![cdata](../private-six.png)",
+      "]]>",
+      "",
+      "<custom-element>",
+      "![custom](../private-seven.png)",
+      "",
+      "![active](real.png)",
+    ].join("\n");
+    expect(
+      discoverImageOccurrences(markdown).map((item) => item.sourceRef)
+    ).toEqual(["real.png"]);
+  });
+
+  test("skips indented code after every thematic-break marker", () => {
+    const markdown = [
+      "***",
+      "    ![asterisk](../private.png)",
+      "",
+      "_ _ _",
+      "    ![underscore](../private-too.png)",
       "",
       "![active](real.png)",
     ].join("\n");

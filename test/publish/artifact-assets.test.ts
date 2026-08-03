@@ -283,6 +283,12 @@ describe("publish artifact asset contract", () => {
       ok: false,
       diagnostic: { code: "ASSET_SENTINEL_INVALID" },
     });
+
+    spaces[0]!.notes[0]!.markdown = "![dot][asset]\n\n[asset]:\n  gno-asset:\n";
+    expect(validatePublishAssetContract(artifact)).toMatchObject({
+      ok: false,
+      diagnostic: { code: "ASSET_SENTINEL_INVALID" },
+    });
   });
 
   test("ignores gno-asset text outside renderable image destinations", async () => {
