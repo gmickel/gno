@@ -12,7 +12,6 @@ import { parseRef } from "../core/ref-parser";
 import { parseFrontmatter } from "../ingestion/frontmatter";
 import { getContentBatch } from "../store/content-batch";
 import {
-  buildEncryptedPublishArtifact,
   buildPublishArtifact,
   buildExportedMetadata,
   derivePublishSlug,
@@ -24,14 +23,12 @@ import {
   type PublishArtifactNote,
   type PublishVisibility,
 } from "./artifact";
-import { measureArtifactUploadBytes } from "./artifact-asset-codec";
 import {
   buildAttachmentBasenameIndex,
-  emptyAssetEgressSummary,
   type PublishAssetEgressSummary,
 } from "./attachment-resolver";
-import { buildEncryptedArtifactPayload } from "./encrypted-export";
 import {
+  finalizeEncryptedArtifact,
   finalizeV1Artifact,
   mergePayloads,
   sanitizeNoteMarkdown,
@@ -189,10 +186,7 @@ async function exportCollectionArtifact(
   const contentByHash = contentResult.value;
   const tagsByDocId = tagsResult.value;
   const visibility = resolveVisibility(options.visibility);
-  const bundleAttachments = visibility !== "encrypted";
-  const basenameIndex = bundleAttachments
-    ? await buildAttachmentBasenameIndex(collection.path)
-    : null;
+  const basenameIndex = await buildAttachmentBasenameIndex(collection.path);
 
   const acc: NoteBuildAccumulator = {
     diagnostics: [],
@@ -219,7 +213,7 @@ async function exportCollectionArtifact(
     const slug = deriveExportedSlug(doc);
     const sanitized = await sanitizeNoteMarkdown({
       basenameIndex,
-      collectionRoot: bundleAttachments ? collection.path : null,
+      collectionRoot: collection.path,
       noteSlug: slug,
       rawMarkdown,
       sourceRelPath: doc.relPath,
@@ -274,7 +268,9 @@ async function exportCollectionArtifact(
       );
     }
 
-    const encrypted = await buildEncryptedArtifactPayload({
+    return finalizeEncryptedArtifact({
+      acc,
+      egressLineage: lineage,
       exportedAt: new Date().toISOString(),
       homeNoteSlug: chooseHomeNoteSlug(notes),
       notes,
@@ -284,20 +280,6 @@ async function exportCollectionArtifact(
       summary,
       title,
     });
-
-    const artifact = buildEncryptedPublishArtifact({
-      egressLineage: lineage,
-      encryptedPayload: encrypted.encryptedPayload,
-      routeSlug,
-      secretToken: encrypted.secretToken,
-      sourceType: "collection",
-    });
-    return {
-      artifact,
-      assetSummary: emptyAssetEgressSummary(
-        measureArtifactUploadBytes(artifact)
-      ),
-    };
   }
 
   return finalizeV1Artifact(
@@ -343,7 +325,7 @@ async function exportDocumentArtifact(
   const title = options.title ?? deriveExportedTitle(doc);
   const slug = deriveExportedSlug(doc);
   const visibility = resolveVisibility(options.visibility);
-  const bundleAttachments = visibility !== "encrypted" && collection !== null;
+  const bundleAttachments = collection !== null;
   const basenameIndex =
     bundleAttachments && collection
       ? await buildAttachmentBasenameIndex(collection.path)
@@ -380,6 +362,13 @@ async function exportDocumentArtifact(
     title,
   };
 
+  const acc: NoteBuildAccumulator = {
+    diagnostics: sanitized.diagnostics,
+    externalCount: sanitized.externalCount,
+    payloads: sanitized.payloads,
+    preDedupRawBytes: sanitized.preDedupRawBytes,
+  };
+
   if (visibility === "encrypted") {
     if (!options.encryptionPassphrase) {
       throw new Error(
@@ -387,7 +376,9 @@ async function exportDocumentArtifact(
       );
     }
 
-    const encrypted = await buildEncryptedArtifactPayload({
+    return finalizeEncryptedArtifact({
+      acc,
+      egressLineage: lineage,
       exportedAt: new Date().toISOString(),
       notes: [note],
       passphrase: options.encryptionPassphrase,
@@ -396,20 +387,6 @@ async function exportDocumentArtifact(
       summary,
       title,
     });
-
-    const artifact = buildEncryptedPublishArtifact({
-      egressLineage: lineage,
-      encryptedPayload: encrypted.encryptedPayload,
-      routeSlug,
-      secretToken: encrypted.secretToken,
-      sourceType: "note",
-    });
-    return {
-      artifact,
-      assetSummary: emptyAssetEgressSummary(
-        measureArtifactUploadBytes(artifact)
-      ),
-    };
   }
 
   return finalizeV1Artifact(
@@ -422,12 +399,7 @@ async function exportDocumentArtifact(
       title,
       visibility,
     }),
-    {
-      diagnostics: sanitized.diagnostics,
-      externalCount: sanitized.externalCount,
-      payloads: sanitized.payloads,
-      preDedupRawBytes: sanitized.preDedupRawBytes,
-    }
+    acc
   );
 }
 

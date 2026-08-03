@@ -1,13 +1,22 @@
 /**
- * Shared note sanitize + v1 asset finalize helpers for publish export.
+ * Shared note sanitize + v1/v2 asset finalize helpers for publish export.
  *
  * @module src/publish/export-attachments
  */
 
-import type { PublishArtifactV1 } from "./artifact";
+import type { EgressLineage } from "../core/egress-provenance";
+import type {
+  PublishArtifactNote,
+  PublishArtifactV1,
+  PublishArtifactV2,
+} from "./artifact";
 import type { AttachmentDiagnostic } from "./attachment-types";
 
 import { stripFrontmatter } from "../ingestion/frontmatter";
+import {
+  BUNDLED_RASTER_ASSETS_CAPABILITY,
+  buildEncryptedPublishArtifact,
+} from "./artifact";
 import { measureArtifactUploadBytes } from "./artifact-asset-codec";
 import { validatePublishAssetContract } from "./artifact-asset-validate";
 import {
@@ -17,6 +26,7 @@ import {
   type PendingAssetPayload,
   type PublishAssetEgressSummary,
 } from "./attachment-resolver";
+import { buildEncryptedArtifactPayload } from "./encrypted-export";
 import {
   sanitizeObsidianMarkdown,
   sanitizePublishMarkdown,
@@ -110,4 +120,95 @@ export function finalizeV1Artifact(
     preDedupRawBytes: acc.preDedupRawBytes,
   });
   return { artifact: withAssets, assetSummary };
+}
+
+/** Validate assets, encrypt inside ReaderSpaceData, enforce outer upload size. */
+export async function finalizeEncryptedArtifact(input: {
+  acc: NoteBuildAccumulator;
+  egressLineage: EgressLineage;
+  exportedAt: string;
+  homeNoteSlug?: string;
+  notes: PublishArtifactNote[];
+  passphrase: string;
+  routeSlug: string;
+  sourceType: "note" | "collection";
+  summary: string;
+  title: string;
+}): Promise<{
+  artifact: PublishArtifactV2;
+  assetSummary: PublishAssetEgressSummary;
+}> {
+  const assets = buildDeterministicAssets(input.acc.payloads);
+  // Probe uses a non-encrypted visibility so asset contract validation runs
+  // without requiring a public manifest; ciphertext wraps the real payload.
+  const space: PublishArtifactV1["spaces"][number] = {
+    notes: input.notes,
+    routeSlug: input.routeSlug,
+    sourceType: input.sourceType,
+    summary: input.summary,
+    title: input.title,
+    visibility: "secret-link",
+  };
+  if (input.homeNoteSlug !== undefined) {
+    space.homeNoteSlug = input.homeNoteSlug;
+  }
+  const probe: PublishArtifactV1 = {
+    egressLineage: input.egressLineage,
+    exportedAt: input.exportedAt,
+    source: input.routeSlug,
+    spaces: [space],
+    version: 1,
+    ...(assets.length > 0
+      ? {
+          assets,
+          requiredCapabilities: [BUNDLED_RASTER_ASSETS_CAPABILITY],
+        }
+      : {}),
+  };
+  const contract = validatePublishAssetContract(probe);
+  if (!contract.ok) {
+    throw new Error(
+      `${contract.diagnostic.code}: ${contract.diagnostic.message}`
+    );
+  }
+
+  const encrypted = await buildEncryptedArtifactPayload({
+    assets,
+    exportedAt: input.exportedAt,
+    homeNoteSlug: input.homeNoteSlug,
+    notes: input.notes,
+    passphrase: input.passphrase,
+    routeSlug: input.routeSlug,
+    sourceType: input.sourceType,
+    summary: input.summary,
+    title: input.title,
+  });
+
+  const artifact = buildEncryptedPublishArtifact({
+    egressLineage: input.egressLineage,
+    encryptedPayload: encrypted.encryptedPayload,
+    requiredCapabilities:
+      assets.length > 0 ? [BUNDLED_RASTER_ASSETS_CAPABILITY] : undefined,
+    routeSlug: input.routeSlug,
+    secretToken: encrypted.secretToken,
+    sourceType: input.sourceType,
+  });
+
+  const outerContract = validatePublishAssetContract(artifact, {
+    serializedUploadBytes: measureArtifactUploadBytes(artifact),
+  });
+  if (!outerContract.ok) {
+    throw new Error(
+      `${outerContract.diagnostic.code}: ${outerContract.diagnostic.message}`
+    );
+  }
+
+  const assetSummary = summarizeAssetEgress({
+    assets,
+    artifact,
+    diagnostics: input.acc.diagnostics,
+    externalCount: input.acc.externalCount,
+    preDedupRawBytes: input.acc.preDedupRawBytes,
+  });
+  return { artifact, assetSummary };
 }

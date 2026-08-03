@@ -442,17 +442,22 @@ export const buildPublishArtifact = (input: {
 export const buildEncryptedPublishArtifact = (input: {
   egressLineage?: EgressLineage;
   encryptedPayload: EncryptedArtifactPayload;
+  requiredCapabilities?: KnownPublishRequiredCapability[];
   routeSlug: string;
   secretToken: string;
   sourceType: "note" | "collection";
 }): PublishArtifactV2 => {
-  const { egressLineage: providedLineage, ...encryptedInput } = input;
+  const {
+    egressLineage: providedLineage,
+    requiredCapabilities,
+    ...encryptedInput
+  } = input;
   const validated = validateAndProjectEncryptedPublishInput(encryptedInput);
   const egressLineage = egressLineageSchema.parse(
     providedLineage ?? legacyLocalOnlyEgressLineage("legacy")
   );
   const exportedAt = requirePublishDateTime(new Date().toISOString());
-  return {
+  const artifact: PublishArtifactV2 = {
     egressLineage,
     exportedAt,
     source: validated.routeSlug,
@@ -467,6 +472,11 @@ export const buildEncryptedPublishArtifact = (input: {
     ],
     version: 2,
   };
+  // Capability is declared on the outer envelope; plaintext assets stay inside ciphertext.
+  if (requiredCapabilities && requiredCapabilities.length > 0) {
+    artifact.requiredCapabilities = [...requiredCapabilities];
+  }
+  return artifact;
 };
 
 export const derivePublishArtifactFilename = (artifact: PublishArtifact) => {

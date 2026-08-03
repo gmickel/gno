@@ -205,4 +205,84 @@ describe("exportPublishArtifact attachment bundling", () => {
     const schema = await loadSchema("publish-artifact");
     expect(assertValid(artifact, schema)).toBe(true);
   });
+
+  test("bundles rasters into encrypted v2 plaintext with truthful assetSummary", async () => {
+    const root = join(
+      tmpdir(),
+      `gno-export-enc-${Date.now()}-${Math.random().toString(16).slice(2)}`
+    );
+    await mkdir(root, { recursive: true });
+    roots.push(root);
+    await writeFile(join(root, "dot.png"), PNG_1X1);
+
+    const published = buildDocument({
+      id: 3,
+      relPath: "home.md",
+      title: "Home",
+    });
+    const markdown =
+      "# Home\n\n![[dot.png]]\n![ext](https://cdn.example/x.png)\n";
+    const content = new Map([[published.mirrorHash!, markdown]]);
+    const tags = new Map<number, TagRow[]>([[published.id, []]]);
+    const store = {
+      getDocument: async () => ok(null),
+      getDocumentByDocid: async () => ok(null),
+      getDocumentByUri: async () => ok(null),
+      getContent: async () => ok(null),
+      getTagsForDoc: async () => ok([]),
+      appendEgressAuditReceiptWithRetention: async () =>
+        ok("inserted" as const),
+      enforceEgressAuditRetention: async () =>
+        ok({ deleted: 0, remainingReceipts: 1, remainingBytes: 128 }),
+      getContentBatch: async () => ok(content),
+      getTagsBatch: async () => ok(tags),
+      listDocuments: async () => ok([published]),
+    } as unknown as StorePort;
+
+    const { artifact, assetSummary } = await exportPublishArtifact({
+      collections: [
+        {
+          exclude: [],
+          include: [],
+          name: "atlas",
+          path: root,
+          pattern: "**/*",
+        },
+      ],
+      options: {
+        encryptionPassphrase: "correct horse battery staple",
+        routeSlug: "locked-home",
+        visibility: "encrypted",
+      },
+      store,
+      target: "atlas",
+    });
+
+    expect(artifact.version).toBe(2);
+    if (artifact.version !== 2) throw new Error("expected v2");
+    expect(artifact).not.toHaveProperty("assets");
+    expect(artifact.requiredCapabilities).toEqual([
+      BUNDLED_RASTER_ASSETS_CAPABILITY,
+    ]);
+    const outer = JSON.stringify(artifact);
+    expect(outer).not.toContain("gno-asset:");
+    expect(outer).not.toContain("dot.png");
+    expect(outer).not.toContain("image/png");
+    expect(assetSummary.assetCount).toBe(1);
+    expect(assetSummary.externalCount).toBe(1);
+    expect(assetSummary.referenceCount).toBe(1);
+    expect(assetSummary.rawBytes).toBe(PNG_1X1.byteLength);
+    expect(assetSummary.encodedBytes).toBeGreaterThan(0);
+    expect(assetSummary.finalUploadBytes).toBe(
+      measureArtifactUploadBytes(artifact)
+    );
+    const contract = validatePublishAssetContract(artifact);
+    expect(contract.ok).toBe(true);
+    if (!contract.ok) {
+      throw new Error(`expected contract ok, got ${contract.diagnostic.code}`);
+    }
+    expect(contract.classification).toBe("encrypted-client-payload");
+    const schema = await loadSchema("publish-artifact");
+    expect(assertValid(artifact, schema)).toBe(true);
+  });
 });

@@ -82,6 +82,8 @@ export function attachAssetsToV1Artifact(
 }
 
 export function summarizeAssetEgress(input: {
+  /** Optional override when assets live only inside encrypted plaintext. */
+  assets?: PublishArtifactAsset[];
   artifact: unknown;
   diagnostics: AttachmentDiagnostic[];
   externalCount: number;
@@ -91,7 +93,8 @@ export function summarizeAssetEgress(input: {
     input.artifact && typeof input.artifact === "object"
       ? (input.artifact as { assets?: PublishArtifactAsset[] })
       : {};
-  const assets = Array.isArray(record.assets) ? record.assets : [];
+  const assets =
+    input.assets ?? (Array.isArray(record.assets) ? record.assets : []);
   const rawBytes = assets.reduce((sum, asset) => sum + asset.byteLength, 0);
   const encodedBytes = assets.reduce(
     (sum, asset) => sum + asset.data.length,
