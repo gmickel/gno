@@ -10,7 +10,13 @@ import {
   type SupportedRasterMediaType,
 } from "./artifact-asset-contract";
 
-const GNO_ASSET_TOKEN_PATTERN = /gno-asset:[a-z0-9-]*/giu;
+/**
+ * Capture the complete Markdown destination candidate, not merely a valid-looking
+ * prefix. Delimiters are excluded; every other suffix (percent escapes,
+ * fragments, query strings, Unicode, etc.) is deliberately retained so the
+ * strict sentinel parser can reject it rather than silently accepting a prefix.
+ */
+const GNO_ASSET_TOKEN_PATTERN = /gno-asset:[^\s<>"'()[\]{}]+/giu;
 const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/u;
 
 const asciiSlice = (bytes: Uint8Array, start: number, end: number): string =>

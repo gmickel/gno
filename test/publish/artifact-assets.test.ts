@@ -217,6 +217,46 @@ describe("publish artifact asset contract", () => {
     }
   });
 
+  test("rejects malformed suffixes on otherwise valid sentinel prefixes", async () => {
+    const artifact = (await loadJson("valid-small-raster-v1.json")) as Record<
+      string,
+      unknown
+    >;
+    const spaces = artifact.spaces as Array<{
+      notes: Array<{ markdown: string }>;
+    }>;
+    spaces[0]!.notes[0]!.markdown = spaces[0]!.notes[0]!.markdown.replace(
+      ")",
+      "%00)"
+    );
+
+    const result = validatePublishAssetContract(artifact);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostic.code).toBe("ASSET_SENTINEL_INVALID");
+    }
+  });
+
+  test("rejects descriptors that have references but no sentinel owner", async () => {
+    const artifact = (await loadJson("valid-small-raster-v1.json")) as Record<
+      string,
+      unknown
+    >;
+    const spaces = artifact.spaces as Array<{
+      notes: Array<{ markdown: string }>;
+    }>;
+    spaces[0]!.notes[0]!.markdown = "No image here";
+
+    const result = validatePublishAssetContract(artifact);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostic.code).toBe("ASSET_MISSING");
+      expect(result.diagnostic.message).toContain(
+        "no matching gno-asset sentinel"
+      );
+    }
+  });
+
   test("rejects duplicate, empty, and overlong requiredCapabilities deterministically", async () => {
     const base = (await loadJson("legacy-asset-free-v1.json")) as Record<
       string,

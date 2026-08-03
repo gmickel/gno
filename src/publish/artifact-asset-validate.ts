@@ -59,6 +59,12 @@ const validateReferenceOwnership = (
   for (const [index, asset] of assets.entries()) {
     const field = `assets[${index}]`;
     const owners = sentinelOwners.get(asset.id) ?? new Set<string>();
+    if (owners.size === 0) {
+      return fail(
+        "ASSET_MISSING",
+        `${field} has no matching gno-asset sentinel in any artifact note`
+      );
+    }
     const claimed = new Set<string>();
     for (const [refIndex, reference] of asset.references.entries()) {
       if (!notes.slugs.has(reference.noteSlug)) {
@@ -68,7 +74,7 @@ const validateReferenceOwnership = (
         );
       }
       claimed.add(reference.noteSlug);
-      if (owners.size > 0 && !owners.has(reference.noteSlug)) {
+      if (!owners.has(reference.noteSlug)) {
         return fail(
           "ASSET_SENTINEL_UNRESOLVED",
           `${field}.references[${refIndex}] claims note "${reference.noteSlug}" without a matching gno-asset sentinel`

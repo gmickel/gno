@@ -135,6 +135,27 @@ describe("attachment raster validation", () => {
     if (!zeroed.ok) expect(zeroed.code).toBe("ASSET_DIMENSION_INVALID");
   });
 
+  test("rejects header-only and truncated containers for every raster type", () => {
+    const fabricatedPngPrefix = new Uint8Array(24);
+    fabricatedPngPrefix.set(PNG_1X1.subarray(0, 24));
+    expect(validateRasterBytes(fabricatedPngPrefix)).toMatchObject({
+      ok: false,
+      code: "ASSET_CORRUPT",
+    });
+
+    for (const complete of [PNG_1X1, JPEG_1X1, GIF_1X1, WEBP_1X1, AVIF_1X1]) {
+      const truncated = complete.subarray(0, complete.length - 1);
+      expect(validateRasterBytes(truncated).ok).toBe(false);
+    }
+
+    const vp8xHeaderOnly = Uint8Array.from([
+      0x52, 0x49, 0x46, 0x46, 0x16, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,
+      0x56, 0x50, 0x38, 0x58, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ]);
+    expect(validateRasterBytes(vp8xHeaderOnly).ok).toBe(false);
+  });
+
   test("AVIF parser descends meta FullBox nesting and rejects malformed boxes", () => {
     const wide = buildAvif(32, 16);
     expect(validateRasterBytes(wide)).toMatchObject({

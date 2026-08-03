@@ -58,6 +58,30 @@ const readU32BE = (bytes: Uint8Array, offset: number): number =>
     (bytes[offset + 3] ?? 0)) >>>
   0;
 
+const readU32LE = (bytes: Uint8Array, offset: number): number =>
+  (((bytes[offset + 3] ?? 0) << 24) |
+    ((bytes[offset + 2] ?? 0) << 16) |
+    ((bytes[offset + 1] ?? 0) << 8) |
+    (bytes[offset] ?? 0)) >>>
+  0;
+
+const CRC32_TABLE = Uint32Array.from({ length: 256 }, (_, value) => {
+  let crc = value;
+  for (let bit = 0; bit < 8; bit += 1) {
+    crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return crc >>> 0;
+});
+
+const crc32 = (bytes: Uint8Array, start: number, end: number): number => {
+  let crc = 0xffffffff;
+  for (let index = start; index < end; index += 1) {
+    const tableIndex = (crc ^ (bytes[index] ?? 0)) & 0xff;
+    crc = (crc >>> 8) ^ (CRC32_TABLE[tableIndex] ?? 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+};
+
 const validateDimensions = (
   width: number,
   height: number
@@ -271,6 +295,222 @@ const parseDimensions = (
 };
 
 /**
+ * Validate the complete PNG chunk stream. This prevents a signature + fabricated
+ * IHDR prefix from crossing the boundary as an image. CRCs, image data, the
+ * terminal IEND chunk, and no trailing bytes are required.
+ */
+const isCompletePng = (bytes: Uint8Array): boolean => {
+  let offset = 8;
+  let chunkIndex = 0;
+  let sawIdat = false;
+  while (offset + 12 <= bytes.length) {
+    const dataLength = readU32BE(bytes, offset);
+    const typeStart = offset + 4;
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + dataLength;
+    const chunkEnd = dataEnd + 4;
+    if (dataEnd < dataStart || chunkEnd > bytes.length) return false;
+    const type = asciiSlice(bytes, typeStart, dataStart);
+    if (crc32(bytes, typeStart, dataEnd) !== readU32BE(bytes, dataEnd)) {
+      return false;
+    }
+    if (chunkIndex === 0 && (type !== "IHDR" || dataLength !== 13)) {
+      return false;
+    }
+    if (type === "IDAT") sawIdat = true;
+    if (type === "IEND") {
+      return dataLength === 0 && sawIdat && chunkEnd === bytes.length;
+    }
+    offset = chunkEnd;
+    chunkIndex += 1;
+  }
+  return false;
+};
+
+/** Complete marker walk: a JPEG needs frame metadata, a scan, and terminal EOI. */
+const isCompleteJpeg = (bytes: Uint8Array): boolean => {
+  if (bytes.length < 6 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return false;
+  let offset = 2;
+  let sawFrame = false;
+  let sawScan = false;
+  let sawEntropyData = false;
+  while (offset < bytes.length) {
+    if (bytes[offset] !== 0xff) return false;
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    if (offset >= bytes.length) return false;
+    const marker = bytes[offset] ?? 0;
+    offset += 1;
+    if (marker === 0xd9) {
+      return sawFrame && sawScan && sawEntropyData && offset === bytes.length;
+    }
+    if (
+      marker === 0xd8 ||
+      (marker >= 0xd0 && marker <= 0xd7) ||
+      marker === 0x01
+    ) {
+      continue;
+    }
+    if (offset + 2 > bytes.length) return false;
+    const segmentLength = readU16BE(bytes, offset);
+    if (segmentLength < 2 || offset + segmentLength > bytes.length)
+      return false;
+    const isFrame =
+      (marker >= 0xc0 && marker <= 0xc3) ||
+      (marker >= 0xc5 && marker <= 0xc7) ||
+      (marker >= 0xc9 && marker <= 0xcb) ||
+      (marker >= 0xcd && marker <= 0xcf);
+    if (isFrame) sawFrame = true;
+    if (marker !== 0xda) {
+      offset += segmentLength;
+      continue;
+    }
+    sawScan = true;
+    offset += segmentLength;
+    while (offset < bytes.length) {
+      if (bytes[offset] !== 0xff) {
+        sawEntropyData = true;
+        offset += 1;
+        continue;
+      }
+      const next = bytes[offset + 1];
+      if (next === undefined) return false;
+      if (next === 0x00 || (next >= 0xd0 && next <= 0xd7)) {
+        offset += 2;
+        continue;
+      }
+      break;
+    }
+  }
+  return false;
+};
+
+const skipGifSubBlocks = (bytes: Uint8Array, start: number): number | null => {
+  let offset = start;
+  while (offset < bytes.length) {
+    const size = bytes[offset] ?? 0;
+    offset += 1;
+    if (size === 0) return offset;
+    if (offset + size > bytes.length) return null;
+    offset += size;
+  }
+  return null;
+};
+
+/** Complete GIF block walk with at least one image and a terminal trailer. */
+const isCompleteGif = (bytes: Uint8Array): boolean => {
+  if (bytes.length < 14) return false;
+  let offset = 13;
+  const globalTable = (bytes[10] ?? 0) & 0x80;
+  if (globalTable) offset += 3 * 2 ** (((bytes[10] ?? 0) & 0x07) + 1);
+  if (offset > bytes.length) return false;
+  let sawImage = false;
+  while (offset < bytes.length) {
+    const introducer = bytes[offset] ?? 0;
+    offset += 1;
+    if (introducer === 0x3b) return sawImage && offset === bytes.length;
+    if (introducer === 0x21) {
+      if (offset >= bytes.length) return false;
+      offset += 1;
+      const next = skipGifSubBlocks(bytes, offset);
+      if (next === null) return false;
+      offset = next;
+      continue;
+    }
+    if (introducer !== 0x2c || offset + 9 > bytes.length) return false;
+    const packed = bytes[offset + 8] ?? 0;
+    offset += 9;
+    if (packed & 0x80) offset += 3 * 2 ** ((packed & 0x07) + 1);
+    if (offset >= bytes.length) return false;
+    const minimumCodeSize = bytes[offset] ?? 0;
+    if (minimumCodeSize < 2 || minimumCodeSize > 8) return false;
+    offset += 1;
+    if ((bytes[offset] ?? 0) === 0) return false;
+    const next = skipGifSubBlocks(bytes, offset);
+    if (next === null) return false;
+    offset = next;
+    sawImage = true;
+  }
+  return false;
+};
+
+/** RIFF size/chunk walk; VP8X is metadata and cannot stand in for image data. */
+const isCompleteWebp = (bytes: Uint8Array): boolean => {
+  if (bytes.length < 20 || readU32LE(bytes, 4) + 8 !== bytes.length) {
+    return false;
+  }
+  let offset = 12;
+  let sawImageData = false;
+  while (offset + 8 <= bytes.length) {
+    const type = asciiSlice(bytes, offset, offset + 4);
+    const size = readU32LE(bytes, offset + 4);
+    const dataStart = offset + 8;
+    const paddedEnd = dataStart + size + (size % 2);
+    if (paddedEnd < dataStart || paddedEnd > bytes.length) return false;
+    const isVp8 =
+      type === "VP8 " &&
+      size >= 10 &&
+      bytes[dataStart + 3] === 0x9d &&
+      bytes[dataStart + 4] === 0x01 &&
+      bytes[dataStart + 5] === 0x2a;
+    const isVp8l = type === "VP8L" && size >= 5 && bytes[dataStart] === 0x2f;
+    const isAnimationFrame = type === "ANMF" && size >= 16;
+    if (isVp8 || isVp8l || isAnimationFrame) {
+      sawImageData = true;
+    }
+    offset = paddedEnd;
+  }
+  return sawImageData && offset === bytes.length;
+};
+
+/** Exact top-level BMFF walk; AVIF needs metadata and a non-empty media payload. */
+const isCompleteAvif = (bytes: Uint8Array): boolean => {
+  let offset = 0;
+  let sawFtyp = false;
+  let sawMeta = false;
+  let sawMediaData = false;
+  while (offset + 8 <= bytes.length) {
+    let size = readU32BE(bytes, offset);
+    const type = asciiSlice(bytes, offset + 4, offset + 8);
+    let headerSize = 8;
+    if (size === 1) {
+      if (offset + 16 > bytes.length || readU32BE(bytes, offset + 8) !== 0) {
+        return false;
+      }
+      size = readU32BE(bytes, offset + 12);
+      headerSize = 16;
+    } else if (size === 0) {
+      size = bytes.length - offset;
+    }
+    if (size < headerSize || offset + size > bytes.length) return false;
+    if (type === "ftyp" && size >= headerSize + 8) sawFtyp = true;
+    if (type === "meta") sawMeta = true;
+    if (type === "mdat" && size > headerSize) sawMediaData = true;
+    offset += size;
+  }
+  return sawFtyp && sawMeta && sawMediaData && offset === bytes.length;
+};
+
+const isCompleteRaster = (
+  mediaType: SupportedRasterMediaType,
+  bytes: Uint8Array
+): boolean => {
+  switch (mediaType) {
+    case "image/png":
+      return isCompletePng(bytes);
+    case "image/jpeg":
+      return isCompleteJpeg(bytes);
+    case "image/gif":
+      return isCompleteGif(bytes);
+    case "image/webp":
+      return isCompleteWebp(bytes);
+    case "image/avif":
+      return isCompleteAvif(bytes);
+    default:
+      return false;
+  }
+};
+
+/**
  * Validate raster bytes: signature sniff + bounded dimension parse.
  * Caller should reject oversized files before reading full content when possible.
  */
@@ -314,6 +554,12 @@ export const validateRasterBytes = (
   }
   const dimError = validateDimensions(dims.width, dims.height);
   if (dimError) return dimError;
+  if (!isCompleteRaster(mediaType, bytes)) {
+    return fail(
+      "ASSET_CORRUPT",
+      `${mediaType} payload is not a complete, structurally renderable image`
+    );
+  }
 
   return {
     ok: true,
