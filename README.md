@@ -773,7 +773,7 @@ GNO is local-first, but sometimes you want a URL to send someone. [**gno.sh**](h
 
 ![gno.sh publish reader](./assets/screenshots/publish-reader.jpg)
 
-The workflow is deliberately explicit: **export locally → upload artifact → share URL**. Private and `publish: false` notes stay on your machine. Exported artifacts omit local collection paths and source URIs.
+The workflow is deliberately explicit: **export locally → upload artifact → share URL**. Private and `publish: false` notes stay on your machine. Exported artifacts omit local collection paths and source URIs. Local PNG/JPEG/GIF/WebP/AVIF images (Markdown and Obsidian embeds) are bundled into the artifact with SHA-256 dedup, `gno-asset:` sentinels, and an exact 100 MiB serialized ceiling; external HTTPS images stay as URLs. Encrypted shares keep image bytes inside ciphertext only. Invite-only note text publishes today, but invite-only image delivery on gno.sh is not supported yet.
 
 ```bash
 # Export a single note
@@ -816,6 +816,15 @@ metadata are unchanged. Secret-link and invite-only exports do not receive
 agent capabilities or manifests. Encrypted exports remain ciphertext-only.
 Reader metadata drops embedded local path or GNO/file URI tokens; canonical
 and image fields accept only uncredentialed public HTTP(S) targets.
+
+Resolved local PNG, JPEG, GIF, WebP, and AVIF references are bundled,
+content-addressed, and deduplicated; external public HTTPS images remain
+external. The exact serialized artifact is capped at 100 MiB. Public images
+use immutable snapshot/generation URLs, secret-link images are authorized on
+every request, and encrypted image bytes exist only inside ciphertext before
+the browser creates scoped Blob URLs. Invite-only bundled-image delivery is
+currently fail-closed; use an asset-free invite, secret link, or encrypted
+share when local images are required.
 
 Republishing a public, secret-link, or invite-only artifact updates the same URL. Encrypted shares should be replaced from a fresh local export so the server never needs your plaintext.
 

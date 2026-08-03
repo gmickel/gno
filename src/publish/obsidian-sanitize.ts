@@ -215,7 +215,8 @@ export function formatSanitizeWarnings(warnings: SanitizeWarning[]): string[] {
   }
 
   const labels: Record<SanitizeWarning["kind"], string> = {
-    "image-embed-dropped": "Image embeds dropped (attachments not bundled)",
+    "image-embed-dropped":
+      "Image embeds dropped (unsupported, missing, or unresolved)",
     "internal-reference-stripped": "Private `_internal/` references stripped",
     "nav-sidebar-dropped": "Navigation sidebar lines dropped",
     "wikilink-unresolved":

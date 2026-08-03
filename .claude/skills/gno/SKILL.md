@@ -92,6 +92,17 @@ Recipe rules:
 | **Skill**    | `skill install/uninstall/show/paths`                                                                       | Install skill for AI agents                                              |
 | **Admin**    | `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`                                                | Maintenance and diagnostics                                              |
 
+### Publishing with local images
+
+`gno publish export` bundles resolved local PNG, JPEG, GIF, WebP, and AVIF
+references, deduplicates identical bytes, preserves public HTTPS images, and
+enforces the 100 MiB exact serialized artifact limit. Review `assetSummary`
+in `--json` output for unresolved or unsupported references. Public and
+secret-link readers serve authorized hosted URLs; encrypted exports keep image
+bytes inside ciphertext and create scoped Blob URLs only after browser
+decryption. Hosted invite-only bundled-image delivery is currently
+fail-closed, so use an asset-free invite, secret link, or encrypted share.
+
 ## Search Modes
 
 | Command                | Speed   | Best For                            |

@@ -1185,6 +1185,15 @@ builder emits a closed projection and validates bounded base64 payload fields,
 the positive safe-integer KDF iteration count, route/source identity, and the
 bounded opaque token before export.
 
+Resolved local PNG, JPEG, GIF, WebP, and AVIF references are content-addressed,
+deduplicated, and bundled into the artifact; public HTTPS images remain
+external. `--json` and the local API report asset/ref counts, raw and encoded
+bytes, dedup savings, exact final upload bytes, and unresolved or unsupported
+diagnostics. The final serialized body is capped at 100 MiB. Encrypted exports
+place bundled raster bytes only inside ciphertext. gno.sh currently serves
+bundled images for public, secret-link, and encrypted readers; invite-only
+image delivery remains fail-closed.
+
 See [Publishing to gno.sh](PUBLISHING.md) for the visibility, public-agent,
 privacy, verification, and current commercial boundaries.
 

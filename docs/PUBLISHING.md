@@ -24,6 +24,21 @@ Then open [gno.sh Studio](https://gno.sh/studio), sign in, and upload the JSON
 artifact. Republishing is another explicit export and upload; it creates a new
 snapshot for the same route.
 
+Local Markdown images and Obsidian image embeds are bundled when they resolve
+inside the exported collection and are PNG, JPEG, GIF, WebP, or AVIF. GNO
+content-addresses and deduplicates their bytes, preserves external public
+HTTPS images, and reports unresolved, ambiguous, unsupported, or unsafe local
+references in the export summary. The exact final serialized artifact —
+including base64 or encryption overhead — must remain within 100 MiB.
+
+Public readers receive immutable generation-bound image URLs. Secret-link
+readers receive capability-authorized, no-store URLs. Encrypted exports keep
+the asset descriptors and bytes inside ciphertext; the browser creates scoped
+Blob URLs after decryption and revokes them on replacement or unmount. Hosted
+invite-only bundled-image delivery is not available yet: image-bearing
+invite-only shares fail closed rather than exposing storage identifiers. Use
+an asset-free invite artifact, secret link, or encrypted share for now.
+
 GNO omits notes marked `publish: false`. It also strips local source paths,
 source URIs, credential-bearing URLs, and unsafe metadata from reader
 artifacts. Review the preview and the exported file before upload. Publication
@@ -55,6 +70,36 @@ Revoke or expire supported private links in Studio; public-space deletion is
 not yet self-service, so request remote takedown before regenerating and
 reviewing any replacement artifact. Never assume republishing, deleting a local
 export, or changing local policy removed independently retained remote copies.
+
+## Bundled local images
+
+Publish export discovers local raster images referenced from Markdown
+(`![alt](path)`) and Obsidian embeds (`![[image.png]]`), confines them to the
+collection root, validates real PNG/JPEG/GIF/WebP/AVIF bytes, deduplicates by
+SHA-256, and rewrites successful references to deterministic `gno-asset:<sha256>`
+sentinels. External `https://` image URLs stay as-is. Unsupported formats (SVG,
+PDF, HTML, data URLs), missing files, traversal, and MIME spoofs are omitted
+with diagnostics — they never become raw sentinels in the artifact.
+
+Exact final serialized upload bytes (JSON including base64/encryption overhead)
+are enforced against the **100 MiB** ceiling. Successful exports report an
+`assetSummary` (CLI `--json` and `POST /api/publish/export`) with asset/ref
+counts, raw/encoded/final bytes, dedup savings, external image count, and
+diagnostics. Asset-free notes omit `assets` / `requiredCapabilities`.
+
+Visibility delivery:
+
+- **public** / **secret-link** / **invite-only**: assets travel in the V1
+  plaintext envelope with `requiredCapabilities: ["bundled-raster-assets@1"]`.
+  gno.sh currently delivers public images via immutable generation-bound URLs
+  and secret images via capability-authorized no-store routes. Invite-only
+  note text still publishes, but invite-only **bundled-image delivery is not
+  supported** on gno.sh yet (fail-closed; images will not render for invite
+  readers until that consumer path ships).
+- **encrypted**: asset bytes exist only inside ciphertext. The outer envelope
+  never carries plaintext assets, note bodies, or `gno-asset:` tokens.
+  Readers decrypt in-browser to scoped Blob URLs that are revoked on replace
+  or unmount.
 
 ## Visibility and agent access
 

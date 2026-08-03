@@ -887,10 +887,16 @@ export pipeline runs a sanitizer over each note's markdown. It:
   `_internal/` convention is treated as never-publish)
 - converts `[[Target|Alias]]` to the alias text, and `[[Target]]` to the
   tail segment of the target
-- drops `![[image.png]]` embeds (attachments are not bundled yet) with a
-  warning so the author can migrate to `![alt](url)` or wait for bundling
+- resolves local `![[image.png]]` / Markdown image refs for PNG/JPEG/GIF/WebP/
+  AVIF into content-addressed `gno-asset:<sha256>` sentinels (deduped; exact
+  100 MiB serialized ceiling); preserves external HTTPS images; drops
+  unsupported/missing/unsafe refs with diagnostics
 - refuses to export a note whose frontmatter contains `publish: false`
   (single-note export errors; collection export silently skips)
+
+Successful exports include `assetSummary` in `--json`. Encrypted visibility
+keeps raster bytes inside ciphertext only. Hosted invite-only image delivery
+is currently fail-closed on gno.sh.
 
 Every sanitizer decision surfaces in the CLI output as a "Preprocessor
 notes" section, on the `--json` response under `warnings`, and on

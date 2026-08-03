@@ -1965,9 +1965,9 @@ plaintext manifest or evidence may appear outside the ciphertext. V2 builders
 MUST emit a closed projection, validate payload strings as non-empty bounded
 base64, require a positive safe-integer KDF iteration count, and bound the
 non-blank opaque token. Caller-supplied extension fields MUST NOT enter the
-artifact. Encrypted export does not yet place assets in the client payload
-(see bundled-raster follow-on); Obsidian image embeds remain dropped on that
-path.
+artifact. Encrypted export MUST place bundled assets only inside the encrypted
+client payload. The outer V2 envelope MUST contain neither plaintext note
+content, asset descriptors, source references, nor raster bytes.
 
 ---
 
