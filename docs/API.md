@@ -97,8 +97,9 @@ CLI.
 | `/api/capture/clip`           | POST   | Commit a matching browser-clip preview |
 | `/api/docs`                   | POST   | Create new document                    |
 | `/api/docs/:id`               | PUT    | Update document                        |
-| `/api/docs/:id/refactor-plan` | POST   | Preview rename/move/duplicate warnings |
-| `/api/docs/:id/move`          | POST   | Move editable document                 |
+| `/api/docs/:id/refactor-plan` | POST   | Preview a reference-safe rename/move   |
+| `/api/docs/:id/rename`        | POST   | Apply an exact confirmed rename plan   |
+| `/api/docs/:id/move`          | POST   | Apply an exact confirmed move plan     |
 | `/api/docs/:id/duplicate`     | POST   | Duplicate editable document            |
 | `/api/docs/:id/deactivate`    | POST   | Unindex document                       |
 | `/api/folders`                | POST   | Create folder in collection            |
@@ -2259,6 +2260,86 @@ POST /api/docs/:id/editable-copy
 ```
 
 This creates a new markdown document using the converted content plus source provenance frontmatter. The original PDF/DOCX/etc. is left untouched.
+
+---
+
+### Reference-Safe Rename and Move
+
+Rename and same-collection move use a two-step preview/apply protocol. Never
+construct or reuse an old digest: preview the exact destination, inspect
+`canApply` and the reference inventory, then submit that plan's digest.
+
+```http
+POST /api/docs/:id/refactor-plan
+Content-Type: application/json
+
+{ "operation": "rename", "name": "new-note.md" }
+```
+
+For a move, use:
+
+```json
+{ "operation": "move", "folderPath": "archive", "name": "new-note.md" }
+```
+
+The response is the canonical
+[`file-refactor-preview@1.0`](../spec/output-schemas/file-refactor-preview.schema.json)
+plan plus compatibility fields `nextRelPath`, `nextUri`, and
+`refactorWarnings`. It inventories each examined wiki/Markdown reference,
+classifies it as `rewriteable`, `unchanged`, `ambiguous`, `malformed`, or
+`unsupported`, includes destination-only edits and source fingerprints, and
+returns a deterministic lowercase SHA-256 `planDigest`. `canApply: false`
+means no mutation is allowed.
+
+Apply the exact preview through the operation-specific endpoint:
+
+```http
+POST /api/docs/:id/rename
+Content-Type: application/json
+
+{
+  "name": "new-note.md",
+  "schemaVersion": "1.0",
+  "planDigest": "<64 lowercase hex characters>",
+  "confirmation": "apply"
+}
+```
+
+```http
+POST /api/docs/:id/move
+Content-Type: application/json
+
+{
+  "folderPath": "archive",
+  "name": "new-note.md",
+  "schemaVersion": "1.0",
+  "planDigest": "<64 lowercase hex characters>",
+  "confirmation": "apply"
+}
+```
+
+Apply rebuilds the plan from the current workspace. A changed source,
+reference, target, or safety classification returns `409 STALE_PLAN` or
+`409 CONFLICT` without mutation. Supported reference edits and the source file
+move share one all-or-rollback filesystem transaction. The canonical
+[`file-refactor-apply-result@1.0`](../spec/output-schemas/file-refactor-apply-result.schema.json)
+receipt distinguishes:
+
+| Status                      | Meaning                                                                       |
+| :-------------------------- | :---------------------------------------------------------------------------- |
+| `applied`                   | Filesystem committed and index/link state converged                           |
+| `applied_with_sync_pending` | Filesystem committed; run Update All because post-commit sync did not         |
+| `stale_plan`                | Preview no longer matches; preview again; filesystem unchanged                |
+| `conflict`                  | Collection lock or destination conflict; filesystem unchanged                 |
+| `unsupported`               | Read-only, ambiguous, malformed, unsupported, or unsafe plan; no mutation     |
+| `failed_rolled_back`        | Commit failed and rolled back, or receipt names a recovery journal to inspect |
+
+REST maps non-success terminal results into the standard error envelope and
+includes the typed filesystem/index state in `error.details`. A successful
+response includes the canonical receipt under `apply`; a sync-pending response
+is still an applied filesystem change, never a failed rename/move. Duplicate
+and create-folder keep their existing semantics and do not retarget inbound
+references. Cross-collection moves are unsupported.
 
 ---
 

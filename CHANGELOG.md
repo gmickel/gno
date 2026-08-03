@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added atomic reference-safe rename and same-collection move across the Web
+  UI, REST API, SDK, and write-gated MCP. Every mutation requires a fresh
+  preview digest and explicit confirmation; supported wiki and Markdown links
+  are rewritten in the same all-or-rollback filesystem transaction.
+
+### Changed
+
+- Replaced warning-only note refactors with typed stale-plan, contention,
+  rollback/recovery, and post-commit sync-pending outcomes. Duplicate and
+  folder creation remain unchanged and do not retarget inbound references.
+
 ### Fixed
 
 ## [1.31.0] - 2026-08-03

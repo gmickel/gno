@@ -499,6 +499,29 @@ search must include the new note. Browser provenance fields are
 `extractionHash`, `finalBodyHash`, `clipIdentity`, and `previewDigest`—do not
 invent `sourceHash`.
 
+## Reference-Safe Rename and Move
+
+When MCP writes are enabled and the user asks to rename or move an editable
+note, always use the operation-specific two-step tool. Never invent a digest or
+collapse preview and apply into one call.
+
+1. Call `gno_rename_note` or `gno_move_note` with `action: "preview"` and the
+   exact source/destination.
+2. Inspect `canApply`, `safety.blockingReasons`, and `examinedReferences`.
+   Stop and report ambiguous, malformed, unsupported, read-only, occupied,
+   cross-collection, or truncated plans.
+3. Only after explicit user approval, call the same tool with `action: "apply"`,
+   the preview's exact `schemaVersion` and `planDigest`, `confirmation: "apply"`,
+   and `confirm: true`.
+4. Treat `applied_with_sync_pending` as a committed filesystem refactor whose
+   index still needs `gno_sync` or `gno_index`; do not retry the file mutation.
+   For `stale_plan`, preview again instead of reusing the old digest.
+
+Supported wiki and Markdown destinations are rewritten in the same
+all-or-rollback filesystem transaction as the source move. Duplicate and
+create-folder do not retarget inbound references. Authentication alone never
+enables these MCP writes.
+
 ## Collection-specific embedding models
 
 Collections can override the global embedding model with `models.embed`.

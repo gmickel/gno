@@ -1308,6 +1308,59 @@ MCP capture runs under the server write lock and syncs the written file into FTS
 before returning `sync.status: "completed"`. It does not auto-embed; run
 `gno_embed` or `gno_index` when vector search should include the new note.
 
+### gno_rename_note / gno_move_note
+
+Reference-safe rename and same-collection move are write-gated two-step tools.
+They are unavailable unless the server starts with `--enable-write`; bearer
+authentication does not grant mutation authority.
+
+Preview first:
+
+```yaml
+tool: gno_rename_note
+action: preview
+ref: gno://notes/old-note.md
+name: new-note.md
+```
+
+```yaml
+tool: gno_move_note
+action: preview
+ref: gno://notes/new-note.md
+folderPath: archive
+```
+
+The tool returns the canonical `file-refactor-preview@1.0` plan in
+`structuredContent`, including every examined reference, destination-only
+edits, fingerprints, safety classifications, `canApply`, and a deterministic
+lowercase SHA-256 `planDigest`. Do not apply when `canApply` is false.
+
+Apply only the exact reviewed plan:
+
+```yaml
+tool: gno_rename_note
+action: apply
+ref: gno://notes/old-note.md
+name: new-note.md
+schemaVersion: "1.0"
+planDigest: <64 lowercase hex characters from preview>
+confirmation: apply
+confirm: true
+```
+
+Move uses the same apply fields plus `folderPath` and optional `name`. The
+handler rebuilds the plan from current state, so stale plans fail closed.
+Supported wiki and Markdown references commit atomically with the source move;
+ambiguous, malformed, unsupported, read-only, occupied, cross-collection, and
+truncated cases never auto-confirm. The canonical apply receipt distinguishes
+`applied`, `applied_with_sync_pending`, `stale_plan`, `conflict`,
+`unsupported`, and `failed_rolled_back`. If sync is pending, the filesystem
+change already committed; run `gno_sync` or `gno_index` to converge the index.
+
+`gno_duplicate_note` and `gno_create_folder` keep their existing semantics and
+do not retarget inbound references. MCP tool annotations are conservative UI
+hints, not authorization.
+
 ### gno_add_collection
 
 Add a folder to the index (requires `--enable-write`).

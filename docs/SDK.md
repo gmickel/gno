@@ -372,6 +372,66 @@ Readable Web UI `#anchor` links stay compatible and are the human default.
 Durable targets are for citation-safe create/resolve — not a replacement for
 `getSections()` navigation.
 
+### Reference-Safe Rename and Move
+
+Preview first, show or inspect the complete impact plan, then pass its exact
+version and digest into apply:
+
+```ts
+const renamePlan = await client.previewRenameNote({
+  ref: "gno://notes/old-note.md",
+  name: "new-note.md",
+});
+
+if (!renamePlan.canApply) {
+  console.error(renamePlan.safety.blockingReasons);
+} else {
+  const result = await client.renameNote({
+    ref: "gno://notes/old-note.md",
+    name: "new-note.md",
+    schemaVersion: renamePlan.schemaVersion,
+    planDigest: renamePlan.planDigest,
+    confirmation: "apply",
+  });
+  console.log(result.status, result.filesystem, result.indexConvergence);
+}
+```
+
+Move uses the same protocol:
+
+```ts
+const movePlan = await client.previewMoveNote({
+  ref: "gno://notes/new-note.md",
+  folderPath: "archive",
+});
+
+if (movePlan.canApply) {
+  const moved = await client.moveNote({
+    ref: "gno://notes/new-note.md",
+    folderPath: "archive",
+    schemaVersion: movePlan.schemaVersion,
+    planDigest: movePlan.planDigest,
+    confirmation: "apply",
+  });
+  console.log(moved.status);
+}
+```
+
+`previewRenameNote()` and `previewMoveNote()` return the canonical
+`GnoFileRefactorPreviewPlan`; `renameNote()` and `moveNote()` return the
+canonical `GnoFileRefactorApplyResult` directly. The client rebuilds the plan
+at apply time, so stale source/reference/target state cannot be silently
+accepted. Supported wiki and Markdown destinations are rewritten with the file
+move in one all-or-rollback filesystem transaction. Post-commit sync is a
+separate boundary: `applied_with_sync_pending` means the files committed and
+the caller should run `client.update()` to converge the index; it is not a
+failed or rolled-back refactor.
+
+Only editable source documents and same-collection moves are supported.
+Ambiguous, malformed, unsupported, read-only, occupied, or truncated plans fail
+closed. `duplicateNote()` and `createFolder()` retain their existing behavior
+and do not retarget inbound references.
+
 ### Capture
 
 Capture a note with provenance and receive the shared capture receipt.

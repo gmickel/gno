@@ -694,7 +694,7 @@ Open `http://localhost:3000` to:
   configured MCP retrieval without changing client config. Skill installation
   is visible, but client runtime execution cannot be proven automatically
 - **Manage files safely**: Rename, reveal, or move editable files to Trash with explicit index-vs-disk semantics
-- **Refactor files safely**: Move, duplicate, and organize editable notes with reference warnings
+- **Refactor files safely**: Preview and atomically rename or move editable notes while GNO rewrites supported wiki and Markdown references; stale or unsafe plans fail closed
 - **Switch presets**: Change models live without restart
 - **Command palette**: Jump, create, refactor, and section-navigate from one keyboard-first surface
 
@@ -863,9 +863,10 @@ curl http://localhost:3000/api/health
 | `/api/docs`                   | GET    | List documents               |
 | `/api/docs`                   | POST   | Create document              |
 | `/api/docs/:id`               | PUT    | Update document content      |
-| `/api/docs/:id/move`          | POST   | Move editable document       |
+| `/api/docs/:id/rename`        | POST   | Apply confirmed safe rename  |
+| `/api/docs/:id/move`          | POST   | Apply confirmed safe move    |
 | `/api/docs/:id/duplicate`     | POST   | Duplicate editable document  |
-| `/api/docs/:id/refactor-plan` | POST   | Preview file-op warnings     |
+| `/api/docs/:id/refactor-plan` | POST   | Preview reference-safe plan  |
 | `/api/docs/:id/deactivate`    | POST   | Remove from index            |
 | `/api/doc`                    | GET    | Get document content         |
 | `/api/doc/:id/sections`       | GET    | Get document sections        |

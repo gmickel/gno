@@ -372,7 +372,14 @@ Editable notes now support richer organization flows:
 - **Duplicate** into the current or another folder
 - **Create folder** from Browse
 
-GNO surfaces reference warnings when backlinks or link paths may need review after a refactor.
+Rename and move first show a reference-impact preview. GNO rewrites supported
+wiki links and Markdown destinations together with the file move, preserving
+aliases, headings, link labels, titles, fragments, and relative-path meaning.
+Ambiguous, malformed, unsupported, read-only, occupied, or stale plans cannot
+be confirmed. The filesystem change and accepted reference edits commit as one
+all-or-rollback boundary; if only the later index refresh fails, the UI reports
+**Applied, sync pending** and tells you to run **Update All**. Duplicate and
+folder creation keep their existing semantics and do not retarget backlinks.
 
 ---
 
