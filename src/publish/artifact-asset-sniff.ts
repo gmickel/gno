@@ -24,6 +24,13 @@ const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/u;
 const asciiSlice = (bytes: Uint8Array, start: number, end: number): string =>
   String.fromCharCode(...bytes.subarray(start, end));
 
+const readU32BE = (bytes: Uint8Array, offset: number): number =>
+  (((bytes[offset] ?? 0) << 24) |
+    ((bytes[offset + 1] ?? 0) << 16) |
+    ((bytes[offset + 2] ?? 0) << 8) |
+    (bytes[offset + 3] ?? 0)) >>>
+  0;
+
 export const formatGnoAssetSentinel = (assetId: string): string => {
   if (!SHA256_HEX_PATTERN.test(assetId)) {
     throw new Error("Asset id must be lowercase SHA-256 hex");
@@ -80,13 +87,19 @@ export const sniffRasterMediaType = (
     }
   }
   if (bytes.length >= 12 && asciiSlice(bytes, 4, 8) === "ftyp") {
-    const brand = asciiSlice(bytes, 8, 12);
+    let boxSize = readU32BE(bytes, 0);
+    let headerSize = 8;
+    if (boxSize === 1) {
+      if (bytes.length < 24 || readU32BE(bytes, 8) !== 0) return null;
+      boxSize = readU32BE(bytes, 12);
+      headerSize = 16;
+    } else if (boxSize === 0) {
+      boxSize = bytes.length;
+    }
+    if (boxSize < headerSize + 8 || boxSize > bytes.length) return null;
+    const brand = asciiSlice(bytes, headerSize, headerSize + 4);
     if (brand === "avif" || brand === "avis") return "image/avif";
-    for (
-      let offset = 16;
-      offset + 4 <= Math.min(bytes.length, 64);
-      offset += 4
-    ) {
+    for (let offset = headerSize + 8; offset + 4 <= boxSize; offset += 4) {
       const compat = asciiSlice(bytes, offset, offset + 4);
       if (compat === "avif" || compat === "avis") return "image/avif";
     }

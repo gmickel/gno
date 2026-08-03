@@ -124,6 +124,51 @@ describe("publish artifact asset contract", () => {
     ).toBeNull();
   });
 
+  test("sniffs AVIF brands only inside the complete declared ftyp box", () => {
+    const encoder = new TextEncoder();
+    const u32 = (value: number): Uint8Array =>
+      Uint8Array.of(
+        (value >>> 24) & 0xff,
+        (value >>> 16) & 0xff,
+        (value >>> 8) & 0xff,
+        value & 0xff
+      );
+    const concat = (...parts: Uint8Array[]): Uint8Array => {
+      const output = new Uint8Array(
+        parts.reduce((total, part) => total + part.length, 0)
+      );
+      let offset = 0;
+      for (const part of parts) {
+        output.set(part, offset);
+        offset += part.length;
+      }
+      return output;
+    };
+    const nonAvifFtyp = concat(
+      u32(20),
+      encoder.encode("ftypmif1"),
+      u32(0),
+      encoder.encode("mif1")
+    );
+    const unrelatedAvifBox = concat(u32(12), encoder.encode("freeavif"));
+    expect(
+      sniffRasterMediaType(concat(nonAvifFtyp, unrelatedAvifBox))
+    ).toBeNull();
+
+    const compatibleBrands = concat(
+      ...Array.from({ length: 16 }, () => encoder.encode("mif1")),
+      encoder.encode("avif")
+    );
+    const longFtyp = concat(
+      u32(16 + compatibleBrands.length),
+      encoder.encode("ftypmif1"),
+      u32(0),
+      compatibleBrands
+    );
+    expect(longFtyp.length).toBeGreaterThan(64);
+    expect(sniffRasterMediaType(longFtyp)).toBe("image/avif");
+  });
+
   test("never TypeErrors on hostile assets entries; returns diagnostics", async () => {
     const base = (await loadJson("legacy-asset-free-v1.json")) as Record<
       string,
