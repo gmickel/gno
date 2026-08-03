@@ -129,6 +129,7 @@ describe("attachment discover parser", () => {
   test("skips Obsidian-looking text in inline link resources only", () => {
     const markdown = [
       '[docs](https://example.com/![[../destination.png]] "![[../title.png]]")',
+      "<https://example.com/![[../autolink.png]]>",
       "[![[visible.png]]](https://example.com)",
     ].join("\n");
 
