@@ -1280,7 +1280,7 @@ export async function handlePublishExport(
   }
 
   try {
-    const { artifact, warnings } = await exportPublishArtifact({
+    const { artifact, assetSummary, warnings } = await exportPublishArtifact({
       collections: config.collections,
       options: {
         encryptionPassphrase: body.encryptionPassphrase,
@@ -1295,6 +1295,7 @@ export async function handlePublishExport(
 
     return jsonResponse({
       artifact,
+      assetSummary,
       fileName: derivePublishArtifactFilename(artifact),
       uploadUrl: "https://gno.sh/studio",
       warnings,

@@ -2,11 +2,20 @@
  * Obsidian-aware markdown pre-processor for publish export.
  *
  * Strips wikilinks, drops navigation sidebar idioms, removes references to
- * private (`_internal/`) paths, and warns on unresolvable image embeds before
- * the markdown enters the publish artifact.
+ * private (`_internal/`) paths, and resolves/bundles local raster embeds when
+ * an attachment context is provided (otherwise drops image embeds with a
+ * warning for backward compatibility).
  *
  * @module src/publish/obsidian-sanitize
  */
+
+import {
+  rewriteAttachmentsInMarkdown,
+  type AttachmentDiagnostic,
+  type AttachmentResolveContext,
+  type AttachmentRewriteResult,
+  type PendingAssetPayload,
+} from "./attachment-resolver";
 
 const WIKILINK_INTERNAL_PREFIX = /_internal\//i;
 const NAV_SIDEBAR_LINE = /^(!?\[\[[^\]]+\]\]\s*\|?\s*)+$/;
@@ -29,6 +38,13 @@ export interface SanitizeWarning {
 export interface SanitizeResult {
   markdown: string;
   warnings: SanitizeWarning[];
+}
+
+export interface PublishSanitizeResult extends SanitizeResult {
+  diagnostics: AttachmentDiagnostic[];
+  externalCount: number;
+  payloads: Map<string, PendingAssetPayload>;
+  preDedupRawBytes: number;
 }
 
 const splitFrontmatter = (
@@ -61,8 +77,10 @@ const deriveLinkDisplay = (target: string): string => {
   return tail.trim() || raw;
 };
 
-export function sanitizeObsidianMarkdown(source: string): SanitizeResult {
-  const { body, frontmatter } = splitFrontmatter(source);
+const applyWikilinkSanitize = (
+  body: string,
+  options: { dropImageEmbeds: boolean }
+): { markdown: string; warnings: SanitizeWarning[] } => {
   const warnings: SanitizeWarning[] = [];
   const lines = body.split("\n");
   const output: string[] = [];
@@ -81,13 +99,15 @@ export function sanitizeObsidianMarkdown(source: string): SanitizeResult {
 
     let line = rawLine;
 
-    line = line.replace(IMAGE_EMBED, (_match, target: string) => {
-      warnings.push({
-        kind: "image-embed-dropped",
-        detail: target.trim(),
+    if (options.dropImageEmbeds) {
+      line = line.replace(IMAGE_EMBED, (_match, target: string) => {
+        warnings.push({
+          kind: "image-embed-dropped",
+          detail: target.trim(),
+        });
+        return "";
       });
-      return "";
-    });
+    }
 
     line = line.replace(INTERNAL_WIKILINK, (match) => {
       warnings.push({
@@ -134,9 +154,45 @@ export function sanitizeObsidianMarkdown(source: string): SanitizeResult {
     output.push(line);
   }
 
+  return { markdown: output.join("\n"), warnings };
+};
+
+/**
+ * Legacy sync sanitizer: drops Obsidian image embeds and converts wikilinks.
+ * Prefer `sanitizePublishMarkdown` when attachment bundling is enabled.
+ */
+export function sanitizeObsidianMarkdown(source: string): SanitizeResult {
+  const { body, frontmatter } = splitFrontmatter(source);
+  const sanitized = applyWikilinkSanitize(body, { dropImageEmbeds: true });
   return {
-    markdown: `${frontmatter}${output.join("\n")}`,
-    warnings,
+    markdown: `${frontmatter}${sanitized.markdown}`,
+    warnings: sanitized.warnings,
+  };
+}
+
+/**
+ * Parser-aware publish sanitize: resolve/rewrite local rasters in the same
+ * pass as Obsidian cleanup (image discovery is not a second independent scan).
+ */
+export async function sanitizePublishMarkdown(
+  source: string,
+  attachmentCtx: AttachmentResolveContext
+): Promise<PublishSanitizeResult> {
+  const { body, frontmatter } = splitFrontmatter(source);
+  const rewritten: AttachmentRewriteResult = await rewriteAttachmentsInMarkdown(
+    body,
+    attachmentCtx
+  );
+  const sanitized = applyWikilinkSanitize(rewritten.markdown, {
+    dropImageEmbeds: false,
+  });
+  return {
+    diagnostics: rewritten.diagnostics,
+    externalCount: rewritten.externalCount,
+    markdown: `${frontmatter}${sanitized.markdown}`,
+    payloads: rewritten.payloads,
+    preDedupRawBytes: rewritten.preDedupRawBytes,
+    warnings: sanitized.warnings,
   };
 }
 
@@ -159,7 +215,7 @@ export function formatSanitizeWarnings(warnings: SanitizeWarning[]): string[] {
   }
 
   const labels: Record<SanitizeWarning["kind"], string> = {
-    "image-embed-dropped": "Image embeds dropped (attachments not bundled yet)",
+    "image-embed-dropped": "Image embeds dropped (attachments not bundled)",
     "internal-reference-stripped": "Private `_internal/` references stripped",
     "nav-sidebar-dropped": "Navigation sidebar lines dropped",
     "wikilink-unresolved":

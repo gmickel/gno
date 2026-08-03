@@ -184,6 +184,16 @@ describe("publish export helpers", () => {
         success: true,
         data: {
           artifact,
+          assetSummary: {
+            assetCount: 0,
+            dedupSavedBytes: 0,
+            diagnostics: [],
+            encodedBytes: 0,
+            externalCount: 0,
+            finalUploadBytes: 128,
+            rawBytes: 0,
+            referenceCount: 0,
+          },
           outPath: "/tmp/atlas.json",
           uploadUrl: "https://gno.sh/studio",
           warnings: [],
@@ -195,6 +205,53 @@ describe("publish export helpers", () => {
 
     expect(formatted).toContain("Exported collection to /tmp/atlas.json");
     expect(formatted).toContain("open https://gno.sh/studio");
+    expect(formatted).toContain("Asset summary:");
+    expect(formatted).toContain("finalBytes=128");
+  });
+
+  it("prints stable asset diagnostics in human output", () => {
+    const artifact = buildPublishArtifact({
+      notes: [PUBLISH_NOTE],
+      routeSlug: "atlas",
+      sourceType: "collection",
+      summary: "Atlas summary",
+      title: "Atlas",
+      visibility: "public",
+    });
+    const formatted = formatPublishExport(
+      {
+        success: true,
+        data: {
+          artifact,
+          assetSummary: {
+            assetCount: 0,
+            dedupSavedBytes: 0,
+            diagnostics: [
+              {
+                code: "ASSET_MISSING",
+                message: "Attachment not found",
+                noteSlug: "atlas",
+                sourceRef: "missing.png",
+              },
+            ],
+            encodedBytes: 0,
+            externalCount: 0,
+            finalUploadBytes: 128,
+            rawBytes: 0,
+            referenceCount: 0,
+          },
+          outPath: "/tmp/atlas.json",
+          uploadUrl: "https://gno.sh/studio",
+          warnings: [],
+          warningsDisplay: [],
+        },
+      },
+      { json: false }
+    );
+
+    expect(formatted).toContain(
+      "[ASSET_MISSING] atlas: missing.png — Attachment not found"
+    );
   });
 
   it("builds encrypted export artifacts without plaintext note content", async () => {

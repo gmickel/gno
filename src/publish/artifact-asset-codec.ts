@@ -15,6 +15,23 @@ export const sha256BytesHex = (bytes: Uint8Array): string => {
 const BASE64_PATTERN =
   /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/u;
 
+/**
+ * Encode raw bytes to standard base64 without Node Buffer.
+ * Prefers Bun/Web Uint8Array.toBase64(); falls back to btoa for parity with decode.
+ */
+export const encodeBytesToBase64 = (bytes: Uint8Array): string => {
+  if (typeof bytes.toBase64 === "function") {
+    return bytes.toBase64();
+  }
+  const CHUNK = 0x8000;
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += CHUNK) {
+    const slice = bytes.subarray(offset, offset + CHUNK);
+    binary += String.fromCharCode(...slice);
+  }
+  return btoa(binary);
+};
+
 /** Decode standard base64 without Buffer (uses atob). */
 export const decodeBase64ToBytes = (
   data: string

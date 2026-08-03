@@ -9,7 +9,7 @@ import type { DocumentRow, StorePort, TagRow } from "../store/types";
 
 import { enforceCollectionEgressWithAudit } from "../core/egress-enforcement";
 import { parseRef } from "../core/ref-parser";
-import { parseFrontmatter, stripFrontmatter } from "../ingestion/frontmatter";
+import { parseFrontmatter } from "../ingestion/frontmatter";
 import { getContentBatch } from "../store/content-batch";
 import {
   buildEncryptedPublishArtifact,
@@ -24,10 +24,21 @@ import {
   type PublishArtifactNote,
   type PublishVisibility,
 } from "./artifact";
+import { measureArtifactUploadBytes } from "./artifact-asset-codec";
+import {
+  buildAttachmentBasenameIndex,
+  emptyAssetEgressSummary,
+  type PublishAssetEgressSummary,
+} from "./attachment-resolver";
 import { buildEncryptedArtifactPayload } from "./encrypted-export";
 import {
+  finalizeV1Artifact,
+  mergePayloads,
+  sanitizeNoteMarkdown,
+  type NoteBuildAccumulator,
+} from "./export-attachments";
+import {
   isPublishDisabledByFrontmatter,
-  sanitizeObsidianMarkdown,
   type SanitizeWarning,
 } from "./obsidian-sanitize";
 
@@ -138,7 +149,10 @@ async function exportCollectionArtifact(
   target: string,
   options: PublishExportCoreOptions,
   warnings: SanitizeWarning[]
-) {
+): Promise<{
+  artifact: PublishArtifact;
+  assetSummary: PublishAssetEgressSummary;
+} | null> {
   const collection = resolveCollection(collections, target);
   if (!collection) {
     return null;
@@ -174,8 +188,20 @@ async function exportCollectionArtifact(
 
   const contentByHash = contentResult.value;
   const tagsByDocId = tagsResult.value;
+  const visibility = resolveVisibility(options.visibility);
+  const bundleAttachments = visibility !== "encrypted";
+  const basenameIndex = bundleAttachments
+    ? await buildAttachmentBasenameIndex(collection.path)
+    : null;
 
+  const acc: NoteBuildAccumulator = {
+    diagnostics: [],
+    externalCount: 0,
+    payloads: new Map(),
+    preDedupRawBytes: 0,
+  };
   const notes: PublishArtifactNote[] = [];
+
   for (const doc of activeDocs) {
     if (!doc.mirrorHash) {
       throw new Error(`Document has no converted content: ${doc.uri}`);
@@ -187,17 +213,31 @@ async function exportCollectionArtifact(
     if (isPublishDisabledByFrontmatter(rawMarkdown)) {
       continue;
     }
+
     const frontmatter = parseFrontmatter(rawMarkdown).metadata;
-    const sanitized = sanitizeObsidianMarkdown(rawMarkdown);
-    warnings.push(...sanitized.warnings);
-    const markdown = stripFrontmatter(sanitized.markdown);
-    const tags = tagsByDocId.get(doc.id) ?? [];
     const title = deriveExportedTitle(doc);
+    const slug = deriveExportedSlug(doc);
+    const sanitized = await sanitizeNoteMarkdown({
+      basenameIndex,
+      collectionRoot: bundleAttachments ? collection.path : null,
+      noteSlug: slug,
+      rawMarkdown,
+      sourceRelPath: doc.relPath,
+      warnings,
+    });
+    acc.diagnostics.push(...sanitized.diagnostics);
+    acc.externalCount += sanitized.externalCount;
+    acc.preDedupRawBytes += sanitized.preDedupRawBytes;
+    mergePayloads(acc.payloads, sanitized.payloads);
     notes.push({
-      markdown,
-      metadata: buildExportedMetadata(doc, frontmatter, tags),
-      slug: deriveExportedSlug(doc),
-      summary: deriveExportedSummary(markdown, frontmatter),
+      markdown: sanitized.markdown,
+      metadata: buildExportedMetadata(
+        doc,
+        frontmatter,
+        tagsByDocId.get(doc.id) ?? []
+      ),
+      slug,
+      summary: deriveExportedSummary(sanitized.markdown, frontmatter),
       title,
     });
   }
@@ -217,7 +257,6 @@ async function exportCollectionArtifact(
     collection.name,
     target,
   ]);
-  const visibility = resolveVisibility(options.visibility);
   const { lineage } = await enforceCollectionEgressWithAudit({
     collections,
     collectionNames: [collection.name],
@@ -246,25 +285,34 @@ async function exportCollectionArtifact(
       title,
     });
 
-    return buildEncryptedPublishArtifact({
+    const artifact = buildEncryptedPublishArtifact({
       egressLineage: lineage,
       encryptedPayload: encrypted.encryptedPayload,
       routeSlug,
       secretToken: encrypted.secretToken,
       sourceType: "collection",
     });
+    return {
+      artifact,
+      assetSummary: emptyAssetEgressSummary(
+        measureArtifactUploadBytes(artifact)
+      ),
+    };
   }
 
-  return buildPublishArtifact({
-    egressLineage: lineage,
-    homeNoteSlug: chooseHomeNoteSlug(notes),
-    notes,
-    routeSlug,
-    sourceType: "collection",
-    summary,
-    title,
-    visibility,
-  });
+  return finalizeV1Artifact(
+    buildPublishArtifact({
+      egressLineage: lineage,
+      homeNoteSlug: chooseHomeNoteSlug(notes),
+      notes,
+      routeSlug,
+      sourceType: "collection",
+      summary,
+      title,
+      visibility,
+    }),
+    acc
+  );
 }
 
 async function exportDocumentArtifact(
@@ -273,28 +321,46 @@ async function exportDocumentArtifact(
   target: string,
   options: PublishExportCoreOptions,
   warnings: SanitizeWarning[]
-) {
+): Promise<{
+  artifact: PublishArtifact;
+  assetSummary: PublishAssetEgressSummary;
+}> {
   const doc = await lookupDocument(store, target);
   if (!doc?.active) {
     throw new Error(`Document not found: ${target}`);
   }
 
+  const collection =
+    collections.find((entry) => entry.name === doc.collection) ?? null;
   const rawMarkdown = await loadDocumentMarkdown(store, doc);
   if (isPublishDisabledByFrontmatter(rawMarkdown)) {
     throw new Error(
       `Refused to export: ${doc.uri} has publish: false in frontmatter`
     );
   }
+
   const frontmatter = parseFrontmatter(rawMarkdown).metadata;
-  const sanitized = sanitizeObsidianMarkdown(rawMarkdown);
-  warnings.push(...sanitized.warnings);
-  const markdown = stripFrontmatter(sanitized.markdown);
-  const tags = await loadDocumentTags(store, doc);
   const title = options.title ?? deriveExportedTitle(doc);
-  const summary =
-    options.summary ?? deriveExportedSummary(markdown, frontmatter);
   const slug = deriveExportedSlug(doc);
   const visibility = resolveVisibility(options.visibility);
+  const bundleAttachments = visibility !== "encrypted" && collection !== null;
+  const basenameIndex =
+    bundleAttachments && collection
+      ? await buildAttachmentBasenameIndex(collection.path)
+      : null;
+
+  const sanitized = await sanitizeNoteMarkdown({
+    basenameIndex,
+    collectionRoot: bundleAttachments && collection ? collection.path : null,
+    noteSlug: slug,
+    rawMarkdown,
+    sourceRelPath: doc.relPath,
+    warnings,
+  });
+  const markdown = sanitized.markdown;
+  const summary =
+    options.summary ?? deriveExportedSummary(markdown, frontmatter);
+  const tags = await loadDocumentTags(store, doc);
   const routeSlug = derivePublishSlug([options.routeSlug ?? "", slug, target]);
   const { lineage } = await enforceCollectionEgressWithAudit({
     collections,
@@ -306,6 +372,14 @@ async function exportDocumentArtifact(
     store,
   });
 
+  const note: PublishArtifactNote = {
+    markdown,
+    metadata: buildExportedMetadata(doc, frontmatter, tags),
+    slug,
+    summary,
+    title,
+  };
+
   if (visibility === "encrypted") {
     if (!options.encryptionPassphrase) {
       throw new Error(
@@ -315,15 +389,7 @@ async function exportDocumentArtifact(
 
     const encrypted = await buildEncryptedArtifactPayload({
       exportedAt: new Date().toISOString(),
-      notes: [
-        {
-          markdown,
-          metadata: buildExportedMetadata(doc, frontmatter, tags),
-          slug,
-          summary,
-          title,
-        },
-      ],
+      notes: [note],
       passphrase: options.encryptionPassphrase,
       routeSlug,
       sourceType: "note",
@@ -331,36 +397,43 @@ async function exportDocumentArtifact(
       title,
     });
 
-    return buildEncryptedPublishArtifact({
+    const artifact = buildEncryptedPublishArtifact({
       egressLineage: lineage,
       encryptedPayload: encrypted.encryptedPayload,
       routeSlug,
       secretToken: encrypted.secretToken,
       sourceType: "note",
     });
+    return {
+      artifact,
+      assetSummary: emptyAssetEgressSummary(
+        measureArtifactUploadBytes(artifact)
+      ),
+    };
   }
 
-  return buildPublishArtifact({
-    egressLineage: lineage,
-    notes: [
-      {
-        markdown,
-        metadata: buildExportedMetadata(doc, frontmatter, tags),
-        slug,
-        summary,
-        title,
-      },
-    ],
-    routeSlug,
-    sourceType: "note",
-    summary,
-    title,
-    visibility,
-  });
+  return finalizeV1Artifact(
+    buildPublishArtifact({
+      egressLineage: lineage,
+      notes: [note],
+      routeSlug,
+      sourceType: "note",
+      summary,
+      title,
+      visibility,
+    }),
+    {
+      diagnostics: sanitized.diagnostics,
+      externalCount: sanitized.externalCount,
+      payloads: sanitized.payloads,
+      preDedupRawBytes: sanitized.preDedupRawBytes,
+    }
+  );
 }
 
 export interface ExportPublishArtifactResult {
   artifact: PublishArtifact;
+  assetSummary: PublishAssetEgressSummary;
   warnings: SanitizeWarning[];
 }
 
@@ -371,14 +444,15 @@ export async function exportPublishArtifact(input: {
   target: string;
 }): Promise<ExportPublishArtifactResult> {
   const warnings: SanitizeWarning[] = [];
-  const artifact =
-    (await exportCollectionArtifact(
-      input.store,
-      input.collections,
-      input.target,
-      input.options,
-      warnings
-    )) ??
+  const collectionExport = await exportCollectionArtifact(
+    input.store,
+    input.collections,
+    input.target,
+    input.options,
+    warnings
+  );
+  const result =
+    collectionExport ??
     (await exportDocumentArtifact(
       input.store,
       input.collections,
@@ -386,5 +460,9 @@ export async function exportPublishArtifact(input: {
       input.options,
       warnings
     ));
-  return { artifact, warnings };
+  return {
+    artifact: result.artifact,
+    assetSummary: result.assetSummary,
+    warnings,
+  };
 }

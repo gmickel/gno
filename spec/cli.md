@@ -1949,6 +1949,15 @@ tokens MUST be filtered. Canonical and image metadata MUST contain
 uncredentialed public HTTP(S) targets; local hostnames and literal loopback,
 private, or link-local addresses MUST be filtered.
 
+When local raster attachments are bundled, the V1 artifact MAY include
+`assets[]` and `requiredCapabilities: ["bundled-raster-assets@1"]`. Export
+success payloads (CLI `--json` and `POST /api/publish/export`) MUST include a
+deterministic `assetSummary` with asset/ref counts, raw/encoded/final UTF-8
+upload bytes, dedup savings, external image count, and unresolved/unsupported
+diagnostics. Exact final serialized upload bytes MUST be enforced against the
+100 MiB ceiling before returning. Asset-free exports omit `assets` /
+`requiredCapabilities` and report zero asset counts.
+
 Secret-link and invite-only V1 spaces MUST NOT contain a manifest or agent
 capability field. Encrypted V2 spaces MUST contain only ciphertext parameters,
 the opaque secret token, route slug, source type, and encrypted visibility; no
@@ -1956,7 +1965,9 @@ plaintext manifest or evidence may appear outside the ciphertext. V2 builders
 MUST emit a closed projection, validate payload strings as non-empty bounded
 base64, require a positive safe-integer KDF iteration count, and bound the
 non-blank opaque token. Caller-supplied extension fields MUST NOT enter the
-artifact.
+artifact. Encrypted export does not yet place assets in the client payload
+(see bundled-raster follow-on); Obsidian image embeds remain dropped on that
+path.
 
 ---
 

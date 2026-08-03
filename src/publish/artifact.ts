@@ -50,7 +50,16 @@ export {
   sniffRasterMediaType,
   validatePublishAssetContract,
 } from "./artifact-assets";
-
+export {
+  attachAssetsToV1Artifact,
+  buildDeterministicAssets,
+  emptyAssetEgressSummary,
+  summarizeAssetEgress,
+} from "./attachment-resolver";
+export type {
+  AttachmentDiagnostic,
+  PublishAssetEgressSummary,
+} from "./attachment-resolver";
 export type PublishVisibility =
   | "encrypted"
   | "invite-only"
