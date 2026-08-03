@@ -49,6 +49,19 @@ export {
   type FileRefactorSafetySummary,
 } from "./file-refactor-contract";
 
+export {
+  FILE_REFACTOR_PLANNER_CAPS,
+  planFileRefactorImpact,
+  type FileRefactorPlannerDocument,
+  type PlanFileRefactorImpactInput,
+} from "./file-refactor-planner";
+
+export {
+  planFileRefactorImpactFromSnapshot,
+  planInputFromResolutionSnapshot,
+  type FileRefactorSnapshotLike,
+} from "./file-refactor-from-snapshot";
+
 export interface RefactorWarningSummary {
   warnings: string[];
   backlinkCount: number;

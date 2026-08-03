@@ -55,6 +55,8 @@ import type {
   EgressAuditStatusResult,
   FtsResult,
   FtsSearchOptions,
+  FileRefactorResolutionReferrerDocument,
+  FileRefactorResolutionSnapshot,
   GetGraphNeighborsOptions,
   GetGraphOptions,
   GraphEdgeConfidence,
@@ -112,6 +114,10 @@ import {
   type FtsTokenizer,
   resolveConfiguredEgressPolicy,
 } from "../../config/types";
+import {
+  getDocumentCapabilities,
+  isTextLikeReferenceDocument,
+} from "../../core/document-capabilities";
 import { analyzeGraphCommunities } from "../../core/graph-analysis";
 import {
   classifyResolvedGraphEdge,
@@ -122,6 +128,7 @@ import {
   buildWikiBestRankMatchCountSubquery,
   buildWikiBestRankSubquery,
 } from "../../core/graph-resolver";
+import { buildContentPrefilterNeedles } from "../../core/link-relevance";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 import {
   parseActivationReceipt,
@@ -3366,6 +3373,408 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to resolve links",
+        cause
+      );
+    }
+  }
+
+  /**
+   * Bounded read seam for reference-safe rename/move planning.
+   * Loads catalog metadata plus content for indexed backlinks unioned with a
+   * conservative SQL content prefilter (opaque embeds/HTML/code/malformed may
+   * not appear in doc_links). Missing mirror content fails closed.
+   */
+  async getFileRefactorResolutionSnapshot(input: {
+    sourceUri: string;
+    maxCatalogDocuments?: number;
+    maxReferrerDocuments?: number;
+    maxContentCharsPerDocument?: number;
+    maxTotalContentChars?: number;
+  }): Promise<StoreResult<FileRefactorResolutionSnapshot>> {
+    try {
+      const db = this.ensureOpen();
+      const maxCatalog = Math.max(
+        1,
+        Math.floor(input.maxCatalogDocuments ?? 5_000)
+      );
+      const maxReferrers = Math.max(
+        1,
+        Math.floor(input.maxReferrerDocuments ?? 5_000)
+      );
+      const maxChars = Math.max(
+        1,
+        Math.floor(input.maxContentCharsPerDocument ?? 1_000_000)
+      );
+      const maxTotalChars = Math.max(
+        maxChars,
+        Math.floor(input.maxTotalContentChars ?? 20_000_000)
+      );
+      const truncationReasons: string[] = [];
+
+      const sourceRow = db
+        .query<
+          {
+            id: number;
+            uri: string;
+            rel_path: string;
+            collection: string;
+            title: string | null;
+            mirror_hash: string | null;
+            source_ext: string;
+            source_mime: string;
+            record_key: string | null;
+          },
+          [string]
+        >(
+          `SELECT id, uri, rel_path, collection, title, mirror_hash,
+                  source_ext, source_mime, record_key
+           FROM documents
+           WHERE uri = ? AND active = 1`
+        )
+        .get(input.sourceUri);
+
+      if (!sourceRow) {
+        return err("NOT_FOUND", `Document not found: ${input.sourceUri}`);
+      }
+
+      const sourceCaps = getDocumentCapabilities({
+        sourceExt: sourceRow.source_ext,
+        sourceMime: sourceRow.source_mime,
+        contentAvailable: Boolean(sourceRow.mirror_hash),
+        recordKey: sourceRow.record_key,
+      });
+
+      let sourceContent: string | null = null;
+      let sourceContentTruncated = false;
+      if (sourceRow.mirror_hash) {
+        const contentRow = db
+          .query<{ markdown: string }, [number, string]>(
+            `SELECT substr(markdown, 1, ?) AS markdown
+             FROM content WHERE mirror_hash = ?`
+          )
+          .get(maxChars + 1, sourceRow.mirror_hash);
+        if (contentRow) {
+          sourceContentTruncated = contentRow.markdown.length > maxChars;
+          sourceContent = sourceContentTruncated
+            ? contentRow.markdown.slice(0, maxChars)
+            : contentRow.markdown;
+          if (sourceContentTruncated) {
+            truncationReasons.push("source_content_truncated");
+          }
+        } else {
+          truncationReasons.push("source_content_missing");
+        }
+      } else {
+        // Null mirror_hash means source bytes are unavailable — fail closed.
+        truncationReasons.push("source_content_missing");
+      }
+
+      const catalogRows = db
+        .query<
+          {
+            id: number;
+            uri: string;
+            rel_path: string;
+            collection: string;
+            title: string | null;
+          },
+          [string, number]
+        >(
+          `SELECT id, uri, rel_path, collection, title
+           FROM documents
+           WHERE active = 1 AND collection = ?
+           ORDER BY id
+           LIMIT ?`
+        )
+        .all(sourceRow.collection, maxCatalog + 1);
+
+      if (catalogRows.length > maxCatalog) {
+        truncationReasons.push("catalog_truncated");
+      }
+      const catalog = catalogRows.slice(0, maxCatalog).map((row) => ({
+        id: row.id,
+        uri: row.uri,
+        relPath: row.rel_path,
+        collection: row.collection,
+        title: row.title,
+      }));
+
+      const occupiedRelPaths = catalog.map((doc) => doc.relPath);
+
+      const backlinksResult = await this.getBacklinksForDoc(sourceRow.id, {
+        collection: sourceRow.collection,
+      });
+      if (!backlinksResult.ok) {
+        return backlinksResult;
+      }
+
+      const candidateIds = new Set<number>();
+      for (const row of backlinksResult.value) {
+        if (row.sourceDocId !== sourceRow.id) {
+          candidateIds.add(row.sourceDocId);
+        }
+      }
+
+      const needles = buildContentPrefilterNeedles({
+        relPath: sourceRow.rel_path,
+        title: sourceRow.title,
+      });
+      const escapeLike = (value: string): string =>
+        value
+          .replaceAll("\\", "\\\\")
+          .replaceAll("%", "\\%")
+          .replaceAll("_", "\\_");
+
+      if (needles.length > 0) {
+        const likeClauses = needles
+          .map(() => `c.markdown LIKE '%' || ? || '%' ESCAPE '\\'`)
+          .join(" OR ");
+        const prefilterRows = db
+          .query<{ id: number }, (string | number)[]>(
+            `SELECT DISTINCT d.id AS id
+             FROM documents d
+             INNER JOIN content c ON c.mirror_hash = d.mirror_hash
+             WHERE d.active = 1
+               AND d.collection = ?
+               AND d.id != ?
+               AND (${likeClauses})
+             ORDER BY d.id
+             LIMIT ?`
+          )
+          .all(
+            sourceRow.collection,
+            sourceRow.id,
+            ...needles.map(escapeLike),
+            maxReferrers + 1
+          );
+        if (prefilterRows.length > maxReferrers) {
+          truncationReasons.push("content_prefilter_truncated");
+        }
+        for (const row of prefilterRows.slice(0, maxReferrers + 1)) {
+          candidateIds.add(row.id);
+        }
+      }
+
+      // Completeness: union same-collection docs whose mirror content cannot be
+      // loaded. Text-like docs (including read-only logical .md records) fail
+      // closed; non-text binaries are omitted (they cannot hold markdown/wiki/
+      // HTML refs). Preserve referrer caps via LIMIT + sorted slice below.
+      const missingMirrorRows = db
+        .query<
+          {
+            id: number;
+            source_ext: string;
+            source_mime: string;
+          },
+          [string, number, number]
+        >(
+          `SELECT d.id AS id,
+                  d.source_ext AS source_ext,
+                  d.source_mime AS source_mime
+           FROM documents d
+           WHERE d.active = 1
+             AND d.collection = ?
+             AND d.id != ?
+             AND (
+               d.mirror_hash IS NULL
+               OR NOT EXISTS (
+                 SELECT 1 FROM content c WHERE c.mirror_hash = d.mirror_hash
+               )
+             )
+           ORDER BY d.id
+           LIMIT ?`
+        )
+        .all(sourceRow.collection, sourceRow.id, maxReferrers + 1);
+      if (missingMirrorRows.length > maxReferrers) {
+        truncationReasons.push("missing_mirror_scan_truncated");
+      }
+      for (const row of missingMirrorRows) {
+        if (!isTextLikeReferenceDocument(row.source_ext, row.source_mime)) {
+          continue;
+        }
+        candidateIds.add(row.id);
+      }
+
+      const sortedCandidateIds = [...candidateIds].sort((a, b) => a - b);
+      if (sortedCandidateIds.length > maxReferrers) {
+        truncationReasons.push("referrers_truncated");
+      }
+
+      const referrers: FileRefactorResolutionReferrerDocument[] = [];
+      let totalContentChars = sourceContent?.length ?? 0;
+
+      for (const referrerId of sortedCandidateIds.slice(0, maxReferrers)) {
+        const referrerRow = db
+          .query<
+            {
+              id: number;
+              uri: string;
+              rel_path: string;
+              collection: string;
+              title: string | null;
+              mirror_hash: string | null;
+              source_ext: string;
+              source_mime: string;
+              record_key: string | null;
+            },
+            [number]
+          >(
+            `SELECT id, uri, rel_path, collection, title, mirror_hash,
+                    source_ext, source_mime, record_key
+             FROM documents
+             WHERE id = ? AND active = 1`
+          )
+          .get(referrerId);
+        if (!referrerRow) continue;
+
+        const caps = getDocumentCapabilities({
+          sourceExt: referrerRow.source_ext,
+          sourceMime: referrerRow.source_mime,
+          contentAvailable: Boolean(referrerRow.mirror_hash),
+          recordKey: referrerRow.record_key,
+        });
+
+        if (!referrerRow.mirror_hash) {
+          truncationReasons.push("referrer_content_missing");
+          referrers.push({
+            id: referrerRow.id,
+            uri: referrerRow.uri,
+            relPath: referrerRow.rel_path,
+            collection: referrerRow.collection,
+            title: referrerRow.title,
+            content: null,
+            contentTruncated: false,
+            contentMissing: true,
+            editable: caps.editable,
+            editableReason: caps.editable
+              ? undefined
+              : caps.reason
+                ? "read_only_document"
+                : "capability_denied",
+            sourceExt: referrerRow.source_ext,
+            sourceMime: referrerRow.source_mime,
+            recordKey: referrerRow.record_key,
+          });
+          continue;
+        }
+
+        const contentRow = db
+          .query<{ markdown: string }, [number, string]>(
+            `SELECT substr(markdown, 1, ?) AS markdown
+             FROM content WHERE mirror_hash = ?`
+          )
+          .get(maxChars + 1, referrerRow.mirror_hash);
+
+        if (!contentRow) {
+          truncationReasons.push("referrer_content_missing");
+          referrers.push({
+            id: referrerRow.id,
+            uri: referrerRow.uri,
+            relPath: referrerRow.rel_path,
+            collection: referrerRow.collection,
+            title: referrerRow.title,
+            content: null,
+            contentTruncated: false,
+            contentMissing: true,
+            editable: caps.editable,
+            editableReason: caps.editable
+              ? undefined
+              : caps.reason
+                ? "read_only_document"
+                : "capability_denied",
+            sourceExt: referrerRow.source_ext,
+            sourceMime: referrerRow.source_mime,
+            recordKey: referrerRow.record_key,
+          });
+          continue;
+        }
+
+        const contentTruncated = contentRow.markdown.length > maxChars;
+        if (contentTruncated) {
+          truncationReasons.push("referrer_content_truncated");
+        }
+        const content = contentTruncated
+          ? contentRow.markdown.slice(0, maxChars)
+          : contentRow.markdown;
+        totalContentChars += content.length;
+        if (totalContentChars > maxTotalChars) {
+          truncationReasons.push("total_content_truncated");
+          referrers.push({
+            id: referrerRow.id,
+            uri: referrerRow.uri,
+            relPath: referrerRow.rel_path,
+            collection: referrerRow.collection,
+            title: referrerRow.title,
+            content: null,
+            contentTruncated: false,
+            contentMissing: true,
+            editable: caps.editable,
+            editableReason: caps.editable
+              ? undefined
+              : caps.reason
+                ? "read_only_document"
+                : "capability_denied",
+            sourceExt: referrerRow.source_ext,
+            sourceMime: referrerRow.source_mime,
+            recordKey: referrerRow.record_key,
+          });
+          continue;
+        }
+
+        referrers.push({
+          id: referrerRow.id,
+          uri: referrerRow.uri,
+          relPath: referrerRow.rel_path,
+          collection: referrerRow.collection,
+          title: referrerRow.title,
+          content,
+          contentTruncated,
+          contentMissing: false,
+          editable: caps.editable,
+          editableReason: caps.editable
+            ? undefined
+            : caps.reason
+              ? "read_only_document"
+              : "capability_denied",
+          sourceExt: referrerRow.source_ext,
+          sourceMime: referrerRow.source_mime,
+          recordKey: referrerRow.record_key,
+        });
+      }
+
+      const snapshot: FileRefactorResolutionSnapshot = {
+        source: {
+          id: sourceRow.id,
+          uri: sourceRow.uri,
+          relPath: sourceRow.rel_path,
+          collection: sourceRow.collection,
+          title: sourceRow.title,
+          mirrorHash: sourceRow.mirror_hash,
+          sourceExt: sourceRow.source_ext,
+          sourceMime: sourceRow.source_mime,
+          recordKey: sourceRow.record_key,
+          content: sourceContent,
+          contentTruncated: sourceContentTruncated,
+          editable: sourceCaps.editable,
+          editableReason: sourceCaps.editable
+            ? undefined
+            : sourceCaps.reason
+              ? "read_only_document"
+              : "capability_denied",
+        },
+        catalog,
+        referrers,
+        occupiedRelPaths,
+        truncated: truncationReasons.length > 0,
+        truncationReasons: [...new Set(truncationReasons)].sort(),
+      };
+      return ok(snapshot);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to load file refactor resolution snapshot",
         cause
       );
     }

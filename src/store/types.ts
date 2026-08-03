@@ -249,6 +249,52 @@ export interface DocLinkRow {
   source: DocLinkSource;
 }
 
+/**
+ * Bounded read snapshot for reference-safe rename/move planning.
+ * Content covers indexed backlinks unioned with a conservative content
+ * prefilter (opaque embeds/HTML/code/malformed may not be in doc_links).
+ * Never logged by callers.
+ */
+export interface FileRefactorResolutionCatalogDocument {
+  id: number;
+  uri: string;
+  relPath: string;
+  collection: string;
+  title: string | null;
+}
+
+export interface FileRefactorResolutionReferrerDocument extends FileRefactorResolutionCatalogDocument {
+  /** Markdown body when available; null when mirror content is missing. */
+  content: string | null;
+  contentTruncated: boolean;
+  /** True when a potentially relevant document had no loadable mirror. */
+  contentMissing: boolean;
+  editable: boolean;
+  editableReason?: string;
+  sourceExt: string;
+  sourceMime: string;
+  recordKey: string | null;
+}
+
+export interface FileRefactorResolutionSnapshot {
+  source: FileRefactorResolutionCatalogDocument & {
+    mirrorHash: string | null;
+    sourceExt: string;
+    sourceMime: string;
+    recordKey: string | null;
+    content: string | null;
+    contentTruncated: boolean;
+    editable: boolean;
+    editableReason?: string;
+  };
+  catalog: FileRefactorResolutionCatalogDocument[];
+  referrers: FileRefactorResolutionReferrerDocument[];
+  occupiedRelPaths: string[];
+  truncated: boolean;
+  /** Content-free truncation reason codes. */
+  truncationReasons: string[];
+}
+
 /** Semantic document edge row from DB. */
 export interface DocEdgeRow {
   sourceDocId: number;
@@ -1945,6 +1991,18 @@ export interface StorePort {
       Array<{ docid: string; uri: string; title: string | null } | null>
     >
   >;
+
+  /**
+   * Bounded resolution/inventory snapshot for reference-safe rename/move planning.
+   * Read-only: never mutates documents, links, or content.
+   */
+  getFileRefactorResolutionSnapshot?(input: {
+    sourceUri: string;
+    maxCatalogDocuments?: number;
+    maxReferrerDocuments?: number;
+    maxContentCharsPerDocument?: number;
+    maxTotalContentChars?: number;
+  }): Promise<StoreResult<FileRefactorResolutionSnapshot>>;
 
   /**
    * Set semantic edges for a document.

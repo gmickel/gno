@@ -1568,4 +1568,305 @@ describe("SqliteAdapter links", () => {
       ).toEqual(new Set(["explicit", "inferred", "ambiguous"]));
     });
   });
+
+  describe("getFileRefactorResolutionSnapshot", () => {
+    test("returns bounded catalog and referrer content without mutation", async () => {
+      const sourceId = await createTestDoc("notes", "old-note.md", "Old Note");
+      const referrerId = await createTestDoc(
+        "notes",
+        "referrer.md",
+        "Referrer"
+      );
+      await createTestDoc("notes", "other.md", "Other");
+
+      const sourceDoc = await adapter.getDocument("notes", "old-note.md");
+      const referrerDoc = await adapter.getDocument("notes", "referrer.md");
+      const otherDoc = await adapter.getDocument("notes", "other.md");
+      expect(sourceDoc.ok && sourceDoc.value).toBeTruthy();
+      expect(referrerDoc.ok && referrerDoc.value).toBeTruthy();
+      expect(otherDoc.ok && otherDoc.value).toBeTruthy();
+      if (
+        !sourceDoc.ok ||
+        !sourceDoc.value ||
+        !referrerDoc.ok ||
+        !referrerDoc.value ||
+        !otherDoc.ok ||
+        !otherDoc.value
+      ) {
+        return;
+      }
+
+      await adapter.upsertContent(
+        sourceDoc.value.mirrorHash!,
+        "# Old Note\nbody"
+      );
+      await adapter.upsertContent(
+        referrerDoc.value.mirrorHash!,
+        "See [[Old Note]] please."
+      );
+      await adapter.upsertContent(otherDoc.value.mirrorHash!, "# Other\n");
+
+      await adapter.setDocLinks(
+        referrerId,
+        [
+          {
+            targetRef: "Old Note",
+            targetRefNorm: "old note",
+            linkType: "wiki",
+            startLine: 1,
+            startCol: 5,
+            endLine: 1,
+            endCol: 16,
+          },
+        ],
+        "parsed"
+      );
+
+      const beforeLinks = await adapter.getLinksForDoc(referrerId);
+      expect(beforeLinks.ok).toBe(true);
+      if (!beforeLinks.ok) return;
+
+      const snapshot = await adapter.getFileRefactorResolutionSnapshot({
+        sourceUri: sourceDoc.value.uri,
+      });
+      expect(snapshot.ok).toBe(true);
+      if (!snapshot.ok) return;
+
+      expect(snapshot.value.source.relPath).toBe("old-note.md");
+      expect(snapshot.value.source.content).toContain("Old Note");
+      expect(snapshot.value.source.editable).toBe(true);
+      expect(snapshot.value.catalog.length).toBeGreaterThanOrEqual(3);
+      expect(snapshot.value.occupiedRelPaths).toContain("old-note.md");
+      expect(snapshot.value.referrers).toHaveLength(1);
+      expect(snapshot.value.referrers[0]?.relPath).toBe("referrer.md");
+      expect(snapshot.value.referrers[0]?.content).toContain("[[Old Note]]");
+      expect(snapshot.value.referrers[0]?.editable).toBe(true);
+      expect(snapshot.value.truncated).toBe(false);
+
+      const afterLinks = await adapter.getLinksForDoc(referrerId);
+      expect(afterLinks.ok).toBe(true);
+      if (!afterLinks.ok) return;
+      expect(afterLinks.value).toEqual(beforeLinks.value);
+
+      const missing = await adapter.getFileRefactorResolutionSnapshot({
+        sourceUri: "gno://notes/missing.md",
+      });
+      expect(missing.ok).toBe(false);
+      if (!missing.ok) {
+        expect(missing.error.code).toBe("NOT_FOUND");
+      }
+
+      expect(sourceId).toBeGreaterThan(0);
+    });
+
+    test("surfaces opaque-only embed and raw HTML not present in doc_links", async () => {
+      await createTestDoc("notes", "old-note.md", "Old Note");
+      await createTestDoc("notes", "embedder.md", "Embedder");
+      await createTestDoc("notes", "html-ref.md", "Html Ref");
+
+      const sourceDoc = await adapter.getDocument("notes", "old-note.md");
+      const embedderDoc = await adapter.getDocument("notes", "embedder.md");
+      const htmlDoc = await adapter.getDocument("notes", "html-ref.md");
+      expect(sourceDoc.ok && sourceDoc.value).toBeTruthy();
+      expect(embedderDoc.ok && embedderDoc.value).toBeTruthy();
+      expect(htmlDoc.ok && htmlDoc.value).toBeTruthy();
+      if (
+        !sourceDoc.ok ||
+        !sourceDoc.value ||
+        !embedderDoc.ok ||
+        !embedderDoc.value ||
+        !htmlDoc.ok ||
+        !htmlDoc.value
+      ) {
+        return;
+      }
+
+      await adapter.upsertContent(sourceDoc.value.mirrorHash!, "# Old Note\n");
+      await adapter.upsertContent(
+        embedderDoc.value.mirrorHash!,
+        "Opaque only ![[Old Note]] here."
+      );
+      await adapter.upsertContent(
+        htmlDoc.value.mirrorHash!,
+        '<p><a href="old-note.md">Old</a></p>'
+      );
+
+      // Intentionally no setDocLinks — opaque forms are absent from doc_links.
+      const snapshot = await adapter.getFileRefactorResolutionSnapshot({
+        sourceUri: sourceDoc.value.uri,
+      });
+      expect(snapshot.ok).toBe(true);
+      if (!snapshot.ok) return;
+
+      const paths = snapshot.value.referrers.map((row) => row.relPath).sort();
+      expect(paths).toContain("embedder.md");
+      expect(paths).toContain("html-ref.md");
+      expect(
+        snapshot.value.referrers.some((row) =>
+          row.content?.includes("![[Old Note]]")
+        )
+      ).toBe(true);
+      expect(
+        snapshot.value.referrers.some((row) =>
+          row.content?.includes('href="old-note.md"')
+        )
+      ).toBe(true);
+    });
+
+    test("projects editable=false for logical-record documents", async () => {
+      const record: DocumentInput = {
+        collection: "notes",
+        relPath: "export/record.md",
+        sourceHash: "hash-record",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 100,
+        sourceMtime: new Date().toISOString(),
+        title: "Record",
+        mirrorHash: "hash-record",
+        ingestVersion: 3,
+        recordKey: "rec-1",
+      };
+      const upsert = await adapter.upsertDocument(record);
+      expect(upsert.ok).toBe(true);
+      if (!upsert.ok) return;
+
+      await createTestDoc("notes", "old-note.md", "Old Note");
+      const sourceDoc = await adapter.getDocument("notes", "old-note.md");
+      expect(sourceDoc.ok && sourceDoc.value).toBeTruthy();
+      if (!sourceDoc.ok || !sourceDoc.value) return;
+
+      await adapter.upsertContent(sourceDoc.value.mirrorHash!, "# Old Note\n");
+      await adapter.upsertContent(
+        "hash-record",
+        "See [[Old Note]] from record."
+      );
+
+      const snapshot = await adapter.getFileRefactorResolutionSnapshot({
+        sourceUri: sourceDoc.value.uri,
+      });
+      expect(snapshot.ok).toBe(true);
+      if (!snapshot.ok) return;
+      const referrer = snapshot.value.referrers.find(
+        (row) => row.relPath === "export/record.md"
+      );
+      expect(referrer).toBeDefined();
+      expect(referrer?.editable).toBe(false);
+      expect(referrer?.editableReason).toBe("read_only_document");
+    });
+
+    test("surfaces contentMissing for .md with no mirror content and no doc_links", async () => {
+      await createTestDoc("notes", "old-note.md", "Old Note");
+      const orphan: DocumentInput = {
+        collection: "notes",
+        relPath: "orphan.md",
+        sourceHash: "hash-orphan",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 40,
+        sourceMtime: new Date().toISOString(),
+        title: "Orphan",
+        mirrorHash: "hash-orphan-missing",
+        ingestVersion: 3,
+      };
+      const upsert = await adapter.upsertDocument(orphan);
+      expect(upsert.ok).toBe(true);
+      if (!upsert.ok) return;
+
+      const sourceDoc = await adapter.getDocument("notes", "old-note.md");
+      expect(sourceDoc.ok && sourceDoc.value).toBeTruthy();
+      if (!sourceDoc.ok || !sourceDoc.value) return;
+      await adapter.upsertContent(sourceDoc.value.mirrorHash!, "# Old Note\n");
+      // Intentionally no upsertContent for orphan, and no setDocLinks.
+
+      const snapshot = await adapter.getFileRefactorResolutionSnapshot({
+        sourceUri: sourceDoc.value.uri,
+        maxReferrerDocuments: 50,
+      });
+      expect(snapshot.ok).toBe(true);
+      if (!snapshot.ok) return;
+
+      const missing = snapshot.value.referrers.find(
+        (row) => row.relPath === "orphan.md"
+      );
+      expect(missing).toBeDefined();
+      expect(missing?.contentMissing).toBe(true);
+      expect(missing?.content).toBeNull();
+      expect(snapshot.value.truncated).toBe(true);
+      expect(snapshot.value.truncationReasons).toContain(
+        "referrer_content_missing"
+      );
+    });
+
+    test("marks truncated source_content_missing for editable .md with null mirror hash", async () => {
+      const source: DocumentInput = {
+        collection: "notes",
+        relPath: "no-mirror.md",
+        sourceHash: "hash-no-mirror",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 40,
+        sourceMtime: new Date().toISOString(),
+        title: "No Mirror",
+        // Intentionally omit mirrorHash so store writes NULL.
+        ingestVersion: 3,
+      };
+      const upsert = await adapter.upsertDocument(source);
+      expect(upsert.ok).toBe(true);
+      if (!upsert.ok) return;
+
+      const sourceDoc = await adapter.getDocument("notes", "no-mirror.md");
+      expect(sourceDoc.ok && sourceDoc.value).toBeTruthy();
+      if (!sourceDoc.ok || !sourceDoc.value) return;
+      expect(sourceDoc.value.mirrorHash).toBeNull();
+
+      const snapshot = await adapter.getFileRefactorResolutionSnapshot({
+        sourceUri: sourceDoc.value.uri,
+      });
+      expect(snapshot.ok).toBe(true);
+      if (!snapshot.ok) return;
+
+      expect(snapshot.value.source.content).toBeNull();
+      expect(snapshot.value.source.editable).toBe(true);
+      expect(snapshot.value.truncated).toBe(true);
+      expect(snapshot.value.truncationReasons).toContain(
+        "source_content_missing"
+      );
+    });
+
+    test("omits non-text missing-mirror binaries from completeness union", async () => {
+      await createTestDoc("notes", "old-note.md", "Old Note");
+      const pdf: DocumentInput = {
+        collection: "notes",
+        relPath: "scan.pdf",
+        sourceHash: "hash-pdf",
+        sourceMime: "application/pdf",
+        sourceExt: ".pdf",
+        sourceSize: 100,
+        sourceMtime: new Date().toISOString(),
+        title: "Scan",
+        mirrorHash: "hash-pdf-missing",
+        ingestVersion: 3,
+      };
+      const upsert = await adapter.upsertDocument(pdf);
+      expect(upsert.ok).toBe(true);
+      if (!upsert.ok) return;
+
+      const sourceDoc = await adapter.getDocument("notes", "old-note.md");
+      expect(sourceDoc.ok && sourceDoc.value).toBeTruthy();
+      if (!sourceDoc.ok || !sourceDoc.value) return;
+      await adapter.upsertContent(sourceDoc.value.mirrorHash!, "# Old Note\n");
+
+      const snapshot = await adapter.getFileRefactorResolutionSnapshot({
+        sourceUri: sourceDoc.value.uri,
+      });
+      expect(snapshot.ok).toBe(true);
+      if (!snapshot.ok) return;
+      // Safest bounded behavior for non-text: omit — cannot hold md/wiki/HTML refs.
+      expect(
+        snapshot.value.referrers.some((row) => row.relPath === "scan.pdf")
+      ).toBe(false);
+      expect(snapshot.value.truncated).toBe(false);
+    });
+  });
 });

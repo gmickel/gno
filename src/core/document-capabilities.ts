@@ -24,6 +24,19 @@ function isTextLikeMime(mime: string): boolean {
   return mime.startsWith("text/");
 }
 
+/**
+ * True when a document may carry markdown/wiki/HTML references in mirror text.
+ * Used by refactor inventory completeness to fail closed on missing mirrors.
+ * Non-text binaries (pdf/images/…) are omitted — they cannot hold those refs.
+ */
+export function isTextLikeReferenceDocument(
+  sourceExt: string,
+  sourceMime: string
+): boolean {
+  const ext = sourceExt.toLowerCase();
+  return EDITABLE_EXTENSIONS.has(ext) || isTextLikeMime(sourceMime);
+}
+
 export function getDocumentCapabilities(input: {
   sourceExt: string;
   sourceMime: string;

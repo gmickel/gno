@@ -479,3 +479,21 @@ describe("truncateText", () => {
     expect(truncateText("12345", 5)).toBe("12345");
   });
 });
+
+describe("parseLinks regression (fn-60.6 additive inventory)", () => {
+  test("public parseLinks behavior remains unchanged for titles and embeds", () => {
+    const markdown =
+      'Code `[[Hidden]]` and [Label](note.md "Title") plus ![[Embed]].';
+    const offsets = buildLineOffsets(markdown);
+    const excluded = getExcludedRanges(markdown);
+    const links = parseLinks(markdown, offsets, excluded);
+    // Inline code stays excluded
+    expect(links.some((link) => link.targetRef === "Hidden")).toBe(false);
+    // Existing public parser keeps title text inside targetRef and treats embeds as wiki
+    const md = links.find((link) => link.kind === "markdown");
+    expect(md?.targetRef).toBe('note.md "Title"');
+    expect(
+      links.some((link) => link.kind === "wiki" && link.targetRef === "Embed")
+    ).toBe(true);
+  });
+});
