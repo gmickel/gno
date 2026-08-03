@@ -31,6 +31,10 @@ import {
 
 import type { PdfFallbackReason } from "../lib/pdf";
 
+import {
+  FILE_REFACTOR_APPLY_CONFIRMATION,
+  type FileRefactorPreviewPlan,
+} from "../../../core/file-refactor-contract";
 import { extractSections } from "../../../core/sections";
 import {
   CodeBlock,
@@ -47,6 +51,7 @@ import {
   OutgoingLinksPanel,
   type OutgoingLink,
 } from "../components/OutgoingLinksPanel";
+import { RefactorImpactPreview } from "../components/RefactorImpactPreview";
 import { RelatedNotesSidebar } from "../components/RelatedNotesSidebar";
 import { TagInput } from "../components/TagInput";
 import { Badge } from "../components/ui/badge";
@@ -199,6 +204,9 @@ interface RenameDocResponse {
   uri: string;
   path: string;
   relPath: string;
+  planDigest?: string;
+  status?: string;
+  warning?: string;
   refactorWarnings?: {
     warnings: string[];
   };
@@ -209,6 +217,9 @@ interface MoveDocResponse {
   uri: string;
   path: string;
   relPath: string;
+  planDigest?: string;
+  status?: string;
+  warning?: string;
   refactorWarnings?: {
     warnings: string[];
   };
@@ -359,13 +370,23 @@ export default function DocView({ navigate }: PageProps) {
   const [renaming, setRenaming] = useState(false);
   const [renameError, setRenameError] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [renameWarnings, setRenameWarnings] = useState<string[]>([]);
+  const [renamePlan, setRenamePlan] = useState<FileRefactorPreviewPlan | null>(
+    null
+  );
+  const [renamePlanLoading, setRenamePlanLoading] = useState(false);
+  const [renameConfirmed, setRenameConfirmed] = useState(false);
+  const [renameOutcome, setRenameOutcome] = useState<string | null>(null);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [moving, setMoving] = useState(false);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [moveFolderPath, setMoveFolderPath] = useState("");
   const [moveName, setMoveName] = useState("");
-  const [moveWarnings, setMoveWarnings] = useState<string[]>([]);
+  const [movePlan, setMovePlan] = useState<FileRefactorPreviewPlan | null>(
+    null
+  );
+  const [movePlanLoading, setMovePlanLoading] = useState(false);
+  const [moveConfirmed, setMoveConfirmed] = useState(false);
+  const [moveOutcome, setMoveOutcome] = useState<string | null>(null);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
@@ -875,7 +896,9 @@ export default function DocView({ navigate }: PageProps) {
     const filename = doc.relPath.split("/").pop() ?? doc.relPath;
     setRenameValue(filename);
     setRenameError(null);
-    setRenameWarnings([]);
+    setRenamePlan(null);
+    setRenameConfirmed(false);
+    setRenameOutcome(null);
     setRenameDialogOpen(true);
   }, [doc]);
 
@@ -883,7 +906,11 @@ export default function DocView({ navigate }: PageProps) {
     if (!renameDialogOpen || !doc || !renameValue.trim()) {
       return;
     }
-    void apiFetch<{ refactorWarnings?: { warnings: string[] } }>(
+    let cancelled = false;
+    setRenamePlanLoading(true);
+    setRenamePlan(null);
+    setRenameConfirmed(false);
+    void apiFetch<FileRefactorPreviewPlan>(
       `/api/docs/${encodeURIComponent(doc.docid)}/refactor-plan`,
       {
         method: "POST",
@@ -893,22 +920,42 @@ export default function DocView({ navigate }: PageProps) {
           uri: doc.uri,
         }),
       }
-    ).then(({ data }) => {
-      setRenameWarnings(data?.refactorWarnings?.warnings ?? []);
+    ).then(({ data, error: err }) => {
+      if (cancelled) {
+        return;
+      }
+      setRenamePlanLoading(false);
+      if (err) {
+        setRenameError(err);
+        setRenamePlan(null);
+        return;
+      }
+      setRenameError(null);
+      setRenamePlan(data);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [doc, renameDialogOpen, renameValue]);
 
   const handleRename = useCallback(async () => {
-    if (!doc) {
+    if (!doc || !renamePlan?.canApply || !renameConfirmed) {
       return;
     }
     setRenaming(true);
     setRenameError(null);
+    setRenameOutcome(null);
     const { data, error: err } = await apiFetch<RenameDocResponse>(
       `/api/docs/${encodeURIComponent(doc.docid)}/rename`,
       {
         method: "POST",
-        body: JSON.stringify({ name: renameValue, uri: doc.uri }),
+        body: JSON.stringify({
+          name: renameValue,
+          uri: doc.uri,
+          planDigest: renamePlan.planDigest,
+          confirmation: FILE_REFACTOR_APPLY_CONFIRMATION,
+          schemaVersion: renamePlan.schemaVersion,
+        }),
       }
     );
     setRenaming(false);
@@ -918,11 +965,19 @@ export default function DocView({ navigate }: PageProps) {
       return;
     }
 
+    if (data?.status === "applied_with_sync_pending" || data?.warning) {
+      setRenameOutcome(
+        data.warning ??
+          "Files renamed, but index sync is still pending. Run Update All to finish."
+      );
+      return;
+    }
+
     setRenameDialogOpen(false);
     if (data?.uri) {
       navigate(`/doc?uri=${encodeURIComponent(data.uri)}`);
     }
-  }, [doc, navigate, renameValue]);
+  }, [doc, navigate, renameConfirmed, renamePlan, renameValue]);
 
   const handleStartMove = useCallback(() => {
     if (!doc) {
@@ -931,7 +986,9 @@ export default function DocView({ navigate }: PageProps) {
     setMoveFolderPath(getParentPath(doc.relPath));
     setMoveName(doc.relPath.split("/").pop() ?? doc.relPath);
     setMoveError(null);
-    setMoveWarnings([]);
+    setMovePlan(null);
+    setMoveConfirmed(false);
+    setMoveOutcome(null);
     setMoveDialogOpen(true);
   }, [doc]);
 
@@ -939,7 +996,11 @@ export default function DocView({ navigate }: PageProps) {
     if (!moveDialogOpen || !doc || !moveFolderPath.trim()) {
       return;
     }
-    void apiFetch<{ refactorWarnings?: { warnings: string[] } }>(
+    let cancelled = false;
+    setMovePlanLoading(true);
+    setMovePlan(null);
+    setMoveConfirmed(false);
+    void apiFetch<FileRefactorPreviewPlan>(
       `/api/docs/${encodeURIComponent(doc.docid)}/refactor-plan`,
       {
         method: "POST",
@@ -950,17 +1011,31 @@ export default function DocView({ navigate }: PageProps) {
           uri: doc.uri,
         }),
       }
-    ).then(({ data }) => {
-      setMoveWarnings(data?.refactorWarnings?.warnings ?? []);
+    ).then(({ data, error: err }) => {
+      if (cancelled) {
+        return;
+      }
+      setMovePlanLoading(false);
+      if (err) {
+        setMoveError(err);
+        setMovePlan(null);
+        return;
+      }
+      setMoveError(null);
+      setMovePlan(data);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [doc, moveDialogOpen, moveFolderPath, moveName]);
 
   const handleMove = useCallback(async () => {
-    if (!doc) {
+    if (!doc || !movePlan?.canApply || !moveConfirmed) {
       return;
     }
     setMoving(true);
     setMoveError(null);
+    setMoveOutcome(null);
     const { data, error: err } = await apiFetch<MoveDocResponse>(
       `/api/docs/${encodeURIComponent(doc.docid)}/move`,
       {
@@ -969,6 +1044,9 @@ export default function DocView({ navigate }: PageProps) {
           folderPath: moveFolderPath,
           name: moveName,
           uri: doc.uri,
+          planDigest: movePlan.planDigest,
+          confirmation: FILE_REFACTOR_APPLY_CONFIRMATION,
+          schemaVersion: movePlan.schemaVersion,
         }),
       }
     );
@@ -979,11 +1057,19 @@ export default function DocView({ navigate }: PageProps) {
       return;
     }
 
+    if (data?.status === "applied_with_sync_pending" || data?.warning) {
+      setMoveOutcome(
+        data.warning ??
+          "Files moved, but index sync is still pending. Run Update All to finish."
+      );
+      return;
+    }
+
     setMoveDialogOpen(false);
     if (data?.uri) {
       navigate(`/doc?uri=${encodeURIComponent(data.uri)}`);
     }
-  }, [doc, moveFolderPath, moveName, navigate]);
+  }, [doc, moveConfirmed, moveFolderPath, moveName, movePlan, navigate]);
 
   const handleStartDuplicate = useCallback(() => {
     if (!doc) {
@@ -2207,39 +2293,61 @@ export default function DocView({ navigate }: PageProps) {
       </Dialog>
 
       <Dialog onOpenChange={setRenameDialogOpen} open={renameDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Rename document</DialogTitle>
             <DialogDescription>
-              Rename the file on disk inside its current folder. This does not
-              move it to another collection yet.
+              Rename the file on disk inside its current folder. Reference
+              rewrites follow the exact plan digest below.
             </DialogDescription>
           </DialogHeader>
           <input
+            aria-label="New file name"
             className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
             onChange={(event) => setRenameValue(event.target.value)}
             value={renameValue}
           />
+          <RefactorImpactPreview
+            confirmed={renameConfirmed}
+            loading={renamePlanLoading}
+            onConfirmedChange={setRenameConfirmed}
+            outcomeMessage={renameOutcome}
+            outcomeTone="warning"
+            plan={renamePlan}
+          />
           {renameError && (
-            <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
+            <div
+              className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm"
+              role="alert"
+            >
               {renameError}
-            </div>
-          )}
-          {renameWarnings.length > 0 && (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-500 text-sm">
-              {renameWarnings.map((warning) => (
-                <div key={warning}>{warning}</div>
-              ))}
             </div>
           )}
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
-              onClick={() => setRenameDialogOpen(false)}
+              onClick={() => {
+                if (renameOutcome && renamePlan) {
+                  setRenameDialogOpen(false);
+                  navigate(
+                    `/doc?uri=${encodeURIComponent(renamePlan.target.uri)}`
+                  );
+                  return;
+                }
+                setRenameDialogOpen(false);
+              }}
               variant="outline"
             >
-              Cancel
+              {renameOutcome ? "Open note" : "Cancel"}
             </Button>
-            <Button disabled={renaming} onClick={() => void handleRename()}>
+            <Button
+              disabled={
+                renaming ||
+                !renamePlan?.canApply ||
+                !renameConfirmed ||
+                Boolean(renameOutcome)
+              }
+              onClick={() => void handleRename()}
+            >
               {renaming && (
                 <Loader2Icon className="mr-1.5 size-4 animate-spin" />
               )}
@@ -2250,42 +2358,69 @@ export default function DocView({ navigate }: PageProps) {
       </Dialog>
 
       <Dialog onOpenChange={setMoveDialogOpen} open={moveDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Move document</DialogTitle>
             <DialogDescription>
               Move the current note to another folder inside this collection.
+              Reference rewrites follow the exact plan digest below.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <Input
+              aria-label="Destination folder path"
               onChange={(event) => setMoveFolderPath(event.target.value)}
               placeholder="projects/research"
               value={moveFolderPath}
             />
             <Input
+              aria-label="File name"
               onChange={(event) => setMoveName(event.target.value)}
               placeholder="note.md"
               value={moveName}
             />
+            <RefactorImpactPreview
+              confirmed={moveConfirmed}
+              loading={movePlanLoading}
+              onConfirmedChange={setMoveConfirmed}
+              outcomeMessage={moveOutcome}
+              outcomeTone="warning"
+              plan={movePlan}
+            />
             {moveError && (
-              <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
+              <div
+                className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm"
+                role="alert"
+              >
                 {moveError}
-              </div>
-            )}
-            {moveWarnings.length > 0 && (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-500 text-sm">
-                {moveWarnings.map((warning) => (
-                  <div key={warning}>{warning}</div>
-                ))}
               </div>
             )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button onClick={() => setMoveDialogOpen(false)} variant="outline">
-              Cancel
+            <Button
+              onClick={() => {
+                if (moveOutcome && movePlan) {
+                  setMoveDialogOpen(false);
+                  navigate(
+                    `/doc?uri=${encodeURIComponent(movePlan.target.uri)}`
+                  );
+                  return;
+                }
+                setMoveDialogOpen(false);
+              }}
+              variant="outline"
+            >
+              {moveOutcome ? "Open note" : "Cancel"}
             </Button>
-            <Button disabled={moving} onClick={() => void handleMove()}>
+            <Button
+              disabled={
+                moving ||
+                !movePlan?.canApply ||
+                !moveConfirmed ||
+                Boolean(moveOutcome)
+              }
+              onClick={() => void handleMove()}
+            >
               {moving && <Loader2Icon className="mr-1.5 size-4 animate-spin" />}
               Move
             </Button>

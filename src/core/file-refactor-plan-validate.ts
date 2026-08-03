@@ -111,6 +111,13 @@ export function validateFileRefactorPlanInputs(input: {
   }
 
   if (
+    input.source.relPath === input.target.relPath ||
+    input.source.uri === input.target.uri
+  ) {
+    return failure(input, "unsafe_target", "source_matches_target");
+  }
+
+  if (
     !uriMatches(input.source.uri, input.source.collection, input.source.relPath)
   ) {
     return failure(input, "unsafe_target", "source_uri_path_mismatch");

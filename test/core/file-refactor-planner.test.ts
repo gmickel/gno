@@ -156,6 +156,20 @@ describe("input validation", () => {
     expect(mismatch.examinedReferences[0]?.originalDestination).toBe(
       "target_uri_path_mismatch"
     );
+
+    const noOp = await planFileRefactorImpact(
+      baseInput({
+        target: {
+          uri: "gno://notes/old-note.md",
+          relPath: "old-note.md",
+          collection: "notes",
+        },
+      })
+    );
+    expect(noOp.canApply).toBe(false);
+    expect(noOp.examinedReferences[0]?.originalDestination).toBe(
+      "source_matches_target"
+    );
   });
 });
 

@@ -71,7 +71,6 @@ import {
   atomicWrite,
   copyFilePath,
   createFolderPath,
-  renameFilePath,
   revealFilePath,
   trashFilePath,
 } from "../../core/file-ops";
@@ -79,8 +78,6 @@ import {
   buildRefactorWarnings,
   planCreateFolder,
   planDuplicateRefactor,
-  planMoveRefactor,
-  planRenameRefactor,
 } from "../../core/file-refactors";
 import {
   hasContentMutation,
@@ -166,6 +163,17 @@ import {
   resetDownloadState,
   type ServerContext,
 } from "../context";
+import {
+  applyCanonicalFileRefactor,
+  buildCanonicalRefactorPlan,
+  buildFileRefactorApplyDeps,
+  mapApplyResultToHttpSuccess,
+  parseRefactorApplyConfirmation,
+  resolveMoveTarget,
+  resolveRenameTarget,
+  toRefactorPlanResponse,
+  type FileRefactorHttpError,
+} from "../file-refactor-http";
 import { analyzeImportPath } from "../import-preview";
 import { getActiveJob, getJobStatus, startJob } from "../jobs";
 import {
@@ -465,12 +473,22 @@ export interface CreateCaptureRequestBody extends PublicCaptureInput {}
 export interface RenameDocRequestBody {
   name: string;
   uri?: string;
+  /** Exact plan digest from preview. */
+  planDigest: string;
+  /** Exact destructive confirmation token. */
+  confirmation: string;
+  schemaVersion: string;
 }
 
 export interface MoveDocRequestBody {
   folderPath: string;
   name?: string;
   uri?: string;
+  /** Exact plan digest from preview. */
+  planDigest: string;
+  /** Exact destructive confirmation token. */
+  confirmation: string;
+  schemaVersion: string;
 }
 
 export interface DuplicateDocRequestBody {
@@ -544,6 +562,10 @@ function errorResponse(
     },
     status
   );
+}
+
+function fileRefactorHttpErrorResponse(error: FileRefactorHttpError): Response {
+  return errorResponse(error.code, error.message, error.status, error.details);
 }
 
 interface RestTraceStart {
@@ -2388,7 +2410,6 @@ export async function handleRenameDoc(
   docId: string,
   req: Request,
   deps?: {
-    renameFilePath?: typeof renameFilePath;
     syncCollection?: typeof defaultSyncService.syncCollection;
   }
 ): Promise<Response> {
@@ -2407,6 +2428,11 @@ export async function handleRenameDoc(
   }
   if (body.uri !== undefined && typeof body.uri !== "string") {
     return errorResponse("VALIDATION", "uri must be a string");
+  }
+
+  const confirmation = parseRefactorApplyConfirmation(body);
+  if ("code" in confirmation) {
+    return fileRefactorHttpErrorResponse(confirmation);
   }
 
   const docResult = await resolveDocumentReference(store, docId, body.uri);
@@ -2444,71 +2470,84 @@ export async function handleRenameDoc(
     return errorResponse("FILE_NOT_FOUND", "Source file no longer exists", 404);
   }
 
-  const nodePath = await import("node:path"); // no bun equivalent
-  const directory = nodePath.dirname(doc.relPath);
-  const currentExt = nodePath.extname(doc.relPath);
-  const targetName = nodePath.extname(body.name)
-    ? body.name
-    : `${body.name}${currentExt}`;
-  const nextRelPath =
-    directory === "." ? targetName : `${directory}/${targetName}`;
-  const nextFullPath = nodePath.join(collection.path, nextRelPath);
-
-  if (nextFullPath === fullPath) {
-    return errorResponse("VALIDATION", "New name matches current file");
-  }
-  if (await Bun.file(nextFullPath).exists()) {
+  let target;
+  try {
+    target = resolveRenameTarget({
+      collection: collection.name,
+      currentRelPath: doc.relPath,
+      nextName: body.name,
+    });
+  } catch (error) {
     return errorResponse(
-      "CONFLICT",
-      "A file with that name already exists",
-      409
+      "VALIDATION",
+      error instanceof Error ? error.message : "Invalid rename target"
     );
   }
 
+  if (target.nextRelPath === doc.relPath) {
+    return errorResponse("VALIDATION", "New name matches current file");
+  }
+
+  const nodePath = await import("node:path"); // no bun equivalent
+  const nextFullPath = nodePath.join(collection.path, target.nextRelPath);
+
   try {
+    const plan = await buildCanonicalRefactorPlan({
+      operation: "rename",
+      doc,
+      collection,
+      sourceFullPath: fullPath,
+      target,
+      store,
+      sourceEditable: capabilities.editable,
+    });
+
     const syncCollection =
       deps?.syncCollection ??
       ((collectionArg, storeArg, optionsArg) =>
         defaultSyncService.syncCollection(collectionArg, storeArg, optionsArg));
+
     ctxHolder.watchService?.suppress(fullPath);
     ctxHolder.watchService?.suppress(nextFullPath);
-    await (deps?.renameFilePath ?? renameFilePath)(fullPath, nextFullPath);
-    const nextUri = `gno://${collection.name}/${nextRelPath}`;
-    let warning: string | undefined;
-    try {
-      await syncResidentCollection(
-        ctxHolder,
+
+    const applyResult = await applyCanonicalFileRefactor({
+      plan,
+      confirmation,
+      deps: buildFileRefactorApplyDeps({
         collection,
         store,
-        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
-        syncCollection
-      );
-    } catch {
-      warning =
-        "File renamed on disk, but index refresh failed. Run Update All to reconcile the workspace.";
+        syncAfterCommit: async () => {
+          await syncResidentCollection(
+            ctxHolder,
+            collection,
+            store,
+            withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+            syncCollection
+          );
+        },
+      }),
+      signal: req.signal,
+    });
+
+    const mapped = mapApplyResultToHttpSuccess({
+      plan,
+      result: applyResult,
+      targetFullPath: nextFullPath,
+      operationLabel: "renamed",
+    });
+    if ("code" in mapped) {
+      return fileRefactorHttpErrorResponse(mapped);
     }
+
     ctxHolder.eventBus?.emit({
       type: "document-changed",
-      uri: nextUri,
+      uri: mapped.uri,
       collection: collection.name,
-      relPath: nextRelPath,
+      relPath: mapped.relPath,
       origin: "save",
       changedAt: new Date().toISOString(),
     });
-    const refactorWarnings = buildRefactorWarnings(
-      await getRefactorSnapshot(store, doc.id),
-      {
-        filenameChanged: true,
-      }
-    );
-    return jsonResponse({
-      success: true,
-      uri: nextUri,
-      path: nextFullPath,
-      relPath: nextRelPath,
-      refactorWarnings,
-      warning,
-    });
+    return jsonResponse(mapped);
   } catch (error) {
     return errorResponse(
       "RUNTIME",
@@ -2550,7 +2589,6 @@ export async function handleRefactorPlan(
     );
   }
 
-  const snapshot = await getRefactorSnapshot(store, doc.id);
   const collection = getCollectionByName(
     ctxHolder.config.collections,
     doc.collection
@@ -2568,41 +2606,69 @@ export async function handleRefactorPlan(
       if (!body.name?.trim()) {
         return errorResponse("VALIDATION", "Missing or invalid name");
       }
-      const plan = planRenameRefactor({
+      const resolvedDocPath = await resolveAbsoluteDocPath(
+        ctxHolder.config.collections,
+        doc
+      );
+      if (!resolvedDocPath) {
+        return errorResponse(
+          "NOT_FOUND",
+          `Collection not found: ${doc.collection}`,
+          404
+        );
+      }
+      const target = resolveRenameTarget({
         collection: collection.name,
         currentRelPath: doc.relPath,
         nextName: body.name.trim(),
       });
-      return jsonResponse({
-        operation: body.operation,
-        ...plan,
-        refactorWarnings: buildRefactorWarnings(snapshot, {
-          filenameChanged: true,
-        }),
+      const plan = await buildCanonicalRefactorPlan({
+        operation: "rename",
+        doc,
+        collection,
+        sourceFullPath: resolvedDocPath.fullPath,
+        target,
+        store,
+        sourceEditable: capabilities.editable,
       });
+      return jsonResponse(toRefactorPlanResponse(plan));
     }
 
     if (body.operation === "move") {
       if (!body.folderPath?.trim()) {
         return errorResponse("VALIDATION", "Missing or invalid folderPath");
       }
-      const plan = planMoveRefactor({
+      const resolvedDocPath = await resolveAbsoluteDocPath(
+        ctxHolder.config.collections,
+        doc
+      );
+      if (!resolvedDocPath) {
+        return errorResponse(
+          "NOT_FOUND",
+          `Collection not found: ${doc.collection}`,
+          404
+        );
+      }
+      const target = resolveMoveTarget({
         collection: collection.name,
         currentRelPath: doc.relPath,
         folderPath: body.folderPath.trim(),
         nextName: body.name?.trim(),
       });
-      return jsonResponse({
-        operation: body.operation,
-        ...plan,
-        refactorWarnings: buildRefactorWarnings(snapshot, {
-          folderChanged: true,
-          filenameChanged: Boolean(body.name?.trim()),
-        }),
+      const plan = await buildCanonicalRefactorPlan({
+        operation: "move",
+        doc,
+        collection,
+        sourceFullPath: resolvedDocPath.fullPath,
+        target,
+        store,
+        sourceEditable: capabilities.editable,
       });
+      return jsonResponse(toRefactorPlanResponse(plan));
     }
 
     if (body.operation === "duplicate") {
+      const snapshot = await getRefactorSnapshot(store, doc.id);
       const plan = planDuplicateRefactor({
         collection: collection.name,
         currentRelPath: doc.relPath,
@@ -2731,7 +2797,10 @@ export async function handleMoveDoc(
   ctxHolder: ContextHolder,
   store: SqliteAdapter,
   docId: string,
-  req: Request
+  req: Request,
+  deps?: {
+    syncCollection?: typeof defaultSyncService.syncCollection;
+  }
 ): Promise<Response> {
   let body: MoveDocRequestBody;
   try {
@@ -2748,6 +2817,11 @@ export async function handleMoveDoc(
   }
   if (body.uri !== undefined && typeof body.uri !== "string") {
     return errorResponse("VALIDATION", "uri must be a string");
+  }
+
+  const confirmation = parseRefactorApplyConfirmation(body);
+  if ("code" in confirmation) {
+    return fileRefactorHttpErrorResponse(confirmation);
   }
 
   const docResult = await resolveDocumentReference(store, docId, body.uri);
@@ -2780,9 +2854,9 @@ export async function handleMoveDoc(
   }
   const { collection, fullPath } = resolvedDocPath;
 
-  let plan;
+  let target;
   try {
-    plan = planMoveRefactor({
+    target = resolveMoveTarget({
       collection: collection.name,
       currentRelPath: doc.relPath,
       folderPath: body.folderPath,
@@ -2796,55 +2870,65 @@ export async function handleMoveDoc(
   }
 
   const nodePath = await import("node:path"); // no bun equivalent
-  const nextFullPath = nodePath.join(collection.path, plan.nextRelPath);
-  if (await Bun.file(nextFullPath).exists()) {
-    return errorResponse(
-      "CONFLICT",
-      "A file with that name already exists at the destination",
-      409
-    );
-  }
+  const nextFullPath = nodePath.join(collection.path, target.nextRelPath);
 
   try {
+    const plan = await buildCanonicalRefactorPlan({
+      operation: "move",
+      doc,
+      collection,
+      sourceFullPath: fullPath,
+      target,
+      store,
+      sourceEditable: capabilities.editable,
+    });
+
+    const syncCollection =
+      deps?.syncCollection ??
+      ((collectionArg, storeArg, optionsArg) =>
+        defaultSyncService.syncCollection(collectionArg, storeArg, optionsArg));
+
     ctxHolder.watchService?.suppress(fullPath);
     ctxHolder.watchService?.suppress(nextFullPath);
-    const { mkdir } = await import("node:fs/promises"); // structure ops need fs
-    await mkdir(nodePath.dirname(nextFullPath), { recursive: true });
-    await renameFilePath(fullPath, nextFullPath);
-    let warning: string | undefined;
-    try {
-      await syncResidentCollection(
-        ctxHolder,
+
+    const applyResult = await applyCanonicalFileRefactor({
+      plan,
+      confirmation,
+      deps: buildFileRefactorApplyDeps({
         collection,
         store,
-        withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
-      );
-    } catch {
-      warning =
-        "File moved on disk, but index refresh failed. Run Update All to reconcile the workspace.";
+        syncAfterCommit: async () => {
+          await syncResidentCollection(
+            ctxHolder,
+            collection,
+            store,
+            withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+            syncCollection
+          );
+        },
+      }),
+      signal: req.signal,
+    });
+
+    const mapped = mapApplyResultToHttpSuccess({
+      plan,
+      result: applyResult,
+      targetFullPath: nextFullPath,
+      operationLabel: "moved",
+    });
+    if ("code" in mapped) {
+      return fileRefactorHttpErrorResponse(mapped);
     }
+
     ctxHolder.eventBus?.emit({
       type: "document-changed",
-      uri: plan.nextUri,
+      uri: mapped.uri,
       collection: collection.name,
-      relPath: plan.nextRelPath,
+      relPath: mapped.relPath,
       origin: "save",
       changedAt: new Date().toISOString(),
     });
-    return jsonResponse({
-      success: true,
-      uri: plan.nextUri,
-      path: nextFullPath,
-      relPath: plan.nextRelPath,
-      refactorWarnings: buildRefactorWarnings(
-        await getRefactorSnapshot(store, doc.id),
-        {
-          folderChanged: true,
-          filenameChanged: Boolean(body.name?.trim()),
-        }
-      ),
-      warning,
-    });
+    return jsonResponse(mapped);
   } catch (error) {
     return errorResponse(
       "RUNTIME",

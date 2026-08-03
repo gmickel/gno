@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rename, writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -8,12 +8,17 @@ import type { ContextHolder } from "../../src/serve/routes/api";
 import type { DocumentRow, StoreResult } from "../../src/store/types";
 
 import {
+  FILE_REFACTOR_APPLY_CONFIRMATION,
+  FILE_REFACTOR_SCHEMA_VERSION,
+} from "../../src/core/file-refactors";
+import {
   handleCreateCapture,
   handleCreateDoc,
   handleCreateFolder,
   handleDeactivateDoc,
   handleDuplicateDoc,
   handleMoveDoc,
+  handleRefactorPlan,
   handleRenameDoc,
   handleRevealDoc,
   handleTrashDoc,
@@ -100,6 +105,41 @@ function createDoc(
   };
 }
 
+async function previewApplyFields(input: {
+  ctxHolder: ContextHolder;
+  store: ReturnType<typeof createMockStore> | object;
+  doc: DocumentRow;
+  operation: "rename" | "move";
+  name?: string;
+  folderPath?: string;
+}): Promise<{
+  planDigest: string;
+  confirmation: typeof FILE_REFACTOR_APPLY_CONFIRMATION;
+  schemaVersion: typeof FILE_REFACTOR_SCHEMA_VERSION;
+}> {
+  const response = await handleRefactorPlan(
+    input.ctxHolder,
+    input.store as never,
+    input.doc.docid,
+    new Request("http://localhost/api/docs/abc123/refactor-plan", {
+      method: "POST",
+      body: JSON.stringify({
+        operation: input.operation,
+        name: input.name,
+        folderPath: input.folderPath,
+        uri: input.doc.uri,
+      }),
+    })
+  );
+  expect(response.status).toBe(200);
+  const plan = (await response.json()) as { planDigest: string };
+  return {
+    planDigest: plan.planDigest,
+    confirmation: FILE_REFACTOR_APPLY_CONFIRMATION,
+    schemaVersion: FILE_REFACTOR_SCHEMA_VERSION,
+  };
+}
+
 describe("document lifecycle API", () => {
   let tmpDir: string;
 
@@ -151,9 +191,16 @@ describe("document lifecycle API", () => {
       ],
     });
     const store = createMockStore(doc);
+    const applyFields = await previewApplyFields({
+      ctxHolder,
+      store,
+      doc,
+      operation: "rename",
+      name: "renamed.md",
+    });
     const req = new Request("http://localhost/api/docs/abc123/rename", {
       method: "POST",
-      body: JSON.stringify({ name: "renamed.md" }),
+      body: JSON.stringify({ name: "renamed.md", ...applyFields }),
     });
 
     const res = await handleRenameDoc(
@@ -162,18 +209,24 @@ describe("document lifecycle API", () => {
       "#abc123",
       req,
       {
-        renameFilePath: async (from, to) => {
-          await rename(from, to);
-        },
         syncCollection: async () =>
           ({ ok: true as const, value: undefined }) as never,
       }
     );
 
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { uri: string; relPath: string };
+    const body = (await res.json()) as {
+      uri: string;
+      relPath: string;
+      status: string;
+      planDigest: string;
+    };
     expect(body.relPath).toBe("renamed.md");
     expect(body.uri).toBe("gno://notes/renamed.md");
+    expect(body.status).toBe("applied");
+    expect(body.planDigest).toMatch(/^[a-f0-9]{64}$/);
+    expect(await Bun.file(join(tmpDir, "renamed.md")).exists()).toBe(true);
+    expect(await Bun.file(sourcePath).exists()).toBe(false);
   });
 
   test("blocks rename for read-only converted docs", async () => {
@@ -198,7 +251,12 @@ describe("document lifecycle API", () => {
     const store = createMockStore(doc);
     const req = new Request("http://localhost/api/docs/abc123/rename", {
       method: "POST",
-      body: JSON.stringify({ name: "renamed.pdf" }),
+      body: JSON.stringify({
+        name: "renamed.pdf",
+        planDigest: "a".repeat(64),
+        confirmation: FILE_REFACTOR_APPLY_CONFIRMATION,
+        schemaVersion: FILE_REFACTOR_SCHEMA_VERSION,
+      }),
     });
 
     const res = await handleRenameDoc(
@@ -262,9 +320,16 @@ describe("document lifecycle API", () => {
       ],
     });
     const store = createMockStore(doc);
+    const applyFields = await previewApplyFields({
+      ctxHolder,
+      store,
+      doc,
+      operation: "rename",
+      name: "renamed.md",
+    });
     const req = new Request("http://localhost/api/docs/abc123/rename", {
       method: "POST",
-      body: JSON.stringify({ name: "renamed.md" }),
+      body: JSON.stringify({ name: "renamed.md", ...applyFields }),
     });
 
     const res = await handleRenameDoc(
@@ -273,9 +338,6 @@ describe("document lifecycle API", () => {
       "#abc123",
       req,
       {
-        renameFilePath: async (from, to) => {
-          await rename(from, to);
-        },
         syncCollection: async () => {
           throw new Error("sync failed");
         },
@@ -283,8 +345,13 @@ describe("document lifecycle API", () => {
     );
 
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { warning?: string };
+    const body = (await res.json()) as {
+      warning?: string;
+      status?: string;
+    };
+    expect(body.status).toBe("applied_with_sync_pending");
     expect(body.warning).toContain("index refresh failed");
+    expect(await Bun.file(join(tmpDir, "renamed.md")).exists()).toBe(true);
   });
 
   test("trash returns warning when sync fails after file move", async () => {
@@ -737,14 +804,337 @@ describe("document lifecycle API", () => {
       getBacklinksForDoc: async () =>
         ({ ok: true as const, value: [] }) as never,
     };
+    const applyFields = await previewApplyFields({
+      ctxHolder,
+      store,
+      doc,
+      operation: "move",
+      folderPath: "projects",
+    });
     const req = new Request("http://localhost/api/docs/abc123/move", {
       method: "POST",
-      body: JSON.stringify({ folderPath: "projects" }),
+      body: JSON.stringify({ folderPath: "projects", ...applyFields }),
     });
 
-    const res = await handleMoveDoc(ctxHolder, store as never, "#abc123", req);
+    const res = await handleMoveDoc(ctxHolder, store as never, "#abc123", req, {
+      syncCollection: async () =>
+        ({ ok: true as const, value: undefined }) as never,
+    });
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { relPath: string };
+    const body = (await res.json()) as { relPath: string; status: string };
     expect(body.relPath).toBe("projects/doc.md");
+    expect(body.status).toBe("applied");
+    expect(await Bun.file(join(tmpDir, "projects/doc.md")).exists()).toBe(true);
+  });
+
+  test("refactor-plan preview returns canonical rename impact", async () => {
+    const source = createDoc(tmpDir);
+    await writeFile(join(tmpDir, "doc.md"), "# Doc\n");
+    await writeFile(join(tmpDir, "ref.md"), "See [[Doc]].\n");
+
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = {
+      ...createMockStore(source),
+      getLinksForDoc: async () => ({ ok: true as const, value: [] }) as never,
+      getBacklinksForDoc: async () =>
+        ({ ok: true as const, value: [] }) as never,
+    };
+    const req = new Request("http://localhost/api/docs/abc123/refactor-plan", {
+      method: "POST",
+      body: JSON.stringify({
+        operation: "rename",
+        name: "renamed.md",
+        uri: source.uri,
+      }),
+    });
+
+    const res = await handleRefactorPlan(
+      ctxHolder,
+      store as never,
+      "#abc123",
+      req
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      schemaVersion: string;
+      planDigest: string;
+      canApply: boolean;
+      affectedDocuments: unknown[];
+      examinedReferences: unknown[];
+      nextRelPath: string;
+    };
+    expect(body.schemaVersion).toBe("1.0");
+    expect(body.planDigest).toMatch(/^[a-f0-9]{64}$/);
+    expect(body.canApply).toBe(true);
+    expect(body.nextRelPath).toBe("renamed.md");
+    expect(Array.isArray(body.affectedDocuments)).toBe(true);
+    expect(Array.isArray(body.examinedReferences)).toBe(true);
+  });
+
+  test("rename requires explicit digest, confirmation, and schema", async () => {
+    const doc = createDoc(tmpDir);
+    await writeFile(join(tmpDir, "doc.md"), "# Hello");
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+
+    const response = await handleRenameDoc(
+      ctxHolder,
+      createMockStore(doc) as never,
+      doc.docid,
+      new Request("http://localhost/api/docs/abc123/rename", {
+        method: "POST",
+        body: JSON.stringify({ name: "renamed.md" }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("VALIDATION");
+    expect(await Bun.file(join(tmpDir, "doc.md")).exists()).toBe(true);
+    expect(await Bun.file(join(tmpDir, "renamed.md")).exists()).toBe(false);
+  });
+
+  test("canonical REST apply rewrites exact incoming references", async () => {
+    const source = createDoc(tmpDir);
+    const referrer = createDoc(tmpDir, {
+      id: 2,
+      docid: "#def456",
+      uri: "gno://notes/ref.md",
+      relPath: "ref.md",
+      title: "Ref",
+      mirrorHash: "ref-mirror",
+    });
+    const sourceContent = "# Doc\n";
+    const referrerContent = "Before [[Doc#Heading|label]] after.\n";
+    await writeFile(join(tmpDir, "doc.md"), sourceContent);
+    await writeFile(join(tmpDir, "ref.md"), referrerContent);
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = {
+      ...createMockStore([source, referrer]),
+      getFileRefactorResolutionSnapshot: async () => ({
+        ok: true as const,
+        value: {
+          source: {
+            id: source.id,
+            uri: source.uri,
+            relPath: source.relPath,
+            collection: source.collection,
+            title: source.title,
+            mirrorHash: source.mirrorHash,
+            sourceExt: ".md",
+            sourceMime: "text/markdown",
+            recordKey: null,
+            content: sourceContent,
+            contentTruncated: false,
+            editable: true,
+          },
+          catalog: [source, referrer].map((doc) => ({
+            id: doc.id,
+            uri: doc.uri,
+            relPath: doc.relPath,
+            collection: doc.collection,
+            title: doc.title,
+          })),
+          referrers: [
+            {
+              id: referrer.id,
+              uri: referrer.uri,
+              relPath: referrer.relPath,
+              collection: referrer.collection,
+              title: referrer.title,
+              content: referrerContent,
+              contentTruncated: false,
+              contentMissing: false,
+              editable: true,
+              sourceExt: ".md",
+              sourceMime: "text/markdown",
+              recordKey: null,
+            },
+          ],
+          occupiedRelPaths: [source.relPath, referrer.relPath],
+          truncated: false,
+          truncationReasons: [],
+        },
+      }),
+    };
+
+    const preview = await handleRefactorPlan(
+      ctxHolder,
+      store as never,
+      source.docid,
+      new Request("http://localhost/api/docs/abc123/refactor-plan", {
+        method: "POST",
+        body: JSON.stringify({
+          operation: "rename",
+          name: "renamed.md",
+          uri: source.uri,
+        }),
+      })
+    );
+    expect(preview.status).toBe(200);
+    const plan = (await preview.json()) as {
+      planDigest: string;
+      canApply: boolean;
+      affectedDocuments: Array<{ relPath: string; edits: unknown[] }>;
+    };
+    expect(plan.canApply).toBe(true);
+    expect(plan.affectedDocuments).toContainEqual(
+      expect.objectContaining({ relPath: "ref.md", edits: expect.any(Array) })
+    );
+
+    const applied = await handleRenameDoc(
+      ctxHolder,
+      store as never,
+      source.docid,
+      new Request("http://localhost/api/docs/abc123/rename", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "renamed.md",
+          uri: source.uri,
+          planDigest: plan.planDigest,
+          confirmation: FILE_REFACTOR_APPLY_CONFIRMATION,
+          schemaVersion: FILE_REFACTOR_SCHEMA_VERSION,
+        }),
+      }),
+      {
+        syncCollection: async () =>
+          ({ ok: true as const, value: undefined }) as never,
+      }
+    );
+    expect(applied.status).toBe(200);
+    expect(await Bun.file(join(tmpDir, "ref.md")).text()).toBe(
+      "Before [[renamed#Heading|label]] after.\n"
+    );
+  });
+
+  test("rename with stale plan digest fails closed", async () => {
+    const doc = createDoc(tmpDir);
+    await writeFile(join(tmpDir, "doc.md"), "# Hello");
+
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = createMockStore(doc);
+    const req = new Request("http://localhost/api/docs/abc123/rename", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "renamed.md",
+        planDigest: "a".repeat(64),
+        confirmation: FILE_REFACTOR_APPLY_CONFIRMATION,
+        schemaVersion: "1.0",
+      }),
+    });
+
+    const res = await handleRenameDoc(
+      ctxHolder,
+      store as never,
+      "#abc123",
+      req,
+      {
+        syncCollection: async () =>
+          ({ ok: true as const, value: undefined }) as never,
+      }
+    );
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as {
+      error: { code: string; details?: { status?: string } };
+    };
+    expect(body.error.code).toBe("STALE_PLAN");
+    expect(body.error.details?.status).toBe("stale_plan");
+    expect(await Bun.file(join(tmpDir, "doc.md")).exists()).toBe(true);
+  });
+
+  test("rename with matching plan digest applies through canonical service", async () => {
+    const doc = createDoc(tmpDir);
+    await writeFile(join(tmpDir, "doc.md"), "# Hello");
+
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*.md",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = createMockStore(doc);
+
+    const planRes = await handleRefactorPlan(
+      ctxHolder,
+      store as never,
+      "#abc123",
+      new Request("http://localhost/api/docs/abc123/refactor-plan", {
+        method: "POST",
+        body: JSON.stringify({
+          operation: "rename",
+          name: "renamed.md",
+          uri: doc.uri,
+        }),
+      })
+    );
+    const plan = (await planRes.json()) as { planDigest: string };
+
+    const res = await handleRenameDoc(
+      ctxHolder,
+      store as never,
+      "#abc123",
+      new Request("http://localhost/api/docs/abc123/rename", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "renamed.md",
+          uri: doc.uri,
+          planDigest: plan.planDigest,
+          confirmation: FILE_REFACTOR_APPLY_CONFIRMATION,
+          schemaVersion: "1.0",
+        }),
+      }),
+      {
+        syncCollection: async () =>
+          ({ ok: true as const, value: undefined }) as never,
+      }
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string; relPath: string };
+    expect(body.status).toBe("applied");
+    expect(body.relPath).toBe("renamed.md");
   });
 });
