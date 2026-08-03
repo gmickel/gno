@@ -1,7 +1,7 @@
 {
-  "assignee": null,
+  "assignee": "gordon.mickel@gmail.com",
   "claim_note": "",
-  "claimed_at": null,
+  "claimed_at": "2026-08-03T00:01:13.967149Z",
   "created_at": "2026-08-02T20:47:55.321344Z",
   "depends_on": [
     "fn-61-document-structure-navigation-and-section-addressability.6",
@@ -11,7 +11,7 @@
   "priority": 3,
   "spec": "fn-61-document-structure-navigation-and-section-addressability",
   "spec_path": ".flow/tasks/fn-61-document-structure-navigation-and-section-addressability.7.md",
-  "status": "todo",
+  "status": "done",
   "title": "Integrate citation-safe links and verify compatibility end to end",
-  "updated_at": "2026-08-02T20:57:43.856426Z"
+  "updated_at": "2026-08-03T00:57:17.808096Z"
 }

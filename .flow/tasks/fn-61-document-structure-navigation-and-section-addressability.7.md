@@ -43,9 +43,8 @@ Do not leak full private section content in copied URLs, logs, or telemetry. Pro
 
 
 ## Done summary
-TBD
-
+Integrated citation-safe section links across the Web UI, REST API, SDK, and MCP. Added readable human links alongside bounded versioned durable targets, fail-closed exact/recovered/ambiguous/stale behavior, updated the installed skill guidance and hosted gno.sh reference documentation, and verified both product and documentation surfaces live.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 2ffa6971d396ed447c1ea6f1d1793ac07e33696d, b405e92e5b93376c9f25f19049ed25d3c5282efe
+- Tests: bun test: 3698 pass, 2 expected skips, 0 fail, bun run lint:check: 0 warnings, 0 errors, bun scripts/docs-verify.ts: 15 pass, 2 model-cache skips, gno skill autoresearch eval: 47/47, 100%, flow-next QA: SHIP, 6/6 R-IDs covered, no P0/P1, gno.sh bun run check: pass, gno.sh bun run typecheck: pass, gno.sh bun run build: pass, 92 pages prerendered, local live QA: Web UI, REST, Streamable HTTP MCP, and gno.sh docs verified
 - PRs:

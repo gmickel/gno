@@ -1,0 +1,64 @@
+{
+  "branch": "fn-61-document-structure-navigation-and-section-addressability",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "2ffa6971d396ed447c1ea6f1d1793ac07e33696d",
+    "items": [
+      {
+        "body": "At the 375px QA viewport, DocView retains a 960px canvas and forces 585px horizontal overflow; document content and QuickSwitcher remain usable. (surface: src/serve/public/pages/DocView.tsx)",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-6f104c464183b71b361c00284a9699c82a923fe08f1ce39a97df99f3b4bfdff8",
+        "id": "finding-b5b88188cc3bb7fffe8d76be85c8a85a",
+        "lastSeenReceiptId": "review-6f104c464183b71b361c00284a9699c82a923fe08f1ce39a97df99f3b4bfdff8",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "S14-mobile-docview-overflow"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-6f104c464183b71b361c00284a9699c82a923fe08f1ce39a97df99f3b4bfdff8"
+  },
+  "head_sha": "2ffa6971d396ed447c1ea6f1d1793ac07e33696d",
+  "id": "fn-61-document-structure-navigation-and-section-addressability",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "subtracted",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "timestamp": "2026-08-03T00:50:00Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
