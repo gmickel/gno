@@ -38,9 +38,8 @@ A stored object is not visible until the matching snapshot generation is committ
 - [ ] gno.sh check/typecheck/tests and focused storage/ingest integration pass.
 
 ## Done summary
-TBD
-
+Implemented gno.sh's strict v1 bundled-raster ingest boundary. The consumer validates the complete artifact before writes, persists immutable private objects under opaque generation keys, enriches snapshots with digest-bound storage manifests, and activates fallback or database visibility only after every object is durable. Failed activation cleans newly created objects; same-generation requests are serialized; S3 creates are conditional and storage errors fail closed. Added idempotent delete, rollback, and orphan-cleanup lifecycle operations plus exact UTF-8 envelope enforcement.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: e8dfdf8
+- Tests: cd /Users/gordon/work/gno.sh && bun run test (169 passed, 5 skipped, 0 failed), cd /Users/gordon/work/gno.sh && bun run check, cd /Users/gordon/work/gno.sh && bun run typecheck, cd /Users/gordon/work/gno.sh && bun run build, cd /Users/gordon/work/gno.sh && bun run test src/lib/publish-artifact-asset-storage.test.ts src/lib/publish-artifact-asset-lifecycle.test.ts src/lib/publish-artifact-asset-lifecycle.integration.test.ts (17 passed)
 - PRs:
