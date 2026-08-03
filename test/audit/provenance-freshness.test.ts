@@ -76,10 +76,10 @@ describe("provenance completeness audit", () => {
       "source.url",
     ]);
     expect(record?.findings?.map(({ location }) => location)).toEqual([
-      "recordSourceLocator",
       "converterId",
       "converterVersion",
       "recordAdapterFingerprint",
+      "recordSourceLocator",
     ]);
     expect(
       capture?.findings?.some(({ subject }) => subject === ordinary.uri)
@@ -133,10 +133,33 @@ describe("provenance completeness audit", () => {
     expect(capture?.findings).toHaveLength(1000);
     expect(capture?.findingCount).toBe(2400);
     expect(capture?.examinedCount).toBe(1200);
+    const reversedCapture = evaluateProvenanceAudit(
+      [...documents].reverse()
+    ).find(({ ruleId }) => ruleId === "provenance.capture-source");
+    expect(reversedCapture?.findings).toEqual(capture?.findings);
   });
 });
 
 describe("freshness and index consistency audit", () => {
+  test("canonically caps findings independent of snapshot traversal order", () => {
+    const documents = Array.from({ length: 1001 }, (_, index) =>
+      freshnessDocument({
+        uri: `gno://notes/${String(index).padStart(4, "0")}.md`,
+        relPath: `${String(index).padStart(4, "0")}.md`,
+        source: { state: "missing", hash: null, mtime: null },
+      })
+    );
+    const evaluate = (input: AuditFreshnessDocument[]) =>
+      evaluateFreshnessAudit(input, {
+        now: new Date("2026-08-03T12:00:00.000Z"),
+      }).find(({ ruleId }) => ruleId === "freshness.source-readable");
+    const forward = evaluate(documents);
+    const reversed = evaluate([...documents].reverse());
+    expect(forward?.findingCount).toBe(1001);
+    expect(forward?.findings).toHaveLength(1000);
+    expect(reversed?.findings).toEqual(forward?.findings);
+  });
+
   test("distinguishes unreadable, drifted, and stale indexed revisions", () => {
     const missing = freshnessDocument({
       uri: "gno://notes/missing.md",

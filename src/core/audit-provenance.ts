@@ -3,6 +3,7 @@
 import type { AuditFindingDraft, AuditRuleContribution } from "./audit";
 import type { CaptureSource } from "./capture";
 
+import { compareAuditFindingDrafts } from "./audit";
 import { validateDeclaredCaptureProvenance } from "./capture";
 import {
   hasDeclaredRecordProvenance,
@@ -121,7 +122,9 @@ export const evaluateProvenanceAudit = (
         : declaredDocuments === 0
           ? "No documents declared this provenance contract"
           : `${findings.length} declared provenance completeness issues`,
-    findings: findings.slice(0, PROVENANCE_AUDIT_MAX_FINDINGS_PER_RULE),
+    findings: [...findings]
+      .sort(compareAuditFindingDrafts)
+      .slice(0, PROVENANCE_AUDIT_MAX_FINDINGS_PER_RULE),
     findingCount: findings.length,
     examinedCount: documents.length,
     skipReason: truncated

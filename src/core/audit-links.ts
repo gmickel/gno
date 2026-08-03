@@ -6,6 +6,8 @@ import type {
 } from "../store/sqlite/graph-link-resolver";
 import type { AuditFindingDraft, AuditRuleContribution } from "./audit";
 
+import { compareAuditCodeUnits, compareAuditFindingDrafts } from "./audit";
+
 export const LINK_AUDIT_RULE_VERSION = "1.0" as const;
 export const LINK_AUDIT_MAX_FINDINGS_PER_RULE = 1000;
 
@@ -16,23 +18,11 @@ export interface AuditOrphanPolicy {
   ignoreMirrorDuplicates?: boolean;
 }
 
-const compareText = (left: string, right: string): number =>
-  left < right ? -1 : left > right ? 1 : 0;
-
-const compareFindingDrafts = (
-  left: AuditFindingDraft,
-  right: AuditFindingDraft
-): number =>
-  compareText(left.subject, right.subject) ||
-  compareText(left.location ?? "", right.location ?? "") ||
-  compareText(left.message, right.message) ||
-  compareText(JSON.stringify(left.evidence), JSON.stringify(right.evidence));
-
 const boundedFindings = (
   findings: readonly AuditFindingDraft[]
 ): AuditFindingDraft[] =>
   [...findings]
-    .sort(compareFindingDrafts)
+    .sort(compareAuditFindingDrafts)
     .slice(0, LINK_AUDIT_MAX_FINDINGS_PER_RULE);
 
 const lineLocation = (line: number, column: number): string =>
@@ -76,7 +66,7 @@ const linkFinding = (
 const normalizedPrefixes = (values: readonly string[]): string[] =>
   [...new Set(values.map((value) => value.normalize("NFC").trim()))]
     .filter(Boolean)
-    .sort(compareText);
+    .sort(compareAuditCodeUnits);
 
 const isIgnoredDocument = (
   document: AuditLinkSnapshotDocument,
@@ -149,7 +139,7 @@ export const evaluateLinkAudit = (
         !connected.has(document.id) &&
         !isIgnoredDocument(document, roots, ignorePrefixes, mirroredIds)
     )
-    .sort((left, right) => compareText(left.uri, right.uri))
+    .sort((left, right) => compareAuditCodeUnits(left.uri, right.uri))
     .map<AuditFindingDraft>((document) => ({
       subject: document.uri,
       location: null,

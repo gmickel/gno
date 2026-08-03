@@ -2,6 +2,8 @@
 
 import type { AuditFindingDraft, AuditRuleContribution } from "./audit";
 
+import { compareAuditFindingDrafts } from "./audit";
+
 export const FRESHNESS_AUDIT_MAX_FINDINGS_PER_RULE = 1000;
 
 export interface AuditFreshnessDocument {
@@ -77,7 +79,9 @@ const rule = (input: {
           ? "fail"
           : "pass",
   message: input.message,
-  findings: input.findings.slice(0, FRESHNESS_AUDIT_MAX_FINDINGS_PER_RULE),
+  findings: [...input.findings]
+    .sort(compareAuditFindingDrafts)
+    .slice(0, FRESHNESS_AUDIT_MAX_FINDINGS_PER_RULE),
   findingCount: input.findings.length,
   examinedCount: input.examinedCount,
   skipReason: input.reason ?? null,

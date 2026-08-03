@@ -622,6 +622,7 @@ describe("gno audit CLI", () => {
     const reportPath = join(root, "audit.json");
     await Bun.write(reportPath, "pre-existing\n");
     await chmod(reportPath, 0o644);
+    const originalInode = (await stat(reportPath)).ino;
     const code = await runCli([
       "bun",
       "gno",
@@ -636,5 +637,6 @@ describe("gno audit CLI", () => {
       "1.0"
     );
     expect((await stat(reportPath)).mode & 0o777).toBe(0o600);
+    expect((await stat(reportPath)).ino).not.toBe(originalInode);
   });
 });

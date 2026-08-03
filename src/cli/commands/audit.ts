@@ -1,7 +1,8 @@
 /** Read-only knowledge-integrity audit CLI adapter. */
 
-// node:fs/promises chmod has no Bun equivalent for securing an existing file.
-import { chmod } from "node:fs/promises";
+// node:fs/promises provides atomic filesystem structure operations with no Bun equivalent.
+import { chmod, mkdtemp, rename, rmdir, unlink } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 
 import type {
   AuditCategory,
@@ -212,9 +213,19 @@ export const writeAuditReport = async (
   report: AuditReport,
   options: { json?: boolean } = {}
 ): Promise<void> => {
-  await Bun.write(path, `${formatAuditReport(report, options)}\n`, {
-    createPath: false,
-    mode: 0o600,
-  });
-  await chmod(path, 0o600);
+  const temporaryDirectory = await mkdtemp(
+    join(dirname(path), `.${basename(path)}-`)
+  );
+  const temporaryPath = join(temporaryDirectory, "report");
+  try {
+    await Bun.write(temporaryPath, `${formatAuditReport(report, options)}\n`, {
+      createPath: false,
+      mode: 0o600,
+    });
+    await chmod(temporaryPath, 0o600);
+    await rename(temporaryPath, path);
+  } finally {
+    await unlink(temporaryPath).catch(() => undefined);
+    await rmdir(temporaryDirectory).catch(() => undefined);
+  }
 };

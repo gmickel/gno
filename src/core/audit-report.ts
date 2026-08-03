@@ -31,6 +31,18 @@ import {
 export const compareAuditCodeUnits = (left: string, right: string): number =>
   left < right ? -1 : left > right ? 1 : 0;
 
+export const compareAuditFindingDrafts = (
+  left: AuditFindingDraft,
+  right: AuditFindingDraft
+): number =>
+  compareAuditCodeUnits(left.subject, right.subject) ||
+  compareAuditCodeUnits(left.location ?? "", right.location ?? "") ||
+  compareAuditCodeUnits(left.message, right.message) ||
+  compareAuditCodeUnits(
+    JSON.stringify(left.evidence),
+    JSON.stringify(right.evidence)
+  );
+
 type CanonicalJson =
   | boolean
   | null
