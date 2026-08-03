@@ -202,6 +202,87 @@ describe("link integrity audit", () => {
     ).toBe(true);
   });
 
+  test("bulk resolver preserves ranked results above the adaptive threshold", async () => {
+    const sourceId = await addDocument("source.md", "Source");
+    await addDocument("projects/task.md", "Task");
+    await addDocument("archive/task.md", "Task");
+    await addDocument("guide.md", "Guide");
+    await addDocument("Flooid/Pack.md", "Pack");
+    await addDocument("empty.md", "");
+    const links: DocLinkInput[] = [
+      {
+        targetRef: "task.md",
+        targetRefNorm: "task.md",
+        linkType: "wiki",
+        startLine: 1,
+        startCol: 1,
+        endLine: 1,
+        endCol: 10,
+      },
+      {
+        targetRef: "guide.md",
+        targetRefNorm: "guide.md",
+        linkType: "markdown",
+        startLine: 2,
+        startCol: 1,
+        endLine: 2,
+        endCol: 10,
+      },
+      {
+        targetRef: "Flooid/Pack.md",
+        targetRefNorm: "Flooid/Pack.md",
+        linkType: "markdown",
+        startLine: 3,
+        startCol: 1,
+        endLine: 3,
+        endCol: 10,
+      },
+      {
+        targetRef: "_artefakte/",
+        targetRefNorm: "_artefakte/",
+        linkType: "wiki",
+        startLine: 4,
+        startCol: 1,
+        endLine: 4,
+        endCol: 10,
+      },
+      ...Array.from({ length: 127 }, (_, index) => ({
+        targetRef: `missing-${index}.md`,
+        targetRefNorm: `missing-${index}.md`,
+        linkType: "markdown" as const,
+        startLine: index + 5,
+        startCol: 1,
+        endLine: index + 5,
+        endCol: 10,
+      })),
+    ];
+    expect((await adapter.setDocLinks(sourceId, links, "parsed")).ok).toBe(
+      true
+    );
+
+    const snapshot = captureAuditLinkSnapshot(adapter.getRawDb());
+    expect(snapshot.metrics.uniqueTargetsResolved).toBe(131);
+    expect(snapshot.links[0]?.resolved).toMatchObject({
+      matchRank: 1,
+      matchCount: 2,
+    });
+    expect(snapshot.links[1]?.resolved).toMatchObject({
+      matchRank: 5,
+      matchCount: 1,
+    });
+    expect(snapshot.links[2]?.resolved).toMatchObject({
+      matchRank: 5,
+      matchCount: 1,
+    });
+    expect(snapshot.links[3]?.resolved).toMatchObject({
+      matchRank: 4,
+      matchCount: 1,
+    });
+    expect(
+      snapshot.links.filter(({ resolved }) => resolved === null)
+    ).toHaveLength(127);
+  });
+
   test("source and target lookups retain supporting indexes", () => {
     const indexes = adapter
       .getRawDb()

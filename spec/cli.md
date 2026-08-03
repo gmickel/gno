@@ -702,6 +702,8 @@ modifying notes, configuration, index rows, graph edges, or daemon state.
 ```bash
 gno audit [links|provenance|freshness|all] [--collection <name>...] \
   [--path <prefix>...] [--tag <tag>...] [--max-findings <n>] \
+  [--max-age-days <days>] [--orphan-root <uri>...] \
+  [--orphan-ignore-prefix <prefix>...] [--no-progress] \
   [--json] [--output <path>]
 ```
 
@@ -710,6 +712,10 @@ to 1–1000. Truncation limits returned findings but preserves exact totals.
 `--output` writes only the requested report artifact with local file
 permissions. Human output renders the same report represented by
 `audit-report.schema.json`.
+When attached to a terminal, human mode reports snapshot/rule progress on
+stderr; `--no-progress`, `--quiet`, and JSON mode suppress it. `Ctrl-C` returns
+the bounded report gathered so far with partial status and exit 5. Freshness
+age is reported only when `--max-age-days` supplies an explicit policy.
 
 Rule statuses are `pass`, `fail`, `skip`, `unavailable`, and `inconclusive`.
 Report statuses are `complete`, `partial`, `changed_during_audit`, and `failed`.

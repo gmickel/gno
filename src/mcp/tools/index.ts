@@ -20,6 +20,7 @@ import { RETRIEVAL_TRACE_METADATA } from "../../core/retrieval-trace-session";
 import { normalizeTag } from "../../core/tags";
 import { handleAddCollection } from "./add-collection";
 import { askInputSchema, handleAsk } from "./ask";
+import { AUDIT_MCP_ANNOTATIONS, auditInputSchema, handleAudit } from "./audit";
 import { handleCapture } from "./capture";
 import {
   changesInputSchema,
@@ -130,6 +131,8 @@ export const MCP_TOOL_DESCRIPTIONS = {
     "Create or resolve a durable SectionTargetV1 against one indexed document. action=create needs ref plus exactly one of anchor|line; action=resolve needs ref plus target. Exact/recovered include citation (uri, anchor, title, inclusive lines, fingerprint); ambiguous/stale/missing omit citation and are not safe to navigate or cite. Read-only — does not write or persist targets. Follow navigable ranges with gno_get fromLine/lineCount.",
   status:
     "Get index health: collection count, document count, chunk count, embedding backlog, and per-collection stats. Check first when vector/hybrid results look stale or unavailable.",
+  audit:
+    "Run deterministic, offline, read-only integrity audits for links, declared provenance completeness, and source/index freshness. Returns stable bounded findings and explicit partial/unavailable states; never repairs or mutates the workspace.",
   context:
     "Compile one deterministic, budgeted, extractive evidence Capsule with exact line spans, coverage gaps, omissions, provenance, and verification fingerprints. Raw search/get tools remain available for manual retrieval.",
   contextVerify:
@@ -1088,6 +1091,16 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     MCP_TOOL_DESCRIPTIONS.status,
     statusInputSchema.shape,
     (args) => handleStatus(args, ctx)
+  );
+
+  server.registerTool(
+    "gno_audit",
+    {
+      description: MCP_TOOL_DESCRIPTIONS.audit,
+      inputSchema: auditInputSchema,
+      annotations: AUDIT_MCP_ANNOTATIONS,
+    },
+    (args, extra) => handleAudit(args, ctx, extra.signal)
   );
 
   server.registerTool(

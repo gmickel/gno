@@ -515,6 +515,28 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  /** Open an existing index with SQLite enforced query-only semantics. */
+  openReadOnly(dbPath: string): StoreResult<void> {
+    try {
+      this.db = new Database(dbPath, { readonly: true, strict: true });
+      this.dbPath = dbPath;
+      this.db.exec("PRAGMA query_only = ON");
+      this.db.exec("PRAGMA busy_timeout = 5000");
+      this.contextGeneration += 1;
+      return ok(undefined);
+    } catch (cause) {
+      this.db?.close();
+      this.db = null;
+      return err(
+        "CONNECTION_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to open database read-only",
+        cause
+      );
+    }
+  }
+
   async close(): Promise<void> {
     if (this.db) {
       this.db.close();

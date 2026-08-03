@@ -1539,6 +1539,118 @@ function wireOnboardingCommands(program: Command): void {
       }
     );
 
+  // audit - Read-only workspace integrity report
+  program
+    .command("audit [category]")
+    .description("Run read-only workspace integrity audits")
+    .option(
+      "-c, --collection <name>",
+      "collection scope (repeatable)",
+      collectRepeatableValue,
+      []
+    )
+    .option(
+      "--path <prefix>",
+      "collection-relative path prefix (repeatable)",
+      collectRepeatableValue,
+      []
+    )
+    .option(
+      "--tag <tag>",
+      "require tag (repeatable, AND semantics)",
+      collectRepeatableValue,
+      []
+    )
+    .option("--max-findings <count>", "maximum returned findings", Number)
+    .option("--max-age-days <days>", "explicit age review signal", Number)
+    .option(
+      "--orphan-root <uri>",
+      "URI excluded from orphan findings (repeatable)",
+      collectRepeatableValue,
+      []
+    )
+    .option(
+      "--orphan-ignore-prefix <prefix>",
+      "path prefix excluded from orphan findings (repeatable)",
+      collectRepeatableValue,
+      []
+    )
+    .option("--output <path>", "also write the rendered report to a file")
+    .option("--no-progress", "disable progress on stderr")
+    .option("--json", "JSON output")
+    .action(
+      async (
+        category: string | undefined,
+        cmdOpts: Record<string, unknown>
+      ) => {
+        const { audit, formatAuditReport, writeAuditReport } =
+          await import("./commands/audit");
+        const globals = getGlobals();
+        const json = getFormat(cmdOpts) === "json";
+        const showProgress =
+          cmdOpts.progress !== false &&
+          !globals.quiet &&
+          !json &&
+          process.stderr.isTTY;
+        const controller = new AbortController();
+        const abort = (): void => controller.abort();
+        process.once("SIGINT", abort);
+        try {
+          const result = await audit({
+            category,
+            configPath: globals.config,
+            indexName: globals.index,
+            collections: cmdOpts.collection as string[],
+            paths: cmdOpts.path as string[],
+            tags: cmdOpts.tag as string[],
+            maxFindings: cmdOpts.maxFindings as number | undefined,
+            maxAgeDays: cmdOpts.maxAgeDays as number | undefined,
+            orphanRoots: cmdOpts.orphanRoot as string[],
+            orphanIgnorePrefixes: cmdOpts.orphanIgnorePrefix as string[],
+            signal: controller.signal,
+            onProgress: showProgress
+              ? ({ phase, completed, total }) => {
+                  process.stderr.write(
+                    `\rAudit ${phase}: ${completed}/${Math.max(total, 1)}`
+                  );
+                }
+              : undefined,
+          });
+          if (!result.success) {
+            throw new CliError(
+              result.invalid ? "VALIDATION" : "RUNTIME",
+              result.error
+            );
+          }
+          const rendered = formatAuditReport(result.report, { json });
+          process.stdout.write(`${rendered}\n`);
+          if (cmdOpts.output) {
+            await writeAuditReport(cmdOpts.output as string, result.report, {
+              json,
+            });
+          }
+          if (result.exitCode === 2) {
+            throw new CliError("RUNTIME", "Audit runtime failure", {
+              silent: true,
+            });
+          }
+          if (result.exitCode === 4) {
+            throw new CliError("AUDIT_FINDINGS", "Audit findings present", {
+              silent: true,
+            });
+          }
+          if (result.exitCode === 5) {
+            throw new CliError("AUDIT_PARTIAL", "Audit evidence is partial", {
+              silent: true,
+            });
+          }
+        } finally {
+          if (showProgress) process.stderr.write("\n");
+          process.removeListener("SIGINT", abort);
+        }
+      }
+    );
+
   // status - Show index status
   program
     .command("status")

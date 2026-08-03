@@ -7,6 +7,7 @@
 import type { Database } from "bun:sqlite";
 
 import { stripWikiMdExt } from "../../core/links";
+import { resolveGraphLinkTargetsBulk } from "./graph-link-bulk-resolver";
 
 export interface GraphLinkTarget {
   targetRefNorm: string;
@@ -22,6 +23,7 @@ export interface ResolvedGraphLinkTarget {
 }
 
 const MAX_SQL_PARAMS = 900;
+const BULK_RESOLUTION_THRESHOLD = 128;
 export const AUDIT_LINK_SNAPSHOT_MAX_DOCUMENTS = 50_000;
 export const AUDIT_LINK_SNAPSHOT_MAX_LINKS = 50_000;
 
@@ -86,7 +88,7 @@ const suffixMatch = (targetExpr: string, valueExpr: string): string =>
     AND (length(${targetExpr}) = length(${valueExpr})
       OR substr(${targetExpr}, -length(${valueExpr}) - 1, 1) = '/'))`;
 
-const resolveUniqueGraphLinkTargets = (
+export const resolveGraphLinkTargetsSql = (
   db: Database,
   targets: GraphLinkTarget[]
 ): Array<ResolvedGraphLinkTarget | null> => {
@@ -284,7 +286,11 @@ export function resolveGraphLinkTargets(
     originalToUniqueIndex.push(uniqueIndex);
   }
 
-  const uniqueResults = resolveUniqueGraphLinkTargets(db, uniqueTargets);
+  if (uniqueTargets.length > BULK_RESOLUTION_THRESHOLD) {
+    return resolveGraphLinkTargetsBulk(db, targets);
+  }
+
+  const uniqueResults = resolveGraphLinkTargetsSql(db, uniqueTargets);
   return originalToUniqueIndex.map(
     (uniqueIndex) => uniqueResults[uniqueIndex] ?? null
   );

@@ -586,6 +586,12 @@ export function extractCaptureSourceFromFrontmatter(
   return source;
 }
 
+/** Whether a note explicitly declares the CaptureSource frontmatter contract. */
+export const hasDeclaredCaptureSource = (content: string): boolean => {
+  const { lines } = splitFrontmatter(content);
+  return lines.some((line) => /^source\s*:\s*(?:\{\s*\})?\s*$/u.test(line));
+};
+
 function sourceFrontmatterLines(source: CaptureSource): string[] {
   const lines = ["source:"];
   for (const [key, value] of Object.entries(source)) {

@@ -103,14 +103,22 @@ export const evaluateLinkAudit = (
   const unresolved: AuditFindingDraft[] = [];
   const ambiguous: AuditFindingDraft[] = [];
   const connected = new Set<number>();
+  const auditedDocumentIds = new Set(
+    snapshot.documents.map((document) => document.id)
+  );
   for (const link of snapshot.links) {
+    const sourceAudited = auditedDocumentIds.has(link.sourceId);
     if (!link.resolved) {
-      unresolved.push(linkFinding(link));
+      if (sourceAudited) unresolved.push(linkFinding(link));
       continue;
     }
-    connected.add(link.sourceId);
-    connected.add(link.resolved.targetId);
-    if (link.resolved.matchCount > 1) ambiguous.push(linkFinding(link));
+    if (sourceAudited) connected.add(link.sourceId);
+    if (auditedDocumentIds.has(link.resolved.targetId)) {
+      connected.add(link.resolved.targetId);
+    }
+    if (sourceAudited && link.resolved.matchCount > 1) {
+      ambiguous.push(linkFinding(link));
+    }
   }
   const roots = new Set(normalizedPrefixes(policy.rootUris));
   const ignorePrefixes = normalizedPrefixes(policy.ignorePathPrefixes);

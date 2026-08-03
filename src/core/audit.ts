@@ -1,581 +1,49 @@
-/**
- * Deterministic read-only knowledge integrity audit contract.
- *
- * Freezes report/finding schemas, stable identity, status/exit taxonomy,
- * snapshot consistency, and the no-write port boundary. Category rules and
- * CLI/MCP registration are intentionally out of scope for this module.
- *
- * Distinct from content-free egress audit receipts (`egress-audit.ts`).
- *
- * @module src/core/audit
- */
+/** Deterministic read-only knowledge integrity audit runner. */
 
-import type { StorePort } from "../store/types";
+import type {
+  AuditCapabilitySnapshot,
+  AuditCategory,
+  AuditFinding,
+  AuditFingerprints,
+  AuditForbiddenStoreMethod,
+  AuditReport,
+  AuditReportStatus,
+  AuditRuleContribution,
+  AuditRuleContext,
+  AuditRuleEvaluator,
+  AuditRuleResult,
+  AuditRunInput,
+  AuditRunResult,
+  AuditScope,
+  AuditVersions,
+} from "./audit-contract";
 
 import { VERSION } from "../app/constants";
+import {
+  AUDIT_CATEGORIES,
+  AUDIT_DEFAULT_MAX_FINDINGS,
+  AUDIT_FORBIDDEN_STORE_METHODS,
+  AUDIT_MAX_FINDINGS_LIMIT,
+  AUDIT_MAX_MESSAGE_CHARS,
+  AUDIT_MAX_SNAPSHOT_ATTEMPTS,
+  AUDIT_RULE_SET_VERSION,
+  AUDIT_SCHEMA_VERSION,
+} from "./audit-contract";
+import {
+  auditCategoryRank,
+  boundAuditText,
+  compareAuditCodeUnits,
+  compareAuditFindings,
+  compareAuditRules,
+  deriveAuditExitKind,
+  deriveAuditReportStatus,
+  materializeAuditFinding,
+  normalizeAuditText,
+  tallyAuditRuleCounts,
+} from "./audit-report";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Versions & bounds
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const AUDIT_SCHEMA_VERSION = "1.0" as const;
-export const AUDIT_RULE_SET_VERSION = "1.0" as const;
-
-/** Default returned finding cap; totals remain exact when truncated. */
-export const AUDIT_DEFAULT_MAX_FINDINGS = 100;
-/** Hard upper bound for `--max-findings` / MCP maxFindings. */
-export const AUDIT_MAX_FINDINGS_LIMIT = 1000;
-export const AUDIT_MAX_EVIDENCE_PER_FINDING = 8;
-export const AUDIT_MAX_GUIDANCE_PER_FINDING = 4;
-export const AUDIT_MAX_EVIDENCE_DETAIL_CHARS = 512;
-export const AUDIT_MAX_MESSAGE_CHARS = 512;
-export const AUDIT_MAX_GUIDANCE_CHARS = 256;
-/** Bounded snapshot retries before `changed_during_audit`. */
-export const AUDIT_MAX_SNAPSHOT_ATTEMPTS = 2;
-
-export const AUDIT_CATEGORIES = ["links", "provenance", "freshness"] as const;
-export type AuditCategory = (typeof AUDIT_CATEGORIES)[number];
-
-export const AUDIT_RULE_STATUSES = [
-  "pass",
-  "fail",
-  "skip",
-  "unavailable",
-  "inconclusive",
-] as const;
-export type AuditRuleStatus = (typeof AUDIT_RULE_STATUSES)[number];
-
-export const AUDIT_REPORT_STATUSES = [
-  "complete",
-  "partial",
-  "changed_during_audit",
-  "failed",
-] as const;
-export type AuditReportStatus = (typeof AUDIT_REPORT_STATUSES)[number];
-
-export const AUDIT_EXIT_KINDS = [
-  "clean",
-  "findings",
-  "invalid",
-  "partial",
-  "runtime",
-] as const;
-export type AuditExitKind = (typeof AUDIT_EXIT_KINDS)[number];
-
-/**
- * Process exit codes for `gno audit` / MCP surfaces.
- * 0/1/2 align with global SUCCESS/VALIDATION/RUNTIME; 4/5 are audit-specific.
- */
-export const AUDIT_EXIT_CODES = {
-  clean: 0,
-  invalid: 1,
-  runtime: 2,
-  findings: 4,
-  partial: 5,
-} as const satisfies Record<AuditExitKind, number>;
-
-export type AuditFindingSeverity = "error" | "warning" | "info";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// No-write port boundary
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Read-only store methods permitted for audit snapshot/rule evaluation.
- * Category tasks may narrow further; mutating StorePort methods are forbidden.
- */
-export type AuditReadStorePort = Pick<
-  StorePort,
-  | "getActivationIndexSnapshot"
-  | "getCollections"
-  | "getStatus"
-  | "listDocuments"
-  | "listDocumentsPaginated"
-  | "getDocumentsByDocids"
-  | "getChunksBatch"
-  | "getContentBatch"
->;
-
-/** Mutating StorePort method names that audits must never invoke. */
-export const AUDIT_FORBIDDEN_STORE_METHODS = [
-  "upsertDocument",
-  "deactivateDocument",
-  "deleteDocument",
-  "upsertChunks",
-  "deleteChunks",
-  "recordError",
-  "upsertActivationReceipt",
-  "createRetrievalTrace",
-  "withTransaction",
-  "syncCollections",
-  "cleanup",
-] as const;
-
-export type AuditForbiddenStoreMethod =
-  (typeof AUDIT_FORBIDDEN_STORE_METHODS)[number];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Report / finding shapes
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface AuditScope {
-  /** Categories requested for this run. Empty means all categories. */
-  categories: AuditCategory[];
-  collections: string[];
-  /** Optional path/prefix filters (normalized, sorted). */
-  paths: string[];
-  /** Optional tag filters (normalized, sorted). */
-  tags: string[];
-  indexName: string;
-}
-
-export interface AuditCapabilitySnapshot {
-  indexReadable: boolean;
-  sourcesReadable: boolean;
-  linksGraphAvailable: boolean;
-  provenanceSchemaAvailable: boolean;
-  offline: true;
-  llmDisabled: true;
-}
-
-export interface AuditFingerprints {
-  /** Canonical config / rule-input fingerprint. */
-  config: string;
-  /** Source tree revision evidence fingerprint. */
-  source: string;
-  /** Index revision evidence fingerprint. */
-  index: string;
-  /** Active rule-set identity fingerprint. */
-  rules: string;
-}
-
-export interface AuditEvidence {
-  kind: string;
-  summary: string;
-  uri?: string;
-  path?: string;
-  detail?: string;
-}
-
-export interface AuditFinding {
-  /** Stable SHA-256 identity; survives traversal order. */
-  id: string;
-  ruleId: string;
-  category: AuditCategory;
-  severity: AuditFindingSeverity;
-  /** Normalized subject (typically gno:// URI or collection-relative path). */
-  subject: string;
-  /** Normalized location within the subject, or null. */
-  location: string | null;
-  message: string;
-  evidence: AuditEvidence[];
-  guidance: string[];
-  evidenceFingerprint: string;
-}
-
-export interface AuditRuleResult {
-  ruleId: string;
-  category: AuditCategory;
-  status: AuditRuleStatus;
-  message: string;
-  findings: AuditFinding[];
-  /** Exact findings before the bounded per-rule payload. */
-  findingCount: number;
-  examinedCount: number;
-  durationMs: number;
-  skipReason: string | null;
-}
-
-export interface AuditCounts {
-  rules: {
-    pass: number;
-    fail: number;
-    skip: number;
-    unavailable: number;
-    inconclusive: number;
-    total: number;
-  };
-  findings: {
-    /** Exact total before return-cap truncation. */
-    total: number;
-    /** Findings included in the report payload. */
-    returned: number;
-    truncated: boolean;
-  };
-  examined: {
-    documents: number;
-  };
-}
-
-export interface AuditTruncation {
-  findingsTruncated: boolean;
-  maxFindings: number;
-}
-
-export interface AuditTiming {
-  snapshotMs: number;
-  rulesMs: number;
-  totalMs: number;
-}
-
-export interface AuditVersions {
-  gno: string;
-  schema: typeof AUDIT_SCHEMA_VERSION;
-  ruleSet: typeof AUDIT_RULE_SET_VERSION;
-}
-
-export interface AuditReport {
-  schemaVersion: typeof AUDIT_SCHEMA_VERSION;
-  ruleSetVersion: typeof AUDIT_RULE_SET_VERSION;
-  status: AuditReportStatus;
-  scope: AuditScope;
-  capabilities: AuditCapabilitySnapshot;
-  fingerprints: AuditFingerprints;
-  versions: AuditVersions;
-  startedAt: string;
-  completedAt: string;
-  durationMs: number;
-  rules: AuditRuleResult[];
-  findings: AuditFinding[];
-  counts: AuditCounts;
-  truncation: AuditTruncation;
-  timing: AuditTiming;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Draft / evaluator contracts (category rules plug in later)
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface AuditFindingDraft {
-  subject: string;
-  location?: string | null;
-  severity: AuditFindingSeverity;
-  message: string;
-  evidence: AuditEvidence[];
-  guidance?: string[];
-}
-
-export interface AuditRuleContribution {
-  ruleId: string;
-  category: AuditCategory;
-  status: AuditRuleStatus;
-  message: string;
-  findings?: AuditFindingDraft[];
-  /** Exact findings before any evaluator-side payload cap. */
-  findingCount?: number;
-  examinedCount?: number;
-  durationMs?: number;
-  skipReason?: string | null;
-}
-
-export interface AuditRuleContext {
-  scope: AuditScope;
-  capabilities: AuditCapabilitySnapshot;
-  fingerprints: AuditFingerprints;
-  attempt: number;
-}
-
-export type AuditRuleEvaluator = (
-  ctx: AuditRuleContext
-) =>
-  | AuditRuleContribution
-  | AuditRuleContribution[]
-  | Promise<AuditRuleContribution | AuditRuleContribution[]>;
-
-export interface AuditFingerprintCapture {
-  (): AuditFingerprints | Promise<AuditFingerprints>;
-}
-
-export interface AuditRunInput {
-  scope: AuditScope;
-  capabilities: AuditCapabilitySnapshot;
-  captureFingerprints: AuditFingerprintCapture;
-  rules: readonly AuditRuleEvaluator[];
-  maxFindings?: number;
-  maxAttempts?: number;
-  gnoVersion?: string;
-  clock?: () => Date;
-  monotonicNow?: () => number;
-}
-
-export type AuditRunResult =
-  | { ok: true; report: AuditReport; exit: AuditExitKind }
-  | { ok: false; exit: "invalid"; error: string };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Canonicalization & stable IDs
-// ─────────────────────────────────────────────────────────────────────────────
-
-const compareCodeUnits = (left: string, right: string): number =>
-  left < right ? -1 : left > right ? 1 : 0;
-
-type CanonicalJson =
-  | boolean
-  | null
-  | number
-  | string
-  | CanonicalJson[]
-  | { [key: string]: CanonicalJson };
-
-const canonicalizeJsonValue = (value: unknown): CanonicalJson => {
-  if (
-    value === null ||
-    typeof value === "boolean" ||
-    typeof value === "string"
-  ) {
-    return value;
-  }
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) {
-      throw new Error("Canonical JSON rejects non-finite numbers");
-    }
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => canonicalizeJsonValue(item));
-  }
-  if (typeof value === "object") {
-    const sorted: Record<string, CanonicalJson> = {};
-    for (const key of Object.keys(value).sort(compareCodeUnits)) {
-      const child = (value as Record<string, unknown>)[key];
-      if (child === undefined) {
-        throw new Error(`Canonical JSON rejects undefined at ${key}`);
-      }
-      sorted[key] = canonicalizeJsonValue(child);
-    }
-    return sorted;
-  }
-  throw new TypeError(`Unsupported canonical JSON value: ${typeof value}`);
-};
-
-/** Key-sorted JSON used for identity hashes and semantic equality. */
-export const canonicalAuditJson = (value: unknown): string =>
-  JSON.stringify(canonicalizeJsonValue(value));
-
-export const hashAuditCanonical = (value: unknown): string =>
-  new Bun.CryptoHasher("sha256")
-    .update(canonicalAuditJson(value))
-    .digest("hex");
-
-export const normalizeAuditText = (value: string): string =>
-  value.normalize("NFC").trim();
-
-const boundText = (value: string, maxChars: number): string => {
-  const normalized = normalizeAuditText(value);
-  if (normalized.length <= maxChars) return normalized;
-  return normalized.slice(0, maxChars);
-};
-
-const boundEvidence = (evidence: readonly AuditEvidence[]): AuditEvidence[] => {
-  const bounded: AuditEvidence[] = [];
-  for (const item of evidence.slice(0, AUDIT_MAX_EVIDENCE_PER_FINDING)) {
-    const next: AuditEvidence = {
-      kind: normalizeAuditText(item.kind),
-      summary: boundText(item.summary, AUDIT_MAX_MESSAGE_CHARS),
-    };
-    if (item.uri !== undefined) {
-      next.uri = normalizeAuditText(item.uri);
-    }
-    if (item.path !== undefined) {
-      next.path = normalizeAuditText(item.path);
-    }
-    if (item.detail !== undefined) {
-      next.detail = boundText(item.detail, AUDIT_MAX_EVIDENCE_DETAIL_CHARS);
-    }
-    bounded.push(next);
-  }
-  return bounded.sort((left, right) => {
-    const byKind = compareCodeUnits(left.kind, right.kind);
-    if (byKind !== 0) return byKind;
-    const bySummary = compareCodeUnits(left.summary, right.summary);
-    if (bySummary !== 0) return bySummary;
-    return compareCodeUnits(
-      canonicalAuditJson(left),
-      canonicalAuditJson(right)
-    );
-  });
-};
-
-const boundGuidance = (guidance: readonly string[] | undefined): string[] => {
-  if (!guidance || guidance.length === 0) return [];
-  return guidance
-    .slice(0, AUDIT_MAX_GUIDANCE_PER_FINDING)
-    .map((item) => boundText(item, AUDIT_MAX_GUIDANCE_CHARS))
-    .sort(compareCodeUnits);
-};
-
-export const fingerprintAuditEvidence = (
-  evidence: readonly AuditEvidence[]
-): string => hashAuditCanonical(boundEvidence(evidence));
-
-/**
- * Stable finding identity from rule + normalized subject/location + evidence.
- * Wall-clock timing is intentionally excluded.
- */
-export const buildAuditFindingId = (input: {
-  ruleId: string;
-  subject: string;
-  location: string | null;
-  evidenceFingerprint: string;
-}): string =>
-  hashAuditCanonical({
-    evidenceFingerprint: input.evidenceFingerprint,
-    location: input.location,
-    ruleId: normalizeAuditText(input.ruleId),
-    subject: normalizeAuditText(input.subject),
-  });
-
-export const materializeAuditFinding = (
-  ruleId: string,
-  category: AuditCategory,
-  draft: AuditFindingDraft
-): AuditFinding => {
-  const subject = normalizeAuditText(draft.subject);
-  const location =
-    draft.location === undefined || draft.location === null
-      ? null
-      : normalizeAuditText(draft.location);
-  const evidence = boundEvidence(draft.evidence);
-  const evidenceFingerprint = fingerprintAuditEvidence(evidence);
-  return {
-    id: buildAuditFindingId({
-      ruleId,
-      subject,
-      location,
-      evidenceFingerprint,
-    }),
-    ruleId: normalizeAuditText(ruleId),
-    category,
-    severity: draft.severity,
-    subject,
-    location,
-    message: boundText(draft.message, AUDIT_MAX_MESSAGE_CHARS),
-    evidence,
-    guidance: boundGuidance(draft.guidance),
-    evidenceFingerprint,
-  };
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Ordering, counts, exit taxonomy
-// ─────────────────────────────────────────────────────────────────────────────
-
-const categoryRank = (category: AuditCategory): number =>
-  AUDIT_CATEGORIES.indexOf(category);
-
-export const compareAuditFindings = (
-  left: AuditFinding,
-  right: AuditFinding
-): number => {
-  const byCategory = categoryRank(left.category) - categoryRank(right.category);
-  if (byCategory !== 0) return byCategory;
-  const byRule = compareCodeUnits(left.ruleId, right.ruleId);
-  if (byRule !== 0) return byRule;
-  const bySubject = compareCodeUnits(left.subject, right.subject);
-  if (bySubject !== 0) return bySubject;
-  const leftLocation = left.location ?? "";
-  const rightLocation = right.location ?? "";
-  const byLocation = compareCodeUnits(leftLocation, rightLocation);
-  if (byLocation !== 0) return byLocation;
-  return compareCodeUnits(left.id, right.id);
-};
-
-export const compareAuditRules = (
-  left: AuditRuleResult,
-  right: AuditRuleResult
-): number => {
-  const byCategory = categoryRank(left.category) - categoryRank(right.category);
-  if (byCategory !== 0) return byCategory;
-  const byRule = compareCodeUnits(left.ruleId, right.ruleId);
-  if (byRule !== 0) return byRule;
-  const semanticRule = ({
-    durationMs: _durationMs,
-    ...rule
-  }: AuditRuleResult) => canonicalAuditJson(rule);
-  return compareCodeUnits(semanticRule(left), semanticRule(right));
-};
-
-const emptyRuleCounts = (): AuditCounts["rules"] => ({
-  pass: 0,
-  fail: 0,
-  skip: 0,
-  unavailable: 0,
-  inconclusive: 0,
-  total: 0,
-});
-
-export const tallyAuditRuleCounts = (
-  rules: readonly AuditRuleResult[]
-): AuditCounts["rules"] => {
-  const counts = emptyRuleCounts();
-  for (const rule of rules) {
-    counts[rule.status] += 1;
-    counts.total += 1;
-  }
-  return counts;
-};
-
-/**
- * Derive report status from rule outcomes and snapshot consistency.
- * Unavailable/inconclusive evidence can never yield a clean complete report.
- */
-export const deriveAuditReportStatus = (input: {
-  rules: readonly AuditRuleResult[];
-  snapshotChanged: boolean;
-  failed?: boolean;
-}): AuditReportStatus => {
-  if (input.failed) return "failed";
-  if (input.snapshotChanged) return "changed_during_audit";
-  const hasHonestGap = input.rules.some(
-    (rule) => rule.status === "unavailable" || rule.status === "inconclusive"
-  );
-  if (hasHonestGap) return "partial";
-  return "complete";
-};
-
-/**
- * Map a finished report to the frozen exit taxonomy.
- * Clean requires complete status and zero fail findings.
- */
-export const deriveAuditExitKind = (report: AuditReport): AuditExitKind => {
-  if (report.status === "failed") return "runtime";
-  if (report.status === "partial" || report.status === "changed_during_audit") {
-    return "partial";
-  }
-  const hasFailFindings = report.findings.some(
-    (finding) => finding.severity === "error" || finding.severity === "warning"
-  );
-  const hasFailRules = report.rules.some((rule) => rule.status === "fail");
-  if (hasFailFindings || hasFailRules) return "findings";
-  return "clean";
-};
-
-export const auditExitCode = (kind: AuditExitKind): number =>
-  AUDIT_EXIT_CODES[kind];
-
-/**
- * Semantic projection for equality: identical snapshots must match regardless
- * of wall-clock timing and per-rule duration noise.
- */
-export const auditSemanticProjection = (report: AuditReport): CanonicalJson => {
-  const {
-    startedAt: _s,
-    completedAt: _c,
-    durationMs: _d,
-    timing: _t,
-    ...rest
-  } = report;
-  return canonicalizeJsonValue({
-    ...rest,
-    rules: report.rules.map(({ durationMs: _durationMs, ...rule }) => rule),
-  });
-};
-
-export const serializeAuditReportSemantic = (report: AuditReport): string =>
-  canonicalAuditJson(auditSemanticProjection(report));
-
-export const serializeAuditReportCanonical = (report: AuditReport): string =>
-  canonicalAuditJson(report);
+export * from "./audit-contract";
+export * from "./audit-report";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Scope / input validation
@@ -603,22 +71,23 @@ export const normalizeAuditScope = (
   }
   categories.sort(
     (left, right) =>
-      categoryRank(left as AuditCategory) - categoryRank(right as AuditCategory)
+      auditCategoryRank(left as AuditCategory) -
+      auditCategoryRank(right as AuditCategory)
   );
 
   const collections = [
     ...new Set(scope.collections.map((item) => normalizeAuditText(item))),
   ]
     .filter((item) => item.length > 0)
-    .sort(compareCodeUnits);
+    .sort(compareAuditCodeUnits);
   const paths = [
     ...new Set(scope.paths.map((item) => normalizeAuditText(item))),
   ]
     .filter((item) => item.length > 0)
-    .sort(compareCodeUnits);
+    .sort(compareAuditCodeUnits);
   const tags = [...new Set(scope.tags.map((item) => normalizeAuditText(item)))]
     .filter((item) => item.length > 0)
-    .sort(compareCodeUnits);
+    .sort(compareAuditCodeUnits);
 
   return {
     ok: true,
@@ -697,7 +166,7 @@ const materializeRule = (
     ruleId: normalizeAuditText(contribution.ruleId),
     category: contribution.category,
     status,
-    message: boundText(contribution.message, AUDIT_MAX_MESSAGE_CHARS),
+    message: boundAuditText(contribution.message, AUDIT_MAX_MESSAGE_CHARS),
     findings,
     findingCount: Math.max(
       findings.length,
@@ -708,7 +177,7 @@ const materializeRule = (
     skipReason:
       contribution.skipReason === undefined || contribution.skipReason === null
         ? null
-        : boundText(contribution.skipReason, AUDIT_MAX_MESSAGE_CHARS),
+        : boundAuditText(contribution.skipReason, AUDIT_MAX_MESSAGE_CHARS),
   };
 };
 
@@ -742,12 +211,14 @@ const buildReportFromRules = (input: {
   rulesMs: number;
   totalMs: number;
 }): AuditReport => {
-  const rules = [...input.rules].sort(compareAuditRules).map((rule) => ({
-    ...rule,
-    findings: [...rule.findings].sort(compareAuditFindings),
-  }));
+  const materializedRules = [...input.rules]
+    .sort(compareAuditRules)
+    .map((rule) => ({
+      ...rule,
+      findings: [...rule.findings].sort(compareAuditFindings),
+    }));
 
-  const allFindings = rules
+  const allFindings = materializedRules
     .flatMap((rule) => rule.findings)
     .sort(compareAuditFindings);
   // Deduplicate by stable id while preserving canonical order.
@@ -759,7 +230,7 @@ const buildReportFromRules = (input: {
     uniqueFindings.push(finding);
   }
 
-  const exactFindingCount = rules.reduce(
+  const exactFindingCount = materializedRules.reduce(
     (sum, rule) => sum + rule.findingCount,
     0
   );
@@ -767,6 +238,17 @@ const buildReportFromRules = (input: {
   const returnedFindings = truncated
     ? uniqueFindings.slice(0, input.maxFindings)
     : uniqueFindings;
+  const returnedFindingIds = new Set(
+    returnedFindings.map((finding) => finding.id)
+  );
+  // Rule details and the top-level list share one global payload budget. Exact
+  // per-rule totals remain in findingCount, so truncation never hides scale.
+  const rules = materializedRules.map((rule) => ({
+    ...rule,
+    findings: rule.findings.filter((finding) =>
+      returnedFindingIds.has(finding.id)
+    ),
+  }));
 
   const examinedDocuments = rules.reduce(
     (sum, rule) => sum + rule.examinedCount,
