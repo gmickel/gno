@@ -76,10 +76,10 @@ const isIgnoredDocument = (
 ): boolean =>
   roots.has(document.uri) ||
   mirroredIds.has(document.id) ||
-  ignorePrefixes.some(
-    (prefix) =>
-      document.relPath === prefix || document.relPath.startsWith(`${prefix}/`)
-  );
+  ignorePrefixes.some((prefix) => {
+    const visiblePath = document.recordSourcePath ?? document.relPath;
+    return visiblePath === prefix || visiblePath.startsWith(`${prefix}/`);
+  });
 
 const duplicateMirrorIds = (
   documents: readonly AuditLinkSnapshotDocument[],
@@ -150,7 +150,7 @@ export const evaluateLinkAudit = (
           kind: "orphan-policy",
           summary: "No resolved incoming or outgoing local links",
           uri: document.uri,
-          path: document.relPath,
+          path: document.recordSourcePath ?? document.relPath,
           detail: JSON.stringify({ root: false, ignored: false }),
         },
       ],

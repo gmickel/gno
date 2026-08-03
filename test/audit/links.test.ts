@@ -153,6 +153,34 @@ describe("link integrity audit", () => {
     ]);
   });
 
+  test("applies orphan ignores to logical-record source paths", async () => {
+    const result = await adapter.upsertDocument({
+      collection: "notes",
+      relPath: ".gno/records/decisions.jsonl/decision-1.md",
+      sourceHash: "record-decision-1",
+      sourceMime: "application/jsonl",
+      sourceExt: ".jsonl",
+      sourceSize: 100,
+      sourceMtime: "2026-08-03T12:00:00.000Z",
+      title: "Decision 1",
+      mirrorHash: "record-decision-1-mirror",
+      recordKey: "decision-1",
+      recordSourcePath: "decisions.jsonl",
+      ingestVersion: 3,
+    });
+    expect(result.ok).toBe(true);
+
+    const rules = evaluateLinkAudit(
+      captureAuditLinkSnapshot(adapter.getRawDb()),
+      {
+        rootUris: [],
+        ignorePathPrefixes: ["decisions.jsonl"],
+      }
+    );
+    const orphans = rules.find(({ ruleId }) => ruleId === "links.orphans");
+    expect(orphans?.findings).toEqual([]);
+  });
+
   test("parser excludes external URLs while retaining path-style and fragment links", () => {
     const markdown =
       "[web](https://example.com) [[Folder/Note.md#Part]] [local](./guide.md#Install)";
@@ -216,6 +244,7 @@ describe("link integrity audit", () => {
           uri: "gno://notes/source.md",
           collection: "notes",
           relPath: "source.md",
+          recordSourcePath: null,
           title: "Source",
           mirrorHash: "source-mirror",
         },

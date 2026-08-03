@@ -16,6 +16,8 @@ export interface AuditProvenanceDocument {
   uri: string;
   relPath: string;
   sourceState?: "readable" | "missing" | "unreadable";
+  /** Whether this source format can declare CaptureSource frontmatter. */
+  captureSourceSupported?: boolean;
   captureSource?: Partial<CaptureSource>;
   captureSourceDeclared: boolean;
   record: {
@@ -62,6 +64,7 @@ export const evaluateProvenanceAudit = (
   let unavailableCaptureSources = 0;
   for (const document of documents) {
     if (
+      document.captureSourceSupported !== false &&
       document.sourceState !== undefined &&
       document.sourceState !== "readable"
     ) {

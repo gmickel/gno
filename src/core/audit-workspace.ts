@@ -193,6 +193,9 @@ const observeDocument = async (
   inspectFreshness: boolean,
   signal?: AbortSignal
 ): Promise<WorkspaceDocumentSnapshot> => {
+  const markdownSource = MARKDOWN_SOURCE_EXTENSIONS.has(
+    document.sourceExt.toLowerCase()
+  );
   const root = roots.get(document.collection);
   if (!root) {
     return {
@@ -201,6 +204,7 @@ const observeDocument = async (
         uri: document.uri,
         relPath: document.relPath,
         sourceState: "unreadable",
+        captureSourceSupported: markdownSource,
         captureSourceDeclared: false,
         record: document,
       },
@@ -232,6 +236,7 @@ const observeDocument = async (
           uri: document.uri,
           relPath: document.relPath,
           sourceState: "missing",
+          captureSourceSupported: markdownSource,
           captureSourceDeclared: false,
           record: document,
         },
@@ -258,9 +263,6 @@ const observeDocument = async (
         : inspectFreshness
           ? null
           : document.sourceHash;
-    const markdownSource = MARKDOWN_SOURCE_EXTENSIONS.has(
-      document.sourceExt.toLowerCase()
-    );
     const frontmatter =
       readFrontmatter && markdownSource
         ? await file.slice(0, AUDIT_FRONTMATTER_BYTES).text()
@@ -278,6 +280,7 @@ const observeDocument = async (
         uri: document.uri,
         relPath: document.relPath,
         sourceState: incompleteFrontmatter ? "unreadable" : "readable",
+        captureSourceSupported: markdownSource,
         captureSourceDeclared:
           !incompleteFrontmatter && hasDeclaredCaptureSource(frontmatter),
         captureSource: incompleteFrontmatter
@@ -311,6 +314,7 @@ const observeDocument = async (
         uri: document.uri,
         relPath: document.relPath,
         sourceState: "unreadable",
+        captureSourceSupported: markdownSource,
         captureSourceDeclared: false,
         record: document,
       },

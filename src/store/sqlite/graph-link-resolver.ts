@@ -33,6 +33,7 @@ export interface AuditLinkSnapshotDocument {
   uri: string;
   collection: string;
   relPath: string;
+  recordSourcePath: string | null;
   title: string | null;
   mirrorHash: string | null;
 }
@@ -343,7 +344,7 @@ export function captureAuditLinkSnapshot(
     .sort();
   if (prefixes.length > 0) {
     conditions.push(
-      `(${prefixes.map(() => "d.rel_path = ? OR d.rel_path LIKE ? ESCAPE '\\'").join(" OR ")})`
+      `(${prefixes.map(() => "COALESCE(NULLIF(d.record_source_path, ''), d.rel_path) = ? OR COALESCE(NULLIF(d.record_source_path, ''), d.rel_path) LIKE ? ESCAPE '\\'").join(" OR ")})`
     );
     for (const prefix of prefixes) {
       const escaped = prefix
@@ -368,12 +369,13 @@ export function captureAuditLinkSnapshot(
         uri: string;
         collection: string;
         rel_path: string;
+        record_source_path: string | null;
         title: string | null;
         mirror_hash: string | null;
       },
       (string | number)[]
     >(
-      `SELECT d.id, d.docid, d.uri, d.collection, d.rel_path, d.title, d.mirror_hash
+      `SELECT d.id, d.docid, d.uri, d.collection, d.rel_path, d.record_source_path, d.title, d.mirror_hash
        FROM documents d WHERE ${where} ORDER BY d.id LIMIT ?`
     )
     .all(...params, maxDocuments);
@@ -408,7 +410,7 @@ export function captureAuditLinkSnapshot(
     >(
       `SELECT d.id AS source_id, d.docid AS source_docid,
               d.uri AS source_uri, d.collection AS source_collection,
-              d.rel_path AS source_rel_path, dl.target_ref,
+              COALESCE(NULLIF(d.record_source_path, ''), d.rel_path) AS source_rel_path, dl.target_ref,
               dl.target_ref_norm, dl.target_anchor, dl.target_collection,
               dl.link_type, dl.start_line, dl.start_col,
               dl.end_line, dl.end_col
@@ -442,6 +444,7 @@ export function captureAuditLinkSnapshot(
       uri: row.uri,
       collection: row.collection,
       relPath: row.rel_path,
+      recordSourcePath: row.record_source_path,
       title: row.title,
       mirrorHash: row.mirror_hash,
     })),

@@ -144,6 +144,23 @@ describe("provenance completeness audit", () => {
     ).toBe("skip");
   });
 
+  test("does not invent capture availability gaps for non-Markdown sources", () => {
+    const rules = evaluateProvenanceAudit([
+      provenanceDocument({
+        sourceState: "missing",
+        captureSourceSupported: false,
+        captureSourceDeclared: false,
+        captureSource: undefined,
+      }),
+    ]);
+    expect(
+      rules.find(({ ruleId }) => ruleId === "provenance.capture-source")
+    ).toMatchObject({
+      status: "skip",
+      skipReason: "contract_not_declared",
+    });
+  });
+
   test("caps payloads while retaining exact finding counts", () => {
     const documents = Array.from({ length: 1200 }, (_, index) =>
       provenanceDocument({
