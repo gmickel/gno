@@ -403,6 +403,68 @@ const skipGifSubBlocks = (bytes: Uint8Array, start: number): number | null => {
   return null;
 };
 
+const validateGifLzwSubBlocks = (
+  bytes: Uint8Array,
+  start: number,
+  minimumCodeSize: number
+): number | null => {
+  const compressed: number[] = [];
+  let offset = start;
+  let sawTerminator = false;
+  while (offset < bytes.length) {
+    const size = bytes[offset] ?? 0;
+    offset += 1;
+    if (size === 0) {
+      sawTerminator = true;
+      break;
+    }
+    if (offset + size > bytes.length) return null;
+    for (const value of bytes.subarray(offset, offset + size)) {
+      compressed.push(value);
+    }
+    offset += size;
+  }
+  if (!sawTerminator || compressed.length === 0) return null;
+
+  const clearCode = 1 << minimumCodeSize;
+  const endCode = clearCode + 1;
+  let codeSize = minimumCodeSize + 1;
+  let nextCode = endCode + 1;
+  let bitOffset = 0;
+  let previousCode: number | null = null;
+  let sawClear = false;
+  while (bitOffset + codeSize <= compressed.length * 8) {
+    let code = 0;
+    for (let bit = 0; bit < codeSize; bit += 1) {
+      const position = bitOffset + bit;
+      const value = compressed[position >> 3] ?? 0;
+      code |= ((value >> (position & 7)) & 1) << bit;
+    }
+    bitOffset += codeSize;
+    if (code === clearCode) {
+      sawClear = true;
+      codeSize = minimumCodeSize + 1;
+      nextCode = endCode + 1;
+      previousCode = null;
+      continue;
+    }
+    if (!sawClear) return null;
+    if (code === endCode) return offset;
+    if (previousCode === null) {
+      if (code >= clearCode) return null;
+      previousCode = code;
+      continue;
+    }
+    if (code > nextCode) return null;
+    if (nextCode < 4096) {
+      nextCode += 1;
+      if (nextCode === 1 << codeSize && codeSize < 12) codeSize += 1;
+    }
+    previousCode = code;
+  }
+  return null;
+};
+
 /** Complete GIF block walk with at least one image and a terminal trailer. */
 const isCompleteGif = (bytes: Uint8Array): boolean => {
   if (bytes.length < 14) return false;
@@ -432,7 +494,7 @@ const isCompleteGif = (bytes: Uint8Array): boolean => {
     if (minimumCodeSize < 2 || minimumCodeSize > 8) return false;
     offset += 1;
     if ((bytes[offset] ?? 0) === 0) return false;
-    const next = skipGifSubBlocks(bytes, offset);
+    const next = validateGifLzwSubBlocks(bytes, offset, minimumCodeSize);
     if (next === null) return false;
     offset = next;
     sawImage = true;
