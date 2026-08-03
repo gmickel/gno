@@ -321,6 +321,31 @@ describe("capture core", () => {
     }
   });
 
+  test("extracts and recognizes inline capture source mappings", () => {
+    const content = "---\nsource: { kind: web }\n---\n";
+    const source = extractCaptureSourceFromFrontmatter(content);
+    expect(hasDeclaredCaptureSource(content)).toBe(true);
+    expect(source.kind).toBe("web");
+    expect(validateDeclaredCaptureProvenance(source)).toContainEqual({
+      field: "source.capturedAt",
+      reason: "missing",
+    });
+  });
+
+  test("validates optional declared provenance timestamps", () => {
+    expect(
+      validateDeclaredCaptureProvenance({
+        kind: "web",
+        capturedAt: "2026-06-04T12:34:56.000Z",
+        observedAt: "not-a-date",
+        publishedAt: "also-not-a-date",
+      })
+    ).toEqual([
+      { field: "source.observedAt", reason: "invalid" },
+      { field: "source.publishedAt", reason: "invalid" },
+    ]);
+  });
+
   test("distinguishes capture provenance from ordinary source lists", () => {
     expect(
       hasDeclaredCaptureSource(

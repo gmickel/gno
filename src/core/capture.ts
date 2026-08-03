@@ -198,6 +198,13 @@ export const validateDeclaredCaptureProvenance = (
     issues.push({ field: "source.capturedAt", reason: "missing" });
   else if (Number.isNaN(new Date(source.capturedAt).getTime()))
     issues.push({ field: "source.capturedAt", reason: "invalid" });
+  for (const field of ["observedAt", "publishedAt"] as const) {
+    const value = source[field];
+    if (value === undefined) continue;
+    if (typeof value !== "string" || Number.isNaN(new Date(value).getTime())) {
+      issues.push({ field: `source.${field}`, reason: "invalid" });
+    }
+  }
   for (const field of URL_SOURCE_FIELDS) {
     const value = source[field as keyof CaptureSource];
     if (value === undefined) continue;
@@ -551,6 +558,27 @@ export function extractCaptureSourceFromFrontmatter(
     if (key !== "source") {
       continue;
     }
+    if (rawValue) {
+      try {
+        const parsed = Bun.YAML.parse(`source: ${rawValue}`) as {
+          source?: unknown;
+        };
+        if (
+          parsed.source !== null &&
+          typeof parsed.source === "object" &&
+          !Array.isArray(parsed.source)
+        ) {
+          for (const [nestedKey, nestedValue] of Object.entries(
+            parsed.source
+          )) {
+            source[nestedKey as keyof CaptureSource] = nestedValue as never;
+          }
+        }
+      } catch {
+        // Invalid inline YAML remains declaration-visible to the audit.
+      }
+      continue;
+    }
     for (
       let nestedIndex = index + 1;
       nestedIndex < lines.length;
@@ -613,7 +641,26 @@ export const hasDeclaredCaptureSource = (content: string): boolean => {
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     if (line === undefined) continue;
-    if (/^source\s*:\s*\{\s*\}\s*$/u.test(line)) return true;
+    const inlineSource = /^source\s*:\s*(\{.*\})\s*$/u.exec(line)?.[1];
+    if (inlineSource !== undefined) {
+      if (/^\{\s*\}$/u.test(inlineSource)) return true;
+      try {
+        const parsed = Bun.YAML.parse(`source: ${inlineSource}`) as {
+          source?: unknown;
+        };
+        if (
+          parsed.source !== null &&
+          typeof parsed.source === "object" &&
+          !Array.isArray(parsed.source) &&
+          Object.keys(parsed.source).some((key) => captureKeys.has(key))
+        ) {
+          return true;
+        }
+      } catch {
+        return true;
+      }
+      continue;
+    }
     if (!/^source\s*:\s*$/u.test(line)) continue;
     for (
       let nestedIndex = index + 1;
