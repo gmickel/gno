@@ -190,6 +190,7 @@ async function exportCollectionArtifact(
 
   const acc: NoteBuildAccumulator = {
     diagnostics: [],
+    encodedAssetBytes: 0,
     externalCount: 0,
     payloads: new Map(),
     preDedupRawBytes: 0,
@@ -214,6 +215,8 @@ async function exportCollectionArtifact(
     const sanitized = await sanitizeNoteMarkdown({
       basenameIndex,
       collectionRoot: collection.path,
+      existingAssetIds: new Set(acc.payloads.keys()),
+      existingEncodedAssetBytes: acc.encodedAssetBytes,
       noteSlug: slug,
       rawMarkdown,
       sourceRelPath: doc.relPath,
@@ -222,7 +225,7 @@ async function exportCollectionArtifact(
     acc.diagnostics.push(...sanitized.diagnostics);
     acc.externalCount += sanitized.externalCount;
     acc.preDedupRawBytes += sanitized.preDedupRawBytes;
-    mergePayloads(acc.payloads, sanitized.payloads);
+    acc.encodedAssetBytes += mergePayloads(acc.payloads, sanitized.payloads);
     notes.push({
       markdown: sanitized.markdown,
       metadata: buildExportedMetadata(
@@ -364,6 +367,10 @@ async function exportDocumentArtifact(
 
   const acc: NoteBuildAccumulator = {
     diagnostics: sanitized.diagnostics,
+    encodedAssetBytes: [...sanitized.payloads.values()].reduce(
+      (total, payload) => total + payload.data.length,
+      0
+    ),
     externalCount: sanitized.externalCount,
     payloads: sanitized.payloads,
     preDedupRawBytes: sanitized.preDedupRawBytes,

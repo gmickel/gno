@@ -422,4 +422,26 @@ describe("rewriteAttachmentsInMarkdown", () => {
       })
     ).toThrow(/ENVELOPE_OVERSIZE/);
   });
+
+  test("refuses aggregate encoded assets before retaining an oversize payload", async () => {
+    const root = await makeRoot();
+    await writeBytes(join(root, "a.png"), PNG_1X1);
+    const index = await buildAttachmentBasenameIndex(root);
+
+    let thrown: unknown;
+    try {
+      await rewriteAttachmentsInMarkdown("![[a.png]]", {
+        basenameIndex: index,
+        collectionRoot: root,
+        existingAssetIds: new Set(),
+        existingEncodedAssetBytes: MAX_PUBLISH_UPLOAD_BYTES,
+        noteSlug: "atlas",
+        sourceRelPath: "atlas.md",
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toContain("ENVELOPE_OVERSIZE");
+  });
 });

@@ -137,6 +137,57 @@ describe("attachment discover parser", () => {
     expect(found).toHaveLength(1);
     expect(found[0]?.sourceRef).toBe("real.png");
   });
+
+  test("skips indented code after headings and closed fences", () => {
+    const markdown = [
+      "# Heading",
+      "    ![heading-code](../private.png)",
+      "",
+      "```md",
+      "text",
+      "```",
+      "    ![fence-code](../private-too.png)",
+      "",
+      "![active](real.png)",
+    ].join("\n");
+    expect(
+      discoverImageOccurrences(markdown).map((item) => item.sourceRef)
+    ).toEqual(["real.png"]);
+  });
+
+  test("resolves full, collapsed, and shortcut reference-style images", () => {
+    const markdown = [
+      "![hero][asset]",
+      "![asset][]",
+      "![asset]",
+      "",
+      '[asset]: <images/hero.png> "Hero"',
+    ].join("\n");
+    expect(
+      discoverImageOccurrences(markdown).map((item) => item.sourceRef)
+    ).toEqual(["images/hero.png", "images/hero.png", "images/hero.png"]);
+  });
+
+  test("skips image-looking Markdown inside raw HTML blocks", () => {
+    const markdown = [
+      "<script>",
+      "![script](../private.png)",
+      "</script>",
+      "",
+      "<pre>",
+      "![pre](../private-too.png)",
+      "</pre>",
+      "",
+      "<div>",
+      "![div](../private-three.png)",
+      "</div>",
+      "",
+      "![active](real.png)",
+    ].join("\n");
+    expect(
+      discoverImageOccurrences(markdown).map((item) => item.sourceRef)
+    ).toEqual(["real.png"]);
+  });
 });
 
 describe("attachment raster validation", () => {

@@ -46,6 +46,8 @@ export interface PendingAssetPayload {
 export interface AttachmentResolveContext {
   basenameIndex: Map<string, string[]>;
   collectionRoot: string;
+  existingAssetIds?: ReadonlySet<string>;
+  existingEncodedAssetBytes?: number;
   noteSlug: string;
   sourceRelPath: string;
 }

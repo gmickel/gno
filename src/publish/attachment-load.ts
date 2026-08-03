@@ -103,7 +103,7 @@ export async function readAndValidateAsset(
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  // Full producer path: structural + AVIF AV1 decodability before bundling.
+  // Full producer path: structural validation plus pixel decodability before bundling.
   const validated = await validateRasterDecodable(bytes);
   if (!validated.ok) {
     if (

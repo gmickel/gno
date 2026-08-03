@@ -263,6 +263,28 @@ describe("publish artifact asset contract", () => {
     }
   });
 
+  test("validates sentinels used by reference-style images", async () => {
+    const artifact = (await loadJson("valid-small-raster-v1.json")) as Record<
+      string,
+      unknown
+    >;
+    const spaces = artifact.spaces as Array<{
+      notes: Array<{ markdown: string }>;
+    }>;
+    const original = spaces[0]!.notes[0]!.markdown;
+    const destination = /gno-asset:[a-f0-9]{64}/u.exec(original)?.[0];
+    expect(destination).toBeDefined();
+    spaces[0]!.notes[0]!.markdown = `![dot][asset]\n\n[asset]: ${destination}\n`;
+    expect(validatePublishAssetContract(artifact).ok).toBe(true);
+
+    spaces[0]!.notes[0]!.markdown = "![dot][asset]\n\n[asset]: gno-asset:\n";
+    const invalid = validatePublishAssetContract(artifact);
+    expect(invalid).toMatchObject({
+      ok: false,
+      diagnostic: { code: "ASSET_SENTINEL_INVALID" },
+    });
+  });
+
   test("ignores gno-asset text outside renderable image destinations", async () => {
     const artifact = (await loadJson("valid-small-raster-v1.json")) as Record<
       string,

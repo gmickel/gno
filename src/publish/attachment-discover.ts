@@ -43,12 +43,18 @@ const isEscapedMarker = (text: string, index: number): boolean => {
   return backslashes % 2 === 1;
 };
 
+const lineAllowsIndentedCodeStart = (line: string): boolean =>
+  line.trim().length === 0 ||
+  /^ {0,3}#{1,6}(?:[ \t]|$)/u.test(line) ||
+  /^ {0,3}(?:`{3,}|~{3,})/u.test(line) ||
+  /^ {0,3}(?:={3,}|-{3,})[ \t]*$/u.test(line);
+
 /** CommonMark indented code blocks cannot interrupt a paragraph. */
 const collectIndentedCodeRanges = (markdown: string): ExcludedRange[] => {
   const ranges: ExcludedRange[] = [];
   let blockStart: number | null = null;
   let offset = 0;
-  let previousLineBlank = true;
+  let previousLineAllowsStart = true;
 
   while (offset <= markdown.length) {
     const nextNewline = markdown.indexOf("\n", offset);
@@ -67,11 +73,11 @@ const collectIndentedCodeRanges = (markdown: string): ExcludedRange[] => {
         });
         blockStart = null;
       }
-    } else if (lineIndented && previousLineBlank) {
+    } else if (lineIndented && previousLineAllowsStart) {
       blockStart = offset;
     }
 
-    previousLineBlank = lineBlank;
+    previousLineAllowsStart = lineAllowsIndentedCodeStart(logicalLine);
     if (nextNewline === -1) break;
     offset = nextNewline + 1;
   }
@@ -83,6 +89,58 @@ const collectIndentedCodeRanges = (markdown: string): ExcludedRange[] => {
       kind: "fenced_code",
     });
   }
+  return ranges;
+};
+
+const RAW_HTML_CONTENT_TAGS = "script|pre|style|textarea";
+const HTML_BLOCK_TAGS =
+  "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h1|h2|h3|h4|h5|h6|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul";
+
+/** CommonMark raw HTML blocks are literal content, not Markdown image syntax. */
+const collectRawHtmlBlockRanges = (markdown: string): ExcludedRange[] => {
+  const ranges: ExcludedRange[] = [];
+  const rawContentStart = new RegExp(
+    `^ {0,3}<(${RAW_HTML_CONTENT_TAGS})(?:[\\s>]|$)`,
+    "iu"
+  );
+  const blockStart = new RegExp(
+    `^ {0,3}</?(?:${HTML_BLOCK_TAGS})(?:[\\s/>]|$)`,
+    "iu"
+  );
+  let offset = 0;
+
+  while (offset < markdown.length) {
+    const lineEndIndex = markdown.indexOf("\n", offset);
+    const lineEnd = lineEndIndex === -1 ? markdown.length : lineEndIndex + 1;
+    const line = markdown.slice(offset, lineEnd).replace(/\r?\n$/u, "");
+    const rawMatch = rawContentStart.exec(line);
+    if (rawMatch) {
+      const tag = rawMatch[1] ?? "";
+      const closingTag = new RegExp(`</${tag}[ \\t]*>`, "giu");
+      closingTag.lastIndex = offset + rawMatch[0].length;
+      const close = closingTag.exec(markdown);
+      const end = close ? close.index + close[0].length : markdown.length;
+      ranges.push({ start: offset, end, kind: "html_comment" });
+      offset = end;
+      continue;
+    }
+    if (blockStart.test(line)) {
+      let end = lineEnd;
+      while (end < markdown.length) {
+        const nextEndIndex = markdown.indexOf("\n", end);
+        const nextEnd =
+          nextEndIndex === -1 ? markdown.length : nextEndIndex + 1;
+        const nextLine = markdown.slice(end, nextEnd).replace(/\r?\n$/u, "");
+        if (nextLine.trim().length === 0) break;
+        end = nextEnd;
+      }
+      ranges.push({ start: offset, end, kind: "html_comment" });
+      offset = end;
+      continue;
+    }
+    offset = lineEnd;
+  }
+
   return ranges;
 };
 
@@ -292,6 +350,75 @@ const parseMarkdownImageAt = (
   };
 };
 
+const normalizeReferenceLabel = (label: string): string =>
+  label
+    .replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~])/gu, "$1")
+    .trim()
+    .replace(/[ \t\r\n]+/gu, " ")
+    .toLowerCase();
+
+const collectReferenceDefinitions = (
+  markdown: string,
+  excluded: ExcludedRange[]
+): Map<string, string> => {
+  const definitions = new Map<string, string>();
+  const pattern = /^ {0,3}\[([^\]\r\n]+)\]:[ \t]*(.*)$/gmu;
+  for (const match of markdown.matchAll(pattern)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    if (rangeIntersectsExcluded(start, end, excluded)) continue;
+    const label = normalizeReferenceLabel(match[1] ?? "");
+    const remainder = match[2] ?? "";
+    if (!label || !remainder) continue;
+    const parsed =
+      remainder[0] === "<"
+        ? parseAngleDestination(remainder, 0)
+        : parseUnbracketedDestination(remainder, 0);
+    if (!parsed?.dest) continue;
+    let cursor = skipAsciiWhitespace(remainder, parsed.next);
+    if (
+      remainder[cursor] === '"' ||
+      remainder[cursor] === "'" ||
+      remainder[cursor] === "("
+    ) {
+      const afterTitle = skipOptionalTitle(remainder, cursor);
+      if (afterTitle === null) continue;
+      cursor = skipAsciiWhitespace(remainder, afterTitle);
+    }
+    if (cursor !== remainder.length) continue;
+    if (!definitions.has(label)) definitions.set(label, parsed.dest.trim());
+  }
+  return definitions;
+};
+
+const parseReferenceImageAt = (
+  text: string,
+  bangIndex: number,
+  definitions: ReadonlyMap<string, string>
+): DiscoveredImageRef | null => {
+  if (text[bangIndex] !== "!" || text[bangIndex + 1] !== "[") return null;
+  const linkText = parseLinkText(text, bangIndex + 2);
+  if (!linkText || text[linkText.next] === "(") return null;
+
+  let end = linkText.next;
+  let label = linkText.alt;
+  if (text[end] === "[") {
+    const labelText = parseLinkText(text, end + 1);
+    if (!labelText) return null;
+    label = labelText.alt || linkText.alt;
+    end = labelText.next;
+  }
+  const sourceRef = definitions.get(normalizeReferenceLabel(label));
+  if (sourceRef === undefined) return null;
+  return {
+    alt: linkText.alt,
+    end,
+    kind: "markdown",
+    sourceRef,
+    start: bangIndex,
+  };
+};
+
 /**
  * Discover Obsidian embeds and CommonMark inline images, skipping excluded ranges.
  * Results are sorted by start offset (stable for equal starts by end).
@@ -302,7 +429,9 @@ export const discoverImageOccurrences = (
   const excluded = [
     ...getExcludedRanges(markdown),
     ...collectIndentedCodeRanges(markdown),
+    ...collectRawHtmlBlockRanges(markdown),
   ].sort((left, right) => left.start - right.start);
+  const referenceDefinitions = collectReferenceDefinitions(markdown, excluded);
   const found: DiscoveredImageRef[] = [];
   let i = 0;
   while (i < markdown.length) {
@@ -317,7 +446,9 @@ export const discoverImageOccurrences = (
     if (markdown.slice(bang, bang + 3) === "![[") {
       parsed = parseObsidianEmbedAt(markdown, bang);
     } else if (markdown[bang + 1] === "[") {
-      parsed = parseMarkdownImageAt(markdown, bang);
+      parsed =
+        parseMarkdownImageAt(markdown, bang) ??
+        parseReferenceImageAt(markdown, bang, referenceDefinitions);
     }
 
     if (!parsed) {

@@ -35,6 +35,7 @@ import {
 
 export interface NoteBuildAccumulator {
   diagnostics: AttachmentDiagnostic[];
+  encodedAssetBytes: number;
   externalCount: number;
   payloads: Map<string, PendingAssetPayload>;
   preDedupRawBytes: number;
@@ -43,6 +44,8 @@ export interface NoteBuildAccumulator {
 export async function sanitizeNoteMarkdown(input: {
   basenameIndex: Map<string, string[]> | null;
   collectionRoot: string | null;
+  existingAssetIds?: ReadonlySet<string>;
+  existingEncodedAssetBytes?: number;
   noteSlug: string;
   rawMarkdown: string;
   sourceRelPath: string;
@@ -58,6 +61,8 @@ export async function sanitizeNoteMarkdown(input: {
     const sanitized = await sanitizePublishMarkdown(input.rawMarkdown, {
       basenameIndex: input.basenameIndex,
       collectionRoot: input.collectionRoot,
+      existingAssetIds: input.existingAssetIds,
+      existingEncodedAssetBytes: input.existingEncodedAssetBytes,
       noteSlug: input.noteSlug,
       sourceRelPath: input.sourceRelPath,
     });
@@ -85,7 +90,8 @@ export async function sanitizeNoteMarkdown(input: {
 export function mergePayloads(
   target: Map<string, PendingAssetPayload>,
   source: Map<string, PendingAssetPayload>
-): void {
+): number {
+  let addedEncodedBytes = 0;
   for (const [id, payload] of source) {
     const existing = target.get(id);
     if (!existing) {
@@ -93,10 +99,12 @@ export function mergePayloads(
         ...payload,
         references: [...payload.references],
       });
+      addedEncodedBytes += payload.data.length;
       continue;
     }
     existing.references.push(...payload.references);
   }
+  return addedEncodedBytes;
 }
 
 export function finalizeV1Artifact(

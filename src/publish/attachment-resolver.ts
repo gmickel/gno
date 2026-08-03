@@ -10,7 +10,10 @@ import type {
   PendingAssetPayload,
 } from "./attachment-types";
 
-import { GNO_ASSET_SENTINEL_PREFIX } from "./artifact-asset-contract";
+import {
+  GNO_ASSET_SENTINEL_PREFIX,
+  MAX_PUBLISH_UPLOAD_BYTES,
+} from "./artifact-asset-contract";
 import { formatGnoAssetSentinel } from "./artifact-asset-sniff";
 import {
   attachAssetsToV1Artifact,
@@ -103,6 +106,7 @@ export async function rewriteAttachmentsInMarkdown(
   const diagnostics: AttachmentDiagnostic[] = [];
   const payloads = new Map<string, PendingAssetPayload>();
   let externalCount = 0;
+  let newEncodedAssetBytes = 0;
   let preDedupRawBytes = 0;
   const replacements: Array<{ end: number; start: number; text: string }> = [];
 
@@ -225,6 +229,20 @@ export async function rewriteAttachmentsInMarkdown(
     }
 
     preDedupRawBytes += loaded.byteLength;
+    const isNewAsset =
+      !payloads.has(loaded.sha256) && !ctx.existingAssetIds?.has(loaded.sha256);
+    if (isNewAsset) {
+      const projectedEncodedBytes =
+        (ctx.existingEncodedAssetBytes ?? 0) +
+        newEncodedAssetBytes +
+        loaded.data.length;
+      if (projectedEncodedBytes > MAX_PUBLISH_UPLOAD_BYTES) {
+        throw new Error(
+          `ENVELOPE_OVERSIZE: encoded asset data exceeds ${MAX_PUBLISH_UPLOAD_BYTES} bytes`
+        );
+      }
+      newEncodedAssetBytes += loaded.data.length;
+    }
     mergePayload(payloads, loaded, ctx.noteSlug, resolved.relPath);
     replacements.push({
       start: occurrence.start,
