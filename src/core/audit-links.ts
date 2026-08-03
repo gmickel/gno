@@ -104,7 +104,7 @@ export const evaluateLinkAudit = (
   const ambiguous: AuditFindingDraft[] = [];
   const connected = new Set<number>();
   const auditedDocumentIds = new Set(
-    snapshot.documents.map((document) => document.id)
+    snapshot.auditedDocumentIds ?? snapshot.documents.map(({ id }) => id)
   );
   for (const link of snapshot.links) {
     const sourceAudited = auditedDocumentIds.has(link.sourceId);
@@ -129,6 +129,7 @@ export const evaluateLinkAudit = (
   const orphanFindings = snapshot.documents
     .filter(
       (document) =>
+        auditedDocumentIds.has(document.id) &&
         !connected.has(document.id) &&
         !isIgnoredDocument(document, roots, ignorePrefixes, mirroredIds)
     )

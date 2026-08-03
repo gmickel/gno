@@ -57,6 +57,8 @@ export interface AuditLinkSnapshotLink {
 
 export interface AuditLinkSnapshot {
   documents: AuditLinkSnapshotDocument[];
+  /** Optional finding scope when documents also include graph-wide evidence. */
+  auditedDocumentIds?: number[];
   links: AuditLinkSnapshotLink[];
   totals: { documents: number; links: number };
   truncated: { documents: boolean; links: boolean };

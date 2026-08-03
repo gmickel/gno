@@ -54,6 +54,19 @@ const resolveCategories = (
 const invalidPositiveInteger = (value: number | undefined): boolean =>
   value !== undefined && (!Number.isSafeInteger(value) || value < 1);
 
+const AUDIT_SCOPE_FILTER_MAX_ITEMS = 256;
+
+const oversizedScopeFilter = (
+  options: AuditCommandOptions
+): "collections" | "paths" | "tags" | null => {
+  for (const name of ["collections", "paths", "tags"] as const) {
+    if ((options[name]?.length ?? 0) > AUDIT_SCOPE_FILTER_MAX_ITEMS) {
+      return name;
+    }
+  }
+  return null;
+};
+
 export const audit = async (
   options: AuditCommandOptions
 ): Promise<AuditCommandResult> => {
@@ -77,6 +90,14 @@ export const audit = async (
       success: false,
       invalid: true,
       error: "maxAgeDays must be a positive integer",
+    };
+  }
+  const oversizedFilter = oversizedScopeFilter(options);
+  if (oversizedFilter) {
+    return {
+      success: false,
+      invalid: true,
+      error: `${oversizedFilter} must contain at most ${AUDIT_SCOPE_FILTER_MAX_ITEMS} values`,
     };
   }
   const configResult = await loadConfig(options.configPath);

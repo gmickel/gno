@@ -171,6 +171,40 @@ describe("gno audit CLI", () => {
     expect(rootFiltered.report.rules).toEqual(unfiltered.report.rules);
   });
 
+  test("matches path prefixes case-sensitively", async () => {
+    await mkdir(join(notes, "case-scope"));
+    await Bun.write(join(notes, "case-scope", "lower.md"), "# Lower\n");
+    expect(await runCli(["bun", "gno", "index", "--no-embed"])).toBe(0);
+    const database = new Database(getIndexDbPath());
+    database.run(
+      "UPDATE documents SET rel_path = ?, uri = ? WHERE rel_path = ?",
+      ["Case-scope/upper.md", "gno://notes/Case-scope/upper.md", "a.md"]
+    );
+    database.close();
+
+    const scoped = await audit({
+      category: "links",
+      paths: ["case-scope"],
+    });
+    expect(scoped.success).toBe(true);
+    if (scoped.success) {
+      expect(
+        scoped.report.findings
+          .filter(({ ruleId }) => ruleId === "links.orphans")
+          .map(({ subject }) => subject)
+      ).toEqual(["gno://notes/case-scope/lower.md"]);
+    }
+  });
+
+  test("rejects scope filters beyond the report schema bound", async () => {
+    const paths = Array.from({ length: 257 }, (_, index) => `path-${index}`);
+    expect(await audit({ category: "links", paths })).toEqual({
+      success: false,
+      invalid: true,
+      error: "paths must contain at most 256 values",
+    });
+  });
+
   test("retains incoming links when a path filter narrows audit scope", async () => {
     await mkdir(join(notes, "scoped"));
     await Bun.write(
@@ -187,6 +221,32 @@ describe("gno audit CLI", () => {
           ({ ruleId, subject }) =>
             ruleId === "links.orphans" &&
             subject === "gno://notes/scoped/inside.md"
+        )
+      ).toBe(false);
+    }
+  });
+
+  test("retains duplicate-mirror evidence outside a narrowed path scope", async () => {
+    await mkdir(join(notes, "scoped"));
+    await Bun.write(join(notes, "scoped", "copy.md"), "# Shared\n");
+    await Bun.write(join(notes, "outside-copy.md"), "# Shared\n");
+    expect(await runCli(["bun", "gno", "index", "--no-embed"])).toBe(0);
+
+    const database = new Database(getIndexDbPath());
+    database.run(
+      "UPDATE documents SET mirror_hash = ? WHERE rel_path IN (?, ?)",
+      ["shared-mirror", "scoped/copy.md", "outside-copy.md"]
+    );
+    database.close();
+
+    const scoped = await audit({ category: "links", paths: ["scoped"] });
+    expect(scoped.success).toBe(true);
+    if (scoped.success) {
+      expect(
+        scoped.report.findings.some(
+          ({ ruleId, subject }) =>
+            ruleId === "links.orphans" &&
+            subject === "gno://notes/scoped/copy.md"
         )
       ).toBe(false);
     }

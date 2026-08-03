@@ -1599,9 +1599,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         conditions.push(`EXISTS (
           SELECT 1 FROM json_each(?) prefix
           WHERE d.rel_path = prefix.value
-             OR d.rel_path LIKE
-               replace(replace(replace(prefix.value, '\\', '\\\\'), '%', '\\%'), '_', '\\_') || '/%'
-               ESCAPE '\\'
+             OR (substr(d.rel_path, 1, length(prefix.value)) = prefix.value
+               AND substr(d.rel_path, length(prefix.value) + 1, 1) = '/')
         )`);
         params.push(JSON.stringify(options.pathPrefixes));
       }

@@ -294,9 +294,9 @@ const filterLinkSnapshot = (
   ).length;
   return {
     ...snapshot,
-    documents: snapshot.documents.filter((document) =>
-      selectedIds.has(document.id)
-    ),
+    // Preserve graph-wide documents as duplicate-mirror evidence while the
+    // explicit id set prevents findings outside the requested audit scope.
+    auditedDocumentIds: [...selectedIds],
     links,
     totals: { documents: selectedDocuments.length, links: outgoingTotal },
     truncated: {
