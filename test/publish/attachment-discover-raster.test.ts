@@ -393,6 +393,21 @@ describe("attachment raster validation", () => {
     });
   });
 
+  test("accepts JPEG marker fill bytes before frame metadata", () => {
+    const withMarkerFill = concatBytes(
+      JPEG_1X1.subarray(0, 2),
+      Uint8Array.of(0xff),
+      JPEG_1X1.subarray(2)
+    );
+
+    expect(validateRasterBytesStructural(withMarkerFill)).toMatchObject({
+      ok: true,
+      mediaType: "image/jpeg",
+      width: 1,
+      height: 1,
+    });
+  });
+
   test("finds AVIF dimensions after more than 64 KiB of metadata", () => {
     const original = buildAvif(32, 16);
     const ftypSize = 20;

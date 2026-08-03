@@ -4,8 +4,8 @@
  * @module src/publish/attachment-path
  */
 
-// node:fs/promises realpath/lstat — no Bun equivalent for symlink-safe identity
-import { lstat, realpath } from "node:fs/promises";
+// node:fs/promises realpath/lstat/opendir — no Bun equivalents for symlink-safe identity or prunable directory walking
+import { lstat, opendir, realpath } from "node:fs/promises";
 // node:path — no Bun path utils
 import {
   isAbsolute,
@@ -88,25 +88,33 @@ export async function buildAttachmentBasenameIndex(
     return new Map();
   }
   const index = new Map<string, string[]>();
-  const glob = new Bun.Glob("**/*");
-  for await (const match of glob.scan({
-    cwd: rootReal,
-    absolute: false,
-    onlyFiles: true,
-    followSymlinks: false,
-  })) {
-    const rel = match.split(sep).join("/");
-    if (
-      isPrivateAttachmentRelPath(rel) ||
-      matchesCollectionExclusion(rel, collectionExcludes)
-    ) {
-      continue;
+  const walk = async (absDir: string, relDir: string): Promise<void> => {
+    let directory: Awaited<ReturnType<typeof opendir>>;
+    try {
+      directory = await opendir(absDir);
+    } catch {
+      return;
     }
-    const base = pathPosix.basename(rel);
-    const bucket = index.get(base) ?? [];
-    bucket.push(rel);
-    index.set(base, bucket);
-  }
+    for await (const entry of directory) {
+      const rel = relDir ? `${relDir}/${entry.name}` : entry.name;
+      if (
+        isPrivateAttachmentRelPath(rel) ||
+        matchesCollectionExclusion(rel, collectionExcludes)
+      ) {
+        continue;
+      }
+      if (entry.isDirectory()) {
+        await walk(join(absDir, entry.name), rel);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const base = pathPosix.basename(rel);
+      const bucket = index.get(base) ?? [];
+      bucket.push(rel);
+      index.set(base, bucket);
+    }
+  };
+  await walk(rootReal, "");
   for (const [key, values] of index) {
     index.set(key, [...new Set(values)].sort(compareCodeUnits));
   }

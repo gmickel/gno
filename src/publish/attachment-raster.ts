@@ -137,8 +137,10 @@ const parseJpegDimensions = (
   const limit = bytes.length;
   while (offset + 9 < limit) {
     if (bytes[offset] !== 0xff) return null;
-    const marker = bytes[offset + 1] ?? 0;
-    offset += 2;
+    while (offset < limit && bytes[offset] === 0xff) offset += 1;
+    if (offset >= limit) return null;
+    const marker = bytes[offset] ?? 0;
+    offset += 1;
     if (marker === 0xd8 || marker === 0xd9) continue;
     if (offset + 2 > limit) return null;
     const segmentLength = readU16BE(bytes, offset);

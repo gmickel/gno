@@ -79,10 +79,11 @@ collection root, validates real PNG/JPEG/GIF/WebP/AVIF bytes (AVIF requires
 AV1-decodable media at producer/file-ingress, not merely a structural BMFF
 container), deduplicates by SHA-256, and rewrites successful references to
 deterministic `gno-asset:<sha256>` sentinels. External `https://` image URLs
-stay as-is. Unsupported formats (SVG, PDF, HTML, data URLs), missing files,
-traversal, and MIME spoofs are omitted with diagnostics — they never become
-raw sentinels in the artifact. Image examples inside CommonMark backtick or
-tilde fenced code are not discovered or rewritten.
+stay as-is. Unsupported formats (SVG, PDF, HTML, data URLs), missing files, and
+MIME spoofs are omitted with diagnostics — they never become raw sentinels in
+the artifact. A traversal attempt outside the collection root fails the export.
+Image examples inside CommonMark backtick or tilde fenced code are not
+discovered or rewritten.
 
 Exact final serialized upload bytes (JSON including base64/encryption overhead)
 are enforced against the **100 MiB** ceiling (authoritative gate for both
