@@ -309,8 +309,9 @@ const parseReferenceDefinitionStart = (
 const collectReferenceDefinitions = (
   markdown: string,
   excluded: ExcludedRange[]
-): Map<string, string> => {
+): { definitions: Map<string, string>; ranges: ExcludedRange[] } => {
   const definitions = new Map<string, string>();
+  const ranges: ExcludedRange[] = [];
   let start = 0;
   while (start <= markdown.length) {
     const newline = markdown.indexOf("\n", start);
@@ -367,13 +368,29 @@ const collectReferenceDefinitions = (
       }
       cursor = skipAsciiWhitespace(remainder, afterTitle);
     }
-    if (cursor === remainder.length && !definitions.has(label)) {
-      definitions.set(label, decodeHtmlEntitiesOnce(parsed.dest.trim()));
+    if (cursor === remainder.length) {
+      if (markdown[end] === "\n") {
+        const titleStart = end + 1;
+        const titleEndIndex = markdown.indexOf("\n", titleStart);
+        const titleEnd = titleEndIndex === -1 ? markdown.length : titleEndIndex;
+        const titleLine = markdown
+          .slice(titleStart, titleEnd)
+          .replace(/\r$/u, "")
+          .replace(/^ {0,3}/u, "");
+        const afterTitle = skipOptionalTitle(titleLine, 0);
+        if (afterTitle !== null && afterTitle === titleLine.length) {
+          end = titleEnd;
+        }
+      }
+      ranges.push({ start, end, kind: "html_comment" });
+      if (!definitions.has(label)) {
+        definitions.set(label, decodeHtmlEntitiesOnce(parsed.dest.trim()));
+      }
     }
     if (newline === -1) break;
     start = newline + 1;
   }
-  return definitions;
+  return { definitions, ranges };
 };
 
 const parseReferenceImageAt = (
@@ -411,8 +428,11 @@ const parseReferenceImageAt = (
 export const discoverImageOccurrences = (
   markdown: string
 ): DiscoveredImageRef[] => {
-  const excluded = collectAttachmentExcludedRanges(markdown);
-  const referenceDefinitions = collectReferenceDefinitions(markdown, excluded);
+  const baseExcluded = collectAttachmentExcludedRanges(markdown);
+  const references = collectReferenceDefinitions(markdown, baseExcluded);
+  const excluded = [...baseExcluded, ...references.ranges].sort(
+    (left, right) => left.start - right.start
+  );
   const found: DiscoveredImageRef[] = [];
   let i = 0;
   while (i < markdown.length) {
@@ -429,7 +449,7 @@ export const discoverImageOccurrences = (
     } else if (markdown[bang + 1] === "[") {
       parsed =
         parseMarkdownImageAt(markdown, bang) ??
-        parseReferenceImageAt(markdown, bang, referenceDefinitions);
+        parseReferenceImageAt(markdown, bang, references.definitions);
     }
 
     if (!parsed) {

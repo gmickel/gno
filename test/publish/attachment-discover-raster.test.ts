@@ -187,6 +187,19 @@ describe("attachment discover parser", () => {
     ]);
   });
 
+  test("skips image-looking content in reference-definition titles", () => {
+    const markdown = [
+      '[ref]: /url "![same-line](../private.png)"',
+      "[continued]: /url",
+      '  "![continued-title](../private-too.png)"',
+      "",
+      "![active](real.png)",
+    ].join("\n");
+    expect(
+      discoverImageOccurrences(markdown).map((item) => item.sourceRef)
+    ).toEqual(["real.png"]);
+  });
+
   test("skips image-looking Markdown inside raw HTML blocks", () => {
     const markdown = [
       "<script>",
