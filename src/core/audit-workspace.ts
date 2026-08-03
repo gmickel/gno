@@ -40,6 +40,7 @@ import { normalizeTag } from "./tags";
 import { normalizeCollectionName } from "./validation";
 
 export const AUDIT_WORKSPACE_MAX_DOCUMENTS = 10_000;
+const AUDIT_PATH_FILTER_MAX_CHARS = 2048;
 const AUDIT_SOURCE_CONCURRENCY = 16;
 const AUDIT_FRONTMATTER_BYTES = 64 * 1024;
 const FRONTMATTER_OPEN = /^---\r?\n/;
@@ -453,7 +454,29 @@ const captureWorkspaceFingerprints = async (
 export const runWorkspaceAudit = async (
   options: WorkspaceAuditOptions
 ): Promise<AuditRunResult> => {
-  const normalizedPaths = normalizeValues(options.pathFilters).map((path) =>
+  const rawPaths = options.pathFilters ?? [];
+  const normalizedPathInputs = rawPaths.map((path) =>
+    path.normalize("NFC").trim()
+  );
+  if (normalizedPathInputs.some((path) => path.length === 0)) {
+    return {
+      ok: false,
+      exit: "invalid",
+      error: "path filters must not be empty or whitespace-only",
+    };
+  }
+  if (
+    normalizedPathInputs.some(
+      (path) => path.length > AUDIT_PATH_FILTER_MAX_CHARS
+    )
+  ) {
+    return {
+      ok: false,
+      exit: "invalid",
+      error: `path filters must be at most ${AUDIT_PATH_FILTER_MAX_CHARS} characters`,
+    };
+  }
+  const normalizedPaths = normalizeValues(normalizedPathInputs).map((path) =>
     path.replace(/^\/+/, "")
   );
   const filters = {

@@ -164,6 +164,28 @@ describe("gno_audit MCP tool", () => {
     );
   });
 
+  test("rejects path scopes that would widen or violate the report contract", async () => {
+    const whitespace = await handleAudit(
+      auditInputSchema.parse({ category: "links", paths: ["   "] }),
+      context
+    );
+    expect(whitespace.isError).toBe(true);
+    expect(whitespace.structuredContent).toEqual({
+      error: "RUNTIME",
+      message: "path filters must not be empty or whitespace-only",
+    });
+
+    const overlong = await handleAudit(
+      auditInputSchema.parse({ category: "links", paths: ["x".repeat(2049)] }),
+      context
+    );
+    expect(overlong.isError).toBe(true);
+    expect(overlong.structuredContent).toEqual({
+      error: "RUNTIME",
+      message: "path filters must be at most 2048 characters",
+    });
+  });
+
   test("closes input and advertises independently verified read-only behavior", () => {
     expect(auditInputSchema.safeParse({ unknown: true }).success).toBe(false);
     expect(AUDIT_MCP_ANNOTATIONS).toEqual({

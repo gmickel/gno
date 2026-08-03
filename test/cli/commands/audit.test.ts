@@ -205,6 +205,21 @@ describe("gno audit CLI", () => {
     });
   });
 
+  test("rejects empty and overlong paths before widening or emitting scope", async () => {
+    expect(await audit({ category: "links", paths: ["   "] })).toEqual({
+      success: false,
+      invalid: true,
+      error: "path filters must not be empty or whitespace-only",
+    });
+    expect(
+      await audit({ category: "links", paths: ["x".repeat(2049)] })
+    ).toEqual({
+      success: false,
+      invalid: true,
+      error: "path filters must be at most 2048 characters",
+    });
+  });
+
   test("retains incoming links when a path filter narrows audit scope", async () => {
     await mkdir(join(notes, "scoped"));
     await Bun.write(
