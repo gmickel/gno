@@ -730,7 +730,7 @@ edges, or daemon state:
 gno audit
 gno audit links --collection notes --path projects --max-findings 100
 gno audit provenance --json
-gno audit freshness --max-age-days 90 --output audit.json
+gno audit freshness --max-age-days 90 --json --output audit.json
 ```
 
 The default `all` run evaluates parsed local links, explicitly declared capture
