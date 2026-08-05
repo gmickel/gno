@@ -4,10 +4,8 @@
  * @module src/mcp/tools/workspace-write
  */
 
-// node:fs/promises for mkdir (no Bun equivalent for structure ops)
-import { mkdir } from "node:fs/promises";
-// node:path for dirname/join (no Bun path utils)
-import { dirname, join } from "node:path";
+// node:path for join (no Bun path utils)
+import { join } from "node:path";
 import { z } from "zod";
 
 import type { Collection } from "../../config/types";
@@ -34,8 +32,17 @@ import {
   type FileRefactorPreviewPlan,
 } from "../../core/file-refactors";
 import { recordContentMutation } from "../../core/mutation-generations";
-import { defaultSyncService, withContentTypeRules } from "../../ingestion";
-import { runTool, type ToolResult } from "./index";
+import {
+  CaptureDestinationError,
+  captureFileSyncResult,
+  captureProofContainerSummary,
+  captureRecordImportReason,
+  defaultSyncService,
+  prepareCaptureDestination,
+  requireActiveCaptureDocument,
+  withContentTypeRules,
+} from "../../ingestion";
+import { captureDestinationToolError, runTool, type ToolResult } from "./index";
 
 interface CreateFolderInput {
   collection: string;
@@ -429,7 +436,17 @@ export function handleDuplicateNote(
         });
         const currentPath = join(collection.path, doc.relPath);
         const nextPath = join(collection.path, plan.nextRelPath);
-        await mkdir(dirname(nextPath), { recursive: true });
+        // `mkdir -p` follows an existing directory symlink; a copy written
+        // through one is unreachable to the indexer, so `plan.nextUri` would
+        // name nothing. Prove the chain first.
+        try {
+          await prepareCaptureDestination(collection.path, plan.nextRelPath);
+        } catch (error) {
+          if (error instanceof CaptureDestinationError) {
+            throw captureDestinationToolError(error);
+          }
+          throw error;
+        }
         await copyFilePath(currentPath, nextPath);
         const syncResult = await defaultSyncService.syncCollection(
           collection,
@@ -437,12 +454,49 @@ export function handleDuplicateNote(
           withContentTypeRules({ runUpdateCmd: false }, ctx.config)
         );
         recordContentMutation(syncResult, ctx.markContentMutation);
+        const warnings = buildRefactorWarnings(
+          await getRefactorSnapshot(ctx, doc.id)
+        ).warnings;
+        // A sync that did not error is not proof the copy is indexed - an
+        // excluded or unreachable destination is `skipped`, an ordinary
+        // non-error. The copy exists on disk, so this is not a tool failure,
+        // but `uri` must not silently imply a document that is not there.
+        const indexed = await requireActiveCaptureDocument(
+          ctx.store,
+          collection.name,
+          plan.nextRelPath
+        );
+        if (indexed.ok) {
+          // A container copy IS indexed - as N logical records at virtual
+          // paths, with nothing at the copy's own path. `uri` below therefore
+          // resolves to nothing, exactly like the unindexed case, and must say
+          // so rather than read as an ordinary duplicate.
+          const containerSummary = captureProofContainerSummary(indexed);
+          if (containerSummary) {
+            warnings.push(
+              `File duplicated on disk and ${containerSummary}, so ${plan.nextUri} resolves to no document.`
+            );
+          }
+          // The copy is imported by the adapter exactly like the original was,
+          // so it can be PARTIAL for the same reasons - and the container
+          // sentence above says nothing about it. Same shared FRAGMENT every
+          // other surface discloses it with - and its default pointer, because this
+          // response carries the count and not the failures themselves.
+          const partialImport = captureRecordImportReason(
+            captureFileSyncResult(syncResult, plan.nextRelPath)?.recordImport
+          );
+          if (partialImport) {
+            warnings.push(partialImport);
+          }
+        } else {
+          warnings.push(
+            `File duplicated on disk, but it is not indexed: ${indexed.message}`
+          );
+        }
         return {
           uri: plan.nextUri,
           relPath: plan.nextRelPath,
-          warnings: buildRefactorWarnings(
-            await getRefactorSnapshot(ctx, doc.id)
-          ).warnings,
+          warnings,
         };
       });
     },

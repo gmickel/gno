@@ -87,12 +87,38 @@ export const consumeClipperPairLaunch = (
   return { pairId, valid: pairId !== null };
 };
 
+/**
+ * `details` is the structured refusal reason the capture route adds to a
+ * `VALIDATION` error; no pairing route emits it. Accept it only in that exact
+ * pairing and exact shape - accepting `details` beside any code, carrying any
+ * value, would let a response no server produces through this parser.
+ */
+const CAPTURE_DESTINATION_REASONS = new Set([
+  "PATH_OUTSIDE_COLLECTION",
+  "PATH_NOT_WALKABLE",
+  "PATH_UNRESOLVED",
+  "NOT_DIRECTORY",
+]);
+
+const isCaptureDestinationDetails = (value: unknown): boolean =>
+  isRecord(value) &&
+  hasExactKeys(value, ["reason", "relPath"]) &&
+  typeof value.reason === "string" &&
+  CAPTURE_DESTINATION_REASONS.has(value.reason) &&
+  typeof value.relPath === "string" &&
+  value.relPath.length > 0;
+
 const parseError = (value: unknown): ClipperApprovalError | null => {
   if (
     !isRecord(value) ||
     !hasExactKeys(value, ["error"]) ||
     !isRecord(value.error) ||
-    !hasExactKeys(value.error, ["code", "message"]) ||
+    !(
+      hasExactKeys(value.error, ["code", "message"]) ||
+      (hasExactKeys(value.error, ["code", "message", "details"]) &&
+        value.error.code === "VALIDATION" &&
+        isCaptureDestinationDetails(value.error.details))
+    ) ||
     typeof value.error.code !== "string" ||
     !KNOWN_ERROR_CODES.has(value.error.code) ||
     typeof value.error.message !== "string" ||

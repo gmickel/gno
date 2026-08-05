@@ -1,3 +1,4 @@
+import type { CaptureDestinationDetails } from "./contracts";
 import type {
   BrowserClipPayload,
   BrowserClipPreview,
@@ -52,6 +53,14 @@ export class ClipperGatewayError extends Error {
   readonly retryable: boolean;
   readonly refreshPreview: boolean;
   readonly clearGrant: boolean;
+  /**
+   * The structured refusal reason, when the gateway sent one.
+   *
+   * Without this the wire contract's `details` would stop at the parser:
+   * extension code could read the prose message but never tell
+   * `PATH_OUTSIDE_COLLECTION` from `PATH_NOT_WALKABLE` structurally.
+   */
+  readonly details?: CaptureDestinationDetails;
 
   constructor(
     code: string,
@@ -60,6 +69,7 @@ export class ClipperGatewayError extends Error {
       retryable?: boolean;
       refreshPreview?: boolean;
       clearGrant?: boolean;
+      details?: CaptureDestinationDetails;
     } = {}
   ) {
     super(message);
@@ -68,6 +78,7 @@ export class ClipperGatewayError extends Error {
     this.retryable = options.retryable ?? false;
     this.refreshPreview = options.refreshPreview ?? false;
     this.clearGrant = options.clearGrant ?? false;
+    if (options.details) this.details = options.details;
   }
 }
 
@@ -170,7 +181,12 @@ export class ClipperGateway {
     throw new ClipperGatewayError(
       result.data.error.code,
       result.data.error.message,
-      errorOptions(result.data.error.code)
+      {
+        ...errorOptions(result.data.error.code),
+        ...(result.data.error.details
+          ? { details: result.data.error.details }
+          : {}),
+      }
     );
   }
 

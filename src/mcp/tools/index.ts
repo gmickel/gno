@@ -8,6 +8,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { z } from "zod";
 
+import type { CaptureDestinationError } from "../../ingestion";
 import type { ToolContext } from "../server";
 
 import {
@@ -15,6 +16,7 @@ import {
   contextVerifySurfaceSchema,
 } from "../../app/context-surface";
 import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
+import { MCP_ERRORS, McpToolError } from "../../core/errors";
 import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
 import { RETRIEVAL_TRACE_METADATA } from "../../core/retrieval-trace-session";
 import { normalizeTag } from "../../core/tags";
@@ -113,6 +115,25 @@ import {
 export function normalizeTagFilters(tags?: string[]): string[] | undefined {
   if (!tags?.length) return undefined;
   return [...new Set(tags.map(normalizeTag))];
+}
+
+/**
+ * Translate a refused write destination into a tool error that keeps its
+ * reason.
+ *
+ * The refusal codes (`PATH_OUTSIDE_COLLECTION`, `PATH_NOT_WALKABLE`,
+ * `PATH_UNRESOLVED`, `NOT_DIRECTORY`) are the difference between "your alias
+ * escapes the collection" and "the indexer will never follow that alias", and
+ * a machine caller must not have to read the sentence to tell them apart. CLI
+ * and SDK carry the same pair as `details.code` / `details.relPath`.
+ */
+export function captureDestinationToolError(
+  error: CaptureDestinationError
+): McpToolError {
+  return new McpToolError(MCP_ERRORS.INVALID_INPUT.code, error.message, {
+    code: error.code,
+    relPath: error.relPath,
+  });
 }
 
 export const MCP_TOOL_DESCRIPTIONS = {
@@ -935,7 +956,7 @@ export async function runTool<T>(
     // Exception firewall: never throw, always return isError
     const message = e instanceof Error ? e.message : String(e);
     console.error(`[MCP] ${name} error:`, message);
-    const parsedError = parseErrorMessage(message);
+    const parsedError = structuredError(e);
     return {
       isError: true,
       content: [{ type: "text", text: `Error: ${message}` }],
@@ -977,7 +998,7 @@ export async function runToolNoMutex<T>(
     // Exception firewall: never throw, always return isError
     const message = e instanceof Error ? e.message : String(e);
     console.error(`[MCP] ${name} error:`, message);
-    const parsedError = parseErrorMessage(message);
+    const parsedError = structuredError(e);
     return {
       isError: true,
       content: [{ type: "text", text: `Error: ${message}` }],
@@ -986,6 +1007,26 @@ export async function runToolNoMutex<T>(
   } finally {
     modelLease?.release();
   }
+}
+
+/**
+ * Structured payload for a failed tool call.
+ *
+ * An `McpToolError` already knows its code and its machine-readable details,
+ * so it is never re-derived from prose; every other error keeps the legacy
+ * `CODE: message` recovery.
+ */
+function structuredError(error: unknown): { [x: string]: unknown } {
+  if (error instanceof McpToolError) {
+    return {
+      error: error.code,
+      message: error.detail,
+      ...(error.details ? { details: error.details } : {}),
+    };
+  }
+  return parseErrorMessage(
+    error instanceof Error ? error.message : String(error)
+  );
 }
 
 function parseErrorMessage(message: string): { [x: string]: unknown } {

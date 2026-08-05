@@ -230,14 +230,85 @@ export interface GnoCreateNoteOptions {
   tags?: string[];
 }
 
-export interface GnoCreateNoteResult {
-  uri: string;
+/** The written FILE, identified identically for both `createNote` outcomes. */
+export interface GnoCreateNoteFile {
+  /** Absolute path of the file that was written. */
   path: string;
+  /** Collection-relative path of the file that was written. */
   relPath: string;
   created: boolean;
   openedExisting: boolean;
   createdWithSuffix?: boolean;
 }
+
+/**
+ * The written path IS a document: `uri` is fetchable with `client.get()`.
+ */
+export interface GnoCreatedNoteDocument extends GnoCreateNoteFile {
+  kind: "document";
+  /** Resolves through `client.get()` / `getDocumentByUri` to this document. */
+  uri: string;
+}
+
+/**
+ * The written path is a record container (a `.jsonl` export, a `.vtt`
+ * transcript, ...): it was imported as N logical record documents living at
+ * virtual `.gno/records/...` paths, and there is NO document at the path that
+ * was written.
+ *
+ * This shape deliberately has no `uri` field. A `gno://<collection>/<relPath>`
+ * for a container resolves to nothing - `getDocumentByUri` is an exact lookup -
+ * so offering one here would hand back an unfetchable document handle that
+ * looks exactly like a fetchable one. Accessing `.uri` on
+ * {@link GnoCreateNoteResult} is therefore a compile error until the caller
+ * narrows on `kind`, and the fetchable things it gets in the container case are
+ * the record URIs.
+ */
+export interface GnoCreatedNoteRecordContainer extends GnoCreateNoteFile {
+  kind: "record-container";
+  /** Exact number of logical records the container produced. */
+  recordCount: number;
+  /**
+   * URIs of the logical records the container produced. Each is fetchable, and
+   * this is a BOUNDED page - the first `MAX_WRITTEN_RECORD_URIS` of
+   * `recordCount` - because a valid export can hold six figures of records.
+   */
+  recordUris: string[];
+  /** `recordCount - recordUris.length`: records this page does not list. */
+  recordUrisTruncated: number;
+  /**
+   * Human-readable explanation of why there is no single document URI, and -
+   * when the page is truncated - where the records it omits can be reached.
+   *
+   * When the adapter rejected part of what was written, or reported a partial
+   * snapshot, that is stated here too: an adapter that accepts one record and
+   * rejects another still yields a non-error write, so the container sentence
+   * alone would read as a clean import. The FACTS are composed by the same
+   * `captureSyncReason` every capture surface uses, so they cannot drift.
+   *
+   * Their consequences are this shape's own. This is not a capture receipt: it
+   * has no `docid`, so what the container costs its caller is the single
+   * fetchable `uri` - hence `recordUris`. And it carries no sync result, so it
+   * does not send you to `recordImport.failures`: the rejected records' detail
+   * is not on this response, and `reason` says where it is (re-running the
+   * collection sync with `gno update --verbose` re-imports the container and
+   * prints each rejected record).
+   *
+   * There is no dedicated per-container enumeration endpoint, so `reason`
+   * promises no continuation offset. It does not claim the omitted records are
+   * unreachable either, because they are not: every URI in `recordUris` shares
+   * the container's virtual `.gno/records/<id>/` prefix, so
+   * `GnoClient.list({ scope })` with that prefix enumerates exactly this
+   * container, and ordinary collection listing returns every logical record
+   * with `source.relPath` projected from the container's own path for
+   * client-side selection.
+   */
+  reason: string;
+}
+
+export type GnoCreateNoteResult =
+  | GnoCreatedNoteDocument
+  | GnoCreatedNoteRecordContainer;
 
 export interface GnoCaptureOptions extends Omit<CaptureInput, "overwrite"> {}
 

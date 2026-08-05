@@ -474,6 +474,88 @@ create a distinct note.
 Use `client.createNote()` for lower-level raw note creation without provenance
 capture semantics.
 
+`createNote()` returns a discriminated union, because not every written path is
+a document. A configured record container (a `.jsonl` export, a `.vtt`
+transcript) is imported as N logical records at virtual `.gno/records/...`
+paths and has no document at the path that was written, so no fetchable URI
+exists for it:
+
+```ts
+const created = await client.createNote({
+  collection: "notes",
+  relPath: "exports/session.jsonl",
+  content: jsonlBody,
+});
+
+if (created.kind === "document") {
+  const doc = await client.get(created.uri); // always resolves
+} else {
+  console.log(created.reason, created.relPath);
+  const first = await client.get(created.recordUris[0]!); // records are fetchable
+}
+```
+
+The written file is identified by `path`/`relPath` in both cases. The
+`record-container` shape has no `uri` field at all, so `created.uri` does not
+type-check until you narrow on `kind` - a URI that `client.get()` cannot
+resolve is not something the API hands back.
+
+`reason` also discloses a **partial import**: an adapter that accepts one
+record and rejects another still yields a non-error write, so the container
+sentence alone would read as clean. It states how many records were rejected -
+and, because this result carries no sync result, it says the per-record
+failures are not on the response and names where they are: re-run the
+collection sync with `gno update --verbose`, which re-imports the container
+(containers are never skipped as unchanged) and prints each rejected record's
+code, source locator, and message. Only the REST job handle
+(`result.written`, see [API.md](API.md)) rides inside a `SyncResult`, so only
+it points at `collections[].files[].recordImport.failures` directly.
+
+`recordUris` is a **bounded page**, not the container's contents: it lists at
+most the first 1,000 of `recordCount` records, and `recordUrisTruncated` says
+how many it omits. One valid export can hold six figures of records, so the
+result object never grows with the container. `recordCount` is exact, so you
+always know how many records there are.
+
+The records past the page are **not listed by this result** - but they are not
+unreachable. There is no _dedicated_ per-container enumeration call, so when the
+page is truncated `reason` states the limit and names no continuation offset;
+it names the mechanisms that do reach the whole container instead:
+
+```ts
+// Every record URI shares the container's virtual record directory, so any URI
+// from the page yields the prefix that scopes a listing to this container.
+const sample = created.recordUris[0]!;
+const scope = sample.slice(0, sample.lastIndexOf("/") + 1);
+const page = await client.list({ scope, limit: 100, offset: 0 });
+```
+
+Or page the collection normally (`client.list({ scope: "notes" })`, REST
+`GET /api/docs`) - every logical record comes back with `source.relPath`
+projected from its container's path, so a client can select this container's
+records itself.
+
+`duplicateNote()` keeps its single `uri` field, so when the copy's destination
+is a container extension it reports the same fact through `warnings` instead -
+the copy is indexed as N records, and `uri` resolves to no document. REST
+`POST /api/docs/:id/duplicate` and MCP `gno_duplicate_note` use the same
+wording on their own warning channels.
+
+An `open_existing` capture answers "is this file indexed?" by effective source
+path, so opening an existing container reports `sync.status: "completed"` with
+a `sync.reason` naming the records, not `skipped`. As with a container capture,
+the receipt carries no `docid`.
+
+`sync.reason` also discloses a **partial record import**. An adapter that
+accepts at least one record while rejecting others produces an ordinary
+non-error file status, so `sync.status` stays `completed`; the rejected records
+
+- and a partial snapshot, whose unseen records were preserved rather than
+  refreshed - are stated in `sync.reason` alongside the container sentence. A
+  fully successful import is unchanged: no partial wording is added. `capture()`
+  (SDK), `gno capture` (CLI), `gno_capture` (MCP), and the REST capture/create
+  jobs share this wording.
+
 ### Status
 
 ```ts

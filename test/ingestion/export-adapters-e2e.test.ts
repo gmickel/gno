@@ -589,6 +589,45 @@ describe("file/export adapter ingestion", () => {
     const result = await sync.syncPaths(config.collections[0]!, store, [
       "disguised.browser-export",
     ]);
+    // Refused BEFORE any adapter runs, not after one failed on the bytes it
+    // pulled through the link. `FileWalker.walk` scans `followSymlinks: false`
+    // and emits no symlink - to a directory OR to a regular file - so a full
+    // `gno update` never reaches this path, and `syncPaths` now agrees. The
+    // absence of a `recordImport` is the discriminator: the pre-fix code
+    // followed the link, read the live profile and reported ADAPTER_FAILURE.
+    expect(result.files?.[0]?.recordImport).toBeUndefined();
+    expect(result.filesAdded).toBe(0);
+    expect(result.filesUpdated).toBe(0);
+    const documents = await store.listDocuments("exports");
+    expect(documents.ok).toBe(true);
+    if (!documents.ok) return;
+    expect(documents.value).toEqual([]);
+  });
+
+  /**
+   * The companion to the test above, and the reason its assertions could move:
+   * the ADAPTER's refusal of live-profile bytes is still exercised, just on a
+   * path the walker can actually reach. Without this, tightening the symlink
+   * case to "never read" would have quietly retired the adapter coverage.
+   */
+  test("still refuses a live browser profile reached without a symlink", async () => {
+    const profile = join(
+      root,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+      "Default"
+    );
+    await mkdir(profile, { recursive: true });
+    const relPath =
+      "Library/Application Support/Google/Chrome/Default/live.browser-export";
+    await Bun.write(join(root, relPath), new Uint8Array([0xff, 0xfe]));
+
+    const sync = new SyncService();
+    const result = await sync.syncPaths(config.collections[0]!, store, [
+      relPath,
+    ]);
     expect(result.filesErrored).toBe(1);
     expect(result.files?.[0]?.status).toBe("error");
     expect(result.files?.[0]?.recordImport?.failures[0]?.code).toBe(

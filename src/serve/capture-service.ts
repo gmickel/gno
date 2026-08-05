@@ -5,10 +5,8 @@
  * collision, provenance, atomic-write, sync, and receipt semantics cannot drift.
  */
 
-// node:fs/promises structure operations have no Bun equivalent.
-import { mkdir } from "node:fs/promises";
 // node:path has no Bun path utilities.
-import { basename, dirname, join as pathJoin } from "node:path";
+import { basename, join as pathJoin } from "node:path";
 
 import type { Collection, Config } from "../config/types";
 import type { PreparedBrowserClip } from "../core/browser-clip";
@@ -31,7 +29,13 @@ import { writeCapturePlanFile } from "../core/capture-write";
 import { recordContentMutation } from "../core/mutation-generations";
 import {
   type CollectionSyncResult,
+  captureFileSyncResult,
+  captureProofDocid,
+  captureProofOpenedExistingSyncReason,
+  captureWrittenHandle,
   defaultSyncService,
+  prepareCaptureDestination,
+  requireActiveCaptureDocument,
   type SyncResult,
   withContentTypeRules,
 } from "../ingestion";
@@ -196,20 +200,28 @@ export const executeResidentCapturePlan = async (
     };
   }
   if (plan.openedExisting) {
-    const existingDocument = await store.getDocument(
+    // "Is this file indexed?" is asked here exactly as the post-write proof
+    // asks it: by EFFECTIVE SOURCE PATH. A bare `getDocument` answers "no" for
+    // a record container that is fully indexed as N logical records at virtual
+    // paths, so an opened container was reported as unindexed.
+    const indexed = await requireActiveCaptureDocument(
+      store,
       collection.name,
       plan.relPath
     );
-    if (!existingDocument.ok) {
-      throw new Error(existingDocument.error.message);
+    if (!indexed.ok && indexed.failure === "store-error") {
+      throw new Error(indexed.message);
     }
     return {
       body: buildCaptureReceipt({
         plan,
         absPath: fullPath,
-        docid: existingDocument.value?.docid,
-        sync: existingDocument.value
-          ? { status: "completed" }
+        docid: indexed.ok ? captureProofDocid(indexed) : undefined,
+        sync: indexed.ok
+          ? {
+              status: "completed",
+              reason: captureProofOpenedExistingSyncReason(indexed),
+            }
           : {
               status: "skipped",
               reason: "Existing file is not indexed yet.",
@@ -219,7 +231,11 @@ export const executeResidentCapturePlan = async (
     };
   }
 
-  await mkdir(dirname(fullPath), { recursive: true });
+  // Prove the parent chain BEFORE writing. `mkdir -p` follows an existing
+  // directory symlink, and a capture written through one lands where the
+  // walker never looks - or, for an escaping alias, outside the collection.
+  // Throws `CaptureDestinationError`; the routes map it to a 4xx.
+  await prepareCaptureDestination(collection.path, plan.relPath);
   context.watchService?.suppress(fullPath);
   await writeCapturePlanFile(plan, fullPath);
   const gnoUri = `gno://${collection.name}/${plan.relPath}`;
@@ -235,6 +251,26 @@ export const executeResidentCapturePlan = async (
         store,
         syncCollection
       );
+      // The 202 receipt promised nothing except that a job started, so THIS is
+      // where completion is claimed - and a completed sync job is where a
+      // caller learns the capture worked. Demand the proof here: a job that
+      // reports `completed` for a path with no ACTIVE document would relocate
+      // the silent success one step, not remove it.
+      const indexed = await requireActiveCaptureDocument(
+        store,
+        collection.name,
+        plan.relPath
+      );
+      if (!indexed.ok) throw new Error(indexed.message);
+      // `gnoUri` names the FILE that was written. For a record container that
+      // path has no document, so the handle a poller can actually fetch has to
+      // come from the proof - together with anything the adapter rejected,
+      // which a bare `completed` job would otherwise bury in `recordImport`.
+      const written = captureWrittenHandle(
+        indexed,
+        { collection: collection.name, relPath: plan.relPath },
+        captureFileSyncResult(result, plan.relPath)?.recordImport
+      );
       context.scheduler?.notifySyncComplete([plan.relPath]);
       context.eventBus?.emit({
         type: "document-changed",
@@ -243,8 +279,19 @@ export const executeResidentCapturePlan = async (
         relPath: plan.relPath,
         origin: "create",
         changedAt: new Date().toISOString(),
+        kind: written.kind,
+        // Bounded metadata, never the container's contents: this frame is
+        // encoded once per connected client.
+        ...(written.kind === "record-container"
+          ? {
+              recordUris: written.recordUris,
+              recordCount: written.recordCount,
+              recordUrisTruncated: written.recordUrisTruncated,
+            }
+          : {}),
       });
       return {
+        written,
         collections: [result],
         totalDurationMs: result.durationMs,
         totalFilesProcessed: result.filesProcessed,
@@ -265,7 +312,8 @@ export const executeResidentCapturePlan = async (
         ? {
             status: "pending",
             jobId: jobResult.jobId,
-            reason: "Sync job started; poll /api/jobs/:id for status.",
+            reason:
+              "Sync job started; poll /api/jobs/:id for status and result.written for the fetchable handle.",
           }
         : {
             status: "skipped",

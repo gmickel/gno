@@ -10,9 +10,11 @@ import type { ResidentCaptureContext } from "./capture-service";
 import type { ClipperPairingService } from "./clipper-pairing";
 
 import { prepareBrowserClip } from "../core/browser-clip";
+import { CaptureDestinationError } from "../ingestion";
 import {
   claimClipperIdempotency,
   inspectClipperIdempotency,
+  releaseClipperIdempotency,
 } from "../store/sqlite/clipper-store";
 import {
   browserClipIdempotencyPlan,
@@ -78,17 +80,58 @@ const completeResponse = (
     status,
   });
 
+/**
+ * A destination the indexer could never reach is a request problem, not a
+ * server fault - and it is refused BEFORE anything is written.
+ *
+ * Two things follow, and the clipper used to get both wrong. The refusal is
+ * reported like the REST capture route reports it (`VALIDATION` / 409 /
+ * `details.reason`), not as an opaque `CLIPPER_CAPTURE_FAILED` 500. And the
+ * idempotency claim taken just before the attempt is RELEASED: no write
+ * happened, so there is nothing a retry could reconcile against, and a claim
+ * left `pending` would make every later retry re-enter recovery for a write
+ * that does not exist.
+ */
+const captureDestinationResponse = (
+  input: ExecuteClipperCaptureInput,
+  keyHash: string,
+  requestDigest: string,
+  error: CaptureDestinationError
+): Response => {
+  const released = releaseClipperIdempotency(input.db, {
+    grantId: input.grantId,
+    keyHash,
+    requestDigest,
+  });
+  // A row someone else already completed is a receipt, not our claim: replay it
+  // rather than answering with a refusal it never produced.
+  if (released.status === "completed") return replayResponse(released.replay);
+  return clipperErrorResponse("VALIDATION", error.message, 409, {
+    reason: error.code,
+    relPath: error.relPath,
+  });
+};
+
 const executeAndComplete = async (
   input: ExecuteClipperCaptureInput,
   keyHash: string,
   requestDigest: string,
   planned: Parameters<typeof executeResidentCapturePlan>[2]
 ): Promise<Response> => {
-  const result = await executeResidentCapturePlan(
-    input.context,
-    input.store,
-    planned
-  );
+  let result: { body: unknown; status: number };
+  try {
+    result = await executeResidentCapturePlan(
+      input.context,
+      input.store,
+      planned
+    );
+  } catch (error) {
+    if (error instanceof CaptureDestinationError) {
+      return captureDestinationResponse(input, keyHash, requestDigest, error);
+    }
+    // Anything else may have written: keep the claim so recovery can decide.
+    throw error;
+  }
   return completeResponse(
     input,
     keyHash,

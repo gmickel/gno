@@ -118,7 +118,14 @@ import {
 } from "../../core/tags";
 import { validateRelPath } from "../../core/validation";
 import {
+  CaptureDestinationError,
+  captureFileSyncResult,
+  captureProofContainerSummary,
+  captureRecordImportReason,
+  captureWrittenHandle,
   defaultSyncService,
+  prepareCaptureDestination,
+  requireActiveCaptureDocument,
   type SyncResult,
   withContentTypeRules,
 } from "../../ingestion";
@@ -563,6 +570,20 @@ function errorResponse(
     },
     status
   );
+}
+
+/**
+ * A destination the indexer could never reach is a request problem, not a
+ * server fault: report the refusal instead of the generic 500 the surrounding
+ * catch would produce.
+ */
+function captureDestinationErrorResponse(
+  error: CaptureDestinationError
+): Response {
+  return errorResponse("VALIDATION", error.message, 409, {
+    reason: error.code,
+    relPath: error.relPath,
+  });
 }
 
 function fileRefactorHttpErrorResponse(error: FileRefactorHttpError): Response {
@@ -1751,11 +1772,28 @@ export async function handleSync(
  * GET /api/docs
  * Query params: collection, limit (default 20), offset (default 0), tagsAll, tagsAny
  * Returns paginated document list.
+ *
+ * `recordSourcePath` is explicitly rejected: this endpoint has no per-container
+ * filter, and ignoring the parameter would silently widen the answer to the
+ * whole collection - or to every collection.
  */
 export async function handleDocs(
   store: SqliteAdapter,
   url: URL
 ): Promise<Response> {
+  // `recordSourcePath` is NOT a supported filter on this endpoint. Ignoring it
+  // would be the worst outcome: a caller asking for one container's records
+  // would get the whole collection - or, with no `collection`, documents from
+  // every collection - and read them as that container's records. A supplied
+  // parameter this endpoint cannot honour is rejected rather than dropped,
+  // exactly as an unusable value of a supported parameter is.
+  if (url.searchParams.has("recordSourcePath")) {
+    return errorResponse(
+      "VALIDATION",
+      "recordSourcePath is not a supported parameter on /api/docs"
+    );
+  }
+
   const collection = url.searchParams.get("collection") || undefined;
   const pathPrefix = normalizeBrowsePath(url.searchParams.get("pathPrefix"));
   const directChildrenOnlyParam = (
@@ -3016,17 +3054,53 @@ export async function handleDuplicateDoc(
   const nextFullPath = nodePath.join(collection.path, plan.nextRelPath);
 
   try {
-    const { mkdir } = await import("node:fs/promises"); // structure ops need fs
-    await mkdir(nodePath.dirname(nextFullPath), { recursive: true });
+    // `mkdir -p` follows an existing directory symlink; a copy written through
+    // one is unreachable to the indexer, so `plan.nextUri` would name nothing.
+    await prepareCaptureDestination(collection.path, plan.nextRelPath);
     await copyFilePath(fullPath, nextFullPath);
     let warning: string | undefined;
     try {
-      await syncResidentCollection(
+      const syncResult = await syncResidentCollection(
         ctxHolder,
         collection,
         store,
         withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config)
       );
+      // A sync that did not throw is not proof the copy is indexed: an
+      // excluded or unreachable destination is `skipped`, a perfectly ordinary
+      // non-error. The copy DID land on disk, so this is not a failed request -
+      // but the response must not let `uri` imply an indexed document it does
+      // not have. Same channel the refresh failure already uses.
+      const indexed = await requireActiveCaptureDocument(
+        store,
+        collection.name,
+        plan.nextRelPath
+      );
+      if (indexed.ok) {
+        // A container copy IS indexed - as N logical records at virtual paths,
+        // with nothing at the copy's own path - so `uri` below resolves to
+        // nothing just as in the unindexed case. Same channel, same honesty.
+        const containerSummary = captureProofContainerSummary(indexed);
+        if (containerSummary) {
+          warning = `File duplicated on disk and ${containerSummary}, so ${plan.nextUri} resolves to no document.`;
+        }
+        // The copy is imported by the adapter exactly like the original was,
+        // so it can be PARTIAL for the same reasons - and the container
+        // sentence above says nothing about it. Same shared FRAGMENT every
+        // other surface discloses it with - and its default pointer, because this
+        // response carries the count and not the failures themselves.
+        const partialImport = captureRecordImportReason(
+          captureFileSyncResult(syncResult, plan.nextRelPath)?.recordImport
+        );
+        if (partialImport) {
+          warning =
+            warning === undefined
+              ? partialImport
+              : `${warning} ${partialImport}`;
+        }
+      } else {
+        warning = `File duplicated on disk, but it is not indexed: ${indexed.message}`;
+      }
     } catch {
       warning =
         "File duplicated on disk, but index refresh failed. Run Update All to reconcile the workspace.";
@@ -3050,6 +3124,9 @@ export async function handleDuplicateDoc(
       warning,
     });
   } catch (error) {
+    if (error instanceof CaptureDestinationError) {
+      return captureDestinationErrorResponse(error);
+    }
     return errorResponse(
       "RUNTIME",
       error instanceof Error ? error.message : "Failed to duplicate document",
@@ -3584,6 +3661,9 @@ export async function handleCreateCapture(
     );
     return jsonResponse(result.body, result.status);
   } catch (error) {
+    if (error instanceof CaptureDestinationError) {
+      return captureDestinationErrorResponse(error);
+    }
     return errorResponse(
       "RUNTIME",
       `Failed to capture document: ${
@@ -3740,10 +3820,10 @@ export async function handleCreateDoc(
       );
     }
 
-    // Ensure parent directory exists
-    const parentDir = nodePath.dirname(fullPath);
-    const { mkdir } = await import("node:fs/promises"); // structure ops need fs
-    await mkdir(parentDir, { recursive: true });
+    // Prove the parent chain instead of `mkdir -p`, which follows an existing
+    // directory symlink and would put the new note where the walker never
+    // looks - or, for an escaping alias, outside the collection.
+    await prepareCaptureDestination(collection.path, normalizedRelPath);
 
     // Inject tags into frontmatter for markdown files
     const presetContent = body.presetId
@@ -3787,6 +3867,39 @@ export async function handleCreateDoc(
           withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
           deps?.syncCollection
         );
+        // The 202 above promised only that a job started; a job reporting
+        // `completed` is where this write is claimed to have succeeded. Demand
+        // the ACTIVE document HERE - `syncCollection` not erroring is not proof
+        // that the new file was indexed, and a "completed" job for an
+        // unindexed path is the same silent success one step removed.
+        //
+        // What this proof does NOT establish, on the `overwrite=true` path:
+        // it asserts only that SOME active document exists at this relPath, not
+        // that it is the row this write produced. When the new file fails
+        // ingestion (exceeding the size limit, for example) the PREVIOUS
+        // indexed row for the same path is still active and satisfies the
+        // check, so the job reports `completed` while retrieval keeps serving
+        // the stale content. Closing that requires identity evidence for the
+        // new content (content hash / mtime / docid), which is a change to
+        // overwrite semantics and is deliberately NOT made here. This gap is
+        // pre-existing - the base implementation completed unconditionally -
+        // and is tracked as follow-up work.
+        const indexed = await requireActiveCaptureDocument(
+          store,
+          collection.name,
+          posixRelPath
+        );
+        if (!indexed.ok) throw new Error(indexed.message);
+        // The 202 body already went out carrying `gnoUri`, which for a record
+        // container names the written FILE and resolves to no document. The
+        // completed job result is the only channel left that reaches the same
+        // caller, so the honest handle - and anything the adapter rejected -
+        // is stated HERE rather than left as an unfetchable URI.
+        const written = captureWrittenHandle(
+          indexed,
+          { collection: collection.name, relPath: posixRelPath },
+          captureFileSyncResult(result, normalizedRelPath)?.recordImport
+        );
         // Notify scheduler after sync completes (use gnoUri as docid placeholder)
         // The sync will create a proper docid, but we don't have it here yet
         // Using normalizedRelPath as identifier since docid is generated during sync
@@ -3798,8 +3911,19 @@ export async function handleCreateDoc(
           relPath: normalizedRelPath,
           origin: "create",
           changedAt: new Date().toISOString(),
+          kind: written.kind,
+          // Bounded metadata, never the container's contents: this frame is
+          // encoded once per connected client.
+          ...(written.kind === "record-container"
+            ? {
+                recordUris: written.recordUris,
+                recordCount: written.recordCount,
+                recordUrisTruncated: written.recordUrisTruncated,
+              }
+            : {}),
         });
         return {
+          written,
           collections: [result],
           totalDurationMs: result.durationMs,
           totalFilesProcessed: result.filesProcessed,
@@ -3822,12 +3946,18 @@ export async function handleCreateDoc(
         openedExisting: false,
         createdWithSuffix: createPlan.createdWithSuffix,
         note: jobResult.ok
-          ? "File created. Sync job started - poll /api/jobs/:id for status."
+          ? // `uri` above is the written PATH, which is not fetchable when the
+            // path is a record container. The completed job's `result.written`
+            // is where the fetchable handle is settled.
+            "File created. Sync job started - poll /api/jobs/:id for status and result.written for the fetchable handle."
           : "File created. Sync skipped (another job running).",
       },
       202
     );
   } catch (e) {
+    if (e instanceof CaptureDestinationError) {
+      return captureDestinationErrorResponse(e);
+    }
     return errorResponse(
       "RUNTIME",
       `Failed to create document: ${e instanceof Error ? e.message : String(e)}`,

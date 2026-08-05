@@ -520,9 +520,30 @@ The dashboard health model now includes background-service state:
 
 This is meant to reduce the “why didn’t it refresh?” class of failures in long sessions.
 
-Watcher batches sync only the changed paths and refresh graph projection for
-those documents plus known backlinks. A full sync still performs one exact
-global graph reconciliation. Status aggregation is set-based, concurrent status
+Watcher batches sync only the affected paths and refresh graph projection for
+those documents plus known backlinks. When a filesystem event cannot name an
+eligible file — an atomic save reported under a temporary name, or a directory
+delete reported as the bare directory — the batch is the reconciled contents of
+that one directory (its eligible files on disk unioned with its active indexed
+documents) rather than a single path. While the collection's configuration is
+unchanged, that is as wide as a watcher batch gets — not a whole-collection
+walk. There are two exceptions. Configuration drift: if the collection changes
+while a batch is reconciling or syncing, the watcher recovers with a full
+`syncCollection` for that collection, which does walk it. And a removed
+collection root: if the collection directory itself is gone from disk, every
+document indexed under it deactivates, because that removal really is
+whole-collection. A root that is merely unreadable (a permission error, a hung
+mount) is not treated as removed and deactivates nothing.
+Atomic saves and deletions are therefore picked up live, without a manual
+`gno update`, and deleting a directory deactivates everything indexed beneath it
+at any depth. Three cases still need a manual update: on Linux, subdirectories
+created after the watcher started (no event at all on Bun 1.3.11; reported, and
+so picked up live, on Bun 1.3.14), writes into a pre-existing Linux directory
+renamed after the watcher started (reported under the stale pre-rename path, so
+the new location is never indexed), and a
+path deleted and recreated within the same ~300 ms debounce window, which the
+watcher can only see as an edit. A full sync still
+performs one exact global graph reconciliation. Status aggregation is set-based, concurrent status
 requests share the same in-flight build, and the dashboard reuses that response
 for its model selector instead of issuing a duplicate request.
 

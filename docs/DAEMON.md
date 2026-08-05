@@ -66,7 +66,52 @@ The parent prints `PID <pid>` and exits 0; the child writes to
 gno daemon --no-sync-on-start
 ```
 
-That starts the watcher immediately and only reacts to future file changes.
+That skips the initial collection scan and starts the watcher immediately. Files
+already on disk are not enumerated at startup, so anything untouched stays
+unindexed until the next `gno update` or a restart without the flag. A
+pre-existing file is still picked up if it is changed later, or if a later
+ambiguous event reconciles the directory holding it — reconciliation enumerates
+every eligible direct child of that directory, including files that predate
+startup.
+
+"Reacts to future file changes" includes changes the operating system does not
+report cleanly. An event that cannot name an eligible file — an atomic save
+reported only under its temporary sibling, or a recursive directory delete
+reported only as the directory — reconciles that one directory: the eligible
+files directly on disk in it are unioned with the active indexed documents
+directly in it, and the result is synced. Atomic saves and deletions are picked
+up live; the collection's `pattern`, `include`, `exclude`, and dotfile and
+reserved-path rules are re-applied, so an ineligible file is never indexed just
+because its event triggered reconciliation.
+
+Deleting a directory deactivates every indexed document beneath it, at any
+depth, whichever way the runtime reports the deletion (as the directory, as one
+arbitrary child of it, or as both): a reported path that no longer exists on
+disk is treated as one sample of a larger removal, and the watcher reconciles
+the whole removed subtree. That holds for the collection root as well — delete
+or unmount a watched collection directory and everything indexed under it
+deactivates. A root that cannot be read (permission error, hung mount) is not
+the same thing as a root that is gone, and deactivates nothing.
+
+Three changes still fall outside what the watcher can observe and need a
+`gno update` or a restart:
+
+- on Linux, subdirectories created after the watcher started, on Bun versions
+  whose recursive watch does not extend to them
+  ([oven-sh/bun#15939](https://github.com/oven-sh/bun/issues/15939)). Measured
+  on Bun 1.3.11 no event is emitted for writes inside them at all, so there is
+  nothing to reconcile; on Bun 1.3.14 those writes were reported and are picked
+  up live;
+- on Linux, writes into a pre-existing directory that was renamed after the
+  watcher started (measured on Bun 1.3.14). They are reported under the stale
+  pre-rename path, so the watcher deactivates what is gone from the old path
+  but never learns the new one, and the files at their new location stay
+  unindexed;
+- a file or directory deleted and recreated inside the same ~300 ms debounce
+  window. The watcher decides whether an event was a removal by checking the
+  disk once, when the batch flushes; if the path is back by then, the event
+  reads as an ordinary edit. Anything else removed in that window and never
+  named by its own event stays active until the next event touching its area.
 
 ## Managing the Daemon
 

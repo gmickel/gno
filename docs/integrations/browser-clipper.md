@@ -162,6 +162,12 @@ combinations fail closed. `CLIPPER_OFFLINE`, `CLIPPER_INVALID_RESPONSE`, and
 `CLIPPER_CLIENT` are client-only classifications, not server
 `clipper-error@1.0` codes.
 
+A destination GNO cannot index — a symlinked parent, an alias escaping the
+collection — returns the `VALIDATION` clipper error with HTTP 409 and a closed
+`details: { reason, relPath }`. Nothing is written and the idempotency key is
+released, so retrying the same saved write after fixing the destination
+proceeds normally.
+
 ## Recovery
 
 The service worker allows one logical write at a time. Before the request, it

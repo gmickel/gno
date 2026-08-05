@@ -184,6 +184,13 @@ from a closed `clipper-error@1.0` body instead of treating every 409 as failure.
 CSRF and failure responses use
 [`clipper-csrf@1.0`](../spec/output-schemas/clipper-csrf.schema.json) and
 [`clipper-error@1.0`](../spec/output-schemas/clipper-error.schema.json).
+A write refused because the destination is one the indexer could never reach
+returns `VALIDATION` with HTTP 409 and the optional closed
+`details: { reason, relPath }`, where `reason` is `PATH_OUTSIDE_COLLECTION`,
+`PATH_NOT_WALKABLE`, `PATH_UNRESOLVED`, or `NOT_DIRECTORY`. Nothing is written,
+and the idempotency key is left unused, so the same key may be retried once the
+destination is fixed. Every other clipper error carries `code` and `message`
+only.
 
 The Chromium client uses `credentials: "omit"` for every extension-origin
 request. Its service worker is the only component that sees the bearer grant.
@@ -1114,6 +1121,77 @@ Poll the status of a background job (indexing, sync).
 | `completed` | Job finished successfully |
 | `failed`    | Job failed with error     |
 
+**`result.written` — the fetchable handle for a single-file write**
+
+Jobs started by `POST /api/docs` and `POST /api/capture` add an optional
+`result.written` object. Those endpoints answer `202` _before_ the write is
+proven, so the `uri` in the 202 body is a path, not a guaranteed handle. When
+the written path is a record container (a configured `.jsonl` / `.vtt` export)
+it is indexed as N logical records at virtual paths with **no** document at the
+container path, and `gno://<collection>/<relPath>` resolves to nothing. The
+completed job settles it:
+
+```json
+{
+  "written": {
+    "kind": "record-container",
+    "collection": "records",
+    "relPath": "export.jsonl",
+    "recordCount": 2,
+    "recordUris": ["gno://records/...", "gno://records/..."],
+    "recordUrisTruncated": 0,
+    "reason": "Written as a record container: imported as 2 logical record documents at virtual paths; ..."
+  }
+}
+```
+
+| Field                 | Present when                           | Description                                                       |
+| :-------------------- | :------------------------------------- | :---------------------------------------------------------------- |
+| `kind`                | always                                 | `document` or `record-container`                                  |
+| `uri`                 | `kind: "document"`                     | Fetchable URI for the written path                                |
+| `recordCount`         | `kind:"record-container"`              | Exact number of logical records the container is indexed as       |
+| `recordUris`          | `kind:"record-container"`              | Fetchable URIs — up to the **first 1,000** records                |
+| `recordUrisTruncated` | `kind:"record-container"`              | `recordCount - recordUris.length`: records this page omits        |
+| `reason`              | when there is something unusual to say | Container shape, a partial record import, and/or a truncated page |
+
+A `record-container` handle carries **no** `uri` field. `recordUris` is a
+**bounded page**, capped at 1,000 entries — the same cap the record-import
+receipt uses — because one valid container can hold six figures of records and
+this handle is retained on the completed job and encoded into an SSE frame.
+`recordCount` is exact, so you always know how many records the container has.
+
+**The records beyond the page are not listed by this handle — but they are not
+out of reach.** There is no _dedicated_ per-container enumeration endpoint, so
+`reason` names no continuation offset. When `recordUrisTruncated > 0` it points
+at the two mechanisms that do reach the whole container:
+
+- **Prefix-scoped listing** — every record URI shares the container's virtual
+  record directory (`gno://<collection>/.gno/records/<id>/`, derived from the
+  container path). Any URI in `recordUris` shows you that prefix; SDK
+  `client.list({ scope })` or `gno ls <scope>` enumerates exactly that
+  container's records.
+- **Ordinary collection paging** — `GET /api/docs?collection=<name>` returns all
+  logical records, each with `relPath` projected from its container's path, so a
+  client can page and select the ones belonging to this container.
+
+`recordSourcePath` is **not** a supported query parameter on `GET /api/docs`;
+supplying it is a `400 VALIDATION`, never a wider listing.
+
+`reason` also discloses a _partial_
+record import — records the adapter rejected (and therefore did not index) or a
+partial snapshot — which the container's own file status reports as an ordinary
+non-error. When records were rejected, `reason` points at
+`collections[].files[].recordImport.failures` **in this same job result**, which
+is where each rejected record's code, source locator, and message live. That
+pointer is specific to `result.written`: a capture receipt, an SDK
+`createNote()` result, and a duplicate warning carry the rejected COUNT and no
+sync result, so they say the failures are not on the response and name a
+re-sync (`gno update --verbose`) instead — a record container is re-imported on
+every collection sync, so the same failures are re-derived and printed.
+
+Broad sync jobs (`POST /api/sync`) write nothing of their own and
+omit `written` entirely.
+
 **Example**:
 
 ```bash
@@ -1228,6 +1306,13 @@ GET /api/docs?collection=notes&limit=20&offset=0&tagsAll=work&tagsAny=urgent,mee
 | `tagsAny`    | string | —        | Comma-separated tags (must have ANY) |
 | `sortField`  | string | modified | `modified` or frontmatter date key   |
 | `sortOrder`  | string | desc     | `asc` or `desc`                      |
+
+There is no per-record-container filter. `recordSourcePath` is **rejected** with
+`400 VALIDATION` rather than ignored — silently dropping it would answer a
+request for one container's records with the whole collection (or, without
+`collection`, with every collection's documents). Logical records are returned
+by ordinary paging, each with `relPath` projected from its container's path;
+select them client-side, or list the container's virtual record URI prefix.
 
 **Response**:
 
@@ -1471,8 +1556,23 @@ event: capsule-reverified
 data: {"type":"capsule-reverified","registrationId":"capsule-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","capsuleId":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","operationStatus":"completed","affectedQuestionState":"affected","changedAt":"2026-07-23T12:00:00.000Z"}
 ```
 
-The event is emitted only after the canonical verification receipt or separate
-operation failure has committed. It never includes a question, file path, URI,
+`document-changed` events carry `uri`, `collection`, `relPath`, `origin`, and
+`changedAt`. Emitters that proved what they wrote (the REST create and resident
+capture paths) additionally send `kind` (`document` or `record-container`) and,
+for a container, `recordCount`, `recordUris`, and `recordUrisTruncated` — because
+`uri` names the container FILE and resolves to no document. `recordUris` in an
+event is the same **bounded** 1,000-entry page the job handle carries, never the
+container's full record set: this frame is encoded once per connected client on
+every write. `recordCount` is exact; the records the page omits are not
+carried by the event, and there is no dedicated per-container enumeration
+endpoint, but they stay reachable through prefix-scoped listing of the
+container's virtual record directory or ordinary collection paging (see
+[`result.written`](#job-status)). `kind` is
+absent from emitters that run no proof (the watcher), so treat an absent `kind`
+as unknown rather than as `document`.
+
+The capsule event is emitted only after the canonical verification receipt or
+separate operation failure has committed. It never includes a question, file path, URI,
 hash, passage, Capsule body, receipt body, credential, or source content.
 Event data uses the closed `capsule-reverified-event.schema.json` contract.
 Saved-Capsule registration management remains CLI-only.
@@ -2079,8 +2179,8 @@ being replaced.
 
 The response is the shared capture receipt. `sync.status` is usually `pending`
 with a `jobId` because the REST API syncs asynchronously; poll
-`/api/jobs/:id` for completion. `embed.status` is `not_requested` unless a
-separate embed job completes.
+`/api/jobs/:id` for completion and for `result.written`, the fetchable handle.
+`embed.status` is `not_requested` unless a separate embed job completes.
 
 Receipts produced by the browser-clip flow may also include normalized
 `source.canonicalUrl`, `source.site`, `source.publishedAt`, and a closed
@@ -2157,23 +2257,62 @@ Create a new document file in a collection. Triggers background sync to index it
   "uri": "file:///Users/you/notes/ideas/new-feature.md",
   "path": "/Users/you/notes/ideas/new-feature.md",
   "jobId": "550e8400-e29b-41d4-a716-446655440000",
-  "note": "File created. Sync job started - poll /api/jobs/:id for status."
+  "note": "File created. Sync job started - poll /api/jobs/:id for status and result.written for the fetchable handle."
 }
 ```
 
+`uri` here names the path that was written. It is fetchable as a document only
+once the job completes with `result.written.kind === "document"`; for a record
+container the fetchable handles are `result.written.recordUris` (a bounded page
+of `result.written.recordCount` records). See
+[Job Status](#job-status).
+
 **Errors**:
 
-| Code         | Status | Description                             |
-| :----------- | :----- | :-------------------------------------- |
-| `VALIDATION` | 400    | Missing collection, relPath, or content |
-| `NOT_FOUND`  | 404    | Collection does not exist               |
-| `CONFLICT`   | 409    | File exists and overwrite=false         |
+| Code         | Status | Description                                         |
+| :----------- | :----- | :-------------------------------------------------- |
+| `VALIDATION` | 400    | Missing collection, relPath, or content             |
+| `NOT_FOUND`  | 404    | Collection does not exist                           |
+| `CONFLICT`   | 409    | File exists and overwrite=false                     |
+| `VALIDATION` | 409    | Destination is unwalkable — see Destination refusal |
 
 **Path Validation**:
 
 - `relPath` must be relative (no leading `/`)
 - Path traversal (`..`) is rejected
 - Null bytes are rejected
+- No component of the destination below the collection root may be a symlink
+
+**Destination refusal** (409 `VALIDATION`):
+
+A write destination is proven before anything is written. `mkdir -p` follows an
+existing directory symlink, so a path such as `alias/note.md` where `alias` is a
+symlink would otherwise land outside where the indexer looks — the file would be
+written and never indexed. Such a request is refused with nothing written.
+
+Note this is a **409 that is not a collision**. Distinguish it from `CONFLICT` by
+the `code`, and branch on `error.details.reason` rather than the message:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION",
+    "message": "Destination is not reachable by the indexer",
+    "details": { "reason": "PATH_NOT_WALKABLE", "relPath": "alias/note.md" }
+  }
+}
+```
+
+| `details.reason`          | Meaning                                                                                                                                                                                                                                                    |
+| :------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PATH_NOT_WALKABLE`       | A component below the collection root is a symlink                                                                                                                                                                                                         |
+| `PATH_OUTSIDE_COLLECTION` | The destination resolves outside the collection root                                                                                                                                                                                                       |
+| `PATH_UNRESOLVED`         | The destination could not be resolved (permission, I/O)                                                                                                                                                                                                    |
+| `NOT_DIRECTORY`           | The destination shape is wrong: a parent component exists but is not a directory, **or** the destination leaf itself exists and is not a regular file (a directory at that path lands here too), **or** the path is the collection root rather than a file |
+
+`details` is present only on `VALIDATION`; the pairing is enforced by
+`spec/output-schemas/clipper-error.schema.json` for the clipper route and by the
+same mapper here. The same refusal applies to `POST /api/docs/:id/duplicate`.
 
 **Example**:
 

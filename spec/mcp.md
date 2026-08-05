@@ -1250,6 +1250,16 @@ Create a new document in a collection (write-enabled).
 **Output Schema:** `gno://schemas/mcp-capture-result@1.0`, compatible with the
 shared `gno://schemas/capture-receipt@1.0` contract.
 
+**Errors:**
+
+- A write destination the indexer could never reach returns `isError: true`
+  with `structuredContent.error: "INVALID_INPUT"` and
+  `structuredContent.details: { code, relPath }`. `code` is the destination
+  refusal reason — `PATH_OUTSIDE_COLLECTION`, `PATH_NOT_WALKABLE`,
+  `PATH_UNRESOLVED`, or `NOT_DIRECTORY` — so callers distinguish containment
+  from symlink reachability without parsing the message. `gno_duplicate_note`
+  reports the same shape. Every other tool error keeps `{ error, message }`.
+
 ---
 
 ### gno_list_tags

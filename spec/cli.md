@@ -3286,6 +3286,11 @@ is blocked.
   and status/body mismatches fail as invalid responses. `CLIPPER_OFFLINE`,
   `CLIPPER_INVALID_RESPONSE`, and `CLIPPER_CLIENT` are client-only
   classifications.
+- A `VALIDATION` clipper error MAY carry a closed
+  `details: { reason, relPath }`, where `reason` is the destination refusal
+  (`PATH_OUTSIDE_COLLECTION`, `PATH_NOT_WALKABLE`, `PATH_UNRESOLVED`,
+  `NOT_DIRECTORY`). It is the only clipper error with `details`; nothing is
+  written and the idempotency key is released, so the same key can be retried.
 - Browser clip provenance contains exactly `extractionHash`, `finalBodyHash`,
   `clipIdentity`, and `previewDigest`; it does not contain `sourceHash`.
 - The Chromium service worker stores the loopback origin, plaintext bounded

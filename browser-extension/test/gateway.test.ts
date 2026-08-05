@@ -124,6 +124,58 @@ describe("browser clipper loopback gateway", () => {
     });
   });
 
+  test("carries the structural destination reason onto the thrown error", async () => {
+    const refused = new ClipperGateway("http://127.0.0.1:3000", (() =>
+      Promise.resolve(
+        jsonResponse(
+          {
+            error: {
+              code: "VALIDATION",
+              message: "Refused a destination the indexer would never walk.",
+              details: {
+                reason: "PATH_NOT_WALKABLE",
+                relPath: "clips/hidden/article.md",
+              },
+            },
+          },
+          409
+        )
+      )) as unknown as typeof fetch);
+    const error = await refused
+      .preview(payload, grant)
+      .catch((thrown: unknown) => thrown);
+    expect(error).toBeInstanceOf(ClipperGatewayError);
+    expect(error).toMatchObject({
+      code: "VALIDATION",
+      details: {
+        reason: "PATH_NOT_WALKABLE",
+        relPath: "clips/hidden/article.md",
+      },
+    });
+
+    // `details` beside a code that never produces it is not a response GNO
+    // emits - the gateway must not invent one from it either.
+    const impossible = new ClipperGateway("http://127.0.0.1:3000", (() =>
+      Promise.resolve(
+        jsonResponse(
+          {
+            error: {
+              code: "CLIPPER_UNAUTHORIZED",
+              message: "Unauthorized",
+              details: {
+                reason: "PATH_OUTSIDE_COLLECTION",
+                relPath: "clips/article.md",
+              },
+            },
+          },
+          401
+        )
+      )) as unknown as typeof fetch);
+    expect(
+      await impossible.preview(payload, grant).catch((thrown) => thrown)
+    ).toMatchObject({ code: "CLIPPER_INVALID_RESPONSE" });
+  });
+
   test("fails closed for valid bodies on impossible HTTP statuses", async () => {
     const pairStatus = {
       schemaVersion: "1.0",

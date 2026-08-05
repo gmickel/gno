@@ -13,6 +13,7 @@ import {
   completeClipperIdempotency,
   createClipperGrant,
   inspectClipperIdempotency,
+  releaseClipperIdempotency,
   revokeClipperGrant,
 } from "../../src/store/sqlite/clipper-store";
 import { safeRm } from "../helpers/cleanup";
@@ -72,9 +73,9 @@ describe("browser clipper security store", () => {
       const result = runMigrations(upgradeDb, migrations, "unicode61");
       expect(result.ok).toBeTrue();
       if (result.ok) {
-        expect(result.value.applied).toEqual([20, 21, 22, 23, 24, 25, 26]);
+        expect(result.value.applied).toEqual([20, 21, 22, 23, 24, 25, 26, 27]);
       }
-      expect(getSchemaVersion(upgradeDb)).toBe(26);
+      expect(getSchemaVersion(upgradeDb)).toBe(27);
       expect(
         upgradeDb
           .query<{ name: string }, []>(
@@ -273,6 +274,86 @@ describe("browser clipper security store", () => {
         nowMs: 4_000,
       })
     ).toEqual({ status: "conflict" });
+  });
+
+  test("releases the recovered row a regenerated key reclaimed", () => {
+    expect(createGrant().status).toBe("created");
+    // The first attempt claims under K1 and then crashes before completing.
+    expect(
+      claimClipperIdempotency(db, {
+        grantId: "grant-1",
+        keyHash: KEY_HASH,
+        requestDigest: REQUEST_DIGEST,
+        plan: PLAN,
+        nowMs: 2_000,
+      })
+    ).toEqual({ status: "claimed" });
+
+    // The retry arrives with a REGENERATED key K2; recovery finds the pending
+    // row by request digest, so the claim this request holds is still K1's row.
+    const recovery = {
+      grantId: "grant-1",
+      keyHash: RETRY_KEY_HASH,
+      requestDigest: REQUEST_DIGEST,
+    };
+    expect(inspectClipperIdempotency(db, recovery).status).toBe("pending");
+
+    // A destination refusal wrote nothing, so the claim must go away entirely.
+    expect(releaseClipperIdempotency(db, recovery)).toEqual({
+      status: "released",
+    });
+    expect(
+      db
+        .query<{ count: number }, []>(
+          "SELECT COUNT(*) AS count FROM clipper_capture_idempotency"
+        )
+        .get()
+    ).toEqual({ count: 0 });
+    // With the row gone the key is not a tombstone: the next attempt claims.
+    expect(
+      claimClipperIdempotency(db, {
+        ...recovery,
+        plan: PLAN,
+        nowMs: 4_000,
+      })
+    ).toEqual({ status: "claimed" });
+  });
+
+  test("never erases a completed receipt during release", () => {
+    expect(createGrant().status).toBe("created");
+    expect(
+      claimClipperIdempotency(db, {
+        grantId: "grant-1",
+        keyHash: KEY_HASH,
+        requestDigest: REQUEST_DIGEST,
+        plan: PLAN,
+        nowMs: 2_000,
+      })
+    ).toEqual({ status: "claimed" });
+    const responseJson = JSON.stringify({ relPath: PLAN.relPath });
+    expect(
+      completeClipperIdempotency(db, {
+        grantId: "grant-1",
+        keyHash: KEY_HASH,
+        requestDigest: REQUEST_DIGEST,
+        responseJson,
+        statusCode: 202,
+        nowMs: 3_000,
+      }).status
+    ).toBe("completed");
+    const released = releaseClipperIdempotency(db, {
+      grantId: "grant-1",
+      keyHash: RETRY_KEY_HASH,
+      requestDigest: REQUEST_DIGEST,
+    });
+    expect(released.status).toBe("completed");
+    expect(
+      db
+        .query<{ count: number }, []>(
+          "SELECT COUNT(*) AS count FROM clipper_capture_idempotency"
+        )
+        .get()
+    ).toEqual({ count: 1 });
   });
 
   test("fails closed for inactive grants and cascades idempotency rows", () => {

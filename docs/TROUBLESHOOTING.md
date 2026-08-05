@@ -387,11 +387,61 @@ gno ls
 gno daemon --status
 ```
 
+The watcher treats a filesystem event as a hint about a changed _area_, not as a
+trustworthy filename. When an event cannot name an eligible file — an atomic save
+that reports only its temporary sibling, or a directory delete that reports only
+the directory — GNO reconciles that one directory: it lists the eligible files
+directly inside it and the active indexed documents directly inside it, and syncs
+the union. Atomic saves and deletions therefore no longer need a manual
+`gno update`. Deleting a whole directory deactivates every indexed document
+beneath it, at any depth: deleting `notes/archive/` also deactivates the
+documents inside `archive/2024/`. This holds however the runtime reports the
+deletion — as the directory, as one arbitrary child, or as children plus the
+directory — because a reported path that has vanished from disk is treated as
+one sample of a larger removal rather than as a complete report. Deleting or
+unmounting the collection directory itself is the same case: every document
+indexed in that collection deactivates. A collection directory that GNO cannot
+read (a permission error, a stalled network mount) is deliberately not treated
+as deleted — nothing is deactivated on the strength of a failed check.
+
 Common causes:
 
 - no collections configured
 - file changes happened outside configured patterns
 - the daemon was started with `--no-sync-on-start` and is only watching future changes
+
+Cases the watcher still cannot recover on its own, where `gno update` remains the
+fix:
+
+- **Subdirectories created on Linux after the watcher started.** On Bun versions
+  whose recursive watch does not extend to them
+  ([oven-sh/bun#15939](https://github.com/oven-sh/bun/issues/15939)) no event is
+  emitted at all for writes inside them, so there is no hint to reconcile. That
+  is what we measured on Bun 1.3.11; on Bun 1.3.14 those writes were reported
+  and are picked up live. If your Bun is affected, restart `gno serve` /
+  `gno daemon`, or run `gno update`.
+- **Writes into a directory renamed on Linux after the watcher started.** They
+  are reported under the stale pre-rename path (measured on Bun 1.3.14). The
+  watcher deactivates what is gone from the old path, but nothing ever names the
+  new one, so files under the renamed directory stay unindexed until you run
+  `gno update` or restart.
+- **A path deleted and recreated within the same ~300 ms batch.** The watcher
+  decides whether an event was a deletion by checking the disk once, when the
+  batch flushes. A file or directory that is already back by then looks like an
+  ordinary edit, and it is synced as one. If something else was removed in that
+  same window and no event ever named it, it stays retrievable until another
+  event touches its directory — or until you run `gno update`. This is inherent
+  to reading deletions out of an event stream that collapses events, not a
+  configuration problem.
+
+Known limitation — **very large directories are slow to reconcile.** Listing the
+directory and the matching index lookup are cheap: measured at about 9 ms combined
+(median of five warm runs) for one directory holding 5,000 eligible files, 500
+excluded files, and 200 indexed-but-deleted paths. The sync pass that follows is
+the ceiling. It re-stats and re-hashes every eligible file in the directory, and
+on that fixture took roughly 17 seconds. While it runs, that collection's watcher
+is busy, so further changes land late rather than not at all. Splitting a very
+large collection across subdirectories keeps each reconciliation small.
 
 ### "I ran gno serve and gno daemon together"
 

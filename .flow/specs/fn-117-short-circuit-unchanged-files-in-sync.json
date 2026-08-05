@@ -1,0 +1,26 @@
+{
+  "branch_name": "fn-117-short-circuit-unchanged-files-in-sync",
+  "created_at": "2026-08-03T15:22:30.089166Z",
+  "depends_on_epics": [
+    "fn-114-reliable-watcher-reconciliation-for"
+  ],
+  "id": "fn-117-short-circuit-unchanged-files-in-sync",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-117-short-circuit-unchanged-files-in-sync.md",
+  "status": "open",
+  "title": "Short-circuit unchanged files in sync without reading and hashing them",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-08-03T15:23:09.380850Z"
+}

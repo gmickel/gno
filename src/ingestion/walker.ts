@@ -5,12 +5,16 @@
  * @module src/ingestion/walker
  */
 
-// node:fs/promises - Bun has no realpath equivalent
-import { realpath } from "node:fs/promises";
+// node:fs - Stats type for the lstat calls in the no-follow policy below
+import type { Stats } from "node:fs";
+
+// node:fs/promises - Bun has no realpath/lstat equivalent
+import { lstat, realpath } from "node:fs/promises";
 // node:path - Bun has no path manipulation module
 import {
   extname,
   isAbsolute,
+  join,
   normalize as normalizePath,
   relative,
   resolve,
@@ -216,6 +220,135 @@ export function matchesWalkPath(
     config.include,
     config.additionalDefaultExtensions ?? []
   );
+}
+
+/** Errno values that mean "this path does not exist as the thing asked for". */
+const MISSING_PATH_ERROR_CODES = new Set(["ENOENT", "ENOTDIR"]);
+
+/** Is this failure "the path is not there", as opposed to "it is unreadable"? */
+export function isMissingPathError(cause: unknown): boolean {
+  const code = (cause as { code?: unknown } | null)?.code;
+  return typeof code === "string" && MISSING_PATH_ERROR_CODES.has(code);
+}
+
+/** One path component below the root, and the identity it had when verified. */
+export interface WalkPathComponent {
+  absPath: string;
+  dev: number;
+  ino: number;
+}
+
+/**
+ * What a collection-relative path turned out to be under `FileWalker.walk`'s
+ * NO-FOLLOW policy.
+ *
+ * `leaf` is the last component's `lstat`, so a caller that needs size/mtime -
+ * `syncPaths` does - never has to stat the path a second time. It is `null`
+ * only for the collection root, which has no component below the root at all.
+ */
+export type WalkPathVisibility =
+  /** Every component below the root is a real, non-symlink entry. */
+  | { status: "visible"; chain: WalkPathComponent[]; leaf: Stats | null }
+  /** A component below the root - the leaf, or an ancestor - is a symlink. */
+  | { status: "symlink"; absPath: string }
+  /** A component is gone, or something that is not a directory stands where a directory must. */
+  | { status: "missing" }
+  /** The path could not be examined; nothing may be inferred from it. */
+  | { status: "error"; cause: unknown };
+
+/** Optional seam for driving the component-by-component window in tests. */
+export interface WalkPathVisibilityHooks {
+  beforeComponent?: (absPath: string) => void | Promise<void>;
+}
+
+/**
+ * THE no-follow reachability policy, in one place, for everything that has to
+ * agree with `FileWalker.walk`.
+ *
+ * ## What the walker's policy actually is
+ *
+ * `walk` canonicalizes the collection ROOT (`realpath`) and then discovers
+ * files with `Bun.Glob.scan({ onlyFiles: true, followSymlinks: false })`.
+ * Measured, not assumed: with `followSymlinks: false` the scan emits neither a
+ * symlink that points at a DIRECTORY nor one that points at a regular FILE, and
+ * it never descends through a symlinked directory at any depth. So the policy
+ * below the root is uniform and it is not "directories only":
+ *
+ * > A path is walkable iff no component of it below the collection root - the
+ * > leaf included, whatever it points at - is a symlink.
+ *
+ * The ROOT itself is deliberately exempt: it is legitimately a symlink
+ * (`/tmp -> /private/tmp` on macOS), and `walk` resolves it before scanning.
+ *
+ * ## Why it lives here and not in a caller
+ *
+ * Every consumer of the index has to reach the SAME conclusion as a full
+ * `gno update`, or the watcher and the walker disagree about what is indexed.
+ * Enforcing the policy in one enumeration seam is not enough, because a
+ * following `stat` elsewhere resurrects the divergence: an indexed document
+ * under an alias stats alive and stays active while a full walk deactivates it.
+ * So this is applied where ELIGIBILITY is applied - beside `matchesWalkPath` -
+ * and both the enumeration seam (`directory-children`) and `syncPaths` consult
+ * it. `matchesWalkPath` answers "may this name be indexed"; this answers "can
+ * the walker reach it", which is the half that needs the disk.
+ *
+ * ## The window this does NOT close
+ *
+ * The check is component-by-component on PATH STRINGS, so it is not atomic. For
+ * `a/b`, `a` can be renamed away and replaced by a symlink after `a` has been
+ * verified and before `a/b` is `lstat`ed; that `lstat` then traverses the
+ * replacement. `chain` carries each verified component's `(dev, ino)` precisely
+ * so a caller that goes on to READ through this path can re-prove it afterwards
+ * and fail closed. What remains open is a replacement UNDONE before the
+ * re-check, and one that preserves `(dev, ino)`. Closing those needs
+ * dirfd-relative no-follow traversal (`openat(dirfd, name, O_NOFOLLOW)` +
+ * `fdopendir`), and Node/Bun's `fs` exposes no dirfd-relative operations at
+ * all, so it cannot be written in this runtime.
+ *
+ * Never throws.
+ *
+ * @param rootAbs Absolute collection root. Components are examined BELOW it.
+ * @param normalizedRelPath Collection-relative POSIX path, already normalized
+ *   (see `normalizeCollectionDirRelPath`). `""` is the root itself.
+ */
+export async function checkWalkPathVisibility(
+  rootAbs: string,
+  normalizedRelPath: string,
+  hooks?: WalkPathVisibilityHooks
+): Promise<WalkPathVisibility> {
+  if (normalizedRelPath === "") {
+    return { status: "visible", chain: [], leaf: null };
+  }
+  const segments = normalizedRelPath.split("/");
+  const chain: WalkPathComponent[] = [];
+  let current = rootAbs;
+  let leaf: Stats | null = null;
+  for (const [index, segment] of segments.entries()) {
+    current = join(current, segment);
+    let info: Stats;
+    try {
+      await hooks?.beforeComponent?.(current);
+      info = await lstat(current);
+    } catch (cause) {
+      return isMissingPathError(cause)
+        ? { status: "missing" }
+        : { status: "error", cause };
+    }
+    // Asked BEFORE `isDirectory()`: `lstat` reports a symlink as a symlink
+    // whatever it points at, which is the whole point of asking no-follow.
+    if (info.isSymbolicLink()) {
+      return { status: "symlink", absPath: current };
+    }
+    const isLast = index === segments.length - 1;
+    if (!(isLast || info.isDirectory())) {
+      // Something that is not a directory stands where a directory component is
+      // required - the same thing a following resolution reports as ENOTDIR.
+      return { status: "missing" };
+    }
+    chain.push({ absPath: current, dev: info.dev, ino: info.ino });
+    leaf = info;
+  }
+  return { status: "visible", chain, leaf };
 }
 
 /**

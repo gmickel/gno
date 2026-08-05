@@ -199,4 +199,43 @@ describe("closed browser clipper response contracts", () => {
       }).success
     ).toBeFalse();
   });
+
+  test("permits error details only beside the code that produces them", () => {
+    const details = {
+      reason: "PATH_OUTSIDE_COLLECTION",
+      relPath: "clips/article.md",
+    };
+    expect(
+      clipperErrorSchema.safeParse({
+        error: {
+          code: "VALIDATION",
+          message: "Refused a destination outside the collection.",
+          details,
+        },
+      }).success
+    ).toBeTrue();
+    // Only the capture route's destination refusal carries details, and it
+    // reports VALIDATION; every other code paired with details is a response
+    // no server emits.
+    for (const code of [
+      "CLIPPER_UNAUTHORIZED",
+      "CLIPPER_CAPTURE_FAILED",
+      "RUNTIME",
+    ]) {
+      expect(
+        clipperErrorSchema.safeParse({
+          error: { code, message: "not accepted", details },
+        }).success
+      ).toBeFalse();
+    }
+    expect(
+      clipperErrorSchema.safeParse({
+        error: {
+          code: "VALIDATION",
+          message: "not accepted",
+          details: { reason: "NOT_A_REASON", relPath: "clips/article.md" },
+        },
+      }).success
+    ).toBeFalse();
+  });
 });

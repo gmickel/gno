@@ -1,5 +1,7 @@
+import type { CaptureDestinationDetails } from "./contracts";
 import type { ExtractionResult } from "./types";
 
+import { captureDestinationDetailsSchema } from "./contracts";
 import { ClipperController } from "./controller";
 
 const extractFromActiveTab = async (): Promise<ExtractionResult> => {
@@ -71,10 +73,27 @@ const handleMessage = async (message: unknown): Promise<unknown> => {
   }
 };
 
+/**
+ * Carry the structured refusal reason across the message boundary.
+ *
+ * The service worker is the last hop where `details` still exists as an object;
+ * dropping it here would leave every reader - popup, preview UI - with prose
+ * only. Re-validating keeps the serialized shape exactly the wire shape rather
+ * than whatever an arbitrary thrown value happens to hang off `details`.
+ */
+const errorDetails = (error: unknown): CaptureDestinationDetails | null => {
+  if (error === null || typeof error !== "object" || !("details" in error)) {
+    return null;
+  }
+  const parsed = captureDestinationDetailsSchema.safeParse(error.details);
+  return parsed.success ? parsed.data : null;
+};
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   void handleMessage(message).then(
     (result) => sendResponse({ ok: true, result }),
-    (error) =>
+    (error) => {
+      const details = errorDetails(error);
       sendResponse({
         ok: false,
         error: {
@@ -86,8 +105,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
               ? error.code
               : "CLIPPER_CLIENT",
           message: error instanceof Error ? error.message : "Clipper failed",
+          ...(details ? { details } : {}),
         },
-      })
+      });
+    }
   );
   return true;
 });

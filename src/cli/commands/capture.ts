@@ -4,8 +4,6 @@
  * @module src/cli/commands/capture
  */
 
-// node:fs/promises for mkdir (no Bun equivalent for recursive dir creation)
-import { mkdir } from "node:fs/promises";
 // node:path has no Bun path utilities
 import { dirname, join } from "node:path";
 
@@ -26,7 +24,16 @@ import {
 } from "../../core/capture";
 import { writeCapturePlanFile } from "../../core/capture-write";
 import { withWriteLock } from "../../core/file-lock";
-import { defaultSyncService, withContentTypeRules } from "../../ingestion";
+import {
+  CaptureDestinationError,
+  captureProofDocid,
+  captureProofOpenedExistingSyncReason,
+  captureSyncReason,
+  defaultSyncService,
+  prepareCaptureDestination,
+  requireActiveCaptureDocument,
+  withContentTypeRules,
+} from "../../ingestion";
 import { CliError } from "../errors";
 import { initStore } from "./shared";
 
@@ -196,19 +203,27 @@ export async function capture(
     );
     return await withWriteLock(lockPath, async () => {
       if (plan.openedExisting) {
-        const existingDoc = await store.getDocument(
+        // "Is this file indexed?" is asked here exactly as the post-write proof
+        // asks it: by EFFECTIVE SOURCE PATH. A bare `getDocument` answers "no"
+        // for a record container that is fully indexed as N logical records at
+        // virtual paths, so an opened container was reported as unindexed.
+        const indexed = await requireActiveCaptureDocument(
+          store,
           collection.name,
           plan.relPath
         );
-        if (!existingDoc.ok) {
-          throw new Error(existingDoc.error.message);
+        if (!indexed.ok && indexed.failure === "store-error") {
+          throw new Error(indexed.message);
         }
         return buildCaptureReceipt({
           plan,
           absPath,
-          docid: existingDoc.value?.docid,
-          sync: existingDoc.value
-            ? { status: "completed" }
+          docid: indexed.ok ? captureProofDocid(indexed) : undefined,
+          sync: indexed.ok
+            ? {
+                status: "completed",
+                reason: captureProofOpenedExistingSyncReason(indexed),
+              }
             : {
                 status: "skipped",
                 reason: "Existing file is not indexed yet.",
@@ -216,7 +231,20 @@ export async function capture(
         });
       }
 
-      await mkdir(dirname(absPath), { recursive: true });
+      // Prove the destination BEFORE writing: `mkdir -p` follows an existing
+      // directory symlink, and a file written through one is unreachable to the
+      // indexer (or, for an escaping alias, outside the collection entirely).
+      try {
+        await prepareCaptureDestination(collection.path, plan.relPath);
+      } catch (error) {
+        if (error instanceof CaptureDestinationError) {
+          throw new CliError("VALIDATION", error.message, {
+            code: error.code,
+            relPath: error.relPath,
+          });
+        }
+        throw error;
+      }
       await writeCapturePlanFile(plan, absPath);
       const syncResults = await defaultSyncService.syncFiles(
         collection,
@@ -231,22 +259,46 @@ export async function capture(
         )
       );
       const syncResult = syncResults[0];
-      const docResult = await store.getDocument(collection.name, plan.relPath);
-      const docid = docResult.ok ? docResult.value?.docid : undefined;
+      if (syncResult?.status === "error") {
+        return buildCaptureReceipt({
+          plan,
+          absPath,
+          docid: syncResult.docid,
+          sync: {
+            status: "failed",
+            error:
+              syncResult.errorMessage ??
+              syncResult.errorCode ??
+              "Unknown sync error",
+          },
+        });
+      }
+      // "Not an error" is not proof of a capture: `skipped` and `unchanged` are
+      // non-errors too. Demand an ACTIVE document for the path.
+      const indexed = await requireActiveCaptureDocument(
+        store,
+        collection.name,
+        plan.relPath
+      );
+      if (!indexed.ok) {
+        return buildCaptureReceipt({
+          plan,
+          absPath,
+          sync: { status: "failed", error: indexed.message },
+        });
+      }
+      // A record container has no document at the written path, so the receipt
+      // carries no docid rather than one that disagrees with its URI - and a
+      // container whose adapter REJECTED some of what was written says so too,
+      // instead of reporting a plain `completed`.
       return buildCaptureReceipt({
         plan,
         absPath,
-        docid: syncResult?.docid ?? docid,
-        sync:
-          syncResult?.status === "error"
-            ? {
-                status: "failed",
-                error:
-                  syncResult.errorMessage ??
-                  syncResult.errorCode ??
-                  "Unknown sync error",
-              }
-            : { status: "completed" },
+        docid: syncResult?.docid ?? captureProofDocid(indexed),
+        sync: {
+          status: "completed",
+          reason: captureSyncReason(indexed, syncResult?.recordImport),
+        },
       });
     });
   } finally {
@@ -270,8 +322,14 @@ export function formatCaptureReceipt(
     `URI: ${receipt.uri}`,
     `Path: ${receipt.absPath ?? receipt.relPath}`,
     `Sync: ${receipt.sync.status}`,
-    `Embed: ${receipt.embed.status}`,
   ];
+  // `sync.reason` is where a record container explains that the URI above
+  // names the written FILE and no document. Dropping it here left the only
+  // thing a person actually reads looking like an ordinary success.
+  if (receipt.sync.reason) {
+    lines.push(`Note: ${receipt.sync.reason}`);
+  }
+  lines.push(`Embed: ${receipt.embed.status}`);
   if (receipt.tags.length > 0) {
     lines.push(`Tags: ${receipt.tags.join(", ")}`);
   }

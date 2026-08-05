@@ -10,6 +10,9 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["code", "message"],
+      "$comment": "`details` is emitted by exactly one path - the capture route's destination refusal, reported as VALIDATION/409 - so it is only valid paired with that code.",
+      "if": { "required": ["details"], "properties": { "details": {} } },
+      "then": { "properties": { "code": { "const": "VALIDATION" } } },
       "properties": {
         "code": {
           "enum": [
@@ -39,7 +42,23 @@
             "VALIDATION"
           ]
         },
-        "message": { "type": "string", "minLength": 1 }
+        "message": { "type": "string", "minLength": 1 },
+        "details": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason", "relPath"],
+          "properties": {
+            "reason": {
+              "enum": [
+                "PATH_OUTSIDE_COLLECTION",
+                "PATH_NOT_WALKABLE",
+                "PATH_UNRESOLVED",
+                "NOT_DIRECTORY"
+              ]
+            },
+            "relPath": { "type": "string", "minLength": 1 }
+          }
+        }
       }
     }
   }

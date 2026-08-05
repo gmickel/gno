@@ -145,7 +145,19 @@ import {
 import { normalizeStructuredQueryInput } from "../core/structured-query";
 import { parseAndValidateTagFilter } from "../core/tags";
 import {
+  CAPTURE_CONTAINER_HANDLE_CONSEQUENCE,
+  CaptureDestinationError,
+  captureFileSyncResult,
+  captureProofContainerSummary,
+  captureProofDocid,
+  captureProofOpenedExistingSyncReason,
+  captureRecordImportReason,
+  captureSyncReason,
+  captureWrittenRecordPage,
+  captureWrittenRecordPageReason,
   defaultSyncService,
+  prepareCaptureDestination,
+  requireActiveCaptureDocument,
   type SyncResult,
   withContentTypeRules,
 } from "../ingestion";
@@ -234,6 +246,31 @@ function unwrapTraceStore<T>(result: StoreResult<T>): T {
 function unwrapKnowledgeDelta<T>(result: KnowledgeDeltaServiceResult<T>): T {
   if (result.success) return result.data;
   throw sdkError(result.isValidation ? "VALIDATION" : "STORE", result.error);
+}
+
+/**
+ * Prove a write destination before writing it, and translate the refusal into
+ * an SDK error.
+ *
+ * `mkdir(dir, { recursive: true })` FOLLOWS an existing directory symlink, so
+ * without this a note written beneath `alias -> real/` lands on disk somewhere
+ * the indexer never walks, and one beneath `alias -> /outside` lands outside
+ * the collection. Both used to come back as success.
+ */
+async function prepareSdkWriteDestination(
+  collectionPath: string,
+  relPath: string
+): Promise<void> {
+  try {
+    await prepareCaptureDestination(collectionPath, relPath);
+  } catch (error) {
+    if (error instanceof CaptureDestinationError) {
+      throw sdkError("VALIDATION", error.message, {
+        details: { code: error.code, relPath: error.relPath },
+      });
+    }
+    throw error;
+  }
 }
 
 async function resolveClientState(
@@ -1485,6 +1522,27 @@ class GnoClientImpl implements GnoClient {
       );
     }
 
+    // Collision detection here sees INDEXED rel paths and nothing else.
+    //
+    // What that detects: an ordinary per-path document already indexed at the
+    // target rel path. What it does NOT detect:
+    //
+    // - a physical RECORD CONTAINER (`.jsonl`, `.vtt`, ... per the collection's
+    //   `recordAdapters`). Its rows are indexed at virtual `.gno/records/...`
+    //   rel paths with the physical file only in `record_source_path`, so the
+    //   container's own rel path is absent from this list;
+    // - any file on disk that is not indexed at all. Unlike `capture()`, this
+    //   path passes no `diskRelPaths` to the planner.
+    //
+    // Consequently `collisionPolicy` is NOT honored for those targets: `error`,
+    // `open_existing` and `create_with_suffix` all fall through to the create
+    // branch, and the `atomicWrite` below OVERWRITES the existing file. The
+    // same blind spot is shared by the duplicate paths and by `copyFile`, which
+    // can likewise overwrite an existing container target.
+    //
+    // Deliberately NOT fixed here: closing it changes collision semantics
+    // (which physical files count as "existing" for each policy) across every
+    // create/duplicate/copy surface, and is tracked as separate follow-up work.
     const existingList = await this.store.listDocuments(collection.name);
     if (!existingList.ok) {
       throw sdkError("STORE", existingList.error.message, {
@@ -1512,7 +1570,12 @@ class GnoClientImpl implements GnoClient {
       if (!existingDoc.ok || !existingDoc.value) {
         throw sdkError("NOT_FOUND", "Existing note could not be resolved");
       }
+      // Collision detection is by INDEXED rel path, and a container's records
+      // are indexed at virtual `.gno/records/...` paths, so a container path is
+      // never "existing" here - this branch is only ever reached for a real
+      // per-path document.
       return {
+        kind: "document",
         uri: existingDoc.value.uri,
         path: fullPath,
         relPath: plan.relPath,
@@ -1547,7 +1610,7 @@ class GnoClientImpl implements GnoClient {
       contentToWrite = updateFrontmatterTags(contentToWrite, validatedTags);
     }
 
-    await mkdir(dirname(fullPath), { recursive: true });
+    await prepareSdkWriteDestination(collection.path, plan.relPath);
     await atomicWrite(fullPath, contentToWrite);
     const syncResults = await defaultSyncService.syncFiles(
       collection,
@@ -1568,14 +1631,73 @@ class GnoClientImpl implements GnoClient {
         syncResult?.errorMessage ?? "Failed to sync created note"
       );
     }
+    // "Not an error" is not proof: `skipped` and `unchanged` are non-errors
+    // too, and returning a `gno://` URI for a path with no ACTIVE document
+    // hands the caller a reference that resolves to nothing.
+    const indexed = await requireActiveCaptureDocument(
+      this.store,
+      collection.name,
+      plan.relPath
+    );
+    if (!indexed.ok) {
+      throw sdkError("RUNTIME", indexed.message);
+    }
 
-    return {
-      uri: `gno://${collection.name}/${plan.relPath}`,
+    const writtenFile = {
       path: fullPath,
       relPath: plan.relPath,
       created: true,
       openedExisting: false,
       createdWithSuffix: plan.createdWithSuffix,
+    };
+    if (indexed.kind === "file") {
+      return { kind: "document", uri: indexed.document.uri, ...writtenFile };
+    }
+    // A record container has no document AT the written path: its N logical
+    // records live at virtual `.gno/records/...` paths. Handing back
+    // `gno://<collection>/<relPath>` would be a URI `client.get()` cannot
+    // resolve, so this shape carries no `uri` at all - the file stays
+    // identified by `path`/`relPath`, and the fetchable handles are the
+    // records' own URIs.
+    // `recordUris` is a BOUNDED page, not the container's contents: a valid
+    // export can hold six figures of records, and a result object that lists
+    // every one of them is the same unbounded array the job/SSE handles refuse
+    // to carry. `recordCount` is exact; the records past the page are not
+    // LISTED here, and the reason says where they are instead of implying a
+    // continuation that does not exist or denying the mechanisms that do:
+    // `list({ scope })` on the container's shared virtual record prefix, or
+    // ordinary collection listing filtered on `source.relPath`.
+    //
+    // The container shape and a PARTIAL import are two independent facts, and
+    // this write can produce both: an adapter that accepts one record and
+    // rejects another leaves the file result a non-error, so a reason built
+    // from the container proof alone reports a half-imported export as a clean
+    // one. `captureSyncReason` is the single composer for that pair of facts -
+    // the same one CLI `gno capture`, MCP `gno_capture`, `capture()` and the
+    // REST create handle use - so the FACTS here are identical to theirs
+    // rather than a second wording that can drift.
+    //
+    // The CONSEQUENCES are this shape's own, and sharing those was wrong. A
+    // `GnoCreateNoteResult` is not a receipt: it has no docid contract to
+    // report missing, so it states what it actually costs the caller (no
+    // single fetchable `uri`; use `recordUris`). And it carries no sync
+    // result, so it cannot send the caller to `recordImport.failures` - it
+    // says the failures are not on this response and names a route that is.
+    const page = captureWrittenRecordPage(indexed.records);
+    const truncated = captureWrittenRecordPageReason(page);
+    const reason = [
+      captureSyncReason(indexed, syncResult.recordImport, {
+        containerConsequence: CAPTURE_CONTAINER_HANDLE_CONSEQUENCE,
+      }),
+      truncated,
+    ]
+      .filter((part): part is string => part !== undefined)
+      .join(" ");
+    return {
+      kind: "record-container",
+      ...page,
+      reason,
+      ...writtenFile,
     };
   }
 
@@ -1623,21 +1745,27 @@ class GnoClientImpl implements GnoClient {
 
     const fullPath = `${collection.path}/${plan.relPath}`;
     if (plan.openedExisting) {
-      const existingDoc = await this.store.getDocument(
+      // "Is this file indexed?" is asked here exactly as the post-write proof
+      // asks it: by EFFECTIVE SOURCE PATH. A bare `getDocument` answers "no"
+      // for a record container that is fully indexed as N logical records at
+      // virtual paths, so an opened container was reported as unindexed.
+      const indexed = await requireActiveCaptureDocument(
+        this.store,
         collection.name,
         plan.relPath
       );
-      if (!existingDoc.ok) {
-        throw sdkError("STORE", existingDoc.error.message, {
-          cause: existingDoc.error.cause,
-        });
+      if (!indexed.ok && indexed.failure === "store-error") {
+        throw sdkError("STORE", indexed.message);
       }
       return buildCaptureReceipt({
         plan,
         absPath: fullPath,
-        docid: existingDoc.value?.docid,
-        sync: existingDoc.value
-          ? { status: "completed" }
+        docid: indexed.ok ? captureProofDocid(indexed) : undefined,
+        sync: indexed.ok
+          ? {
+              status: "completed",
+              reason: captureProofOpenedExistingSyncReason(indexed),
+            }
           : {
               status: "skipped",
               reason: "Existing file is not indexed yet.",
@@ -1645,7 +1773,7 @@ class GnoClientImpl implements GnoClient {
       });
     }
 
-    await mkdir(dirname(fullPath), { recursive: true });
+    await prepareSdkWriteDestination(collection.path, plan.relPath);
     await writeCapturePlanFile(plan, fullPath);
     const syncResults = await defaultSyncService.syncFiles(
       collection,
@@ -1660,25 +1788,44 @@ class GnoClientImpl implements GnoClient {
       )
     );
     const syncResult = syncResults[0];
-    const docResult = await this.store.getDocument(
+    if (syncResult?.status === "error") {
+      return buildCaptureReceipt({
+        plan,
+        absPath: fullPath,
+        docid: syncResult.docid,
+        sync: {
+          status: "failed",
+          error:
+            syncResult.errorMessage ??
+            syncResult.errorCode ??
+            "Unknown sync error",
+        },
+      });
+    }
+    // "Not an error" is not proof of a capture: `skipped` and `unchanged` are
+    // non-errors too. Demand an ACTIVE document for the path.
+    const indexed = await requireActiveCaptureDocument(
+      this.store,
       collection.name,
       plan.relPath
     );
-    const docid = docResult.ok ? docResult.value?.docid : undefined;
+    if (!indexed.ok) {
+      return buildCaptureReceipt({
+        plan,
+        absPath: fullPath,
+        sync: { status: "failed", error: indexed.message },
+      });
+    }
+    // A record container has no document at the written path, so the receipt
+    // carries no docid rather than one that disagrees with its URI.
     return buildCaptureReceipt({
       plan,
       absPath: fullPath,
-      docid: syncResult?.docid ?? docid,
-      sync:
-        syncResult?.status === "error"
-          ? {
-              status: "failed",
-              error:
-                syncResult.errorMessage ??
-                syncResult.errorCode ??
-                "Unknown sync error",
-            }
-          : { status: "completed" },
+      docid: syncResult?.docid ?? captureProofDocid(indexed),
+      sync: {
+        status: "completed",
+        reason: captureSyncReason(indexed, syncResult?.recordImport),
+      },
     });
   }
 
@@ -1867,9 +2014,9 @@ class GnoClientImpl implements GnoClient {
     });
     const currentPath = `${collection.path}/${storedDoc.relPath}`;
     const nextPath = `${collection.path}/${plan.nextRelPath}`;
-    await mkdir(dirname(nextPath), { recursive: true });
+    await prepareSdkWriteDestination(collection.path, plan.nextRelPath);
     await copyFilePath(currentPath, nextPath);
-    await defaultSyncService.syncCollection(
+    const syncResult = await defaultSyncService.syncCollection(
       collection,
       this.store,
       withContentTypeRules({ runUpdateCmd: false }, this.config)
@@ -1879,19 +2026,57 @@ class GnoClientImpl implements GnoClient {
     if (!linksResult.ok || !backlinksResult.ok) {
       throw sdkError("STORE", "Failed to compute refactor warnings");
     }
+    const warnings = buildRefactorWarnings({
+      backlinks: backlinksResult.value.length,
+      wikiLinks: linksResult.value.filter((entry) => entry.linkType === "wiki")
+        .length,
+      markdownLinks: linksResult.value.filter(
+        (entry) => entry.linkType === "markdown"
+      ).length,
+    }).warnings;
+    // A sync that did not throw is not proof the copy is indexed: an excluded
+    // or unreachable destination is `skipped`, an ordinary non-error. Unlike
+    // `createNote`, the duplicate already exists on disk and the caller needs
+    // its path back, so this is reported rather than thrown - but `uri` must
+    // not silently imply an indexed document.
+    const indexed = await requireActiveCaptureDocument(
+      this.store,
+      collection.name,
+      plan.nextRelPath
+    );
+    if (indexed.ok) {
+      // A container copy IS indexed - as N logical records at virtual paths,
+      // with nothing at the copy's own path. `uri` below therefore resolves to
+      // nothing, exactly like the unindexed case, and must say so rather than
+      // read as an ordinary duplicate. Same channel, same wording as the REST
+      // and MCP duplicate paths.
+      const containerSummary = captureProofContainerSummary(indexed);
+      if (containerSummary) {
+        warnings.push(
+          `File duplicated on disk and ${containerSummary}, so ${plan.nextUri} resolves to no document.`
+        );
+      }
+      // The copy is imported by the adapter exactly like the original was, so
+      // it can be PARTIAL for the same reasons - and the container sentence
+      // above says nothing about it. Same shared FRAGMENT every other surface
+      // discloses it with - and its default pointer, because this response
+      // carries the count and not the failures themselves.
+      const partialImport = captureRecordImportReason(
+        captureFileSyncResult(syncResult, plan.nextRelPath)?.recordImport
+      );
+      if (partialImport) {
+        warnings.push(partialImport);
+      }
+    } else {
+      warnings.push(
+        `File duplicated on disk, but it is not indexed: ${indexed.message}`
+      );
+    }
     return {
       uri: plan.nextUri,
       path: nextPath,
       relPath: plan.nextRelPath,
-      warnings: buildRefactorWarnings({
-        backlinks: backlinksResult.value.length,
-        wikiLinks: linksResult.value.filter(
-          (entry) => entry.linkType === "wiki"
-        ).length,
-        markdownLinks: linksResult.value.filter(
-          (entry) => entry.linkType === "markdown"
-        ).length,
-      }).warnings,
+      warnings,
     };
   }
 

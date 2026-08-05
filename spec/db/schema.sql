@@ -148,6 +148,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_record_key
 CREATE INDEX IF NOT EXISTS idx_documents_record_source_path
   ON documents(collection, record_source_path)
   WHERE record_source_path IS NOT NULL;
+-- Parent directory of the effective source path COALESCE(record_source_path, rel_path),
+-- with the collection root as ''. Makes the watcher's active direct-children lookup an
+-- equality probe for both root and nested directories; the trailing source-path column
+-- lets DISTINCT be satisfied from index order (no temporary B-tree).
+-- Kept in sync with src/store/source-path-sql.ts (migration 027).
+CREATE INDEX IF NOT EXISTS idx_documents_source_parent_path
+  ON documents(
+    collection,
+    CASE WHEN instr(COALESCE(record_source_path, rel_path), '/') = 0 THEN '' ELSE substr(COALESCE(record_source_path, rel_path), 1, length(rtrim(COALESCE(record_source_path, rel_path), replace(COALESCE(record_source_path, rel_path), '/', ''))) - 1) END,
+    COALESCE(record_source_path, rel_path)
+  )
+  WHERE active = 1;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Content (content-addressed markdown mirrors)

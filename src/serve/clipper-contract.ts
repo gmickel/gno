@@ -53,5 +53,10 @@ export const clipperResponse = (body: unknown, status = 200): Response =>
 export const clipperErrorResponse = (
   code: string,
   message: string,
-  status: number
-): Response => clipperResponse({ error: { code, message } }, status);
+  status: number,
+  details?: Record<string, unknown>
+): Response =>
+  clipperResponse(
+    { error: { code, message, ...(details ? { details } : {}) } },
+    status
+  );

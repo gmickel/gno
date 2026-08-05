@@ -97,6 +97,11 @@ export type InspectClipperIdempotencyResult =
   | { status: "conflict" }
   | { status: "not_found" };
 
+export type ReleaseClipperIdempotencyResult =
+  | { status: "released" }
+  | { status: "completed"; replay: ClipperIdempotencyReplay }
+  | { status: "not_found" };
+
 export type CompleteClipperIdempotencyResult =
   | { status: "completed"; replay: ClipperIdempotencyReplay }
   | { status: "replay"; replay: ClipperIdempotencyReplay }

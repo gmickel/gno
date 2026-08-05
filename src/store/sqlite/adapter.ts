@@ -135,11 +135,21 @@ import {
 } from "../../core/graph-resolver";
 import { buildContentPrefilterNeedles } from "../../core/link-relevance";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
+import { normalizeCollectionDirRelPath } from "../../core/path-rules";
 import {
   parseActivationReceipt,
   serializeActivationReceipt,
 } from "../activation-receipts";
 import { getSchemaVersion, migrations, runMigrations } from "../migrations";
+import {
+  ACTIVE_COLLECTION_SOURCE_PATHS_SQL,
+  ACTIVE_DESCENDANT_SOURCE_PATHS_SQL,
+  ACTIVE_DIRECT_CHILD_BATCH_CHUNK,
+  ACTIVE_DIRECT_CHILD_SOURCE_PATHS_SQL,
+  activeDescendantSourcePathParams,
+  activeDescendantSourcePathsBatchSql,
+  activeDirectChildSourcePathsBatchSql,
+} from "../source-path-sql";
 import { err, ok } from "../types";
 import { getStoredEmbeddingFingerprint } from "../vector/freshness";
 import { modelTableName } from "../vector/sqlite-vec";
@@ -1662,6 +1672,243 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         cause instanceof Error
           ? cause.message
           : "Failed to list record documents",
+        cause
+      );
+    }
+  }
+
+  async listActiveDirectChildSourcePaths(
+    collection: string,
+    dirRelPath: string
+  ): Promise<StoreResult<string[]>> {
+    const parentPath = normalizeCollectionDirRelPath(dirRelPath);
+    if (parentPath === null) {
+      return err(
+        "INVALID_INPUT",
+        `Directory path escapes the collection root: ${dirRelPath}`
+      );
+    }
+
+    try {
+      const db = this.ensureOpen();
+      const rows = db
+        .query<{ source_path: string }, [string, string]>(
+          ACTIVE_DIRECT_CHILD_SOURCE_PATHS_SQL
+        )
+        .all(collection, parentPath);
+
+      return ok(rows.map((row) => row.source_path));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list active direct child source paths",
+        cause
+      );
+    }
+  }
+
+  async listActiveSourcePaths(
+    collection: string
+  ): Promise<StoreResult<string[]>> {
+    try {
+      const db = this.ensureOpen();
+      const rows = db
+        .query<{ source_path: string }, [string]>(
+          ACTIVE_COLLECTION_SOURCE_PATHS_SQL
+        )
+        .all(collection);
+
+      return ok([...new Set(rows.map((row) => row.source_path))]);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list active source paths",
+        cause
+      );
+    }
+  }
+
+  async listActiveDescendantSourcePaths(
+    collection: string,
+    dirRelPath: string
+  ): Promise<StoreResult<string[]>> {
+    const directory = normalizeCollectionDirRelPath(dirRelPath);
+    if (directory === null) {
+      return err(
+        "INVALID_INPUT",
+        `Directory path escapes the collection root: ${dirRelPath}`
+      );
+    }
+    if (directory === "") {
+      // The collection root has no bounded subtree: answering it would mean
+      // "every active document in the collection", which is exactly the
+      // whole-collection work this seam exists to avoid. Callers that reach the
+      // root fall back to the direct-children lookup instead.
+      return err(
+        "INVALID_INPUT",
+        "Descendant lookup requires a directory below the collection root"
+      );
+    }
+
+    try {
+      const db = this.ensureOpen();
+      const rows = db
+        .query<
+          { source_path: string },
+          [string, string, string, string, number, string]
+        >(ACTIVE_DESCENDANT_SOURCE_PATHS_SQL)
+        .all(...activeDescendantSourcePathParams(collection, directory));
+
+      return ok([...new Set(rows.map((row) => row.source_path))]);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list active descendant source paths",
+        cause
+      );
+    }
+  }
+
+  async listActiveDescendantSourcePathsBatch(
+    collection: string,
+    dirRelPaths: string[]
+  ): Promise<StoreResult<Map<string, string[]>>> {
+    const normalized: string[] = [];
+    for (const raw of dirRelPaths) {
+      const directory = normalizeCollectionDirRelPath(raw);
+      if (directory === null) {
+        return err(
+          "INVALID_INPUT",
+          `Directory path escapes the collection root: ${raw}`
+        );
+      }
+      if (directory === "") {
+        return err(
+          "INVALID_INPUT",
+          "Descendant lookup requires a directory below the collection root"
+        );
+      }
+      normalized.push(directory);
+    }
+
+    const unique = [...new Set(normalized)];
+    if (unique.length === 0) {
+      return ok(new Map());
+    }
+    // Every requested directory gets an entry, so "asked and empty" - the
+    // answer that tells a dead temp name from a deleted directory - is
+    // distinguishable from "never asked".
+    const byDirectory = new Map<string, Set<string>>(
+      unique.map((directory) => [directory, new Set<string>()])
+    );
+
+    try {
+      const db = this.ensureOpen();
+      for (
+        let index = 0;
+        index < unique.length;
+        index += ACTIVE_DIRECT_CHILD_BATCH_CHUNK
+      ) {
+        const chunk = unique.slice(
+          index,
+          index + ACTIVE_DIRECT_CHILD_BATCH_CHUNK
+        );
+        const rows = db
+          .query<{ key: string; source_path: string }, string[]>(
+            activeDescendantSourcePathsBatchSql(chunk.length)
+          )
+          .all(...chunk, collection);
+        for (const row of rows) {
+          byDirectory.get(row.key)?.add(row.source_path);
+        }
+      }
+
+      return ok(
+        new Map(
+          [...byDirectory].map(([directory, sourcePaths]) => [
+            directory,
+            [...sourcePaths],
+          ])
+        )
+      );
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list active descendant source paths",
+        cause
+      );
+    }
+  }
+
+  async listActiveDirectChildSourcePathsBatch(
+    collection: string,
+    dirRelPaths: string[]
+  ): Promise<StoreResult<Map<string, string[]>>> {
+    const normalized: string[] = [];
+    for (const raw of dirRelPaths) {
+      const parentPath = normalizeCollectionDirRelPath(raw);
+      if (parentPath === null) {
+        return err(
+          "INVALID_INPUT",
+          `Directory path escapes the collection root: ${raw}`
+        );
+      }
+      normalized.push(parentPath);
+    }
+
+    const unique = [...new Set(normalized)];
+    // Every requested directory gets an entry, so a caller can distinguish
+    // "asked and empty" from "never asked" without a second lookup.
+    const byDirectory = new Map<string, Set<string>>(
+      unique.map((directory) => [directory, new Set<string>()])
+    );
+    if (unique.length === 0) {
+      return ok(new Map());
+    }
+
+    try {
+      const db = this.ensureOpen();
+      for (
+        let index = 0;
+        index < unique.length;
+        index += ACTIVE_DIRECT_CHILD_BATCH_CHUNK
+      ) {
+        const chunk = unique.slice(
+          index,
+          index + ACTIVE_DIRECT_CHILD_BATCH_CHUNK
+        );
+        const rows = db
+          .query<{ parent_path: string; source_path: string }, string[]>(
+            activeDirectChildSourcePathsBatchSql(chunk.length)
+          )
+          .all(collection, ...chunk);
+        for (const row of rows) {
+          byDirectory.get(row.parent_path)?.add(row.source_path);
+        }
+      }
+
+      return ok(
+        new Map(
+          [...byDirectory].map(([directory, sourcePaths]) => [
+            directory,
+            [...sourcePaths],
+          ])
+        )
+      );
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list active direct child source paths",
         cause
       );
     }

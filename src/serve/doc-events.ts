@@ -2,11 +2,42 @@ export type DocumentEventOrigin = "watcher" | "save" | "create";
 
 export interface DocumentChangedEvent {
   type: "document-changed";
+  /**
+   * `gno://<collection>/<relPath>` - the path that changed. Fetchable as a
+   * document only when `kind` is absent or `"document"`; for a record container
+   * it names the FILE and resolves to no document (see `recordUris`).
+   */
   uri: string;
   collection: string;
   relPath: string;
   origin: DocumentEventOrigin;
   changedAt: string;
+  /**
+   * What `uri` actually is, when the emitter proved it. Absent from emitters
+   * that do not run the proof (the watcher), so consumers must treat an absent
+   * `kind` as "unknown", not as "document".
+   */
+  kind?: "document" | "record-container";
+  /**
+   * The fetchable URIs of a record container's logical records - the handles a
+   * consumer can use in place of the unresolvable `uri`.
+   *
+   * BOUNDED (`MAX_WRITTEN_RECORD_URIS`), and deliberately so: this frame is
+   * JSON-encoded once per connected client on every write, which is the worst
+   * possible place for a list whose length is the container's record count.
+   * `recordCount` is exact and `recordUrisTruncated` says what this page omits.
+   * The omitted records are not carried BY the frame - there is no dedicated
+   * per-container enumeration endpoint, so the frame promises no continuation.
+   * They are still reachable: every record URI shares the container's virtual
+   * `.gno/records/<id>/` prefix, which a prefix-scoped listing enumerates, and
+   * ordinary collection paging returns every logical record with `relPath`
+   * projected from the container's own path.
+   */
+  recordUris?: string[];
+  /** Exact number of logical records the container is indexed as. */
+  recordCount?: number;
+  /** `recordCount - recordUris.length`: records this frame does not list. */
+  recordUrisTruncated?: number;
 }
 
 export interface CapsuleReverifiedEvent {

@@ -5,6 +5,9 @@
  * @module src/ingestion/sync
  */
 
+// node:fs - Stats type for the no-follow leaf stat handed back by the walker seam
+import type { Stats } from "node:fs";
+
 // node:fs/promises for realpath/stat (no Bun equivalent for canonical paths or file stats)
 import { realpath, stat } from "node:fs/promises";
 // node:path for join (no Bun path utils)
@@ -60,6 +63,7 @@ import {
   parseLinks,
   parseTargetParts,
 } from "../core/links";
+import { normalizeCollectionDirRelPath } from "../core/path-rules";
 import { normalizeTag, validateTag } from "../core/tags";
 import { defaultChunker } from "./chunker";
 import {
@@ -71,7 +75,101 @@ import { buildLineOffsets } from "./position";
 import { processRecordContainer } from "./record-container";
 import { getExcludedRanges } from "./strip";
 import { collectionToWalkConfig, DEFAULT_CHUNK_PARAMS } from "./types";
-import { defaultWalker } from "./walker";
+import { checkWalkPathVisibility, defaultWalker } from "./walker";
+
+/**
+ * `stat` errnos that mean "this path does not exist", so the indexed documents
+ * for it are deactivated rather than reported as a failed stat.
+ *
+ * `ENOENT` is the ordinary deletion. `ENOTDIR` is the same structural fact
+ * reached differently: a component of the path is not a directory, which is
+ * exactly what an indexed directory replaced by a regular file produces for
+ * every path formerly beneath it (`dir1` becomes a file, so `dir1/a.md` stats
+ * `ENOTDIR`). `src/ingestion/directory-children.ts` already classifies both as
+ * "missing" and hands the indexed descendants to `syncPaths`; treating
+ * `ENOTDIR` as a stat failure here made those documents undeactivatable - they
+ * stayed active and searchable forever.
+ *
+ * Every OTHER errno stays on the fail-closed `STAT_FAILED` path: a permission
+ * or I/O error is a transient inability to observe the file, never evidence
+ * that it is gone.
+ */
+const MISSING_FILE_ERROR_CODES = new Set(["ENOENT", "ENOTDIR"]);
+
+/** What one `syncPaths` candidate turned out to be on disk. */
+type SyncPathResolution =
+  /** A regular file the walker can reach. `stats` is its no-follow `lstat`. */
+  | { kind: "file"; stats: Stats }
+  /**
+   * The walker cannot reach this path, so nothing may stay indexed under it.
+   *
+   * Two structurally different causes, deliberately ONE outcome:
+   *
+   * - it is absent (`ENOENT`), or a component of it is not a directory
+   *   (`ENOTDIR` - an indexed `dir1` replaced by a regular file makes every
+   *   `dir1/*.md` reach here);
+   * - it, or a component above it, is a SYMLINK. `FileWalker.walk` scans with
+   *   `followSymlinks: false` and emits neither symlinked directories nor
+   *   symlinked files, so a full `gno update` indexes nothing through one and
+   *   deactivates whatever it previously had there.
+   *
+   * The second used to be invisible here, because the question asked was a
+   * FOLLOWING `stat`: an indexed `dir/note.md` whose `dir` had become
+   * `dir -> real/` statted alive and stayed active, while a full update
+   * deactivated it. That divergence between the watcher and the walker is the
+   * entire reason the policy is enforced here, at the one seam every write path
+   * goes through, rather than in whichever caller happened to notice.
+   */
+  | { kind: "unreachable" }
+  /** Reachable, but not a regular file (a real directory, a socket, a fifo). */
+  | { kind: "notFile" }
+  /** The path escapes the collection root and must never be resolved at all. */
+  | { kind: "escaped" }
+  /** Unreadable, not absent: infer nothing, fail closed. */
+  | { kind: "failed"; message: string };
+
+/**
+ * Resolve one candidate under `FileWalker.walk`'s no-follow policy.
+ *
+ * This replaces the following `stat` that used to open the loop body, and the
+ * replacement is the point: the walker's reachability rule and the sync's
+ * existence rule are now the same rule, read from the same place
+ * (`checkWalkPathVisibility`), so the watcher cannot converge on a set of active
+ * documents that a full `gno update` disagrees with.
+ *
+ * The `lstat` it already performs on the leaf is returned rather than thrown
+ * away, so a reachable file is not statted twice.
+ */
+async function resolveSyncPath(
+  collectionPath: string,
+  relPath: string
+): Promise<SyncPathResolution> {
+  const normalized = normalizeCollectionDirRelPath(relPath);
+  if (normalized === null || normalized === "") {
+    return { kind: "escaped" };
+  }
+  const visibility = await checkWalkPathVisibility(collectionPath, normalized);
+  if (visibility.status === "symlink" || visibility.status === "missing") {
+    return { kind: "unreachable" };
+  }
+  if (visibility.status === "error") {
+    const { cause } = visibility;
+    const code = (cause as { code?: unknown } | null)?.code;
+    // Preserved verbatim from the old `stat` branch: a code in the missing set
+    // could only arrive here from a hook-free path, but the classification is
+    // the file's, not the syscall's, so it stays with the file.
+    if (typeof code === "string" && MISSING_FILE_ERROR_CODES.has(code)) {
+      return { kind: "unreachable" };
+    }
+    return {
+      kind: "failed",
+      message: cause instanceof Error ? cause.message : "Failed to stat file",
+    };
+  }
+  return visibility.leaf?.isFile()
+    ? { kind: "file", stats: visibility.leaf }
+    : { kind: "notFile" };
+}
 
 /** Default concurrency for file processing */
 const DEFAULT_CONCURRENCY = 1;
@@ -1161,6 +1259,14 @@ export class SyncService {
     return result.files ?? [];
   }
 
+  /**
+   * Sync an explicit set of collection-relative paths, without walking.
+   *
+   * Each path is resolved under `FileWalker.walk`'s no-follow policy
+   * (`resolveSyncPath`), so what this indexes and what a full `gno update`
+   * indexes cannot diverge: a path the walker cannot reach - absent, or standing
+   * at or under a symlink - is deactivated exactly as a deleted one is.
+   */
   async syncPaths(
     collection: Collection,
     store: StorePort,
@@ -1212,24 +1318,45 @@ export class SyncService {
       }
 
       const absPath = join(collection.path, relPath);
-      let stats: Awaited<ReturnType<typeof stat>>;
-      try {
-        stats = await stat(absPath);
-      } catch (error) {
-        const errorCode =
-          error && typeof error === "object" && "code" in error
-            ? String(error.code)
-            : undefined;
-        if (errorCode !== "ENOENT") {
-          results.push({
-            relPath,
-            status: "error",
-            errorCode: "STAT_FAILED",
-            errorMessage:
-              error instanceof Error ? error.message : "Failed to stat file",
-          });
-          continue;
-        }
+      const resolution = await resolveSyncPath(collection.path, relPath);
+
+      if (resolution.kind === "failed") {
+        results.push({
+          relPath,
+          status: "error",
+          errorCode: "STAT_FAILED",
+          errorMessage: resolution.message,
+        });
+        continue;
+      }
+      if (resolution.kind === "escaped") {
+        results.push({
+          relPath,
+          status: "error",
+          errorCode: "PATH_OUTSIDE_COLLECTION",
+          errorMessage: "Source path resolves outside the collection root.",
+        });
+        continue;
+      }
+      if (resolution.kind === "notFile") {
+        results.push({
+          relPath,
+          status: "error",
+          errorCode: "NOT_FILE",
+          errorMessage: "Path is not a file",
+        });
+        continue;
+      }
+      if (resolution.kind === "unreachable") {
+        // Absent, or out of the walker's no-follow reach - the same conclusion
+        // either way, and the same one a full `gno update` reaches. Deactivation
+        // happens HERE rather than in any caller, so it inherits everything this
+        // batch already provides: the flush's generation revalidation around it,
+        // this per-path `markInactive` (which is what keeps a large subtree from
+        // exceeding SQLite's variable limit in one statement), the sync result's
+        // `filesMarkedInactive` count, the document-change events and scheduler
+        // notification the flush derives from it, and typed-edge projection over
+        // `projectionSourceIds`.
         const activePaths = [
           ...(existingDoc?.active ? [relPath] : []),
           ...recordDocuments
@@ -1266,15 +1393,7 @@ export class SyncService {
         continue;
       }
 
-      if (!stats.isFile()) {
-        results.push({
-          relPath,
-          status: "error",
-          errorCode: "NOT_FILE",
-          errorMessage: "Path is not a file",
-        });
-        continue;
-      }
+      const stats = resolution.stats;
 
       let canonicalSourcePath: string;
       try {

@@ -43,6 +43,86 @@ type DaemonDeps = {
   logger?: DaemonLogger;
 };
 
+const MAX_LOGGED_DIRECTORY_LENGTH = 120;
+// Filenames come from the filesystem and are untrusted: strip control
+// characters (including anything that could rewrite a terminal line) and bound
+// the length before a watcher directory reaches a log line.
+// oxlint-disable-next-line no-control-regex -- sanitizing control characters is the point
+const CONTROL_CHARACTERS = /[\u0000-\u001F\u007F-\u009F]/g;
+
+/** Render an untrusted watcher directory for a log line. */
+export function formatWatchDirectory(directory: string | null): string {
+  if (directory === null) {
+    return "<unknown>";
+  }
+  if (directory === "") {
+    return "<collection root>";
+  }
+  const sanitized = directory.replaceAll(CONTROL_CHARACTERS, "?");
+  return sanitized.length > MAX_LOGGED_DIRECTORY_LENGTH
+    ? `${sanitized.slice(0, MAX_LOGGED_DIRECTORY_LENGTH)}...`
+    : sanitized;
+}
+
+const MAX_LOGGED_CAUSE_LENGTH = 200;
+
+/**
+ * Pull readable text out of a reconciliation cause.
+ *
+ * The two shapes that actually reach this are a structured `StoreError`
+ * (`{ code, message }`, a plain object - `String()` renders it `[object
+ * Object]`) and a filesystem `Error` (`{ code: "EACCES", message }`). Both are
+ * reduced to `code: message` without duplicating a code the message already
+ * leads with.
+ */
+function extractCauseText(cause: unknown): string {
+  if (typeof cause === "string") {
+    return cause;
+  }
+  if (
+    typeof cause === "number" ||
+    typeof cause === "boolean" ||
+    typeof cause === "bigint"
+  ) {
+    return String(cause);
+  }
+  if (typeof cause === "symbol") {
+    return cause.toString();
+  }
+  if (cause instanceof Error) {
+    const code = (cause as { code?: unknown }).code;
+    return typeof code === "string" && !cause.message.startsWith(code)
+      ? `${code}: ${cause.message}`
+      : cause.message;
+  }
+  if (cause !== null && typeof cause === "object") {
+    const record = cause as { code?: unknown; message?: unknown };
+    const code = typeof record.code === "string" ? record.code : null;
+    const message = typeof record.message === "string" ? record.message : null;
+    if (code && message) {
+      return `${code}: ${message}`;
+    }
+    return message ?? code ?? "unknown cause";
+  }
+  // `null`, `undefined`, and anything else with no readable text: a label is
+  // strictly more useful in a log line than `[object Object]`.
+  return "unknown cause";
+}
+
+/**
+ * Render an untrusted reconciliation cause for a log line.
+ *
+ * A filesystem error message embeds the path that failed, which is just as
+ * untrusted as the directory itself - sanitizing only `directory` would let the
+ * cause smuggle control characters straight back into the same line.
+ */
+export function formatWatchCause(cause: unknown): string {
+  const sanitized = extractCauseText(cause).replaceAll(CONTROL_CHARACTERS, "?");
+  return sanitized.length > MAX_LOGGED_CAUSE_LENGTH
+    ? `${sanitized.slice(0, MAX_LOGGED_CAUSE_LENGTH)}...`
+    : sanitized;
+}
+
 function formatCollectionSyncSummary(result: CollectionSyncResult): string {
   return `${result.collection}: ${result.filesAdded} added, ${result.filesUpdated} updated, ${result.filesUnchanged} unchanged, ${result.filesErrored} errors`;
 }
@@ -162,6 +242,40 @@ export async function daemon(
       onSyncError: ({ collection, error }) => {
         logger.error(
           `watch sync failed: ${collection}: ${error instanceof Error ? error.message : String(error)}`
+        );
+      },
+      // fn-114: an event that cannot name an eligible path is a hint about a
+      // changed directory. These four make the hint, the bounded work it
+      // caused, and any failed stage visible in production, not only in tests.
+      onAmbiguousEvent: ({ collection, directory, reason }) => {
+        if (!options.quiet) {
+          logger.log(
+            `watch ambiguous event: ${collection} (${reason}) -> ${formatWatchDirectory(directory)}`
+          );
+        }
+      },
+      onReconcileStart: ({ collection, directory }) => {
+        if (options.verbose && !options.quiet) {
+          logger.log(
+            `watch reconcile started: ${collection} -> ${formatWatchDirectory(directory)}`
+          );
+        }
+      },
+      onReconcileComplete: ({
+        collection,
+        directory,
+        candidateCount,
+        syncedCount,
+      }) => {
+        if (!options.quiet) {
+          logger.log(
+            `watch reconciled: ${collection} -> ${formatWatchDirectory(directory)} (${candidateCount} candidate${candidateCount === 1 ? "" : "s"}, ${syncedCount} synced)`
+          );
+        }
+      },
+      onReconcileFailed: ({ collection, directory, stage, cause }) => {
+        logger.error(
+          `watch reconcile failed (${stage}): ${collection} -> ${formatWatchDirectory(directory)}: ${formatWatchCause(cause)}`
         );
       },
     },

@@ -177,4 +177,34 @@ describe("browser clipper response schemas", () => {
       )
     ).toBe(true);
   });
+
+  test("pairs error details with the only code that produces them", () => {
+    const details = {
+      reason: "PATH_OUTSIDE_COLLECTION",
+      relPath: "clips/article.md",
+    };
+    expect(
+      assertValid(
+        {
+          error: {
+            code: "VALIDATION",
+            message: "Refused a destination outside the collection.",
+            details,
+          },
+        },
+        schema("clipper-error")
+      )
+    ).toBe(true);
+    // The capture route's destination refusal is the one path that emits
+    // details, and it reports VALIDATION; details beside any other code is a
+    // response no server produces.
+    for (const code of ["CLIPPER_UNAUTHORIZED", "CLIPPER_CAPTURE_FAILED"]) {
+      expect(
+        assertInvalid(
+          { error: { code, message: "Unauthorized", details } },
+          schema("clipper-error")
+        )
+      ).toBe(true);
+    }
+  });
 });

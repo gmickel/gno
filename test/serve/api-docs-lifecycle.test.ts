@@ -12,6 +12,7 @@ import {
   FILE_REFACTOR_APPLY_CONFIRMATION,
   FILE_REFACTOR_SCHEMA_VERSION,
 } from "../../src/core/file-refactors";
+import { defaultSyncService } from "../../src/ingestion";
 import {
   handleCreateCapture,
   handleCreateDoc,
@@ -857,6 +858,94 @@ describe("document lifecycle API", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { relPath: string };
     expect(body.relPath).toBe("copy.md");
+  });
+
+  test("says a duplicated record container has no document at its URI", async () => {
+    // DISCRIMINATING against 0a3b57f5: the proof there SUCCEEDED for a
+    // container (it is indexed - as N records at virtual paths), so no warning
+    // was emitted and the response's `uri` silently named a path that resolves
+    // to nothing. Same silent non-composability the SDK's createNote had.
+    const doc = createDoc(tmpDir, {
+      relPath: "export.jsonl",
+      uri: "gno://notes/export.jsonl",
+      sourceExt: ".jsonl",
+    });
+    await writeFile(join(tmpDir, "export.jsonl"), '{"id":"a","text":"b"}\n');
+
+    const ctxHolder = createMockContextHolder({
+      collections: [
+        {
+          name: "notes",
+          path: tmpDir,
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+      ],
+    });
+    const store = {
+      ...createMockStore(doc),
+      listDocuments: async () =>
+        ({ ok: true as const, value: [doc] }) as StoreResult<DocumentRow[]>,
+      getLinksForDoc: async () => ({ ok: true as const, value: [] }) as never,
+      getBacklinksForDoc: async () =>
+        ({ ok: true as const, value: [] }) as never,
+      // No document at the copy's own path ...
+      getDocument: async () =>
+        ({ ok: true as const, value: null }) as StoreResult<DocumentRow | null>,
+      // ... but two ACTIVE logical records sourced from it.
+      listRecordDocuments: async () =>
+        ({
+          ok: true as const,
+          value: [
+            createDoc(tmpDir, {
+              relPath: ".gno/records/copy.jsonl/a",
+              recordSourcePath: "copy.jsonl",
+            }),
+            createDoc(tmpDir, {
+              relPath: ".gno/records/copy.jsonl/b",
+              recordSourcePath: "copy.jsonl",
+            }),
+          ],
+        }) as StoreResult<DocumentRow[]>,
+    };
+
+    // `handleDuplicateDoc` takes no sync injection point, and the mock store is
+    // not a real index, so the collection sync is stubbed to a plain success -
+    // the assertion below is about what the handler says AFTER a successful
+    // sync, which is exactly where the container case was silent.
+    const originalSyncCollection =
+      defaultSyncService.syncCollection.bind(defaultSyncService);
+    defaultSyncService.syncCollection = (async () => ({
+      collection: "notes",
+      durationMs: 1,
+      filesProcessed: 1,
+      filesAdded: 1,
+      filesUpdated: 0,
+      filesErrored: 0,
+      filesSkipped: 0,
+    })) as unknown as typeof defaultSyncService.syncCollection;
+    let res: Response;
+    try {
+      res = await handleDuplicateDoc(
+        ctxHolder,
+        store as never,
+        "#abc123",
+        new Request("http://localhost/api/docs/abc123/duplicate", {
+          method: "POST",
+          body: JSON.stringify({ name: "copy.jsonl" }),
+        })
+      );
+    } finally {
+      defaultSyncService.syncCollection = originalSyncCollection;
+    }
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { relPath: string; warning?: string };
+    expect(body.relPath).toBe("copy.jsonl");
+    expect(body.warning).toContain("2 logical record documents");
+    expect(body.warning).toContain("gno://notes/copy.jsonl");
+    expect(body.warning).toContain("resolves to no document");
   });
 
   test("moves editable markdown files to another folder", async () => {

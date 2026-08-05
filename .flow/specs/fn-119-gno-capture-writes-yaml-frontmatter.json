@@ -1,0 +1,24 @@
+{
+  "branch_name": "fn-119-gno-capture-writes-yaml-frontmatter",
+  "created_at": "2026-08-04T15:59:15.038252Z",
+  "depends_on_epics": [],
+  "id": "fn-119-gno-capture-writes-yaml-frontmatter",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-119-gno-capture-writes-yaml-frontmatter.md",
+  "status": "open",
+  "title": "gno capture writes YAML frontmatter into record-container files",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-08-04T15:59:40.618309Z"
+}

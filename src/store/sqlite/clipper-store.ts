@@ -17,6 +17,7 @@ import type {
   CreateClipperGrantResult,
   InspectClipperIdempotencyInput,
   InspectClipperIdempotencyResult,
+  ReleaseClipperIdempotencyResult,
   RevokeClipperGrantResult,
 } from "./clipper-store-types";
 
@@ -35,6 +36,7 @@ export type {
   CreateClipperGrantResult,
   InspectClipperIdempotencyInput,
   InspectClipperIdempotencyResult,
+  ReleaseClipperIdempotencyResult,
   RevokeClipperGrantResult,
 } from "./clipper-store-types";
 
@@ -424,6 +426,56 @@ export const inspectClipperIdempotency = (
   const row =
     keyRow ?? getIdempotencyRowByDigest(db, input.grantId, input.requestDigest);
   return row ? idempotencyResultFromRow(row) : { status: "not_found" };
+};
+
+/**
+ * Drop a pending claim whose request produced NO write.
+ *
+ * A claim exists to make a retry safe, not to remember a refusal. When the
+ * capture is rejected BEFORE anything is written - a destination the indexer
+ * could never reach - there is nothing for a later retry to reconcile against,
+ * and leaving the row `pending` turns the key into a tombstone: every retry
+ * re-enters recovery for a write that never happened. Deleting it restores the
+ * pre-request state exactly.
+ *
+ * Only a `pending` row is ever removed: a `completed` row is a persisted
+ * receipt and is returned untouched, so a concurrent completion cannot be
+ * erased by a losing request.
+ *
+ * The row is resolved exactly as `completeClipperIdempotency` resolves it -
+ * by key first, then by request digest. Recovery deliberately re-finds a claim
+ * through `getIdempotencyRowByDigest`, so the row this request actually claimed
+ * can carry a key hash from an EARLIER attempt (the extension regenerates the
+ * key after a crash). Releasing by the CURRENT key only would leave that row
+ * pending forever; release the row that was actually claimed.
+ */
+export const releaseClipperIdempotency = (
+  db: Database,
+  input: {
+    grantId: string;
+    keyHash: string;
+    requestDigest: string;
+  }
+): ReleaseClipperIdempotencyResult => {
+  assertIdentifier(input.grantId, "Grant id");
+  assertSha256(input.keyHash, "Idempotency key hash");
+  assertSha256(input.requestDigest, "Request digest");
+  const keyRow = getIdempotencyRow(db, input.grantId, input.keyHash);
+  if (keyRow && keyRow.request_digest !== input.requestDigest) {
+    return { status: "not_found" };
+  }
+  const row =
+    keyRow ?? getIdempotencyRowByDigest(db, input.grantId, input.requestDigest);
+  if (!row) return { status: "not_found" };
+  const replay = replayFromRow(row);
+  if (replay) return { status: "completed", replay };
+  const deleted = db.run(
+    `DELETE FROM clipper_capture_idempotency
+     WHERE grant_id = ? AND key_hash = ? AND request_digest = ?
+       AND state = 'pending'`,
+    [input.grantId, row.key_hash, input.requestDigest]
+  );
+  return deleted.changes > 0 ? { status: "released" } : { status: "not_found" };
 };
 
 export const completeClipperIdempotency = (

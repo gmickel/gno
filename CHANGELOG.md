@@ -13,6 +13,122 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reconciled resident watcher events against the changed directory instead of
+  trusting the reported filename. A recursive `fs.watch` does not reliably name
+  the file that actually changed: an atomic save (write a temporary sibling,
+  rename it into place) can report only the temporary name, and a recursive
+  directory delete can report only the directory. Both were discarded as
+  ineligible, so atomically saved documents stayed invisible and deleted ones
+  stayed retrievable until a manual `gno update`. An event that cannot name an
+  eligible path now marks its parent directory and the reported path itself as
+  dirty; at flush time the watcher reconciles the eligible files directly on
+  disk in that directory against the active indexed documents directly in it,
+  and hands one deduplicated batch to the existing path sync. The collection's
+  live `pattern`, `include`, `exclude`, dotfile and reserved-path rules, and
+  application-write suppression are re-applied to every candidate, so an
+  ineligible event never causes an ineligible file to be indexed.
+
+  An event that _does_ name an eligible path is no longer trusted as a complete
+  report either, because a deletion event is only one sample of a larger
+  removal. Deleting a directory recursively on Bun 1.3.14 / Linux reports a
+  single arbitrary child of it (`dir1/b.md`), where 1.3.11 reported the
+  directory itself. That child is eligible, so it took the exact-path fast path
+  and every unnamed sibling stayed retrievable indefinitely. A reported path
+  that has vanished from disk now also reconciles its directory: the watcher
+  walks up to the shallowest removed ancestor and deactivates every indexed
+  document beneath it, at any depth, so a deleted directory no longer strands
+  its nested documents. A live edit is untouched — the file still exists, so the
+  narrow per-path flow runs exactly as before.
+
+  Deleting or unmounting a watched collection directory itself is covered by the
+  same rule: every document indexed in that collection deactivates. A collection
+  directory that GNO cannot read — a permission error, a stalled network
+  mount — is deliberately not treated as deleted, so a failed check never
+  deactivates anything.
+
+  Three cases still need `gno update`: Linux subdirectories created after the
+  watcher started (oven-sh/bun#15939 — no event at all on Bun 1.3.11, reported
+  and picked up live on Bun 1.3.14), writes into a pre-existing Linux directory
+  renamed after the watcher started (reported under the stale pre-rename path,
+  so the files at the new location are never indexed), and a path
+  deleted and recreated inside the same ~300 ms batch. The watcher checks the
+  disk once when a batch flushes, so a path that is already back by then reads
+  as an ordinary edit; anything else removed in that window and never named by
+  its own event stays retrievable until another event touches its directory.
+  Once a removal _has_ been observed, a later recreation cannot narrow it — the
+  classification is carried through the flush rather than re-derived.
+  Thanks @DanielKillenberger for the report.
+
+- Proved every write destination before writing it, and demanded an indexed
+  document afterwards. `mkdir -p` does not create real directories — it follows
+  an existing directory symlink — so a capture beneath `alias -> real/` landed
+  where the no-follow indexer never looks, came back `skipped` (an ordinary
+  non-error), and was reported as a successful capture; `alias -> /outside`
+  wrote outside the collection entirely. Captures and note creation now prove
+  the parent chain component by component through the same reachability seam the
+  walker uses, refuse any symlink below the collection root before anything is
+  written, and distinguish an escaping alias (containment) from an unreachable
+  one. Destinations that cannot be resolved at all — permission, I/O, or a
+  non-directory ancestor — are refused as unresolved instead of being guessed
+  from the path text, and a merely missing target is judged against the
+  canonical collection root, so a collection reached through a symlink (macOS
+  `/tmp -> /private/tmp`) no longer reports a perfectly ordinary alias as an
+  escape. The refusal reason (`PATH_OUTSIDE_COLLECTION`, `PATH_NOT_WALKABLE`,
+  `PATH_UNRESOLVED`, `NOT_DIRECTORY`) is now carried structurally on the CLI,
+  SDK, REST, MCP, and browser-clipper surfaces rather than only inside the
+  message. A browser clip into such a destination returns that structured 409
+  instead of a generic 500, and releases the idempotency key it claimed, since
+  nothing was written. Where a write is confirmed asynchronously, the sync job
+  itself now fails rather than reporting `completed` for a file the index does
+  not have, and a duplicate that lands somewhere the collection does not index
+  says so instead of handing back a `gno://` URI that resolves to nothing.
+
+- Stopped reporting a half-imported record container as a clean capture. A
+  configured `.jsonl`/`.vtt` adapter that accepts one record and rejects another
+  produces an ordinary non-error file status, so the rejected records — and a
+  partial snapshot, whose unseen records were preserved rather than refreshed —
+  were visible only by digging into the sync result. Capture receipts now state
+  it in the existing `sync.reason`, on `gno capture`, `gno_capture`, SDK
+  `capture()`, and the REST capture/create jobs alike. A fully successful import
+  is unchanged. The FACT is shared; the consequence is per surface. A capture
+  receipt says the container leaves it with no `docid`; a write handle and SDK
+  `createNote()` — which have no `docid` at all — say there is no single
+  fetchable URI and to use `recordUris`. And each names a route to the rejected
+  records that its own caller has: the REST job result points at
+  `collections[].files[].recordImport.failures` on that same result, while the
+  shapes that carry only a count say so and name `gno update --verbose`, which
+  re-imports the container and prints every rejected record.
+
+- Made the REST create/capture job result hand back a handle that resolves.
+  `POST /api/docs` answers `202` before the write is proven, so its `uri` is a
+  path; for a record container that path has no document at all and the
+  completed job — the one channel that still reaches the caller — reported
+  success while offering only the unfetchable URI. The completed job now carries
+  `result.written`: `kind: "document"` with a fetchable `uri`, or
+  `kind: "record-container"` with the records' `recordUris` and no `uri` field.
+  The emitted `document-changed` event carries the same `kind`/`recordUris`.
+
+- Bounded the record-container write handle. `recordUris` listed every record a
+  container produced, and a valid container can hold six figures of them — so a
+  single write added a multi-megabyte array to a job the manager retains for an
+  hour (up to 100 of them) and JSON-encoded the same array into a
+  `document-changed` frame for every connected SSE client. The handle now
+  carries an exact `recordCount`, the first 1,000 record URIs — the same cap the
+  record-import receipt already used — and `recordUrisTruncated`, on the REST job
+  result, the SSE event, and SDK `createNote()` alike. Containers at or under
+  1,000 records are unchanged apart from the two added fields. The records a
+  truncated page omits are not listed by the handle: there is no _dedicated_
+  per-container enumeration endpoint, so `reason` names no continuation offset,
+  but it does name the mechanisms that reach them — a prefix-scoped listing of
+  the container's virtual record directory (`client.list({ scope })`,
+  `gno ls <scope>`) and ordinary collection paging, where every logical record
+  carries `relPath` projected from its container's path.
+
+- Rejected `recordSourcePath` on `GET /api/docs` with `400 VALIDATION`. The
+  endpoint has no per-container filter; ignoring the parameter would answer a
+  request for one container's records with the entire collection — or, with no
+  `collection`, with documents from every collection.
+
 ## [1.34.0] - 2026-08-04
 
 ### Added
