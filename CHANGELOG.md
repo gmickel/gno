@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed local GGUF generation (answers and claim verification) consuming all
+  available VRAM: `contextSize` was never passed to node-llama-cpp, whose
+  `"auto"` default grows the KV cache up to the model's trained context
+  length. Generation contexts are now sized to the actual prompt plus output
+  budget, capped at the trained context size. Thanks @fightp86 for the
+  detailed report and VRAM measurements ([#189](https://github.com/gmickel/gno/issues/189)).
+
 ## [1.34.1] - 2026-08-07
 
 ### Added

@@ -60,6 +60,29 @@ const DEFAULT_TEMPERATURE = 0;
 const DEFAULT_SEED = 42;
 const DEFAULT_MAX_TOKENS = 256;
 
+// Context sizing: without an explicit contextSize, node-llama-cpp defaults to
+// "auto", which grows the KV cache to fill available VRAM up to the model's
+// trained context length (OOM risk on small GPUs — see issue #189). Instead,
+// size the context to what the call actually needs: prompt tokens + output
+// budget + margin for chat-template wrapping and special tokens.
+const GEN_CONTEXT_MARGIN_TOKENS = 512;
+const GEN_CONTEXT_MIN_TOKENS = 1024;
+
+export const resolveGenContextSize = (input: {
+  promptTokenCount: number;
+  maxTokens: number;
+  trainContextSize?: number;
+}): number => {
+  const needed = Math.max(
+    GEN_CONTEXT_MIN_TOKENS,
+    input.promptTokenCount + input.maxTokens + GEN_CONTEXT_MARGIN_TOKENS
+  );
+  if (input.trainContextSize && input.trainContextSize > 0) {
+    return Math.min(needed, input.trainContextSize);
+  }
+  return needed;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Implementation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,9 +120,14 @@ export class NodeLlamaCppGeneration implements GenerationPort {
             await this.manager.getLlama()
           ).createGrammarForJsonSchema(params.jsonSchema as JsonGrammarSchema)
         : undefined;
-      context = await llamaModel.createContext(
-        params?.contextSize ? { contextSize: params.contextSize } : undefined
-      );
+      const contextSize =
+        params?.contextSize ??
+        resolveGenContextSize({
+          promptTokenCount: llamaModel.tokenize(prompt).length,
+          maxTokens: params?.maxTokens ?? DEFAULT_MAX_TOKENS,
+          trainContextSize: llamaModel.trainContextSize,
+        });
+      context = await llamaModel.createContext({ contextSize });
       // Import LlamaChatSession dynamically
       const { LlamaChatSession } = await import("node-llama-cpp");
       const session = new LlamaChatSession({
