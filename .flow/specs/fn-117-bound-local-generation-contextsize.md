@@ -40,17 +40,17 @@ minimal.
 
 ## Acceptance Criteria
 
-- R1: When no explicit `contextSize` is supplied, local generation sizes the
+- **R1:** When no explicit `contextSize` is supplied, local generation sizes the
   context to actual need (prompt tokens + output budget + margin) — never
   node-llama-cpp "auto"; `createContext` always receives an explicit bounded
   `contextSize`.
-- R2: The computed size is floored at 1024 tokens and capped at the model's
+- **R2:** The computed size is floored at 1024 tokens and capped at the model's
   trained context size when known; unknown/non-positive trained size falls
   back to the uncapped dynamic value.
-- R3: Explicit `contextSize` params (expansion path) keep prior behavior.
-- R4: Regression tests cover the sizing resolver: margin math, floor, cap,
+- **R3:** Explicit `contextSize` params (expansion path) keep prior behavior.
+- **R4:** Regression tests cover the sizing resolver: margin math, floor, cap,
   unknown and non-positive trained size.
-- R5: CHANGELOG [Unreleased] entry credits @fightp86 and links issue #189;
+- **R5:** CHANGELOG [Unreleased] entry credits @fightp86 and links issue #189;
   `bun test` and `bun run lint:check` green.
 
 ## Boundaries
