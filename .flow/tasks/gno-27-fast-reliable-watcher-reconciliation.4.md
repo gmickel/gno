@@ -46,9 +46,19 @@ Bring public/developer documentation, contributor credit, hosted-site truth, and
 ## Acceptance
 - [ ] TBD
 ## Done summary
-TBD
+Documented and live-verified the watcher reconciliation contract across the GNO repository and canonical gno.sh source.
 
+- Exact eligible events retain content-hash authority.
+- Atomic-save, directory, missing-name, vanished-path, and recursive-delete events use bounded filesystem/index reconciliation.
+- Only proven candidates/removals mutate state; failures retain durable retry; overflow or unavailable anchored handles escalate to full collection sync.
+- Claims are limited to tested supported local filesystems; network/removable/coarse-timestamp behavior is not universally guaranteed.
+- Added Unreleased credit to @DanielKillenberger for the report/core direction and identified the implementation as fresh maintainer work.
+- Checked status/API, Capsule, glossary, MCP, and output-schema surfaces: no public shape changed, so no edits were required.
+- The 5,000-file proof remains labeled as candidate discovery in its emitted evidence; documentation does not conflate it with production full reconciliation. Windows remains path-backed in the cross-platform evidence workflow.
+- Updated canonical gno.sh docs/product/FAQ sources in commit c427ab8 on branch codex/gno-27-watcher-docs. Local desktop/mobile QA caught and fixed one JSX spacing defect. Production deployment/QA is intentionally deferred until merge.
+
+Host-native implementation review: SHIP. Copy matches implementation and boundaries; no schema drift, stale changed-path claim, or unsupported filesystem promise found.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: b7bc754c
+- Tests: bun run lint:check, bun test (4215 pass, 2 expected skip, 0 fail), bun scripts/watcher-reconciliation-benchmark.ts (5000 files, one candidate, p95 57.84ms <= 250ms; bounded fallback 69.54ms), bun scripts/watcher-reconciliation-smoke.ts (atomic visible, nested deletion inactive, untouched sibling searchable, status 0.14ms), bun run docs:verify (15 pass, 0 fail, 2 model-dependent skip), gno.sh bun run check, gno.sh bun run typecheck, gno.sh bun run build (80 pages prerendered), agent-browser local QA: daemon feature, CLI docs, Web UI docs, how-to, FAQ, and 390x844 mobile
 - PRs:
