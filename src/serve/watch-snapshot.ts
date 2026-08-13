@@ -5,6 +5,7 @@
  * indexed content is unchanged; exact eligible paths still content-hash.
  *
  * Public contract only — implementation is split across focused modules.
+ * This facade re-exports the concrete public surface (not an unrelated barrel).
  *
  * @module src/serve/watch-snapshot
  */
@@ -22,6 +23,8 @@ export type {
   SnapshotEntryFingerprint,
   SnapshotEntryKind,
   SnapshotFallbackReason,
+  SnapshotMapHooks,
+  WatcherDirHandle,
   WatcherSnapshot,
   WatcherSnapshotBuildResult,
   WatcherSnapshotClock,
@@ -38,3 +41,8 @@ export {
 } from "./watch-snapshot-ops";
 
 export { resolveWatcherDirtyDirectory } from "./watch-snapshot-resolve";
+
+export {
+  createPathBackedWatcherFs,
+  removeSubtreeFromMaps,
+} from "./watch-snapshot-scan";

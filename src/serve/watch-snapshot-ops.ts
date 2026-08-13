@@ -7,6 +7,7 @@
 import type {
   DiffWorkResult,
   SnapshotEntryFingerprint,
+  SnapshotMapHooks,
   WatcherSnapshot,
   WatcherSnapshotBuildResult,
   WatcherSnapshotDiffResult,
@@ -17,7 +18,6 @@ import type {
 import { resolveWatcherDirtyDirectory } from "./watch-snapshot-resolve";
 import {
   cloneDirectoryMaps,
-  collectSnapshotFilesUnder,
   defaultClock,
   defaultFs,
   freezeSnapshot,
@@ -32,6 +32,7 @@ import {
   joinWatcherRelPath,
   normalizeWatcherRelPath,
   parentWatcherDir,
+  sortPathList,
 } from "./watch-snapshot-types";
 
 /**
@@ -115,7 +116,8 @@ export async function buildWatcherSnapshot(
  *
  * - Compares direct children only
  * - Recurses into changed or new real directories
- * - Expands removals from the old snapshot
+ * - Expands removals hierarchically from the old snapshot (O(subtree))
+ * - Emits explicit `removals` separate from present/changed `candidates`
  * - Never mutates `previous`; overflow/failure leaves it as the last proven state
  */
 export async function diffWatcherSnapshot(
@@ -127,6 +129,7 @@ export async function diffWatcherSnapshot(
   const fs = options.fs ?? defaultFs;
   const clock = options.clock ?? defaultClock;
   const ceiling = options.entryCeiling ?? WATCHER_SNAPSHOT_ENTRY_CEILING;
+  const mapHooks = options.mapHooks;
   const started = clock.nowMs();
 
   const normalizedDirs: string[] = [];
@@ -150,6 +153,7 @@ export async function diffWatcherSnapshot(
     return {
       status: "ok",
       candidates: [],
+      removals: [],
       nextSnapshot: previous,
       discoveryMs: clock.nowMs() - started,
     };
@@ -157,7 +161,30 @@ export async function diffWatcherSnapshot(
 
   const nextState = cloneDirectoryMaps(previous);
   const candidates = new Set<string>();
+  const removals = new Set<string>();
   const visited = new Set<string>();
+
+  const recordSubtreeRemovals = (dirRel: string): void => {
+    // One hierarchical collect+remove pass — no prior full-map scan.
+    for (const path of removeSubtreeFromMaps(nextState, dirRel, mapHooks)) {
+      removals.add(path);
+    }
+  };
+
+  const removeDirEntryFromParent = (dirRel: string): void => {
+    const parent = parentWatcherDir(dirRel);
+    if (parent === null) {
+      return;
+    }
+    const parentEntries = nextState.directories.get(parent);
+    if (!parentEntries) {
+      return;
+    }
+    const base = dirRel.slice(parent === "" ? 0 : parent.length + 1);
+    if (parentEntries.delete(base)) {
+      nextState.entryCount -= 1;
+    }
+  };
 
   const diffDirectory = async (dirRel: string): Promise<DiffWorkResult> => {
     if (visited.has(dirRel)) {
@@ -174,31 +201,8 @@ export async function diffWatcherSnapshot(
           cause: new Error("Collection root is missing"),
         };
       }
-      for (const path of collectSnapshotFilesUnder(
-        nextState.directories,
-        dirRel
-      )) {
-        candidates.add(path);
-      }
-      // Also pull from previous in case nextState was already partially edited.
-      for (const path of collectSnapshotFilesUnder(
-        previous.directories,
-        dirRel
-      )) {
-        candidates.add(path);
-      }
-      removeSubtreeFromMaps(nextState, dirRel);
-      // Remove the directory entry from its parent map when nested.
-      const parent = parentWatcherDir(dirRel);
-      if (parent !== null) {
-        const parentEntries = nextState.directories.get(parent);
-        if (parentEntries) {
-          const base = dirRel.slice(parent === "" ? 0 : parent.length + 1);
-          if (parentEntries.delete(base)) {
-            nextState.entryCount -= 1;
-          }
-        }
-      }
+      recordSubtreeRemovals(dirRel);
+      removeDirEntryFromParent(dirRel);
       return { status: "ok" };
     }
     if (scanned.status !== "present") {
@@ -224,22 +228,9 @@ export async function diffWatcherSnapshot(
       if (oldFp && !newFp) {
         // Removed entry: expand prior subtree for directories; files/symlinks directly.
         if (oldFp.kind === "directory") {
-          for (const path of collectSnapshotFilesUnder(
-            previous.directories,
-            childRel
-          )) {
-            candidates.add(path);
-          }
-          // previous may already have been partially cloned; also clear nextState.
-          for (const path of collectSnapshotFilesUnder(
-            nextState.directories,
-            childRel
-          )) {
-            candidates.add(path);
-          }
-          removeSubtreeFromMaps(nextState, childRel);
+          recordSubtreeRemovals(childRel);
         } else {
-          candidates.add(childRel);
+          removals.add(childRel);
         }
         continue;
       }
@@ -265,38 +256,38 @@ export async function diffWatcherSnapshot(
       }
 
       if (oldFp && newFp && !fingerprintsEqual(oldFp, newFp)) {
-        // Changed entry.
+        // Changed entry — handle kind transitions explicitly.
         if (oldFp.kind === "directory" && newFp.kind !== "directory") {
-          // Directory replaced by file/symlink: prior children are removals.
-          for (const path of collectSnapshotFilesUnder(
-            previous.directories,
-            childRel
-          )) {
-            candidates.add(path);
-          }
-          removeSubtreeFromMaps(nextState, childRel);
+          // Directory replaced by file/symlink: prior nested sources are removals.
+          recordSubtreeRemovals(childRel);
         }
+
+        if (oldFp.kind !== "directory" && newFp.kind === "directory") {
+          // File/symlink/other → directory: old source path is explicitly removable.
+          // New directory descendants become present candidates via scan.
+          removals.add(childRel);
+          const built = await scanNewSubtree(
+            rootAbs,
+            childRel,
+            fs,
+            nextState,
+            candidates,
+            ceiling
+          );
+          if (built.status !== "ok") {
+            return built;
+          }
+          continue;
+        }
+
         if (newFp.kind === "directory") {
-          // Recurse into changed or newly-directory path.
-          if (oldFp.kind !== "directory") {
-            const built = await scanNewSubtree(
-              rootAbs,
-              childRel,
-              fs,
-              nextState,
-              candidates,
-              ceiling
-            );
-            if (built.status !== "ok") {
-              return built;
-            }
-          } else {
-            const nested = await diffDirectory(childRel);
-            if (nested.status !== "ok") {
-              return nested;
-            }
+          // Directory → directory (metadata change): recurse.
+          const nested = await diffDirectory(childRel);
+          if (nested.status !== "ok") {
+            return nested;
           }
         } else {
+          // Non-directory present/changed (including directory→file after removals).
           candidates.add(childRel);
         }
       }
@@ -326,13 +317,10 @@ export async function diffWatcherSnapshot(
     };
   }
 
-  const sorted = [...candidates].sort((left, right) =>
-    left < right ? -1 : left > right ? 1 : 0
-  );
-
   return {
     status: "ok",
-    candidates: sorted,
+    candidates: sortPathList(candidates),
+    removals: sortPathList(removals),
     nextSnapshot: freezeSnapshot(nextState),
     discoveryMs: clock.nowMs() - started,
   };
@@ -413,6 +401,7 @@ export async function reconcileWatcherHints(
     return {
       status: "ok",
       candidates: [],
+      removals: [],
       nextSnapshot: previous,
       discoveryMs: clock.nowMs() - started,
     };
@@ -420,3 +409,6 @@ export async function reconcileWatcherHints(
 
   return diffWatcherSnapshot(rootAbs, previous, [...dirty], options);
 }
+
+// mapHooks type re-export surface for tests importing options only
+export type { SnapshotMapHooks };

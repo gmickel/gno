@@ -53,13 +53,66 @@ export interface WatcherSnapshotStat {
   unreliable?: boolean;
 }
 
+/**
+ * Opaque directory handle for anchored (openat-style) enumeration.
+ * Production pins a real directory inode; tests may use path-backed handles.
+ */
+export type WatcherDirHandle = {
+  readonly __watcherDirHandle: unique symbol;
+};
+
+/**
+ * Injectable filesystem surface for watcher snapshots.
+ *
+ * Production must set `supportsAnchoredHandles` and implement handle ops so
+ * child metadata is resolved relative to a stable directory fd (no path
+ * re-walk after the parent is opened). When handles are unavailable, scans
+ * return `scan_failed` / `unreliable_metadata` rather than claiming
+ * strict no-follow safety.
+ */
 export interface WatcherSnapshotFs {
-  readdir(absPath: string): Promise<string[]>;
-  lstat(absPath: string): Promise<WatcherSnapshotStat>;
+  /**
+   * True only when openDir/readDir/lstatChild/openChildDir/closeDir form a
+   * safe anchored scan path for this runtime/platform.
+   */
+  readonly supportsAnchoredHandles: boolean;
+
+  /** Open an absolute path as a real directory without following a final symlink. */
+  openDir(absPath: string): Promise<WatcherDirHandle>;
+
+  /** Enumerate direct child names via the open directory handle. */
+  readDir(handle: WatcherDirHandle): Promise<string[]>;
+
+  /**
+   * No-follow lstat of a direct child relative to an open directory handle.
+   * Must not re-resolve intermediate path components outside the handle.
+   */
+  lstatChild(
+    handle: WatcherDirHandle,
+    name: string
+  ): Promise<WatcherSnapshotStat>;
+
+  /**
+   * Open a direct child as a real directory relative to the parent handle
+   * (no-follow). Rejects symlink children.
+   */
+  openChildDir(
+    handle: WatcherDirHandle,
+    name: string
+  ): Promise<WatcherDirHandle>;
+
+  /** Deterministic close; safe to call once per open. */
+  closeDir(handle: WatcherDirHandle): Promise<void>;
 }
 
 export interface WatcherSnapshotClock {
   nowMs(): number;
+}
+
+/** Test/prod hooks for map-visit complexity instrumentation. */
+export interface SnapshotMapHooks {
+  /** Invoked once per directory-map visit during hierarchical subtree walks. */
+  onDirectoryMapVisit?: () => void;
 }
 
 export type SnapshotFallbackReason =
@@ -83,8 +136,18 @@ export type WatcherSnapshotBuildResult =
 export type WatcherSnapshotDiffResult =
   | {
       status: "ok";
-      /** Added, changed, or removed file/symlink paths (POSIX, collection-relative). */
+      /**
+       * Present/changed file and symlink paths that still exist and need
+       * content-hash consideration (added, edited, or new under a directory).
+       * Does not include proven removals.
+       */
       candidates: string[];
+      /**
+       * Proven removable source paths: deleted files/symlinks, prior files
+       * replaced by a directory, and expanded nested files under removed or
+       * directory→non-directory transitions.
+       */
+      removals: string[];
       nextSnapshot: WatcherSnapshot;
       discoveryMs: number;
     }
@@ -100,6 +163,8 @@ export interface WatcherSnapshotOptions {
   clock?: WatcherSnapshotClock;
   /** Override the service-wide ceiling (tests only). */
   entryCeiling?: number;
+  /** Map-visit instrumentation (tests / complexity regression). */
+  mapHooks?: SnapshotMapHooks;
 }
 
 export type ScanFailure =
@@ -252,9 +317,8 @@ export function isMissingFsError(error: unknown): boolean {
   return code === "ENOENT" || code === "ENOTDIR";
 }
 
-export function directoryIsUnder(dir: string, ancestor: string): boolean {
-  if (ancestor === "") {
-    return true;
-  }
-  return dir === ancestor || dir.startsWith(`${ancestor}/`);
+export function sortPathList(paths: Iterable<string>): string[] {
+  return [...paths].sort((left, right) =>
+    left < right ? -1 : left > right ? 1 : 0
+  );
 }

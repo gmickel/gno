@@ -4,53 +4,31 @@
  * @module src/serve/watch-snapshot-scan
  */
 
-// node:fs/promises — Bun has no readdir/lstat with Dirent/bigint metadata
-import {
-  lstat as defaultLstat,
-  readdir as defaultReaddir,
-} from "node:fs/promises";
-// node:path — Bun has no path utilities
-import { join } from "node:path";
-
 import type {
   ScanFailure,
   SnapshotEntryFingerprint,
+  SnapshotMapHooks,
+  WatcherDirHandle,
   WatcherSnapshot,
   WatcherSnapshotClock,
   WatcherSnapshotFs,
   WatcherSnapshotStat,
 } from "./watch-snapshot-types";
 
+import { createDefaultWatcherFs } from "./watch-snapshot-handles";
 import {
-  directoryIsUnder,
   fingerprintFromStat,
   isMissingFsError,
   joinWatcherRelPath,
-  kindOf,
-  toBigInt,
 } from "./watch-snapshot-types";
+
+export { createPathBackedWatcherFs } from "./watch-snapshot-handles";
 
 export const defaultClock: WatcherSnapshotClock = {
   nowMs: () => performance.now(),
 };
 
-export const defaultFs: WatcherSnapshotFs = {
-  readdir: async (absPath: string): Promise<string[]> =>
-    defaultReaddir(absPath),
-  lstat: async (absPath: string): Promise<WatcherSnapshotStat> => {
-    const stat = await defaultLstat(absPath, { bigint: true });
-    return {
-      isFile: () => stat.isFile(),
-      isDirectory: () => stat.isDirectory(),
-      isSymbolicLink: () => stat.isSymbolicLink(),
-      dev: stat.dev,
-      ino: stat.ino,
-      size: stat.size,
-      mtimeNs: stat.mtimeNs,
-      ctimeNs: stat.ctimeNs,
-    };
-  },
-};
+export const defaultFs: WatcherSnapshotFs = createDefaultWatcherFs();
 
 /** Mutable hierarchical maps with incremental entry accounting. */
 export interface MutableSnapshotMaps {
@@ -98,81 +76,133 @@ export function setDirectoryEntries(
 }
 
 /**
- * Remove a directory subtree from mutable maps.
- * Returns removal candidates (non-directory paths under the subtree).
+ * Hierarchical O(subtree-size) removal using stored child relationships.
+ * Single pass: collect non-directory paths and delete maps — no full-map
+ * prefix scan and no separate collect-then-remove phases.
  */
 export function removeSubtreeFromMaps(
   state: MutableSnapshotMaps,
-  dirRel: string
+  dirRel: string,
+  hooks?: SnapshotMapHooks
 ): string[] {
   const removedCandidates: string[] = [];
-  const dirsToDelete: string[] = [];
+  const stack: string[] = [dirRel];
 
-  for (const [dir, entries] of state.directories) {
-    if (!directoryIsUnder(dir, dirRel)) {
+  while (stack.length > 0) {
+    const dir = stack.pop() as string;
+    hooks?.onDirectoryMapVisit?.();
+    const entries = state.directories.get(dir);
+    if (!entries) {
       continue;
     }
     for (const [name, fingerprint] of entries) {
-      if (fingerprint.kind !== "directory") {
-        removedCandidates.push(joinWatcherRelPath(dir, name));
+      const childRel = joinWatcherRelPath(dir, name);
+      if (fingerprint.kind === "directory") {
+        stack.push(childRel);
+      } else {
+        removedCandidates.push(childRel);
       }
     }
-    dirsToDelete.push(dir);
+    state.entryCount -= entries.size;
+    state.directories.delete(dir);
   }
 
-  for (const dir of dirsToDelete) {
-    const entries = state.directories.get(dir);
-    if (entries) {
-      state.entryCount -= entries.size;
-      state.directories.delete(dir);
-    }
-  }
   return removedCandidates;
 }
 
+/**
+ * Hierarchical collect of non-directory paths under a stored directory.
+ * O(subtree-size) via child relationships — not a full-map prefix scan.
+ */
 export function collectSnapshotFilesUnder(
   directories: ReadonlyMap<
     string,
     ReadonlyMap<string, SnapshotEntryFingerprint>
   >,
-  dirRel: string
+  dirRel: string,
+  hooks?: SnapshotMapHooks
 ): string[] {
   const out: string[] = [];
-  for (const [dir, entries] of directories) {
-    if (!directoryIsUnder(dir, dirRel)) {
+  const stack: string[] = [dirRel];
+  while (stack.length > 0) {
+    const dir = stack.pop() as string;
+    hooks?.onDirectoryMapVisit?.();
+    const entries = directories.get(dir);
+    if (!entries) {
       continue;
     }
     for (const [name, fingerprint] of entries) {
-      if (fingerprint.kind !== "directory") {
-        out.push(joinWatcherRelPath(dir, name));
+      const childRel = joinWatcherRelPath(dir, name);
+      if (fingerprint.kind === "directory") {
+        stack.push(childRel);
+      } else {
+        out.push(childRel);
       }
     }
   }
   return out;
 }
 
-function isRealDirectory(stat: WatcherSnapshotStat): boolean {
-  return stat.isDirectory() && !stat.isSymbolicLink();
-}
-
-function identityOf(
-  stat: WatcherSnapshotStat
-): { device: bigint; inode: bigint } | null {
-  const device = toBigInt(stat.dev);
-  const inode = toBigInt(stat.ino);
-  if (device === null || inode === null) {
-    return null;
+/**
+ * Open a collection-relative directory by walking components from the root
+ * handle. Never opens a full joined path that could traverse intermediate
+ * symlinks.
+ */
+export async function openDirByRel(
+  rootAbs: string,
+  dirRel: string,
+  fs: WatcherSnapshotFs
+): Promise<
+  | { status: "ok"; handle: WatcherDirHandle }
+  | { status: "missing" }
+  | ScanFailure
+> {
+  if (!fs.supportsAnchoredHandles) {
+    return {
+      status: "scan_failed",
+      cause: new Error(
+        "Anchored no-follow directory handles unavailable; refusing path-based scan"
+      ),
+    };
   }
-  return { device, inode };
+
+  let handle: WatcherDirHandle;
+  try {
+    handle = await fs.openDir(rootAbs);
+  } catch (cause) {
+    if (isMissingFsError(cause)) {
+      return { status: "missing" };
+    }
+    return { status: "scan_failed", cause };
+  }
+
+  if (dirRel === "") {
+    return { status: "ok", handle };
+  }
+
+  const segments = dirRel.split("/");
+  for (const segment of segments) {
+    let child: WatcherDirHandle;
+    try {
+      // Reject non-directory / symlink components by requiring openChildDir.
+      child = await fs.openChildDir(handle, segment);
+    } catch (cause) {
+      await fs.closeDir(handle);
+      if (isMissingFsError(cause)) {
+        return { status: "missing" };
+      }
+      return { status: "scan_failed", cause };
+    }
+    await fs.closeDir(handle);
+    handle = child;
+  }
+  return { status: "ok", handle };
 }
 
 /**
- * Enumerate direct children of a real directory without following symlinks.
- *
- * Identity-aware: lstats the directory itself before and after readdir and
- * requires it remain a real directory with the same device/inode. On
- * symlink/kind/identity change, fails closed before any child lstat so a
- * TOCTOU swap to an outside symlink cannot cause traversal outside root.
+ * Enumerate direct children via an anchored directory handle.
+ * Child metadata is resolved relative to the handle — a path swap after open
+ * cannot redirect lstat outside the pinned directory.
  */
 export async function readDirectChildren(
   rootAbs: string,
@@ -183,101 +213,63 @@ export async function readDirectChildren(
   | { status: "missing" }
   | ScanFailure
 > {
-  const absDir = dirRel === "" ? rootAbs : join(rootAbs, ...dirRel.split("/"));
-
-  let preStat: WatcherSnapshotStat;
-  try {
-    preStat = await fs.lstat(absDir);
-  } catch (cause) {
-    if (isMissingFsError(cause)) {
-      return { status: "missing" };
-    }
-    return { status: "scan_failed", cause };
-  }
-
-  if (!isRealDirectory(preStat)) {
+  if (!fs.supportsAnchoredHandles) {
     return {
       status: "scan_failed",
       cause: new Error(
-        `Expected real directory at ${dirRel || "."}, found ${kindOf(preStat)}`
+        "Anchored no-follow directory handles unavailable; refusing path-based scan"
       ),
     };
   }
 
-  const preIdentity = identityOf(preStat);
-  if (preIdentity === null) {
-    return { status: "unreliable_metadata" };
+  const opened = await openDirByRel(rootAbs, dirRel, fs);
+  if (opened.status !== "ok") {
+    return opened;
   }
+  const { handle } = opened;
 
-  let names: string[];
   try {
-    names = await fs.readdir(absDir);
-  } catch (cause) {
-    if (isMissingFsError(cause)) {
-      return { status: "missing" };
-    }
-    return { status: "scan_failed", cause };
-  }
-
-  // Re-verify before any child stats: fail closed on symlink/kind/identity race.
-  let postStat: WatcherSnapshotStat;
-  try {
-    postStat = await fs.lstat(absDir);
-  } catch (cause) {
-    if (isMissingFsError(cause)) {
-      return { status: "missing" };
-    }
-    return { status: "scan_failed", cause };
-  }
-
-  if (!isRealDirectory(postStat)) {
-    return {
-      status: "scan_failed",
-      cause: new Error(
-        `Directory became ${kindOf(postStat)} during scan: ${dirRel || "."}`
-      ),
-    };
-  }
-
-  const postIdentity = identityOf(postStat);
-  if (postIdentity === null) {
-    return { status: "unreliable_metadata" };
-  }
-  if (
-    postIdentity.device !== preIdentity.device ||
-    postIdentity.inode !== preIdentity.inode
-  ) {
-    return {
-      status: "scan_failed",
-      cause: new Error(
-        `Directory identity changed during scan: ${dirRel || "."}`
-      ),
-    };
-  }
-
-  const entries = new Map<string, SnapshotEntryFingerprint>();
-  // Stable order keeps overflow selection deterministic across platforms.
-  names.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
-  for (const name of names) {
-    if (name === "" || name === "." || name === "..") {
-      continue;
-    }
-    const absPath = join(absDir, name);
-    let stat: WatcherSnapshotStat;
+    let names: string[];
     try {
-      stat = await fs.lstat(absPath);
+      names = await fs.readDir(handle);
     } catch (cause) {
       if (isMissingFsError(cause)) {
-        // Race: entry vanished between readdir and lstat — skip, do not fail.
-        continue;
+        return { status: "missing" };
       }
       return { status: "scan_failed", cause };
     }
-    const fingerprinted = fingerprintFromStat(stat);
-    if (!fingerprinted.ok) {
-      return { status: "unreliable_metadata" };
+
+    const entries = new Map<string, SnapshotEntryFingerprint>();
+    // Stable order keeps overflow selection deterministic across platforms.
+    names.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+    for (const name of names) {
+      if (name === "" || name === "." || name === "..") {
+        continue;
+      }
+      if (name.includes("/") || name.includes("\\") || name.includes("\0")) {
+        return {
+          status: "scan_failed",
+          cause: new Error(`Invalid directory entry name: ${name}`),
+        };
+      }
+      let stat: WatcherSnapshotStat;
+      try {
+        stat = await fs.lstatChild(handle, name);
+      } catch (cause) {
+        if (isMissingFsError(cause)) {
+          // Race: entry vanished between readdir and lstat — skip, do not fail.
+          continue;
+        }
+        return { status: "scan_failed", cause };
+      }
+      const fingerprinted = fingerprintFromStat(stat);
+      if (!fingerprinted.ok) {
+        return { status: "unreliable_metadata" };
+      }
+      entries.set(name, fingerprinted.fingerprint);
     }
-    entries.set(name, fingerprinted.fingerprint);
+    return { status: "present", entries };
+  } finally {
+    await fs.closeDir(handle);
   }
-  return { status: "present", entries };
 }

@@ -1,0 +1,266 @@
+/**
+ * Core build/diff selection for watcher hierarchical snapshots (gno-27 task .1).
+ */
+
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import {
+  buildWatcherSnapshot,
+  diffWatcherSnapshot,
+  reconcileWatcherHints,
+  resolveWatcherDirtyDirectory,
+} from "../../src/serve/watch-snapshot";
+import { safeRm } from "../helpers/cleanup";
+import { writeWatchFixture } from "./helpers/watch-snapshot-fixtures";
+
+describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
+  let root = "";
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), "gno-watch-snap-"));
+  });
+
+  afterEach(async () => {
+    await safeRm(root);
+  });
+
+  test("unchanged dirty directory yields no candidates and preserves fingerprints", async () => {
+    await writeWatchFixture(root, "a.md", "one");
+    await writeWatchFixture(root, "b.md", "two");
+
+    const built = await buildWatcherSnapshot(root);
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") {
+      return;
+    }
+
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    expect(diff.status).toBe("ok");
+    if (diff.status !== "ok") {
+      return;
+    }
+    expect(diff.candidates).toEqual([]);
+    expect(diff.removals).toEqual([]);
+    expect(diff.nextSnapshot.entryCount).toBe(built.snapshot.entryCount);
+  });
+
+  test("added, changed, and removed files are selected", async () => {
+    await writeWatchFixture(root, "keep.md", "k");
+    await writeWatchFixture(root, "gone.md", "g");
+    await writeWatchFixture(root, "edit.md", "old");
+
+    const built = await buildWatcherSnapshot(root);
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") {
+      return;
+    }
+
+    await writeWatchFixture(root, "new.md", "n");
+    await writeWatchFixture(root, "edit.md", "new-body");
+    const { unlink } = await import("node:fs/promises");
+    await unlink(join(root, "gone.md"));
+
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    expect(diff.status).toBe("ok");
+    if (diff.status !== "ok") {
+      return;
+    }
+    expect(diff.candidates).toEqual(["edit.md", "new.md"]);
+    expect(diff.removals).toEqual(["gone.md"]);
+  });
+
+  test("nested change does not select untouched siblings", async () => {
+    await mkdir(join(root, "sub"), { recursive: true });
+    await writeWatchFixture(root, "root.md", "r");
+    await writeWatchFixture(root, "sub/keep.md", "k");
+    await writeWatchFixture(root, "sub/edit.md", "old");
+
+    const built = await buildWatcherSnapshot(root);
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") {
+      return;
+    }
+
+    await writeWatchFixture(root, "sub/edit.md", "new");
+
+    const diff = await diffWatcherSnapshot(root, built.snapshot, ["sub"]);
+    expect(diff.status).toBe("ok");
+    if (diff.status !== "ok") {
+      return;
+    }
+    expect(diff.candidates).toEqual(["sub/edit.md"]);
+    expect(diff.removals).toEqual([]);
+  });
+
+  test("removed directory expands prior nested files from the snapshot", async () => {
+    await mkdir(join(root, "tree", "deep"), { recursive: true });
+    await writeWatchFixture(root, "tree/a.md", "a");
+    await writeWatchFixture(root, "tree/deep/b.md", "b");
+    await writeWatchFixture(root, "sibling.md", "s");
+
+    const built = await buildWatcherSnapshot(root);
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") {
+      return;
+    }
+
+    await safeRm(join(root, "tree"));
+
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    expect(diff.status).toBe("ok");
+    if (diff.status !== "ok") {
+      return;
+    }
+    expect(diff.candidates).toEqual([]);
+    expect(diff.removals).toEqual(["tree/a.md", "tree/deep/b.md"]);
+    // Proven snapshot advances only after successful classification.
+    expect(diff.nextSnapshot.directories.has("tree")).toBe(false);
+    expect(diff.nextSnapshot.directories.has("tree/deep")).toBe(false);
+  });
+
+  test("file→directory replacement proves old source removable and scans descendants", async () => {
+    await writeWatchFixture(root, "record.json", '{"a":1}');
+    await writeWatchFixture(root, "keep.md", "k");
+
+    const built = await buildWatcherSnapshot(root);
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") {
+      return;
+    }
+    expect(built.snapshot.directories.get("")?.get("record.json")?.kind).toBe(
+      "file"
+    );
+
+    const { unlink } = await import("node:fs/promises");
+    await unlink(join(root, "record.json"));
+    await mkdir(join(root, "record.json"), { recursive: true });
+    await writeWatchFixture(root, "record.json/child.md", "nested");
+    await writeWatchFixture(root, "record.json/deep/x.md", "deep");
+
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    expect(diff.status).toBe("ok");
+    if (diff.status !== "ok") {
+      return;
+    }
+    // Old file/source path is an explicit removal (stale index must drop it).
+    expect(diff.removals).toEqual(["record.json"]);
+    // New directory descendants are present candidates, not the dir itself.
+    expect(diff.candidates).toEqual([
+      "record.json/child.md",
+      "record.json/deep/x.md",
+    ]);
+    expect(
+      diff.nextSnapshot.directories.get("")?.get("record.json")?.kind
+    ).toBe("directory");
+    expect(
+      diff.nextSnapshot.directories.get("record.json")?.has("child.md")
+    ).toBe(true);
+  });
+
+  test("record-container source→directory is explicitly removable", async () => {
+    // Logical record-container source path is a normal file path in the snapshot
+    // (e.g. notes.json). Replacement by a directory must surface that source in
+    // removals without calling store/ingestion from this primitive.
+    await writeWatchFixture(root, "notes.json", '{"records":[]}');
+    const built = await buildWatcherSnapshot(root);
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") {
+      return;
+    }
+
+    const { unlink } = await import("node:fs/promises");
+    await unlink(join(root, "notes.json"));
+    await mkdir(join(root, "notes.json"));
+    await writeWatchFixture(root, "notes.json/item.md", "i");
+
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    expect(diff.status).toBe("ok");
+    if (diff.status !== "ok") {
+      return;
+    }
+    expect(diff.removals).toContain("notes.json");
+    expect(diff.candidates).toContain("notes.json/item.md");
+    expect(diff.candidates).not.toContain("notes.json");
+  });
+
+  test("directory→file replacement expands prior nested removals and candidates the file", async () => {
+    await mkdir(join(root, "was-dir", "nested"), { recursive: true });
+    await writeWatchFixture(root, "was-dir/a.md", "a");
+    await writeWatchFixture(root, "was-dir/nested/b.md", "b");
+
+    const built = await buildWatcherSnapshot(root);
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") {
+      return;
+    }
+
+    await safeRm(join(root, "was-dir"));
+    await writeWatchFixture(root, "was-dir", "now-a-file");
+
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    expect(diff.status).toBe("ok");
+    if (diff.status !== "ok") {
+      return;
+    }
+    expect(diff.removals).toEqual(["was-dir/a.md", "was-dir/nested/b.md"]);
+    expect(diff.candidates).toEqual(["was-dir"]);
+    expect(diff.nextSnapshot.directories.get("")?.get("was-dir")?.kind).toBe(
+      "file"
+    );
+    expect(diff.nextSnapshot.directories.has("was-dir")).toBe(false);
+  });
+
+  test("atomic replacement changes inode/ctime and selects the path", async () => {
+    await writeWatchFixture(root, "note.md", "v1");
+    const built = await buildWatcherSnapshot(root);
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") {
+      return;
+    }
+
+    const { rename, unlink } = await import("node:fs/promises");
+    const tmp = join(root, "note.md.tmp");
+    await writeFile(tmp, "v2");
+    await unlink(join(root, "note.md"));
+    await rename(tmp, join(root, "note.md"));
+
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    expect(diff.status).toBe("ok");
+    if (diff.status !== "ok") {
+      return;
+    }
+    expect(diff.candidates).toEqual(["note.md"]);
+    expect(diff.removals).toEqual([]);
+  });
+
+  test("nearest surviving ancestor for a missing nested hint", async () => {
+    await mkdir(join(root, "a", "b"), { recursive: true });
+    await writeWatchFixture(root, "a/b/c.md", "c");
+    await writeWatchFixture(root, "a/sibling.md", "s");
+
+    const built = await buildWatcherSnapshot(root);
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") {
+      return;
+    }
+
+    await safeRm(join(root, "a", "b"));
+
+    const resolved = await resolveWatcherDirtyDirectory(root, "a/b/c.md");
+    expect(resolved).toEqual({ status: "ok", directory: "a" });
+
+    const reconciled = await reconcileWatcherHints(root, built.snapshot, [
+      "a/b/c.md",
+    ]);
+    expect(reconciled.status).toBe("ok");
+    if (reconciled.status !== "ok") {
+      return;
+    }
+    expect(reconciled.removals).toContain("a/b/c.md");
+    expect(reconciled.candidates).not.toContain("a/sibling.md");
+    expect(reconciled.removals).not.toContain("a/sibling.md");
+  });
+});

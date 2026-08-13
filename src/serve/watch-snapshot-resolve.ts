@@ -1,19 +1,26 @@
 /**
  * Untrusted watcher hint → dirty directory resolution.
  *
+ * Resolves path components one at a time from an anchored root handle so
+ * intermediate symlinks are never descended and outside children are never
+ * lstat'd through a link-out prefix.
+ *
  * @module src/serve/watch-snapshot-resolve
  */
 
 // node:path — Bun has no path utilities
-import { join, resolve, sep } from "node:path";
+import { resolve, sep } from "node:path";
 
-import type { WatcherSnapshotOptions } from "./watch-snapshot-types";
+import type {
+  WatcherDirHandle,
+  WatcherSnapshotOptions,
+} from "./watch-snapshot-types";
 
 import { defaultFs } from "./watch-snapshot-scan";
 import {
   isMissingFsError,
+  joinWatcherRelPath,
   normalizeWatcherRelPath,
-  parentWatcherDir,
 } from "./watch-snapshot-types";
 
 /**
@@ -22,6 +29,9 @@ import {
  *
  * A missing collection root is not a deletion proof: returns scan_failed
  * fallback so callers do not emit removal candidates or advance snapshots.
+ *
+ * Symlink (or non-directory) components stop descent: the containing directory
+ * is returned so the parent listing observes the link/file without following it.
  */
 export async function resolveWatcherDirtyDirectory(
   rootAbs: string,
@@ -52,61 +62,95 @@ export async function resolveWatcherDirtyDirectory(
   }
 
   const fs = options.fs ?? defaultFs;
+  if (!fs.supportsAnchoredHandles) {
+    return {
+      status: "fallback",
+      reason: "scan_failed",
+      cause: new Error(
+        "Anchored no-follow directory handles unavailable; refusing path-based hint resolution"
+      ),
+    };
+  }
 
-  const exists = async (dirRel: string): Promise<boolean | "error"> => {
-    const abs =
-      dirRel === "" ? rootResolved : join(rootResolved, ...dirRel.split("/"));
-    try {
-      await fs.lstat(abs);
-      return true;
-    } catch (cause) {
-      if (isMissingFsError(cause)) {
-        return false;
-      }
-      return "error";
-    }
-  };
-
-  // Climb from the hint itself so a missing nested path lands on the shallowest
-  // surviving ancestor (possibly the collection root).
-  let cursor: string | null = normalized;
-  while (cursor !== null) {
-    const presence = await exists(cursor);
-    if (presence === "error") {
+  let rootHandle: WatcherDirHandle;
+  try {
+    rootHandle = await fs.openDir(rootResolved);
+  } catch (cause) {
+    if (isMissingFsError(cause)) {
       return {
         status: "fallback",
         reason: "scan_failed",
-        cause: new Error(`Failed to inspect hint path: ${cursor}`),
+        cause: new Error("Collection root is missing"),
       };
     }
-    if (presence) {
-      // If the surviving path is a file/symlink, its parent is the dirty dir.
-      if (cursor === "") {
-        return { status: "ok", directory: "" };
+    return { status: "fallback", reason: "scan_failed", cause };
+  }
+
+  const opened: WatcherDirHandle[] = [rootHandle];
+  const closeAll = async (): Promise<void> => {
+    for (let i = opened.length - 1; i >= 0; i -= 1) {
+      const handle = opened[i];
+      if (handle) {
+        await fs.closeDir(handle);
       }
-      const abs = join(rootResolved, ...cursor.split("/"));
+    }
+    opened.length = 0;
+  };
+
+  try {
+    if (normalized === "") {
+      return { status: "ok", directory: "" };
+    }
+
+    const segments = normalized.split("/");
+    let parentHandle = rootHandle;
+    let parentRel = "";
+
+    for (let index = 0; index < segments.length; index += 1) {
+      const segment = segments[index] as string;
+      let stat;
       try {
-        const stat = await fs.lstat(abs);
-        if (stat.isDirectory() && !stat.isSymbolicLink()) {
-          return { status: "ok", directory: cursor };
-        }
-        const parent = parentWatcherDir(cursor);
-        return { status: "ok", directory: parent ?? "" };
+        stat = await fs.lstatChild(parentHandle, segment);
       } catch (cause) {
         if (isMissingFsError(cause)) {
-          cursor = parentWatcherDir(cursor);
-          continue;
+          // Missing component: dirty directory is the nearest surviving ancestor.
+          return { status: "ok", directory: parentRel };
+        }
+        return {
+          status: "fallback",
+          reason: "scan_failed",
+          cause: new Error(`Failed to inspect hint segment: ${segment}`),
+        };
+      }
+
+      const childRel = joinWatcherRelPath(parentRel, segment);
+      const isLast = index === segments.length - 1;
+
+      // Never descend through symlink / file / other — parent listing is dirty.
+      if (stat.isSymbolicLink() || !stat.isDirectory()) {
+        return { status: "ok", directory: parentRel };
+      }
+
+      // Real directory.
+      if (isLast) {
+        return { status: "ok", directory: childRel };
+      }
+
+      try {
+        const childHandle = await fs.openChildDir(parentHandle, segment);
+        opened.push(childHandle);
+        parentHandle = childHandle;
+        parentRel = childRel;
+      } catch (cause) {
+        if (isMissingFsError(cause)) {
+          return { status: "ok", directory: parentRel };
         }
         return { status: "fallback", reason: "scan_failed", cause };
       }
     }
-    cursor = parentWatcherDir(cursor);
-  }
 
-  // Root itself is missing — fail closed; never treat as a proven empty tree.
-  return {
-    status: "fallback",
-    reason: "scan_failed",
-    cause: new Error("Collection root is missing"),
-  };
+    return { status: "ok", directory: parentRel };
+  } finally {
+    await closeAll();
+  }
 }
