@@ -73,6 +73,7 @@ async function main(): Promise<void> {
   try {
     await mkdir(join(collectionDir, "nested", "deep"), { recursive: true });
     await Bun.write(join(collectionDir, "atomic.md"), "atomic-old-token");
+    await Bun.write(join(collectionDir, "plain.md"), "plain-old-token");
     await Bun.write(
       join(collectionDir, "sibling.md"),
       "untouched-sibling-token"
@@ -160,7 +161,16 @@ async function main(): Promise<void> {
     await waitFor(
       async () =>
         (await search(baseUrl, "atomic-new-token")).includes("atomic.md"),
-      "atomic replacement visibility"
+      "dot-temp atomic replacement visibility"
+    );
+
+    const plainReplacement = join(collectionDir, "plain.md.tmp");
+    await Bun.write(plainReplacement, "plain-new-token");
+    await rename(plainReplacement, join(collectionDir, "plain.md"));
+    await waitFor(
+      async () =>
+        (await search(baseUrl, "plain-new-token")).includes("plain.md"),
+      "plain-temp atomic replacement visibility"
     );
 
     await rm(join(collectionDir, "nested"), { recursive: true });
@@ -179,7 +189,8 @@ async function main(): Promise<void> {
         platform: process.platform,
         bun: Bun.version,
         mode: "serve",
-        atomicReplacement: "visible",
+        dotTempAtomicReplacement: "visible",
+        plainTempAtomicReplacement: "visible",
         nestedDeletion: "inactive",
         untouchedSibling: "searchable",
         unrelatedStatusMs: Number(responsiveMs.toFixed(2)),
