@@ -29,6 +29,7 @@ import { openDirByRel } from "./watch-snapshot-scan";
 import {
   normalizeWatcherRelPath,
   parentWatcherDir,
+  type WatcherSnapshotFs,
 } from "./watch-snapshot-types";
 
 export async function fallbackClassifyDirtyHints(options: {
@@ -37,6 +38,8 @@ export async function fallbackClassifyDirtyHints(options: {
   rootAbs: string;
   dirtyHints: readonly string[];
   sourcePathMax: number;
+  /** Test seam for unsupported-platform fail-closed proofs. */
+  fs?: WatcherSnapshotFs;
 }): Promise<ClassificationResult> {
   const { collection, store, rootAbs, dirtyHints } = options;
   const budgetLimit = Math.min(options.sourcePathMax, WATCHER_FALLBACK_BUDGET);
@@ -52,7 +55,7 @@ export async function fallbackClassifyDirtyHints(options: {
   const removals = new Set<string>();
   const walkConfig = collectionToWalkConfig(collection, 0);
   const diskSeen = new Set<string>();
-  const fs = fallbackFs();
+  const fs = options.fs ?? fallbackFs();
   const root = normalize(rootAbs);
 
   const dirs = new Set<string>();
@@ -239,8 +242,8 @@ async function collectStorePathsForDir(
     return { ok: true, value: [...out] };
   }
 
-  // Root: descendant API rejects "". Prefer bounded active-doc inventory so
-  // nested store sources are compared; else probe disk first-level dirs.
+  // Root: one bounded DISTINCT source query (no logical-row pre-count).
+  // Fall back to first-level disk probes when the seam is stubbed out in tests.
   const inventory = await listRootActiveSourcePaths(
     store,
     collection,
@@ -291,7 +294,7 @@ async function collectStorePathsForDir(
 }
 
 /**
- * Bounded root-wide active source inventory via paginated active docs.
+ * Bounded root-wide DISTINCT active source inventory.
  * Returns null when the seam is unavailable (tests/stubs use disk probes).
  */
 async function listRootActiveSourcePaths(
@@ -299,30 +302,18 @@ async function listRootActiveSourcePaths(
   collection: string,
   max: number
 ): Promise<(StoreResult<string[]> & { overflow?: boolean }) | null> {
-  if (typeof store.listDocumentsPaginated !== "function") {
+  if (typeof store.listActiveSourcePaths !== "function") {
     return null;
   }
   try {
-    const page = await store.listDocumentsPaginated({
-      collection,
-      limit: max + 1,
-      offset: 0,
-    });
-    if (!page.ok) {
-      return page;
+    const result = await store.listActiveSourcePaths(collection, max);
+    if (!result.ok) {
+      if (result.error.code === "OVERFLOW") {
+        return { ok: true, value: [], overflow: true };
+      }
+      return result;
     }
-    if (page.value.documents.length > max) {
-      return { ok: true, value: [], overflow: true };
-    }
-    const paths = new Set<string>();
-    for (const doc of page.value.documents) {
-      const source =
-        doc.recordSourcePath && doc.recordSourcePath.length > 0
-          ? doc.recordSourcePath
-          : doc.relPath;
-      paths.add(source);
-    }
-    return { ok: true, value: [...paths] };
+    return { ok: true, value: result.value };
   } catch (cause) {
     return {
       ok: false,

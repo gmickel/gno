@@ -1,21 +1,16 @@
 /**
  * No-follow disk enumeration for watcher fallback classification.
+ * Platforms without genuine anchored handles fail closed — no path-based TOCTOU
+ * fallback in production (createPathBackedWatcherFs is test-only).
  *
  * @module src/serve/watch-reconciliation-fallback-disk
  */
-
-// node:fs/promises — structure ops for path-backed no-follow Windows/unsupported
-import { lstat, readdir } from "node:fs/promises";
 
 import type { Collection } from "../config/types";
 
 import { matchesCollectionExclusion } from "../core/path-rules";
 import { collectionToWalkConfig, matchesWalkPath } from "../ingestion";
-import {
-  createPathBackedWatcherFs,
-  defaultFs,
-  openDirByRel,
-} from "./watch-snapshot-scan";
+import { defaultFs, openDirByRel } from "./watch-snapshot-scan";
 import {
   isMissingFsError,
   joinWatcherRelPath,
@@ -43,33 +38,12 @@ export function budgetExceeded(b: FallbackBudget): boolean {
   );
 }
 
-/** Path-backed no-follow FS for platforms without anchored handles (Windows). */
-export function createNoFollowPathFs(): WatcherSnapshotFs {
-  return createPathBackedWatcherFs({
-    readdir: async (absPath) => readdir(absPath),
-    lstat: async (absPath) => {
-      // Presence/kind only for fallback disk walks; ns fields optional.
-      const info = await lstat(absPath);
-      const withNs = info as typeof info & {
-        mtimeNs?: bigint | number;
-        ctimeNs?: bigint | number;
-      };
-      return {
-        isFile: () => info.isFile(),
-        isDirectory: () => info.isDirectory(),
-        isSymbolicLink: () => info.isSymbolicLink(),
-        dev: info.dev,
-        ino: info.ino,
-        size: info.size,
-        mtimeNs: withNs.mtimeNs,
-        ctimeNs: withNs.ctimeNs,
-      } satisfies WatcherSnapshotStat;
-    },
-  });
-}
-
+/**
+ * Production fallback FS: anchored handles only. Unsupported platforms surface
+ * scan_failed/ENOTSUP via openDirByRel — never claim path-based safety.
+ */
 export function fallbackFs(): WatcherSnapshotFs {
-  return defaultFs.supportsAnchoredHandles ? defaultFs : createNoFollowPathFs();
+  return defaultFs;
 }
 
 export type DiskListResult =

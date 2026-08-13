@@ -78,19 +78,45 @@ export function queueDirtyHint(
   return pending;
 }
 
+/** Flags that must survive take → failed flush → requeue. */
+export interface PendingForceFlags {
+  forceFallback: boolean;
+  overflow: boolean;
+}
+
 /** Drain pending work for one flush attempt. */
 export function takePending(pending: CollectionPending): {
   exact: string[];
   dirty: string[];
   forceFallback: boolean;
+  overflow: boolean;
   generationReconcile: boolean;
 } {
   return {
     exact: [...pending.exact],
     dirty: pending.overflow ? ["", ...pending.dirty] : [...pending.dirty],
     forceFallback: pending.forceFallback || pending.overflow,
+    overflow: pending.overflow,
     generationReconcile: pending.generationReconcile,
   };
+}
+
+/** Restore durable force flags after a failed classification/sync attempt. */
+export function applyPendingForceFlags(
+  pending: CollectionPending,
+  flags: PendingForceFlags | undefined
+): CollectionPending {
+  if (!flags) {
+    return pending;
+  }
+  if (flags.forceFallback) {
+    pending.forceFallback = true;
+  }
+  if (flags.overflow) {
+    pending.overflow = true;
+    pending.dirty.add("");
+  }
+  return pending;
 }
 
 export interface FlushSchedule {

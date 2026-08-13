@@ -32,6 +32,7 @@ import {
   emptyPending,
   queueDirtyHint,
   queueExactPath,
+  takePending,
 } from "../../src/serve/watch-service-state";
 import {
   buildWatcherSnapshot,
@@ -60,6 +61,7 @@ function createStubStore(
   return {
     listActiveDirectChildSourcePaths: async () => ({ ok: true, value: [] }),
     listActiveDescendantSourcePaths: async () => ({ ok: true, value: [] }),
+    listActiveSourcePaths: async () => ({ ok: true, value: [] }),
     ...overrides,
   } as unknown as SqliteAdapter;
 }
@@ -171,6 +173,11 @@ describe("capped sets and suppression pruning", () => {
     queueExactPath(exact, "extra.md", WATCHER_MAX_EXACT_PATHS);
     expect(exact.overflow).toBe(true);
     expect(exact.dirty.has("")).toBe(true);
+
+    // Overflow/force flags survive take → requeue restore.
+    const taken = takePending(exact);
+    expect(taken.overflow).toBe(true);
+    expect(taken.forceFallback).toBe(true);
   });
 
   test("pruneSuppressionMap drops expired and enforces ceiling", () => {

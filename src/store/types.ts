@@ -1741,6 +1741,20 @@ export interface StorePort {
   ): Promise<StoreResult<string[]>>;
 
   /**
+   * Root-wide bounded DISTINCT active physical source paths for one collection.
+   *
+   * Effective source path is `COALESCE(NULLIF(record_source_path, ''), rel_path)`.
+   * Overflow is decided after DISTINCT collapse (`LIMIT max+1`), never on raw
+   * logical document row counts. Inactive rows and other collections are excluded.
+   * Results are ordered ascending. Matching unique sources beyond `max` yield
+   * `OVERFLOW` — never a truncated successful list.
+   */
+  listActiveSourcePaths(
+    collection: string,
+    max: number
+  ): Promise<StoreResult<string[]>>;
+
+  /**
    * Fetch documents by mirror hashes in batch.
    * Useful for retrieval pipelines to avoid full document scans.
    */

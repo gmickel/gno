@@ -15,7 +15,11 @@ import type { CollectionSyncResult, SyncOptions } from "../ingestion";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { DocumentEvent, DocumentEventBus } from "./doc-events";
 import type { EmbedScheduler } from "./embed-scheduler";
-import type { WatcherSnapshot } from "./watch-snapshot";
+import type {
+  WatcherSnapshot,
+  WatcherSnapshotBuildResult,
+  WatcherSnapshotOptions,
+} from "./watch-snapshot";
 
 import {
   WATCHER_MAX_DIRTY_HINTS,
@@ -27,14 +31,10 @@ import {
   enqueueDirtyHint,
   enqueueExactPath,
   handleWatchEvent,
-  requeueAfterFailure,
-  requeueGenerationReconcile,
   scheduleFlush,
-  startFlush,
   WATCHER_FLUSH_DEBOUNCE_MS,
   WATCHER_MAX_FLUSH_DELAY_MS,
 } from "./watch-service-events";
-import { flushCollectionOnce } from "./watch-service-flush";
 import {
   buildEventHost,
   buildLifecycleHost,
@@ -45,13 +45,9 @@ import {
   applyCollectionUpdate,
   clearLifecycleTombstones,
 } from "./watch-service-lifecycle";
+import { runOwnedCollectionFlush } from "./watch-service-run-flush";
 import { beginSnapshotInit } from "./watch-service-snapshot";
-import {
-  emptyPending,
-  pendingHasWork,
-  takePending,
-  type CollectionPending,
-} from "./watch-service-state";
+import { pendingHasWork, type CollectionPending } from "./watch-service-state";
 
 export interface CollectionWatchState {
   expectedCollections: string[];
@@ -93,6 +89,14 @@ interface CollectionWatchServiceOptions {
   maxExactPaths?: number;
   maxDirtyHints?: number;
   clock?: () => number;
+  /**
+   * Injectable snapshot baseline builder (tests: hung/slow init). Production
+   * uses the default buildWatcherSnapshot path via beginSnapshotInit.
+   */
+  buildSnapshot?: (
+    rootAbs: string,
+    options?: WatcherSnapshotOptions
+  ) => Promise<WatcherSnapshotBuildResult>;
 }
 
 export class CollectionWatchService {
@@ -123,6 +127,12 @@ export class CollectionWatchService {
   readonly #maxExactPaths: number;
   readonly #maxDirtyHints: number;
   readonly #clock: () => number;
+  readonly #buildSnapshot:
+    | ((
+        rootAbs: string,
+        options?: WatcherSnapshotOptions
+      ) => Promise<WatcherSnapshotBuildResult>)
+    | undefined;
   #nextCollectionGeneration = 0;
   #disposed = false;
   #lastEventAt: string | null = null;
@@ -143,6 +153,7 @@ export class CollectionWatchService {
     this.#maxExactPaths = options.maxExactPaths ?? WATCHER_MAX_EXACT_PATHS;
     this.#maxDirtyHints = options.maxDirtyHints ?? WATCHER_MAX_DIRTY_HINTS;
     this.#clock = options.clock ?? Date.now;
+    this.#buildSnapshot = options.buildSnapshot;
   }
 
   start(): void {
@@ -321,135 +332,51 @@ export class CollectionWatchService {
             scheduleFlush(buildQueueHost(this.#hostState()), name);
           }
         },
+        buildSnapshot: this.#buildSnapshot,
       },
       collection
     );
   }
 
   async #flushCollection(collectionName: string): Promise<void> {
-    if (this.#disposed) {
-      return;
-    }
-    const pending = this.#pendingByCollection.get(collectionName);
-    if (!pendingHasWork(pending)) {
-      this.#flushDeadlineAt.delete(collectionName);
-      return;
-    }
-    if (this.#syncing.has(collectionName) || !pending) {
-      return;
-    }
-
-    const collection = this.#collections.find(
-      (entry) => entry.name === collectionName
-    );
-    if (!collection) {
-      this.#pendingByCollection.delete(collectionName);
-      this.#flushDeadlineAt.delete(collectionName);
-      return;
-    }
-
-    const taken = takePending(pending);
-    this.#pendingByCollection.set(collectionName, emptyPending());
-    this.#flushDeadlineAt.delete(collectionName);
-    this.#syncing.add(collectionName);
-
-    const queueHost = buildQueueHost(this.#hostState());
-    try {
-      const outcome = await flushCollectionOnce({
-        collection,
-        collectionName,
-        store: this.#store,
-        syncOptions: this.#syncOptions,
-        exactTaken: taken.exact,
-        dirtyTaken: taken.dirty,
-        forceFallback: taken.forceFallback,
-        generationReconcile: taken.generationReconcile,
-        previousSnapshot: this.#snapshots.get(collectionName) ?? null,
-        syncGeneration: this.#collectionGenerations.get(collectionName) ?? 0,
-        disposed: () => this.#disposed,
-        getCurrentCollection: () =>
-          this.#collections.find((entry) => entry.name === collectionName),
-        getCurrentGeneration: () =>
-          this.#collectionGenerations.get(collectionName) ?? 0,
-        clock: this.#clock,
-        suppressedPaths: this.#suppressedPaths,
-        onSyncStart: (relPaths) => {
-          this.#callbacks?.onSyncStart?.({
-            collection: collection.name,
-            relPaths,
-          });
-        },
-        onSyncComplete: (relPaths, result) => {
-          this.#callbacks?.onSyncComplete?.({
-            collection: collection.name,
-            relPaths,
-            result,
-          });
-        },
-        onSyncError: (relPaths, error) => {
-          this.#callbacks?.onSyncError?.({
-            collection: collection.name,
-            relPaths,
-            error,
-          });
-        },
-        onAfterSync: (current, relPaths) => {
-          this.#afterSync(current, relPaths);
-        },
-        commitSnapshot: (snapshot) => {
-          this.#snapshots.set(collectionName, snapshot);
-        },
-        invalidateSnapshot: (current) => {
-          this.#snapshots.delete(collectionName);
-          this.#snapshotReady.set(collectionName, false);
-          this.#snapshotInit.delete(collectionName);
-          this.#beginSnapshotInit(current);
-        },
-        requeue: (exact, dirty) => {
-          requeueAfterFailure(queueHost, collectionName, exact, dirty);
-        },
-        requeueGeneration: () => {
-          requeueGenerationReconcile(queueHost, collectionName);
-        },
-      });
-      if (
-        outcome.status === "failed" &&
-        outcome.error &&
-        !(
-          outcome.error instanceof Error &&
-          (outcome.error.message ===
-            "One or more paths failed during watcher sync" ||
-            outcome.error.message ===
-              "One or more paths failed during watcher generation reconcile")
-        )
-      ) {
-        throw outcome.error;
-      }
-    } finally {
-      this.#syncing.delete(collectionName);
-      clearLifecycleTombstones(
-        buildLifecycleHost(this.#hostState()),
-        collectionName
-      );
-      pruneSuppressionMap(
-        this.#suppressedPaths,
-        this.#clock(),
-        WATCHER_MAX_SUPPRESSION_ENTRIES
-      );
-      if (!this.#disposed) {
-        // Never bypass an explicit retry timer with an immediate startFlush.
-        if (
-          pendingHasWork(this.#pendingByCollection.get(collectionName)) &&
-          !this.#retryScheduled.has(collectionName)
-        ) {
-          startFlush(queueHost, collectionName);
-        } else if (
-          !pendingHasWork(this.#pendingByCollection.get(collectionName))
-        ) {
-          this.#notifySettledIfIdle();
-        }
-      }
-    }
+    await runOwnedCollectionFlush({
+      collectionName,
+      disposed: () => this.#disposed,
+      collections: () => this.#collections,
+      store: this.#store,
+      syncOptions: () => this.#syncOptions,
+      pendingByCollection: this.#pendingByCollection,
+      flushDeadlineAt: this.#flushDeadlineAt,
+      syncing: this.#syncing,
+      retryScheduled: this.#retryScheduled,
+      collectionGenerations: this.#collectionGenerations,
+      snapshots: this.#snapshots,
+      snapshotReady: this.#snapshotReady,
+      snapshotInit: this.#snapshotInit,
+      suppressedPaths: this.#suppressedPaths,
+      clock: this.#clock,
+      queueHost: buildQueueHost(this.#hostState()),
+      callbacks: this.#callbacks,
+      onAfterSync: (current, relPaths) => {
+        this.#afterSync(current, relPaths);
+      },
+      beginSnapshotInit: (current) => {
+        this.#beginSnapshotInit(current);
+      },
+      clearLifecycleTombstones: (name) => {
+        clearLifecycleTombstones(buildLifecycleHost(this.#hostState()), name);
+      },
+      pruneSuppression: () => {
+        pruneSuppressionMap(
+          this.#suppressedPaths,
+          this.#clock(),
+          WATCHER_MAX_SUPPRESSION_ENTRIES
+        );
+      },
+      notifySettledIfIdle: () => {
+        this.#notifySettledIfIdle();
+      },
+    });
   }
 
   #notifySettledIfIdle(): void {

@@ -8,7 +8,11 @@
 import { normalize } from "node:path";
 
 import type { Collection } from "../config/types";
-import type { WatcherSnapshot } from "./watch-snapshot";
+import type {
+  WatcherSnapshot,
+  WatcherSnapshotBuildResult,
+  WatcherSnapshotOptions,
+} from "./watch-snapshot";
 
 import { buildWatcherSnapshot } from "./watch-snapshot";
 
@@ -22,6 +26,11 @@ export interface SnapshotInitHost {
   getInit: (collectionName: string) => Promise<void> | undefined;
   setInit: (collectionName: string, init: Promise<void> | undefined) => void;
   onReadyWithPending: (collectionName: string) => void;
+  /** Optional injectable builder for hung/slow-init tests. */
+  buildSnapshot?: (
+    rootAbs: string,
+    options?: WatcherSnapshotOptions
+  ) => Promise<WatcherSnapshotBuildResult>;
 }
 
 /** Start (or supersede) baseline construction; events may already be buffering. */
@@ -48,7 +57,8 @@ async function runSnapshotInit(
   getInit: () => Promise<void>
 ): Promise<void> {
   try {
-    const built = await buildWatcherSnapshot(root);
+    const builder = host.buildSnapshot ?? buildWatcherSnapshot;
+    const built = await builder(root);
     if (host.disposed()) {
       return;
     }
@@ -80,6 +90,7 @@ async function runSnapshotInit(
   if (host.disposed()) {
     return;
   }
+  // Readiness flips even on init failure so forceFallback classification can run.
   if (
     host.getGeneration(collectionName) === generation &&
     host.getRoot(collectionName) === root

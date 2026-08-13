@@ -46,6 +46,7 @@ function createStubStore(
   return {
     listActiveDirectChildSourcePaths: async () => ({ ok: true, value: [] }),
     listActiveDescendantSourcePaths: async () => ({ ok: true, value: [] }),
+    listActiveSourcePaths: async () => ({ ok: true, value: [] }),
     ...overrides,
   } as unknown as SqliteAdapter;
 }

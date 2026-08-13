@@ -33,6 +33,7 @@ function createStubStore(
   return {
     listActiveDirectChildSourcePaths: async () => ({ ok: true, value: [] }),
     listActiveDescendantSourcePaths: async () => ({ ok: true, value: [] }),
+    listActiveSourcePaths: async () => ({ ok: true, value: [] }),
     ...overrides,
   } as unknown as SqliteAdapter;
 }
@@ -46,15 +47,9 @@ describe("fallback root and forceFallback", () => {
           ok: true,
           value: ["nested/a.md", "top.md"],
         }),
-        listDocumentsPaginated: async () => ({
+        listActiveSourcePaths: async () => ({
           ok: true,
-          value: {
-            documents: [
-              { relPath: "nested/a.md", recordSourcePath: null },
-              { relPath: "top.md", recordSourcePath: null },
-            ],
-            total: 2,
-          },
+          value: ["nested/a.md", "top.md"],
         }),
       } as never),
       rootAbs: "/no/such/root-missing-xyz",
@@ -81,15 +76,9 @@ describe("fallback root and forceFallback", () => {
             }
             return { ok: true, value: [] };
           },
-          listDocumentsPaginated: async () => ({
+          listActiveSourcePaths: async () => ({
             ok: true,
-            value: {
-              documents: [
-                { relPath: "keep.md", recordSourcePath: null },
-                { relPath: "gone/nested.md", recordSourcePath: null },
-              ],
-              total: 2,
-            },
+            value: ["gone/nested.md", "keep.md"],
           }),
         } as never),
         rootAbs: root,

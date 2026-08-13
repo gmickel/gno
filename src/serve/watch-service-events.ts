@@ -16,11 +16,13 @@ import {
   classifyWatcherFilename,
 } from "./watch-reconciliation";
 import {
+  applyPendingForceFlags,
   computeFlushDelay,
   emptyPending,
   queueDirtyHint,
   queueExactPath,
   type CollectionPending,
+  type PendingForceFlags,
 } from "./watch-service-state";
 
 export interface WatchEventHost {
@@ -129,7 +131,8 @@ function queueWithoutSchedule(
   host: WatchQueueHost,
   collectionName: string,
   exact: string[],
-  dirty: string[]
+  dirty: string[],
+  forceFlags?: PendingForceFlags
 ): void {
   let pending = host.pendingByCollection.get(collectionName) ?? emptyPending();
   for (const path of exact) {
@@ -138,6 +141,7 @@ function queueWithoutSchedule(
   for (const hint of dirty) {
     pending = queueDirtyHint(pending, hint, host.maxDirtyHints);
   }
+  pending = applyPendingForceFlags(pending, forceFlags);
   host.pendingByCollection.set(collectionName, pending);
 }
 
@@ -192,23 +196,8 @@ export function startFlush(host: WatchQueueHost, collectionName: string): void {
   // Exact eligible paths content-hash without a snapshot baseline. Dirty /
   // overflow / init-fallback / generation work waits so init-time ambiguous
   // events reconcile against a newer generation rather than empty unproven state.
+  // Leave work queued with no timer; onReadyWithPending schedules exactly once.
   if (!host.snapshotReady.get(collectionName) && !exactOnly) {
-    // Do not re-arm the full debounce while waiting for baseline; poll briefly.
-    // Snapshot init also schedules a flush when readiness flips true.
-    if (host.retryScheduled.has(collectionName)) {
-      return;
-    }
-    const existingTimer = host.timers.get(collectionName);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-    }
-    host.timers.set(
-      collectionName,
-      setTimeout(() => {
-        host.timers.delete(collectionName);
-        startFlush(host, collectionName);
-      }, 10)
-    );
     return;
   }
   const sync = host.runFlush(collectionName);
@@ -223,14 +212,16 @@ export function startFlush(host: WatchQueueHost, collectionName: string): void {
 /**
  * Re-arm pending work after a file-level failure with retry backoff.
  * At most one retry timer per collection; finally must not startFlush while set.
+ * forceFallback/overflow survive until forced classification + sync succeed.
  */
 export function requeueAfterFailure(
   host: WatchQueueHost,
   collectionName: string,
   exact: string[],
-  dirty: string[]
+  dirty: string[],
+  forceFlags?: PendingForceFlags
 ): void {
-  queueWithoutSchedule(host, collectionName, exact, dirty);
+  queueWithoutSchedule(host, collectionName, exact, dirty, forceFlags);
   if (host.disposed()) {
     return;
   }

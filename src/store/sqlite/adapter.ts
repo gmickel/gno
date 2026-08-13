@@ -1818,6 +1818,43 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async listActiveSourcePaths(
+    collection: string,
+    max: number
+  ): Promise<StoreResult<string[]>> {
+    if (!Number.isInteger(max) || max <= 0) {
+      return err("INVALID_INPUT", "max must be a positive integer");
+    }
+
+    try {
+      const db = this.ensureOpen();
+      // Root-wide DISTINCT physical sources; overflow after collapse (max+1).
+      const rows = db
+        .query<{ source_path: string }, [string, number]>(
+          `SELECT DISTINCT ${WATCHER_SOURCE_PATH_SQL} AS source_path
+           FROM documents
+           WHERE collection = ?
+             AND active = 1
+           ORDER BY source_path ASC
+           LIMIT ?`
+        )
+        .all(collection, max + 1);
+
+      if (rows.length > max) {
+        return err("OVERFLOW", `Active source paths exceed max=${max}`);
+      }
+      return ok(rows.map((row) => row.source_path));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list active source paths",
+        cause
+      );
+    }
+  }
+
   async listActiveDocumentsForBrowse(
     collection?: string
   ): Promise<StoreResult<DocumentRow[]>> {

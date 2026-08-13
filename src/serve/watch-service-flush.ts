@@ -11,6 +11,7 @@ import { join, normalize } from "node:path";
 import type { Collection } from "../config/types";
 import type { CollectionSyncResult, SyncOptions } from "../ingestion";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
+import type { PendingForceFlags } from "./watch-service-state";
 import type { WatcherSnapshot } from "./watch-snapshot";
 
 import {
@@ -48,12 +49,16 @@ export interface FlushCollectionInput {
   exactTaken: string[];
   dirtyTaken: string[];
   forceFallback: boolean;
+  overflow: boolean;
   generationReconcile: boolean;
   previousSnapshot: WatcherSnapshot | null;
-  syncGeneration: number;
+  /** Ownership token: generation + normalized root at flush start. */
+  ownerGeneration: number;
+  ownerRoot: string;
   disposed: () => boolean;
   getCurrentCollection: () => Collection | undefined;
   getCurrentGeneration: () => number;
+  getCurrentSyncOptions: () => SyncOptions;
   clock: () => number;
   suppressedPaths: Map<string, number>;
   onSyncStart: (relPaths: string[]) => void;
@@ -62,7 +67,11 @@ export interface FlushCollectionInput {
   onAfterSync: (collection: Collection, relPaths: string[]) => void;
   commitSnapshot: (snapshot: WatcherSnapshot) => void;
   invalidateSnapshot: (collection: Collection) => void;
-  requeue: (exact: string[], dirty: string[]) => void;
+  requeue: (
+    exact: string[],
+    dirty: string[],
+    forceFlags?: PendingForceFlags
+  ) => void;
   requeueGeneration: () => void;
 }
 
@@ -70,7 +79,8 @@ export type FlushCollectionOutcome =
   | { status: "disposed" }
   | { status: "idle" }
   | { status: "synced" }
-  | { status: "failed"; error?: unknown };
+  | { status: "failed"; error?: unknown }
+  | { status: "stale" };
 
 function filterSuppressedPaths(
   rootAbs: string,
@@ -86,6 +96,24 @@ function filterSuppressedPaths(
 }
 
 /**
+ * Targeted work ownership: same generation and normalized root as flush start.
+ * Generation-reconcile work is separate and may intentionally run after a gen bump.
+ */
+function ownsTargeted(input: FlushCollectionInput): boolean {
+  if (input.disposed()) {
+    return false;
+  }
+  const current = input.getCurrentCollection();
+  if (!current) {
+    return false;
+  }
+  return (
+    input.getCurrentGeneration() === input.ownerGeneration &&
+    normalize(current.path) === input.ownerRoot
+  );
+}
+
+/**
  * Run one flush attempt. Caller owns syncing flags and settlement.
  */
 export async function flushCollectionOnce(
@@ -96,19 +124,39 @@ export async function flushCollectionOnce(
     matchesWalkPath(relPath, walkConfig)
   );
   const rootAbs = normalize(input.collection.path);
+  const forceFlags: PendingForceFlags = {
+    forceFallback: input.forceFallback || input.overflow,
+    overflow: input.overflow,
+  };
 
   try {
+    if (input.disposed()) {
+      return { status: "disposed" };
+    }
+    // Collection gone: drop taken work; do not mutate successor state.
+    if (!input.getCurrentCollection()) {
+      return { status: "stale" };
+    }
+
     const widened = await widenVanishedExactPaths(rootAbs, exactPaths);
     if (input.disposed()) {
       return { status: "disposed" };
     }
+    if (!ownsTargeted(input)) {
+      // Root/config replaced mid-flight: still attempt generation reconcile.
+      return (await runGenerationReconcile(input)) ?? { status: "stale" };
+    }
+
     const dirtyHints = [
       ...new Set([...input.dirtyTaken, ...widened.extraDirty]),
     ];
     // Directory exact paths and init-time ambiguous work need store/disk so
     // present eligible children/finals are not absorbed by an unchanged baseline.
     const forceFallback =
-      input.forceFallback || widened.directoryDirty.length > 0;
+      forceFlags.forceFallback || widened.directoryDirty.length > 0;
+    if (widened.directoryDirty.length > 0) {
+      forceFlags.forceFallback = true;
+    }
 
     let classifiedCandidates: string[] = [];
     let classifiedRemovals: string[] = [];
@@ -128,10 +176,13 @@ export async function flushCollectionOnce(
       if (input.disposed()) {
         return { status: "disposed" };
       }
+      if (!ownsTargeted(input)) {
+        return (await runGenerationReconcile(input)) ?? { status: "stale" };
+      }
       if (classified.status === "error") {
         dirtyFailed = true;
         input.onSyncError(dirtyHints, classified.cause);
-        input.requeue([], dirtyHints);
+        input.requeue([], dirtyHints, forceFlags);
       } else {
         classificationOk = true;
         const nowMs = input.clock();
@@ -164,13 +215,16 @@ export async function flushCollectionOnce(
 
     let targetedSynced = false;
     if (relPaths.length > 0) {
+      if (!ownsTargeted(input)) {
+        return (await runGenerationReconcile(input)) ?? { status: "stale" };
+      }
       input.onSyncStart(relPaths);
       const result = await defaultSyncService.syncPaths(
         input.collection,
         input.store,
         relPaths,
         {
-          ...input.syncOptions,
+          ...input.getCurrentSyncOptions(),
           runUpdateCmd: false,
         }
       );
@@ -178,10 +232,15 @@ export async function flushCollectionOnce(
         return { status: "disposed" };
       }
 
+      if (!ownsTargeted(input)) {
+        // Do not commit/requeue/callback for the old owner; gen reconcile may run.
+        return (await runGenerationReconcile(input)) ?? { status: "stale" };
+      }
+
       if (hasFileLevelSyncError(result)) {
         const error = new Error("One or more paths failed during watcher sync");
         input.onSyncError(relPaths, error);
-        input.requeue(liveExact, dirtyFailed ? [] : dirtyHints);
+        input.requeue(liveExact, dirtyFailed ? [] : dirtyHints, forceFlags);
         return { status: "failed", error };
       }
 
@@ -193,13 +252,9 @@ export async function flushCollectionOnce(
       targetedSynced = true;
 
       const afterPaths = changedPaths(result, relPaths);
-      if (afterPaths.length > 0) {
+      if (afterPaths.length > 0 && ownsTargeted(input)) {
         const currentCollection = input.getCurrentCollection();
-        if (
-          currentCollection &&
-          input.getCurrentGeneration() === input.syncGeneration &&
-          normalize(currentCollection.path) === normalize(input.collection.path)
-        ) {
+        if (currentCollection) {
           const filtered = afterPaths.filter((relPath) =>
             matchesWalkPath(
               relPath,
@@ -211,12 +266,17 @@ export async function flushCollectionOnce(
           }
         }
       }
-    } else if (classificationOk && !dirtyFailed && nextSnapshot) {
+    } else if (
+      classificationOk &&
+      !dirtyFailed &&
+      nextSnapshot &&
+      ownsTargeted(input)
+    ) {
       input.commitSnapshot(nextSnapshot);
     }
 
     // Config-generation full reconciliation: durable until success.
-    const genOutcome = await runGenerationReconcile(input, targetedSynced);
+    const genOutcome = await runGenerationReconcile(input);
     if (genOutcome) {
       return genOutcome;
     }
@@ -228,8 +288,11 @@ export async function flushCollectionOnce(
     if (input.disposed()) {
       return { status: "disposed" };
     }
+    if (!ownsTargeted(input)) {
+      return (await runGenerationReconcile(input)) ?? { status: "stale" };
+    }
     input.onSyncError(exactPaths, error);
-    input.requeue(exactPaths, input.dirtyTaken);
+    input.requeue(exactPaths, input.dirtyTaken, forceFlags);
     if (input.generationReconcile) {
       input.requeueGeneration();
     }
@@ -240,13 +303,12 @@ export async function flushCollectionOnce(
 /**
  * When collection generation advanced during/before flush, run full
  * syncCollection. Failures leave durable generation work and never advance
- * snapshot ownership.
+ * snapshot ownership. Options are read fresh each iteration.
  */
 async function runGenerationReconcile(
-  input: FlushCollectionInput,
-  _targetedSynced: boolean
+  input: FlushCollectionInput
 ): Promise<FlushCollectionOutcome | null> {
-  let syncGeneration = input.syncGeneration;
+  let syncGeneration = input.ownerGeneration;
   let needsWork =
     input.generationReconcile ||
     input.getCurrentGeneration() !== syncGeneration;
@@ -254,24 +316,35 @@ async function runGenerationReconcile(
   while (needsWork) {
     const currentCollection = input.getCurrentCollection();
     if (!currentCollection) {
-      return null;
+      return { status: "stale" };
     }
     const currentGeneration = input.getCurrentGeneration();
+    const currentRoot = normalize(currentCollection.path);
     if (currentGeneration === syncGeneration && !input.generationReconcile) {
       return null;
     }
 
     try {
+      // Always use live options — content rules may change mid-generation.
       const result = await defaultSyncService.syncCollection(
         currentCollection,
         input.store,
         {
-          ...input.syncOptions,
+          ...input.getCurrentSyncOptions(),
           runUpdateCmd: false,
         }
       );
       if (input.disposed()) {
         return { status: "disposed" };
+      }
+      // Guard mutate/callback against remove or root replacement mid-reconcile.
+      const stillCurrent = input.getCurrentCollection();
+      if (
+        !stillCurrent ||
+        input.getCurrentGeneration() !== currentGeneration ||
+        normalize(stillCurrent.path) !== currentRoot
+      ) {
+        return { status: "stale" };
       }
       if (hasFileLevelSyncError(result)) {
         const error = new Error(
@@ -283,16 +356,17 @@ async function runGenerationReconcile(
       }
 
       // Only after successful full reconcile: rebuild snapshot ownership.
-      input.invalidateSnapshot(currentCollection);
+      input.invalidateSnapshot(stillCurrent);
       const completionPaths = changedPaths(result);
       input.onSyncComplete(completionPaths, result);
       if (completionPaths.length > 0) {
-        const stillCurrent = input.getCurrentCollection();
+        const latest = input.getCurrentCollection();
         if (
-          stillCurrent &&
-          input.getCurrentGeneration() === currentGeneration
+          latest &&
+          input.getCurrentGeneration() === currentGeneration &&
+          normalize(latest.path) === currentRoot
         ) {
-          input.onAfterSync(stillCurrent, completionPaths);
+          input.onAfterSync(latest, completionPaths);
         }
       }
       syncGeneration = currentGeneration;
@@ -301,6 +375,14 @@ async function runGenerationReconcile(
     } catch (error) {
       if (input.disposed()) {
         return { status: "disposed" };
+      }
+      const stillCurrent = input.getCurrentCollection();
+      if (
+        !stillCurrent ||
+        input.getCurrentGeneration() !== currentGeneration ||
+        normalize(stillCurrent.path) !== currentRoot
+      ) {
+        return { status: "stale" };
       }
       input.onSyncError([], error);
       input.requeueGeneration();
