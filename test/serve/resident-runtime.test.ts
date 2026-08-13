@@ -221,6 +221,36 @@ describe("ResidentRuntime", () => {
     await result.runtime.dispose();
   });
 
+  test("serve and daemon construct the same shared watcher contract", async () => {
+    const modes = ["serve", "daemon"] as const;
+    const observed: Array<{
+      mode: (typeof modes)[number];
+      collections: string[];
+      hasCallbacks: boolean;
+    }> = [];
+
+    for (const mode of modes) {
+      const deps = createDeps();
+      const baseFactory = deps.watchServiceFactory!;
+      deps.watchServiceFactory = (options) => {
+        observed.push({
+          mode,
+          collections: options.collections.map((entry) => entry.name),
+          hasCallbacks: Boolean(options.callbacks),
+        });
+        return baseFactory(options);
+      };
+      const result = await startResidentRuntime({ mode }, deps);
+      expect(result.success).toBe(true);
+      if (result.success) await result.runtime.dispose();
+    }
+
+    expect(observed).toEqual([
+      { mode: "serve", collections: ["notes"], hasCallbacks: true },
+      { mode: "daemon", collections: ["notes"], hasCallbacks: true },
+    ]);
+  });
+
   test("schedules saved Capsule reverification after watcher and full-sync settlement", async () => {
     const deps = createDeps();
     let callbacks:
