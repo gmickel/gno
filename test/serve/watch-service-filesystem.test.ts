@@ -19,6 +19,7 @@ import { tmpdir } from "node:os";
 // node:path — Bun has no path utilities.
 import { join } from "node:path";
 
+import type { WatcherSnapshotFs } from "../../src/serve/watch-snapshot";
 import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
 import { defaultSyncService } from "../../src/ingestion";
@@ -63,12 +64,12 @@ async function waitUntil(
   }
 }
 
-async function baseline(root: string) {
+async function baseline(root: string, fs: WatcherSnapshotFs) {
   // This suite proves cross-platform service end states over real files. Use
   // the test-only adapter so Windows exercises snapshot classification without
   // weakening production's deliberate unsupported-handle -> full-sync path.
   const built = await buildWatcherSnapshot(root, {
-    fs: createRealPathBackedWatcherFs(),
+    fs,
   });
   if (built.status !== "ok") {
     throw new Error(`Unable to build fixture baseline: ${built.status}`);
@@ -82,7 +83,8 @@ async function startFixture(options: {
   onError?: (error: unknown) => void;
 }) {
   let callback: WatchCallback | undefined;
-  const built = await baseline(options.root);
+  const snapshotFs = createRealPathBackedWatcherFs();
+  const built = await baseline(options.root, snapshotFs);
   const service = new CollectionWatchService({
     collections: [createCollection("notes", options.root)],
     eventBus: null,
@@ -90,6 +92,7 @@ async function startFixture(options: {
     store: options.store ?? createStubStore(),
     flushDebounceMs: 5,
     maxFlushDelayMs: 50,
+    snapshotFs,
     buildSnapshot: async () => built,
     watchFactory: capturingWatch((value) => {
       callback = value;
