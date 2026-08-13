@@ -31,7 +31,6 @@ import {
   isWatcherSourceKind,
   joinWatcherRelPath,
   normalizeWatcherRelPath,
-  parentWatcherDir,
   sortPathList,
 } from "./watch-snapshot-types";
 
@@ -180,21 +179,6 @@ export async function diffWatcherSnapshot(
     }
   };
 
-  const removeDirEntryFromParent = (dirRel: string): void => {
-    const parent = parentWatcherDir(dirRel);
-    if (parent === null) {
-      return;
-    }
-    const parentEntries = nextState.directories.get(parent);
-    if (!parentEntries) {
-      return;
-    }
-    const base = dirRel.slice(parent === "" ? 0 : parent.length + 1);
-    if (parentEntries.delete(base)) {
-      nextState.entryCount -= 1;
-    }
-  };
-
   const diffDirectory = async (dirRel: string): Promise<DiffWorkResult> => {
     if (visited.has(dirRel)) {
       return { status: "ok" };
@@ -209,16 +193,20 @@ export async function diffWatcherSnapshot(
     }
     const scanned = await readDirectChildren(rootAbs, dirRel, fs, remaining);
     if (scanned.status === "missing") {
-      // Missing collection root is never a successful mass-deletion proof.
-      if (dirRel === "") {
-        return {
-          status: "scan_failed",
-          cause: new Error("Collection root is missing"),
-        };
-      }
-      recordSubtreeRemovals(dirRel);
-      removeDirEntryFromParent(dirRel);
-      return { status: "ok" };
+      // Open-time ENOENT/ENOTDIR is never directory-deletion proof.
+      // A nested dirty target may have raced into a file/symlink/other after
+      // resolve, and recursive open may disagree with a parent listing that
+      // still observed a directory — both are inconsistent scans. Deletion is
+      // proven only when a successful containing-parent listing observes the
+      // child absent (handled via oldFp && !newFp below).
+      return {
+        status: "scan_failed",
+        cause: new Error(
+          dirRel === ""
+            ? "Collection root is missing"
+            : `Directory open failed (missing or not a directory): ${dirRel}`
+        ),
+      };
     }
     if (scanned.status !== "present") {
       return scanned;
