@@ -211,6 +211,51 @@ const SINGLE_LINE_QUERY_PATTERN = /[\r\n]/;
 const DOUBLE_QUOTE_PATTERN = /"/g;
 const DOC_EDGE_TYPE_PATTERN = /^[a-z][a-z0-9_]*$/;
 const SQLITE_SAFE_PARAMETER_BATCH_SIZE = 900;
+
+/**
+ * Effective physical source path for watcher fallback queries.
+ * Record-container logical rows resolve to their source container path.
+ */
+const WATCHER_SOURCE_PATH_SQL =
+  "COALESCE(NULLIF(record_source_path, ''), rel_path)";
+
+/**
+ * Parent directory of the effective source path (POSIX), with the collection
+ * root represented as the empty string.
+ */
+const WATCHER_SOURCE_PARENT_SQL = `CASE WHEN instr(${WATCHER_SOURCE_PATH_SQL}, '/') = 0 THEN '' ELSE substr(${WATCHER_SOURCE_PATH_SQL}, 1, length(rtrim(${WATCHER_SOURCE_PATH_SQL}, replace(${WATCHER_SOURCE_PATH_SQL}, '/', ''))) - 1) END`;
+
+/**
+ * Normalize a collection-relative directory argument for watcher source-path
+ * queries. Returns null for absolute, drive-shaped, or escaping paths.
+ */
+function normalizeWatcherSourceDirRelPath(dirRelPath: string): string | null {
+  const normalized = dirRelPath.replaceAll("\\", "/");
+  if (normalized.startsWith("/")) {
+    return null;
+  }
+  const segments: string[] = [];
+  for (const segment of normalized.split("/")) {
+    if (segment === "" || segment === ".") {
+      continue;
+    }
+    if (segment === "..") {
+      return null;
+    }
+    segments.push(segment);
+  }
+  const canonical = segments.join("/");
+  // `C:` / `C:/foo` after stripping `.` is a Windows absolute escape.
+  // A single segment like `a:notes` (no slash after the colon) stays legal.
+  if (
+    /^[A-Za-z]:(\/|$)/.test(canonical) &&
+    (canonical.length === 2 || canonical[2] === "/")
+  ) {
+    return null;
+  }
+  return canonical;
+}
+
 const FTS5_FIELD_WEIGHTS = {
   filepath: 1.5,
   title: 4.0,
@@ -1659,6 +1704,90 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         cause instanceof Error
           ? cause.message
           : "Failed to list record documents",
+        cause
+      );
+    }
+  }
+
+  async listActiveDirectChildSourcePaths(
+    collection: string,
+    dirRelPath: string
+  ): Promise<StoreResult<string[]>> {
+    const parentPath = normalizeWatcherSourceDirRelPath(dirRelPath);
+    if (parentPath === null) {
+      return err(
+        "INVALID_INPUT",
+        `Directory path escapes the collection root: ${dirRelPath}`
+      );
+    }
+
+    try {
+      const db = this.ensureOpen();
+      // Effective source path: record containers resolve to physical container.
+      // Parent key: empty string for root-level sources.
+      const rows = db
+        .query<{ source_path: string }, [string, string]>(
+          `SELECT DISTINCT ${WATCHER_SOURCE_PATH_SQL} AS source_path
+           FROM documents
+           WHERE collection = ?
+             AND active = 1
+             AND ${WATCHER_SOURCE_PARENT_SQL} = ?
+           ORDER BY source_path ASC`
+        )
+        .all(collection, parentPath);
+
+      return ok(rows.map((row) => row.source_path));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list active direct child source paths",
+        cause
+      );
+    }
+  }
+
+  async listActiveDescendantSourcePaths(
+    collection: string,
+    dirRelPath: string
+  ): Promise<StoreResult<string[]>> {
+    const directory = normalizeWatcherSourceDirRelPath(dirRelPath);
+    if (directory === null) {
+      return err(
+        "INVALID_INPUT",
+        `Directory path escapes the collection root: ${dirRelPath}`
+      );
+    }
+    if (directory === "") {
+      return err(
+        "INVALID_INPUT",
+        "Descendant lookup requires a directory below the collection root"
+      );
+    }
+
+    try {
+      const db = this.ensureOpen();
+      // Exact prefix boundary: `dir1/` never matches `dir10/...`.
+      const prefix = `${directory}/`;
+      const rows = db
+        .query<{ source_path: string }, [string, number, string]>(
+          `SELECT DISTINCT ${WATCHER_SOURCE_PATH_SQL} AS source_path
+           FROM documents
+           WHERE collection = ?
+             AND active = 1
+             AND substr(${WATCHER_SOURCE_PATH_SQL}, 1, ?) = ?
+           ORDER BY source_path ASC`
+        )
+        .all(collection, prefix.length, prefix);
+
+      return ok(rows.map((row) => row.source_path));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list active descendant source paths",
         cause
       );
     }

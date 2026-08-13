@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-08-09T15:31:05.916930Z",
+  "depends_on": [
+    "gno-27-fast-reliable-watcher-reconciliation.1"
+  ],
+  "id": "gno-27-fast-reliable-watcher-reconciliation.2",
+  "priority": null,
+  "spec": "gno-27-fast-reliable-watcher-reconciliation",
+  "spec_path": ".flow/tasks/gno-27-fast-reliable-watcher-reconciliation.2.md",
+  "status": "todo",
+  "title": "Integrate exact and ambiguous watcher reconciliation",
+  "updated_at": "2026-08-09T15:31:05.916930Z"
+}

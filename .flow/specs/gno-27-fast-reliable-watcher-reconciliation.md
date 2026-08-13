@@ -86,17 +86,32 @@ empty answer is actionable only after a successful query.
 - Record-container sources use the same eligibility rules and preserve their multi-document inactivation semantics. [paraphrase]
 - Snapshot entries, dirty-directory queues, suppression history, and debounce windows are bounded; sustained churn has a finite maximum flush delay. [paraphrase]
 - The implementation defines one documented service-wide snapshot ceiling and falls back without losing updates when that ceiling is exceeded. [paraphrase]
+- Watcher filenames are treated as untrusted relative hints: absolute paths, traversal, NUL-like invalid values, and paths outside the collection are rejected before any scan or suppression lookup.
+- Excluded subtrees remain ignored, while collection-rule or root-generation changes invalidate the prior snapshot and retain the existing exact full-reconciliation boundary.
+- A missing or unreadable collection root, permission error, failed directory scan, failed store query, or partial synchronization result never implies deletion. The affected directory stays dirty and is retried after bounded backoff or the next event/config refresh.
+- Active record-container descendants are reconciled by their source-container path so one removed container inactivates all derived logical documents.
+- Snapshot initialization captures watcher events before constructing the baseline; buffered events and events arriving during classification/synchronization are replayed against a newer generation rather than absorbed into stale state.
+- Snapshot and pending-hint state use fixed service-wide ceilings, and the resettable debounce has a finite hard maximum flush delay. Overflow degrades to bounded disk/index reconciliation instead of dropping work.
+
+## Quick commands
+
+```bash
+bun test test/serve/watch-snapshot.test.ts test/store/watcher-source-paths.test.ts
+bun test test/serve/watch-service.test.ts test/serve/watch-service-filesystem.test.ts
+bun run lint:check && bun test
+.flow/bin/flowctl validate --spec gno-27-fast-reliable-watcher-reconciliation --json
+```
 
 ## Acceptance Criteria
 <!-- scope: both -->
 
-- **R1:** On real filesystems, plain-temp and dot-temp atomic replacements become searchable through the running resident service without a manual update on macOS, Linux Bun 1.3.11/latest, and Windows Bun 1.3.11/latest. [strategy:Local knowledge lifecycle]
-- **R2:** Recursive deletion removes every indexed descendant at multiple depths, post-watch directory creation indexes its eligible children when the platform emits an event, and untouched siblings remain searchable. [paraphrase]
-- **R3:** An exact eligible event always reaches content hashing, including same-size/restored-mtime in-place edits whose filesystem fingerprint is unchanged; fingerprints are used only to discover unnamed candidates. [paraphrase]
-- **R4:** For one changed file among 5,000 eligible siblings, ambiguous-event candidate selection submits only the changed path and meets p95 budgets of 250 ms on macOS/Linux and 500 ms on Windows. [paraphrase]
-- **R5:** Snapshot initialization, forced ceiling overflow, scan failure, store failure, and unreliable-metadata fallback are covered by tests that prove no update or deletion is silently lost and no failed query infers inactivation. [paraphrase]
-- **R6:** Suppression, configuration-generation changes, root changes, events during initialization or in-flight synchronization, disposal, and sustained unique-temp churn preserve existing lifecycle guarantees; churn flushes within a finite hard maximum delay with bounded memory. [paraphrase]
-- **R7:** A live `gno serve` proof with a real store demonstrates atomic-save searchability, multi-depth deletion, untouched-sibling preservation, and API responsiveness without a manual update; the same watcher contract remains shared by daemon mode. [strategy:Coherent agent and application surfaces]
+- **R1:** On real local filesystems, plain-temp and dot-temp atomic replacements become searchable through the running resident service without a manual update on macOS, Linux Bun 1.3.11/latest, and Windows Bun 1.3.11/latest. Errors: unsupported or unreadable filesystem metadata activates the correctness-preserving fallback and is not claimed as fast-path proof.
+- **R2:** Recursive deletion removes every indexed descendant at multiple depths, post-watch directory creation indexes its eligible children when the platform emits an event, record-container deletions inactivate every derived logical document, and untouched siblings remain searchable. Errors: missing roots, permission failures, and incomplete directory events retain active state until a successful reconciliation proves removal.
+- **R3:** An exact eligible event always reaches content hashing, including same-size/restored-mtime in-place edits whose filesystem fingerprint is unchanged; fingerprints are used only to discover unnamed candidates. Errors: invalid, absolute, escaping, or excluded watcher paths cannot cause an outside-root scan or suppression bypass.
+- **R4:** For one changed file among 5,000 eligible siblings, ambiguous-event candidate discovery submits only the changed path and meets p95 budgets of 250 ms on macOS/Linux and 500 ms on Windows across a documented warm-up/run protocol. Errors: ceiling overflow or unreliable metadata may take the bounded fallback and is reported separately from the fast-path measurement.
+- **R5:** Snapshot initialization, forced ceiling overflow, scan failure, store failure, partial synchronization failure, unreliable metadata, and root loss are covered by tests proving no update or deletion is silently lost and no failed query infers inactivation. Errors: failed classification or synchronization keeps the affected directory dirty for bounded retry and advances no unproven snapshot state.
+- **R6:** Suppression, collection-rule and root-generation changes, events during initialization or in-flight synchronization, ABA remove/re-add, disposal, and sustained unique-temp churn preserve existing lifecycle guarantees; pending hints and snapshots have documented fixed ceilings, and churn flushes within a documented finite hard maximum delay. Errors: overflow degrades to bounded reconciliation and shutdown discards uncommitted snapshot generations without post-disposal callbacks.
+- **R7:** A live `gno serve` proof with a real store demonstrates atomic-save searchability, multi-depth deletion, untouched-sibling preservation, and API responsiveness without a manual update; the same watcher contract remains shared by daemon mode. Errors: the proof uses bounded polling and deterministic local embedding/search fixtures, fails on timeout, and makes no blanket network/removable-filesystem guarantee.
 
 ## Boundaries
 <!-- scope: business -->
@@ -128,21 +143,33 @@ empty answer is actionable only after a successful query.
 
 ## Strategy Alignment
 
-- Reliable, automatic source-change recovery directly strengthens the active **Local knowledge lifecycle** track. [strategy:Local knowledge lifecycle]
-- Keeping serve and daemon on one watcher/synchronization contract supports the active **Coherent agent and application surfaces** track. [strategy:Coherent agent and application surfaces]
+- **Local knowledge lifecycle** — reliable, automatic source-change recovery prevents the resident index from silently diverging from local files.
+- **Coherent agent and application surfaces** — serve and daemon retain one watcher/synchronization contract and one index truth.
 
 ## Strategy Conflicts
 
-- No conflict detected with the local-first evidence-layer approach or any active strategy track. [paraphrase]
+- No conflict detected with the local-first evidence-layer approach or any active strategy track.
+
+## Implementation Plan
+
+1. `gno-27-fast-reliable-watcher-reconciliation.1` — Add bounded watcher snapshot and active-source fallback primitives (**M**).
+2. `gno-27-fast-reliable-watcher-reconciliation.2` — Integrate exact and ambiguous watcher reconciliation (**M**); depends on task 1.
+3. `gno-27-fast-reliable-watcher-reconciliation.3` — Prove lifecycle, cross-platform correctness, and candidate-selection performance (**M**); depends on task 2.
+4. `gno-27-fast-reliable-watcher-reconciliation.4` — Reconcile documentation, hosted-site truth, changelog credit, and final gates (**M**); depends on task 3.
+
+## Early proof point
+
+Task `gno-27-fast-reliable-watcher-reconciliation.1` validates the core approach by proving that a bounded no-follow snapshot selects only changed/new/removed candidates and that the store fallback returns the same active source-path set without inferring deletion on failure.
+If it fails, re-evaluate the watcher-owned hierarchical snapshot boundary before continuing with task 2+.
 
 ## Requirement coverage
 
-| Requirement | Planned task |
-| --- | --- |
-| R1 | fn-N.M (TBD — populate via /flow-next:plan) |
-| R2 | fn-N.M (TBD — populate via /flow-next:plan) |
-| R3 | fn-N.M (TBD — populate via /flow-next:plan) |
-| R4 | fn-N.M (TBD — populate via /flow-next:plan) |
-| R5 | fn-N.M (TBD — populate via /flow-next:plan) |
-| R6 | fn-N.M (TBD — populate via /flow-next:plan) |
-| R7 | fn-N.M (TBD — populate via /flow-next:plan) |
+| Req | Description | Task(s) | Gap justification |
+| --- | --- | --- | --- |
+| R1 | Cross-platform atomic replacement recovery | gno-27-fast-reliable-watcher-reconciliation.2, .3 | — |
+| R2 | Recursive delete/new-directory/record-container correctness | gno-27-fast-reliable-watcher-reconciliation.1, .2, .3 | — |
+| R3 | Exact events preserve content hashing and path containment | gno-27-fast-reliable-watcher-reconciliation.2, .3 | — |
+| R4 | One-of-5,000 candidate selection and p95 budgets | gno-27-fast-reliable-watcher-reconciliation.1, .3 | — |
+| R5 | Initialization, overflow, scan/store/sync failure safety | gno-27-fast-reliable-watcher-reconciliation.1, .2, .3 | — |
+| R6 | Lifecycle races, bounded state, finite churn delay | gno-27-fast-reliable-watcher-reconciliation.2, .3 | — |
+| R7 | Live serve proof and shared daemon contract | gno-27-fast-reliable-watcher-reconciliation.3, .4 | — |
