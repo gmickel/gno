@@ -32,6 +32,7 @@ import {
   installWatchServiceSyncReset,
 } from "./helpers/watch-service-fixtures";
 import { statefulInactiveStore } from "./helpers/watch-service-round6-fixtures";
+import { createRealPathBackedWatcherFs } from "./helpers/watch-snapshot-fixtures";
 
 installWatchServiceSyncReset();
 
@@ -63,7 +64,12 @@ async function waitUntil(
 }
 
 async function baseline(root: string) {
-  const built = await buildWatcherSnapshot(root);
+  // This suite proves cross-platform service end states over real files. Use
+  // the test-only adapter so Windows exercises snapshot classification without
+  // weakening production's deliberate unsupported-handle -> full-sync path.
+  const built = await buildWatcherSnapshot(root, {
+    fs: createRealPathBackedWatcherFs(),
+  });
   if (built.status !== "ok") {
     throw new Error(`Unable to build fixture baseline: ${built.status}`);
   }
