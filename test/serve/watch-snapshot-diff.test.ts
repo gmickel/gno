@@ -1,11 +1,16 @@
 /**
  * Core build/diff selection for watcher hierarchical snapshots (gno-27 task .1).
+ *
+ * Generic snapshot tests inject a path-backed adapter so they are platform-
+ * independent (Windows production default intentionally falls back).
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+import type { WatcherSnapshotFs } from "../../src/serve/watch-snapshot";
 
 import {
   buildWatcherSnapshot,
@@ -14,13 +19,18 @@ import {
   resolveWatcherDirtyDirectory,
 } from "../../src/serve/watch-snapshot";
 import { safeRm } from "../helpers/cleanup";
-import { writeWatchFixture } from "./helpers/watch-snapshot-fixtures";
+import {
+  createRealPathBackedWatcherFs,
+  writeWatchFixture,
+} from "./helpers/watch-snapshot-fixtures";
 
 describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
   let root = "";
+  let fs: WatcherSnapshotFs;
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "gno-watch-snap-"));
+    fs = createRealPathBackedWatcherFs();
   });
 
   afterEach(async () => {
@@ -31,13 +41,13 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     await writeWatchFixture(root, "a.md", "one");
     await writeWatchFixture(root, "b.md", "two");
 
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
     }
 
-    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""], { fs });
     expect(diff.status).toBe("ok");
     if (diff.status !== "ok") {
       return;
@@ -52,7 +62,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     await writeWatchFixture(root, "gone.md", "g");
     await writeWatchFixture(root, "edit.md", "old");
 
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -63,7 +73,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     const { unlink } = await import("node:fs/promises");
     await unlink(join(root, "gone.md"));
 
-    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""], { fs });
     expect(diff.status).toBe("ok");
     if (diff.status !== "ok") {
       return;
@@ -78,7 +88,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     await writeWatchFixture(root, "sub/keep.md", "k");
     await writeWatchFixture(root, "sub/edit.md", "old");
 
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -86,7 +96,9 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
 
     await writeWatchFixture(root, "sub/edit.md", "new");
 
-    const diff = await diffWatcherSnapshot(root, built.snapshot, ["sub"]);
+    const diff = await diffWatcherSnapshot(root, built.snapshot, ["sub"], {
+      fs,
+    });
     expect(diff.status).toBe("ok");
     if (diff.status !== "ok") {
       return;
@@ -101,7 +113,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     await writeWatchFixture(root, "tree/deep/b.md", "b");
     await writeWatchFixture(root, "sibling.md", "s");
 
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -109,7 +121,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
 
     await safeRm(join(root, "tree"));
 
-    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""], { fs });
     expect(diff.status).toBe("ok");
     if (diff.status !== "ok") {
       return;
@@ -125,7 +137,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     await writeWatchFixture(root, "record.json", '{"a":1}');
     await writeWatchFixture(root, "keep.md", "k");
 
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -140,7 +152,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     await writeWatchFixture(root, "record.json/child.md", "nested");
     await writeWatchFixture(root, "record.json/deep/x.md", "deep");
 
-    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""], { fs });
     expect(diff.status).toBe("ok");
     if (diff.status !== "ok") {
       return;
@@ -165,7 +177,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     // (e.g. notes.json). Replacement by a directory must surface that source in
     // removals without calling store/ingestion from this primitive.
     await writeWatchFixture(root, "notes.json", '{"records":[]}');
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -176,7 +188,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     await mkdir(join(root, "notes.json"));
     await writeWatchFixture(root, "notes.json/item.md", "i");
 
-    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""], { fs });
     expect(diff.status).toBe("ok");
     if (diff.status !== "ok") {
       return;
@@ -191,7 +203,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     await writeWatchFixture(root, "was-dir/a.md", "a");
     await writeWatchFixture(root, "was-dir/nested/b.md", "b");
 
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -200,7 +212,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     await safeRm(join(root, "was-dir"));
     await writeWatchFixture(root, "was-dir", "now-a-file");
 
-    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""], { fs });
     expect(diff.status).toBe("ok");
     if (diff.status !== "ok") {
       return;
@@ -215,7 +227,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
 
   test("atomic replacement changes inode/ctime and selects the path", async () => {
     await writeWatchFixture(root, "note.md", "v1");
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -227,7 +239,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     await unlink(join(root, "note.md"));
     await rename(tmp, join(root, "note.md"));
 
-    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""], { fs });
     expect(diff.status).toBe("ok");
     if (diff.status !== "ok") {
       return;
@@ -241,7 +253,7 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     await writeWatchFixture(root, "a/b/c.md", "c");
     await writeWatchFixture(root, "a/sibling.md", "s");
 
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -249,12 +261,17 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
 
     await safeRm(join(root, "a", "b"));
 
-    const resolved = await resolveWatcherDirtyDirectory(root, "a/b/c.md");
+    const resolved = await resolveWatcherDirtyDirectory(root, "a/b/c.md", {
+      fs,
+    });
     expect(resolved).toEqual({ status: "ok", directory: "a" });
 
-    const reconciled = await reconcileWatcherHints(root, built.snapshot, [
-      "a/b/c.md",
-    ]);
+    const reconciled = await reconcileWatcherHints(
+      root,
+      built.snapshot,
+      ["a/b/c.md"],
+      { fs }
+    );
     expect(reconciled.status).toBe("ok");
     if (reconciled.status !== "ok") {
       return;
@@ -262,5 +279,81 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     expect(reconciled.removals).toContain("a/b/c.md");
     expect(reconciled.candidates).not.toContain("a/sibling.md");
     expect(reconciled.removals).not.toContain("a/sibling.md");
+  });
+
+  test("observed-then-missing child after readdir is scan_failed, not silent deletion", async () => {
+    await writeWatchFixture(root, "keep.md", "k");
+    await writeWatchFixture(root, "gone.md", "g");
+
+    const built = await buildWatcherSnapshot(root, { fs });
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") {
+      return;
+    }
+
+    const raceFs: WatcherSnapshotFs = {
+      supportsAnchoredHandles: true,
+      openDir: (abs) => fs.openDir(abs),
+      readDir: async () => ["gone.md", "keep.md"],
+      lstatChild: async (handle, name) => {
+        if (name === "gone.md") {
+          throw Object.assign(new Error("ENOENT race"), { code: "ENOENT" });
+        }
+        return fs.lstatChild(handle, name);
+      },
+      openChildDir: (handle, name) => fs.openChildDir(handle, name),
+      closeDir: (handle) => fs.closeDir(handle),
+    };
+
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""], {
+      fs: raceFs,
+    });
+    expect(diff.status).toBe("fallback");
+    if (diff.status !== "fallback") {
+      return;
+    }
+    expect(diff.reason).toBe("scan_failed");
+    // No candidates, removals, or nextSnapshot on fallback — previous proven.
+    expect("candidates" in diff).toBe(false);
+    expect("removals" in diff).toBe(false);
+    expect("nextSnapshot" in diff).toBe(false);
+    expect(built.snapshot.directories.get("")?.has("gone.md")).toBe(true);
+    expect(built.snapshot.directories.get("")?.has("keep.md")).toBe(true);
+  });
+
+  test("observed-then-ENOTDIR child after readdir is scan_failed, not snapshot advance", async () => {
+    await writeWatchFixture(root, "source.md", "s");
+    const built = await buildWatcherSnapshot(root, { fs });
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") {
+      return;
+    }
+
+    const raceFs: WatcherSnapshotFs = {
+      supportsAnchoredHandles: true,
+      openDir: (abs) => fs.openDir(abs),
+      // Child still listed, but lstat reports path replacement race (ENOTDIR).
+      readDir: async () => ["source.md"],
+      lstatChild: async (_handle, name) => {
+        if (name === "source.md") {
+          throw Object.assign(new Error("ENOTDIR race"), { code: "ENOTDIR" });
+        }
+        throw Object.assign(new Error("unexpected"), { code: "ENOENT" });
+      },
+      openChildDir: (handle, name) => fs.openChildDir(handle, name),
+      closeDir: (handle) => fs.closeDir(handle),
+    };
+
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""], {
+      fs: raceFs,
+    });
+    expect(diff.status).toBe("fallback");
+    if (diff.status !== "fallback") {
+      return;
+    }
+    expect(diff.reason).toBe("scan_failed");
+    expect("removals" in diff).toBe(false);
+    expect("nextSnapshot" in diff).toBe(false);
+    expect(built.snapshot.directories.get("")?.has("source.md")).toBe(true);
   });
 });

@@ -21,6 +21,7 @@ import {
 } from "../../src/serve/watch-snapshot";
 import { safeRm } from "../helpers/cleanup";
 import {
+  createRealPathBackedWatcherFs,
   snapshotFingerprint,
   writeWatchFixture,
 } from "./helpers/watch-snapshot-fixtures";
@@ -441,7 +442,9 @@ describe("watcher snapshot scale", () => {
     }
     await Promise.all(writes);
 
-    const built = await buildWatcherSnapshot(root);
+    // Path-backed adapter: platform-independent (Windows production default falls back).
+    const fs = createRealPathBackedWatcherFs();
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -454,7 +457,7 @@ describe("watcher snapshot scale", () => {
     const target = "f-02500.md";
     await writeWatchFixture(root, target, "changed-body");
 
-    const diff = await diffWatcherSnapshot(root, built.snapshot, [""]);
+    const diff = await diffWatcherSnapshot(root, built.snapshot, [""], { fs });
     expect(diff.status).toBe("ok");
     if (diff.status !== "ok") {
       return;

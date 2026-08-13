@@ -256,10 +256,9 @@ export async function readDirectChildren(
       try {
         stat = await fs.lstatChild(handle, name);
       } catch (cause) {
-        if (isMissingFsError(cause)) {
-          // Race: entry vanished between readdir and lstat — skip, do not fail.
-          continue;
-        }
+        // Observed-then-missing (ENOENT/ENOTDIR after readdir listed the name)
+        // must fail closed: silently skipping would accept a partial directory
+        // image and can prove false removals against the previous snapshot.
         return { status: "scan_failed", cause };
       }
       const fingerprinted = fingerprintFromStat(stat);

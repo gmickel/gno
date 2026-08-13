@@ -1,5 +1,8 @@
 /**
  * Safety/fallback paths for watcher snapshots (gno-27 task .1).
+ *
+ * Generic tests inject path-backed FS (platform-independent). Production
+ * adapter coverage lives in watch-snapshot-production.test.ts.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
@@ -16,7 +19,6 @@ import {
   reconcileWatcherHints,
   resolveWatcherDirtyDirectory,
 } from "../../src/serve/watch-snapshot";
-import { createDefaultWatcherFs } from "../../src/serve/watch-snapshot-handles";
 import { safeRm } from "../helpers/cleanup";
 import {
   createRealPathBackedWatcherFs,
@@ -26,9 +28,11 @@ import {
 
 describe("watcher snapshot safety + fallback", () => {
   let root = "";
+  let fs: WatcherSnapshotFs;
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "gno-watch-snap-"));
+    fs = createRealPathBackedWatcherFs();
   });
 
   afterEach(async () => {
@@ -43,7 +47,7 @@ describe("watcher snapshot safety + fallback", () => {
       await symlink(outsideDir, join(root, "link-out"), "dir");
       await symlink(join(root, "inside.md"), join(root, "link-file"));
 
-      const built = await buildWatcherSnapshot(root);
+      const built = await buildWatcherSnapshot(root, { fs });
       expect(built.status).toBe("ok");
       if (built.status !== "ok") {
         return;
@@ -113,21 +117,23 @@ describe("watcher snapshot safety + fallback", () => {
 
   test("invalid and outside-root hints are rejected without scanning", async () => {
     await writeWatchFixture(root, "ok.md", "o");
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
     }
 
     for (const hint of ["/etc/passwd", "../escape", "C:/windows", "a\0b"]) {
-      const resolved = await resolveWatcherDirtyDirectory(root, hint);
+      const resolved = await resolveWatcherDirtyDirectory(root, hint, { fs });
       expect(resolved.status).toBe("invalid");
     }
 
-    const reconciled = await reconcileWatcherHints(root, built.snapshot, [
-      "/etc/passwd",
-      "../escape",
-    ]);
+    const reconciled = await reconcileWatcherHints(
+      root,
+      built.snapshot,
+      ["/etc/passwd", "../escape"],
+      { fs }
+    );
     expect(reconciled.status).toBe("ok");
     if (reconciled.status !== "ok") {
       return;
@@ -139,7 +145,7 @@ describe("watcher snapshot safety + fallback", () => {
 
   test("unreliable metadata forces fallback without mutating the proven snapshot", async () => {
     await writeWatchFixture(root, "a.md", "a");
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -165,14 +171,14 @@ describe("watcher snapshot safety + fallback", () => {
     await writeWatchFixture(root, "b.md", "b");
     await writeWatchFixture(root, "c.md", "c");
 
-    const built = await buildWatcherSnapshot(root, { entryCeiling: 2 });
+    const built = await buildWatcherSnapshot(root, { entryCeiling: 2, fs });
     expect(built.status).toBe("fallback");
     if (built.status !== "fallback") {
       return;
     }
     expect(built.reason).toBe("overflow");
 
-    const okBuild = await buildWatcherSnapshot(root);
+    const okBuild = await buildWatcherSnapshot(root, { fs });
     expect(okBuild.status).toBe("ok");
     if (okBuild.status !== "ok") {
       return;
@@ -183,7 +189,7 @@ describe("watcher snapshot safety + fallback", () => {
       root,
       okBuild.snapshot,
       [""],
-      { entryCeiling: okBuild.snapshot.entryCount }
+      { entryCeiling: okBuild.snapshot.entryCount, fs }
     );
     expect(overflowDiff.status).toBe("fallback");
     if (overflowDiff.status !== "fallback") {
@@ -194,7 +200,7 @@ describe("watcher snapshot safety + fallback", () => {
 
   test("failed scan never proves removals", async () => {
     await writeWatchFixture(root, "keep.md", "k");
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -233,7 +239,7 @@ describe("watcher snapshot safety + fallback", () => {
   test("missing collection root is scan_failed, not mass deletion", async () => {
     await writeWatchFixture(root, "keep.md", "k");
     await writeWatchFixture(root, "nested/a.md", "a");
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -292,7 +298,7 @@ describe("watcher snapshot safety + fallback", () => {
 
   test("millisecond-only timestamps are unreliable_metadata", async () => {
     await writeWatchFixture(root, "a.md", "a");
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -326,7 +332,7 @@ describe("watcher snapshot safety + fallback", () => {
 
   test("unsupported anchored handles fall back rather than path-scanning", async () => {
     await writeWatchFixture(root, "a.md", "a");
-    const built = await buildWatcherSnapshot(root);
+    const built = await buildWatcherSnapshot(root, { fs });
     expect(built.status).toBe("ok");
     if (built.status !== "ok") {
       return;
@@ -355,76 +361,5 @@ describe("watcher snapshot safety + fallback", () => {
       return;
     }
     expect(diff.reason).toBe("scan_failed");
-  });
-
-  test("createDefaultWatcherFs builds a real production snapshot on this platform", async () => {
-    /**
-     * Exercises the native libc/dirent path (not an injected adapter).
-     * Broken libc load or dirent layout must fail here rather than hide behind
-     * path-backed test doubles.
-     */
-    const productionFs = createDefaultWatcherFs();
-
-    if (process.platform === "win32") {
-      expect(productionFs.supportsAnchoredHandles).toBe(false);
-      const built = await buildWatcherSnapshot(root, { fs: productionFs });
-      expect(built.status).toBe("fallback");
-      if (built.status === "fallback") {
-        expect(built.reason).toBe("scan_failed");
-      }
-      return;
-    }
-
-    if (process.platform === "darwin" || process.platform === "linux") {
-      expect(productionFs.supportsAnchoredHandles).toBe(true);
-
-      await writeWatchFixture(root, "prod-a.md", "a");
-      await writeWatchFixture(root, "nested/prod-b.md", "b");
-      const outsideDir = await mkdtemp(join(tmpdir(), "gno-watch-prod-out-"));
-      try {
-        await writeFile(join(outsideDir, "secret.md"), "secret");
-        await symlink(outsideDir, join(root, "link-out"), "dir");
-
-        const built = await buildWatcherSnapshot(root, { fs: productionFs });
-        expect(built.status).toBe("ok");
-        if (built.status !== "ok") {
-          return;
-        }
-        expect(built.snapshot.directories.get("")?.get("prod-a.md")?.kind).toBe(
-          "file"
-        );
-        expect(built.snapshot.directories.get("nested")?.has("prod-b.md")).toBe(
-          true
-        );
-        expect(built.snapshot.directories.get("")?.get("link-out")?.kind).toBe(
-          "symlink"
-        );
-        expect(built.snapshot.directories.has("link-out")).toBe(false);
-
-        await writeWatchFixture(root, "prod-a.md", "changed");
-        const diff = await diffWatcherSnapshot(root, built.snapshot, [""], {
-          fs: productionFs,
-        });
-        expect(diff.status).toBe("ok");
-        if (diff.status !== "ok") {
-          return;
-        }
-        expect(diff.candidates).toEqual(["prod-a.md"]);
-        expect(diff.removals).toEqual([]);
-      } finally {
-        await safeRm(outsideDir);
-      }
-      return;
-    }
-
-    // Other platforms: either explicit unsupported fallback or working adapter.
-    if (!productionFs.supportsAnchoredHandles) {
-      const built = await buildWatcherSnapshot(root, { fs: productionFs });
-      expect(built.status).toBe("fallback");
-      return;
-    }
-    await writeWatchFixture(root, "x.md", "x");
-    const built = await buildWatcherSnapshot(root, { fs: productionFs });
-    expect(built.status).toBe("ok");
   });
 });

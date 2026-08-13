@@ -148,14 +148,18 @@ export function loadLibc(): LoadedLibc | null {
   if (platform === "darwin") {
     // Darwin O_SYMLINK opens the symlink inode itself (lstat-like).
     // Without it, O_RDONLY would follow — refuse rather than silent follow.
+    // O_NONBLOCK is required: plain O_RDONLY|O_SYMLINK can block forever on a
+    // FIFO with no writer (and similarly hang on some device nodes).
     const O_SYMLINK = (fsConstants as { O_SYMLINK?: number }).O_SYMLINK;
     if (O_SYMLINK === undefined || O_SYMLINK === 0) {
       cachedLibc = null;
       return null;
     }
-    openLstatFlags = O_RDONLY | O_SYMLINK;
+    const O_NONBLOCK = fsConstants.O_NONBLOCK ?? 0;
+    openLstatFlags = O_RDONLY | O_SYMLINK | O_NONBLOCK;
   } else {
     // Linux O_PATH|O_NOFOLLOW is the portable no-follow open for any type.
+    // O_PATH does not block on FIFOs/sockets; no extra O_NONBLOCK needed.
     const O_PATH = (fsConstants as { O_PATH?: number }).O_PATH ?? 0o10_000_000;
     openLstatFlags = O_RDONLY | O_PATH | O_NOFOLLOW;
   }
