@@ -5,6 +5,9 @@
  * @module src/serve/watch-reconciliation-fallback
  */
 
+// node:fs/promises — Bun.file().exists() reports false for directories, so it
+// cannot prove collection-root availability on unsupported watcher platforms.
+import { stat } from "node:fs/promises";
 // node:path — Bun has no path utilities
 import { normalize } from "node:path";
 
@@ -59,8 +62,18 @@ export async function fallbackClassifyDirtyHints(options: {
   const root = normalize(rootAbs);
 
   // No anchored handles: never path-walk or infer deletions. Caller must use
-  // durable full-collection reconciliation (syncCollection) instead.
+  // durable full-collection reconciliation (syncCollection) instead. Prove
+  // the root is currently available first so a missing mount/root cannot be
+  // mistaken for a genuinely empty collection by the full walk.
   if (!fs.supportsAnchoredHandles) {
+    try {
+      const rootStat = await stat(root);
+      if (!rootStat.isDirectory()) {
+        throw new Error("Collection root is not a directory");
+      }
+    } catch (cause) {
+      return { status: "error", cause, stage: "scan" };
+    }
     return { status: "full_reconcile", reason: "unsupported_fs" };
   }
 

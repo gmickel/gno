@@ -261,6 +261,38 @@ describe("durable forceFallback / overflow", () => {
 });
 
 describe("unsupported platform fail-closed", () => {
+  test("missing root does not escalate to a destructive full reconcile", async () => {
+    const root = join(tmpdir(), `gno-watch-missing-${crypto.randomUUID()}`);
+    const classified = await classifyDirtyHints({
+      collection: createCollection("notes", root),
+      store: createStubStore(),
+      rootAbs: root,
+      previous: null,
+      dirtyHints: [""],
+      snapshotOptions: {
+        fs: {
+          supportsAnchoredHandles: false,
+          openDir: async () => {
+            throw new Error("should not path-walk");
+          },
+          readDir: async () => ({ status: "ok", names: [] }),
+          lstatChild: async () => {
+            throw new Error("should not path-walk");
+          },
+          openChildDir: async () => {
+            throw new Error("should not path-walk");
+          },
+          closeDir: async () => undefined,
+        },
+      },
+    });
+
+    expect(classified.status).toBe("error");
+    if (classified.status === "error") {
+      expect(classified.stage).toBe("scan");
+    }
+  });
+
   test("unsupported fs never path-walks or infers deletions", async () => {
     const root = await mkdtemp(join(tmpdir(), "gno-watch-unsup-"));
     const pathOps: string[] = [];
