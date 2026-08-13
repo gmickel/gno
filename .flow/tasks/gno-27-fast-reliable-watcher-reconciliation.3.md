@@ -44,9 +44,8 @@ Add real-filesystem, resident-runtime, CI-matrix, performance, and live-service 
 - [ ] TBD
 
 ## Done summary
-TBD
-
+Added cross-platform correctness and performance proof for watcher reconciliation: deterministic real-filesystem service tests, shared serve/daemon ResidentRuntime contract coverage, a 5,000-file candidate-discovery p95 benchmark with separate fallback reporting, and a bounded live `gno serve` smoke using real SQLite and lexical HTTP search. Added focused package commands and six CI lanes spanning macOS, Linux, and Windows on Bun 1.3.11 plus latest. Host-native implementation review concluded SHIP.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 2af86822
+- Tests: Bun 1.3.11: bun test test/serve/watch-service-filesystem.test.ts test/serve/resident-runtime.test.ts (10 pass, 0 fail), Bun 1.3.11: bun scripts/watcher-reconciliation-benchmark.ts (5000 files, one selected candidate, p95 58.61ms <= 250ms macOS threshold; fallback 64.04ms reported separately), Bun 1.3.11: bun scripts/watcher-reconciliation-smoke.ts (atomic visible, nested deletion inactive, sibling searchable, unrelated status 0.16ms, no manual update), Bun 1.3.11: bun test (4215 pass, 2 expected skips, 0 fail across 506 files), bun run lint:check (0 warnings, 0 errors; formatting clean), host-native implementation review SHIP (reservation 2fab288e530d41b48d36995d68d1a130)
 - PRs:
