@@ -3,50 +3,23 @@
 import type { WatchListener } from "node:fs";
 
 import { describe, expect, test } from "bun:test";
-// node:fs/promises — test fixture setup
-import { mkdtemp, writeFile } from "node:fs/promises";
-// node:os — tmpdir
+import { mkdtemp, writeFile } from "node:fs/promises"; // test fixture setup
 import { tmpdir } from "node:os";
-// node:path — Bun has no path utilities
-import { join } from "node:path";
+import { join } from "node:path"; // Bun has no path utilities
 
-import type { Collection } from "../../src/config/types";
 import type { WatcherSnapshotFs } from "../../src/serve/watch-snapshot";
-import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
 import { defaultSyncService } from "../../src/ingestion";
 import { CollectionWatchService } from "../../src/serve/watch-service";
 import { safeRm } from "../helpers/cleanup";
 import {
+  createCollection,
+  createStubStore,
   createSyncResult,
   installWatchServiceSyncReset,
 } from "./helpers/watch-service-fixtures";
 
 installWatchServiceSyncReset();
-
-function coll(
-  name: string,
-  path: string,
-  overrides: Partial<Collection> = {}
-): Collection {
-  return {
-    name,
-    path,
-    pattern: "**/*.md",
-    include: [],
-    exclude: [],
-    ...overrides,
-  };
-}
-
-function stubStore(overrides: Partial<SqliteAdapter> = {}): SqliteAdapter {
-  return {
-    listActiveDirectChildSourcePaths: async () => ({ ok: true, value: [] }),
-    listActiveDescendantSourcePaths: async () => ({ ok: true, value: [] }),
-    listActiveSourcePaths: async () => ({ ok: true, value: [] }),
-    ...overrides,
-  } as unknown as SqliteAdapter;
-}
 
 function unsupportedFs(pathOps: string[]): WatcherSnapshotFs {
   const boom = async (label: string): Promise<never> => {
@@ -113,10 +86,10 @@ describe("unsupported FS ambiguous → full reconcile", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
-        collections: [coll("notes", root)],
+        collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
-        store: stubStore(),
+        store: createStubStore(),
         snapshotFs: unsupportedFs(pathOps),
         buildSnapshot: async () => ({
           status: "fallback",
@@ -170,10 +143,10 @@ describe("unsupported FS ambiguous → full reconcile", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
-        collections: [coll("notes", root)],
+        collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
-        store: stubStore(),
+        store: createStubStore(),
         snapshotFs: unsupportedFs(pathOps),
         buildSnapshot: async () => ({
           status: "fallback",
@@ -252,10 +225,10 @@ describe("second generation during full sync", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
-        collections: [coll("notes", rootA)],
+        collections: [createCollection("notes", rootA)],
         eventBus: null,
         scheduler: null,
-        store: stubStore(),
+        store: createStubStore(),
         syncOptions: { contentTypeRulesFingerprint: "gen-a" },
         flushDebounceMs: 25,
         maxFlushDelayMs: 150,
@@ -265,11 +238,11 @@ describe("second generation during full sync", () => {
       await Bun.sleep(40);
       callbacks.get(rootA)?.("change", "note.md");
       await Bun.sleep(150);
-      service.updateCollections([coll("notes", rootB)], {
+      service.updateCollections([createCollection("notes", rootB)], {
         contentTypeRulesFingerprint: "gen-b",
       });
       await Bun.sleep(100);
-      service.updateCollections([coll("notes", rootC)], {
+      service.updateCollections([createCollection("notes", rootC)], {
         contentTypeRulesFingerprint: "gen-c",
       });
       finishFirst?.();
@@ -315,10 +288,10 @@ describe("same-root config change with queued ambiguous work", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
-        collections: [coll("notes", root)],
+        collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
-        store: stubStore({
+        store: createStubStore({
           listActiveSourcePaths: async () => ({
             ok: true,
             value: ["doc.md"],
@@ -340,7 +313,7 @@ describe("same-root config change with queued ambiguous work", () => {
       cb?.("rename", "doc.md.tmp");
       await Bun.sleep(20);
       service.updateCollections(
-        [coll("notes", root, { exclude: ["**/skip/**"] })],
+        [createCollection("notes", root, { exclude: ["**/skip/**"] })],
         { contentTypeRulesFingerprint: "after" }
       );
       await Bun.sleep(900);
@@ -388,10 +361,10 @@ describe("partial success settlement", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
-        collections: [coll("notes", root)],
+        collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
-        store: stubStore(),
+        store: createStubStore(),
         callbacks: {
           onSyncComplete: (event) => {
             completeA.push(...event.relPaths);
@@ -427,7 +400,8 @@ describe("partial success settlement", () => {
     const firstGate = new Promise<void>((resolve) => {
       finishFirst = resolve;
     });
-    const completePaths: string[] = [];
+    const completeCalls: number[] = [];
+    const schedulerPaths: string[] = [];
     try {
       await writeFile(join(rootA, "old.md"), "o");
       await writeFile(join(rootB, "ok.md"), "ok");
@@ -468,13 +442,17 @@ describe("partial success settlement", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
-        collections: [coll("notes", rootA)],
+        collections: [createCollection("notes", rootA)],
         eventBus: null,
-        scheduler: null,
-        store: stubStore(),
+        scheduler: {
+          notifySyncComplete: (paths: string[]) => {
+            schedulerPaths.push(...paths);
+          },
+        } as never,
+        store: createStubStore(),
         callbacks: {
-          onSyncComplete: (event) => {
-            completePaths.push(...event.relPaths);
+          onSyncComplete: () => {
+            completeCalls.push(1);
           },
         },
         flushDebounceMs: 25,
@@ -485,12 +463,14 @@ describe("partial success settlement", () => {
       await Bun.sleep(40);
       callbacks.get(rootA)?.("change", "old.md");
       await Bun.sleep(150);
-      service.updateCollections([coll("notes", rootB)]);
+      service.updateCollections([createCollection("notes", rootB)]);
       finishFirst?.();
       await Bun.sleep(1_200);
       expect(collectionCalls).toBeGreaterThanOrEqual(2);
-      expect(completePaths.filter((p) => p === "ok.md").length).toBe(1);
-      expect(completePaths).toContain("bad.md");
+      // onSyncComplete once per completed gen attempt; scheduler settles content once.
+      expect(completeCalls.length).toBeGreaterThanOrEqual(2);
+      expect(schedulerPaths.filter((p) => p === "ok.md").length).toBe(1);
+      expect(schedulerPaths).toContain("bad.md");
       await service.dispose();
     } finally {
       await safeRm(rootA);

@@ -265,7 +265,11 @@ describe("top-level errors retain work", () => {
       await Bun.sleep(1_800);
       expect(pathCalls).toBeGreaterThanOrEqual(3);
       expect(pathCalls).toBeLessThanOrEqual(6);
-      expect(completePaths.filter((p) => p === "final.md").length).toBe(1);
+      // onSyncComplete once per completed attempt; content success settles once
+      // via first updated receipt (afterSync/scheduler), not path-count=1.
+      expect(completePaths.filter((p) => p === "final.md").length).toBe(
+        pathCalls
+      );
       if (callTimes.length >= 2) {
         expect(
           (callTimes[1] ?? 0) - (callTimes[0] ?? 0)
@@ -282,7 +286,8 @@ describe("top-level errors retain work", () => {
     const rootA = await mkdtemp(join(tmpdir(), "gno-watch-r4-edge-gen-a-"));
     const rootB = await mkdtemp(join(tmpdir(), "gno-watch-r4-edge-gen-b-"));
     let collectionCalls = 0;
-    const completePaths: string[] = [];
+    const completeCalls: number[] = [];
+    const schedulerPaths: string[] = [];
     try {
       await writeFile(join(rootA, "old.md"), "o");
       await writeFile(join(rootB, "ok.md"), "ok");
@@ -307,11 +312,15 @@ describe("top-level errors retain work", () => {
       const service = new CollectionWatchService({
         collections: [coll("notes", rootA)],
         eventBus: null,
-        scheduler: null,
+        scheduler: {
+          notifySyncComplete: (paths: string[]) => {
+            schedulerPaths.push(...paths);
+          },
+        } as never,
         store: stubStore(),
         callbacks: {
-          onSyncComplete: (event) => {
-            completePaths.push(...event.relPaths);
+          onSyncComplete: () => {
+            completeCalls.push(1);
           },
         },
         flushDebounceMs: 20,
@@ -324,7 +333,9 @@ describe("top-level errors retain work", () => {
       await Bun.sleep(1_800);
       expect(collectionCalls).toBeGreaterThanOrEqual(3);
       expect(collectionCalls).toBeLessThanOrEqual(6);
-      expect(completePaths.filter((p) => p === "ok.md").length).toBe(1);
+      // One onSyncComplete per completed attempt; scheduler only on updated.
+      expect(completeCalls.length).toBe(collectionCalls);
+      expect(schedulerPaths.filter((p) => p === "ok.md").length).toBe(1);
       expect(service.getState().queuedCollections).toEqual([]);
       await service.dispose();
     } finally {

@@ -178,7 +178,7 @@ export async function inspectNoFollowPresence(
   relPath: string,
   fs: WatcherSnapshotFs
 ): Promise<
-  | { status: "present" }
+  | { status: "present"; indexable: boolean }
   | { status: "missing" }
   | { status: "error"; cause: unknown }
 > {
@@ -204,8 +204,11 @@ export async function inspectNoFollowPresence(
     };
   }
   try {
-    await fs.lstatChild(opened.handle, base);
-    return { status: "present" };
+    const stat = await fs.lstatChild(opened.handle, base);
+    // Only regular files / symlinks are indexable sources. Directory, FIFO,
+    // device, and other specials prove the prior file source is gone.
+    const indexable = stat.isFile() || stat.isSymbolicLink();
+    return { status: "present", indexable };
   } catch (cause) {
     if (isMissingFsError(cause)) {
       return { status: "missing" };

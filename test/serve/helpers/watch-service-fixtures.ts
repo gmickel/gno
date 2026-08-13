@@ -58,11 +58,15 @@ export function createSyncResult(
 const originalSyncPaths = defaultSyncService.syncPaths.bind(defaultSyncService);
 const originalSyncCollection =
   defaultSyncService.syncCollection.bind(defaultSyncService);
+const originalInactivateAbsentSources =
+  defaultSyncService.inactivateAbsentSources.bind(defaultSyncService);
 
 /** Restore defaultSyncService mocks after each test (call once per file). */
 export function installWatchServiceSyncReset(): void {
   afterEach(() => {
     defaultSyncService.syncPaths = originalSyncPaths;
     defaultSyncService.syncCollection = originalSyncCollection;
+    defaultSyncService.inactivateAbsentSources =
+      originalInactivateAbsentSources;
   });
 }

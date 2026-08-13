@@ -58,6 +58,11 @@ export type PathPresence =
   | { status: "missing" }
   | { status: "error"; cause: unknown };
 
+export type ClassificationFullReconcileReason =
+  | "unsupported_fs"
+  | "budget_overflow"
+  | "snapshot_overflow";
+
 export type ClassificationResult =
   | {
       status: "ok";
@@ -68,11 +73,12 @@ export type ClassificationResult =
     }
   | {
       /**
-       * Anchored no-follow handles unavailable: callers must use durable
-       * full-collection reconciliation (syncCollection), never path-backed scan.
+       * Durable full-collection reconciliation required (unsupported FS,
+       * classification budget overflow, or snapshot ceiling overflow).
+       * Callers must use syncCollection — never retry the identical dirty scan.
        */
       status: "full_reconcile";
-      reason: "unsupported_fs";
+      reason: ClassificationFullReconcileReason;
     }
   | {
       status: "error";

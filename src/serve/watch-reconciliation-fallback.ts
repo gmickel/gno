@@ -175,7 +175,12 @@ export async function fallbackClassifyDirtyHints(options: {
     if (presence.status === "missing") {
       provenRemovals.push(path);
     } else if (presence.status === "present") {
-      candidates.add(path);
+      if (presence.indexable) {
+        candidates.add(path);
+      } else {
+        // Path exists as directory/FIFO/device: still a proven-absent source.
+        provenRemovals.push(path);
+      }
     } else if (presence.status === "error") {
       return { status: "error", cause: presence.cause, stage: "scan" };
     }
@@ -190,12 +195,10 @@ export async function fallbackClassifyDirtyHints(options: {
   };
 }
 
-function overflowResult(dir: string): ClassificationResult {
-  return {
-    status: "error",
-    cause: new Error(`Fallback budget overflow under ${dir || "."}`),
-    stage: "scan",
-  };
+function overflowResult(_dir: string): ClassificationResult {
+  // Identical dirty-scan retry cannot clear a budget ceiling — escalate to
+  // the same durable full-collection path used for unsupported platforms.
+  return { status: "full_reconcile", reason: "budget_overflow" };
 }
 
 /**

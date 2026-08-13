@@ -103,6 +103,11 @@ interface CollectionWatchServiceOptions {
    * Production uses the platform default via classifyDirtyHints.
    */
   snapshotFs?: WatcherSnapshotFs;
+  /**
+   * Test seam: lower snapshot entry ceiling to force overflow→full reconcile.
+   * Production leaves this unset (uses WATCHER_SNAPSHOT_ENTRY_CEILING).
+   */
+  snapshotEntryCeiling?: number;
 }
 
 export class CollectionWatchService {
@@ -140,6 +145,7 @@ export class CollectionWatchService {
       ) => Promise<WatcherSnapshotBuildResult>)
     | undefined;
   readonly #snapshotFs: WatcherSnapshotFs | undefined;
+  readonly #snapshotEntryCeiling: number | undefined;
   #nextCollectionGeneration = 0;
   #disposed = false;
   #lastEventAt: string | null = null;
@@ -162,6 +168,7 @@ export class CollectionWatchService {
     this.#clock = options.clock ?? Date.now;
     this.#buildSnapshot = options.buildSnapshot;
     this.#snapshotFs = options.snapshotFs;
+    this.#snapshotEntryCeiling = options.snapshotEntryCeiling;
   }
 
   start(): void {
@@ -385,6 +392,7 @@ export class CollectionWatchService {
         this.#notifySettledIfIdle();
       },
       snapshotFs: this.#snapshotFs,
+      snapshotEntryCeiling: this.#snapshotEntryCeiling,
     });
   }
 

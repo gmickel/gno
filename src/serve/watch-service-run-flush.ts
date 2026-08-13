@@ -63,6 +63,8 @@ export interface RunFlushContext {
   notifySettledIfIdle: () => void;
   /** Optional injectable FS for unsupported-handle / test seams. */
   snapshotFs?: WatcherSnapshotFs;
+  /** Test seam: lower snapshot entry ceiling for overflow→full proofs. */
+  snapshotEntryCeiling?: number;
 }
 
 /**
@@ -138,6 +140,7 @@ export async function runOwnedCollectionFlush(
       clock: ctx.clock,
       suppressedPaths: ctx.suppressedPaths,
       snapshotFs: ctx.snapshotFs,
+      snapshotEntryCeiling: ctx.snapshotEntryCeiling,
       onSyncStart: (relPaths) => {
         if (!stillOwner()) {
           return;

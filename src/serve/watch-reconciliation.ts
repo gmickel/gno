@@ -101,7 +101,12 @@ export async function classifyDirtyHints(options: {
         usedFallback: false,
       };
     }
-    // Fall through — previous snapshot stays uncommitted.
+    // Snapshot ceiling overflow cannot be repaired by re-diffing the same
+    // dirty set — escalate to durable full-collection reconciliation.
+    if (diff.status === "fallback" && diff.reason === "overflow") {
+      return { status: "full_reconcile", reason: "snapshot_overflow" };
+    }
+    // Fall through for scan/metadata failure — previous snapshot uncommitted.
   }
 
   return fallbackClassifyDirtyHints({

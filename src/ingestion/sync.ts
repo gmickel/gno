@@ -616,6 +616,31 @@ class Semaphore {
   }
 }
 
+function summarizePathResults(
+  collection: string,
+  results: FileSyncResult[],
+  markedInactive: number,
+  startedAt: number,
+  errors: CollectionSyncResult["errors"]
+): CollectionSyncResult {
+  return {
+    collection,
+    filesProcessed: results.length,
+    filesAdded: results.filter((result) => result.status === "added").length,
+    filesUpdated: results.filter((result) => result.status === "updated")
+      .length,
+    filesUnchanged: results.filter((result) => result.status === "unchanged")
+      .length,
+    filesErrored: results.filter((result) => result.status === "error").length,
+    filesSkipped: results.filter((result) => result.status === "skipped")
+      .length,
+    filesMarkedInactive: markedInactive,
+    durationMs: Date.now() - startedAt,
+    files: results,
+    errors,
+  };
+}
+
 /**
  * Sync service implementation.
  */
@@ -1161,6 +1186,54 @@ export class SyncService {
     return result.files ?? [];
   }
 
+  /**
+   * Inactivate proven-absent index sources without requiring disk absence.
+   * Used when classification proves a path is no longer an eligible file
+   * source even if a directory/FIFO/device now occupies the path.
+   * Preserves record-container fan-out and typed-edge projection.
+   */
+  async inactivateAbsentSources(
+    collection: Collection,
+    store: StorePort,
+    relPaths: string[],
+    options: SyncOptions = {}
+  ): Promise<CollectionSyncResult> {
+    const startedAt = Date.now();
+    const syncOptions: SyncOptions = {
+      ...options,
+      contentTypeRules: options.contentTypeRules ?? [],
+      contentTypeRulesFingerprint:
+        options.contentTypeRulesFingerprint ??
+        fingerprintContentTypeMetadataRules(options.contentTypeRules ?? []),
+    };
+    const results: FileSyncResult[] = [];
+    const projectionSourceIds = new Set<number>();
+    let markedInactive = 0;
+
+    for (const relPath of relPaths) {
+      const outcome = await this.inactivateOneAbsentSource(
+        collection,
+        store,
+        relPath,
+        projectionSourceIds
+      );
+      results.push(outcome.result);
+      markedInactive += outcome.markedInactive;
+    }
+
+    const errors =
+      syncOptions.projectTypedEdges === false
+        ? []
+        : await this.projectTypedEdges(store, syncOptions, projectionSourceIds);
+    return summarizePathResults(
+      collection.name,
+      results,
+      markedInactive,
+      startedAt,
+      errors
+    );
+  }
+
   async syncPaths(
     collection: Collection,
     store: StorePort,
@@ -1230,39 +1303,15 @@ export class SyncService {
           });
           continue;
         }
-        const activePaths = [
-          ...(existingDoc?.active ? [relPath] : []),
-          ...recordDocuments
-            .filter((document) => document.active)
-            .map((document) => document.relPath),
-        ];
-        if (activePaths.length > 0) {
-          const inactiveResult = await store.markInactive(
-            collection.name,
-            activePaths
-          );
-          if (!inactiveResult.ok) {
-            results.push({
-              relPath,
-              status: "error",
-              errorCode: inactiveResult.error.code,
-              errorMessage: inactiveResult.error.message,
-            });
-            continue;
-          }
-          markedInactive += inactiveResult.value;
-          results.push({
-            relPath,
-            status: "updated",
-            docid: existingDoc?.docid,
-          });
-          continue;
-        }
-        results.push({
+        const inactive = await this.inactivateOneAbsentSource(
+          collection,
+          store,
           relPath,
-          status: existingDoc ? "unchanged" : "skipped",
-          docid: existingDoc?.docid,
-        });
+          projectionSourceIds,
+          { existingDoc, recordDocuments }
+        );
+        results.push(inactive.result);
+        markedInactive += inactive.markedInactive;
         continue;
       }
 
@@ -1352,32 +1401,106 @@ export class SyncService {
       syncOptions.projectTypedEdges === false
         ? []
         : await this.projectTypedEdges(store, syncOptions, projectionSourceIds);
-    const added = results.filter((result) => result.status === "added").length;
-    const updated = results.filter(
-      (result) => result.status === "updated"
-    ).length;
-    const unchanged = results.filter(
-      (result) => result.status === "unchanged"
-    ).length;
-    const errored = results.filter(
-      (result) => result.status === "error"
-    ).length;
-    const skipped = results.filter(
-      (result) => result.status === "skipped"
-    ).length;
+    return summarizePathResults(
+      collection.name,
+      results,
+      markedInactive,
+      startedAt,
+      errors
+    );
+  }
 
+  /**
+   * Soft-delete active docs/record-container children for a proven-absent source.
+   * Does not inspect disk — callers prove absence of an indexable file source.
+   */
+  private async inactivateOneAbsentSource(
+    collection: Collection,
+    store: StorePort,
+    relPath: string,
+    projectionSourceIds: Set<number>,
+    preloaded?: {
+      existingDoc: { id: number; active: boolean; docid?: string } | null;
+      recordDocuments: Array<{ id: number; active: boolean; relPath: string }>;
+    }
+  ): Promise<{ result: FileSyncResult; markedInactive: number }> {
+    let existingDoc = preloaded?.existingDoc ?? null;
+    let recordDocuments = preloaded?.recordDocuments;
+
+    if (!preloaded) {
+      const recordDocumentsResult = await store.listRecordDocuments(
+        collection.name,
+        relPath
+      );
+      if (!recordDocumentsResult.ok) {
+        return {
+          result: {
+            relPath,
+            status: "error",
+            errorCode: recordDocumentsResult.error.code,
+            errorMessage: recordDocumentsResult.error.message,
+          },
+          markedInactive: 0,
+        };
+      }
+      recordDocuments = recordDocumentsResult.value;
+      const existingResult = await store.getDocument(collection.name, relPath);
+      existingDoc = existingResult.ok ? existingResult.value : null;
+      if (existingDoc) {
+        await this.collectProjectionSourceIds(
+          store,
+          existingDoc.id,
+          projectionSourceIds
+        );
+      }
+      for (const recordDocument of recordDocuments) {
+        await this.collectProjectionSourceIds(
+          store,
+          recordDocument.id,
+          projectionSourceIds
+        );
+      }
+    }
+
+    const docs = recordDocuments ?? [];
+    const activePaths = [
+      ...(existingDoc?.active ? [relPath] : []),
+      ...docs
+        .filter((document) => document.active)
+        .map((document) => document.relPath),
+    ];
+    if (activePaths.length > 0) {
+      const inactiveResult = await store.markInactive(
+        collection.name,
+        activePaths
+      );
+      if (!inactiveResult.ok) {
+        return {
+          result: {
+            relPath,
+            status: "error",
+            errorCode: inactiveResult.error.code,
+            errorMessage: inactiveResult.error.message,
+          },
+          markedInactive: 0,
+        };
+      }
+      return {
+        result: {
+          relPath,
+          status: "updated",
+          docid: existingDoc?.docid,
+        },
+        markedInactive: inactiveResult.value,
+      };
+    }
     return {
-      collection: collection.name,
-      filesProcessed: results.length,
-      filesAdded: added,
-      filesUpdated: updated,
-      filesUnchanged: unchanged,
-      filesErrored: errored,
-      filesSkipped: skipped,
-      filesMarkedInactive: markedInactive,
-      durationMs: Date.now() - startedAt,
-      files: results,
-      errors,
+      result: {
+        relPath,
+        status: existingDoc ? "unchanged" : "skipped",
+        docid: existingDoc?.docid,
+      },
+      markedInactive: 0,
     };
   }
 
