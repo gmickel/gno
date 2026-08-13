@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 // node:path — Bun has no path utilities.
 import { join } from "node:path";
 
+import type { WatcherSnapshotStat } from "../src/serve/watch-snapshot";
 import type { SqliteAdapter } from "../src/store/sqlite/adapter";
 
 import { classifyDirtyHints } from "../src/serve/watch-reconciliation";
@@ -39,6 +40,22 @@ function assertOnlyTarget(candidates: readonly string[]): void {
   }
 }
 
+async function lstatForWatcherBenchmark(
+  absPath: string
+): Promise<WatcherSnapshotStat> {
+  const stat = await lstat(absPath, { bigint: true });
+  return {
+    isFile: () => stat.isFile(),
+    isDirectory: () => stat.isDirectory(),
+    isSymbolicLink: () => stat.isSymbolicLink(),
+    dev: stat.dev,
+    ino: stat.ino,
+    size: stat.size,
+    mtimeNs: stat.mtimeNs,
+    ctimeNs: stat.ctimeNs,
+  };
+}
+
 async function main(): Promise<void> {
   const root = await mkdtemp(join(tmpdir(), "gno-watch-benchmark-"));
   try {
@@ -52,7 +69,10 @@ async function main(): Promise<void> {
 
     const benchmarkFs =
       process.platform === "win32"
-        ? createPathBackedWatcherFs({ readdir, lstat })
+        ? createPathBackedWatcherFs({
+            readdir,
+            lstat: lstatForWatcherBenchmark,
+          })
         : undefined;
     const snapshotOptions = benchmarkFs ? { fs: benchmarkFs } : undefined;
     const initial = await buildWatcherSnapshot(root, snapshotOptions);
