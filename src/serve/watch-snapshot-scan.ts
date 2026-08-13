@@ -19,6 +19,7 @@ import { createDefaultWatcherFs } from "./watch-snapshot-handles";
 import {
   fingerprintFromStat,
   isMissingFsError,
+  isWatcherSourceKind,
   joinWatcherRelPath,
 } from "./watch-snapshot-types";
 
@@ -99,7 +100,8 @@ export function removeSubtreeFromMaps(
       const childRel = joinWatcherRelPath(dir, name);
       if (fingerprint.kind === "directory") {
         stack.push(childRel);
-      } else {
+      } else if (isWatcherSourceKind(fingerprint.kind)) {
+        // Only file/symlink sources are indexable; ignore FIFO/socket/device.
         removedCandidates.push(childRel);
       }
     }
@@ -111,8 +113,9 @@ export function removeSubtreeFromMaps(
 }
 
 /**
- * Hierarchical collect of non-directory paths under a stored directory.
+ * Hierarchical collect of file/symlink source paths under a stored directory.
  * O(subtree-size) via child relationships — not a full-map prefix scan.
+ * Special `other` entries are never collected (never indexed as sources).
  */
 export function collectSnapshotFilesUnder(
   directories: ReadonlyMap<
@@ -135,7 +138,7 @@ export function collectSnapshotFilesUnder(
       const childRel = joinWatcherRelPath(dir, name);
       if (fingerprint.kind === "directory") {
         stack.push(childRel);
-      } else {
+      } else if (isWatcherSourceKind(fingerprint.kind)) {
         out.push(childRel);
       }
     }

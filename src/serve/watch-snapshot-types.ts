@@ -150,19 +150,28 @@ export type WatcherSnapshotBuildResult =
       cause?: unknown;
     };
 
+/** True when a snapshot entry kind can be an indexed document source. */
+export function isWatcherSourceKind(
+  kind: SnapshotEntryKind
+): kind is "file" | "symlink" {
+  return kind === "file" || kind === "symlink";
+}
+
 export type WatcherSnapshotDiffResult =
   | {
       status: "ok";
       /**
        * Present/changed file and symlink paths that still exist and need
        * content-hash consideration (added, edited, or new under a directory).
+       * Never includes `other` (FIFO/socket/device) or directories.
        * Does not include proven removals.
        */
       candidates: string[];
       /**
        * Proven removable source paths: deleted files/symlinks, prior files
-       * replaced by a directory, and expanded nested files under removed or
-       * directory→non-directory transitions.
+       * replaced by a directory or other special entry, and expanded nested
+       * files under removed or directory→non-directory transitions.
+       * Never includes `other` entries (they were never indexed as sources).
        */
       removals: string[];
       nextSnapshot: WatcherSnapshot;

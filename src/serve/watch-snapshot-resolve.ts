@@ -1,5 +1,5 @@
 /**
- * Untrusted watcher hint → dirty directory resolution.
+ * Untrusted watcher hint → dirty directory resolution + reconcile orchestration.
  *
  * Resolves path components one at a time from an anchored root handle so
  * intermediate symlinks are never descended and outside children are never
@@ -13,14 +13,18 @@ import { resolve, sep } from "node:path";
 
 import type {
   WatcherDirHandle,
+  WatcherSnapshot,
+  WatcherSnapshotDiffResult,
   WatcherSnapshotOptions,
 } from "./watch-snapshot-types";
 
-import { defaultFs } from "./watch-snapshot-scan";
+import { diffWatcherSnapshot } from "./watch-snapshot-ops";
+import { defaultClock, defaultFs } from "./watch-snapshot-scan";
 import {
   isMissingFsError,
   joinWatcherRelPath,
   normalizeWatcherRelPath,
+  parentWatcherDir,
 } from "./watch-snapshot-types";
 
 /**
@@ -153,4 +157,90 @@ export async function resolveWatcherDirtyDirectory(
   } finally {
     await closeAll();
   }
+}
+
+/** True when `dirRel` is a directory edge under its parent in `snapshot`. */
+function directoryHasParentEdge(
+  snapshot: WatcherSnapshot,
+  dirRel: string
+): boolean {
+  if (dirRel === "") {
+    return true;
+  }
+  const parent = parentWatcherDir(dirRel);
+  if (parent === null) {
+    return true;
+  }
+  const base = dirRel.slice(parent === "" ? 0 : parent.length + 1);
+  return snapshot.directories.get(parent)?.get(base)?.kind === "directory";
+}
+
+/**
+ * Choose the dirty directory for a resolved on-disk directory hint.
+ * New-relative-to-snapshot directories climb to the nearest known container so
+ * parent edges are recorded (no orphan maps).
+ */
+function dirtyDirectoryForResolvedHint(
+  previous: WatcherSnapshot,
+  dirRel: string
+): string {
+  if (dirRel === "" || directoryHasParentEdge(previous, dirRel)) {
+    return dirRel;
+  }
+  let climb: string | null = parentWatcherDir(dirRel);
+  while (climb !== null) {
+    if (
+      climb === "" ||
+      directoryHasParentEdge(previous, climb) ||
+      previous.directories.has(climb)
+    ) {
+      return climb;
+    }
+    climb = parentWatcherDir(climb);
+  }
+  return "";
+}
+
+/**
+ * Resolve dirty directories from untrusted hints, then diff against `previous`.
+ * Invalid hints are skipped; all-invalid yields an empty ok diff.
+ * Scan/metadata failure never advances the snapshot.
+ */
+export async function reconcileWatcherHints(
+  rootAbs: string,
+  previous: WatcherSnapshot,
+  hints: readonly string[],
+  options: WatcherSnapshotOptions = {}
+): Promise<WatcherSnapshotDiffResult> {
+  const clock = options.clock ?? defaultClock;
+  const started = clock.nowMs();
+  const dirty = new Set<string>();
+
+  for (const hint of hints) {
+    const resolved = await resolveWatcherDirtyDirectory(rootAbs, hint, options);
+    if (resolved.status === "invalid") {
+      continue;
+    }
+    if (resolved.status === "fallback") {
+      return {
+        status: "fallback",
+        reason: "scan_failed",
+        discoveryMs: clock.nowMs() - started,
+        cause: resolved.cause,
+      };
+    }
+    dirty.add(dirtyDirectoryForResolvedHint(previous, resolved.directory));
+  }
+
+  if (dirty.size === 0) {
+    return {
+      status: "ok",
+      candidates: [],
+      removals: [],
+      nextSnapshot: previous,
+      discoveryMs: clock.nowMs() - started,
+    };
+  }
+
+  return diffWatcherSnapshot(rootAbs, previous, [...dirty], options);
 }

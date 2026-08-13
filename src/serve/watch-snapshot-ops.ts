@@ -1,5 +1,6 @@
 /**
- * Build / diff / reconcile orchestration for watcher snapshots.
+ * Build and diff orchestration for watcher snapshots.
+ * Hint reconciliation lives in `watch-snapshot-resolve`.
  *
  * @module src/serve/watch-snapshot-ops
  */
@@ -7,7 +8,6 @@
 import type {
   DiffWorkResult,
   SnapshotEntryFingerprint,
-  SnapshotMapHooks,
   WatcherSnapshot,
   WatcherSnapshotBuildResult,
   WatcherSnapshotDiffResult,
@@ -15,7 +15,6 @@ import type {
   WatcherSnapshotOptions,
 } from "./watch-snapshot-types";
 
-import { resolveWatcherDirtyDirectory } from "./watch-snapshot-resolve";
 import {
   cloneDirectoryMaps,
   defaultClock,
@@ -29,6 +28,7 @@ import {
 import {
   WATCHER_SNAPSHOT_ENTRY_CEILING,
   fingerprintsEqual,
+  isWatcherSourceKind,
   joinWatcherRelPath,
   normalizeWatcherRelPath,
   parentWatcherDir,
@@ -242,16 +242,17 @@ export async function diffWatcherSnapshot(
 
       if (oldFp && !newFp) {
         // Removed entry: expand prior subtree for directories; files/symlinks directly.
+        // `other` was never an indexable source — drop fingerprint only.
         if (oldFp.kind === "directory") {
           recordSubtreeRemovals(childRel);
-        } else {
+        } else if (isWatcherSourceKind(oldFp.kind)) {
           removals.add(childRel);
         }
         continue;
       }
 
       if (newFp && !oldFp) {
-        // Added entry.
+        // Added entry. Candidates are file/symlink only — ignore new FIFO/etc.
         if (newFp.kind === "directory") {
           const built = await scanNewSubtree(
             rootAbs,
@@ -264,23 +265,31 @@ export async function diffWatcherSnapshot(
           if (built.status !== "ok") {
             return built;
           }
-        } else {
+        } else if (isWatcherSourceKind(newFp.kind)) {
           candidates.add(childRel);
         }
+        // new `other`: fingerprint retained for future transitions; no candidate.
         continue;
       }
 
       if (oldFp && newFp && !fingerprintsEqual(oldFp, newFp)) {
-        // Changed entry — handle kind transitions explicitly.
+        // Changed entry — handle kind transitions with the other-kind contract.
         if (oldFp.kind === "directory" && newFp.kind !== "directory") {
-          // Directory replaced by file/symlink: prior nested sources are removals.
+          // Directory → file/symlink/other: expand nested indexable removals.
           recordSubtreeRemovals(childRel);
+          if (isWatcherSourceKind(newFp.kind)) {
+            candidates.add(childRel);
+          }
+          // directory → other: no candidate for the special entry.
+          continue;
         }
 
         if (oldFp.kind !== "directory" && newFp.kind === "directory") {
-          // File/symlink/other → directory: old source path is explicitly removable.
-          // New directory descendants become present candidates via scan.
-          removals.add(childRel);
+          // File/symlink → directory: old source is removable.
+          // Other → directory: prior other was never indexed — no removal.
+          if (isWatcherSourceKind(oldFp.kind)) {
+            removals.add(childRel);
+          }
           const built = await scanNewSubtree(
             rootAbs,
             childRel,
@@ -301,10 +310,24 @@ export async function diffWatcherSnapshot(
           if (nested.status !== "ok") {
             return nested;
           }
-        } else {
-          // Non-directory present/changed (including directory→file after removals).
+          continue;
+        }
+
+        // Both non-directory.
+        if (
+          isWatcherSourceKind(oldFp.kind) &&
+          isWatcherSourceKind(newFp.kind)
+        ) {
+          // file↔symlink or metadata change on an indexable source.
+          candidates.add(childRel);
+        } else if (isWatcherSourceKind(oldFp.kind) && newFp.kind === "other") {
+          // file/symlink → other: remove old path; special entry is not a candidate.
+          removals.add(childRel);
+        } else if (oldFp.kind === "other" && isWatcherSourceKind(newFp.kind)) {
+          // other → file/symlink: new source is a candidate.
           candidates.add(childRel);
         }
+        // other → other (metadata): fingerprint only.
       }
       // Equal fingerprints: leave alone (do not recurse into unchanged dirs).
     }
@@ -378,106 +401,11 @@ async function scanNewSubtree(
       const childRel = joinWatcherRelPath(current, name);
       if (fingerprint.kind === "directory") {
         queue.push(childRel);
-      } else {
+      } else if (isWatcherSourceKind(fingerprint.kind)) {
         candidates.add(childRel);
       }
+      // Nested `other` under a new directory: fingerprint only, never a candidate.
     }
   }
   return { status: "ok" };
 }
-
-/**
- * True when `dirRel` appears as a directory edge under its parent in `snapshot`
- * (root is always considered present when its map exists or is the empty root).
- */
-function directoryHasParentEdge(
-  snapshot: WatcherSnapshot,
-  dirRel: string
-): boolean {
-  if (dirRel === "") {
-    return true;
-  }
-  const parent = parentWatcherDir(dirRel);
-  if (parent === null) {
-    return true;
-  }
-  const base = dirRel.slice(parent === "" ? 0 : parent.length + 1);
-  return snapshot.directories.get(parent)?.get(base)?.kind === "directory";
-}
-
-/**
- * Choose the dirty directory for a resolved, on-disk directory hint.
- *
- * Missing-hint resolution already climbed to the nearest surviving FS ancestor.
- * When that ancestor (or any existing directory) is new relative to the previous
- * snapshot parent edge, climb to the nearest known container so added-directory
- * handling records the parent fingerprint and scans descendants — no orphan maps.
- */
-function dirtyDirectoryForResolvedHint(
-  previous: WatcherSnapshot,
-  dirRel: string
-): string {
-  if (dirRel === "" || directoryHasParentEdge(previous, dirRel)) {
-    return dirRel;
-  }
-  // New relative to previous snapshot: dirty nearest known ancestor.
-  let climb: string | null = parentWatcherDir(dirRel);
-  while (climb !== null) {
-    if (
-      climb === "" ||
-      directoryHasParentEdge(previous, climb) ||
-      previous.directories.has(climb)
-    ) {
-      return climb;
-    }
-    climb = parentWatcherDir(climb);
-  }
-  return "";
-}
-
-/**
- * Resolve dirty directories from untrusted hints, then diff against `previous`.
- * Invalid hints are skipped; if every hint is invalid, returns an empty ok diff.
- * A scan/metadata failure never advances the snapshot.
- */
-export async function reconcileWatcherHints(
-  rootAbs: string,
-  previous: WatcherSnapshot,
-  hints: readonly string[],
-  options: WatcherSnapshotOptions = {}
-): Promise<WatcherSnapshotDiffResult> {
-  const clock = options.clock ?? defaultClock;
-  const started = clock.nowMs();
-  const dirty = new Set<string>();
-
-  for (const hint of hints) {
-    const resolved = await resolveWatcherDirtyDirectory(rootAbs, hint, options);
-    if (resolved.status === "invalid") {
-      continue;
-    }
-    if (resolved.status === "fallback") {
-      return {
-        status: "fallback",
-        reason: "scan_failed",
-        discoveryMs: clock.nowMs() - started,
-        cause: resolved.cause,
-      };
-    }
-    dirty.add(dirtyDirectoryForResolvedHint(previous, resolved.directory));
-  }
-
-  if (dirty.size === 0) {
-    return {
-      status: "ok",
-      candidates: [],
-      removals: [],
-      nextSnapshot: previous,
-      discoveryMs: clock.nowMs() - started,
-    };
-  }
-
-  return diffWatcherSnapshot(rootAbs, previous, [...dirty], options);
-}
-
-// mapHooks type re-export surface for tests importing options only
-export type { SnapshotMapHooks };

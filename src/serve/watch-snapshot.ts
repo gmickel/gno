@@ -38,10 +38,12 @@ export type {
 export {
   buildWatcherSnapshot,
   diffWatcherSnapshot,
-  reconcileWatcherHints,
 } from "./watch-snapshot-ops";
 
-export { resolveWatcherDirtyDirectory } from "./watch-snapshot-resolve";
+export {
+  reconcileWatcherHints,
+  resolveWatcherDirtyDirectory,
+} from "./watch-snapshot-resolve";
 
 export {
   createPathBackedWatcherFs,

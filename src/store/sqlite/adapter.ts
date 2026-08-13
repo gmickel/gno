@@ -1785,19 +1785,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     try {
       const db = this.ensureOpen();
       // Exact prefix boundary: `dir1/` never matches `dir10/...`.
+      // length(?) is code-point-safe (JS prefix.length is UTF-16 and breaks non-BMP).
       // LIMIT max+1 detects overflow without returning a truncated success.
       const prefix = `${directory}/`;
       const rows = db
-        .query<{ source_path: string }, [string, number, string, number]>(
+        .query<{ source_path: string }, [string, string, string, number]>(
           `SELECT DISTINCT ${WATCHER_SOURCE_PATH_SQL} AS source_path
            FROM documents
            WHERE collection = ?
              AND active = 1
-             AND substr(${WATCHER_SOURCE_PATH_SQL}, 1, ?) = ?
+             AND substr(${WATCHER_SOURCE_PATH_SQL}, 1, length(?)) = ?
            ORDER BY source_path ASC
            LIMIT ?`
         )
-        .all(collection, prefix.length, prefix, max + 1);
+        .all(collection, prefix, prefix, max + 1);
 
       if (rows.length > max) {
         return err(

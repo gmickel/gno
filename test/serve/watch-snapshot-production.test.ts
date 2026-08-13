@@ -203,6 +203,7 @@ describe("createDefaultWatcherFs production adapter", () => {
     if (result.status === "ok") {
       const entry = result.snapshot.directories.get("")?.get("blocked.pipe");
       expect(entry).toBeDefined();
+      // Special files must not become index candidates on first snapshot build.
       expect(result.snapshot.directories.get("")?.has("ok.md")).toBe(true);
     } else {
       expect(result.status).toBe("fallback");
@@ -212,4 +213,118 @@ describe("createDefaultWatcherFs production adapter", () => {
       ).toBe(true);
     }
   }, 10_000);
+
+  test("real FIFO transitions: file→FIFO, directory→FIFO, added FIFO, FIFO→file", async () => {
+    if (process.platform !== "darwin" && process.platform !== "linux") {
+      return;
+    }
+    const productionFs = createDefaultWatcherFs();
+    if (!productionFs.supportsAnchoredHandles) {
+      return;
+    }
+
+    const { unlink, mkdir } = await import("node:fs/promises");
+
+    // --- file → FIFO ---
+    await writeWatchFixture(root, "slot", "file-body");
+    await writeWatchFixture(root, "keep.md", "k");
+    let built = await withTimeout(
+      buildWatcherSnapshot(root, { fs: productionFs }),
+      FIFO_SNAPSHOT_BUDGET_MS
+    );
+    expect(built).not.toEqual({ status: "timeout" });
+    if (!("status" in built) || built.status !== "ok") {
+      // Platform could not fingerprint — do not claim transition coverage.
+      return;
+    }
+    expect(built.snapshot.directories.get("")?.get("slot")?.kind).toBe("file");
+
+    await unlink(join(root, "slot"));
+    if ((await tryMkfifo(join(root, "slot"))) !== "ok") {
+      return;
+    }
+
+    let diff = await withTimeout(
+      diffWatcherSnapshot(root, built.snapshot, [""], { fs: productionFs }),
+      FIFO_SNAPSHOT_BUDGET_MS
+    );
+    expect(diff).not.toEqual({ status: "timeout" });
+    if (!("status" in diff) || diff.status !== "ok") {
+      return;
+    }
+    expect(diff.removals).toEqual(["slot"]);
+    expect(diff.candidates).toEqual([]);
+    expect(diff.nextSnapshot.directories.get("")?.get("slot")?.kind).toBe(
+      "other"
+    );
+
+    // --- FIFO → file ---
+    await unlink(join(root, "slot"));
+    await writeWatchFixture(root, "slot", "again");
+    diff = await withTimeout(
+      diffWatcherSnapshot(root, diff.nextSnapshot, [""], { fs: productionFs }),
+      FIFO_SNAPSHOT_BUDGET_MS
+    );
+    expect(diff).not.toEqual({ status: "timeout" });
+    if (!("status" in diff) || diff.status !== "ok") {
+      return;
+    }
+    expect(diff.candidates).toEqual(["slot"]);
+    expect(diff.removals).toEqual([]);
+    expect(diff.nextSnapshot.directories.get("")?.get("slot")?.kind).toBe(
+      "file"
+    );
+
+    // --- added FIFO ---
+    if ((await tryMkfifo(join(root, "new.pipe"))) !== "ok") {
+      return;
+    }
+    diff = await withTimeout(
+      diffWatcherSnapshot(root, diff.nextSnapshot, [""], { fs: productionFs }),
+      FIFO_SNAPSHOT_BUDGET_MS
+    );
+    expect(diff).not.toEqual({ status: "timeout" });
+    if (!("status" in diff) || diff.status !== "ok") {
+      return;
+    }
+    expect(diff.candidates).toEqual([]);
+    expect(diff.removals).toEqual([]);
+    expect(diff.nextSnapshot.directories.get("")?.get("new.pipe")?.kind).toBe(
+      "other"
+    );
+
+    // --- directory → FIFO ---
+    await mkdir(join(root, "was-dir", "nested"), { recursive: true });
+    await writeWatchFixture(root, "was-dir/a.md", "a");
+    await writeWatchFixture(root, "was-dir/nested/b.md", "b");
+    built = await withTimeout(
+      buildWatcherSnapshot(root, { fs: productionFs }),
+      FIFO_SNAPSHOT_BUDGET_MS
+    );
+    expect(built).not.toEqual({ status: "timeout" });
+    if (!("status" in built) || built.status !== "ok") {
+      return;
+    }
+    expect(built.snapshot.directories.get("")?.get("was-dir")?.kind).toBe(
+      "directory"
+    );
+
+    await safeRm(join(root, "was-dir"));
+    if ((await tryMkfifo(join(root, "was-dir"))) !== "ok") {
+      return;
+    }
+    diff = await withTimeout(
+      diffWatcherSnapshot(root, built.snapshot, [""], { fs: productionFs }),
+      FIFO_SNAPSHOT_BUDGET_MS
+    );
+    expect(diff).not.toEqual({ status: "timeout" });
+    if (!("status" in diff) || diff.status !== "ok") {
+      return;
+    }
+    expect(diff.removals).toEqual(["was-dir/a.md", "was-dir/nested/b.md"]);
+    expect(diff.candidates).toEqual([]);
+    expect(diff.nextSnapshot.directories.get("")?.get("was-dir")?.kind).toBe(
+      "other"
+    );
+  }, 20_000);
 });
