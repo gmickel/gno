@@ -41,6 +41,7 @@ export {
   successfulChangedPaths,
   widenVanishedExactPaths,
   type ClassificationResult,
+  type ExactPathKind,
   type PathPresence,
   type WatcherEventClassification,
 } from "./watch-reconciliation-shared";

@@ -419,4 +419,35 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
       await safeRm(root);
     }
   });
+
+  test("widenVanishedExactPaths moves FIFO/other out of keepExact into dirty only", async () => {
+    const root = await mkdtemp(join(tmpdir(), "gno-watch-widen-fifo-"));
+    try {
+      const fifoPath = join(root, "special.md");
+      let mkfifoOk = false;
+      try {
+        const proc = Bun.spawn(["mkfifo", fifoPath], {
+          stdout: "ignore",
+          stderr: "pipe",
+        });
+        mkfifoOk = (await proc.exited) === 0;
+      } catch {
+        mkfifoOk = false;
+      }
+      if (!mkfifoOk) {
+        // Platform without mkfifo — skip only this special-file unit.
+        return;
+      }
+      const widened = await widenVanishedExactPaths(root, [
+        "special.md",
+        "missing.md",
+      ]);
+      expect(widened.keepExact).toEqual(["missing.md"]);
+      expect(widened.extraDirty).toContain("special.md");
+      expect(widened.directoryDirty).toContain("special.md");
+      expect(widened.keepExact).not.toContain("special.md");
+    } finally {
+      await safeRm(root);
+    }
+  });
 });

@@ -1268,20 +1268,52 @@ export class SyncService {
       }
       const recordDocuments = recordDocumentsResult.value;
       const existingResult = await store.getDocument(collection.name, relPath);
-      const existingDoc = existingResult.ok ? existingResult.value : null;
+      if (!existingResult.ok) {
+        results.push({
+          relPath,
+          status: "error",
+          errorCode: existingResult.error.code,
+          errorMessage: existingResult.error.message,
+        });
+        continue;
+      }
+      const existingDoc = existingResult.value;
       if (existingDoc) {
-        await this.collectProjectionSourceIds(
+        const collectError = await this.collectProjectionSourceIds(
           store,
           existingDoc.id,
           projectionSourceIds
         );
+        if (collectError) {
+          results.push({
+            relPath,
+            status: "error",
+            errorCode: collectError.code,
+            errorMessage: collectError.message,
+          });
+          continue;
+        }
       }
+      let recordCollectFailed: FileSyncResult | null = null;
       for (const recordDocument of recordDocuments) {
-        await this.collectProjectionSourceIds(
+        const collectError = await this.collectProjectionSourceIds(
           store,
           recordDocument.id,
           projectionSourceIds
         );
+        if (collectError) {
+          recordCollectFailed = {
+            relPath,
+            status: "error",
+            errorCode: collectError.code,
+            errorMessage: collectError.message,
+          };
+          break;
+        }
+      }
+      if (recordCollectFailed) {
+        results.push(recordCollectFailed);
+        continue;
       }
 
       const absPath = join(collection.path, relPath);
@@ -1371,28 +1403,67 @@ export class SyncService {
         syncOptions
       );
       results.push(result);
+      if (result.status === "error" || result.status === "skipped") {
+        continue;
+      }
+      // Post-write projection identity must succeed so typed-edge cleanup can run.
       const currentResult = await store.getDocument(collection.name, relPath);
-      const currentDoc = currentResult.ok ? currentResult.value : null;
+      if (!currentResult.ok) {
+        results[results.length - 1] = {
+          relPath,
+          status: "error",
+          errorCode: currentResult.error.code,
+          errorMessage: currentResult.error.message,
+        };
+        continue;
+      }
+      const currentDoc = currentResult.value;
       if (currentDoc?.active) {
-        await this.collectProjectionSourceIds(
+        const collectError = await this.collectProjectionSourceIds(
           store,
           currentDoc.id,
           projectionSourceIds
         );
+        if (collectError) {
+          results[results.length - 1] = {
+            relPath,
+            status: "error",
+            errorCode: collectError.code,
+            errorMessage: collectError.message,
+          };
+          continue;
+        }
       }
       const currentDocuments = await store.listRecordDocuments(
         collection.name,
         relPath
       );
-      if (currentDocuments.ok) {
-        for (const recordDocument of currentDocuments.value) {
-          if (recordDocument.active) {
-            await this.collectProjectionSourceIds(
-              store,
-              recordDocument.id,
-              projectionSourceIds
-            );
-          }
+      if (!currentDocuments.ok) {
+        results[results.length - 1] = {
+          relPath,
+          status: "error",
+          errorCode: currentDocuments.error.code,
+          errorMessage: currentDocuments.error.message,
+        };
+        continue;
+      }
+      for (const recordDocument of currentDocuments.value) {
+        if (!recordDocument.active) {
+          continue;
+        }
+        const collectError = await this.collectProjectionSourceIds(
+          store,
+          recordDocument.id,
+          projectionSourceIds
+        );
+        if (collectError) {
+          results[results.length - 1] = {
+            relPath,
+            status: "error",
+            errorCode: collectError.code,
+            errorMessage: collectError.message,
+          };
+          break;
         }
       }
     }
@@ -1413,6 +1484,8 @@ export class SyncService {
   /**
    * Soft-delete active docs/record-container children for a proven-absent source.
    * Does not inspect disk — callers prove absence of an indexable file source.
+   * Store lookup / backlink / mark failures surface as per-file errors (never
+   * silent null/skip) so callers cannot advance snapshot authority.
    */
   private async inactivateOneAbsentSource(
     collection: Collection,
@@ -1445,30 +1518,70 @@ export class SyncService {
       }
       recordDocuments = recordDocumentsResult.value;
       const existingResult = await store.getDocument(collection.name, relPath);
-      existingDoc = existingResult.ok ? existingResult.value : null;
+      if (!existingResult.ok) {
+        // ok:false is a hard per-file error — never treat as missing/skip.
+        return {
+          result: {
+            relPath,
+            status: "error",
+            errorCode: existingResult.error.code,
+            errorMessage: existingResult.error.message,
+          },
+          markedInactive: 0,
+        };
+      }
+      existingDoc = existingResult.value;
       if (existingDoc) {
-        await this.collectProjectionSourceIds(
+        const collectError = await this.collectProjectionSourceIds(
           store,
           existingDoc.id,
           projectionSourceIds
         );
+        if (collectError) {
+          return {
+            result: {
+              relPath,
+              status: "error",
+              errorCode: collectError.code,
+              errorMessage: collectError.message,
+            },
+            markedInactive: 0,
+          };
+        }
       }
       for (const recordDocument of recordDocuments) {
-        await this.collectProjectionSourceIds(
+        const collectError = await this.collectProjectionSourceIds(
           store,
           recordDocument.id,
           projectionSourceIds
         );
+        if (collectError) {
+          return {
+            result: {
+              relPath,
+              status: "error",
+              errorCode: collectError.code,
+              errorMessage: collectError.message,
+            },
+            markedInactive: 0,
+          };
+        }
       }
     }
 
     const docs = recordDocuments ?? [];
-    const activePaths = [
-      ...(existingDoc?.active ? [relPath] : []),
-      ...docs
-        .filter((document) => document.active)
-        .map((document) => document.relPath),
-    ];
+    // Physical source path may own multiple logical docs (record containers).
+    // Deduplicate while preserving the primary source path first.
+    const activePathSet = new Set<string>();
+    if (existingDoc?.active) {
+      activePathSet.add(relPath);
+    }
+    for (const document of docs) {
+      if (document.active) {
+        activePathSet.add(document.relPath);
+      }
+    }
+    const activePaths = [...activePathSet];
     if (activePaths.length > 0) {
       const inactiveResult = await store.markInactive(
         collection.name,
@@ -1504,26 +1617,39 @@ export class SyncService {
     };
   }
 
+  /**
+   * Collect source doc ids that need typed-edge re-projection after a change.
+   * Backlink lookup failures are fatal for the caller (not silently ignored).
+   */
   private async collectProjectionSourceIds(
     store: StorePort,
     documentId: number,
     sourceIds: Set<number>
-  ): Promise<void> {
+  ): Promise<{ code: string; message: string } | null> {
     sourceIds.add(documentId);
     const [linkBacklinks, edgeBacklinks] = await Promise.all([
       store.getBacklinksForDoc(documentId),
       store.getEdgeBacklinksForDoc(documentId),
     ]);
-    if (linkBacklinks.ok) {
-      for (const backlink of linkBacklinks.value) {
-        sourceIds.add(backlink.sourceDocId);
-      }
+    if (!linkBacklinks.ok) {
+      return {
+        code: linkBacklinks.error.code,
+        message: linkBacklinks.error.message,
+      };
     }
-    if (edgeBacklinks.ok) {
-      for (const backlink of edgeBacklinks.value) {
-        sourceIds.add(backlink.sourceDocId);
-      }
+    if (!edgeBacklinks.ok) {
+      return {
+        code: edgeBacklinks.error.code,
+        message: edgeBacklinks.error.message,
+      };
     }
+    for (const backlink of linkBacklinks.value) {
+      sourceIds.add(backlink.sourceDocId);
+    }
+    for (const backlink of edgeBacklinks.value) {
+      sourceIds.add(backlink.sourceDocId);
+    }
+    return null;
   }
 
   private async projectTypedEdges(
@@ -1564,7 +1690,19 @@ export class SyncService {
     if (selectedSourceIds) {
       for (const documentId of selectedSourceIds) {
         if (!activeIds.has(documentId)) {
-          await store.setDocEdges(documentId, [], "frontmatter-relation");
+          // Clear typed edges for inactivated projection sources.
+          const clearResult = await store.setDocEdges(
+            documentId,
+            [],
+            "frontmatter-relation"
+          );
+          if (!clearResult.ok) {
+            errors.push({
+              relPath: `(doc:${documentId})`,
+              code: clearResult.error.code,
+              message: clearResult.error.message,
+            });
+          }
         }
       }
     }
@@ -1921,10 +2059,18 @@ export class SyncService {
       }
     }
 
-    // 5. Mark missing files as inactive
+    // 5. Mark missing files as inactive (inventory failures are hard errors).
     let markedInactive = 0;
+    let inventoryErrored = 0;
     const existingDocsResult = await store.listDocuments(collection.name);
-    if (existingDocsResult.ok) {
+    if (!existingDocsResult.ok) {
+      inventoryErrored += 1;
+      errors.push({
+        relPath: "",
+        code: existingDocsResult.error.code,
+        message: existingDocsResult.error.message,
+      });
+    } else {
       const missingPaths = existingDocsResult.value
         .filter(
           (document) =>
@@ -1940,6 +2086,21 @@ export class SyncService {
         );
         if (markResult.ok) {
           markedInactive = markResult.value;
+        } else {
+          inventoryErrored += missingPaths.length;
+          errors.push({
+            relPath: missingPaths[0] ?? "",
+            code: markResult.error.code,
+            message: markResult.error.message,
+          });
+          for (const missingPath of missingPaths) {
+            fileResults.push({
+              relPath: missingPath,
+              status: "error",
+              errorCode: markResult.error.code,
+              errorMessage: markResult.error.message,
+            });
+          }
         }
       }
     }
@@ -1950,11 +2111,11 @@ export class SyncService {
 
     return {
       collection: collection.name,
-      filesProcessed: entries.length,
+      filesProcessed: entries.length + inventoryErrored,
       filesAdded: added,
       filesUpdated: updated,
       filesUnchanged: unchanged,
-      filesErrored: errored,
+      filesErrored: errored + inventoryErrored,
       filesSkipped: skipped.length + dynamicSkipped,
       filesMarkedInactive: markedInactive,
       durationMs: Date.now() - startTime,

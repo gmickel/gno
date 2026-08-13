@@ -4,8 +4,8 @@
  * @module src/serve/watch-reconciliation-shared
  */
 
-// node:fs/promises — structure ops; no Bun equivalent for stat
-import { stat } from "node:fs/promises";
+// node:fs/promises — structure ops; no Bun equivalent for no-follow lstat
+import { lstat } from "node:fs/promises";
 // node:path — Bun has no path utilities
 import { join, normalize } from "node:path";
 
@@ -53,8 +53,11 @@ export type WatcherEventClassification =
   | { kind: "exact"; relPath: string }
   | { kind: "dirty"; hint: string };
 
+/** No-follow entry kind for exact-path widening (file/symlink stay exact). */
+export type ExactPathKind = "file" | "directory" | "symlink" | "other";
+
 export type PathPresence =
-  | { status: "present"; isDirectory: boolean }
+  | { status: "present"; kind: ExactPathKind }
   | { status: "missing" }
   | { status: "error"; cause: unknown };
 
@@ -215,14 +218,36 @@ export function pruneSuppressionMap(
   }
 }
 
+function kindFromLstat(info: {
+  isSymbolicLink(): boolean;
+  isDirectory(): boolean;
+  isFile(): boolean;
+}): ExactPathKind {
+  if (info.isSymbolicLink()) {
+    return "symlink";
+  }
+  if (info.isDirectory()) {
+    return "directory";
+  }
+  if (info.isFile()) {
+    return "file";
+  }
+  // FIFO / socket / device — never indexable file sources.
+  return "other";
+}
+
+/**
+ * Contained no-follow presence check for exact-path widening.
+ * Uses lstat so symlink vs directory vs special (FIFO/socket/device) is exact.
+ */
 export async function inspectPathPresence(
   rootAbs: string,
   relPath: string
 ): Promise<PathPresence> {
   const abs = normalize(join(rootAbs, ...relPath.split("/").filter(Boolean)));
   try {
-    const info = await stat(abs);
-    return { status: "present", isDirectory: info.isDirectory() };
+    const info = await lstat(abs);
+    return { status: "present", kind: kindFromLstat(info) };
   } catch (cause) {
     const code =
       cause && typeof cause === "object" && "code" in cause
@@ -236,10 +261,14 @@ export async function inspectPathPresence(
 }
 
 /**
- * When an exact eligible path has vanished, also dirty the path (and parent)
- * so recursive-delete siblings can be discovered via snapshot/store fallback.
- * Present directories leave exact (avoid NOT_FILE) and only mark dirty; callers
- * must force store/disk fallback so eligible children still reach syncPaths.
+ * Widen exact eligible paths before targeted sync.
+ *
+ * - Regular file / symlink sources stay exact (content-hash authority).
+ * - Directory or non-indexable special (FIFO/socket/device) leave exact and
+ *   become dirty-only so snapshot/fallback can prove removals + children.
+ * - Missing paths keep exact (ENOENT inactivation) and dirty parent discovery.
+ * - Uncertain lstat failures never stay exact-only (avoids NOT_FILE loops);
+ *   they dirty + force fallback for durable reclassification.
  */
 export async function widenVanishedExactPaths(
   rootAbs: string,
@@ -247,6 +276,7 @@ export async function widenVanishedExactPaths(
 ): Promise<{
   keepExact: string[];
   extraDirty: string[];
+  /** Non-source present paths (dir/other) or uncertain — force store/disk. */
   directoryDirty: string[];
 }> {
   const keepExact: string[] = [];
@@ -255,7 +285,13 @@ export async function widenVanishedExactPaths(
   for (const relPath of exactPaths) {
     const presence = await inspectPathPresence(rootAbs, relPath);
     if (presence.status === "error") {
-      keepExact.push(relPath);
+      // Uncertainty: durable dirty/full path — never exact NOT_FILE churn.
+      extraDirty.push(relPath);
+      directoryDirty.push(relPath);
+      const parent = parentWatcherDir(relPath);
+      if (parent !== null) {
+        extraDirty.push(parent);
+      }
       continue;
     }
     if (presence.status === "missing") {
@@ -267,12 +303,13 @@ export async function widenVanishedExactPaths(
       }
       continue;
     }
-    if (presence.isDirectory) {
-      // Pattern-matching directory names are not file sources; dirty only.
+    if (presence.kind === "directory" || presence.kind === "other") {
+      // Not an indexable file source; dirty-only so proven removals can land.
       extraDirty.push(relPath);
       directoryDirty.push(relPath);
       continue;
     }
+    // file | symlink — retain exact content-hash authority.
     keepExact.push(relPath);
   }
   return { keepExact, extraDirty, directoryDirty };

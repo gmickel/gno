@@ -21,6 +21,7 @@ import {
 } from "../ingestion";
 import {
   classifyDirtyHints,
+  failedSyncPaths,
   hasFileLevelSyncError,
   mergeSyncPathBatch,
   widenVanishedExactPaths,
@@ -198,6 +199,7 @@ export async function flushCollectionOnce(
       } else if (classified.status === "error") {
         dirtyFailed = true;
         input.onSyncError(dirtyHints, classified.cause);
+        // Classification failure: retain original dirty + force flags.
         input.requeue([], dirtyHints, forceFlags);
       } else {
         classificationOk = true;
@@ -231,9 +233,13 @@ export async function flushCollectionOnce(
     );
     const generationAuthority =
       needsFullFromAmbiguous || input.generationReconcile;
+    const dirtyDerivedRemovals = classifiedRemovals.length > 0;
+    const dirtyDerivedCandidates = classifiedCandidates.length > 0;
 
     let targetedSynced = false;
     let targetedFailed: { error: unknown } | null = null;
+    /** Any dirty-derived candidate/removal op failed — block snapshot commit. */
+    let dirtyDerivedFailed = dirtyFailed;
 
     // 1) Proven removals: inactivate even when path is now dir/FIFO/device.
     if (classifiedRemovals.length > 0) {
@@ -261,6 +267,7 @@ export async function flushCollectionOnce(
         notifyCompletedSync(input, classifiedRemovals, inactiveResult)
       );
       if (hasFileLevelSyncError(inactiveResult)) {
+        dirtyDerivedFailed = true;
         const retry = computeTargetedRetry({
           result: inactiveResult,
           submittedPaths: classifiedRemovals,
@@ -268,9 +275,11 @@ export async function flushCollectionOnce(
           settled,
           dirtyHints,
           dirtyFailed,
+          dirtyDerivedSubmission: dirtyDerivedRemovals,
           generationAuthority,
         });
         // Failed proven removals re-enter as dirty so classification can retry.
+        // Always retain original dirty hints + force flags on derived failure.
         const failedRemovals = classifiedRemovals.filter(
           (path) => !settled.has(path)
         );
@@ -283,7 +292,7 @@ export async function flushCollectionOnce(
           retry.retryExact,
           [
             ...new Set([
-              ...(retry.retainDirty ? dirtyHints : []),
+              ...(retry.retainDirty || dirtyDerivedFailed ? dirtyHints : []),
               ...failedRemovals,
             ]),
           ],
@@ -327,6 +336,18 @@ export async function flushCollectionOnce(
         const settled = new Set(
           notifyCompletedSync(input, presentPaths, result)
         );
+        const failed = failedSyncPaths(result, presentPaths).filter(
+          (path) => !settled.has(path)
+        );
+        if (
+          dirtyDerivedCandidates &&
+          (result.errors.length > 0 ||
+            result.filesErrored > 0 ||
+            failed.some((path) => classifiedCandidates.includes(path)))
+        ) {
+          // Candidate batch failed — retain dirty authority, block snapshot.
+          dirtyDerivedFailed = true;
+        }
         const retry = computeTargetedRetry({
           result,
           submittedPaths: presentPaths,
@@ -334,19 +355,15 @@ export async function flushCollectionOnce(
           settled,
           dirtyHints,
           dirtyFailed,
+          dirtyDerivedSubmission: dirtyDerivedCandidates,
           generationAuthority,
         });
         const error = new Error("One or more paths failed during watcher sync");
-        const failed = presentPaths.filter(
-          (path) =>
-            result.files?.some(
-              (file) => file.relPath === path && file.status === "error"
-            ) || retry.retryExact.includes(path)
-        );
         input.onSyncError(failed.length > 0 ? failed : retry.retryExact, error);
+        // Retain original dirty hints + force flags — not solely failed exact.
         input.requeue(
           retry.retryExact,
-          retry.retainDirty ? dirtyHints : [],
+          retry.retainDirty || dirtyDerivedFailed ? dirtyHints : [],
           forceFlags
         );
         if (generationAuthority) {
@@ -355,7 +372,14 @@ export async function flushCollectionOnce(
         return { status: "failed", error };
       }
 
-      if (classificationOk && !dirtyFailed && nextSnapshot) {
+      // Commit only after full classified generation (candidates + removals).
+      if (
+        classificationOk &&
+        !dirtyFailed &&
+        !dirtyDerivedFailed &&
+        !targetedFailed &&
+        nextSnapshot
+      ) {
         input.commitSnapshot(nextSnapshot);
       }
 
@@ -364,9 +388,10 @@ export async function flushCollectionOnce(
     } else if (
       classificationOk &&
       !dirtyFailed &&
+      !dirtyDerivedFailed &&
+      !targetedFailed &&
       nextSnapshot &&
-      ownsTargeted(input) &&
-      !targetedFailed
+      ownsTargeted(input)
     ) {
       // Inactive-only / empty candidate classification: still commit snapshot.
       input.commitSnapshot(nextSnapshot);

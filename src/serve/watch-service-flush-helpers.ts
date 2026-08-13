@@ -82,6 +82,10 @@ export function notifyCompletedSync(
  * Retry authority after a targeted sync. Top-level result.errors retain the
  * original exact operation even when every file receipt succeeded, unless
  * durable dirty or generation authority already covers the work.
+ *
+ * Dirty-derived candidate/removal failures retain the original dirty hints and
+ * force flags until a full classified generation succeeds and nextSnapshot
+ * commits — never replace dirty authority solely with the failed exact path.
  */
 export function computeTargetedRetry(options: {
   result: CollectionSyncResult;
@@ -90,6 +94,11 @@ export function computeTargetedRetry(options: {
   settled: ReadonlySet<string>;
   dirtyHints: readonly string[];
   dirtyFailed: boolean;
+  /**
+   * True when this submission included dirty-classified candidates or
+   * proven removals (not merely live exact paths).
+   */
+  dirtyDerivedSubmission: boolean;
   generationAuthority: boolean;
 }): { retryExact: string[]; retainDirty: boolean } {
   const {
@@ -99,13 +108,20 @@ export function computeTargetedRetry(options: {
     settled,
     dirtyHints,
     dirtyFailed,
+    dirtyDerivedSubmission,
     generationAuthority,
   } = options;
   const failed = failedSyncPaths(result, submittedPaths).filter(
     (path) => !settled.has(path)
   );
   const topLevelErrors = result.errors.length > 0;
-  const retainDirty = dirtyFailed || (topLevelErrors && dirtyHints.length > 0);
+  const dirtyDerivedFailure =
+    dirtyDerivedSubmission &&
+    (failed.length > 0 || topLevelErrors || result.filesErrored > 0);
+  // Retain original dirty hints until classified work fully succeeds.
+  const retainDirty =
+    dirtyHints.length > 0 &&
+    (dirtyFailed || dirtyDerivedFailure || topLevelErrors);
 
   if (generationAuthority) {
     // Full-collection reconcile covers exact + dirty authority.
@@ -127,5 +143,5 @@ export function computeTargetedRetry(options: {
     };
   }
 
-  return { retryExact: failed, retainDirty: dirtyFailed };
+  return { retryExact: failed, retainDirty };
 }
