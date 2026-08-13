@@ -26,6 +26,7 @@ const FILE_COUNT = 5_000;
 const SAMPLE_COUNT = process.platform === "win32" ? 20 : 9;
 const WARMUP_COUNT = process.platform === "win32" ? 5 : 2;
 const TARGET = "note-02500.md";
+const prefetchedStats = new Map<string, Promise<WatcherSnapshotStat>>();
 
 function percentile95(samples: number[]): number {
   const ordered = [...samples].sort((a, b) => a - b);
@@ -60,6 +61,29 @@ async function lstatForWatcherBenchmark(
   };
 }
 
+async function readdirForWatcherBenchmark(absPath: string): Promise<string[]> {
+  const names = await readdir(absPath);
+  // The Windows benchmark adapter is intentionally path-backed. Start its
+  // independent child stats together so the measurement reflects discovery
+  // work rather than 5,000 sequential promise round trips in the test seam.
+  for (const name of names) {
+    const child = join(absPath, name);
+    prefetchedStats.set(child, lstatForWatcherBenchmark(child));
+  }
+  return names;
+}
+
+async function cachedLstatForWatcherBenchmark(
+  absPath: string
+): Promise<WatcherSnapshotStat> {
+  const prefetched = prefetchedStats.get(absPath);
+  if (!prefetched) {
+    return lstatForWatcherBenchmark(absPath);
+  }
+  prefetchedStats.delete(absPath);
+  return prefetched;
+}
+
 async function main(): Promise<void> {
   const root = await mkdtemp(join(tmpdir(), "gno-watch-benchmark-"));
   try {
@@ -74,8 +98,8 @@ async function main(): Promise<void> {
     const benchmarkFs =
       process.platform === "win32"
         ? createPathBackedWatcherFs({
-            readdir,
-            lstat: lstatForWatcherBenchmark,
+            readdir: readdirForWatcherBenchmark,
+            lstat: cachedLstatForWatcherBenchmark,
           })
         : undefined;
     const snapshotOptions = benchmarkFs ? { fs: benchmarkFs } : undefined;
