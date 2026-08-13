@@ -10,22 +10,30 @@ import type { SqliteAdapter } from "../../../src/store/sqlite/adapter";
 
 import { defaultSyncService } from "../../../src/ingestion";
 
-export function createCollection(name: string, path: string): Collection {
+export function createCollection(
+  name: string,
+  path: string,
+  overrides: Partial<Collection> = {}
+): Collection {
   return {
     name,
     path,
     pattern: "**/*.md",
     include: [],
     exclude: [],
+    ...overrides,
   };
 }
 
 /** Minimal store seam so dirty fallback does not throw in unit tests. */
-export function createStubStore(): SqliteAdapter {
+export function createStubStore(
+  overrides: Partial<SqliteAdapter> = {}
+): SqliteAdapter {
   return {
     listActiveDirectChildSourcePaths: async () => ({ ok: true, value: [] }),
     listActiveDescendantSourcePaths: async () => ({ ok: true, value: [] }),
     listActiveSourcePaths: async () => ({ ok: true, value: [] }),
+    ...overrides,
   } as unknown as SqliteAdapter;
 }
 

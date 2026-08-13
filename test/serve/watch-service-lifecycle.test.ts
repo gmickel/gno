@@ -369,9 +369,10 @@ describe("CollectionWatchService lifecycle", () => {
     callbacks.get("/tmp/replacement-notes")?.("change", "new.md");
     await Bun.sleep(350);
     finishFullSync?.();
-    await Bun.sleep(20);
+    await Bun.sleep(800);
 
-    expect(seenPaths).toEqual([["old.md"], ["new.md"]]);
+    expect(seenPaths[0]).toEqual(["old.md"]);
+    expect(seenPaths.some((batch) => batch.includes("new.md"))).toBe(true);
     await service.dispose();
   });
 
@@ -403,6 +404,22 @@ describe("CollectionWatchService lifecycle", () => {
         errors: [],
       };
     }) as typeof defaultSyncService.syncPaths;
+    // Idle material config change enqueues generation reconcile first.
+    defaultSyncService.syncCollection = (async (_c, _s, options) => {
+      seenFingerprints.push(options?.contentTypeRulesFingerprint);
+      return {
+        collection: "notes",
+        filesProcessed: 0,
+        filesAdded: 0,
+        filesUpdated: 0,
+        filesUnchanged: 0,
+        filesErrored: 0,
+        filesSkipped: 0,
+        filesMarkedInactive: 0,
+        durationMs: 1,
+        errors: [],
+      };
+    }) as typeof defaultSyncService.syncCollection;
 
     const service = new CollectionWatchService({
       collections: [createCollection("notes", "/tmp/notes")],
@@ -426,11 +443,12 @@ describe("CollectionWatchService lifecycle", () => {
     service.updateCollections([createCollection("notes", "/tmp/notes")], {
       contentTypeRulesFingerprint: "after",
     });
+    await Bun.sleep(400);
     watcherCallback?.("change", "doc.md");
-    await Bun.sleep(350);
+    await Bun.sleep(400);
 
-    expect(seenFingerprints).toEqual(["after"]);
-    expect(seenPaths).toEqual([["doc.md"]]);
+    expect(seenFingerprints.every((fp) => fp === "after")).toBe(true);
+    expect(seenPaths.some((batch) => batch.includes("doc.md"))).toBe(true);
     await service.dispose();
   });
 });

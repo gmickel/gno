@@ -350,18 +350,21 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
   test("store failure does not infer inactivation", async () => {
     const root = await mkdtemp(join(tmpdir(), "gno-watch-storefail-"));
     try {
-      await writeFile(join(root, "a.md"), "a");
+      await mkdir(join(root, "nested"), { recursive: true });
+      await writeFile(join(root, "nested", "a.md"), "a");
       const classified = await classifyDirtyHints({
         collection: createCollection("notes", root),
         store: createStubStore({
-          listActiveDirectChildSourcePaths: async () => ({
+          // Non-root inventory uses descendants alone (not direct-child).
+          listActiveDescendantSourcePaths: async () => ({
             ok: false,
             error: { code: "QUERY_FAILED", message: "boom" },
           }),
         }),
         rootAbs: root,
         previous: null,
-        dirtyHints: ["a.md.tmp"],
+        // Parent expands to "nested" only (not root) so non-root store path runs.
+        dirtyHints: ["nested/a.md.tmp"],
       });
       expect(classified.status).toBe("error");
       if (classified.status === "error") {

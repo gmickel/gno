@@ -4,7 +4,7 @@
 
 import type { WatchListener } from "node:fs";
 
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 // node:fs/promises — test fixture setup
 import { mkdtemp, writeFile } from "node:fs/promises";
 // node:os — tmpdir
@@ -12,62 +12,17 @@ import { tmpdir } from "node:os";
 // node:path — Bun has no path utilities
 import { join } from "node:path";
 
-import type { Collection } from "../../src/config/types";
-import type { CollectionSyncResult } from "../../src/ingestion";
-import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
-
 import { defaultSyncService } from "../../src/ingestion";
 import { CollectionWatchService } from "../../src/serve/watch-service";
 import { safeRm } from "../helpers/cleanup";
+import {
+  createCollection,
+  createStubStore,
+  createSyncResult,
+  installWatchServiceSyncReset,
+} from "./helpers/watch-service-fixtures";
 
-function createCollection(
-  name: string,
-  path: string,
-  overrides: Partial<Collection> = {}
-): Collection {
-  return {
-    name,
-    path,
-    pattern: "**/*.md",
-    include: [],
-    exclude: [],
-    ...overrides,
-  };
-}
-
-function createStubStore(
-  overrides: Partial<SqliteAdapter> = {}
-): SqliteAdapter {
-  return {
-    listActiveDirectChildSourcePaths: async () => ({ ok: true, value: [] }),
-    listActiveDescendantSourcePaths: async () => ({ ok: true, value: [] }),
-    ...overrides,
-  } as unknown as SqliteAdapter;
-}
-
-function createSyncResult(
-  overrides: Partial<CollectionSyncResult> = {}
-): CollectionSyncResult {
-  return {
-    collection: "notes",
-    filesProcessed: 0,
-    filesAdded: 0,
-    filesUpdated: 0,
-    filesUnchanged: 0,
-    filesErrored: 0,
-    filesSkipped: 0,
-    filesMarkedInactive: 0,
-    durationMs: 1,
-    errors: [],
-    ...overrides,
-  };
-}
-
-const originalSyncPaths = defaultSyncService.syncPaths.bind(defaultSyncService);
-
-afterEach(() => {
-  defaultSyncService.syncPaths = originalSyncPaths;
-});
+installWatchServiceSyncReset();
 
 describe("CollectionWatchService reconciliation integration", () => {
   test("exact eligible event always reaches syncPaths", async () => {
@@ -413,6 +368,13 @@ describe("CollectionWatchService reconciliation integration", () => {
           filesUpdated: relPaths.length,
         });
       }) as typeof defaultSyncService.syncPaths;
+      // Root replacement durably enqueues generation reconcile.
+      defaultSyncService.syncCollection = (async () =>
+        createSyncResult({
+          filesProcessed: 1,
+          filesAdded: 1,
+          files: [{ relPath: "new.md", status: "added" }],
+        })) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
         collections: [createCollection("notes", rootA)],
@@ -437,10 +399,10 @@ describe("CollectionWatchService reconciliation integration", () => {
       await Bun.sleep(40);
       callbacks.get(rootA)?.("change", "old.md");
       service.updateCollections([createCollection("notes", rootB)]);
-      await Bun.sleep(350);
+      await Bun.sleep(500);
       expect(seen.every((batch) => !batch.includes("old.md"))).toBe(true);
       callbacks.get(rootB)?.("change", "new.md");
-      await Bun.sleep(350);
+      await Bun.sleep(700);
       expect(seen.some((batch) => batch.includes("new.md"))).toBe(true);
       await service.dispose();
     } finally {

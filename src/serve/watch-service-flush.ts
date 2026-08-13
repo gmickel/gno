@@ -116,21 +116,35 @@ function ownsTargeted(input: FlushCollectionInput): boolean {
   );
 }
 
+/**
+ * Settle successful paths once. onSyncComplete may synchronously replace
+ * collection/root — reacquire ownership before onAfterSync/scheduler/events.
+ * Never bypass ownership (including generation reconcile callers).
+ */
 function notifySuccessfulChanges(
   input: FlushCollectionInput,
   result: CollectionSyncResult,
-  fallbackPaths: string[] = []
+  fallbackPaths: string[] = [],
+  ownership?: { generation: number; root: string }
 ): string[] {
   const paths = changedPaths(result, fallbackPaths);
   if (paths.length === 0) {
     return [];
   }
   input.onSyncComplete(paths, result);
-  if (!ownsTargeted(input) && !input.generationReconcile) {
+  if (input.disposed()) {
     return paths;
   }
   const currentCollection = input.getCurrentCollection();
   if (!currentCollection) {
+    return paths;
+  }
+  const expectedGen = ownership?.generation ?? input.ownerGeneration;
+  const expectedRoot = ownership?.root ?? input.ownerRoot;
+  if (
+    input.getCurrentGeneration() !== expectedGen ||
+    normalize(currentCollection.path) !== expectedRoot
+  ) {
     return paths;
   }
   const filtered = paths.filter((relPath) =>
@@ -278,19 +292,23 @@ export async function flushCollectionOnce(
 
       if (hasFileLevelSyncError(result)) {
         // Partial success: settle only successful changed paths; retain failures.
-        notifySuccessfulChanges(input, result);
-        const failed = failedSyncPaths(result, relPaths);
+        const settled = new Set(notifySuccessfulChanges(input, result));
+        const failed = failedSyncPaths(result, relPaths).filter(
+          (path) => !settled.has(path)
+        );
         const error = new Error("One or more paths failed during watcher sync");
         input.onSyncError(failed.length > 0 ? failed : relPaths, error);
-        // Requeue failed exact paths; keep dirty only when classification failed
-        // entirely (no path-level identity for rediscovery otherwise).
-        // Failed paths retry as exact content-hash work; successful paths settle.
-        input.requeue(
-          failed.length > 0 ? failed : liveExact,
-          dirtyFailed ? dirtyHints : [],
-          forceFlags
-        );
-        // Withhold snapshot commit on any file-level failure.
+        // Top-level errors (e.g. EDGE_FAIL) with successful files: do not drain
+        // originating dirty hints; successful paths settle exactly once.
+        const topLevelErrors = result.errors.length > 0;
+        const retryExact =
+          failed.length > 0
+            ? failed
+            : liveExact.filter((path) => !settled.has(path));
+        const retainDirty =
+          dirtyFailed || (topLevelErrors && dirtyHints.length > 0);
+        input.requeue(retryExact, retainDirty ? dirtyHints : [], forceFlags);
+        // Withhold snapshot commit on any file-level / top-level failure.
         if (needsFullFromAmbiguous || input.generationReconcile) {
           input.requeueGeneration();
         }
@@ -409,11 +427,11 @@ async function runGenerationReconcile(
 
       if (hasFileLevelSyncError(result)) {
         // Notify only successful changed paths; keep durable generation work.
-        const okPaths = changedPaths(result);
-        if (okPaths.length > 0) {
-          input.onSyncComplete(okPaths, result);
-          input.onAfterSync(stillCurrent, okPaths);
-        }
+        // Reacquire ownership after onSyncComplete (may replace root/config).
+        notifySuccessfulChanges(input, result, [], {
+          generation: currentGeneration,
+          root: currentRoot,
+        });
         const error = new Error(
           "One or more paths failed during watcher generation reconcile"
         );
@@ -424,21 +442,11 @@ async function runGenerationReconcile(
 
       // Only after successful full reconcile: rebuild snapshot ownership.
       input.invalidateSnapshot(stillCurrent);
-      const completionPaths = changedPaths(result);
-      if (completionPaths.length > 0) {
-        input.onSyncComplete(completionPaths, result);
-        const latest = input.getCurrentCollection();
-        if (
-          latest &&
-          input.getCurrentGeneration() === currentGeneration &&
-          normalize(latest.path) === currentRoot
-        ) {
-          input.onAfterSync(latest, completionPaths);
-        }
-      } else {
-        // Still signal completion with empty changed set for observers that
-        // key off onSyncComplete once; prefer only-changed so skip when empty.
-      }
+      // Reacquire after any side effects; never emit old-owner afterSync.
+      notifySuccessfulChanges(input, result, [], {
+        generation: currentGeneration,
+        root: currentRoot,
+      });
       completedGeneration = currentGeneration;
       needsWork = input.getCurrentGeneration() !== completedGeneration;
     } catch (error) {

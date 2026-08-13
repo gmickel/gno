@@ -11,7 +11,7 @@ import {
   test,
 } from "bun:test";
 // node:fs/promises — test fixture setup
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 // node:os — tmpdir
 import { tmpdir } from "node:os";
 // node:path — Bun has no path utilities
@@ -22,6 +22,7 @@ import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import type { DocumentInput } from "../../src/store/types";
 
 import { classifyDirtyHints } from "../../src/serve/watch-reconciliation";
+import { collapseOverlappingDirtyDirs } from "../../src/serve/watch-reconciliation-fallback";
 import { buildWatcherSnapshot } from "../../src/serve/watch-snapshot";
 import { SqliteAdapter as RealSqliteAdapter } from "../../src/store";
 import { safeRm } from "../helpers/cleanup";
@@ -50,6 +51,16 @@ function createStubStore(
     ...overrides,
   } as unknown as SqliteAdapter;
 }
+
+describe("collapse overlapping dirty dirs", () => {
+  test("ancestor absorbs descendants; root absorbs all", () => {
+    expect(collapseOverlappingDirtyDirs(["sub", "sub/subchild"])).toEqual([
+      "sub",
+    ]);
+    expect(collapseOverlappingDirtyDirs(["", "a", "a/b"])).toEqual([""]);
+    expect(collapseOverlappingDirtyDirs(["a", "b"])).toEqual(["a", "b"]);
+  });
+});
 
 describe("fallback root and forceFallback", () => {
   test("missing collection root errors instead of proving deletion", async () => {
@@ -235,6 +246,70 @@ describe("root inventory scale without false overflow", () => {
       expect(classified.candidates).toContain("export.jsonl");
       // Root must use listActiveSourcePaths only — no direct-child call.
       expect(directCalls).toBe(0);
+    } finally {
+      await safeRm(root);
+    }
+  }, 60_000);
+
+  test("5000 files under sub/ + overlapping sub/subchild hints no false overflow", async () => {
+    const root = await mkdtemp(join(tmpdir(), "gno-watch-sub-5k-"));
+    try {
+      await mkdir(join(root, "group", "sub", "subchild"), { recursive: true });
+      const expected: string[] = [];
+      for (let i = 0; i < 5000; i += 1) {
+        const rel = `group/sub/n${String(i).padStart(4, "0")}.md`;
+        expected.push(rel);
+        await writeFile(join(root, rel), `c${i}`);
+        await adapter.upsertDocument(doc({ relPath: rel }));
+      }
+      await writeFile(join(root, "group/sub/subchild/extra.md"), "x");
+      await adapter.upsertDocument(
+        doc({ relPath: "group/sub/subchild/extra.md" })
+      );
+
+      let directCalls = 0;
+      const originalDirect =
+        adapter.listActiveDirectChildSourcePaths.bind(adapter);
+      adapter.listActiveDirectChildSourcePaths = (async (...args) => {
+        directCalls += 1;
+        return originalDirect(...args);
+      }) as typeof adapter.listActiveDirectChildSourcePaths;
+
+      let descendantCalls = 0;
+      const originalDesc =
+        adapter.listActiveDescendantSourcePaths.bind(adapter);
+      adapter.listActiveDescendantSourcePaths = (async (...args) => {
+        descendantCalls += 1;
+        return originalDesc(...args);
+      }) as typeof adapter.listActiveDescendantSourcePaths;
+
+      const classified = await classifyDirtyHints({
+        collection: {
+          name: "notes",
+          path: root,
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+        store: adapter,
+        rootAbs: root,
+        previous: null,
+        dirtyHints: ["group/sub", "group/sub/subchild"],
+        sourcePathMax: 8_192,
+      });
+
+      expect(classified.status).toBe("ok");
+      if (classified.status !== "ok") {
+        throw new Error(`expected ok, got ${classified.status}`);
+      }
+      expect(classified.usedFallback).toBe(true);
+      expect(classified.candidates.length).toBeGreaterThanOrEqual(5000);
+      expect(classified.candidates).toContain(expected[0] as string);
+      expect(classified.candidates).toContain(expected[4999] as string);
+      expect(classified.candidates).toContain("group/sub/subchild/extra.md");
+      // Non-root inventory uses descendants alone; never direct-child.
+      expect(directCalls).toBe(0);
+      expect(descendantCalls).toBeGreaterThanOrEqual(1);
     } finally {
       await safeRm(root);
     }

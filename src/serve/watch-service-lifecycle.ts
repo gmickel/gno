@@ -11,8 +11,9 @@ import { normalize } from "node:path";
 
 import type { Collection } from "../config/types";
 import type { SyncOptions } from "../ingestion";
-import type { CollectionPending } from "./watch-service-state";
 import type { WatcherSnapshot } from "./watch-snapshot";
+
+import { emptyPending, type CollectionPending } from "./watch-service-state";
 
 export interface WatchLifecycleHost {
   disposed: () => boolean;
@@ -160,25 +161,32 @@ export function applyCollectionUpdate(
       collection,
       host.getSyncOptions()
     );
-    if (host.collectionFingerprints.get(collection.name) !== fingerprint) {
-      host.collectionFingerprints.set(collection.name, fingerprint);
-      host.collectionGenerations.set(collection.name, host.nextGeneration());
-      host.snapshots.delete(collection.name);
-      host.snapshotReady.set(collection.name, false);
-      host.snapshotInit.delete(collection.name);
+    const previousFingerprint = host.collectionFingerprints.get(
+      collection.name
+    );
+    if (previousFingerprint === fingerprint) {
+      continue;
+    }
+    host.collectionFingerprints.set(collection.name, fingerprint);
+    host.collectionGenerations.set(collection.name, host.nextGeneration());
+    host.snapshots.delete(collection.name);
+    host.snapshotReady.set(collection.name, false);
+    host.snapshotInit.delete(collection.name);
+    // Initial start (no prior fingerprint): snapshot only — no full sync.
+    // Every later material change (idle same-root, root replacement, exact-only
+    // pending, dirty work) durably enqueues generation reconciliation.
+    if (previousFingerprint !== undefined) {
+      const pending =
+        host.pendingByCollection.get(collection.name) ?? emptyPending();
+      pending.generationReconcile = true;
       // Queued ambiguous work must not be absorbed by the new baseline.
-      // Exact-only work is re-filtered against live rules at flush time.
-      const pending = host.pendingByCollection.get(collection.name);
-      if (
-        pending &&
-        (pending.dirty.size > 0 || pending.overflow || pending.forceFallback)
-      ) {
+      if (pending.dirty.size > 0 || pending.overflow || pending.forceFallback) {
         pending.forceFallback = true;
-        pending.generationReconcile = true;
       }
-      if (host.watchers.has(collection.name)) {
-        host.beginSnapshotInit(collection);
-      }
+      host.pendingByCollection.set(collection.name, pending);
+    }
+    if (host.watchers.has(collection.name)) {
+      host.beginSnapshotInit(collection);
     }
   }
 

@@ -77,6 +77,10 @@ export async function fallbackClassifyDirtyHints(options: {
       dirs.add(parent);
     }
   }
+  // Ancestors cover descendants — charge each source path once globally.
+  const collapsedDirs = collapseOverlappingDirtyDirs(dirs);
+  // Global unique store sources across all dirty dirs (no double-charge).
+  const storeSeen = new Set<string>();
 
   // Prove collection root is available before any deletion comparison.
   const rootOpen = await openDirByRel(root, "", fs);
@@ -99,7 +103,7 @@ export async function fallbackClassifyDirtyHints(options: {
   }
   await fs.closeDir(rootOpen.handle);
 
-  for (const dir of dirs) {
+  for (const dir of collapsedDirs) {
     budget.dirtyDirs += 1;
     if (budgetExceeded(budget)) {
       return overflowResult(dir);
@@ -135,7 +139,8 @@ export async function fallbackClassifyDirtyHints(options: {
       collection.name,
       dir,
       disk.rootDirNames,
-      budget
+      budget,
+      storeSeen
     );
     if (!storePaths.ok) {
       return {
@@ -193,24 +198,47 @@ function overflowResult(dir: string): ClassificationResult {
   };
 }
 
+/**
+ * Drop dirty dirs covered by an ancestor so overlapping hints charge once.
+ * Root (`""`) absorbs every other dir.
+ */
+export function collapseOverlappingDirtyDirs(dirs: Iterable<string>): string[] {
+  const list = [...new Set(dirs)];
+  if (list.includes("")) {
+    return [""];
+  }
+  list.sort((a, b) => a.length - b.length || a.localeCompare(b));
+  const kept: string[] = [];
+  for (const dir of list) {
+    const covered = kept.some(
+      (parent) => parent === dir || dir.startsWith(`${parent}/`)
+    );
+    if (!covered) {
+      kept.push(dir);
+    }
+  }
+  return kept;
+}
+
 async function collectStorePathsForDir(
   store: SqliteAdapter,
   collection: string,
   dir: string,
   rootDirNames: readonly string[],
-  budget: FallbackBudget
+  budget: FallbackBudget,
+  storeSeen: Set<string>
 ): Promise<StoreResult<string[]> & { overflow?: boolean }> {
-  const out = new Set<string>();
+  const out: string[] = [];
 
   const takeRows = (
     rows: string[]
   ): { ok: true } | { ok: false; overflow: true } => {
     for (const path of rows) {
-      const before = out.size;
-      out.add(path);
-      if (out.size === before) {
+      if (storeSeen.has(path)) {
         continue;
       }
+      storeSeen.add(path);
+      out.push(path);
       // Count unique store sources only (record-container logical dups collapse).
       budget.storeRows += 1;
       if (budgetExceeded(budget)) {
@@ -241,7 +269,7 @@ async function collectStorePathsForDir(
       if (!takeRows(inventory.value).ok) {
         return { ok: true, value: [], overflow: true };
       }
-      return { ok: true, value: [...out] };
+      return { ok: true, value: out };
     }
 
     // Seam unavailable (stubs): first-level disk-name probes only, no direct-child.
@@ -273,21 +301,11 @@ async function collectStorePathsForDir(
         return { ok: true, value: [], overflow: true };
       }
     }
-    return { ok: true, value: [...out] };
+    return { ok: true, value: out };
   }
 
-  // Non-root: direct children + descendants under this directory.
-  const direct = await safeListDirect(store, collection, dir, remaining());
-  if (!direct.ok) {
-    if (direct.error.code === "OVERFLOW") {
-      return { ok: true, value: [], overflow: true };
-    }
-    return direct;
-  }
-  if (!takeRows(direct.value).ok) {
-    return { ok: true, value: [], overflow: true };
-  }
-
+  // Non-root: descendants alone (includes direct children). Direct-child +
+  // descendant double-counted unique sources and falsely overflowed at scale.
   const descendants = await safeListDescendants(
     store,
     collection,
@@ -303,7 +321,7 @@ async function collectStorePathsForDir(
   if (!takeRows(descendants.value).ok) {
     return { ok: true, value: [], overflow: true };
   }
-  return { ok: true, value: [...out] };
+  return { ok: true, value: out };
 }
 
 /**
@@ -336,29 +354,6 @@ async function listRootActiveSourcePaths(
           cause instanceof Error
             ? cause.message
             : "Root store inventory failed",
-        cause,
-      },
-    };
-  }
-}
-
-async function safeListDirect(
-  store: SqliteAdapter,
-  collection: string,
-  dir: string,
-  max: number
-): Promise<StoreResult<string[]>> {
-  try {
-    return await store.listActiveDirectChildSourcePaths(collection, dir, max);
-  } catch (cause) {
-    return {
-      ok: false,
-      error: {
-        code: "QUERY_FAILED",
-        message:
-          cause instanceof Error
-            ? cause.message
-            : "Direct-child store query failed",
         cause,
       },
     };
