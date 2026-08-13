@@ -45,9 +45,8 @@ Wire the snapshot/fallback substrate into the shared resident `CollectionWatchSe
 - [ ] TBD
 
 ## Done summary
-TBD
-
+Integrated snapshot-backed exact and ambiguous watcher reconciliation into the shared resident watcher service. Exact eligible events retain targeted content-hash synchronization; ambiguous, directory, vanished, and special-file events use bounded snapshot/store/disk classification with durable full-reconcile escalation. Added capped queues, maximum flush latency, retry ownership, generation/root lifecycle protection, record-container removal handling, and failure propagation through inventory, backlink, and typed-edge cleanup paths. Host-native implementation review concluded SHIP.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 10e5721e, 9b1952cf, f456a34c, 80dace84, ac59bd71, ac961639, 4974bf13
+- Tests: bun test test/serve/watch-service*.test.ts test/serve/watch-reconciliation*.test.ts test/serve/watch-snapshot-*.test.ts test/store/watcher-source-paths*.test.ts test/ingestion/sync-incremental.test.ts test/ingestion/sync-links.test.ts test/ingestion/record-sync.test.ts (211 pass, 0 fail), bun run lint:check (0 warnings, 0 errors; formatting clean), host-native implementation review SHIP (reservation 041e31fa5f5248d2997e34f6c671e4fe)
 - PRs:
