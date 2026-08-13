@@ -42,9 +42,10 @@ Build the watcher-owned no-follow snapshot/diff substrate and the bounded active
 - [ ] TBD
 
 ## Done summary
-TBD
+Implemented bounded, no-follow watcher snapshot primitives and active-source store queries for GNO-27 task 1. The snapshot layer now supports injectable filesystem seams, exact fingerprint comparison, recursive additions/removals and kind transitions, nearest-surviving-ancestor hint resolution, fixed entry ceilings, explicit fallback without snapshot mutation, and fail-closed handling for filesystem races. SQLite direct-child and descendant source queries are active-only, record-container-aware, Unicode-safe, deterministic, and bounded with explicit overflow.
 
+Host-native implementation review converged to SHIP in round 7 after remediation of root-loss, algorithmic, containment, cross-platform, FIFO, inconsistent-scan, new-directory, bounded-materialization, Unicode, special-file, and nested-directory race findings.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: d41d0c37bdbe02bbb322746dcc781d63a45a4174, 2997e7582b2c44247ebf08294b7a777eaa32bd00, 153f721bacbb3745e0a603f29215da251294a5cd, eaeb7511baa401bf4ce217a560d945840b7b5193, 111dc21c208f693ddb7e2efbe6d1244c1d0ec03a, eb80ff5143e07495b0b046c9ff78db118b1bcdbf, 704257300c1a90e5e60813d42311ec44633bf160
+- Tests: PATH=/Users/gordon/.local/share/mise/installs/bun/1.3.11/bin:$PATH bun test test/serve/watch-snapshot-*.test.ts test/store/watcher-source-paths*.test.ts (73 pass, 0 fail), PATH=/Users/gordon/.local/share/mise/installs/bun/1.3.11/bin:$PATH bun run lint:check (clean), host-native gpt-5.6-sol implementation review round 7: SHIP
 - PRs:
