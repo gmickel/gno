@@ -19,8 +19,12 @@ import {
 import { safeRm } from "../test/helpers/cleanup";
 
 const FILE_COUNT = 5_000;
-const SAMPLE_COUNT = 9;
-const WARMUP_COUNT = 2;
+// Twenty samples make nearest-rank p95 the second-slowest observation instead
+// of the maximum, so one hosted-runner outlier cannot define the percentile.
+const SAMPLE_COUNT = 20;
+// Five warmups keep older Bun Windows filesystem/runtime startup variance out
+// of the measured distribution.
+const WARMUP_COUNT = 5;
 const TARGET = "note-02500.md";
 
 function percentile95(samples: number[]): number {
