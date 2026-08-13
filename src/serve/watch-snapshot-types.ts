@@ -1,0 +1,260 @@
+/**
+ * Watcher snapshot types, fingerprints, and pure path helpers.
+ *
+ * @module src/serve/watch-snapshot-types
+ */
+
+// node:path — Bun has no path utilities
+import { isAbsolute } from "node:path";
+
+/** Fixed service-wide maximum entries retained in one collection snapshot. */
+export const WATCHER_SNAPSHOT_ENTRY_CEILING = 100_000;
+
+export type SnapshotEntryKind = "file" | "directory" | "symlink" | "other";
+
+/**
+ * No-follow entry fingerprint used only for candidate discovery.
+ * Equality of fingerprints means "not a discovery candidate", never
+ * "content is unchanged".
+ */
+export interface SnapshotEntryFingerprint {
+  kind: SnapshotEntryKind;
+  device: bigint;
+  inode: bigint;
+  size: number;
+  mtimeNs: bigint;
+  ctimeNs: bigint;
+}
+
+/** Hierarchical snapshot indexed by directory (POSIX collection-relative). */
+export interface WatcherSnapshot {
+  /** dirRelPath → (entry name → fingerprint). `""` is the collection root. */
+  readonly directories: ReadonlyMap<
+    string,
+    ReadonlyMap<string, SnapshotEntryFingerprint>
+  >;
+  /** Total no-follow entries across every directory map. */
+  readonly entryCount: number;
+}
+
+/** Injectable lstat view. `unreliable` forces the correctness-preserving fallback. */
+export interface WatcherSnapshotStat {
+  isFile(): boolean;
+  isDirectory(): boolean;
+  isSymbolicLink(): boolean;
+  dev: number | bigint;
+  ino: number | bigint;
+  size: number | bigint;
+  mtimeNs?: bigint | number;
+  ctimeNs?: bigint | number;
+  mtimeMs?: number;
+  ctimeMs?: number;
+  /** When true, metadata cannot be trusted for discovery. */
+  unreliable?: boolean;
+}
+
+export interface WatcherSnapshotFs {
+  readdir(absPath: string): Promise<string[]>;
+  lstat(absPath: string): Promise<WatcherSnapshotStat>;
+}
+
+export interface WatcherSnapshotClock {
+  nowMs(): number;
+}
+
+export type SnapshotFallbackReason =
+  | "overflow"
+  | "scan_failed"
+  | "unreliable_metadata";
+
+export type WatcherSnapshotBuildResult =
+  | {
+      status: "ok";
+      snapshot: WatcherSnapshot;
+      durationMs: number;
+    }
+  | {
+      status: "fallback";
+      reason: SnapshotFallbackReason;
+      durationMs: number;
+      cause?: unknown;
+    };
+
+export type WatcherSnapshotDiffResult =
+  | {
+      status: "ok";
+      /** Added, changed, or removed file/symlink paths (POSIX, collection-relative). */
+      candidates: string[];
+      nextSnapshot: WatcherSnapshot;
+      discoveryMs: number;
+    }
+  | {
+      status: "fallback";
+      reason: SnapshotFallbackReason;
+      discoveryMs: number;
+      cause?: unknown;
+    };
+
+export interface WatcherSnapshotOptions {
+  fs?: WatcherSnapshotFs;
+  clock?: WatcherSnapshotClock;
+  /** Override the service-wide ceiling (tests only). */
+  entryCeiling?: number;
+}
+
+export type ScanFailure =
+  | { status: "overflow" }
+  | { status: "scan_failed"; cause: unknown }
+  | { status: "unreliable_metadata" };
+
+export type DiffWorkResult = { status: "ok" } | ScanFailure;
+
+export function toBigInt(value: number | bigint | undefined): bigint | null {
+  if (value === undefined) {
+    return null;
+  }
+  if (typeof value === "bigint") {
+    return value;
+  }
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  return BigInt(Math.trunc(value));
+}
+
+/**
+ * Require actual finite nanosecond timestamps. Millisecond fields alone are
+ * insufficient for the fast path (no ms→ns fabrication).
+ */
+export function nsFromStat(ns: bigint | number | undefined): bigint | null {
+  return toBigInt(ns);
+}
+
+export function kindOf(stat: WatcherSnapshotStat): SnapshotEntryKind {
+  if (stat.isSymbolicLink()) {
+    return "symlink";
+  }
+  if (stat.isDirectory()) {
+    return "directory";
+  }
+  if (stat.isFile()) {
+    return "file";
+  }
+  return "other";
+}
+
+export function fingerprintFromStat(
+  stat: WatcherSnapshotStat
+):
+  | { ok: true; fingerprint: SnapshotEntryFingerprint }
+  | { ok: false; reason: "unreliable_metadata" } {
+  if (stat.unreliable) {
+    return { ok: false, reason: "unreliable_metadata" };
+  }
+  const device = toBigInt(stat.dev);
+  const inode = toBigInt(stat.ino);
+  const sizeValue = toBigInt(stat.size);
+  const mtimeNs = nsFromStat(stat.mtimeNs);
+  const ctimeNs = nsFromStat(stat.ctimeNs);
+  if (
+    device === null ||
+    inode === null ||
+    sizeValue === null ||
+    mtimeNs === null ||
+    ctimeNs === null
+  ) {
+    return { ok: false, reason: "unreliable_metadata" };
+  }
+  // size may exceed Number.MAX_SAFE_INTEGER on huge files; clamp via Number is
+  // fine for discovery equality against the same platform read.
+  const size =
+    sizeValue > BigInt(Number.MAX_SAFE_INTEGER)
+      ? Number.MAX_SAFE_INTEGER
+      : Number(sizeValue);
+  return {
+    ok: true,
+    fingerprint: {
+      kind: kindOf(stat),
+      device,
+      inode,
+      size,
+      mtimeNs,
+      ctimeNs,
+    },
+  };
+}
+
+export function fingerprintsEqual(
+  left: SnapshotEntryFingerprint,
+  right: SnapshotEntryFingerprint
+): boolean {
+  return (
+    left.kind === right.kind &&
+    left.device === right.device &&
+    left.inode === right.inode &&
+    left.size === right.size &&
+    left.mtimeNs === right.mtimeNs &&
+    left.ctimeNs === right.ctimeNs
+  );
+}
+
+/**
+ * Normalize an untrusted watcher hint to a POSIX collection-relative path.
+ * Returns null for absolute, escaping, empty-invalid, or NUL-bearing values.
+ */
+export function normalizeWatcherRelPath(relPath: string): string | null {
+  if (relPath.includes("\0")) {
+    return null;
+  }
+  const normalized = relPath.replaceAll("\\", "/");
+  if (normalized.startsWith("/") || isAbsolute(relPath)) {
+    return null;
+  }
+  // Windows drive-shaped absolute escapes (`C:/...`) after slash normalization.
+  if (/^[A-Za-z]:(\/|$)/.test(normalized)) {
+    return null;
+  }
+  const segments: string[] = [];
+  for (const segment of normalized.split("/")) {
+    if (segment === "" || segment === ".") {
+      continue;
+    }
+    if (segment === "..") {
+      return null;
+    }
+    segments.push(segment);
+  }
+  return segments.join("/");
+}
+
+/** Parent directory of a POSIX relative path; `null` when path is the root. */
+export function parentWatcherDir(relPath: string): string | null {
+  if (relPath === "") {
+    return null;
+  }
+  const index = relPath.lastIndexOf("/");
+  return index === -1 ? "" : relPath.slice(0, index);
+}
+
+export function joinWatcherRelPath(dir: string, name: string): string {
+  return dir === "" ? name : `${dir}/${name}`;
+}
+
+export function createEmptyWatcherSnapshot(): WatcherSnapshot {
+  return { directories: new Map(), entryCount: 0 };
+}
+
+export function isMissingFsError(error: unknown): boolean {
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String(error.code)
+      : "";
+  return code === "ENOENT" || code === "ENOTDIR";
+}
+
+export function directoryIsUnder(dir: string, ancestor: string): boolean {
+  if (ancestor === "") {
+    return true;
+  }
+  return dir === ancestor || dir.startsWith(`${ancestor}/`);
+}
