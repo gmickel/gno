@@ -19,12 +19,12 @@ import {
 import { safeRm } from "../test/helpers/cleanup";
 
 const FILE_COUNT = 5_000;
-// Twenty samples make nearest-rank p95 the second-slowest observation instead
-// of the maximum, so one hosted-runner outlier cannot define the percentile.
-const SAMPLE_COUNT = 20;
-// Five warmups keep older Bun Windows filesystem/runtime startup variance out
-// of the measured distribution.
-const WARMUP_COUNT = 5;
+// Windows hosted runners need enough observations that nearest-rank p95 is the
+// second-slowest sample instead of the maximum. Keep the established workload
+// elsewhere; extra native-adapter scans only increase exposure to old-Bun I/O
+// instability without improving the already-wide Unix threshold margin.
+const SAMPLE_COUNT = process.platform === "win32" ? 20 : 9;
+const WARMUP_COUNT = process.platform === "win32" ? 5 : 2;
 const TARGET = "note-02500.md";
 
 function percentile95(samples: number[]): number {
@@ -100,7 +100,9 @@ async function main(): Promise<void> {
       );
       const durationMs = performance.now() - startedAt;
       if (result.status !== "ok") {
-        throw new Error(`Fast-path reconcile failed: ${result.status}`);
+        const cause =
+          result.cause instanceof Error ? ` (${result.cause.message})` : "";
+        throw new Error(`Fast-path reconcile failed: ${result.reason}${cause}`);
       }
       assertOnlyTarget(result.candidates);
       snapshot = result.nextSnapshot;
