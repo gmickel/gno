@@ -79,9 +79,9 @@ function createNativeAnchoredFs(libc: LoadedLibc): WatcherSnapshotFs {
       return asHandle({ fd });
     },
 
-    async readDir(handle: WatcherDirHandle): Promise<string[]> {
+    async readDir(handle: WatcherDirHandle, maxNames: number) {
       const native = requireNative(handle);
-      return readDirNames(libc, native.fd);
+      return readDirNames(libc, native.fd, maxNames);
     },
 
     async lstatChild(
@@ -235,8 +235,26 @@ export function createPathBackedWatcherFs(ops: {
       return wrap(absPath);
     },
 
-    async readDir(handle: WatcherDirHandle): Promise<string[]> {
-      return ops.readdir(unwrap(handle).absPath);
+    async readDir(handle: WatcherDirHandle, maxNames: number) {
+      if (!Number.isInteger(maxNames) || maxNames < 0) {
+        throw Object.assign(
+          new Error("maxNames must be a non-negative integer"),
+          { code: "EINVAL" }
+        );
+      }
+      const listed = await ops.readdir(unwrap(handle).absPath);
+      const names: string[] = [];
+      for (const name of listed) {
+        if (name === "" || name === "." || name === "..") {
+          continue;
+        }
+        // Cap storage at maxNames; the next name is overflow-only evidence.
+        if (names.length >= maxNames) {
+          return { status: "overflow" as const };
+        }
+        names.push(name);
+      }
+      return { status: "ok" as const, names };
     },
 
     async lstatChild(

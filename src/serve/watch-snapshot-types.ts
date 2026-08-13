@@ -10,6 +10,15 @@ import { isAbsolute } from "node:path";
 /** Fixed service-wide maximum entries retained in one collection snapshot. */
 export const WATCHER_SNAPSHOT_ENTRY_CEILING = 100_000;
 
+/**
+ * Result of a bounded directory enumeration.
+ * Overflow means more than `maxNames` child names were observed; callers must
+ * not treat a partial name list as a successful directory image.
+ */
+export type WatcherReadDirResult =
+  | { status: "ok"; names: string[] }
+  | { status: "overflow" };
+
 export type SnapshotEntryKind = "file" | "directory" | "symlink" | "other";
 
 /**
@@ -80,8 +89,16 @@ export interface WatcherSnapshotFs {
   /** Open an absolute path as a real directory without following a final symlink. */
   openDir(absPath: string): Promise<WatcherDirHandle>;
 
-  /** Enumerate direct child names via the open directory handle. */
-  readDir(handle: WatcherDirHandle): Promise<string[]>;
+  /**
+   * Enumerate direct child names via the open directory handle, capped at
+   * `maxNames`. Implementations must stop after observing `maxNames + 1`
+   * names (overflow) without storing or returning more, and must not claim
+   * success with a truncated list.
+   */
+  readDir(
+    handle: WatcherDirHandle,
+    maxNames: number
+  ): Promise<WatcherReadDirResult>;
 
   /**
    * No-follow lstat of a direct child relative to an open directory handle.

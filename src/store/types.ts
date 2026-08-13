@@ -24,6 +24,13 @@ import type {
 // Error Types
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Fixed service default maximum for watcher active source-path queries.
+ * Callers (watcher fallback later) pass this explicitly; methods never invent
+ * an unbounded success path.
+ */
+export const WATCHER_ACTIVE_SOURCE_PATH_MAX = 100_000;
+
 /** Store error codes */
 export type StoreErrorCode =
   | "NOT_FOUND"
@@ -38,6 +45,8 @@ export type StoreErrorCode =
   | "IO_ERROR"
   | "INTERNAL"
   | "EGRESS_DENIED"
+  /** Result set exceeded the caller-supplied positive maximum (never truncated). */
+  | "OVERFLOW"
   // Vector-specific error codes (EPIC 7)
   | "VECTOR_WRITE_FAILED"
   | "VECTOR_DELETE_FAILED"
@@ -1699,10 +1708,15 @@ export interface StorePort {
    * `dirRelPath` is collection-relative and POSIX-style; the collection root is
    * `""`. Paths that escape the collection root are rejected with
    * `INVALID_INPUT`. An empty successful result is distinct from query failure.
+   *
+   * `max` must be a positive integer (see `WATCHER_ACTIVE_SOURCE_PATH_MAX` for
+   * the fixed service default the watcher will pass). Matching rows beyond
+   * `max` yield `OVERFLOW` — never a truncated successful list.
    */
   listActiveDirectChildSourcePaths(
     collection: string,
-    dirRelPath: string
+    dirRelPath: string,
+    max: number
   ): Promise<StoreResult<string[]>>;
 
   /**
@@ -1715,10 +1729,15 @@ export interface StorePort {
    * `dirRelPath` must name a directory below the collection root: `""` is
    * rejected with `INVALID_INPUT` because a root-wide scan is intentionally out
    * of scope for this bounded seam. Escaping paths are also `INVALID_INPUT`.
+   *
+   * `max` must be a positive integer (see `WATCHER_ACTIVE_SOURCE_PATH_MAX` for
+   * the fixed service default the watcher will pass). Matching rows beyond
+   * `max` yield `OVERFLOW` — never a truncated successful list.
    */
   listActiveDescendantSourcePaths(
     collection: string,
-    dirRelPath: string
+    dirRelPath: string,
+    max: number
   ): Promise<StoreResult<string[]>>;
 
   /**

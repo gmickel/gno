@@ -107,13 +107,20 @@ describe("watcher snapshot scale", () => {
         handleState.set(handle as object, { node });
         return handle;
       },
-      readDir: async (handle: WatcherDirHandle) => {
+      readDir: async (handle: WatcherDirHandle, maxNames: number) => {
         readDirCalls += 1;
         const state = handleState.get(handle as object);
         if (!state) {
           throw Object.assign(new Error("EBADF"), { code: "EBADF" });
         }
-        return [...state.node.children.keys()];
+        const names: string[] = [];
+        for (const name of state.node.children.keys()) {
+          if (names.length >= maxNames) {
+            return { status: "overflow" as const };
+          }
+          names.push(name);
+        }
+        return { status: "ok" as const, names };
       },
       lstatChild: async (handle: WatcherDirHandle, name: string) => {
         lstatChildCalls += 1;
@@ -336,12 +343,19 @@ describe("watcher snapshot scale", () => {
         hs.set(handle as object, { node: liveRoot });
         return handle;
       },
-      readDir: async (handle: WatcherDirHandle) => {
+      readDir: async (handle: WatcherDirHandle, maxNames: number) => {
         const state = hs.get(handle as object);
         if (!state) {
           throw Object.assign(new Error("EBADF"), { code: "EBADF" });
         }
-        return [...state.node.children.keys()];
+        const names: string[] = [];
+        for (const name of state.node.children.keys()) {
+          if (names.length >= maxNames) {
+            return { status: "overflow" as const };
+          }
+          names.push(name);
+        }
+        return { status: "ok" as const, names };
       },
       lstatChild: async (handle: WatcherDirHandle, name: string) => {
         const state = hs.get(handle as object);

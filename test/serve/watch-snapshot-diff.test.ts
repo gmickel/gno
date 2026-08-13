@@ -281,6 +281,81 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     expect(reconciled.removals).not.toContain("a/sibling.md");
   });
 
+  test("new-directory hint records parent edge and cleans up on missing child hint", async () => {
+    await writeWatchFixture(root, "sibling.md", "s");
+    await mkdir(join(root, "other"), { recursive: true });
+    await writeWatchFixture(root, "other/keep.md", "k");
+
+    const built = await buildWatcherSnapshot(root, { fs });
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") {
+      return;
+    }
+    const baselineCount = built.snapshot.entryCount;
+
+    await mkdir(join(root, "new-dir"), { recursive: true });
+    await writeWatchFixture(root, "new-dir/child.md", "c");
+
+    // Reconcile only the new directory hint (not the parent root).
+    const added = await reconcileWatcherHints(
+      root,
+      built.snapshot,
+      ["new-dir"],
+      { fs }
+    );
+    expect(added.status).toBe("ok");
+    if (added.status !== "ok") {
+      return;
+    }
+    // Parent edge for new-dir must exist; no orphan map without parent edge.
+    expect(added.nextSnapshot.directories.get("")?.get("new-dir")?.kind).toBe(
+      "directory"
+    );
+    expect(added.nextSnapshot.directories.get("new-dir")?.has("child.md")).toBe(
+      true
+    );
+    // root: sibling.md, other/, new-dir/ (+ other/keep, new-dir/child) = baseline + 2
+    expect(added.nextSnapshot.entryCount).toBe(baselineCount + 2);
+    expect(added.candidates).toEqual(["new-dir/child.md"]);
+    expect(added.removals).toEqual([]);
+    // Sibling tree untouched.
+    expect(added.nextSnapshot.directories.get("")?.has("sibling.md")).toBe(
+      true
+    );
+    expect(added.nextSnapshot.directories.get("other")?.has("keep.md")).toBe(
+      true
+    );
+
+    await safeRm(join(root, "new-dir"));
+
+    // Missing nested hint climbs to nearest surviving ancestor (root) and
+    // removes the subtree via the recorded parent edge.
+    const removed = await reconcileWatcherHints(
+      root,
+      added.nextSnapshot,
+      ["new-dir/child.md"],
+      { fs }
+    );
+    expect(removed.status).toBe("ok");
+    if (removed.status !== "ok") {
+      return;
+    }
+    expect(removed.removals).toEqual(["new-dir/child.md"]);
+    expect(removed.nextSnapshot.directories.has("new-dir")).toBe(false);
+    expect(removed.nextSnapshot.directories.get("")?.has("new-dir")).toBe(
+      false
+    );
+    expect(removed.nextSnapshot.directories.get("")?.has("sibling.md")).toBe(
+      true
+    );
+    expect(removed.nextSnapshot.directories.get("other")?.has("keep.md")).toBe(
+      true
+    );
+    expect(removed.candidates).not.toContain("sibling.md");
+    expect(removed.removals).not.toContain("other/keep.md");
+    expect(removed.nextSnapshot.entryCount).toBe(baselineCount);
+  });
+
   test("observed-then-missing child after readdir is scan_failed, not silent deletion", async () => {
     await writeWatchFixture(root, "keep.md", "k");
     await writeWatchFixture(root, "gone.md", "g");
@@ -294,7 +369,13 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
     const raceFs: WatcherSnapshotFs = {
       supportsAnchoredHandles: true,
       openDir: (abs) => fs.openDir(abs),
-      readDir: async () => ["gone.md", "keep.md"],
+      readDir: async (_handle, maxNames) => {
+        const names = ["gone.md", "keep.md"];
+        if (names.length > maxNames) {
+          return { status: "overflow" };
+        }
+        return { status: "ok", names };
+      },
       lstatChild: async (handle, name) => {
         if (name === "gone.md") {
           throw Object.assign(new Error("ENOENT race"), { code: "ENOENT" });
@@ -333,7 +414,13 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
       supportsAnchoredHandles: true,
       openDir: (abs) => fs.openDir(abs),
       // Child still listed, but lstat reports path replacement race (ENOTDIR).
-      readDir: async () => ["source.md"],
+      readDir: async (_handle, maxNames) => {
+        const names = ["source.md"];
+        if (names.length > maxNames) {
+          return { status: "overflow" };
+        }
+        return { status: "ok", names };
+      },
       lstatChild: async (_handle, name) => {
         if (name === "source.md") {
           throw Object.assign(new Error("ENOTDIR race"), { code: "ENOTDIR" });

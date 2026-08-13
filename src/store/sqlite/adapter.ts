@@ -1711,8 +1711,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
   async listActiveDirectChildSourcePaths(
     collection: string,
-    dirRelPath: string
+    dirRelPath: string,
+    max: number
   ): Promise<StoreResult<string[]>> {
+    if (!Number.isInteger(max) || max <= 0) {
+      return err("INVALID_INPUT", "max must be a positive integer");
+    }
     const parentPath = normalizeWatcherSourceDirRelPath(dirRelPath);
     if (parentPath === null) {
       return err(
@@ -1725,17 +1729,25 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const db = this.ensureOpen();
       // Effective source path: record containers resolve to physical container.
       // Parent key: empty string for root-level sources.
+      // LIMIT max+1 detects overflow without returning a truncated success.
       const rows = db
-        .query<{ source_path: string }, [string, string]>(
+        .query<{ source_path: string }, [string, string, number]>(
           `SELECT DISTINCT ${WATCHER_SOURCE_PATH_SQL} AS source_path
            FROM documents
            WHERE collection = ?
              AND active = 1
              AND ${WATCHER_SOURCE_PARENT_SQL} = ?
-           ORDER BY source_path ASC`
+           ORDER BY source_path ASC
+           LIMIT ?`
         )
-        .all(collection, parentPath);
+        .all(collection, parentPath, max + 1);
 
+      if (rows.length > max) {
+        return err(
+          "OVERFLOW",
+          `Active direct-child source paths exceed max=${max}`
+        );
+      }
       return ok(rows.map((row) => row.source_path));
     } catch (cause) {
       return err(
@@ -1750,8 +1762,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
   async listActiveDescendantSourcePaths(
     collection: string,
-    dirRelPath: string
+    dirRelPath: string,
+    max: number
   ): Promise<StoreResult<string[]>> {
+    if (!Number.isInteger(max) || max <= 0) {
+      return err("INVALID_INPUT", "max must be a positive integer");
+    }
     const directory = normalizeWatcherSourceDirRelPath(dirRelPath);
     if (directory === null) {
       return err(
@@ -1769,18 +1785,26 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     try {
       const db = this.ensureOpen();
       // Exact prefix boundary: `dir1/` never matches `dir10/...`.
+      // LIMIT max+1 detects overflow without returning a truncated success.
       const prefix = `${directory}/`;
       const rows = db
-        .query<{ source_path: string }, [string, number, string]>(
+        .query<{ source_path: string }, [string, number, string, number]>(
           `SELECT DISTINCT ${WATCHER_SOURCE_PATH_SQL} AS source_path
            FROM documents
            WHERE collection = ?
              AND active = 1
              AND substr(${WATCHER_SOURCE_PATH_SQL}, 1, ?) = ?
-           ORDER BY source_path ASC`
+           ORDER BY source_path ASC
+           LIMIT ?`
         )
-        .all(collection, prefix.length, prefix);
+        .all(collection, prefix.length, prefix, max + 1);
 
+      if (rows.length > max) {
+        return err(
+          "OVERFLOW",
+          `Active descendant source paths exceed max=${max}`
+        );
+      }
       return ok(rows.map((row) => row.source_path));
     } catch (cause) {
       return err(

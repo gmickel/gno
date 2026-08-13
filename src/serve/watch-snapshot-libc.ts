@@ -312,7 +312,20 @@ export function parseDirentName(
   }
 }
 
-export function readDirNames(libc: LoadedLibc, dirfd: number): string[] {
+/**
+ * Enumerate child names via fdopendir/readdir, stopping after `maxNames + 1`
+ * observed entries so overflow is proven without materializing an unbounded list.
+ */
+export function readDirNames(
+  libc: LoadedLibc,
+  dirfd: number,
+  maxNames: number
+): { status: "ok"; names: string[] } | { status: "overflow" } {
+  if (!Number.isInteger(maxNames) || maxNames < 0) {
+    throw Object.assign(new Error("maxNames must be a non-negative integer"), {
+      code: "EINVAL",
+    });
+  }
   // fdopendir consumes the fd on success — operate on a dup so the handle stays live.
   const dupFd = libc.symbols.dup(dirfd);
   if (dupFd < 0) {
@@ -345,12 +358,16 @@ export function readDirNames(libc: LoadedLibc, dirfd: number): string[] {
       if (name === "" || name === "." || name === "..") {
         continue;
       }
+      // maxNames+1th name proves overflow; do not store it or continue.
+      if (names.length >= maxNames) {
+        return { status: "overflow" };
+      }
       names.push(name);
     }
   } finally {
     libc.symbols.closedir(dirp);
   }
-  return names;
+  return { status: "ok", names };
 }
 
 export function openatOrThrow(

@@ -163,13 +163,20 @@ describe("watcher snapshot handle pin", () => {
         }
         return handle;
       },
-      readDir: async (handle: WatcherDirHandle) => {
+      readDir: async (handle: WatcherDirHandle, maxNames: number) => {
         const state = handleState.get(handle as object);
         if (!state || state.closed) {
           throw Object.assign(new Error("EBADF"), { code: "EBADF" });
         }
         // Names come from the pinned node, not the swapped path.
-        return [...state.node.children.keys()];
+        const names: string[] = [];
+        for (const name of state.node.children.keys()) {
+          if (names.length >= maxNames) {
+            return { status: "overflow" as const };
+          }
+          names.push(name);
+        }
+        return { status: "ok" as const, names };
       },
       lstatChild: async (handle: WatcherDirHandle, name: string) => {
         const state = handleState.get(handle as object);

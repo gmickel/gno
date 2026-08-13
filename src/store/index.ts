@@ -98,4 +98,4 @@ export type {
   StorePort,
   StoreResult,
 } from "./types";
-export { err, ok } from "./types";
+export { err, ok, WATCHER_ACTIVE_SOURCE_PATH_MAX } from "./types";

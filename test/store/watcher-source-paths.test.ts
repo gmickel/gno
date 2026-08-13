@@ -16,12 +16,15 @@ import { join } from "node:path";
 
 import type { DocumentInput } from "../../src/store/types";
 
-import { SqliteAdapter } from "../../src/store";
+import { SqliteAdapter, WATCHER_ACTIVE_SOURCE_PATH_MAX } from "../../src/store";
 import { safeRm } from "../helpers/cleanup";
 
 if (process.platform === "win32") {
   setDefaultTimeout(15_000);
 }
+
+/** Generous bound for non-overflow contract tests. */
+const TEST_MAX = WATCHER_ACTIVE_SOURCE_PATH_MAX;
 
 function doc(
   overrides: Partial<DocumentInput> & { relPath: string }
@@ -70,11 +73,13 @@ describe("listActiveDirectChildSourcePaths", () => {
 
   async function expectDirect(
     collection: string,
-    dirRelPath: string
+    dirRelPath: string,
+    max = TEST_MAX
   ): Promise<string[]> {
     const result = await adapter.listActiveDirectChildSourcePaths(
       collection,
-      dirRelPath
+      dirRelPath,
+      max
     );
     expect(result.ok).toBe(true);
     if (!result.ok) {
@@ -111,6 +116,7 @@ describe("listActiveDirectChildSourcePaths", () => {
     expect((await adapter.markInactive("notes", ["a/gone.md"])).ok).toBe(true);
 
     expect(await expectDirect("notes", "a")).toEqual(["a/keep.md"]);
+    expect(await expectDirect("notes", "a", TEST_MAX)).toEqual(["a/keep.md"]);
     expect(await expectDirect("other", "a")).toEqual(["a/foreign.md"]);
   });
 
@@ -128,7 +134,23 @@ describe("listActiveDirectChildSourcePaths", () => {
     for (const dir of ["..", "../outside", "a/../..", "/etc"]) {
       const result = await adapter.listActiveDirectChildSourcePaths(
         "notes",
-        dir
+        dir,
+        TEST_MAX
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) {
+        continue;
+      }
+      expect(result.error.code).toBe("INVALID_INPUT");
+    }
+  });
+
+  test("rejects non-positive max", async () => {
+    for (const max of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const result = await adapter.listActiveDirectChildSourcePaths(
+        "notes",
+        "",
+        max
       );
       expect(result.ok).toBe(false);
       if (result.ok) {
@@ -141,7 +163,8 @@ describe("listActiveDirectChildSourcePaths", () => {
   test("empty successful result is distinct from query failure", async () => {
     const empty = await adapter.listActiveDirectChildSourcePaths(
       "notes",
-      "nothing/here"
+      "nothing/here",
+      TEST_MAX
     );
     expect(empty.ok).toBe(true);
     if (empty.ok) {
@@ -149,7 +172,11 @@ describe("listActiveDirectChildSourcePaths", () => {
     }
 
     await adapter.close();
-    const failed = await adapter.listActiveDirectChildSourcePaths("notes", "");
+    const failed = await adapter.listActiveDirectChildSourcePaths(
+      "notes",
+      "",
+      TEST_MAX
+    );
     expect(failed.ok).toBe(false);
     if (failed.ok) {
       return;
@@ -180,6 +207,45 @@ describe("listActiveDirectChildSourcePaths", () => {
       "a/plain.md",
     ]);
     expect(await expectDirect("notes", ".gno/records/hash")).toEqual([]);
+  });
+
+  test("overflow when unique matching sources exceed max; never truncates success", async () => {
+    const max = 3;
+    for (let i = 0; i < max + 2; i += 1) {
+      await adapter.upsertDocument(
+        doc({ relPath: `n${String(i).padStart(2, "0")}.md` })
+      );
+    }
+
+    const overflow = await adapter.listActiveDirectChildSourcePaths(
+      "notes",
+      "",
+      max
+    );
+    expect(overflow.ok).toBe(false);
+    if (overflow.ok) {
+      return;
+    }
+    expect(overflow.error.code).toBe("OVERFLOW");
+    // No successful truncated list — error only.
+    expect("value" in overflow).toBe(false);
+
+    // Exactly max unique sources succeeds.
+    const okAtMax = await adapter.listActiveDirectChildSourcePaths(
+      "notes",
+      "",
+      max + 2
+    );
+    expect(okAtMax.ok).toBe(true);
+    if (okAtMax.ok) {
+      expect(okAtMax.value).toEqual([
+        "n00.md",
+        "n01.md",
+        "n02.md",
+        "n03.md",
+        "n04.md",
+      ]);
+    }
   });
 });
 
@@ -216,11 +282,13 @@ describe("listActiveDescendantSourcePaths", () => {
 
   async function expectDescendants(
     collection: string,
-    dirRelPath: string
+    dirRelPath: string,
+    max = TEST_MAX
   ): Promise<string[]> {
     const result = await adapter.listActiveDescendantSourcePaths(
       collection,
-      dirRelPath
+      dirRelPath,
+      max
     );
     expect(result.ok).toBe(true);
     if (!result.ok) {
@@ -293,20 +361,26 @@ describe("listActiveDescendantSourcePaths", () => {
   });
 
   test("rejects the collection root and escaping paths; empty ok is not failure", async () => {
-    const root = await adapter.listActiveDescendantSourcePaths("notes", "");
+    const root = await adapter.listActiveDescendantSourcePaths(
+      "notes",
+      "",
+      TEST_MAX
+    );
     expect(root.ok).toBe(false);
     expect(root.ok ? "" : root.error.code).toBe("INVALID_INPUT");
 
     const escape = await adapter.listActiveDescendantSourcePaths(
       "notes",
-      "../outside"
+      "../outside",
+      TEST_MAX
     );
     expect(escape.ok).toBe(false);
     expect(escape.ok ? "" : escape.error.code).toBe("INVALID_INPUT");
 
     const empty = await adapter.listActiveDescendantSourcePaths(
       "notes",
-      "missing"
+      "missing",
+      TEST_MAX
     );
     expect(empty.ok).toBe(true);
     if (empty.ok) {
@@ -316,12 +390,63 @@ describe("listActiveDescendantSourcePaths", () => {
     await adapter.close();
     const failed = await adapter.listActiveDescendantSourcePaths(
       "notes",
-      "dir1"
+      "dir1",
+      TEST_MAX
     );
     expect(failed.ok).toBe(false);
     if (failed.ok) {
       return;
     }
     expect(failed.error.code).toBe("QUERY_FAILED");
+  });
+
+  test("rejects non-positive max", async () => {
+    for (const max of [0, -1, 2.2, Number.NaN]) {
+      const result = await adapter.listActiveDescendantSourcePaths(
+        "notes",
+        "dir1",
+        max
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) {
+        continue;
+      }
+      expect(result.error.code).toBe("INVALID_INPUT");
+    }
+  });
+
+  test("overflow when unique matching descendants exceed max; never truncates success", async () => {
+    const max = 2;
+    await adapter.upsertDocument(doc({ relPath: "dir1/a.md" }));
+    await adapter.upsertDocument(doc({ relPath: "dir1/b.md" }));
+    await adapter.upsertDocument(doc({ relPath: "dir1/sub/c.md" }));
+    await adapter.upsertDocument(doc({ relPath: "dir1/sub/d.md" }));
+
+    const overflow = await adapter.listActiveDescendantSourcePaths(
+      "notes",
+      "dir1",
+      max
+    );
+    expect(overflow.ok).toBe(false);
+    if (overflow.ok) {
+      return;
+    }
+    expect(overflow.error.code).toBe("OVERFLOW");
+    expect("value" in overflow).toBe(false);
+
+    const exact = await adapter.listActiveDescendantSourcePaths(
+      "notes",
+      "dir1",
+      4
+    );
+    expect(exact.ok).toBe(true);
+    if (exact.ok) {
+      expect(exact.value).toEqual([
+        "dir1/a.md",
+        "dir1/b.md",
+        "dir1/sub/c.md",
+        "dir1/sub/d.md",
+      ]);
+    }
   });
 });

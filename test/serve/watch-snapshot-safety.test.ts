@@ -87,7 +87,7 @@ describe("watcher snapshot safety + fallback", () => {
     const trackingFs: WatcherSnapshotFs = {
       supportsAnchoredHandles: true,
       openDir: (abs) => base.openDir(abs),
-      readDir: (h) => base.readDir(h),
+      readDir: (h, maxNames) => base.readDir(h, maxNames),
       openChildDir: (h, name) => {
         childMetaCalls.push(`openChild:${name}`);
         return base.openChildDir(h, name);
@@ -198,6 +198,111 @@ describe("watcher snapshot safety + fallback", () => {
     expect(overflowDiff.reason).toBe("overflow");
   });
 
+  test("enumeration and stats stop at remaining+1 before materializing overflow", async () => {
+    type Node =
+      | { kind: "dir"; children: Map<string, Node> }
+      | {
+          kind: "file";
+          size: number;
+          dev: bigint;
+          ino: bigint;
+          mtimeNs: bigint;
+          ctimeNs: bigint;
+        };
+
+    let nextIno = 1n;
+    const rootNode: Extract<Node, { kind: "dir" }> = {
+      kind: "dir",
+      children: new Map(),
+    };
+    // 8 files; ceiling 3 → overflow after observing remaining+1 names/stats.
+    for (let i = 0; i < 8; i += 1) {
+      rootNode.children.set(`f${i}.md`, {
+        kind: "file",
+        size: 1,
+        dev: 1n,
+        ino: nextIno++,
+        mtimeNs: 1_000n,
+        ctimeNs: 1_000n,
+      });
+    }
+
+    type HS = { node: Extract<Node, { kind: "dir" }> };
+    const hs = new WeakMap<object, HS>();
+    let namesExamined = 0;
+    let lstatCalls = 0;
+
+    const memFs: WatcherSnapshotFs = {
+      supportsAnchoredHandles: true,
+      openDir: async (absPath: string) => {
+        if (absPath !== "/mem") {
+          throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+        }
+        const handle =
+          {} as import("../../src/serve/watch-snapshot").WatcherDirHandle;
+        hs.set(handle as object, { node: rootNode });
+        return handle;
+      },
+      readDir: async (handle, maxNames) => {
+        const state = hs.get(handle as object);
+        if (!state) {
+          throw Object.assign(new Error("EBADF"), { code: "EBADF" });
+        }
+        const names: string[] = [];
+        for (const name of state.node.children.keys()) {
+          namesExamined += 1;
+          if (names.length >= maxNames) {
+            return { status: "overflow" };
+          }
+          names.push(name);
+        }
+        return { status: "ok", names };
+      },
+      lstatChild: async (handle, name) => {
+        lstatCalls += 1;
+        const state = hs.get(handle as object);
+        if (!state) {
+          throw Object.assign(new Error("EBADF"), { code: "EBADF" });
+        }
+        const child = state.node.children.get(name);
+        if (!child || child.kind !== "file") {
+          throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+        }
+        return {
+          isFile: () => true,
+          isDirectory: () => false,
+          isSymbolicLink: () => false,
+          dev: child.dev,
+          ino: child.ino,
+          size: child.size,
+          mtimeNs: child.mtimeNs,
+          ctimeNs: child.ctimeNs,
+        };
+      },
+      openChildDir: async () => {
+        throw Object.assign(new Error("ENOTDIR"), { code: "ENOTDIR" });
+      },
+      closeDir: async () => undefined,
+    };
+
+    const ceiling = 3;
+    const built = await buildWatcherSnapshot("/mem", {
+      fs: memFs,
+      entryCeiling: ceiling,
+    });
+    expect(built.status).toBe("fallback");
+    if (built.status !== "fallback") {
+      return;
+    }
+    expect(built.reason).toBe("overflow");
+    // Prove work stops at remaining+1: one extra name for overflow evidence,
+    // and no stats once readdir already overflowed.
+    expect(namesExamined).toBe(ceiling + 1);
+    expect(namesExamined).toBeLessThan(8);
+    expect(lstatCalls).toBe(0);
+    expect("snapshot" in built).toBe(false);
+  });
+
   test("failed scan never proves removals", async () => {
     await writeWatchFixture(root, "keep.md", "k");
     const built = await buildWatcherSnapshot(root, { fs });
@@ -223,7 +328,7 @@ describe("watcher snapshot safety + fallback", () => {
         throw new Error("unused");
       },
       closeDir: async () => undefined,
-    };
+    } satisfies WatcherSnapshotFs;
 
     const diff = await diffWatcherSnapshot(root, built.snapshot, [""], {
       fs: failingFs,
@@ -262,7 +367,7 @@ describe("watcher snapshot safety + fallback", () => {
         throw new Error("unused");
       },
       closeDir: async () => undefined,
-    };
+    } satisfies WatcherSnapshotFs;
 
     const resolved = await resolveWatcherDirtyDirectory(root, "keep.md", {
       fs: missingRootFs,
@@ -343,7 +448,7 @@ describe("watcher snapshot safety + fallback", () => {
       openDir: async () => {
         throw Object.assign(new Error("ENOTSUP"), { code: "ENOTSUP" });
       },
-      readDir: async () => [],
+      readDir: async () => ({ status: "ok", names: [] }),
       lstatChild: async () => {
         throw new Error("unused");
       },

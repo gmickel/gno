@@ -60,7 +60,16 @@ export async function buildWatcherSnapshot(
   while (head < queue.length) {
     const dirRel = queue[head] as string;
     head += 1;
-    const scanned = await readDirectChildren(rootAbs, dirRel, fs);
+    // Remaining slots before this directory map is installed.
+    const remaining = ceiling - state.entryCount;
+    if (remaining < 0) {
+      return {
+        status: "fallback",
+        reason: "overflow",
+        durationMs: clock.nowMs() - started,
+      };
+    }
+    const scanned = await readDirectChildren(rootAbs, dirRel, fs, remaining);
     if (scanned.status === "missing") {
       if (dirRel === "") {
         return {
@@ -192,7 +201,13 @@ export async function diffWatcherSnapshot(
     }
     visited.add(dirRel);
 
-    const scanned = await readDirectChildren(rootAbs, dirRel, fs);
+    // Replacement frees prior slots for this directory map before the new scan.
+    const previousSize = nextState.directories.get(dirRel)?.size ?? 0;
+    const remaining = ceiling - nextState.entryCount + previousSize;
+    if (remaining < 0) {
+      return { status: "overflow" };
+    }
+    const scanned = await readDirectChildren(rootAbs, dirRel, fs, remaining);
     if (scanned.status === "missing") {
       // Missing collection root is never a successful mass-deletion proof.
       if (dirRel === "") {
@@ -339,7 +354,12 @@ async function scanNewSubtree(
   while (head < queue.length) {
     const current = queue[head] as string;
     head += 1;
-    const scanned = await readDirectChildren(rootAbs, current, fs);
+    const previousSize = state.directories.get(current)?.size ?? 0;
+    const remaining = ceiling - state.entryCount + previousSize;
+    if (remaining < 0) {
+      return { status: "overflow" };
+    }
+    const scanned = await readDirectChildren(rootAbs, current, fs, remaining);
     if (scanned.status === "missing") {
       // New directory vanished while scanning — fail closed.
       return {
@@ -364,6 +384,55 @@ async function scanNewSubtree(
     }
   }
   return { status: "ok" };
+}
+
+/**
+ * True when `dirRel` appears as a directory edge under its parent in `snapshot`
+ * (root is always considered present when its map exists or is the empty root).
+ */
+function directoryHasParentEdge(
+  snapshot: WatcherSnapshot,
+  dirRel: string
+): boolean {
+  if (dirRel === "") {
+    return true;
+  }
+  const parent = parentWatcherDir(dirRel);
+  if (parent === null) {
+    return true;
+  }
+  const base = dirRel.slice(parent === "" ? 0 : parent.length + 1);
+  return snapshot.directories.get(parent)?.get(base)?.kind === "directory";
+}
+
+/**
+ * Choose the dirty directory for a resolved, on-disk directory hint.
+ *
+ * Missing-hint resolution already climbed to the nearest surviving FS ancestor.
+ * When that ancestor (or any existing directory) is new relative to the previous
+ * snapshot parent edge, climb to the nearest known container so added-directory
+ * handling records the parent fingerprint and scans descendants — no orphan maps.
+ */
+function dirtyDirectoryForResolvedHint(
+  previous: WatcherSnapshot,
+  dirRel: string
+): string {
+  if (dirRel === "" || directoryHasParentEdge(previous, dirRel)) {
+    return dirRel;
+  }
+  // New relative to previous snapshot: dirty nearest known ancestor.
+  let climb: string | null = parentWatcherDir(dirRel);
+  while (climb !== null) {
+    if (
+      climb === "" ||
+      directoryHasParentEdge(previous, climb) ||
+      previous.directories.has(climb)
+    ) {
+      return climb;
+    }
+    climb = parentWatcherDir(climb);
+  }
+  return "";
 }
 
 /**
@@ -394,7 +463,7 @@ export async function reconcileWatcherHints(
         cause: resolved.cause,
       };
     }
-    dirty.add(resolved.directory);
+    dirty.add(dirtyDirectoryForResolvedHint(previous, resolved.directory));
   }
 
   if (dirty.size === 0) {

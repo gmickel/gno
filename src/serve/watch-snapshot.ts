@@ -25,6 +25,7 @@ export type {
   SnapshotFallbackReason,
   SnapshotMapHooks,
   WatcherDirHandle,
+  WatcherReadDirResult,
   WatcherSnapshot,
   WatcherSnapshotBuildResult,
   WatcherSnapshotClock,

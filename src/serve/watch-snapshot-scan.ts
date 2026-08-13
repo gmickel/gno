@@ -203,11 +203,16 @@ export async function openDirByRel(
  * Enumerate direct children via an anchored directory handle.
  * Child metadata is resolved relative to the handle — a path swap after open
  * cannot redirect lstat outside the pinned directory.
+ *
+ * `maxEntries` is the remaining entry budget for this directory map. Enumeration
+ * and stats stop after observing `maxEntries + 1` children so overflow is proven
+ * without materializing an unbounded name/stat map.
  */
 export async function readDirectChildren(
   rootAbs: string,
   dirRel: string,
-  fs: WatcherSnapshotFs
+  fs: WatcherSnapshotFs,
+  maxEntries: number
 ): Promise<
   | { status: "present"; entries: Map<string, SnapshotEntryFingerprint> }
   | { status: "missing" }
@@ -221,6 +226,12 @@ export async function readDirectChildren(
       ),
     };
   }
+  if (!Number.isInteger(maxEntries) || maxEntries < 0) {
+    return {
+      status: "scan_failed",
+      cause: new Error("maxEntries must be a non-negative integer"),
+    };
+  }
 
   const opened = await openDirByRel(rootAbs, dirRel, fs);
   if (opened.status !== "ok") {
@@ -229,16 +240,21 @@ export async function readDirectChildren(
   const { handle } = opened;
 
   try {
-    let names: string[];
+    let listed;
     try {
-      names = await fs.readDir(handle);
+      // Cap names at remaining budget; maxEntries+1th name → overflow.
+      listed = await fs.readDir(handle, maxEntries);
     } catch (cause) {
       if (isMissingFsError(cause)) {
         return { status: "missing" };
       }
       return { status: "scan_failed", cause };
     }
+    if (listed.status === "overflow") {
+      return { status: "overflow" };
+    }
 
+    const names = listed.names;
     const entries = new Map<string, SnapshotEntryFingerprint>();
     // Stable order keeps overflow selection deterministic across platforms.
     names.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
@@ -251,6 +267,10 @@ export async function readDirectChildren(
           status: "scan_failed",
           cause: new Error(`Invalid directory entry name: ${name}`),
         };
+      }
+      // Defense in depth: never stat/map more than the remaining budget.
+      if (entries.size >= maxEntries) {
+        return { status: "overflow" };
       }
       let stat: WatcherSnapshotStat;
       try {
