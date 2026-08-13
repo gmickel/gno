@@ -11,6 +11,7 @@ import { normalize } from "node:path";
 
 import type { Collection } from "../config/types";
 import type { SyncOptions } from "../ingestion";
+import type { CollectionPending } from "./watch-service-state";
 import type { WatcherSnapshot } from "./watch-snapshot";
 
 export interface WatchLifecycleHost {
@@ -30,6 +31,11 @@ export interface WatchLifecycleHost {
   snapshotInit: Map<string, Promise<void>>;
   /** Collections currently mid-flush (ABA ownership). */
   syncing: Set<string>;
+  /**
+   * Pending work by collection. Config/generation invalidation marks dirty work
+   * forceFallback + durable generation reconcile so a new baseline cannot absorb it.
+   */
+  pendingByCollection: Map<string, CollectionPending>;
   clearCollectionRuntimeState: (collectionName: string) => void;
   beginSnapshotInit: (collection: Collection) => void;
   watchFactory: (
@@ -160,6 +166,16 @@ export function applyCollectionUpdate(
       host.snapshots.delete(collection.name);
       host.snapshotReady.set(collection.name, false);
       host.snapshotInit.delete(collection.name);
+      // Queued ambiguous work must not be absorbed by the new baseline.
+      // Exact-only work is re-filtered against live rules at flush time.
+      const pending = host.pendingByCollection.get(collection.name);
+      if (
+        pending &&
+        (pending.dirty.size > 0 || pending.overflow || pending.forceFallback)
+      ) {
+        pending.forceFallback = true;
+        pending.generationReconcile = true;
+      }
       if (host.watchers.has(collection.name)) {
         host.beginSnapshotInit(collection);
       }

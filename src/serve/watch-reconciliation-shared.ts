@@ -67,10 +67,52 @@ export type ClassificationResult =
       usedFallback: boolean;
     }
   | {
+      /**
+       * Anchored no-follow handles unavailable: callers must use durable
+       * full-collection reconciliation (syncCollection), never path-backed scan.
+       */
+      status: "full_reconcile";
+      reason: "unsupported_fs";
+    }
+  | {
       status: "error";
       cause: unknown;
       stage: "scan" | "store";
     };
+
+/** Paths that successfully changed during a sync (added/updated only). */
+export function successfulChangedPaths(result: CollectionSyncResult): string[] {
+  if (result.files) {
+    return result.files
+      .filter((file) => file.status === "added" || file.status === "updated")
+      .map((file) => file.relPath);
+  }
+  return [];
+}
+
+/**
+ * Paths that failed during a sync. When file-level detail is missing, falls
+ * back to every submitted path so work is never silently dropped.
+ */
+export function failedSyncPaths(
+  result: CollectionSyncResult,
+  submittedPaths: readonly string[]
+): string[] {
+  if (result.files && result.files.length > 0) {
+    return result.files
+      .filter((file) => file.status === "error")
+      .map((file) => file.relPath);
+  }
+  if (result.errors.length > 0) {
+    const fromErrors = result.errors
+      .map((entry) => entry.relPath)
+      .filter((path) => path.length > 0);
+    if (fromErrors.length > 0) {
+      return [...new Set(fromErrors)];
+    }
+  }
+  return [...submittedPaths];
+}
 
 /**
  * Classify an untrusted watcher filename for one collection.

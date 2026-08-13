@@ -18,6 +18,7 @@ import type { EmbedScheduler } from "./embed-scheduler";
 import type {
   WatcherSnapshot,
   WatcherSnapshotBuildResult,
+  WatcherSnapshotFs,
   WatcherSnapshotOptions,
 } from "./watch-snapshot";
 
@@ -97,6 +98,11 @@ interface CollectionWatchServiceOptions {
     rootAbs: string,
     options?: WatcherSnapshotOptions
   ) => Promise<WatcherSnapshotBuildResult>;
+  /**
+   * Injectable snapshot/fallback FS (tests: unsupported-handle proofs).
+   * Production uses the platform default via classifyDirtyHints.
+   */
+  snapshotFs?: WatcherSnapshotFs;
 }
 
 export class CollectionWatchService {
@@ -133,6 +139,7 @@ export class CollectionWatchService {
         options?: WatcherSnapshotOptions
       ) => Promise<WatcherSnapshotBuildResult>)
     | undefined;
+  readonly #snapshotFs: WatcherSnapshotFs | undefined;
   #nextCollectionGeneration = 0;
   #disposed = false;
   #lastEventAt: string | null = null;
@@ -154,6 +161,7 @@ export class CollectionWatchService {
     this.#maxDirtyHints = options.maxDirtyHints ?? WATCHER_MAX_DIRTY_HINTS;
     this.#clock = options.clock ?? Date.now;
     this.#buildSnapshot = options.buildSnapshot;
+    this.#snapshotFs = options.snapshotFs;
   }
 
   start(): void {
@@ -248,6 +256,7 @@ export class CollectionWatchService {
       snapshotReady: this.#snapshotReady,
       snapshotInit: this.#snapshotInit,
       syncing: this.#syncing,
+      pendingByCollection: this.#pendingByCollection,
       clearCollectionRuntimeState: (name) => {
         this.#clearCollectionRuntimeState(name);
       },
@@ -280,7 +289,6 @@ export class CollectionWatchService {
       maxFlushDelayMs: this.#maxFlushDelayMs,
       maxExactPaths: this.#maxExactPaths,
       maxDirtyHints: this.#maxDirtyHints,
-      pendingByCollection: this.#pendingByCollection,
       flushDeadlineAt: this.#flushDeadlineAt,
       timers: this.#timers,
       retryScheduled: this.#retryScheduled,
@@ -376,6 +384,7 @@ export class CollectionWatchService {
       notifySettledIfIdle: () => {
         this.#notifySettledIfIdle();
       },
+      snapshotFs: this.#snapshotFs,
     });
   }
 

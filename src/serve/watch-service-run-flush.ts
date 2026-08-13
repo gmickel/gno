@@ -12,7 +12,7 @@ import type { CollectionSyncResult, SyncOptions } from "../ingestion";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { WatchQueueHost } from "./watch-service-events";
 import type { CollectionPending } from "./watch-service-state";
-import type { WatcherSnapshot } from "./watch-snapshot";
+import type { WatcherSnapshot, WatcherSnapshotFs } from "./watch-snapshot";
 
 import {
   requeueAfterFailure,
@@ -61,6 +61,8 @@ export interface RunFlushContext {
   clearLifecycleTombstones: (collectionName: string) => void;
   pruneSuppression: () => void;
   notifySettledIfIdle: () => void;
+  /** Optional injectable FS for unsupported-handle / test seams. */
+  snapshotFs?: WatcherSnapshotFs;
 }
 
 /**
@@ -135,6 +137,7 @@ export async function runOwnedCollectionFlush(
       getCurrentSyncOptions: ctx.syncOptions,
       clock: ctx.clock,
       suppressedPaths: ctx.suppressedPaths,
+      snapshotFs: ctx.snapshotFs,
       onSyncStart: (relPaths) => {
         if (!stillOwner()) {
           return;

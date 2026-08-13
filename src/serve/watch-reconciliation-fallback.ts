@@ -58,6 +58,12 @@ export async function fallbackClassifyDirtyHints(options: {
   const fs = options.fs ?? fallbackFs();
   const root = normalize(rootAbs);
 
+  // No anchored handles: never path-walk or infer deletions. Caller must use
+  // durable full-collection reconciliation (syncCollection) instead.
+  if (!fs.supportsAnchoredHandles) {
+    return { status: "full_reconcile", reason: "unsupported_fs" };
+  }
+
   const dirs = new Set<string>();
   for (const hint of dirtyHints) {
     const normalized =
@@ -200,7 +206,12 @@ async function collectStorePathsForDir(
     rows: string[]
   ): { ok: true } | { ok: false; overflow: true } => {
     for (const path of rows) {
+      const before = out.size;
       out.add(path);
+      if (out.size === before) {
+        continue;
+      }
+      // Count unique store sources only (record-container logical dups collapse).
       budget.storeRows += 1;
       if (budgetExceeded(budget)) {
         return { ok: false, overflow: true };
@@ -212,6 +223,60 @@ async function collectStorePathsForDir(
   const remaining = (): number =>
     Math.max(1, budget.limit - budget.storeRows + 1);
 
+  // Root: sole bounded DISTINCT inventory — never direct-child then root-wide
+  // (that double-counted unique sources and falsely overflowed at scale).
+  if (dir === "") {
+    const inventory = await listRootActiveSourcePaths(
+      store,
+      collection,
+      remaining()
+    );
+    if (inventory) {
+      if (!inventory.ok) {
+        return inventory;
+      }
+      if (inventory.overflow) {
+        return { ok: true, value: [], overflow: true };
+      }
+      if (!takeRows(inventory.value).ok) {
+        return { ok: true, value: [], overflow: true };
+      }
+      return { ok: true, value: [...out] };
+    }
+
+    // Seam unavailable (stubs): first-level disk-name probes only, no direct-child.
+    const firstLevel = new Set<string>(rootDirNames);
+    for (const name of firstLevel) {
+      if (name === "" || name.includes("/")) {
+        continue;
+      }
+      budget.dirtyDirs += 1;
+      if (budgetExceeded(budget)) {
+        return { ok: true, value: [], overflow: true };
+      }
+      const descendants = await safeListDescendants(
+        store,
+        collection,
+        name,
+        remaining()
+      );
+      if (!descendants.ok) {
+        if (descendants.error.code === "OVERFLOW") {
+          return { ok: true, value: [], overflow: true };
+        }
+        if (descendants.error.code === "INVALID_INPUT") {
+          continue;
+        }
+        return descendants;
+      }
+      if (!takeRows(descendants.value).ok) {
+        return { ok: true, value: [], overflow: true };
+      }
+    }
+    return { ok: true, value: [...out] };
+  }
+
+  // Non-root: direct children + descendants under this directory.
   const direct = await safeListDirect(store, collection, dir, remaining());
   if (!direct.ok) {
     if (direct.error.code === "OVERFLOW") {
@@ -223,72 +288,20 @@ async function collectStorePathsForDir(
     return { ok: true, value: [], overflow: true };
   }
 
-  if (dir !== "") {
-    const descendants = await safeListDescendants(
-      store,
-      collection,
-      dir,
-      remaining()
-    );
-    if (!descendants.ok) {
-      if (descendants.error.code === "OVERFLOW") {
-        return { ok: true, value: [], overflow: true };
-      }
-      return descendants;
-    }
-    if (!takeRows(descendants.value).ok) {
-      return { ok: true, value: [], overflow: true };
-    }
-    return { ok: true, value: [...out] };
-  }
-
-  // Root: one bounded DISTINCT source query (no logical-row pre-count).
-  // Fall back to first-level disk probes when the seam is stubbed out in tests.
-  const inventory = await listRootActiveSourcePaths(
+  const descendants = await safeListDescendants(
     store,
     collection,
+    dir,
     remaining()
   );
-  if (inventory) {
-    if (!inventory.ok) {
-      return inventory;
-    }
-    if (inventory.overflow) {
+  if (!descendants.ok) {
+    if (descendants.error.code === "OVERFLOW") {
       return { ok: true, value: [], overflow: true };
     }
-    if (!takeRows(inventory.value).ok) {
-      return { ok: true, value: [], overflow: true };
-    }
-    return { ok: true, value: [...out] };
+    return descendants;
   }
-
-  const firstLevel = new Set<string>(rootDirNames);
-  for (const name of firstLevel) {
-    if (name === "" || name.includes("/")) {
-      continue;
-    }
-    budget.dirtyDirs += 1;
-    if (budgetExceeded(budget)) {
-      return { ok: true, value: [], overflow: true };
-    }
-    const descendants = await safeListDescendants(
-      store,
-      collection,
-      name,
-      remaining()
-    );
-    if (!descendants.ok) {
-      if (descendants.error.code === "OVERFLOW") {
-        return { ok: true, value: [], overflow: true };
-      }
-      if (descendants.error.code === "INVALID_INPUT") {
-        continue;
-      }
-      return descendants;
-    }
-    if (!takeRows(descendants.value).ok) {
-      return { ok: true, value: [], overflow: true };
-    }
+  if (!takeRows(descendants.value).ok) {
+    return { ok: true, value: [], overflow: true };
   }
   return { ok: true, value: [...out] };
 }

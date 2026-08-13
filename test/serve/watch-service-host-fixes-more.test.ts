@@ -244,6 +244,7 @@ describe("lifecycle map tombstones", () => {
       snapshotReady,
       snapshotInit,
       syncing,
+      pendingByCollection: new Map(),
       clearCollectionRuntimeState: (name) => {
         watchRoots.delete(name);
         snapshots.delete(name);

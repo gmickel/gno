@@ -29,6 +29,7 @@ export interface WatchServiceHostState {
   snapshotReady: Map<string, boolean>;
   snapshotInit: Map<string, Promise<void>>;
   syncing: Set<string>;
+  pendingByCollection: Map<string, CollectionPending>;
   clearCollectionRuntimeState: (collectionName: string) => void;
   beginSnapshotInit: (collection: Collection) => void;
   watchFactory: WatchLifecycleHost["watchFactory"];
@@ -43,7 +44,6 @@ export interface WatchServiceHostState {
   maxFlushDelayMs: number;
   maxExactPaths: number;
   maxDirtyHints: number;
-  pendingByCollection: Map<string, CollectionPending>;
   flushDeadlineAt: Map<string, number>;
   timers: Map<string, ReturnType<typeof setTimeout>>;
   retryScheduled: Set<string>;
@@ -70,6 +70,7 @@ export function buildLifecycleHost(
     snapshotReady: state.snapshotReady,
     snapshotInit: state.snapshotInit,
     syncing: state.syncing,
+    pendingByCollection: state.pendingByCollection,
     clearCollectionRuntimeState: state.clearCollectionRuntimeState,
     beginSnapshotInit: state.beginSnapshotInit,
     watchFactory: state.watchFactory,

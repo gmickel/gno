@@ -304,9 +304,10 @@ describe("unsupported platform fail-closed", () => {
           },
         },
       });
-      expect(classified.status).toBe("error");
-      if (classified.status === "error") {
-        expect(classified.stage).toBe("scan");
+      // Unsupported FS must not path-walk; full_reconcile is the durable path.
+      expect(classified.status).toBe("full_reconcile");
+      if (classified.status === "full_reconcile") {
+        expect(classified.reason).toBe("unsupported_fs");
       }
       expect(pathOps).toEqual([]);
     } finally {

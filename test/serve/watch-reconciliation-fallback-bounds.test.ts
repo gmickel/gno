@@ -2,7 +2,14 @@
  * Fallback root/error/forceFallback bounds for host review findings.
  */
 
-import { describe, expect, test } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  setDefaultTimeout,
+  test,
+} from "bun:test";
 // node:fs/promises — test fixture setup
 import { mkdtemp, writeFile } from "node:fs/promises";
 // node:os — tmpdir
@@ -12,10 +19,16 @@ import { join } from "node:path";
 
 import type { Collection } from "../../src/config/types";
 import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
+import type { DocumentInput } from "../../src/store/types";
 
 import { classifyDirtyHints } from "../../src/serve/watch-reconciliation";
 import { buildWatcherSnapshot } from "../../src/serve/watch-snapshot";
+import { SqliteAdapter as RealSqliteAdapter } from "../../src/store";
 import { safeRm } from "../helpers/cleanup";
+
+if (process.platform === "win32") {
+  setDefaultTimeout(30_000);
+}
 
 function createCollection(name: string, path: string): Collection {
   return {
@@ -124,4 +137,106 @@ describe("fallback root and forceFallback", () => {
       await safeRm(root);
     }
   });
+});
+
+describe("root inventory scale without false overflow", () => {
+  let adapter: RealSqliteAdapter;
+  let testDir = "";
+
+  beforeEach(async () => {
+    testDir = await mkdtemp(join(tmpdir(), "gno-watch-root-5k-"));
+    adapter = new RealSqliteAdapter();
+    await adapter.open(join(testDir, "test.sqlite"), "unicode61");
+    await adapter.syncCollections([
+      {
+        name: "notes",
+        path: testDir,
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      },
+    ]);
+  });
+
+  afterEach(async () => {
+    await adapter.close();
+    await safeRm(testDir);
+  });
+
+  function doc(
+    overrides: Partial<DocumentInput> & { relPath: string }
+  ): DocumentInput {
+    return {
+      collection: "notes",
+      sourceHash: `hash_${overrides.relPath}`,
+      sourceMime: "text/markdown",
+      sourceExt: ".md",
+      sourceSize: 10,
+      sourceMtime: "2024-01-01T00:00:00Z",
+      ...overrides,
+    };
+  }
+
+  test("5000 root files/sources + record-container dups do not false-overflow", async () => {
+    const root = await mkdtemp(join(tmpdir(), "gno-watch-disk-5k-"));
+    try {
+      const expected: string[] = [];
+      for (let i = 0; i < 5000; i += 1) {
+        const rel = `n${String(i).padStart(4, "0")}.md`;
+        expected.push(rel);
+        await writeFile(join(root, rel), `c${i}`);
+        await adapter.upsertDocument(doc({ relPath: rel }));
+      }
+      // Many logical record docs → one physical source (must not inflate budget).
+      for (let i = 0; i < 50; i += 1) {
+        await adapter.upsertDocument(
+          doc({
+            relPath: `.gno/records/h/rec-${i}.md`,
+            recordSourcePath: "export.jsonl",
+            recordKey: `k${i}`,
+            sourceHash: `rec_${i}`,
+          })
+        );
+      }
+      await writeFile(join(root, "export.jsonl"), "{}\n");
+
+      // Prove direct-child is never required for root inventory.
+      let directCalls = 0;
+      const originalDirect =
+        adapter.listActiveDirectChildSourcePaths.bind(adapter);
+      adapter.listActiveDirectChildSourcePaths = (async (...args) => {
+        directCalls += 1;
+        return originalDirect(...args);
+      }) as typeof adapter.listActiveDirectChildSourcePaths;
+
+      const classified = await classifyDirtyHints({
+        collection: {
+          name: "notes",
+          path: root,
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+        store: adapter,
+        rootAbs: root,
+        previous: null,
+        dirtyHints: [""],
+        sourcePathMax: 8_192,
+      });
+
+      expect(classified.status).toBe("ok");
+      if (classified.status !== "ok") {
+        throw new Error(`expected ok, got ${classified.status}`);
+      }
+      expect(classified.usedFallback).toBe(true);
+      expect(classified.candidates.length).toBeGreaterThanOrEqual(5000);
+      expect(classified.candidates).toContain("n0000.md");
+      expect(classified.candidates).toContain("n4999.md");
+      expect(classified.candidates).toContain("export.jsonl");
+      // Root must use listActiveSourcePaths only — no direct-child call.
+      expect(directCalls).toBe(0);
+    } finally {
+      await safeRm(root);
+    }
+  }, 60_000);
 });
