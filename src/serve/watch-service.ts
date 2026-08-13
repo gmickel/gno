@@ -28,17 +28,22 @@ import {
   enqueueExactPath,
   handleWatchEvent,
   requeueAfterFailure,
+  requeueGenerationReconcile,
   scheduleFlush,
   startFlush,
-  type WatchEventHost,
-  type WatchQueueHost,
   WATCHER_FLUSH_DEBOUNCE_MS,
   WATCHER_MAX_FLUSH_DELAY_MS,
 } from "./watch-service-events";
 import { flushCollectionOnce } from "./watch-service-flush";
 import {
+  buildEventHost,
+  buildLifecycleHost,
+  buildQueueHost,
+  type WatchServiceHostState,
+} from "./watch-service-hosts";
+import {
   applyCollectionUpdate,
-  type WatchLifecycleHost,
+  clearLifecycleTombstones,
 } from "./watch-service-lifecycle";
 import { beginSnapshotInit } from "./watch-service-snapshot";
 import {
@@ -104,6 +109,7 @@ export class CollectionWatchService {
   readonly #pendingByCollection = new Map<string, CollectionPending>();
   readonly #timers = new Map<string, ReturnType<typeof setTimeout>>();
   readonly #flushDeadlineAt = new Map<string, number>();
+  readonly #retryScheduled = new Set<string>();
   readonly #syncing = new Set<string>();
   readonly #inFlightSyncs = new Set<Promise<void>>();
   readonly #suppressedPaths = new Map<string, number>();
@@ -140,17 +146,20 @@ export class CollectionWatchService {
   }
 
   start(): void {
-    if (this.#disposed) {
-      return;
+    if (!this.#disposed) {
+      this.updateCollections(this.#collections);
     }
-    this.updateCollections(this.#collections);
   }
 
   updateCollections(
     collections: Collection[],
     syncOptions?: SyncOptions
   ): void {
-    applyCollectionUpdate(this.#lifecycleHost(), collections, syncOptions);
+    applyCollectionUpdate(
+      buildLifecycleHost(this.#hostState()),
+      collections,
+      syncOptions
+    );
   }
 
   suppress(absPath: string, ms = 5_000): void {
@@ -176,6 +185,7 @@ export class CollectionWatchService {
     }
     this.#timers.clear();
     this.#flushDeadlineAt.clear();
+    this.#retryScheduled.clear();
     this.#watchers.clear();
     this.#watchRoots.clear();
     this.#collectionGenerations.clear();
@@ -192,23 +202,21 @@ export class CollectionWatchService {
 
   getState(): CollectionWatchState {
     return {
-      expectedCollections: this.#collections.map(
-        (collection) => collection.name
-      ),
+      expectedCollections: this.#collections.map((c) => c.name),
       activeCollections: [...this.#watchers.keys()],
       failedCollections: [...this.#failedCollections.entries()].map(
         ([collection, reason]) => ({ collection, reason })
       ),
       queuedCollections: [...this.#pendingByCollection.entries()]
         .filter(([, pending]) => pendingHasWork(pending))
-        .map(([collectionName]) => collectionName),
+        .map(([name]) => name),
       syncingCollections: [...this.#syncing],
       lastEventAt: this.#lastEventAt,
       lastSyncAt: this.#lastSyncAt,
     };
   }
 
-  #lifecycleHost(): WatchLifecycleHost {
+  #hostState(): WatchServiceHostState {
     return {
       disposed: () => this.#disposed,
       getCollections: () => this.#collections,
@@ -228,42 +236,35 @@ export class CollectionWatchService {
       snapshots: this.#snapshots,
       snapshotReady: this.#snapshotReady,
       snapshotInit: this.#snapshotInit,
-      clearCollectionRuntimeState: (collectionName) => {
-        this.#clearCollectionRuntimeState(collectionName);
+      syncing: this.#syncing,
+      clearCollectionRuntimeState: (name) => {
+        this.#clearCollectionRuntimeState(name);
       },
       beginSnapshotInit: (collection) => {
         this.#beginSnapshotInit(collection);
       },
       watchFactory: this.#watchFactory,
-      onWatchEvent: (collectionName, watchedRoot, filename) => {
-        this.#onWatchEvent(collectionName, watchedRoot, filename);
+      onWatchEvent: (name, root, filename) => {
+        handleWatchEvent(
+          buildEventHost(this.#hostState()),
+          name,
+          root,
+          filename
+        );
       },
-    };
-  }
-
-  #eventHost(): WatchEventHost {
-    return {
-      disposed: () => this.#disposed,
-      findCollection: (collectionName) =>
-        this.#collections.find((entry) => entry.name === collectionName),
+      findCollection: (name) =>
+        this.#collections.find((entry) => entry.name === name),
       clock: this.#clock,
       suppressedPaths: this.#suppressedPaths,
       setLastEventAt: (iso) => {
         this.#lastEventAt = iso;
       },
-      enqueueExact: (collectionName, relPath) => {
-        this.#enqueueExact(collectionName, relPath);
+      enqueueExact: (name, relPath) => {
+        enqueueExactPath(buildQueueHost(this.#hostState()), name, relPath);
       },
-      enqueueDirty: (collectionName, hint) => {
-        this.#enqueueDirty(collectionName, hint);
+      enqueueDirty: (name, hint) => {
+        enqueueDirtyHint(buildQueueHost(this.#hostState()), name, hint);
       },
-    };
-  }
-
-  #queueHost(): WatchQueueHost {
-    return {
-      disposed: () => this.#disposed,
-      clock: this.#clock,
       flushDebounceMs: this.#flushDebounceMs,
       maxFlushDelayMs: this.#maxFlushDelayMs,
       maxExactPaths: this.#maxExactPaths,
@@ -271,9 +272,9 @@ export class CollectionWatchService {
       pendingByCollection: this.#pendingByCollection,
       flushDeadlineAt: this.#flushDeadlineAt,
       timers: this.#timers,
-      snapshotReady: this.#snapshotReady,
+      retryScheduled: this.#retryScheduled,
       inFlightSyncs: this.#inFlightSyncs,
-      runFlush: (collectionName) => this.#flushCollection(collectionName),
+      runFlush: (name) => this.#flushCollection(name),
     };
   }
 
@@ -284,6 +285,7 @@ export class CollectionWatchService {
     this.#snapshotReady.delete(collectionName);
     this.#snapshotInit.delete(collectionName);
     this.#flushDeadlineAt.delete(collectionName);
+    this.#retryScheduled.delete(collectionName);
     const timer = this.#timers.get(collectionName);
     if (timer) {
       clearTimeout(timer);
@@ -316,32 +318,12 @@ export class CollectionWatchService {
         },
         onReadyWithPending: (name) => {
           if (pendingHasWork(this.#pendingByCollection.get(name))) {
-            scheduleFlush(this.#queueHost(), name);
+            scheduleFlush(buildQueueHost(this.#hostState()), name);
           }
         },
       },
       collection
     );
-  }
-
-  #onWatchEvent(
-    collectionName: string,
-    watchedRoot: string,
-    filename: string | Buffer | null | undefined
-  ): void {
-    handleWatchEvent(this.#eventHost(), collectionName, watchedRoot, filename);
-  }
-
-  #enqueueExact(collectionName: string, relPath: string): void {
-    enqueueExactPath(this.#queueHost(), collectionName, relPath);
-  }
-
-  #enqueueDirty(collectionName: string, hint: string): void {
-    enqueueDirtyHint(this.#queueHost(), collectionName, hint);
-  }
-
-  #startFlush(collectionName: string): void {
-    startFlush(this.#queueHost(), collectionName);
   }
 
   async #flushCollection(collectionName: string): Promise<void> {
@@ -371,11 +353,7 @@ export class CollectionWatchService {
     this.#flushDeadlineAt.delete(collectionName);
     this.#syncing.add(collectionName);
 
-    const queueHost = this.#queueHost();
-    const requeue = (exact: string[], dirty: string[]): void => {
-      requeueAfterFailure(queueHost, collectionName, exact, dirty);
-    };
-
+    const queueHost = buildQueueHost(this.#hostState());
     try {
       const outcome = await flushCollectionOnce({
         collection,
@@ -384,6 +362,8 @@ export class CollectionWatchService {
         syncOptions: this.#syncOptions,
         exactTaken: taken.exact,
         dirtyTaken: taken.dirty,
+        forceFallback: taken.forceFallback,
+        generationReconcile: taken.generationReconcile,
         previousSnapshot: this.#snapshots.get(collectionName) ?? null,
         syncGeneration: this.#collectionGenerations.get(collectionName) ?? 0,
         disposed: () => this.#disposed,
@@ -391,6 +371,8 @@ export class CollectionWatchService {
           this.#collections.find((entry) => entry.name === collectionName),
         getCurrentGeneration: () =>
           this.#collectionGenerations.get(collectionName) ?? 0,
+        clock: this.#clock,
+        suppressedPaths: this.#suppressedPaths,
         onSyncStart: (relPaths) => {
           this.#callbacks?.onSyncStart?.({
             collection: collection.name,
@@ -423,31 +405,47 @@ export class CollectionWatchService {
           this.#snapshotInit.delete(collectionName);
           this.#beginSnapshotInit(current);
         },
-        requeue,
+        requeue: (exact, dirty) => {
+          requeueAfterFailure(queueHost, collectionName, exact, dirty);
+        },
+        requeueGeneration: () => {
+          requeueGenerationReconcile(queueHost, collectionName);
+        },
       });
-      // Propagate unexpected throws only (file-level failures already requeued).
       if (
         outcome.status === "failed" &&
         outcome.error &&
         !(
           outcome.error instanceof Error &&
-          outcome.error.message ===
-            "One or more paths failed during watcher sync"
+          (outcome.error.message ===
+            "One or more paths failed during watcher sync" ||
+            outcome.error.message ===
+              "One or more paths failed during watcher generation reconcile")
         )
       ) {
         throw outcome.error;
       }
     } finally {
       this.#syncing.delete(collectionName);
+      clearLifecycleTombstones(
+        buildLifecycleHost(this.#hostState()),
+        collectionName
+      );
       pruneSuppressionMap(
         this.#suppressedPaths,
         this.#clock(),
         WATCHER_MAX_SUPPRESSION_ENTRIES
       );
       if (!this.#disposed) {
-        if (pendingHasWork(this.#pendingByCollection.get(collectionName))) {
-          this.#startFlush(collectionName);
-        } else {
+        // Never bypass an explicit retry timer with an immediate startFlush.
+        if (
+          pendingHasWork(this.#pendingByCollection.get(collectionName)) &&
+          !this.#retryScheduled.has(collectionName)
+        ) {
+          startFlush(queueHost, collectionName);
+        } else if (
+          !pendingHasWork(this.#pendingByCollection.get(collectionName))
+        ) {
           this.#notifySettledIfIdle();
         }
       }
@@ -469,14 +467,11 @@ export class CollectionWatchService {
     if (this.#disposed || relPaths.length === 0) {
       return;
     }
-
     this.#lastSyncAt = new Date(this.#clock()).toISOString();
     this.#scheduler?.notifySyncComplete(relPaths);
-
     if (!this.#eventBus) {
       return;
     }
-
     for (const relPath of relPaths) {
       const event: DocumentEvent = {
         type: "document-changed",

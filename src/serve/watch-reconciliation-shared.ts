@@ -41,6 +41,12 @@ export const WATCHER_MAX_SUPPRESSION_ENTRIES = 4_096;
 /** Bounded retry delay after failed classification/sync. */
 export const WATCHER_RETRY_BACKOFF_MS = 500;
 
+/**
+ * Single fixed budget for fallback classification across visited directories,
+ * candidates, removals, dirty dirs, and aggregate store rows.
+ */
+export const WATCHER_FALLBACK_BUDGET = 8_192;
+
 export type WatcherEventClassification =
   | { kind: "reject" }
   | { kind: "ignore" }
@@ -184,31 +190,44 @@ export async function inspectPathPresence(
 /**
  * When an exact eligible path has vanished, also dirty the path (and parent)
  * so recursive-delete siblings can be discovered via snapshot/store fallback.
+ * Present directories leave exact (avoid NOT_FILE) and only mark dirty; callers
+ * must force store/disk fallback so eligible children still reach syncPaths.
  */
 export async function widenVanishedExactPaths(
   rootAbs: string,
   exactPaths: readonly string[]
-): Promise<{ keepExact: string[]; extraDirty: string[] }> {
+): Promise<{
+  keepExact: string[];
+  extraDirty: string[];
+  directoryDirty: string[];
+}> {
   const keepExact: string[] = [];
   const extraDirty: string[] = [];
+  const directoryDirty: string[] = [];
   for (const relPath of exactPaths) {
     const presence = await inspectPathPresence(rootAbs, relPath);
     if (presence.status === "error") {
       keepExact.push(relPath);
       continue;
     }
-    keepExact.push(relPath);
     if (presence.status === "missing") {
+      keepExact.push(relPath);
       extraDirty.push(relPath);
       const parent = parentWatcherDir(relPath);
       if (parent !== null) {
         extraDirty.push(parent);
       }
-    } else if (presence.isDirectory) {
-      extraDirty.push(relPath);
+      continue;
     }
+    if (presence.isDirectory) {
+      // Pattern-matching directory names are not file sources; dirty only.
+      extraDirty.push(relPath);
+      directoryDirty.push(relPath);
+      continue;
+    }
+    keepExact.push(relPath);
   }
-  return { keepExact, extraDirty };
+  return { keepExact, extraDirty, directoryDirty };
 }
 
 export function filterEligiblePaths(

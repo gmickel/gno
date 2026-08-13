@@ -1,14 +1,12 @@
 /**
  * Bounded store + disk fallback when snapshot classification cannot prove work.
- * Failed queries never imply inactivation.
+ * Failed queries never imply inactivation. Disk walks use no-follow handles.
  *
  * @module src/serve/watch-reconciliation-fallback
  */
 
-// node:fs/promises — structure ops; no Bun equivalent for readdir/stat handles
-import { readdir, stat } from "node:fs/promises";
 // node:path — Bun has no path utilities
-import { join, normalize } from "node:path";
+import { normalize } from "node:path";
 
 import type { Collection } from "../config/types";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
@@ -17,10 +15,21 @@ import type { StoreResult } from "../store/types";
 import { matchesCollectionExclusion } from "../core/path-rules";
 import { collectionToWalkConfig, matchesWalkPath } from "../ingestion";
 import {
-  inspectPathPresence,
+  budgetExceeded,
+  fallbackFs,
+  inspectNoFollowPresence,
+  listEligibleDiskSources,
+  type FallbackBudget,
+} from "./watch-reconciliation-fallback-disk";
+import {
+  WATCHER_FALLBACK_BUDGET,
   type ClassificationResult,
 } from "./watch-reconciliation-shared";
-import { normalizeWatcherRelPath, parentWatcherDir } from "./watch-snapshot";
+import { openDirByRel } from "./watch-snapshot-scan";
+import {
+  normalizeWatcherRelPath,
+  parentWatcherDir,
+} from "./watch-snapshot-types";
 
 export async function fallbackClassifyDirtyHints(options: {
   collection: Collection;
@@ -29,11 +38,22 @@ export async function fallbackClassifyDirtyHints(options: {
   dirtyHints: readonly string[];
   sourcePathMax: number;
 }): Promise<ClassificationResult> {
-  const { collection, store, rootAbs, dirtyHints, sourcePathMax } = options;
+  const { collection, store, rootAbs, dirtyHints } = options;
+  const budgetLimit = Math.min(options.sourcePathMax, WATCHER_FALLBACK_BUDGET);
+  const budget: FallbackBudget = {
+    limit: budgetLimit,
+    visitedDirs: 0,
+    candidates: 0,
+    removals: 0,
+    dirtyDirs: 0,
+    storeRows: 0,
+  };
   const candidates = new Set<string>();
   const removals = new Set<string>();
   const walkConfig = collectionToWalkConfig(collection, 0);
   const diskSeen = new Set<string>();
+  const fs = fallbackFs();
+  const root = normalize(rootAbs);
 
   const dirs = new Set<string>();
   for (const hint of dirtyHints) {
@@ -49,90 +69,101 @@ export async function fallbackClassifyDirtyHints(options: {
     }
   }
 
+  // Prove collection root is available before any deletion comparison.
+  const rootOpen = await openDirByRel(root, "", fs);
+  if (rootOpen.status === "missing") {
+    return {
+      status: "error",
+      cause: new Error("Collection root is missing"),
+      stage: "scan",
+    };
+  }
+  if (rootOpen.status !== "ok") {
+    return {
+      status: "error",
+      cause:
+        rootOpen.status === "scan_failed"
+          ? rootOpen.cause
+          : new Error("Collection root unavailable"),
+      stage: "scan",
+    };
+  }
+  await fs.closeDir(rootOpen.handle);
+
   for (const dir of dirs) {
+    budget.dirtyDirs += 1;
+    if (budgetExceeded(budget)) {
+      return overflowResult(dir);
+    }
     if (dir !== "" && matchesCollectionExclusion(dir, walkConfig.exclude)) {
       continue;
     }
 
     const disk = await listEligibleDiskSources(
-      rootAbs,
+      root,
       dir,
       collection,
-      sourcePathMax
+      fs,
+      budget
     );
     if (disk.status === "error") {
       return { status: "error", cause: disk.cause, stage: "scan" };
     }
     if (disk.status === "overflow") {
-      return {
-        status: "error",
-        cause: new Error(`Disk enumeration overflow under ${dir || "."}`),
-        stage: "scan",
-      };
+      return overflowResult(dir);
     }
     for (const path of disk.paths) {
       candidates.add(path);
       diskSeen.add(path);
+      budget.candidates = candidates.size;
+      if (budgetExceeded(budget)) {
+        return overflowResult(dir);
+      }
     }
 
-    const storeChildren = await safeListDirect(
+    const storePaths = await collectStorePathsForDir(
       store,
       collection.name,
       dir,
-      sourcePathMax
+      disk.rootDirNames,
+      budget
     );
-    if (!storeChildren.ok) {
+    if (!storePaths.ok) {
       return {
         status: "error",
-        cause: new Error(storeChildren.error.message),
+        cause: new Error(storePaths.error.message),
         stage: "store",
       };
     }
-    for (const path of storeChildren.value) {
+    if (storePaths.overflow) {
+      return overflowResult(dir);
+    }
+    for (const path of storePaths.value) {
       if (!matchesWalkPath(path, walkConfig)) {
         continue;
       }
       if (diskSeen.has(path)) {
         candidates.add(path);
+        budget.candidates = candidates.size;
       } else {
         removals.add(path);
+        budget.removals = removals.size;
       }
-    }
-
-    if (dir !== "") {
-      const descendants = await safeListDescendants(
-        store,
-        collection.name,
-        dir,
-        sourcePathMax
-      );
-      if (!descendants.ok) {
-        return {
-          status: "error",
-          cause: new Error(descendants.error.message),
-          stage: "store",
-        };
-      }
-      for (const path of descendants.value) {
-        if (!matchesWalkPath(path, walkConfig)) {
-          continue;
-        }
-        if (diskSeen.has(path)) {
-          candidates.add(path);
-        } else {
-          removals.add(path);
-        }
+      if (budgetExceeded(budget)) {
+        return overflowResult(dir);
       }
     }
   }
 
   const provenRemovals: string[] = [];
   for (const path of removals) {
-    const presence = await inspectPathPresence(rootAbs, path);
+    const presence = await inspectNoFollowPresence(root, path, fs);
     if (presence.status === "missing") {
       provenRemovals.push(path);
     } else if (presence.status === "present") {
       candidates.add(path);
+    } else if (presence.status === "error") {
+      return { status: "error", cause: presence.cause, stage: "scan" };
     }
   }
 
@@ -143,6 +174,168 @@ export async function fallbackClassifyDirtyHints(options: {
     nextSnapshot: null,
     usedFallback: true,
   };
+}
+
+function overflowResult(dir: string): ClassificationResult {
+  return {
+    status: "error",
+    cause: new Error(`Fallback budget overflow under ${dir || "."}`),
+    stage: "scan",
+  };
+}
+
+async function collectStorePathsForDir(
+  store: SqliteAdapter,
+  collection: string,
+  dir: string,
+  rootDirNames: readonly string[],
+  budget: FallbackBudget
+): Promise<StoreResult<string[]> & { overflow?: boolean }> {
+  const out = new Set<string>();
+
+  const takeRows = (
+    rows: string[]
+  ): { ok: true } | { ok: false; overflow: true } => {
+    for (const path of rows) {
+      out.add(path);
+      budget.storeRows += 1;
+      if (budgetExceeded(budget)) {
+        return { ok: false, overflow: true };
+      }
+    }
+    return { ok: true };
+  };
+
+  const remaining = (): number =>
+    Math.max(1, budget.limit - budget.storeRows + 1);
+
+  const direct = await safeListDirect(store, collection, dir, remaining());
+  if (!direct.ok) {
+    if (direct.error.code === "OVERFLOW") {
+      return { ok: true, value: [], overflow: true };
+    }
+    return direct;
+  }
+  if (!takeRows(direct.value).ok) {
+    return { ok: true, value: [], overflow: true };
+  }
+
+  if (dir !== "") {
+    const descendants = await safeListDescendants(
+      store,
+      collection,
+      dir,
+      remaining()
+    );
+    if (!descendants.ok) {
+      if (descendants.error.code === "OVERFLOW") {
+        return { ok: true, value: [], overflow: true };
+      }
+      return descendants;
+    }
+    if (!takeRows(descendants.value).ok) {
+      return { ok: true, value: [], overflow: true };
+    }
+    return { ok: true, value: [...out] };
+  }
+
+  // Root: descendant API rejects "". Prefer bounded active-doc inventory so
+  // nested store sources are compared; else probe disk first-level dirs.
+  const inventory = await listRootActiveSourcePaths(
+    store,
+    collection,
+    remaining()
+  );
+  if (inventory) {
+    if (!inventory.ok) {
+      return inventory;
+    }
+    if (inventory.overflow) {
+      return { ok: true, value: [], overflow: true };
+    }
+    if (!takeRows(inventory.value).ok) {
+      return { ok: true, value: [], overflow: true };
+    }
+    return { ok: true, value: [...out] };
+  }
+
+  const firstLevel = new Set<string>(rootDirNames);
+  for (const name of firstLevel) {
+    if (name === "" || name.includes("/")) {
+      continue;
+    }
+    budget.dirtyDirs += 1;
+    if (budgetExceeded(budget)) {
+      return { ok: true, value: [], overflow: true };
+    }
+    const descendants = await safeListDescendants(
+      store,
+      collection,
+      name,
+      remaining()
+    );
+    if (!descendants.ok) {
+      if (descendants.error.code === "OVERFLOW") {
+        return { ok: true, value: [], overflow: true };
+      }
+      if (descendants.error.code === "INVALID_INPUT") {
+        continue;
+      }
+      return descendants;
+    }
+    if (!takeRows(descendants.value).ok) {
+      return { ok: true, value: [], overflow: true };
+    }
+  }
+  return { ok: true, value: [...out] };
+}
+
+/**
+ * Bounded root-wide active source inventory via paginated active docs.
+ * Returns null when the seam is unavailable (tests/stubs use disk probes).
+ */
+async function listRootActiveSourcePaths(
+  store: SqliteAdapter,
+  collection: string,
+  max: number
+): Promise<(StoreResult<string[]> & { overflow?: boolean }) | null> {
+  if (typeof store.listDocumentsPaginated !== "function") {
+    return null;
+  }
+  try {
+    const page = await store.listDocumentsPaginated({
+      collection,
+      limit: max + 1,
+      offset: 0,
+    });
+    if (!page.ok) {
+      return page;
+    }
+    if (page.value.documents.length > max) {
+      return { ok: true, value: [], overflow: true };
+    }
+    const paths = new Set<string>();
+    for (const doc of page.value.documents) {
+      const source =
+        doc.recordSourcePath && doc.recordSourcePath.length > 0
+          ? doc.recordSourcePath
+          : doc.relPath;
+      paths.add(source);
+    }
+    return { ok: true, value: [...paths] };
+  } catch (cause) {
+    return {
+      ok: false,
+      error: {
+        code: "QUERY_FAILED",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Root store inventory failed",
+        cause,
+      },
+    };
+  }
 }
 
 async function safeListDirect(
@@ -170,12 +363,16 @@ async function safeListDirect(
 
 async function safeListDescendants(
   store: SqliteAdapter,
-  collection: string,
+  storeCollection: string,
   dir: string,
   max: number
 ): Promise<StoreResult<string[]>> {
   try {
-    return await store.listActiveDescendantSourcePaths(collection, dir, max);
+    return await store.listActiveDescendantSourcePaths(
+      storeCollection,
+      dir,
+      max
+    );
   } catch (cause) {
     return {
       ok: false,
@@ -189,94 +386,4 @@ async function safeListDescendants(
       },
     };
   }
-}
-
-type DiskListResult =
-  | { status: "ok"; paths: string[] }
-  | { status: "overflow" }
-  | { status: "error"; cause: unknown };
-
-async function listEligibleDiskSources(
-  rootAbs: string,
-  dirRel: string,
-  collection: Collection,
-  max: number
-): Promise<DiskListResult> {
-  const walkConfig = collectionToWalkConfig(collection, 0);
-  const root = normalize(rootAbs);
-  const base =
-    dirRel === ""
-      ? root
-      : normalize(join(root, ...dirRel.split("/").filter(Boolean)));
-
-  let baseStat;
-  try {
-    baseStat = await stat(base);
-  } catch (cause) {
-    const code =
-      cause && typeof cause === "object" && "code" in cause
-        ? String(cause.code)
-        : "";
-    if (code === "ENOENT" || code === "ENOTDIR") {
-      return { status: "ok", paths: [] };
-    }
-    return { status: "error", cause };
-  }
-  if (!baseStat.isDirectory()) {
-    return { status: "ok", paths: [] };
-  }
-
-  const paths: string[] = [];
-  const queue: string[] = [dirRel];
-  let head = 0;
-
-  while (head < queue.length) {
-    const current = queue[head] as string;
-    head += 1;
-    const abs =
-      current === ""
-        ? root
-        : normalize(join(root, ...current.split("/").filter(Boolean)));
-    let entries: Array<{ name: string; isFile: boolean; isDirectory: boolean }>;
-    try {
-      const dirents = await readdir(abs, { withFileTypes: true });
-      entries = dirents.map((d) => ({
-        name: d.name,
-        isFile: d.isFile(),
-        isDirectory: d.isDirectory(),
-      }));
-    } catch (cause) {
-      const code =
-        cause && typeof cause === "object" && "code" in cause
-          ? String(cause.code)
-          : "";
-      if (code === "ENOENT" || code === "ENOTDIR") {
-        continue;
-      }
-      return { status: "error", cause };
-    }
-
-    for (const entry of entries) {
-      const childRel = current === "" ? entry.name : `${current}/${entry.name}`;
-      if (matchesCollectionExclusion(childRel, walkConfig.exclude)) {
-        continue;
-      }
-      if (entry.isDirectory) {
-        queue.push(childRel);
-        continue;
-      }
-      if (!entry.isFile) {
-        continue;
-      }
-      if (!matchesWalkPath(childRel, walkConfig)) {
-        continue;
-      }
-      paths.push(childRel);
-      if (paths.length > max) {
-        return { status: "overflow" };
-      }
-    }
-  }
-
-  return { status: "ok", paths };
 }

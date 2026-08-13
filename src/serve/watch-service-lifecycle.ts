@@ -28,6 +28,8 @@ export interface WatchLifecycleHost {
   snapshots: Map<string, WatcherSnapshot>;
   snapshotReady: Map<string, boolean>;
   snapshotInit: Map<string, Promise<void>>;
+  /** Collections currently mid-flush (ABA ownership). */
+  syncing: Set<string>;
   clearCollectionRuntimeState: (collectionName: string) => void;
   beginSnapshotInit: (collection: Collection) => void;
   watchFactory: (
@@ -66,6 +68,25 @@ export function watcherCollectionFingerprint(
 }
 
 /**
+ * Drop generation/failed tombstones when the name is no longer configured and
+ * no in-flight flush still needs the ownership token.
+ */
+export function clearLifecycleTombstones(
+  host: WatchLifecycleHost,
+  collectionName: string
+): void {
+  if (host.syncing.has(collectionName)) {
+    return;
+  }
+  if (host.getCollections().some((entry) => entry.name === collectionName)) {
+    return;
+  }
+  host.collectionGenerations.delete(collectionName);
+  host.failedCollections.delete(collectionName);
+  host.collectionFingerprints.delete(collectionName);
+}
+
+/**
  * Reconcile active watchers with the desired collection set.
  * Closes removed/moved roots, bumps generations on config change, and starts
  * new recursive watchers (capturing events before snapshot baseline init).
@@ -97,16 +118,34 @@ export function applyCollectionUpdate(
       watcher.close();
       host.watchers.delete(collectionName);
       host.clearCollectionRuntimeState(collectionName);
-      host.failedCollections.delete(collectionName);
+      if (nextRoot === undefined) {
+        // Removed: bump generation for in-flight ABA, then clear if idle.
+        host.collectionGenerations.set(collectionName, host.nextGeneration());
+        host.failedCollections.delete(collectionName);
+        clearLifecycleTombstones(host, collectionName);
+      } else {
+        host.failedCollections.delete(collectionName);
+      }
     }
   }
 
-  for (const collectionName of host.collectionFingerprints.keys()) {
-    if (!nextByName.has(collectionName)) {
-      host.collectionFingerprints.delete(collectionName);
-      host.collectionGenerations.set(collectionName, host.nextGeneration());
-      host.clearCollectionRuntimeState(collectionName);
+  // Fingerprints / generations / failed for names no longer configured.
+  for (const collectionName of [
+    ...host.collectionFingerprints.keys(),
+    ...host.collectionGenerations.keys(),
+    ...host.failedCollections.keys(),
+  ]) {
+    if (nextByName.has(collectionName)) {
+      continue;
     }
+    host.collectionFingerprints.delete(collectionName);
+    if (!host.collectionGenerations.has(collectionName)) {
+      host.collectionGenerations.set(collectionName, host.nextGeneration());
+    } else if (!host.syncing.has(collectionName)) {
+      host.collectionGenerations.set(collectionName, host.nextGeneration());
+    }
+    host.clearCollectionRuntimeState(collectionName);
+    clearLifecycleTombstones(host, collectionName);
   }
 
   host.setCollections(collections);

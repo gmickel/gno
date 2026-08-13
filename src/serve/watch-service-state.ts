@@ -17,16 +17,38 @@ export interface CollectionPending {
   dirty: Set<string>;
   /** When true, dirty overflow forced a root-wide fallback hint. */
   overflow: boolean;
+  /**
+   * Ambiguous work arrived before snapshot readiness for this generation.
+   * Classification must use store/disk fallback so baseline absorption cannot
+   * suppress content-hash of present eligible finals.
+   */
+  forceFallback: boolean;
+  /**
+   * Config-generation full reconcile failed or was interrupted; next flush must
+   * retry even if exact/dirty event hints are exhausted.
+   */
+  generationReconcile: boolean;
 }
 
 export function emptyPending(): CollectionPending {
-  return { exact: new Set(), dirty: new Set(), overflow: false };
+  return {
+    exact: new Set(),
+    dirty: new Set(),
+    overflow: false,
+    forceFallback: false,
+    generationReconcile: false,
+  };
 }
 
 export function pendingHasWork(
   pending: CollectionPending | undefined
 ): boolean {
-  return Boolean(pending && (pending.exact.size > 0 || pending.dirty.size > 0));
+  return Boolean(
+    pending &&
+    (pending.exact.size > 0 ||
+      pending.dirty.size > 0 ||
+      pending.generationReconcile)
+  );
 }
 
 export function queueExactPath(
@@ -60,10 +82,14 @@ export function queueDirtyHint(
 export function takePending(pending: CollectionPending): {
   exact: string[];
   dirty: string[];
+  forceFallback: boolean;
+  generationReconcile: boolean;
 } {
   return {
     exact: [...pending.exact],
     dirty: pending.overflow ? ["", ...pending.dirty] : [...pending.dirty],
+    forceFallback: pending.forceFallback || pending.overflow,
+    generationReconcile: pending.generationReconcile,
   };
 }
 

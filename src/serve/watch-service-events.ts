@@ -43,6 +43,8 @@ export interface WatchQueueHost {
   pendingByCollection: Map<string, CollectionPending>;
   flushDeadlineAt: Map<string, number>;
   timers: Map<string, ReturnType<typeof setTimeout>>;
+  /** Collections with an explicit retry timer; finally must not bypass. */
+  retryScheduled: Set<string>;
   snapshotReady: Map<string, boolean>;
   inFlightSyncs: Set<Promise<void>>;
   runFlush: (collectionName: string) => Promise<void>;
@@ -111,6 +113,10 @@ export function enqueueDirtyHint(
 ): void {
   const pending =
     host.pendingByCollection.get(collectionName) ?? emptyPending();
+  // Ambiguous events before baseline readiness must force store/disk reconcile.
+  if (!host.snapshotReady.get(collectionName)) {
+    pending.forceFallback = true;
+  }
   host.pendingByCollection.set(
     collectionName,
     queueDirtyHint(pending, hint, host.maxDirtyHints)
@@ -118,11 +124,32 @@ export function enqueueDirtyHint(
   scheduleFlush(host, collectionName);
 }
 
+/** Queue work without arming timers (used by failure requeue). */
+function queueWithoutSchedule(
+  host: WatchQueueHost,
+  collectionName: string,
+  exact: string[],
+  dirty: string[]
+): void {
+  let pending = host.pendingByCollection.get(collectionName) ?? emptyPending();
+  for (const path of exact) {
+    pending = queueExactPath(pending, path, host.maxExactPaths);
+  }
+  for (const hint of dirty) {
+    pending = queueDirtyHint(pending, hint, host.maxDirtyHints);
+  }
+  host.pendingByCollection.set(collectionName, pending);
+}
+
 export function scheduleFlush(
   host: WatchQueueHost,
   collectionName: string
 ): void {
   if (host.disposed()) {
+    return;
+  }
+  // Explicit retry owns the single timer; do not replace it with debounce.
+  if (host.retryScheduled.has(collectionName)) {
     return;
   }
   const schedule = computeFlushDelay({
@@ -159,13 +186,18 @@ export function startFlush(host: WatchQueueHost, collectionName: string): void {
     pending !== undefined &&
     pending.exact.size > 0 &&
     pending.dirty.size === 0 &&
-    !pending.overflow;
+    !pending.overflow &&
+    !pending.forceFallback &&
+    !pending.generationReconcile;
   // Exact eligible paths content-hash without a snapshot baseline. Dirty /
-  // overflow work waits so init-time ambiguous events reconcile against a
-  // newer generation rather than an empty unproven snapshot.
+  // overflow / init-fallback / generation work waits so init-time ambiguous
+  // events reconcile against a newer generation rather than empty unproven state.
   if (!host.snapshotReady.get(collectionName) && !exactOnly) {
     // Do not re-arm the full debounce while waiting for baseline; poll briefly.
     // Snapshot init also schedules a flush when readiness flips true.
+    if (host.retryScheduled.has(collectionName)) {
+      return;
+    }
     const existingTimer = host.timers.get(collectionName);
     if (existingTimer) {
       clearTimeout(existingTimer);
@@ -188,31 +220,50 @@ export function startFlush(host: WatchQueueHost, collectionName: string): void {
     .catch(() => undefined);
 }
 
-/** Re-arm pending work after a file-level failure with retry backoff. */
+/**
+ * Re-arm pending work after a file-level failure with retry backoff.
+ * At most one retry timer per collection; finally must not startFlush while set.
+ */
 export function requeueAfterFailure(
   host: WatchQueueHost,
   collectionName: string,
   exact: string[],
   dirty: string[]
 ): void {
-  for (const path of exact) {
-    enqueueExactPath(host, collectionName, path);
+  queueWithoutSchedule(host, collectionName, exact, dirty);
+  if (host.disposed()) {
+    return;
   }
-  for (const hint of dirty) {
-    enqueueDirtyHint(host, collectionName, hint);
+  if (host.retryScheduled.has(collectionName)) {
+    // Pending already merged; existing retry timer remains the sole attempt.
+    return;
   }
-  const timer = host.timers.get(collectionName);
-  if (timer) {
-    clearTimeout(timer);
+  host.retryScheduled.add(collectionName);
+  const existingTimer = host.timers.get(collectionName);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
   }
   host.flushDeadlineAt.set(collectionName, host.clock() + host.maxFlushDelayMs);
   host.timers.set(
     collectionName,
     setTimeout(() => {
       host.timers.delete(collectionName);
+      host.retryScheduled.delete(collectionName);
       startFlush(host, collectionName);
     }, WATCHER_RETRY_BACKOFF_MS)
   );
+}
+
+/** Mark durable generation-reconcile work and schedule a single retry. */
+export function requeueGenerationReconcile(
+  host: WatchQueueHost,
+  collectionName: string
+): void {
+  const pending =
+    host.pendingByCollection.get(collectionName) ?? emptyPending();
+  pending.generationReconcile = true;
+  host.pendingByCollection.set(collectionName, pending);
+  requeueAfterFailure(host, collectionName, [], []);
 }
 
 // Re-export defaults used by the service constructor for a single import site.

@@ -373,11 +373,9 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
       previous: createEmptyWatcherSnapshot(),
       dirtyHints: ["gone.md.tmp"],
     });
-    // Missing root → fallback path; empty disk + empty store is ok with no removals.
-    if (classified.status === "ok") {
-      expect(classified.removals).toEqual([]);
-      expect(classified.usedFallback).toBe(true);
-    } else {
+    // Missing root must error/retry — never prove store deletions.
+    expect(classified.status).toBe("error");
+    if (classified.status === "error") {
       expect(classified.stage).toBe("scan");
     }
   });
@@ -393,6 +391,20 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
       expect(widened.keepExact).toEqual(["live.md", "gone.md"]);
       expect(widened.extraDirty).toContain("gone.md");
       expect(widened.extraDirty).toContain("");
+    } finally {
+      await safeRm(root);
+    }
+  });
+
+  test("widenVanishedExactPaths moves present directory out of keepExact into dirty only", async () => {
+    const root = await mkdtemp(join(tmpdir(), "gno-watch-widen-dir-"));
+    try {
+      await mkdir(join(root, "folder.md"), { recursive: true });
+      await writeFile(join(root, "folder.md", "child.md"), "c");
+      const widened = await widenVanishedExactPaths(root, ["folder.md"]);
+      expect(widened.keepExact).toEqual([]);
+      expect(widened.extraDirty).toEqual(["folder.md"]);
+      expect(widened.directoryDirty).toEqual(["folder.md"]);
     } finally {
       await safeRm(root);
     }

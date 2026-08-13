@@ -23,6 +23,7 @@ import {
 } from "./watch-snapshot";
 
 export {
+  WATCHER_FALLBACK_BUDGET,
   WATCHER_FLUSH_DEBOUNCE_MS,
   WATCHER_MAX_DIRTY_HINTS,
   WATCHER_MAX_EXACT_PATHS,
@@ -53,6 +54,11 @@ export async function classifyDirtyHints(options: {
   rootAbs: string;
   previous: WatcherSnapshot | null;
   dirtyHints: readonly string[];
+  /**
+   * When true (init-time ambiguous absorption risk), skip snapshot diff and use
+   * bounded store/disk so present eligible finals always reach syncPaths.
+   */
+  forceFallback?: boolean;
   snapshotOptions?: WatcherSnapshotOptions;
   sourcePathMax?: number;
 }): Promise<ClassificationResult> {
@@ -62,6 +68,7 @@ export async function classifyDirtyHints(options: {
     rootAbs,
     previous,
     dirtyHints,
+    forceFallback = false,
     snapshotOptions,
     sourcePathMax = WATCHER_ACTIVE_SOURCE_PATH_MAX,
   } = options;
@@ -76,7 +83,7 @@ export async function classifyDirtyHints(options: {
     };
   }
 
-  if (previous) {
+  if (previous && !forceFallback) {
     const diff = await reconcileWatcherHints(
       rootAbs,
       previous,
