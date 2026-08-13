@@ -393,6 +393,19 @@ Common causes:
 - file changes happened outside configured patterns
 - the daemon was started with `--no-sync-on-start` and is only watching future changes
 
+On supported local filesystems, atomic replacements and recursive directory
+deletions should settle without `gno update`. Exact file events are
+content-hashed; temp/directory/missing-name events are reconciled from bounded
+filesystem/index evidence. A failed scan or store query is retried and never
+used as deletion proof. On Windows, or when native anchored directory handles
+are unavailable, ambiguous work safely escalates to full collection sync.
+
+If changes remain stale, verify the collection root is mounted and readable,
+then inspect resident watcher failures in `gno status --json` or the dashboard.
+Network shares, removable volumes, and coarse-timestamp filesystems can expose
+watcher behavior outside the tested local-filesystem guarantee; run
+`gno update` after reconnecting or remounting them.
+
 ### "I ran gno serve and gno daemon together"
 
 Serve and daemon are two modes of the same resident owner. The second process

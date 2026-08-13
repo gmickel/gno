@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed resident indexing after atomic saves, recursive directory deletions,
+  same-size edits with restored mtimes, and other ambiguous filesystem events.
+  Exact eligible paths still receive content-hash synchronization; bounded,
+  failure-safe reconciliation discovers only proven candidates/removals and
+  escalates safely when native anchored handles are unavailable. This is a
+  fresh maintainer implementation based on the original report and core
+  direction from @DanielKillenberger.
+
 ## [1.34.5] - 2026-08-09
 
 ### Fixed

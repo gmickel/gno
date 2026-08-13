@@ -175,11 +175,24 @@ links. Reads join active source and target documents so inactive renamed files
 do not surface stale edges.
 
 `syncAll` defers this projection until every collection has synced, then runs
-one exact global reconciliation. File-watcher batches use path-scoped ingestion
-and reproject changed sources plus known backlinks; periodic/full sync remains
-the exact fallback for previously unresolved frontmatter targets. Projection
-yields to the event loop in bounded intervals so HTTP requests remain
-responsive during larger graph rebuilds.
+one exact global reconciliation. The resident watcher sends every contained,
+eligible exact path through path-scoped content hashing, even when filesystem
+metadata appears unchanged. Missing filenames, temp names, directories,
+vanished paths, and other ambiguous events mark a bounded dirty scope. On
+supported local macOS/Linux filesystems, watcher-owned no-follow snapshots and
+bounded disk/index comparison select only proven present candidates and proven
+removals. Classification, store, projection, or per-file failures retain
+durable work; budget overflow or unavailable anchored handles escalates to a
+full collection sync rather than inferring deletion or dropping an update.
+
+Watcher queues, snapshots, suppression history, and retry timing are capped;
+sustained churn has a hard flush deadline. Windows retains end-state
+correctness through full-collection escalation because native anchored handles
+are unavailable. Network, removable, and coarse-timestamp filesystems are not
+universally guaranteed. Changed sources and known backlinks are reprojected;
+periodic/full sync remains the exact fallback for previously unresolved
+frontmatter targets. Projection yields to the event loop in bounded intervals
+so HTTP requests remain responsive during larger graph rebuilds.
 
 `gno graph query`, REST `/api/graph/query`, and MCP `gno_graph_query` all wrap
 the same bounded traversal core. `gno query diagnose`, REST

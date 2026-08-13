@@ -520,11 +520,16 @@ The dashboard health model now includes background-service state:
 
 This is meant to reduce the “why didn’t it refresh?” class of failures in long sessions.
 
-Watcher batches sync only the changed paths and refresh graph projection for
-those documents plus known backlinks. A full sync still performs one exact
-global graph reconciliation. Status aggregation is set-based, concurrent status
-requests share the same in-flight build, and the dashboard reuses that response
-for its model selector instead of issuing a duplicate request.
+Exact watcher paths use content-hash synchronization. Ambiguous atomic-save,
+directory, missing-name, and recursive-delete events reconcile a bounded dirty
+scope against filesystem/index evidence, selecting proven candidates and
+removals without routinely resyncing untouched siblings. Failure retains work;
+unsupported anchored handles or bounded overflow escalate to full collection
+sync. Changed documents and known backlinks refresh graph projection, while a
+full sync still performs one exact global graph reconciliation. Status
+aggregation is set-based, concurrent status requests share the same in-flight
+build, and the dashboard reuses that response for its model selector instead
+of issuing a duplicate request.
 
 ### Bootstrap & Storage
 

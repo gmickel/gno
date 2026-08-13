@@ -3369,6 +3369,12 @@ is blocked.
 - Opens DB once at startup
 - Loads config and requires at least one configured collection
 - Starts the same watcher + embed scheduler used by `gno serve`
+- Exact contained eligible paths always use targeted content-hash sync.
+  Ambiguous temp/directory/missing-name/recursive-delete events use bounded,
+  failure-safe filesystem/index reconciliation with durable retry.
+- Bounded overflow or unavailable native anchored handles escalates to full
+  collection sync. This does not claim universal network/removable filesystem
+  watcher behavior.
 - Runs an initial sync by default
 - Triggers embedding after initial sync completes
 - Runs in the foreground until `SIGINT` / `SIGTERM`

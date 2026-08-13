@@ -1686,6 +1686,11 @@ Options:
 
 - Opens the selected index DB and loads config
 - Starts the same watcher + embed scheduler used by `gno serve`
+- Exact eligible paths always use content-hash synchronization; ambiguous
+  atomic-save, directory, missing-name, and recursive-delete events use bounded
+  failure-safe reconciliation and durable retry
+- Unsupported anchored handles or bounded reconciliation overflow escalate to
+  full collection sync; no network/removable filesystem guarantee is implied
 - Runs an initial sync by default, then embeds backlog immediately
 - Foreground: stays in the foreground until `SIGINT` / `SIGTERM`
 - Detached: parent prints `PID <pid>` and exits 0; child writes to `{data}/daemon.log` (or `--log-file`) in append mode

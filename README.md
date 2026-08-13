@@ -332,6 +332,11 @@ gno daemon --detach   # background (macOS/Linux); use --status / --stop to manag
 detached child and exits 0; `gno daemon --status` and `gno daemon --stop` give
 you lifecycle control without `nohup`, `launchd`, or `systemd` units.
 
+Exact eligible file events always go through content hashing. Atomic-save temp
+files, directory events, missing filenames, and recursive deletions are
+reconciled from bounded filesystem/index evidence, so final files appear and
+proven removals disappear without routinely resyncing untouched siblings.
+
 See also: [docs/DAEMON.md](./docs/DAEMON.md)
 
 ### Connect to AI Agents
@@ -395,6 +400,11 @@ It reuses the same watch/sync/embed runtime as `gno serve`, but stays
 headless. `--detach` / `--status` / `--stop` give you symmetric lifecycle
 controls so you don't need `nohup`, `launchd`, or `systemd` units. The same
 flag set is available on `gno serve`.
+
+The shared watcher preserves exact content-hash decisions while reconciling
+ambiguous atomic replacements and directory changes with bounded work and
+durable retries. Tested guarantees cover supported local filesystems; network,
+removable, and coarse-timestamp filesystems are not universally claimed.
 
 [Daemon guide →](https://gno.sh/features/daemon-mode)
 

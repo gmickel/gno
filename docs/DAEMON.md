@@ -16,6 +16,21 @@ UI. The same resident process also hosts stateful Streamable HTTP MCP at
 `/api/status`, which includes local index and configuration details, is
 available only when the daemon binds to loopback.
 
+The shared resident watcher treats exact and ambiguous notifications
+differently. A contained eligible file path always reaches content hashing,
+including same-size edits whose mtime was restored. Atomic-save temp names,
+missing filenames, directories, vanished paths, and recursive deletion events
+trigger bounded reconciliation against filesystem and active-index evidence.
+Only proven candidates are resubmitted and only proven removals are
+inactivated, so untouched siblings are preserved. Failed scans, queries, edge
+projection, or file sync retain durable retry authority; bounded overflow or a
+platform without native anchored directory handles escalates to a full
+collection sync.
+
+These guarantees are exercised on supported local filesystems across macOS,
+Linux, and Windows. They do not claim universal watcher semantics for network,
+removable, or coarse-timestamp filesystems.
+
 It also owns saved Context Capsule reverification. Register a Capsule with
 `gno context watch <file>`; after filesystem sync and embedding work settles,
 the daemon coalesces raw document-journal changes and reverifies affected
@@ -67,6 +82,8 @@ gno daemon --no-sync-on-start
 ```
 
 That starts the watcher immediately and only reacts to future file changes.
+It does not weaken reconciliation for those future changes or change the
+status, Capsule-settlement, REST, or MCP contracts.
 
 ## Managing the Daemon
 
