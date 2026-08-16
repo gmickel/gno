@@ -54,6 +54,7 @@ Built a reusable, non-production Darwin File Provider smoke/benchmark harness wi
 Baseline: `bun run lint:check` green; `bun test` green (4216 pass, 2 skip); smoke help absent before implementation as expected task gap. Verify: focused harness tests 36 pass; `bun run lint:check` green; `bun test` 4252 pass, 2 skip, 0 fail; smoke help exit 0. No production ingestion behavior changed.
 
 stage: impl-review - skipped(config: REVIEW_MODE=none)
+stage: plan-sync - ran (model: gpt-5.6-terra)
 ## Evidence
 - Commits: b22722a034793c8154b5ec3bb46c75a3e78d3cff
 - Tests: bun test test/scripts/macos-file-provider-smoke.test.ts, bun scripts/macos-file-provider-smoke.ts benchmark-local --corpus-files 5000, bun run lint:check, bun test, bun scripts/macos-file-provider-smoke.ts --help
