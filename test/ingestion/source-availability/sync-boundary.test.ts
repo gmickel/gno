@@ -169,6 +169,51 @@ describe("SyncService source-availability boundary", () => {
     expect(convertCalls).toBe(0);
   });
 
+  test("short reads remain errors so watcher reconciliation can retry", async () => {
+    const relPath = "truncated.md";
+    const absPath = join(collectionDir, relPath);
+    await writeFile(absPath, "# truncated\n");
+
+    const entry: WalkEntry = {
+      absPath,
+      relPath,
+      size: 64,
+      mtime: new Date().toISOString(),
+      ctime: new Date().toISOString(),
+    };
+    const walker: WalkerPort = {
+      walk: async () => ({ entries: [entry], skipped: [] }),
+    };
+
+    const syncService = new SyncService(
+      walker,
+      undefined,
+      undefined,
+      undefined,
+      () =>
+        fixedReader("local", {
+          ok: false,
+          code: "IO_ERROR",
+          message:
+            "I/O error reading source file: short_read expected=64 read=12",
+        })
+    );
+
+    const result = await syncService.syncCollection(collection, adapter, {
+      sourceAvailability: "local",
+    });
+
+    expect(result.filesErrored).toBe(1);
+    expect(result.filesSkipped).toBe(0);
+    expect(result.files).toContainEqual(
+      expect.objectContaining({
+        relPath,
+        status: "error",
+        errorCode: "IO_ERROR",
+      })
+    );
+  });
+
   test("any mode still indexes when factory returns successful Bun-equivalent bytes", async () => {
     const relPath = "ok.md";
     const absPath = join(collectionDir, relPath);

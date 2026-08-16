@@ -251,7 +251,7 @@ describe("source availability local mode — read errno outcomes", () => {
     });
   });
 
-  test("early EOF before the stat size is CLOUD_PARTIAL", async () => {
+  test("early EOF before the stat size is a retryable I/O error", async () => {
     const reader = new LocalSourceContentReader({
       platform: "darwin",
       policy: policyPort(),
@@ -264,8 +264,10 @@ describe("source availability local mode — read errno outcomes", () => {
     const result = await reader.readAll("/cloud/partial.md", 12);
     expect(result).toMatchObject({
       ok: false,
-      code: "CLOUD_PARTIAL",
+      code: "IO_ERROR",
     });
+    if (result.ok) return;
+    expect(result.message).toContain("short_read expected=12 read=0");
   });
 
   test.each([

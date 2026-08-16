@@ -14,6 +14,12 @@ import { constants as fsConstants } from "node:fs";
 
 export type LibcSymbols = {
   openat: (dirfd: number, path: Pointer, flags: number) => number;
+  fstatat: (
+    dirfd: number,
+    path: Pointer,
+    statBuffer: Pointer,
+    flags: number
+  ) => number;
   dup: (fd: number) => number;
   close: (fd: number) => number;
   fdopendir: (fd: number) => Pointer | null;
@@ -42,7 +48,33 @@ export type LoadedLibc = {
   dirent: DirentLayout;
   openChildFlags: number;
   openDirFlags: number;
-  openLstatFlags: number;
+  atSymlinkNoFollow: number;
+  statLayout: NativeStatLayout;
+};
+
+type NativeStatLayout = {
+  size: number;
+  devOffset: number;
+  devBytes: 4 | 8;
+  modeOffset: number;
+  modeBytes: 2 | 4;
+  inoOffset: number;
+  sizeOffset: number;
+  mtimeSecOffset: number;
+  mtimeNsecOffset: number;
+  ctimeSecOffset: number;
+  ctimeNsecOffset: number;
+};
+
+export type FdRelativeStat = {
+  isFile(): boolean;
+  isDirectory(): boolean;
+  isSymbolicLink(): boolean;
+  dev: bigint | number;
+  ino: bigint;
+  size: bigint;
+  mtimeNs: bigint;
+  ctimeNs: bigint;
 };
 
 let cachedLibc: LoadedLibc | null | undefined;
@@ -80,6 +112,10 @@ function openLibcSymbols(
     return dlopen(path, {
       openat: {
         args: [FFIType.i32, FFIType.cstring, FFIType.i32],
+        returns: FFIType.i32,
+      },
+      fstatat: {
+        args: [FFIType.i32, FFIType.cstring, FFIType.ptr, FFIType.i32],
         returns: FFIType.i32,
       },
       dup: { args: [FFIType.i32], returns: FFIType.i32 },
@@ -121,6 +157,7 @@ export function loadLibc(): LoadedLibc | null {
 
   const raw = library.symbols as Record<string, unknown>;
   const openat = asLibcFn<LibcSymbols["openat"]>(raw.openat);
+  const fstatat = asLibcFn<LibcSymbols["fstatat"]>(raw.fstatat);
   const dup = asLibcFn<LibcSymbols["dup"]>(raw.dup);
   const close = asLibcFn<LibcSymbols["close"]>(raw.close);
   const fdopendir = asLibcFn<LibcSymbols["fdopendir"]>(raw.fdopendir);
@@ -129,6 +166,7 @@ export function loadLibc(): LoadedLibc | null {
   const errnoFn = asLibcFn<LibcSymbols["errnoPtr"]>(raw[errnoName]);
   if (
     !openat ||
+    !fstatat ||
     !dup ||
     !close ||
     !fdopendir ||
@@ -144,32 +182,15 @@ export function loadLibc(): LoadedLibc | null {
   const O_DIRECTORY = fsConstants.O_DIRECTORY;
   const O_NOFOLLOW = fsConstants.O_NOFOLLOW;
 
-  let openLstatFlags: number;
-  if (platform === "darwin") {
-    // Darwin O_SYMLINK opens the symlink inode itself (lstat-like).
-    // Without it, O_RDONLY would follow — refuse rather than silent follow.
-    // O_NONBLOCK is required: plain O_RDONLY|O_SYMLINK can block forever on a
-    // FIFO with no writer (and similarly hang on some device nodes).
-    const O_SYMLINK = (fsConstants as { O_SYMLINK?: number }).O_SYMLINK;
-    if (O_SYMLINK === undefined || O_SYMLINK === 0) {
-      cachedLibc = null;
-      return null;
-    }
-    const O_NONBLOCK = fsConstants.O_NONBLOCK ?? 0;
-    openLstatFlags = O_RDONLY | O_SYMLINK | O_NONBLOCK;
-  } else {
-    // Linux O_PATH|O_NOFOLLOW is the portable no-follow open for any type.
-    // O_PATH does not block on FIFOs/sockets; no extra O_NONBLOCK needed.
-    const O_PATH = (fsConstants as { O_PATH?: number }).O_PATH ?? 0o10_000_000;
-    openLstatFlags = O_RDONLY | O_PATH | O_NOFOLLOW;
-  }
-
   const openDirFlags = O_RDONLY | O_DIRECTORY | O_NOFOLLOW;
+  const atSymlinkNoFollow = platform === "darwin" ? 0x20 : 0x100;
+  const statLayout = nativeStatLayout(platform, process.arch);
 
   cachedLibc = {
     library,
     symbols: {
       openat,
+      fstatat,
       dup,
       close,
       fdopendir,
@@ -180,9 +201,41 @@ export function loadLibc(): LoadedLibc | null {
     dirent: direntLayoutFor(platform),
     openChildFlags: openDirFlags,
     openDirFlags,
-    openLstatFlags,
+    atSymlinkNoFollow,
+    statLayout,
   };
   return cachedLibc;
+}
+
+function nativeStatLayout(platform: string, arch: string): NativeStatLayout {
+  if (platform === "darwin") {
+    return {
+      size: 144,
+      devOffset: 0,
+      devBytes: 4,
+      modeOffset: 4,
+      modeBytes: 2,
+      inoOffset: 8,
+      sizeOffset: 96,
+      mtimeSecOffset: 48,
+      mtimeNsecOffset: 56,
+      ctimeSecOffset: 64,
+      ctimeNsecOffset: 72,
+    };
+  }
+  return {
+    size: 144,
+    devOffset: 0,
+    devBytes: 8,
+    modeOffset: arch === "x64" ? 24 : 16,
+    modeBytes: 4,
+    inoOffset: 8,
+    sizeOffset: 48,
+    mtimeSecOffset: 88,
+    mtimeNsecOffset: 96,
+    ctimeSecOffset: 104,
+    ctimeNsecOffset: 112,
+  };
 }
 
 function asLibcFn<T extends (...args: never[]) => unknown>(
@@ -388,4 +441,60 @@ export function openatOrThrow(
     throw errnoError(readErrno(libc), syscall, name);
   }
   return fd;
+}
+
+/**
+ * Read no-follow metadata for one direct child without opening its content.
+ * This avoids materializing dataless File Provider files while retaining the
+ * parent-fd anchoring and symlink identity required by watcher snapshots.
+ */
+export function statatNoFollowOrThrow(
+  libc: LoadedLibc,
+  dirfd: number,
+  name: string
+): FdRelativeStat {
+  if (name.includes("\0") || name.includes("/") || name.includes("\\")) {
+    throw Object.assign(new Error(`Invalid directory entry name: ${name}`), {
+      code: "EINVAL",
+    });
+  }
+  const nameBuffer = Buffer.from(`${name}\0`);
+  const statBuffer = Buffer.alloc(libc.statLayout.size);
+  const result = libc.symbols.fstatat(
+    dirfd,
+    ptr(nameBuffer),
+    ptr(statBuffer),
+    libc.atSymlinkNoFollow
+  );
+  if (result < 0) {
+    throw errnoError(readErrno(libc), "fstatat", name);
+  }
+
+  const layout = libc.statLayout;
+  const mode =
+    layout.modeBytes === 2
+      ? statBuffer.readUInt16LE(layout.modeOffset)
+      : statBuffer.readUInt32LE(layout.modeOffset);
+  const fileType = mode & 0o170_000;
+  const dev =
+    layout.devBytes === 4
+      ? statBuffer.readUInt32LE(layout.devOffset)
+      : statBuffer.readBigUInt64LE(layout.devOffset);
+  const mtimeNs =
+    statBuffer.readBigInt64LE(layout.mtimeSecOffset) * 1_000_000_000n +
+    statBuffer.readBigInt64LE(layout.mtimeNsecOffset);
+  const ctimeNs =
+    statBuffer.readBigInt64LE(layout.ctimeSecOffset) * 1_000_000_000n +
+    statBuffer.readBigInt64LE(layout.ctimeNsecOffset);
+
+  return {
+    isFile: () => fileType === 0o100_000,
+    isDirectory: () => fileType === 0o040_000,
+    isSymbolicLink: () => fileType === 0o120_000,
+    dev,
+    ino: statBuffer.readBigUInt64LE(layout.inoOffset),
+    size: statBuffer.readBigInt64LE(layout.sizeOffset),
+    mtimeNs,
+    ctimeNs,
+  };
 }

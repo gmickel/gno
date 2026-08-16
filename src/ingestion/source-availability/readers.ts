@@ -195,10 +195,10 @@ function readAllNative(
         if (expectedSize !== undefined && total < expectedSize) {
           return {
             ok: false,
-            code: "CLOUD_PARTIAL",
+            code: "IO_ERROR",
             message: sourceAvailabilityMessage(
-              "CLOUD_PARTIAL",
-              `expected=${expectedSize} read=${total}`
+              "IO_ERROR",
+              `short_read expected=${expectedSize} read=${total}`
             ),
           };
         }

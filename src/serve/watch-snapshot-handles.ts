@@ -1,8 +1,8 @@
 /**
  * Production anchored directory handles (openat / fdopendir).
  *
- * Uses Bun FFI for fd-relative open/enumerate and node:fs structure ops for
- * open(O_DIRECTORY|O_NOFOLLOW) + fstat bigint metadata. No new dependencies.
+ * Uses Bun FFI for fd-relative open/enumerate/no-follow metadata and node:fs
+ * structure ops for directory open + fstat confirmation. No new dependencies.
  *
  * Windows and runtimes without a safe anchored path report
  * `supportsAnchoredHandles: false` so callers fall back rather than claiming
@@ -24,7 +24,12 @@ import type {
   WatcherSnapshotStat,
 } from "./watch-snapshot-types";
 
-import { loadLibc, openatOrThrow, readDirNames } from "./watch-snapshot-libc";
+import {
+  loadLibc,
+  openatOrThrow,
+  readDirNames,
+  statatNoFollowOrThrow,
+} from "./watch-snapshot-libc";
 import { fingerprintFromStat, isMissingFsError } from "./watch-snapshot-types";
 
 type NativeDir = {
@@ -47,28 +52,6 @@ function requireNative(handle: WatcherDirHandle): NativeDir {
     });
   }
   return native;
-}
-
-function mapStats(stat: {
-  isFile(): boolean;
-  isDirectory(): boolean;
-  isSymbolicLink(): boolean;
-  dev: bigint | number;
-  ino: bigint | number;
-  size: bigint | number;
-  mtimeNs?: bigint | number;
-  ctimeNs?: bigint | number;
-}): WatcherSnapshotStat {
-  return {
-    isFile: () => stat.isFile(),
-    isDirectory: () => stat.isDirectory(),
-    isSymbolicLink: () => stat.isSymbolicLink(),
-    dev: stat.dev,
-    ino: stat.ino,
-    size: stat.size,
-    mtimeNs: stat.mtimeNs,
-    ctimeNs: stat.ctimeNs,
-  };
 }
 
 function openNativeDirByRel(
@@ -137,11 +120,9 @@ function readDirectChildrenNative(
       if (entries.size >= maxEntries) {
         return { status: "overflow" };
       }
-      let childFd: number | undefined;
       try {
-        childFd = openatOrThrow(libc, fd, name, libc.openLstatFlags, "openat");
         const fingerprinted = fingerprintFromStat(
-          mapStats(fstatSync(childFd, { bigint: true }))
+          statatNoFollowOrThrow(libc, fd, name)
         );
         if (!fingerprinted.ok) {
           return { status: "unreliable_metadata" };
@@ -149,10 +130,6 @@ function readDirectChildrenNative(
         entries.set(name, fingerprinted.fingerprint);
       } catch (cause) {
         return { status: "scan_failed", cause };
-      } finally {
-        if (childFd !== undefined) {
-          closeSync(childFd);
-        }
       }
     }
     return { status: "present", entries };
@@ -173,18 +150,7 @@ function lstatChildByRelNative(
 ): WatcherSnapshotStat {
   const parentFd = openNativeDirByRel(libc, rootAbs, parentRel);
   try {
-    const childFd = openatOrThrow(
-      libc,
-      parentFd,
-      name,
-      libc.openLstatFlags,
-      "openat"
-    );
-    try {
-      return mapStats(fstatSync(childFd, { bigint: true }));
-    } finally {
-      closeSync(childFd);
-    }
+    return statatNoFollowOrThrow(libc, parentFd, name);
   } finally {
     closeSync(parentFd);
   }
@@ -215,19 +181,7 @@ function createNativeAnchoredFs(libc: LoadedLibc): WatcherSnapshotFs {
       name: string
     ): Promise<WatcherSnapshotStat> {
       const native = requireNative(handle);
-      const fd = openatOrThrow(
-        libc,
-        native.fd,
-        name,
-        libc.openLstatFlags,
-        "openat"
-      );
-      try {
-        const stat = fstatSync(fd, { bigint: true });
-        return mapStats(stat);
-      } finally {
-        closeSync(fd);
-      }
+      return statatNoFollowOrThrow(libc, native.fd, name);
     },
 
     async openChildDir(
