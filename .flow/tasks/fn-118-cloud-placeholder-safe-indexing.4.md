@@ -44,9 +44,16 @@ Task 1 established a measured blocker for the naive candidate: an extra availabi
 - [ ] R6 post-implementation thresholds proven
 - [ ] R7 repo and hosted docs aligned and QA verified
 ## Done summary
-TBD
+Finalized source-availability CLI/config/receipt contracts, schemas, tests, benchmark evidence, and evidence-qualified GNO and hosted-site documentation. The controlled 5,000-file production-walker comparison passed both R6 gates without contaminated samples: current `any` -1.1280% versus pre-implementation `any` (<=3%), and hierarchical `local` +1.1841% versus current `any` (<=10%).
 
+GNO implementation commit: `fc2b97d8`. Hosted documentation shipped through gno.sh PR #32, squash-merged as `953be0ba3476c4d7b87ed6250ccdb0e0fa6ba98d`, and deployed with the repository production script. Production verification: `https://gno.sh` HTTP 200; `gno-sh` active; remote HEAD exactly matches `origin/main`; only the expected untracked remote `.env.production` remains.
+
+Driven production QA exercised `/docs/configuration#source-availability` and `/features/collections` at 1280px and 390px. Exact -1.1280%/+1.1841% evidence, tested macOS/Google Drive/iCloud Drive/OneDrive SharePoint scope, fixture caveat, and availability-versus-egress distinction rendered; the configuration anchor landed at the expected heading; Collections had no horizontal overflow. Screenshots: `/tmp/fn118-gno-sh-prod-config.png`, `/tmp/fn118-gno-sh-prod-config-mobile.png`, `/tmp/fn118-gno-sh-prod-collections.png`, `/tmp/fn118-gno-sh-prod-collections-mobile.png`. Browser error inspection was clean.
+
+QA caveat outside changed content: the existing mobile docs navigation contributes a 7px document-width overflow (390px viewport, 397px document), matching the local pre-deploy observation. No GNO package release was performed; the conductor owns the GNO PR/merge/version/tag/publish sequence.
+
+stage: impl-review - skipped(config: REVIEW_MODE=none)
 ## Evidence
-- Commits:
-- Tests:
-- PRs:
+- Commits: fc2b97d8429e12063593e33571702e3308415835
+- Tests: bun run lint:check, bun test test/scripts/macos-file-provider-smoke.test.ts test/spec/schemas/source-availability-receipt.test.ts test/ingestion/source-availability test/serve/watch-snapshot-availability.test.ts (124 passed), physical benchmark: pre-implementation FileWalker d0e77f15 vs current any/local on one owned 5000-file corpus, 2 warmups + 9 interleaved samples/lane, no contamination; any -1.1280%, local +1.1841%, bun scripts/macos-file-provider-smoke.ts benchmark-local --corpus-files 5000, bun scripts/docs-verify.ts (15 passed, 0 failed, 2 model-dependent skipped), bun test (4341 passed, 2 skipped, 0 failed), bun scripts/macos-file-provider-smoke.ts --help, gno.sh: bun run check, gno.sh: bun run typecheck, gno.sh: bun run build, gno.sh local driven QA: http://localhost:3344/docs/configuration#source-availability and /features/collections at desktop and 390px, gno.sh production deploy: DEPLOY_HOST=root@178.104.180.89 ./scripts/deploy-prod.sh, production verification: https://gno.sh HTTP 200; gno-sh active; remote HEAD 953be0ba3476c4d7b87ed6250ccdb0e0fa6ba98d equals origin/main, gno.sh production driven QA: https://gno.sh/docs/configuration#source-availability and /features/collections at 1280px and 390px
+- PRs: https://github.com/gmickel/gno.sh/pull/32
