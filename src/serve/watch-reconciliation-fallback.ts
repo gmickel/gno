@@ -12,11 +12,17 @@ import { stat } from "node:fs/promises";
 import { normalize } from "node:path";
 
 import type { Collection } from "../config/types";
+import type { DirectoryAvailabilityPort } from "../ingestion/source-availability";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { StoreResult } from "../store/types";
 
 import { matchesCollectionExclusion } from "../core/path-rules";
-import { collectionToWalkConfig, matchesWalkPath } from "../ingestion";
+import {
+  collectionToWalkConfig,
+  findUnprovenAvailabilityPrefix,
+  matchesWalkPath,
+  relPathUnderAnyPrefix,
+} from "../ingestion";
 import {
   budgetExceeded,
   fallbackFs,
@@ -43,6 +49,7 @@ export async function fallbackClassifyDirtyHints(options: {
   sourcePathMax: number;
   /** Test seam for unsupported-platform fail-closed proofs. */
   fs?: WatcherSnapshotFs;
+  directoryAvailability?: DirectoryAvailabilityPort;
 }): Promise<ClassificationResult> {
   const { collection, store, rootAbs, dirtyHints } = options;
   const budgetLimit = Math.min(options.sourcePathMax, WATCHER_FALLBACK_BUDGET);
@@ -60,12 +67,23 @@ export async function fallbackClassifyDirtyHints(options: {
   const diskSeen = new Set<string>();
   const fs = options.fs ?? fallbackFs();
   const root = normalize(rootAbs);
+  const directoryAvailability = options.directoryAvailability;
 
   // No anchored handles: never path-walk or infer deletions. Caller must use
   // durable full-collection reconciliation (syncCollection) instead. Prove
   // the root is currently available first so a missing mount/root cannot be
   // mistaken for a genuinely empty collection by the full walk.
   if (!fs.supportsAnchoredHandles) {
+    if (directoryAvailability?.mode === "local") {
+      const unproven = await findUnprovenAvailabilityPrefix(
+        root,
+        ".gno-probe",
+        directoryAvailability
+      );
+      if (unproven) {
+        return { status: "full_reconcile", reason: "unsupported_fs" };
+      }
+    }
     try {
       const rootStat = await stat(root);
       if (!rootStat.isDirectory()) {
@@ -130,7 +148,8 @@ export async function fallbackClassifyDirtyHints(options: {
       dir,
       collection,
       fs,
-      budget
+      budget,
+      directoryAvailability
     );
     if (disk.status === "error") {
       return { status: "error", cause: disk.cause, stage: "scan" };
@@ -169,6 +188,9 @@ export async function fallbackClassifyDirtyHints(options: {
       if (!matchesWalkPath(path, walkConfig)) {
         continue;
       }
+      if (relPathUnderAnyPrefix(path, disk.unprovenPrefixes)) {
+        continue;
+      }
       if (diskSeen.has(path)) {
         candidates.add(path);
         budget.candidates = candidates.size;
@@ -184,7 +206,12 @@ export async function fallbackClassifyDirtyHints(options: {
 
   const provenRemovals: string[] = [];
   for (const path of removals) {
-    const presence = await inspectNoFollowPresence(root, path, fs);
+    const presence = await inspectNoFollowPresence(
+      root,
+      path,
+      fs,
+      directoryAvailability
+    );
     if (presence.status === "missing") {
       provenRemovals.push(path);
     } else if (presence.status === "present") {

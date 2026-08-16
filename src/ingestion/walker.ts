@@ -1,16 +1,19 @@
 /**
  * File walker implementation.
- * Walks collection directories using Bun.Glob with include/exclude filtering.
+ * Walks collection directories using Bun.Glob (`any`) or hierarchical
+ * availability-aware descent (`local`).
  *
  * @module src/ingestion/walker
  */
 
-// node:fs/promises - Bun has no realpath equivalent
-import { realpath } from "node:fs/promises";
+// node:fs/promises - Bun has no realpath / Dirent readdir equivalent for
+// no-follow hierarchical traversal and symlink-safe containment checks.
+import { lstat, readdir, realpath } from "node:fs/promises";
 // node:path - Bun has no path manipulation module
 import {
   extname,
   isAbsolute,
+  join,
   normalize as normalizePath,
   relative,
   resolve,
@@ -22,6 +25,11 @@ import type { SkippedEntry, WalkConfig, WalkEntry, WalkerPort } from "./types";
 import { SUPPORTED_EXTENSIONS } from "../converters/mime";
 import { matchesCollectionExclusion } from "../core/path-rules";
 import { isRecordVirtualPath } from "./record-path";
+import {
+  createDirectoryAvailability,
+  type DirectoryAvailabilityPort,
+  isUnprovenDirectoryResult,
+} from "./source-availability";
 
 /**
  * Regex to detect dangerous patterns with parent directory traversal.
@@ -218,14 +226,45 @@ export function matchesWalkPath(
   );
 }
 
+function pushUnprovenDirectorySkip(
+  skipped: SkippedEntry[],
+  absPath: string,
+  relPath: string,
+  result: Exclude<
+    Awaited<ReturnType<DirectoryAvailabilityPort["classify"]>>,
+    { kind: "available" }
+  >
+): void {
+  skipped.push({
+    absPath,
+    relPath,
+    reason: result.code,
+    unprovenPrefix: true,
+    message: result.message,
+  });
+}
+
 /**
- * File walker implementation using Bun.Glob.
+ * File walker implementation using Bun.Glob (`any`) or hierarchical local-mode
+ * descent that refuses dataless / availability-unknown directories.
  *
  * Security: Validates patterns and ensures all matched files are within
  * the collection root directory. Files outside root are silently ignored.
  */
 export class FileWalker implements WalkerPort {
   async walk(config: WalkConfig): Promise<{
+    entries: WalkEntry[];
+    skipped: SkippedEntry[];
+  }> {
+    const mode = config.sourceAvailability ?? "any";
+    if (mode === "local") {
+      return this.walkLocal(config);
+    }
+    return this.walkAny(config);
+  }
+
+  /** Legacy Bun.Glob traversal — behaviorally unchanged for `any`. */
+  private async walkAny(config: WalkConfig): Promise<{
     entries: WalkEntry[];
     skipped: SkippedEntry[];
   }> {
@@ -314,6 +353,207 @@ export class FileWalker implements WalkerPort {
     // Sort entries by relPath for deterministic output
     entries.sort((a, b) => a.relPath.localeCompare(b.relPath));
 
+    return { entries, skipped };
+  }
+
+  /**
+   * Local-mode hierarchical walk: classify each directory before descent.
+   * Does not add a per-file availability syscall — content recheck stays at
+   * the SourceContentReaderPort boundary.
+   */
+  private async walkLocal(config: WalkConfig): Promise<{
+    entries: WalkEntry[];
+    skipped: SkippedEntry[];
+  }> {
+    const entries: WalkEntry[] = [];
+    const skipped: SkippedEntry[] = [];
+
+    for (const pattern of scanPatterns(config.pattern)) {
+      const patternError = validatePattern(pattern);
+      if (patternError) {
+        throw new Error(`Invalid glob pattern: ${patternError}`);
+      }
+    }
+
+    const rootAbs = resolve(config.root);
+    const classifier =
+      config.directoryAvailability ??
+      createDirectoryAvailability(config.sourceAvailability ?? "local");
+    const configuredRootClassified = await classifier.classify(rootAbs);
+    if (isUnprovenDirectoryResult(configuredRootClassified)) {
+      pushUnprovenDirectorySkip(skipped, rootAbs, "", configuredRootClassified);
+      return { entries, skipped };
+    }
+
+    let rootReal: string;
+    try {
+      rootReal = await realpath(rootAbs);
+    } catch {
+      skipped.push({
+        absPath: rootAbs,
+        relPath: "",
+        reason: "SOURCE_AVAILABILITY_UNKNOWN",
+        unprovenPrefix: true,
+        message:
+          "Collection root could not be resolved after availability check",
+      });
+      return { entries, skipped };
+    }
+
+    if (rootReal !== rootAbs) {
+      const canonicalRootClassified = await classifier.classify(rootReal);
+      if (isUnprovenDirectoryResult(canonicalRootClassified)) {
+        pushUnprovenDirectorySkip(
+          skipped,
+          rootReal,
+          "",
+          canonicalRootClassified
+        );
+        return { entries, skipped };
+      }
+    }
+
+    const queue: Array<{ absPath: string; relPath: string }> = [
+      { absPath: rootReal, relPath: "" },
+    ];
+    let head = 0;
+
+    while (head < queue.length) {
+      const dir = queue[head] as { absPath: string; relPath: string };
+      head += 1;
+
+      let dirents;
+      try {
+        // Structural enumeration only after the directory was classified available.
+        dirents = await readdir(dir.absPath, { withFileTypes: true });
+      } catch {
+        skipped.push({
+          absPath: dir.absPath,
+          relPath: dir.relPath,
+          reason: "SOURCE_AVAILABILITY_UNKNOWN",
+          unprovenPrefix: true,
+          message: "Failed to enumerate directory after availability check",
+        });
+        continue;
+      }
+
+      dirents.sort((left, right) => left.name.localeCompare(right.name));
+      for (const dirent of dirents) {
+        const name = dirent.name;
+        if (name === "" || name === "." || name === "..") {
+          continue;
+        }
+        if (name.includes("\0")) {
+          continue;
+        }
+
+        const childAbs = join(dir.absPath, name);
+        const childRel =
+          dir.relPath === "" ? name : `${dir.relPath}/${toPosixPath(name)}`;
+
+        // No-follow: symlinks are leaf candidates so the guarded content open
+        // can refuse them with a receipt; never descend through them.
+        if (dirent.isSymbolicLink()) {
+          if (!matchesWalkPath(childRel, config)) {
+            skipped.push({
+              absPath: childAbs,
+              relPath: childRel,
+              reason: "EXCLUDED",
+            });
+            continue;
+          }
+          try {
+            const linkStat = await lstat(childAbs);
+            entries.push({
+              absPath: childAbs,
+              relPath: childRel,
+              size: linkStat.size,
+              mtime: linkStat.mtime.toISOString(),
+              ctime: (
+                linkStat.birthtime ??
+                linkStat.ctime ??
+                linkStat.mtime
+              ).toISOString(),
+            });
+          } catch {
+            skipped.push({
+              absPath: childAbs,
+              relPath: childRel,
+              reason: "SOURCE_AVAILABILITY_UNKNOWN",
+              unprovenPrefix: true,
+              message: "Symlink metadata changed during local traversal",
+            });
+          }
+          continue;
+        }
+
+        if (dirent.isDirectory()) {
+          const classified = await classifier.classify(childAbs);
+          if (isUnprovenDirectoryResult(classified)) {
+            pushUnprovenDirectorySkip(skipped, childAbs, childRel, classified);
+            continue;
+          }
+          queue.push({ absPath: childAbs, relPath: childRel });
+          continue;
+        }
+
+        if (!dirent.isFile()) {
+          continue;
+        }
+
+        const safePath = await safeRelPath(rootReal, childAbs);
+        if (safePath === null) {
+          continue;
+        }
+        const { absPath, relPath } = safePath;
+
+        if (!matchesWalkPath(relPath, config)) {
+          skipped.push({
+            absPath,
+            relPath,
+            reason: "EXCLUDED",
+          });
+          continue;
+        }
+
+        const file = Bun.file(absPath);
+        let fileStat: {
+          size: number;
+          mtime: Date;
+          ctime?: Date;
+          birthtime?: Date;
+        };
+        try {
+          fileStat = await file.stat();
+        } catch {
+          continue;
+        }
+
+        if (fileStat.size > config.maxBytes) {
+          skipped.push({
+            absPath,
+            relPath,
+            reason: "TOO_LARGE",
+            size: fileStat.size,
+          });
+          continue;
+        }
+
+        entries.push({
+          absPath,
+          relPath,
+          size: fileStat.size,
+          mtime: fileStat.mtime.toISOString(),
+          ctime: (
+            fileStat.birthtime ??
+            fileStat.ctime ??
+            fileStat.mtime
+          ).toISOString(),
+        });
+      }
+    }
+
+    entries.sort((a, b) => a.relPath.localeCompare(b.relPath));
     return { entries, skipped };
   }
 }

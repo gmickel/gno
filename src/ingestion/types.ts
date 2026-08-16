@@ -12,6 +12,7 @@ import type {
   RecordAttachmentInventoryItem,
 } from "../converters/types";
 import type { EgressLineage } from "../core/egress-provenance";
+import type { DirectoryAvailabilityPort } from "./source-availability/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Walker Types
@@ -45,14 +46,46 @@ export interface WalkConfig {
   exclude: string[];
   /** Max file size in bytes (files larger are skipped) */
   maxBytes: number;
+  /**
+   * Source availability mode for this walk.
+   * `any` (default) keeps Bun.Glob traversal unchanged.
+   * `local` refuses descent into unproven/dataless directories.
+   */
+  sourceAvailability?: "any" | "local";
+  /**
+   * Optional injectable directory classifier (tests / SyncService wiring).
+   * When omitted, FileWalker builds one from `sourceAvailability`.
+   */
+  directoryAvailability?: DirectoryAvailabilityPort;
 }
 
-/** Skipped file entry (for error tracking) */
+/** Skip reasons emitted by the walker (and mirrored into sync receipts). */
+export type WalkSkipReason =
+  | "TOO_LARGE"
+  | "EXCLUDED"
+  | "DATALESS_DIRECTORY"
+  | "CLOUD_PLACEHOLDER"
+  | "CLOUD_PARTIAL"
+  | "SOURCE_AVAILABILITY_UNSUPPORTED"
+  | "SOURCE_AVAILABILITY_POLICY_FAILED"
+  | "SOURCE_AVAILABILITY_UNKNOWN"
+  | "PERMISSION"
+  | "NOT_FOUND"
+  | "NOT_FILE"
+  | "IO_ERROR";
+
+/** Skipped file or directory-prefix entry (for error tracking / reconciliation) */
 export interface SkippedEntry {
   absPath: string;
   relPath: string;
-  reason: "TOO_LARGE" | "EXCLUDED";
+  reason: WalkSkipReason;
   size?: number;
+  /**
+   * When true, absence of descendants under this prefix is unproven —
+   * reconciliation must preserve previously indexed sources.
+   */
+  unprovenPrefix?: boolean;
+  message?: string;
 }
 
 /** Walker port interface */
@@ -297,9 +330,12 @@ const TRANSCRIPT_EXTENSION_BY_FORMAT = {
  */
 export function collectionToWalkConfig(
   collection: Collection,
-  maxBytes: number
+  maxBytes: number,
+  options?: Pick<SyncOptions, "sourceAvailability">
 ): WalkConfig {
   const transcriptFormat = collection.recordAdapters?.transcript?.format;
+  const sourceAvailability =
+    options?.sourceAvailability ?? collection.sourceAvailability ?? undefined;
   return {
     root: collection.path,
     pattern: collection.pattern,
@@ -309,5 +345,6 @@ export function collectionToWalkConfig(
       : [],
     exclude: collection.exclude,
     maxBytes,
+    ...(sourceAvailability ? { sourceAvailability } : {}),
   };
 }

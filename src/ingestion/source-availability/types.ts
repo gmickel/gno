@@ -20,11 +20,14 @@ export {
 
 /**
  * Distinct fail-closed / skip outcomes for guarded source content access.
- * CLOUD_* are skips (not conversion errors). Others fail closed as errors.
+ * CLOUD_* and DATALESS_DIRECTORY are skips (not conversion errors).
+ * Others fail closed as errors. Directory-boundary unknowns preserve indexed
+ * descendants (unproven absence) rather than proving deletion.
  */
 export const SOURCE_AVAILABILITY_CODES = [
   "CLOUD_PLACEHOLDER",
   "CLOUD_PARTIAL",
+  "DATALESS_DIRECTORY",
   "SOURCE_AVAILABILITY_UNSUPPORTED",
   "SOURCE_AVAILABILITY_POLICY_FAILED",
   "SOURCE_AVAILABILITY_UNKNOWN",
@@ -39,7 +42,24 @@ export type SourceAvailabilityCode = (typeof SOURCE_AVAILABILITY_CODES)[number];
 export const SOURCE_AVAILABILITY_SKIP_CODES = new Set<SourceAvailabilityCode>([
   "CLOUD_PLACEHOLDER",
   "CLOUD_PARTIAL",
+  "DATALESS_DIRECTORY",
 ]);
+
+/**
+ * Directory / prefix outcomes that must not prove descendant absence.
+ * Includes fail-closed errors where enumeration safety is unknown.
+ */
+export const SOURCE_AVAILABILITY_UNPROVEN_PREFIX_CODES =
+  new Set<SourceAvailabilityCode>([
+    "DATALESS_DIRECTORY",
+    "SOURCE_AVAILABILITY_UNSUPPORTED",
+    "SOURCE_AVAILABILITY_POLICY_FAILED",
+    "SOURCE_AVAILABILITY_UNKNOWN",
+    "PERMISSION",
+    "IO_ERROR",
+    "NOT_FOUND",
+    "NOT_FILE",
+  ]);
 
 export type SourceReadSuccess = {
   ok: true;
@@ -69,10 +89,44 @@ export interface SourceContentReaderPort {
   readAll(absPath: string, expectedSize?: number): Promise<SourceReadResult>;
 }
 
+/** Amortized directory-boundary classification (not per discovered file). */
+export type DirectoryAvailabilityResult =
+  | { kind: "available" }
+  | {
+      kind: "dataless";
+      code: "DATALESS_DIRECTORY";
+      message: string;
+    }
+  | {
+      kind: "error";
+      code: SourceAvailabilityCode;
+      message: string;
+      errno?: number | null;
+    };
+
+export interface DirectoryAvailabilityPort {
+  readonly mode: SourceAvailabilityMode;
+  /** Classify one directory before descent or ancestor-prefix checks. */
+  classify(absPath: string): Promise<DirectoryAvailabilityResult>;
+}
+
 export function isSourceAvailabilitySkip(
   code: string | undefined
-): code is "CLOUD_PLACEHOLDER" | "CLOUD_PARTIAL" {
-  return code === "CLOUD_PLACEHOLDER" || code === "CLOUD_PARTIAL";
+): code is "CLOUD_PLACEHOLDER" | "CLOUD_PARTIAL" | "DATALESS_DIRECTORY" {
+  return (
+    code === "CLOUD_PLACEHOLDER" ||
+    code === "CLOUD_PARTIAL" ||
+    code === "DATALESS_DIRECTORY"
+  );
+}
+
+export function isUnprovenAbsenceCode(code: string | undefined): boolean {
+  return (
+    typeof code === "string" &&
+    SOURCE_AVAILABILITY_UNPROVEN_PREFIX_CODES.has(
+      code as SourceAvailabilityCode
+    )
+  );
 }
 
 export function sourceAvailabilityMessage(
@@ -84,6 +138,8 @@ export function sourceAvailabilityMessage(
       "Source is a cloud placeholder; local mode refused materialization",
     CLOUD_PARTIAL:
       "Source has partial cloud content; local mode refused incomplete materialization",
+    DATALESS_DIRECTORY:
+      "Directory is dataless or availability-unknown; local mode refused descent",
     SOURCE_AVAILABILITY_UNSUPPORTED:
       "sourceAvailability local is not supported on this platform or filesystem",
     SOURCE_AVAILABILITY_POLICY_FAILED:

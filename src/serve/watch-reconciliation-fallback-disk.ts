@@ -7,9 +7,11 @@
  */
 
 import type { Collection } from "../config/types";
+import type { DirectoryAvailabilityPort } from "../ingestion/source-availability";
 
 import { matchesCollectionExclusion } from "../core/path-rules";
 import { collectionToWalkConfig, matchesWalkPath } from "../ingestion";
+import { findUnprovenAvailabilityPrefix } from "../ingestion/source-availability";
 import { defaultFs, openDirByRel } from "./watch-snapshot-scan";
 import {
   isMissingFsError,
@@ -47,7 +49,12 @@ export function fallbackFs(): WatcherSnapshotFs {
 }
 
 export type DiskListResult =
-  | { status: "ok"; paths: string[]; rootDirNames: string[] }
+  | {
+      status: "ok";
+      paths: string[];
+      rootDirNames: string[];
+      unprovenPrefixes: string[];
+    }
   | { status: "overflow" }
   | { status: "error"; cause: unknown };
 
@@ -60,11 +67,13 @@ export async function listEligibleDiskSources(
   dirRel: string,
   collection: Collection,
   fs: WatcherSnapshotFs,
-  budget: FallbackBudget
+  budget: FallbackBudget,
+  directoryAvailability?: DirectoryAvailabilityPort
 ): Promise<DiskListResult> {
   const walkConfig = collectionToWalkConfig(collection, 0);
   const paths: string[] = [];
   const rootDirNames: string[] = [];
+  const unprovenPrefixes: string[] = [];
   const queue: string[] = [dirRel];
   let head = 0;
 
@@ -74,6 +83,19 @@ export async function listEligibleDiskSources(
     budget.visitedDirs += 1;
     if (budgetExceeded(budget)) {
       return { status: "overflow" };
+    }
+
+    if (directoryAvailability?.mode === "local") {
+      const probePath = current === "" ? ".gno-probe" : `${current}/.gno-probe`;
+      const unproven = await findUnprovenAvailabilityPrefix(
+        rootAbs,
+        probePath,
+        directoryAvailability
+      );
+      if (unproven) {
+        unprovenPrefixes.push(current);
+        continue;
+      }
     }
 
     const remaining = Math.max(0, budget.limit - budget.visitedDirs + 1);
@@ -170,18 +192,34 @@ export async function listEligibleDiskSources(
     await fs.closeDir(opened.handle);
   }
 
-  return { status: "ok", paths, rootDirNames };
+  return { status: "ok", paths, rootDirNames, unprovenPrefixes };
 }
 
 export async function inspectNoFollowPresence(
   rootAbs: string,
   relPath: string,
-  fs: WatcherSnapshotFs
+  fs: WatcherSnapshotFs,
+  directoryAvailability?: DirectoryAvailabilityPort
 ): Promise<
   | { status: "present"; indexable: boolean }
   | { status: "missing" }
   | { status: "error"; cause: unknown }
 > {
+  if (directoryAvailability?.mode === "local") {
+    const unproven = await findUnprovenAvailabilityPrefix(
+      rootAbs,
+      relPath,
+      directoryAvailability
+    );
+    if (unproven) {
+      return {
+        status: "error",
+        cause: new Error(
+          `Source absence is unproven under ${unproven.relPath || "."}: ${unproven.code}`
+        ),
+      };
+    }
+  }
   const parent = parentWatcherDir(relPath);
   if (parent === null) {
     return { status: "missing" };

@@ -13,13 +13,20 @@ export { defaultSyncService, SyncService } from "./sync";
 export { resolveContentTypeRules, withContentTypeRules } from "./sync-options";
 // Source availability (content-boundary guard)
 export {
+  createDirectoryAvailability,
   createSourceContentReader,
   DEFAULT_SOURCE_AVAILABILITY,
+  findUnprovenAvailabilityPrefix,
   isSourceAvailabilitySkip,
+  isUnprovenAbsenceCode,
+  memoizeDirectoryAvailability,
+  relPathUnderAnyPrefix,
   resolveSourceAvailability,
   SOURCE_AVAILABILITY_MODES,
 } from "./source-availability";
 export type {
+  DirectoryAvailabilityPort,
+  DirectoryAvailabilityResult,
   SourceAvailabilityCode,
   SourceAvailabilityMode,
   SourceContentReaderPort,

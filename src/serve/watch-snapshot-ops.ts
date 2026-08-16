@@ -5,6 +5,9 @@
  * @module src/serve/watch-snapshot-ops
  */
 
+// node:path — Bun has no path join helper
+import { join } from "node:path";
+
 import type {
   DiffWorkResult,
   SnapshotEntryFingerprint,
@@ -15,6 +18,10 @@ import type {
   WatcherSnapshotOptions,
 } from "./watch-snapshot-types";
 
+import {
+  isUnprovenDirectoryResult,
+  type DirectoryAvailabilityPort,
+} from "../ingestion/source-availability";
 import {
   cloneDirectoryMaps,
   defaultClock,
@@ -34,6 +41,18 @@ import {
   sortPathList,
 } from "./watch-snapshot-types";
 
+async function directoryAllowsDescent(
+  rootAbs: string,
+  dirRel: string,
+  classifier: DirectoryAvailabilityPort | undefined
+): Promise<boolean> {
+  if (!classifier || classifier.mode === "any") {
+    return true;
+  }
+  const absPath = dirRel === "" ? rootAbs : join(rootAbs, dirRel);
+  const classified = await classifier.classify(absPath);
+  return !isUnprovenDirectoryResult(classified);
+}
 /**
  * Build a full no-follow hierarchical snapshot of `rootAbs`.
  * On overflow, scan failure, or unreliable metadata the last proven snapshot
@@ -46,7 +65,20 @@ export async function buildWatcherSnapshot(
   const fs = options.fs ?? defaultFs;
   const clock = options.clock ?? defaultClock;
   const ceiling = options.entryCeiling ?? WATCHER_SNAPSHOT_ENTRY_CEILING;
+  const directoryAvailability = options.directoryAvailability;
   const started = clock.nowMs();
+
+  if (!(await directoryAllowsDescent(rootAbs, "", directoryAvailability))) {
+    // Root itself is unproven — fail closed without claiming an empty tree.
+    return {
+      status: "fallback",
+      reason: "scan_failed",
+      durationMs: clock.nowMs() - started,
+      cause: new Error(
+        "Collection root availability is unproven; refusing snapshot descent"
+      ),
+    };
+  }
 
   const state: MutableSnapshotMaps = {
     directories: new Map(),
@@ -107,7 +139,18 @@ export async function buildWatcherSnapshot(
     for (const [name, fingerprint] of scanned.entries) {
       // No-follow: never recurse through symlinks (even if they point inside root).
       if (fingerprint.kind === "directory") {
-        queue.push(joinWatcherRelPath(dirRel, name));
+        const childRel = joinWatcherRelPath(dirRel, name);
+        if (
+          !(await directoryAllowsDescent(
+            rootAbs,
+            childRel,
+            directoryAvailability
+          ))
+        ) {
+          // Refuse descent/enumeration; leave subtree absent from this build.
+          continue;
+        }
+        queue.push(childRel);
       }
     }
   }
@@ -138,6 +181,7 @@ export async function diffWatcherSnapshot(
   const clock = options.clock ?? defaultClock;
   const ceiling = options.entryCeiling ?? WATCHER_SNAPSHOT_ENTRY_CEILING;
   const mapHooks = options.mapHooks;
+  const directoryAvailability = options.directoryAvailability;
   const started = clock.nowMs();
 
   const normalizedDirs: string[] = [];
@@ -184,6 +228,13 @@ export async function diffWatcherSnapshot(
       return { status: "ok" };
     }
     visited.add(dirRel);
+
+    if (
+      !(await directoryAllowsDescent(rootAbs, dirRel, directoryAvailability))
+    ) {
+      // Dirty target is unproven — keep prior subtree, prove nothing.
+      return { status: "ok" };
+    }
 
     // Replacement frees prior slots for this directory map before the new scan.
     const previousSize = nextState.directories.get(dirRel)?.size ?? 0;
@@ -242,13 +293,24 @@ export async function diffWatcherSnapshot(
       if (newFp && !oldFp) {
         // Added entry. Candidates are file/symlink only — ignore new FIFO/etc.
         if (newFp.kind === "directory") {
+          if (
+            !(await directoryAllowsDescent(
+              rootAbs,
+              childRel,
+              directoryAvailability
+            ))
+          ) {
+            // Unproven new directory: keep fingerprint, do not enumerate.
+            continue;
+          }
           const built = await scanNewSubtree(
             rootAbs,
             childRel,
             fs,
             nextState,
             candidates,
-            ceiling
+            ceiling,
+            directoryAvailability
           );
           if (built.status !== "ok") {
             return built;
@@ -278,13 +340,23 @@ export async function diffWatcherSnapshot(
           if (isWatcherSourceKind(oldFp.kind)) {
             removals.add(childRel);
           }
+          if (
+            !(await directoryAllowsDescent(
+              rootAbs,
+              childRel,
+              directoryAvailability
+            ))
+          ) {
+            continue;
+          }
           const built = await scanNewSubtree(
             rootAbs,
             childRel,
             fs,
             nextState,
             candidates,
-            ceiling
+            ceiling,
+            directoryAvailability
           );
           if (built.status !== "ok") {
             return built;
@@ -293,7 +365,17 @@ export async function diffWatcherSnapshot(
         }
 
         if (newFp.kind === "directory") {
-          // Directory → directory (metadata change): recurse.
+          // Directory → directory (metadata change): recurse only when available.
+          if (
+            !(await directoryAllowsDescent(
+              rootAbs,
+              childRel,
+              directoryAvailability
+            ))
+          ) {
+            // Preserve prior subtree under unproven directory — do not re-scan.
+            continue;
+          }
           const nested = await diffDirectory(childRel);
           if (nested.status !== "ok") {
             return nested;
@@ -358,8 +440,13 @@ async function scanNewSubtree(
   fs: WatcherSnapshotFs,
   state: MutableSnapshotMaps,
   candidates: Set<string>,
-  ceiling: number
+  ceiling: number,
+  directoryAvailability?: DirectoryAvailabilityPort
 ): Promise<DiffWorkResult> {
+  if (!(await directoryAllowsDescent(rootAbs, dirRel, directoryAvailability))) {
+    // Keep the directory fingerprint from the parent listing; do not enumerate.
+    return { status: "ok" };
+  }
   const queue = [dirRel];
   let head = 0;
   while (head < queue.length) {
@@ -388,6 +475,15 @@ async function scanNewSubtree(
     for (const [name, fingerprint] of scanned.entries) {
       const childRel = joinWatcherRelPath(current, name);
       if (fingerprint.kind === "directory") {
+        if (
+          !(await directoryAllowsDescent(
+            rootAbs,
+            childRel,
+            directoryAvailability
+          ))
+        ) {
+          continue;
+        }
         queue.push(childRel);
       } else if (isWatcherSourceKind(fingerprint.kind)) {
         candidates.add(childRel);

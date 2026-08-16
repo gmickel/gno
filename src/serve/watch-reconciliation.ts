@@ -118,5 +118,6 @@ export async function classifyDirtyHints(options: {
     sourcePathMax,
     // Only anchored FS may walk; unsupported injects fail-closed handles.
     fs: snapshotOptions?.fs,
+    directoryAvailability: snapshotOptions?.directoryAvailability,
   });
 }

@@ -16,8 +16,11 @@ import type { WatcherSnapshot, WatcherSnapshotFs } from "./watch-snapshot";
 
 import {
   collectionToWalkConfig,
+  createDirectoryAvailability,
   defaultSyncService,
   matchesWalkPath,
+  memoizeDirectoryAvailability,
+  resolveSourceAvailability,
 } from "../ingestion";
 import {
   classifyDirtyHints,
@@ -171,6 +174,10 @@ export async function flushCollectionOnce(
     let needsFullFromAmbiguous = false;
 
     if (dirtyHints.length > 0) {
+      const availabilityMode = resolveSourceAvailability(
+        input.collection,
+        input.getCurrentSyncOptions()
+      );
       const classified = await classifyDirtyHints({
         collection: input.collection,
         store: input.store,
@@ -183,6 +190,9 @@ export async function flushCollectionOnce(
           ...(input.snapshotEntryCeiling !== undefined
             ? { entryCeiling: input.snapshotEntryCeiling }
             : {}),
+          directoryAvailability: memoizeDirectoryAvailability(
+            createDirectoryAvailability(availabilityMode)
+          ),
         },
       });
       if (input.disposed()) {

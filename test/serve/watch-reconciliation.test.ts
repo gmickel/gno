@@ -244,6 +244,30 @@ describe("hasFileLevelSyncError and mergeSyncPathBatch", () => {
     ).toBe(true);
   });
 
+  test("does not retry source-availability skips as watcher failures", () => {
+    expect(
+      hasFileLevelSyncError(
+        createSyncResult({
+          filesSkipped: 1,
+          files: [
+            {
+              relPath: "cloud",
+              status: "skipped",
+              errorCode: "DATALESS_DIRECTORY",
+            },
+          ],
+          errors: [
+            {
+              relPath: "cloud",
+              code: "DATALESS_DIRECTORY",
+              message: "dataless",
+            },
+          ],
+        })
+      )
+    ).toBe(false);
+  });
+
   test("dedupes exact, candidates, and removals", () => {
     expect(
       mergeSyncPathBatch(["b.md", "a.md"], ["a.md", "c.md"], ["c.md", "d.md"])

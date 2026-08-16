@@ -459,8 +459,11 @@ and policy-setup failure fail closed with distinct codes
 (`SOURCE_AVAILABILITY_UNSUPPORTED`, `SOURCE_AVAILABILITY_POLICY_FAILED`,
 `SOURCE_AVAILABILITY_UNKNOWN`). Cloud-placeholder refusal
 (`EDEADLK`) surfaces as a skipped file with `CLOUD_PLACEHOLDER` /
-`CLOUD_PARTIAL`, not a conversion error. Source availability is distinct from
-`egressPolicy` (where indexed content may travel).
+`CLOUD_PARTIAL`, not a conversion error. Local mode also refuses descent into
+dataless or availability-unknown directories (`DATALESS_DIRECTORY` skip, or the
+fail-closed codes above) and preserves previously indexed descendants under
+those unproven prefixes rather than marking them inactive. Source availability
+is distinct from `egressPolicy` (where indexed content may travel).
 
 ---
 

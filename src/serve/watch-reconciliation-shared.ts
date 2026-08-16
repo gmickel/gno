@@ -13,7 +13,11 @@ import type { Collection } from "../config/types";
 import type { CollectionSyncResult } from "../ingestion";
 
 import { matchesCollectionExclusion } from "../core/path-rules";
-import { collectionToWalkConfig, matchesWalkPath } from "../ingestion";
+import {
+  collectionToWalkConfig,
+  isSourceAvailabilitySkip,
+  matchesWalkPath,
+} from "../ingestion";
 import {
   normalizeWatcherRelPath,
   parentWatcherDir,
@@ -172,7 +176,7 @@ export function hasFileLevelSyncError(result: CollectionSyncResult): boolean {
   if (result.files?.some((file) => file.status === "error")) {
     return true;
   }
-  return result.errors.length > 0;
+  return result.errors.some((error) => !isSourceAvailabilitySkip(error.code));
 }
 
 /**

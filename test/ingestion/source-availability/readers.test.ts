@@ -13,6 +13,7 @@ import {
   DARWIN_EACCES,
   DARWIN_EDEADLK,
   DARWIN_ENOENT,
+  DARWIN_ELOOP,
   DARWIN_EPERM,
   IOPOL_MATERIALIZE_DATALESS_FILES_OFF,
   IOPOL_SCOPE_PROCESS,
@@ -202,6 +203,23 @@ describe("source availability local mode — read errno outcomes", () => {
       ok: false,
       code: "CLOUD_PLACEHOLDER",
       errno: DARWIN_EDEADLK,
+    });
+  });
+
+  test("symlink open is refused as unknown safety", async () => {
+    const reader = new LocalSourceContentReader({
+      platform: "darwin",
+      policy: policyPort(),
+      file: filePort({
+        open: () => -1,
+        readErrno: () => DARWIN_ELOOP,
+      }),
+      pathSupport: supportedPath,
+    });
+    expect(await reader.readAll("/cloud/link.md")).toMatchObject({
+      ok: false,
+      code: "SOURCE_AVAILABILITY_UNKNOWN",
+      errno: DARWIN_ELOOP,
     });
   });
 

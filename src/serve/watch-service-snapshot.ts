@@ -8,12 +8,18 @@
 import { normalize } from "node:path";
 
 import type { Collection } from "../config/types";
+import type { SyncOptions } from "../ingestion";
 import type {
   WatcherSnapshot,
   WatcherSnapshotBuildResult,
   WatcherSnapshotOptions,
 } from "./watch-snapshot";
 
+import {
+  createDirectoryAvailability,
+  memoizeDirectoryAvailability,
+  resolveSourceAvailability,
+} from "../ingestion";
 import { buildWatcherSnapshot } from "./watch-snapshot";
 
 export interface SnapshotInitHost {
@@ -26,6 +32,8 @@ export interface SnapshotInitHost {
   getInit: (collectionName: string) => Promise<void> | undefined;
   setInit: (collectionName: string, init: Promise<void> | undefined) => void;
   onReadyWithPending: (collectionName: string) => void;
+  /** Current run-level overrides; omitted by narrow unit-test hosts. */
+  getSyncOptions?: () => SyncOptions;
   /** Optional injectable builder for hung/slow-init tests. */
   buildSnapshot?: (
     rootAbs: string,
@@ -44,7 +52,14 @@ export function beginSnapshotInit(
   const generation = host.getGeneration(collection.name);
   const root = normalize(collection.path);
   let init!: Promise<void>;
-  init = runSnapshotInit(host, collection.name, root, generation, () => init);
+  init = runSnapshotInit(
+    host,
+    collection.name,
+    root,
+    generation,
+    () => init,
+    collection
+  );
   host.setInit(collection.name, init);
   void init.catch(() => undefined);
 }
@@ -54,11 +69,20 @@ async function runSnapshotInit(
   collectionName: string,
   root: string,
   generation: number,
-  getInit: () => Promise<void>
+  getInit: () => Promise<void>,
+  collection: Collection
 ): Promise<void> {
   try {
     const builder = host.buildSnapshot ?? buildWatcherSnapshot;
-    const built = await builder(root);
+    const availabilityMode = resolveSourceAvailability(
+      collection,
+      host.getSyncOptions?.()
+    );
+    const built = await builder(root, {
+      directoryAvailability: memoizeDirectoryAvailability(
+        createDirectoryAvailability(availabilityMode)
+      ),
+    });
     if (host.disposed()) {
       return;
     }

@@ -7,6 +7,8 @@
 // node:path — Bun has no path utilities
 import { isAbsolute } from "node:path";
 
+import type { DirectoryAvailabilityPort } from "../ingestion/source-availability";
+
 /** Fixed service-wide maximum entries retained in one collection snapshot. */
 export const WATCHER_SNAPSHOT_ENTRY_CEILING = 100_000;
 
@@ -191,6 +193,12 @@ export interface WatcherSnapshotOptions {
   entryCeiling?: number;
   /** Map-visit instrumentation (tests / complexity regression). */
   mapHooks?: SnapshotMapHooks;
+  /**
+   * Optional directory-availability classifier for local-mode collections.
+   * When set, dataless / availability-unknown directories are not descended;
+   * previously observed subtrees are preserved rather than proven removed.
+   */
+  directoryAvailability?: DirectoryAvailabilityPort;
 }
 
 export type ScanFailure =

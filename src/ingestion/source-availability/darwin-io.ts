@@ -40,10 +40,25 @@ export type DarwinFileIoPort = {
   readErrno: () => number;
 };
 
+/**
+ * No-follow lstat of `st_flags` for SF_DATALESS directory classification.
+ * Distinct from content open/read — used only at directory boundaries.
+ */
+export type DarwinStatPort = {
+  lstatFlags: (
+    absPath: string
+  ) => { ok: true; stFlags: number } | { ok: false; errno: number };
+};
+
 export type DarwinIoBundle = {
   policy: DarwinIoPolicyPort;
   file: DarwinFileIoPort;
+  stat: DarwinStatPort;
 };
+
+/** Darwin `struct stat` layout used by the smoke harness (arm64/x86_64). */
+export const DARWIN_STAT_BUF_SIZE = 144;
+export const DARWIN_ST_FLAGS_OFFSET = 116;
 
 type LibSymbols = {
   getiopolicy_np: (type: number, scope: number) => number;
@@ -51,6 +66,7 @@ type LibSymbols = {
   open: (path: ReturnType<typeof ptr>, flags: number) => number;
   close: (fd: number) => number;
   read: (fd: number, buf: ReturnType<typeof ptr>, n: bigint) => bigint;
+  lstat: (path: ReturnType<typeof ptr>, buf: ReturnType<typeof ptr>) => number;
   __error: () => ReturnType<typeof ptr> | null;
 };
 
@@ -103,6 +119,7 @@ function loadLibSystem(): {
           args: [FFIType.i32, FFIType.ptr, FFIType.u64],
           returns: FFIType.i64,
         },
+        lstat: { args: [FFIType.ptr, FFIType.ptr], returns: FFIType.i32 },
         __error: { args: [], returns: FFIType.ptr },
       });
       const raw = library.symbols as Record<string, unknown>;
@@ -115,6 +132,7 @@ function loadLibSystem(): {
       const openFn = asFn<LibSymbols["open"]>(raw.open);
       const closeFn = asFn<LibSymbols["close"]>(raw.close);
       const readFn = asFn<LibSymbols["read"]>(raw.read);
+      const lstatFn = asFn<LibSymbols["lstat"]>(raw.lstat);
       const errorFn = asFn<LibSymbols["__error"]>(raw.__error);
       if (
         !getiopolicy_np ||
@@ -122,6 +140,7 @@ function loadLibSystem(): {
         !openFn ||
         !closeFn ||
         !readFn ||
+        !lstatFn ||
         !errorFn
       ) {
         continue;
@@ -134,6 +153,7 @@ function loadLibSystem(): {
           open: openFn,
           close: closeFn,
           read: readFn,
+          lstat: lstatFn,
           __error: errorFn,
         },
       };
@@ -169,6 +189,21 @@ export function loadDarwinIo(): DarwinIoBundle | null {
         Number(symbols.read(fd, ptr(buf), BigInt(buf.byteLength))),
       close: symbols.close,
       readErrno,
+    },
+    stat: {
+      lstatFlags: (absPath: string) => {
+        const buf = new Uint8Array(DARWIN_STAT_BUF_SIZE);
+        const rc = symbols.lstat(ptr(cstr(absPath)), ptr(buf));
+        if (rc !== 0) {
+          return { ok: false as const, errno: readErrno() };
+        }
+        const stFlags = new DataView(
+          buf.buffer,
+          buf.byteOffset,
+          buf.byteLength
+        ).getUint32(DARWIN_ST_FLAGS_OFFSET, true);
+        return { ok: true as const, stFlags };
+      },
     },
   };
   // Keep library strongly referenced via symbols closure for process lifetime.

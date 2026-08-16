@@ -347,6 +347,7 @@ export class CollectionWatchService {
             scheduleFlush(buildQueueHost(this.#hostState()), name);
           }
         },
+        getSyncOptions: () => this.#syncOptions,
         buildSnapshot: this.#buildSnapshot,
       },
       collection
