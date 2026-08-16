@@ -6,8 +6,9 @@ satisfies: [R2, R6, R7]
 ## Description
 Re-run the physical benchmark against the finished behavior, publish only evidence-supported contracts, and update the complete user-facing documentation chain (R2/R6/R7).
 
-Task 1 established a measured blocker for the naive candidate: an extra availability check for every discovered file added +15.2323% median on the 5,000-file all-local corpus, exceeding the proposed <=10% local-mode budget. The candidate to reuse traversal metadata flags and recheck only content actually consumed or changed is unproven; do not treat it as a performance pass. OneDrive cloud-placeholder support is proven only for the tested OS/provider configuration and both installed immediate SharePoint library roots; unavailable or irreproducible states remain explicitly unclaimed.
+Task 1 established a measured blocker for the naive candidate: an extra availability check for every discovered file added +15.2323% median on the 5,000-file all-local corpus, exceeding the proposed <=10% local-mode budget. Task 3 instead implements hierarchical, per-directory availability classification, memoized for each operation; it does not add a per-discovered-file availability syscall, while the guarded content boundary still rechecks every consumed file. Benchmark that shipped design rather than treating traversal-metadata reuse as a pending candidate. OneDrive cloud-placeholder support is proven only for the tested OS/provider configuration and both installed immediate SharePoint library roots; unavailable or irreproducible states remain explicitly unclaimed.
 
+<!-- Updated by plan-sync: fn-118-cloud-placeholder-safe-indexing.3 used memoized per-directory classification plus guarded content rechecks, not the planned unproven traversal-metadata-reuse candidate -->
 <!-- Updated by plan-sync: fn-118-cloud-placeholder-safe-indexing.1 measured naive per-file availability checks at +15.2323%, not the planned acceptable local-mode approach -->
 <!-- Updated by plan-sync: fn-118-cloud-placeholder-safe-indexing.5 proved guarded OneDrive cloud-only refusal in both installed immediate library roots, not the planned unclaimed state -->
 
@@ -16,7 +17,7 @@ Task 1 established a measured blocker for the naive candidate: an extra availabi
 **Touches:** [spec/**, docs/**, README.md, CHANGELOG.md, GLOSSARY.md, research/file-provider/**, ../gno.sh/src/**]
 
 ### Approach
-- Re-run task 1 protocol on the implemented `any` and `local` modes and enforce the 3%/10% median scan thresholds. Do not use the measured-failing naive per-discovered-file availability pass; physically measure any traversal-metadata reuse design before accepting it.
+- Re-run task 1 protocol on the implemented `any` and `local` modes and enforce the 3%/10% median scan thresholds. Do not use the measured-failing naive per-discovered-file availability pass; physically measure the implemented hierarchical per-directory classification and guarded content-recheck design before accepting it.
 - Document only providers/states supported by physical evidence, including stale-index and unsupported-platform behavior; state OneDrive cloud-placeholder support only for the tested configuration and the two independently validated immediate library roots.
 - Keep source availability distinct from egress policy in CLI naming, glossary, receipts, and marketing/docs copy.
 - Walk the downstream gno.sh documentation and driven-QA/deploy chain required by repo instructions.

@@ -47,6 +47,7 @@ GATE_SKIPPED:unittest:green-receipt e84a2e84 - baseline reused from prior post-g
 GATE_SKIPPED:smoke:green-receipt e84a2e84 - baseline reused from prior post-gate pass
 
 stage: impl-review - skipped(config: REVIEW_MODE=none)
+stage: plan-sync - ran [2026-08-16T12:48:54Z..2026-08-16T12:50:39Z] (model: gpt-5.6-terra)
 ## Evidence
 - Commits: 3c868824549ad8e115d548a35e814febd4b877b3
 - Tests: GATE_SKIPPED:unittest:green-receipt e84a2e84 - baseline reused from prior post-gate pass, GATE_SKIPPED:smoke:green-receipt e84a2e84 - baseline reused from prior post-gate pass, bun run lint:check, bun test test/ingestion/source-availability test/ingestion/walker.test.ts test/ingestion/sync-incremental.test.ts test/serve/watch-snapshot-availability.test.ts test/serve/watch-reconciliation.test.ts test/serve/watch-reconciliation-fallback-bounds.test.ts, bun test, bun scripts/macos-file-provider-smoke.ts --help
