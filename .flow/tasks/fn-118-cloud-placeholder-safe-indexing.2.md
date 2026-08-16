@@ -41,9 +41,15 @@ Tasks 1 and 5 proved the provider-neutral guarded-read mechanism for dedicated G
 - [ ] R3 guarded read boundary implemented
 - [ ] Default mode unchanged and focused tests green
 ## Done summary
-TBD
+Implemented opt-in `sourceAvailability: local` with a platform-neutral contract, evidenced macOS File Provider path support, and a Darwin no-materialization read boundary that feeds sniffing, hashing, conversion, and record import without reopening source content. Default `any` preserves the legacy sniff/read and record-stream behavior; unsupported or unknown safety fails closed, while EDEADLK and partial reads become distinct cloud skips.
 
+Focused coverage verifies malformed/default config, policy setup failure, unsupported platforms and storage, unknown flags/safety, permissions, symlinks, eviction races, partial content, record adapters, and unchanged `any` behavior. Baseline and verify gates were green.
+
+GATE_SKIPPED:unittest:green-receipt a98feec1 - baseline reused from prior post-gate pass
+GATE_SKIPPED:smoke:green-receipt a98feec1 - baseline reused from prior post-gate pass
+
+stage: impl-review - skipped(config: REVIEW_MODE=none)
 ## Evidence
-- Commits:
-- Tests:
+- Commits: e84a2e849dc7ccbc66f970648c8bf226ff1c79d7
+- Tests: GATE_SKIPPED:unittest:green-receipt a98feec1 - baseline reused from prior post-gate pass, GATE_SKIPPED:smoke:green-receipt a98feec1 - baseline reused from prior post-gate pass, bun test test/ingestion/source-availability test/ingestion/sync-max-bytes.test.ts test/ingestion/export-adapters-e2e.test.ts (53 pass, 0 fail), bun run lint:check, bun test (4306 pass, 2 skip, 0 fail), bun scripts/macos-file-provider-smoke.ts --help
 - PRs:
