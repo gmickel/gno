@@ -14,6 +14,7 @@ import {
   loadDarwinIo,
   SF_DATALESS,
   withNoMaterializePolicy,
+  withNoMaterializePolicyAsync,
 } from "./darwin-io";
 import {
   classifyDarwinFileProviderPath,
@@ -22,6 +23,7 @@ import {
 import {
   type DirectoryAvailabilityPort,
   type DirectoryAvailabilityResult,
+  type DirectoryReadResult,
   type SourceAvailabilityCode,
   type SourceAvailabilityMode,
   isUnprovenAbsenceCode,
@@ -42,6 +44,13 @@ export class AnyDirectoryAvailability implements DirectoryAvailabilityPort {
 
   async classify(_absPath: string): Promise<DirectoryAvailabilityResult> {
     return { kind: "available" };
+  }
+
+  async readDirectory<T>(
+    _absPath: string,
+    read: () => Promise<T>
+  ): Promise<DirectoryReadResult<T>> {
+    return { kind: "available", value: await read() };
   }
 }
 
@@ -75,51 +84,13 @@ export class LocalDirectoryAvailability implements DirectoryAvailabilityPort {
   }
 
   async classify(absPath: string): Promise<DirectoryAvailabilityResult> {
-    if (this.platform !== "darwin") {
-      return {
-        kind: "error",
-        code: "SOURCE_AVAILABILITY_UNSUPPORTED",
-        message: sourceAvailabilityMessage(
-          "SOURCE_AVAILABILITY_UNSUPPORTED",
-          `platform=${this.platform}`
-        ),
-      };
-    }
-    if (!this.policy || !this.stat) {
-      return {
-        kind: "error",
-        code: "SOURCE_AVAILABILITY_POLICY_FAILED",
-        message: sourceAvailabilityMessage(
-          "SOURCE_AVAILABILITY_POLICY_FAILED",
-          "darwin_io_unavailable"
-        ),
-      };
+    const supportError = this.validateSupport(absPath);
+    if (supportError) {
+      return supportError;
     }
 
-    const pathSupport = this.pathSupport(absPath);
-    if (pathSupport === "unsupported") {
-      return {
-        kind: "error",
-        code: "SOURCE_AVAILABILITY_UNSUPPORTED",
-        message: sourceAvailabilityMessage(
-          "SOURCE_AVAILABILITY_UNSUPPORTED",
-          "path is outside the physically evidenced macOS File Provider layouts"
-        ),
-      };
-    }
-    if (pathSupport === "unknown") {
-      return {
-        kind: "error",
-        code: "SOURCE_AVAILABILITY_UNKNOWN",
-        message: sourceAvailabilityMessage(
-          "SOURCE_AVAILABILITY_UNKNOWN",
-          "path support could not be established"
-        ),
-      };
-    }
-
-    const policy = this.policy;
-    const stat = this.stat;
+    const policy = this.policy as DarwinIoPolicyPort;
+    const stat = this.stat as DarwinStatPort;
     let wrapped: ReturnType<
       typeof withNoMaterializePolicy<DirectoryAvailabilityResult>
     >;
@@ -149,6 +120,95 @@ export class LocalDirectoryAvailability implements DirectoryAvailabilityPort {
       };
     }
     return wrapped.value;
+  }
+
+  async readDirectory<T>(
+    absPath: string,
+    read: () => Promise<T>
+  ): Promise<DirectoryReadResult<T>> {
+    const supportError = this.validateSupport(absPath);
+    if (supportError) {
+      return supportError;
+    }
+
+    const policy = this.policy as DarwinIoPolicyPort;
+    const stat = this.stat as DarwinStatPort;
+    try {
+      const wrapped = await withNoMaterializePolicyAsync(async () => {
+        const classified = classifyFlags(absPath, stat);
+        if (classified.kind !== "available") {
+          return classified;
+        }
+        return { kind: "available" as const, value: await read() };
+      }, policy);
+      if (wrapped.ok) {
+        return wrapped.value;
+      }
+      return {
+        kind: "error",
+        code: "SOURCE_AVAILABILITY_POLICY_FAILED",
+        message: sourceAvailabilityMessage(
+          "SOURCE_AVAILABILITY_POLICY_FAILED",
+          wrapped.error
+        ),
+      };
+    } catch (error) {
+      return {
+        kind: "error",
+        code: "SOURCE_AVAILABILITY_UNKNOWN",
+        message: sourceAvailabilityMessage(
+          "SOURCE_AVAILABILITY_UNKNOWN",
+          error instanceof Error ? error.message : "directory_read_failed"
+        ),
+      };
+    }
+  }
+
+  private validateSupport(
+    absPath: string
+  ): Exclude<DirectoryAvailabilityResult, { kind: "available" }> | null {
+    if (this.platform !== "darwin") {
+      return {
+        kind: "error",
+        code: "SOURCE_AVAILABILITY_UNSUPPORTED",
+        message: sourceAvailabilityMessage(
+          "SOURCE_AVAILABILITY_UNSUPPORTED",
+          `platform=${this.platform}`
+        ),
+      };
+    }
+    if (!this.policy || !this.stat) {
+      return {
+        kind: "error",
+        code: "SOURCE_AVAILABILITY_POLICY_FAILED",
+        message: sourceAvailabilityMessage(
+          "SOURCE_AVAILABILITY_POLICY_FAILED",
+          "darwin_io_unavailable"
+        ),
+      };
+    }
+    const pathSupport = this.pathSupport(absPath);
+    if (pathSupport === "unsupported") {
+      return {
+        kind: "error",
+        code: "SOURCE_AVAILABILITY_UNSUPPORTED",
+        message: sourceAvailabilityMessage(
+          "SOURCE_AVAILABILITY_UNSUPPORTED",
+          "path is outside the physically evidenced macOS File Provider layouts"
+        ),
+      };
+    }
+    if (pathSupport === "unknown") {
+      return {
+        kind: "error",
+        code: "SOURCE_AVAILABILITY_UNKNOWN",
+        message: sourceAvailabilityMessage(
+          "SOURCE_AVAILABILITY_UNKNOWN",
+          "path support could not be established"
+        ),
+      };
+    }
+    return null;
   }
 }
 
@@ -227,6 +287,7 @@ export function memoizeDirectoryAvailability(
       cache.set(absPath, pending);
       return pending;
     },
+    readDirectory: (absPath, read) => port.readDirectory(absPath, read),
   };
 }
 

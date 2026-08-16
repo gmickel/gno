@@ -98,6 +98,94 @@ describe("directory availability local mode", () => {
     if (result.kind !== "error") return;
     expect(result.code).toBe("SOURCE_AVAILABILITY_POLICY_FAILED");
   });
+
+  test("directory read revalidates and keeps policy active through enumeration", async () => {
+    let activePolicy = 0;
+    let dataless = false;
+    let readCalls = 0;
+    const port = new LocalDirectoryAvailability({
+      platform: "darwin",
+      policy: policyPort({
+        get: () => activePolicy,
+        set: (_type, _scope, policy) => {
+          activePolicy = policy;
+          return 0;
+        },
+      }),
+      stat: {
+        lstatFlags: () => ({
+          ok: true,
+          stFlags: dataless ? SF_DATALESS : 0,
+        }),
+      },
+      pathSupport: () => "icloud-drive",
+    });
+    const path = "/Users/x/Library/Mobile Documents/com~apple~CloudDocs/d";
+
+    expect(await port.classify(path)).toEqual({ kind: "available" });
+    dataless = true;
+    expect(
+      await port.readDirectory(path, async () => {
+        readCalls += 1;
+        return [];
+      })
+    ).toMatchObject({ kind: "dataless", code: "DATALESS_DIRECTORY" });
+    expect(readCalls).toBe(0);
+
+    dataless = false;
+    const read = await port.readDirectory(path, async () => {
+      await Promise.resolve();
+      expect(activePolicy).toBe(1);
+      readCalls += 1;
+      return ["local.md"];
+    });
+    expect(read).toEqual({ kind: "available", value: ["local.md"] });
+    expect(readCalls).toBe(1);
+    expect(activePolicy).toBe(0);
+  });
+
+  test("overlapping directory reads serialize process-policy restoration", async () => {
+    let activePolicy = 0;
+    let releaseFirst!: () => void;
+    const firstBlocked = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const entered: number[] = [];
+    const port = new LocalDirectoryAvailability({
+      platform: "darwin",
+      policy: policyPort({
+        get: () => activePolicy,
+        set: (_type, _scope, policy) => {
+          activePolicy = policy;
+          return 0;
+        },
+      }),
+      stat: { lstatFlags: () => ({ ok: true, stFlags: 0 }) },
+      pathSupport: () => "icloud-drive",
+    });
+    const root = "/Users/x/Library/Mobile Documents/com~apple~CloudDocs";
+
+    const first = port.readDirectory(`${root}/one`, async () => {
+      entered.push(1);
+      await firstBlocked;
+      return 1;
+    });
+    await Promise.resolve();
+    const second = port.readDirectory(`${root}/two`, async () => {
+      entered.push(2);
+      return 2;
+    });
+    await Promise.resolve();
+    expect(entered).toEqual([1]);
+
+    releaseFirst();
+    expect(await Promise.all([first, second])).toEqual([
+      { kind: "available", value: 1 },
+      { kind: "available", value: 2 },
+    ]);
+    expect(entered).toEqual([1, 2]);
+    expect(activePolicy).toBe(0);
+  });
 });
 
 describe("prefix helpers", () => {
@@ -116,6 +204,10 @@ describe("prefix helpers", () => {
         calls += 1;
         return { kind: "available" };
       },
+      readDirectory: async (_absPath, read) => ({
+        kind: "available",
+        value: await read(),
+      }),
     });
     await findUnprovenAvailabilityPrefix("/root", "a/one.md", cached);
     await findUnprovenAvailabilityPrefix("/root", "a/two.md", cached);

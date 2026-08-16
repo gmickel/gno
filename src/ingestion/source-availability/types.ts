@@ -104,10 +104,19 @@ export type DirectoryAvailabilityResult =
       errno?: number | null;
     };
 
+export type DirectoryReadResult<T> =
+  | { kind: "available"; value: T }
+  | Exclude<DirectoryAvailabilityResult, { kind: "available" }>;
+
 export interface DirectoryAvailabilityPort {
   readonly mode: SourceAvailabilityMode;
   /** Classify one directory before descent or ancestor-prefix checks. */
   classify(absPath: string): Promise<DirectoryAvailabilityResult>;
+  /** Reclassify and enumerate while the no-materialization policy remains active. */
+  readDirectory<T>(
+    absPath: string,
+    read: () => Promise<T>
+  ): Promise<DirectoryReadResult<T>>;
 }
 
 export function isSourceAvailabilitySkip(

@@ -39,28 +39,35 @@ function mapClassifier(
   rootAbs: string
 ): DirectoryAvailabilityPort {
   const rootPrefix = rootAbs.endsWith("/") ? rootAbs.slice(0, -1) : rootAbs;
+  const classify = (absPath: string): DirectoryAvailabilityResult => {
+    const normalized = absPath.endsWith("/") ? absPath.slice(0, -1) : absPath;
+    if (normalized === rootPrefix) {
+      return byRel[""] ?? { kind: "available" };
+    }
+    let rel: string | null = null;
+    if (normalized.startsWith(`${rootPrefix}/`)) {
+      rel = normalized.slice(rootPrefix.length + 1);
+    } else {
+      // Tolerate /var vs /private/var realpath drift in fixtures.
+      const marker = "/docs/";
+      const idx = normalized.lastIndexOf(marker);
+      if (idx >= 0) {
+        rel = normalized.slice(idx + marker.length);
+      }
+    }
+    if (rel === null || rel === "") {
+      return byRel[""] ?? { kind: "available" };
+    }
+    return byRel[rel] ?? { kind: "available" as const };
+  };
   return {
     mode,
-    classify: async (absPath: string) => {
-      const normalized = absPath.endsWith("/") ? absPath.slice(0, -1) : absPath;
-      if (normalized === rootPrefix) {
-        return byRel[""] ?? { kind: "available" };
-      }
-      let rel: string | null = null;
-      if (normalized.startsWith(`${rootPrefix}/`)) {
-        rel = normalized.slice(rootPrefix.length + 1);
-      } else {
-        // Tolerate /var vs /private/var realpath drift in fixtures.
-        const marker = "/docs/";
-        const idx = normalized.lastIndexOf(marker);
-        if (idx >= 0) {
-          rel = normalized.slice(idx + marker.length);
-        }
-      }
-      if (rel === null || rel === "") {
-        return byRel[""] ?? { kind: "available" };
-      }
-      return byRel[rel] ?? { kind: "available" as const };
+    classify: async (absPath: string) => classify(absPath),
+    readDirectory: async (absPath, read) => {
+      const classified = classify(absPath);
+      return classified.kind === "available"
+        ? { kind: "available", value: await read() }
+        : classified;
     },
   };
 }
@@ -123,6 +130,46 @@ describe("local-mode full traversal", () => {
     );
   });
 
+  test("availability change before root enumeration returns an unproven prefix", async () => {
+    const root = await realpath(join(tmpDir, "docs"));
+    let reads = 0;
+    const classifier: DirectoryAvailabilityPort = {
+      mode: "local",
+      classify: async () => ({ kind: "available" }),
+      readDirectory: async () => ({
+        kind: "dataless",
+        code: "DATALESS_DIRECTORY",
+        message: "became dataless before enumeration",
+      }),
+    };
+
+    const result = await new FileWalker().walk({
+      root,
+      pattern: "**/*.md",
+      include: [],
+      exclude: [],
+      maxBytes: 1_000_000,
+      sourceAvailability: "local",
+      directoryAvailability: {
+        ...classifier,
+        readDirectory: async (absPath, read) => {
+          reads += 1;
+          return classifier.readDirectory(absPath, read);
+        },
+      },
+    });
+
+    expect(reads).toBe(1);
+    expect(result.entries).toEqual([]);
+    expect(result.skipped).toEqual([
+      expect.objectContaining({
+        relPath: "",
+        reason: "DATALESS_DIRECTORY",
+        unprovenPrefix: true,
+      }),
+    ]);
+  });
+
   test("unresolvable local root is an unproven prefix, not an empty inventory", async () => {
     const missingRoot = join(tmpDir, "missing");
     const walker = new FileWalker();
@@ -158,6 +205,11 @@ describe("local-mode full traversal", () => {
     const refusing: DirectoryAvailabilityPort = {
       mode: "local",
       classify: async () => ({
+        kind: "dataless",
+        code: "DATALESS_DIRECTORY",
+        message: "should not apply in any mode",
+      }),
+      readDirectory: async () => ({
         kind: "dataless",
         code: "DATALESS_DIRECTORY",
         message: "should not apply in any mode",

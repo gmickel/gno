@@ -6,6 +6,9 @@
  * @module src/serve/watch-reconciliation-fallback-disk
  */
 
+// node:path — Bun has no path join helper.
+import { join } from "node:path";
+
 import type { Collection } from "../config/types";
 import type { DirectoryAvailabilityPort } from "../ingestion/source-availability";
 
@@ -18,7 +21,6 @@ import {
   joinWatcherRelPath,
   parentWatcherDir,
   type WatcherSnapshotFs,
-  type WatcherSnapshotStat,
 } from "./watch-snapshot-types";
 
 export interface FallbackBudget {
@@ -85,111 +87,104 @@ export async function listEligibleDiskSources(
       return { status: "overflow" };
     }
 
-    if (directoryAvailability?.mode === "local") {
-      const probePath = current === "" ? ".gno-probe" : `${current}/.gno-probe`;
-      const unproven = await findUnprovenAvailabilityPrefix(
-        rootAbs,
-        probePath,
-        directoryAvailability
-      );
-      if (unproven) {
-        unprovenPrefixes.push(current);
-        continue;
-      }
-    }
-
     const remaining = Math.max(0, budget.limit - budget.visitedDirs + 1);
-    const opened = await openDirByRel(rootAbs, current, fs);
-    if (opened.status === "missing") {
-      continue;
-    }
-    if (opened.status !== "ok") {
-      return {
-        status: "error",
-        cause:
-          opened.status === "scan_failed"
-            ? opened.cause
-            : new Error(`Disk scan failed under ${current || "."}`),
-      };
-    }
-
-    let listed;
-    try {
-      listed = await fs.readDir(opened.handle, remaining);
-    } catch (cause) {
-      await fs.closeDir(opened.handle);
-      if (isMissingFsError(cause)) {
-        continue;
+    const scanCurrent = async (): Promise<
+      | { status: "ok" }
+      | { status: "overflow" }
+      | { status: "error"; cause: unknown }
+    > => {
+      const opened = await openDirByRel(rootAbs, current, fs);
+      if (opened.status === "missing") {
+        return { status: "ok" };
       }
-      return { status: "error", cause };
-    }
-
-    if (listed.status === "overflow") {
-      await fs.closeDir(opened.handle);
-      return { status: "overflow" };
-    }
-
-    const names = [...listed.names].sort((a, b) =>
-      a < b ? -1 : a > b ? 1 : 0
-    );
-    for (const name of names) {
-      if (name === "" || name === "." || name === "..") {
-        continue;
-      }
-      if (name.includes("/") || name.includes("\\") || name.includes("\0")) {
-        await fs.closeDir(opened.handle);
+      if (opened.status !== "ok") {
         return {
           status: "error",
-          cause: new Error(`Invalid directory entry name: ${name}`),
+          cause:
+            opened.status === "scan_failed"
+              ? opened.cause
+              : new Error(`Disk scan failed under ${current || "."}`),
         };
       }
 
-      let stat: WatcherSnapshotStat;
       try {
-        stat = await fs.lstatChild(opened.handle, name);
-      } catch (cause) {
-        await fs.closeDir(opened.handle);
-        if (isMissingFsError(cause)) {
-          return { status: "error", cause };
+        const listed = await fs.readDir(opened.handle, remaining);
+        if (listed.status === "overflow") {
+          return { status: "overflow" };
         }
-        return { status: "error", cause };
-      }
+        const names = [...listed.names].sort((a, b) =>
+          a < b ? -1 : a > b ? 1 : 0
+        );
+        for (const name of names) {
+          if (name === "" || name === "." || name === "..") {
+            continue;
+          }
+          if (
+            name.includes("/") ||
+            name.includes("\\") ||
+            name.includes("\0")
+          ) {
+            return {
+              status: "error",
+              cause: new Error(`Invalid directory entry name: ${name}`),
+            };
+          }
 
-      const childRel = joinWatcherRelPath(current, name);
-      if (matchesCollectionExclusion(childRel, walkConfig.exclude)) {
-        continue;
-      }
-
-      // Never follow symlinks; eligible link paths stay leaf candidates.
-      if (stat.isSymbolicLink()) {
-        if (matchesWalkPath(childRel, walkConfig)) {
+          const stat = await fs.lstatChild(opened.handle, name);
+          const childRel = joinWatcherRelPath(current, name);
+          if (matchesCollectionExclusion(childRel, walkConfig.exclude)) {
+            continue;
+          }
+          if (stat.isSymbolicLink()) {
+            if (matchesWalkPath(childRel, walkConfig)) {
+              paths.push(childRel);
+              if (paths.length > budget.limit) {
+                return { status: "overflow" };
+              }
+            }
+            continue;
+          }
+          if (stat.isDirectory()) {
+            if (current === "") {
+              rootDirNames.push(name);
+            }
+            queue.push(childRel);
+            continue;
+          }
+          if (!stat.isFile() || !matchesWalkPath(childRel, walkConfig)) {
+            continue;
+          }
           paths.push(childRel);
           if (paths.length > budget.limit) {
-            await fs.closeDir(opened.handle);
             return { status: "overflow" };
           }
         }
-        continue;
-      }
-
-      if (stat.isDirectory()) {
-        if (current === "") {
-          rootDirNames.push(name);
-        }
-        queue.push(childRel);
-        continue;
-      }
-
-      if (!stat.isFile() || !matchesWalkPath(childRel, walkConfig)) {
-        continue;
-      }
-      paths.push(childRel);
-      if (paths.length > budget.limit) {
+        return { status: "ok" };
+      } catch (cause) {
+        return { status: "error", cause };
+      } finally {
         await fs.closeDir(opened.handle);
-        return { status: "overflow" };
       }
+    };
+
+    let scanned: Awaited<ReturnType<typeof scanCurrent>>;
+    if (directoryAvailability?.mode === "local") {
+      const absPath = current === "" ? rootAbs : join(rootAbs, current);
+      const guarded = await directoryAvailability.readDirectory(
+        absPath,
+        scanCurrent
+      );
+      if (guarded.kind !== "available") {
+        unprovenPrefixes.push(current);
+        continue;
+      }
+      scanned = guarded.value;
+    } else {
+      scanned = await scanCurrent();
     }
-    await fs.closeDir(opened.handle);
+    if (scanned.status !== "ok") {
+      return scanned;
+    }
   }
 
   return { status: "ok", paths, rootDirNames, unprovenPrefixes };
@@ -228,31 +223,55 @@ export async function inspectNoFollowPresence(
   if (base === "" || base.includes("/")) {
     return { status: "error", cause: new Error(`Invalid path: ${relPath}`) };
   }
-  const opened = await openDirByRel(rootAbs, parent, fs);
-  if (opened.status === "missing") {
-    return { status: "missing" };
-  }
-  if (opened.status !== "ok") {
-    return {
-      status: "error",
-      cause:
-        opened.status === "scan_failed"
-          ? opened.cause
-          : new Error("Failed to open parent for presence check"),
-    };
-  }
-  try {
-    const stat = await fs.lstatChild(opened.handle, base);
-    // Only regular files / symlinks are indexable sources. Directory, FIFO,
-    // device, and other specials prove the prior file source is gone.
-    const indexable = stat.isFile() || stat.isSymbolicLink();
-    return { status: "present", indexable };
-  } catch (cause) {
-    if (isMissingFsError(cause)) {
+  const inspectParent = async (): Promise<
+    | { status: "present"; indexable: boolean }
+    | { status: "missing" }
+    | { status: "error"; cause: unknown }
+  > => {
+    const opened = await openDirByRel(rootAbs, parent, fs);
+    if (opened.status === "missing") {
       return { status: "missing" };
     }
-    return { status: "error", cause };
-  } finally {
-    await fs.closeDir(opened.handle);
+    if (opened.status !== "ok") {
+      return {
+        status: "error",
+        cause:
+          opened.status === "scan_failed"
+            ? opened.cause
+            : new Error("Failed to open parent for presence check"),
+      };
+    }
+    try {
+      const stat = await fs.lstatChild(opened.handle, base);
+      // Only regular files / symlinks are indexable sources. Directory, FIFO,
+      // device, and other specials prove the prior file source is gone.
+      const indexable = stat.isFile() || stat.isSymbolicLink();
+      return { status: "present", indexable };
+    } catch (cause) {
+      if (isMissingFsError(cause)) {
+        return { status: "missing" };
+      }
+      return { status: "error", cause };
+    } finally {
+      await fs.closeDir(opened.handle);
+    }
+  };
+
+  if (directoryAvailability?.mode === "local") {
+    const parentAbs = parent === "" ? rootAbs : join(rootAbs, parent);
+    const guarded = await directoryAvailability.readDirectory(
+      parentAbs,
+      inspectParent
+    );
+    if (guarded.kind !== "available") {
+      return {
+        status: "error",
+        cause: new Error(
+          `Source absence is unproven under ${parent || "."}: ${guarded.code}`
+        ),
+      };
+    }
+    return guarded.value;
   }
+  return inspectParent();
 }

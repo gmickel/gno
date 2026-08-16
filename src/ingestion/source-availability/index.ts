@@ -63,6 +63,7 @@ export {
 export type {
   DirectoryAvailabilityPort,
   DirectoryAvailabilityResult,
+  DirectoryReadResult,
   SourceAvailabilityCode,
   SourceAvailabilityMode,
   SourceContentReaderPort,

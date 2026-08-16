@@ -5,9 +5,7 @@
  * @module src/serve/watch-snapshot-ops
  */
 
-// node:path — Bun has no path join helper
-import { join } from "node:path";
-
+import type { DirectoryAvailabilityPort } from "../ingestion/source-availability";
 import type {
   DiffWorkResult,
   SnapshotEntryFingerprint,
@@ -19,15 +17,14 @@ import type {
 } from "./watch-snapshot-types";
 
 import {
-  isUnprovenDirectoryResult,
-  type DirectoryAvailabilityPort,
-} from "../ingestion/source-availability";
+  directoryAllowsDescent,
+  readAvailableDirectory,
+} from "./watch-snapshot-availability";
 import {
   cloneDirectoryMaps,
   defaultClock,
   defaultFs,
   freezeSnapshot,
-  readDirectChildren,
   removeSubtreeFromMaps,
   setDirectoryEntries,
   type MutableSnapshotMaps,
@@ -41,18 +38,6 @@ import {
   sortPathList,
 } from "./watch-snapshot-types";
 
-async function directoryAllowsDescent(
-  rootAbs: string,
-  dirRel: string,
-  classifier: DirectoryAvailabilityPort | undefined
-): Promise<boolean> {
-  if (!classifier || classifier.mode === "any") {
-    return true;
-  }
-  const absPath = dirRel === "" ? rootAbs : join(rootAbs, dirRel);
-  const classified = await classifier.classify(absPath);
-  return !isUnprovenDirectoryResult(classified);
-}
 /**
  * Build a full no-follow hierarchical snapshot of `rootAbs`.
  * On overflow, scan failure, or unreliable metadata the last proven snapshot
@@ -100,7 +85,26 @@ export async function buildWatcherSnapshot(
         durationMs: clock.nowMs() - started,
       };
     }
-    const scanned = await readDirectChildren(rootAbs, dirRel, fs, remaining);
+    const scanned = await readAvailableDirectory(
+      rootAbs,
+      dirRel,
+      fs,
+      remaining,
+      directoryAvailability
+    );
+    if (scanned.status === "unproven") {
+      if (dirRel === "") {
+        return {
+          status: "fallback",
+          reason: "scan_failed",
+          durationMs: clock.nowMs() - started,
+          cause: new Error(
+            "Collection root availability changed before snapshot enumeration"
+          ),
+        };
+      }
+      continue;
+    }
     if (scanned.status === "missing") {
       if (dirRel === "") {
         return {
@@ -242,7 +246,16 @@ export async function diffWatcherSnapshot(
     if (remaining < 0) {
       return { status: "overflow" };
     }
-    const scanned = await readDirectChildren(rootAbs, dirRel, fs, remaining);
+    const scanned = await readAvailableDirectory(
+      rootAbs,
+      dirRel,
+      fs,
+      remaining,
+      directoryAvailability
+    );
+    if (scanned.status === "unproven") {
+      return { status: "ok" };
+    }
     if (scanned.status === "missing") {
       // Open-time ENOENT/ENOTDIR is never directory-deletion proof.
       // A nested dirty target may have raced into a file/symlink/other after
@@ -457,7 +470,16 @@ async function scanNewSubtree(
     if (remaining < 0) {
       return { status: "overflow" };
     }
-    const scanned = await readDirectChildren(rootAbs, current, fs, remaining);
+    const scanned = await readAvailableDirectory(
+      rootAbs,
+      current,
+      fs,
+      remaining,
+      directoryAvailability
+    );
+    if (scanned.status === "unproven") {
+      continue;
+    }
     if (scanned.status === "missing") {
       // New directory vanished while scanning — fail closed.
       return {

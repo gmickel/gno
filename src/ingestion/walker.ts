@@ -424,8 +424,14 @@ export class FileWalker implements WalkerPort {
 
       let dirents;
       try {
-        // Structural enumeration only after the directory was classified available.
-        dirents = await readdir(dir.absPath, { withFileTypes: true });
+        const read = await classifier.readDirectory(dir.absPath, () =>
+          readdir(dir.absPath, { withFileTypes: true })
+        );
+        if (read.kind !== "available") {
+          pushUnprovenDirectorySkip(skipped, dir.absPath, dir.relPath, read);
+          continue;
+        }
+        dirents = read.value;
       } catch {
         skipped.push({
           absPath: dir.absPath,

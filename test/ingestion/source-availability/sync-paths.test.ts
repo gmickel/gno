@@ -33,7 +33,16 @@ function classifierFor(
   mode: SourceAvailabilityMode,
   decide: (absPath: string) => DirectoryAvailabilityResult
 ): DirectoryAvailabilityPort {
-  return { mode, classify: async (absPath) => decide(absPath) };
+  return {
+    mode,
+    classify: async (absPath) => decide(absPath),
+    readDirectory: async (absPath, read) => {
+      const classified = decide(absPath);
+      return classified.kind === "available"
+        ? { kind: "available", value: await read() }
+        : classified;
+    },
+  };
 }
 
 describe("syncPaths source-availability guards", () => {

@@ -5,7 +5,10 @@
 
 import { describe, expect, test } from "bun:test";
 
-import type { DirectoryAvailabilityPort } from "../../src/ingestion/source-availability";
+import type {
+  DirectoryAvailabilityPort,
+  DirectoryAvailabilityResult,
+} from "../../src/ingestion/source-availability";
 import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
 import { classifyDirtyHints } from "../../src/serve/watch-reconciliation";
@@ -76,25 +79,56 @@ function memoryFs(tree: Record<string, string[]>): WatcherSnapshotFs {
   };
 }
 
+function directoryClassifier(
+  decide: (absPath: string) => DirectoryAvailabilityResult
+): DirectoryAvailabilityPort {
+  return {
+    mode: "local",
+    classify: async (absPath) => decide(absPath),
+    readDirectory: async (absPath, read) => {
+      const classified = decide(absPath);
+      return classified.kind === "available"
+        ? { kind: "available", value: await read() }
+        : classified;
+    },
+  };
+}
+
+function blockAtDirectoryRead(
+  blockedSuffix: string
+): DirectoryAvailabilityPort {
+  return {
+    mode: "local",
+    classify: async () => ({ kind: "available" }),
+    readDirectory: async (absPath, read) => {
+      if (absPath.endsWith(blockedSuffix)) {
+        return {
+          kind: "dataless",
+          code: "DATALESS_DIRECTORY",
+          message: "became dataless before enumeration",
+        };
+      }
+      return { kind: "available", value: await read() };
+    },
+  };
+}
+
 describe("watcher snapshot source-availability descent", () => {
   test("build refuses descent into dataless child directory", async () => {
     const fs = memoryFs({
       "": ["cloud", "local.md"],
       cloud: ["hidden.md"],
     });
-    const classifier: DirectoryAvailabilityPort = {
-      mode: "local",
-      classify: async (absPath) => {
-        if (absPath.endsWith("/cloud") || absPath === "cloud") {
-          return {
-            kind: "dataless",
-            code: "DATALESS_DIRECTORY",
-            message: "dataless",
-          };
-        }
-        return { kind: "available" };
-      },
-    };
+    const classifier = directoryClassifier((absPath) => {
+      if (absPath.endsWith("/cloud") || absPath === "cloud") {
+        return {
+          kind: "dataless",
+          code: "DATALESS_DIRECTORY",
+          message: "dataless",
+        };
+      }
+      return { kind: "available" };
+    });
 
     const built = await buildWatcherSnapshot("/", {
       fs,
@@ -108,6 +142,20 @@ describe("watcher snapshot source-availability descent", () => {
     const rootEntries = built.snapshot.directories.get("");
     expect(rootEntries?.has("cloud")).toBe(true);
     expect(rootEntries?.has("local.md")).toBe(true);
+  });
+
+  test("build refuses a child that becomes dataless before enumeration", async () => {
+    const built = await buildWatcherSnapshot("/", {
+      fs: memoryFs({
+        "": ["cloud", "local.md"],
+        cloud: ["hidden.md"],
+      }),
+      directoryAvailability: blockAtDirectoryRead("/cloud"),
+    });
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") return;
+    expect(built.snapshot.directories.has("cloud")).toBe(false);
+    expect(built.snapshot.directories.get("")?.has("cloud")).toBe(true);
   });
 
   test("diff preserves prior subtree when dirty directory becomes dataless", async () => {
@@ -129,19 +177,16 @@ describe("watcher snapshot source-availability descent", () => {
       "": ["cloud", "local.md"],
       cloud: ["kept.md"],
     });
-    const classifier: DirectoryAvailabilityPort = {
-      mode: "local",
-      classify: async (absPath) => {
-        if (absPath.endsWith("/cloud") || absPath === "cloud") {
-          return {
-            kind: "dataless",
-            code: "DATALESS_DIRECTORY",
-            message: "dataless",
-          };
-        }
-        return { kind: "available" };
-      },
-    };
+    const classifier = directoryClassifier((absPath) => {
+      if (absPath.endsWith("/cloud") || absPath === "cloud") {
+        return {
+          kind: "dataless",
+          code: "DATALESS_DIRECTORY",
+          message: "dataless",
+        };
+      }
+      return { kind: "available" };
+    });
 
     const diff = await diffWatcherSnapshot("/", previous, ["cloud"], {
       fs,
@@ -155,22 +200,55 @@ describe("watcher snapshot source-availability descent", () => {
     );
   });
 
-  test("fallback preserves store descendants under a dataless prefix", async () => {
+  test("diff preserves prior subtree when availability changes before enumeration", async () => {
+    const previous: WatcherSnapshot = {
+      directories: new Map([
+        ["", new Map([["cloud", fp("directory", 1)]])],
+        ["cloud", new Map([["kept.md", fp("file", 2)]])],
+      ]),
+      entryCount: 2,
+    };
+    const diff = await diffWatcherSnapshot("/", previous, ["cloud"], {
+      fs: memoryFs({ "": ["cloud"], cloud: [] }),
+      directoryAvailability: blockAtDirectoryRead("/cloud"),
+    });
+    expect(diff.status).toBe("ok");
+    if (diff.status !== "ok") return;
+    expect(diff.removals).toEqual([]);
+    expect(diff.nextSnapshot.directories.get("cloud")?.has("kept.md")).toBe(
+      true
+    );
+  });
+
+  test("new-subtree scan refuses a directory that changes before enumeration", async () => {
+    const diff = await diffWatcherSnapshot(
+      "/",
+      {
+        directories: new Map([["", new Map()]]),
+        entryCount: 0,
+      },
+      [""],
+      {
+        fs: memoryFs({
+          "": ["cloud"],
+          cloud: ["hidden.md"],
+        }),
+        directoryAvailability: blockAtDirectoryRead("/cloud"),
+      }
+    );
+    expect(diff.status).toBe("ok");
+    if (diff.status !== "ok") return;
+    expect(diff.candidates).toEqual([]);
+    expect(diff.nextSnapshot.directories.has("cloud")).toBe(false);
+    expect(diff.nextSnapshot.directories.get("")?.has("cloud")).toBe(true);
+  });
+
+  test("fallback preserves descendants when availability changes before enumeration", async () => {
     const fs = memoryFs({
       "": ["cloud", "local.md"],
       cloud: ["kept.md"],
     });
-    const classifier: DirectoryAvailabilityPort = {
-      mode: "local",
-      classify: async (absPath) =>
-        absPath.endsWith("/cloud")
-          ? {
-              kind: "dataless",
-              code: "DATALESS_DIRECTORY",
-              message: "dataless",
-            }
-          : { kind: "available" },
-    };
+    const classifier = blockAtDirectoryRead("/cloud");
     const store = {
       listActiveSourcePaths: async () => ({
         ok: true as const,
