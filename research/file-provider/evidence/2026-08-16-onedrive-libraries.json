@@ -1,0 +1,166 @@
+{
+  "capturedAt": "2026-08-16T11:44:22Z",
+  "provider": {
+    "label": "onedrive",
+    "version": "26.139.0720+26139.0720.0007",
+    "installedSharedLibrariesDomains": 1,
+    "immediateLibraryRoots": 2
+  },
+  "privacy": {
+    "rootsAndFixtures": "sha256 only",
+    "existingSourceNamesRetained": false,
+    "existingSourceBytesRead": false,
+    "productionBehaviorChanged": false
+  },
+  "libraries": [
+    {
+      "library": "onedrive-library-1",
+      "root": "sha256:27806da074e584c7afb4c20824467da02a088c14d3065f10fa457f6e898d874a",
+      "fixture": "sha256:abeb5617d79145ebec83fe04c37ed683f4f76e39710151e02dcd9a67200272a8",
+      "rows": [
+        {
+          "state": "local",
+          "verdict": "PASS",
+          "beforeDataless": false,
+          "afterDataless": false,
+          "metadata": "PASS",
+          "traversal": "PASS",
+          "guardedRead": { "classification": "ok", "bytesRead": 43 }
+        },
+        {
+          "state": "pinned-offline",
+          "verdict": "BLOCKED",
+          "reason": "provider offline state was not safely induced",
+          "observedDataless": false
+        },
+        {
+          "state": "cached-unpinned",
+          "verdict": "PASS",
+          "providerMetadata": {
+            "isDownloaded": true,
+            "isKeepDownloaded": false,
+            "isUploaded": true
+          },
+          "beforeDataless": false,
+          "afterDataless": false,
+          "metadata": "PASS",
+          "traversal": "PASS",
+          "guardedRead": { "classification": "ok", "bytesRead": 43 }
+        },
+        {
+          "state": "cloud-only",
+          "verdict": "PASS",
+          "beforeDataless": true,
+          "afterDataless": true,
+          "metadata": "PASS",
+          "traversal": "PASS",
+          "guardedRead": {
+            "classification": "EDEADLK",
+            "errno": 11,
+            "bytesRead": 0
+          }
+        },
+        {
+          "state": "nested-dataless-directory",
+          "verdict": "NOT AVAILABLE",
+          "reason": "dedicated directory did not acquire SF_DATALESS after eviction action",
+          "observedDataless": false
+        },
+        {
+          "state": "partial-content",
+          "verdict": "NOT AVAILABLE",
+          "reason": "no safe partial-range control",
+          "observedDataless": false
+        },
+        {
+          "state": "classification-to-read-race",
+          "verdict": "NOT AVAILABLE",
+          "reason": "state transition did not reproduce in bounded 12s and 20s attempts",
+          "classificationDataless": false,
+          "readBoundaryDataless": false,
+          "guardedRead": { "classification": "ok", "bytesRead": 35 }
+        }
+      ],
+      "cleanup": { "activePathAbsent": true }
+    },
+    {
+      "library": "onedrive-library-2",
+      "root": "sha256:b5adc6ec655b1b5703bbec7cd139c4de80c569fbe7b6d22a0c4a7532517b8ea1",
+      "fixture": "sha256:d38be421186d33cd90f354c34f10664f3fc981e5ba457cd2e02d0705150bb738",
+      "rows": [
+        {
+          "state": "local",
+          "verdict": "PASS",
+          "beforeDataless": false,
+          "afterDataless": false,
+          "metadata": "PASS",
+          "traversal": "PASS",
+          "guardedRead": { "classification": "ok", "bytesRead": 43 }
+        },
+        {
+          "state": "pinned-offline",
+          "verdict": "BLOCKED",
+          "reason": "provider offline state was not safely induced",
+          "observedDataless": false
+        },
+        {
+          "state": "cached-unpinned",
+          "verdict": "PASS",
+          "providerMetadata": {
+            "isDownloaded": true,
+            "isKeepDownloaded": false,
+            "isUploaded": true
+          },
+          "beforeDataless": false,
+          "afterDataless": false,
+          "metadata": "PASS",
+          "traversal": "PASS",
+          "guardedRead": { "classification": "ok", "bytesRead": 43 }
+        },
+        {
+          "state": "cloud-only",
+          "verdict": "PASS",
+          "beforeDataless": true,
+          "afterDataless": true,
+          "metadata": "PASS",
+          "traversal": "PASS",
+          "guardedRead": {
+            "classification": "EDEADLK",
+            "errno": 11,
+            "bytesRead": 0
+          }
+        },
+        {
+          "state": "nested-dataless-directory",
+          "verdict": "NOT AVAILABLE",
+          "reason": "dedicated directory did not acquire SF_DATALESS after eviction action",
+          "observedDataless": false
+        },
+        {
+          "state": "partial-content",
+          "verdict": "NOT AVAILABLE",
+          "reason": "no safe partial-range control",
+          "observedDataless": false
+        },
+        {
+          "state": "classification-to-read-race",
+          "verdict": "PASS",
+          "classificationDataless": false,
+          "readBoundaryDataless": true,
+          "afterDataless": true,
+          "guardedRead": {
+            "classification": "EDEADLK",
+            "errno": 11,
+            "bytesRead": 0
+          }
+        }
+      ],
+      "cleanup": { "activePathAbsent": true }
+    }
+  ],
+  "decision": {
+    "oneDriveSupport": "SUPPORTED_ON_TESTED_CONFIGURATION",
+    "basis": "both immediate libraries independently preserved cloud-only SF_DATALESS and refused guarded reads with EDEADLK and zero bytes",
+    "caveat": "nested-directory, partial-content, and provider-offline states remain unclaimed; only one library reproduced the classification-to-read race"
+  }
+}

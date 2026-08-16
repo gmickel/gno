@@ -107,8 +107,9 @@ Usage:
 
 Safety:
   Darwin-only for all commands except --help. Unknown flags → nonzero exit.
-  Root must be the exact installed Google My Drive, iCloud Drive, or OneDrive
-  SharedLibraries root. Arbitrary writable directories are refused.
+  Root must be the exact installed Google My Drive, iCloud Drive, or an immediate
+  library root inside a OneDrive SharedLibraries domain. Aggregation roots,
+  arbitrary descendants, symlink roots, and arbitrary writable directories are refused.
   Fixture basename must match GNO-fn118-smoke-* (no separators/traversal).
   Mutating create refuses pre-existing fixture paths; operates only inside the new child.
   JSON redacts fixture IDs and provider roots as SHA-256; no source bytes or user names.

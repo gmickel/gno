@@ -198,8 +198,12 @@ export async function runMatrixRow(options: {
     };
   }
   const files = await listFixtureFiles(options.fixtureRoot);
+  const raceTarget = files.find((p) => basename(p) === "race-target.md");
   const target =
-    files.find((p) => basename(p) === "race-target.md") ?? files[0];
+    options.row === "cloud-only" ||
+    options.row === "classification-to-read-race"
+      ? (raceTarget ?? files[0])
+      : (files.find((path) => path !== raceTarget) ?? files[0]);
   if (!target) {
     return {
       provider: options.provider,
@@ -211,7 +215,7 @@ export async function runMatrixRow(options: {
   const snap = observer.observe(target);
   const nestedSnap = observer.observe(join(options.fixtureRoot, "nested"));
 
-  if (options.row === "local") {
+  if (options.row === "local" || options.row === "cached-unpinned") {
     if (snap.dataless === true) {
       return {
         provider: options.provider,
@@ -351,6 +355,26 @@ export async function runMatrixRow(options: {
       raceDelayMs: options.raceDelayMs,
       before: { dataless: snap.dataless },
       probe,
+    };
+  }
+
+  if (options.row === "pinned-offline") {
+    return {
+      provider: options.provider,
+      row: options.row,
+      verdict: "BLOCKED" satisfies RowVerdict,
+      reason: "provider_offline_state_not_safely_induced",
+      before: { dataless: snap.dataless, stFlags: snap.stFlags },
+    };
+  }
+
+  if (options.row === "partial-content") {
+    return {
+      provider: options.provider,
+      row: options.row,
+      verdict: "NOT AVAILABLE" satisfies RowVerdict,
+      reason: "no_safe_partial_range_control",
+      before: { dataless: snap.dataless, stFlags: snap.stFlags },
     };
   }
 

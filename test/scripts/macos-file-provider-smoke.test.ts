@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-// node:fs/promises — temp fixture dirs for focused tests; no Bun equivalent
-import { mkdir, mkdtemp } from "node:fs/promises";
+// node:fs/promises — temp fixture dirs and symlinks for focused tests; no Bun equivalent
+import { mkdir, mkdtemp, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -37,6 +37,8 @@ describe("macos-file-provider-smoke help and flags", () => {
     expect(HELP_TEXT).toContain("process (0)");
     expect(HELP_TEXT).toContain("thread scope");
     expect(HELP_TEXT).toContain("SF_DATALESS");
+    expect(HELP_TEXT).toContain("immediate");
+    expect(HELP_TEXT).toContain("Aggregation roots");
   });
 
   test.each([
@@ -134,7 +136,7 @@ describe("macos-file-provider-smoke refusals", () => {
       provider: "google",
     },
     {
-      path: "/home/Library/CloudStorage/OneDrive-SharedLibraries-tenant",
+      path: "/home/Library/CloudStorage/OneDrive-SharedLibraries-tenant/library-a",
       provider: "onedrive",
     },
     {
@@ -143,8 +145,94 @@ describe("macos-file-provider-smoke refusals", () => {
     },
     { path: "/", provider: null },
     { path: "/home/Library/CloudStorage/GoogleDrive-account", provider: null },
+    {
+      path: "/home/Library/CloudStorage/OneDrive-SharedLibraries-tenant",
+      provider: null,
+    },
+    {
+      path: "/home/Library/CloudStorage/OneDrive-SharedLibraries-tenant/library-a/descendant",
+      provider: null,
+    },
+    {
+      path: "/home/Library/CloudStorage/OneDrive-tenant/library-a",
+      provider: null,
+    },
+    {
+      path: "/home/Library/CloudStorage/OneDrive-SharedLibraries-tenant/GNO-fn118-smoke-fake-root",
+      provider: null,
+    },
   ])("classifies only exact provider-root shapes %#", ({ path, provider }) => {
     expect(classifyProviderRootShape(path, "/home")).toBe(provider);
+  });
+
+  test("validates an immediate OneDrive library and rejects its symlink sibling", async () => {
+    const home = await mkdtemp(join(tmpdir(), "gno-fn118-home-"));
+    try {
+      const domain = join(
+        home,
+        "Library",
+        "CloudStorage",
+        "OneDrive-SharedLibraries-tenant"
+      );
+      const library = join(domain, "library-a");
+      const outside = join(home, "outside");
+      await mkdir(library, { recursive: true });
+      await mkdir(outside);
+      expect(await resolveProviderRoot(library, home)).toMatchObject({
+        provider: "onedrive",
+      });
+
+      const escaped = join(domain, "library-escape");
+      await symlink(outside, escaped);
+      expect(resolveProviderRoot(escaped, home)).rejects.toThrow(
+        "symlink roots are refused"
+      );
+    } finally {
+      await safeRm(home);
+    }
+  });
+
+  test("rejects traversal even when it resolves to an installed library", async () => {
+    const home = await mkdtemp(join(tmpdir(), "gno-fn118-home-"));
+    try {
+      const domain = join(
+        home,
+        "Library",
+        "CloudStorage",
+        "OneDrive-SharedLibraries-tenant"
+      );
+      const library = join(domain, "library-a");
+      await mkdir(library, { recursive: true });
+      expect(
+        resolveProviderRoot(`${domain}/unused/../library-a`, home)
+      ).rejects.toThrow("traversal segments are refused");
+    } finally {
+      await safeRm(home);
+    }
+  });
+
+  test("rejects missing and non-directory OneDrive library roots", async () => {
+    const home = await mkdtemp(join(tmpdir(), "gno-fn118-home-"));
+    try {
+      const domain = join(
+        home,
+        "Library",
+        "CloudStorage",
+        "OneDrive-SharedLibraries-tenant"
+      );
+      await mkdir(domain, { recursive: true });
+      expect(
+        resolveProviderRoot(join(domain, "missing-lib"), home)
+      ).rejects.toThrow("does not exist");
+
+      const fileRoot = join(domain, "library-file");
+      await Bun.write(fileRoot, "not-a-dir");
+      expect(resolveProviderRoot(fileRoot, home)).rejects.toThrow(
+        "must be a directory"
+      );
+    } finally {
+      await safeRm(home);
+    }
   });
 });
 
@@ -226,6 +314,80 @@ describe("macos-file-provider-smoke probe targeting", () => {
         verdict: "BLOCKED",
         reason: "race_delay_required_for_host_state_transition",
       });
+    } finally {
+      await safeRm(parent);
+    }
+  });
+
+  test("cached-unpinned runs independent probes when the host prepared a local target", async () => {
+    const parent = await mkdtemp(join(tmpdir(), "gno-fn118-cached-"));
+    try {
+      const id = "GNO-fn118-smoke-cached";
+      await createDedicatedFixture(parent, id, false);
+      const observer = {
+        kind: "darwin-ffi-lstat-st_flags" as const,
+        intermediateDirectoryCaveat: "test",
+        observe: () => ({
+          ok: true,
+          dataless: false,
+          stFlags: 0,
+          errno: null,
+        }),
+      };
+      const policy: IoPolicyPort = {
+        get: () => 0,
+        set: () => 0,
+        readErrno: () => 0,
+      };
+      const result = await runMatrixRow({
+        fixtureRoot: join(parent, id),
+        provider: "onedrive",
+        row: "cached-unpinned",
+        observer,
+        policy,
+      });
+      expect(result).toMatchObject({
+        verdict: "PASS",
+        row: "cached-unpinned",
+      });
+      expect((result.probes as unknown[]).length).toBe(3);
+    } finally {
+      await safeRm(parent);
+    }
+  });
+
+  test.each([
+    {
+      row: "pinned-offline" as const,
+      verdict: "BLOCKED",
+      reason: "provider_offline_state_not_safely_induced",
+    },
+    {
+      row: "partial-content" as const,
+      verdict: "NOT AVAILABLE",
+      reason: "no_safe_partial_range_control",
+    },
+  ])("records an explicit unclaimed provider state %#", async (expected) => {
+    const parent = await mkdtemp(join(tmpdir(), "gno-fn118-unclaimed-"));
+    try {
+      const id = "GNO-fn118-smoke-unclaimed";
+      await createDedicatedFixture(parent, id, false);
+      const result = await runMatrixRow({
+        fixtureRoot: join(parent, id),
+        provider: "onedrive",
+        row: expected.row,
+        observer: {
+          kind: "darwin-ffi-lstat-st_flags",
+          intermediateDirectoryCaveat: "test",
+          observe: () => ({
+            ok: true,
+            dataless: false,
+            stFlags: 0,
+            errno: null,
+          }),
+        },
+      });
+      expect(result).toMatchObject(expected);
     } finally {
       await safeRm(parent);
     }

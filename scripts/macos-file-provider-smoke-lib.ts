@@ -10,7 +10,7 @@ import { lstat, realpath } from "node:fs/promises";
 // node:os — Bun has no home-directory helper
 import { homedir } from "node:os";
 // node:path — Bun has no path utilities
-import { basename, join, resolve, sep } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 
 export const SF_DATALESS = 0x4000_0000;
 export const IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES = 3;
@@ -399,9 +399,11 @@ export function classifyProviderRootShape(
     return "google";
   }
   if (
-    relativeCloudPath.length === 1 &&
+    relativeCloudPath.length === 2 &&
     relativeCloudPath[0]?.startsWith("OneDrive-") &&
-    relativeCloudPath[0].includes("SharedLibraries")
+    relativeCloudPath[0].includes("SharedLibraries") &&
+    relativeCloudPath[1] !== undefined &&
+    !FIXTURE_BASENAME_RE.test(relativeCloudPath[1])
   ) {
     return "onedrive";
   }
@@ -417,16 +419,34 @@ export function classifyProviderRootShape(
 export async function resolveProviderRoot(rootArg: string): Promise<{
   realPath: string;
   provider: ProviderLabel;
-}> {
+}>;
+export async function resolveProviderRoot(
+  rootArg: string,
+  home: string
+): Promise<{ realPath: string; provider: ProviderLabel }>;
+export async function resolveProviderRoot(
+  rootArg: string,
+  home: string = homedir()
+): Promise<{ realPath: string; provider: ProviderLabel }> {
   if (!rootArg || rootArg.trim() === "") {
     throw new Error("unsafe root: --root must be explicitly supplied");
   }
+  if (rootArg.split(/[\\/]/).includes("..")) {
+    throw new Error("unsafe root: traversal segments are refused");
+  }
   const abs = resolve(rootArg);
-  const provider = classifyProviderRootShape(abs);
+  const provider = classifyProviderRootShape(abs, home);
   if (!provider) {
     throw new Error(
-      "unsafe root: expected an installed Google Drive, iCloud Drive, or OneDrive SharedLibraries root"
+      "unsafe root: expected an installed Google Drive, iCloud Drive, or immediate OneDrive SharedLibraries library root"
     );
+  }
+  const rootStat = await lstat(abs).catch(() => null);
+  if (!rootStat) {
+    throw new Error("unsafe root: path does not exist or is unresolvable");
+  }
+  if (rootStat.isSymbolicLink()) {
+    throw new Error("unsafe root: symlink roots are refused");
   }
   let real: string;
   try {
@@ -436,6 +456,15 @@ export async function resolveProviderRoot(rootArg: string): Promise<{
   }
   if (!(await lstat(real)).isDirectory()) {
     throw new Error("unsafe root: must be a directory");
+  }
+  if (provider === "onedrive") {
+    const domain = dirname(abs);
+    const domainReal = await realpath(domain).catch(() => null);
+    if (!domainReal || dirname(real) !== domainReal) {
+      throw new Error(
+        "unsafe root: OneDrive library must remain an immediate child of its installed SharedLibraries domain"
+      );
+    }
   }
   return { realPath: real, provider };
 }
