@@ -309,9 +309,19 @@ export async function inspectNoFollowPresence(
       };
     }
     const parentAbs = parent === "" ? rootAbs : join(rootAbs, parent);
-    const guarded = directoryAvailability.readDirectory(parentAbs, () =>
-      fs.lstatChildByRelSync!(rootAbs, parent, base)
-    );
+    const guarded = directoryAvailability.readDirectory(parentAbs, () => {
+      try {
+        return {
+          status: "present" as const,
+          stat: fs.lstatChildByRelSync!(rootAbs, parent, base),
+        };
+      } catch (cause) {
+        if (isMissingFsError(cause)) {
+          return { status: "missing" as const };
+        }
+        throw cause;
+      }
+    });
     if (guarded.kind !== "available") {
       return {
         status: "error",
@@ -320,9 +330,13 @@ export async function inspectNoFollowPresence(
         ),
       };
     }
+    if (guarded.value.status === "missing") {
+      return { status: "missing" };
+    }
     return {
       status: "present",
-      indexable: guarded.value.isFile() || guarded.value.isSymbolicLink(),
+      indexable:
+        guarded.value.stat.isFile() || guarded.value.stat.isSymbolicLink(),
     };
   }
   return inspectParent();
