@@ -49,9 +49,12 @@ Build and run the physical-macOS proof point for R1/R6. The task owns a reusable
 - [ ] Redacted reproducible receipt committed
 
 ## Done summary
-TBD
+Built a reusable, non-production Darwin File Provider smoke/benchmark harness with strict provider-root and fixture containment, fail-closed no-materialization policy handling, state-race support, deterministic 2+9 timing lanes, and focused tests. Tracked redacted physical evidence independently proves Google Drive and iCloud cloud-only refusal without hydration, leaves OneDrive unclaimed, records blocked/unavailable states, and establishes a 5,000-file candidate overhead of 15.2323%—a no-go for the naive extra-per-file check before task .2; all dedicated fixtures were moved to Trash.
 
+Baseline: `bun run lint:check` green; `bun test` green (4216 pass, 2 skip); smoke help absent before implementation as expected task gap. Verify: focused harness tests 36 pass; `bun run lint:check` green; `bun test` 4252 pass, 2 skip, 0 fail; smoke help exit 0. No production ingestion behavior changed.
+
+stage: impl-review - skipped(config: REVIEW_MODE=none)
 ## Evidence
-- Commits:
-- Tests:
+- Commits: b22722a034793c8154b5ec3bb46c75a3e78d3cff
+- Tests: bun test test/scripts/macos-file-provider-smoke.test.ts, bun scripts/macos-file-provider-smoke.ts benchmark-local --corpus-files 5000, bun run lint:check, bun test, bun scripts/macos-file-provider-smoke.ts --help
 - PRs:
