@@ -4,7 +4,8 @@
   "claimed_at": null,
   "created_at": "2026-08-16T07:45:16.920102Z",
   "depends_on": [
-    "fn-118-cloud-placeholder-safe-indexing.1"
+    "fn-118-cloud-placeholder-safe-indexing.1",
+    "fn-118-cloud-placeholder-safe-indexing.5"
   ],
   "id": "fn-118-cloud-placeholder-safe-indexing.2",
   "priority": null,
@@ -12,5 +13,5 @@
   "spec_path": ".flow/tasks/fn-118-cloud-placeholder-safe-indexing.2.md",
   "status": "todo",
   "title": "Add macOS source-availability policy and guarded read boundary",
-  "updated_at": "2026-08-16T08:40:30.337843Z"
+  "updated_at": "2026-08-16T11:24:21.650833Z"
 }
