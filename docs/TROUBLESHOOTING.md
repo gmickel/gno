@@ -111,6 +111,27 @@ under `setup-receipts/<index>/` and `setup-semantic/<index>/` in the configured
 data directory. Setup is direct and never uses a running serve/daemon/MCP
 process.
 
+### Cloud placeholders downloaded during indexing / “local mode” skipped files
+
+`sourceAvailability: local` (collection config) is opt-in and distinct from
+`egressPolicy`. On the macOS File Provider layouts covered by physical evidence
+it refuses content that would require materialization:
+
+| Receipt code                          | Meaning                                                           |
+| ------------------------------------- | ----------------------------------------------------------------- |
+| `CLOUD_PLACEHOLDER` / `CLOUD_PARTIAL` | File skipped (not a conversion error); content not local          |
+| `DATALESS_DIRECTORY`                  | Directory not descended; previously indexed descendants preserved |
+| `SOURCE_AVAILABILITY_UNSUPPORTED`     | Platform/filesystem outside the evidenced File Provider layouts   |
+| `SOURCE_AVAILABILITY_POLICY_FAILED`   | No-materialization I/O policy could not be established            |
+| `SOURCE_AVAILABILITY_UNKNOWN`         | Availability could not be proven; fail closed                     |
+
+Evidence scope: Google Drive, iCloud Drive, and OneDrive only for the tested
+OS/provider configuration; OneDrive only for both installed immediate SharePoint
+library roots. No Windows/Linux cloud-filesystem guarantee. Local mode does not
+pin, evict, or download as product behavior; metadata/provider bookkeeping may
+still occur. Use `sourceAvailability: any` (default) for legacy reads, or make
+content available locally in the provider UI before indexing under `local`.
+
 ### Retrieval activation failed
 
 Inspect the exact collection, stage, code, and remediation:

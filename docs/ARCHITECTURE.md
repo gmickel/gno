@@ -174,6 +174,29 @@ matching `contentTypes[].graphHints` value as the projected edge type for plain
 links. Reads join active source and target documents so inactive renamed files
 do not surface stale edges.
 
+Ingestion respects per-collection `sourceAvailability` (`any` default, or
+opt-in `local`). Local mode shares one guarded content-read boundary across
+full walk, targeted sync, sniff/hash/conversion, record import, and
+watch-triggered paths. On the macOS File Provider layouts covered by physical
+evidence, it combines hierarchical per-directory availability classification
+(memoized for the operation; not one availability call per discovered file)
+with a process-scoped no-materialization I/O policy and a content-boundary
+recheck. Cloud placeholders surface as distinct skips
+(`CLOUD_PLACEHOLDER` / `CLOUD_PARTIAL`); dataless or availability-unknown
+directories refuse descent (`DATALESS_DIRECTORY` or fail-closed codes) while
+preserving previously indexed descendants under unproven prefixes. Unsupported
+platform/filesystem/policy setup fails closed. This is distinct from
+`egressPolicy` (where derived data may travel). Evidence covers Google Drive,
+iCloud Drive, and OneDrive only for the tested configuration and both validated
+immediate SharePoint library roots — not Windows/Linux cloud filesystems, and
+not a claim of zero provider activity or universal provider support.
+
+The final controlled 5,000-file all-local benchmark compared the actual
+pre-implementation production walker with current production paths on the same
+corpus: current `any` measured -1.1280% and hierarchical `local` added 1.1841%
+median traversal overhead (2 warmups, 9 interleaved samples per lane). These are
+fixture-scoped performance results, not provider-latency guarantees.
+
 `syncAll` defers this projection until every collection has synced, then runs
 one exact global reconciliation. The resident watcher sends every contained,
 eligible exact path through path-scoped content hashing, even when filesystem

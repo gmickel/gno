@@ -153,6 +153,13 @@ Collection policy never replaces bearer authentication or the MCP write flag.
 Trace export resolves exact trace lineage and checks policy before creating or
 reusing an export receipt.
 
+Source availability (`collections[].sourceAvailability`: `any` | `local`) is
+configured on the collection and is **not** an egress tool. Sync/index job
+receipts may include `CLOUD_PLACEHOLDER`, `CLOUD_PARTIAL`, `DATALESS_DIRECTORY`,
+or `SOURCE_AVAILABILITY_*` codes under `local` mode. Distinct from
+`egressPolicy`. Evidence-qualified for tested macOS File Provider layouts only
+(see [Configuration](CONFIGURATION.md#source-availability)).
+
 ### `gno_audit`
 
 `gno_audit` returns the same versioned report as CLI `gno audit` for `links`,

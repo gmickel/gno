@@ -5,14 +5,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  ANY_REGRESSION_THRESHOLD_PERCENT,
   assertFixtureBasename,
   classifyGuardedReadErrno,
   classifyProviderRootShape,
+  compareAgainstThreshold,
   createDedicatedFixture,
   DARWIN_EDEADLK,
   HELP_TEXT,
+  instrumentDirectoryAvailability,
+  LOCAL_OVERHEAD_THRESHOLD_PERCENT,
   main,
   parseArgs,
+  percentOverhead,
+  PRE_IMPLEMENTATION_BASELINE,
   redactToken,
   requireDarwin,
   resolveProviderRoot,
@@ -25,6 +31,11 @@ import {
   withNoMaterializePolicy,
   type IoPolicyPort,
 } from "../../scripts/macos-file-provider-smoke";
+import {
+  createDirectoryAvailability,
+  memoizeDirectoryAvailability,
+} from "../../src/ingestion/source-availability";
+import { FileWalker } from "../../src/ingestion/walker";
 import { safeRm } from "../helpers/cleanup";
 
 describe("macos-file-provider-smoke help and flags", () => {
@@ -455,8 +466,95 @@ describe("macos-file-provider-smoke policy and EDEADLK", () => {
   });
 });
 
+describe("macos-file-provider-smoke benchmark threshold math", () => {
+  test("percentOverhead and compareAgainstThreshold are exact", () => {
+    expect(percentOverhead(82.8422, 71.8915)).toBe(15.2323);
+    expect(percentOverhead(71.8915, 0)).toBeNull();
+
+    const fail = compareAgainstThreshold(82.8422, 71.8915, 10);
+    expect(fail.passes).toBe(false);
+    expect(fail.status).toBe("fail");
+    expect(fail.overheadPercent).toBe(15.2323);
+
+    const passAny = compareAgainstThreshold(
+      PRE_IMPLEMENTATION_BASELINE.medianMs * 1.02,
+      PRE_IMPLEMENTATION_BASELINE.medianMs,
+      ANY_REGRESSION_THRESHOLD_PERCENT
+    );
+    expect(passAny.passes).toBe(true);
+    expect(passAny.status).toBe("pass");
+
+    const passLocal = compareAgainstThreshold(
+      100,
+      100,
+      LOCAL_OVERHEAD_THRESHOLD_PERCENT
+    );
+    expect(passLocal.passes).toBe(true);
+    expect(passLocal.overheadPercent).toBe(0);
+
+    const indeterminate = compareAgainstThreshold(10, 0, 3);
+    expect(indeterminate.passes).toBeNull();
+    expect(indeterminate.status).toBe("indeterminate");
+  });
+
+  test("pre-implementation naive candidate remains the documented reject", () => {
+    expect(PRE_IMPLEMENTATION_BASELINE.rejectedNaiveOverheadPercent).toBe(
+      15.2323
+    );
+    expect(PRE_IMPLEMENTATION_BASELINE.medianMs).toBe(71.8915);
+    expect(ANY_REGRESSION_THRESHOLD_PERCENT).toBe(3);
+    expect(LOCAL_OVERHEAD_THRESHOLD_PERCENT).toBe(10);
+  });
+});
+
+describe("macos-file-provider-smoke local hierarchical classification", () => {
+  test("local mode classifies directories, not every discovered file", async () => {
+    const parent = await mkdtemp(join(tmpdir(), "gno-fn118-hier-"));
+    try {
+      const root = join(parent, "corpus");
+      await mkdir(join(root, "a", "b"), { recursive: true });
+      await mkdir(join(root, "c"), { recursive: true });
+      const files = [
+        join(root, "root.md"),
+        join(root, "a", "a1.md"),
+        join(root, "a", "a2.md"),
+        join(root, "a", "b", "b1.md"),
+        join(root, "c", "c1.md"),
+        join(root, "c", "c2.md"),
+      ];
+      await Promise.all(
+        files.map((path, index) => Bun.write(path, `hier-${index}\n`))
+      );
+
+      const base = createDirectoryAvailability("local", {
+        pathSupport: () => "icloud-drive",
+      });
+      const instrumented = instrumentDirectoryAvailability(base);
+      const memoized = memoizeDirectoryAvailability(instrumented.port);
+      const walker = new FileWalker();
+      const { entries } = await walker.walk({
+        root,
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+        maxBytes: 1_000_000,
+        sourceAvailability: "local",
+        directoryAvailability: memoized,
+      });
+
+      expect(entries.length).toBe(files.length);
+      // Directories: root, a, a/b, c → 4 unique classifications, not 6 files.
+      expect(instrumented.getUniquePaths()).toBeLessThan(files.length);
+      expect(instrumented.getCallCount()).toBeLessThan(files.length);
+      expect(instrumented.getUniquePaths()).toBeGreaterThanOrEqual(1);
+    } finally {
+      await safeRm(parent);
+    }
+  });
+});
+
 describe("macos-file-provider-smoke benchmark shape", () => {
-  test("all-local benchmark protocol and lanes", async () => {
+  test("shipped-design protocol and lanes", async () => {
     const parent = await mkdtemp(join(tmpdir(), "gno-fn118-bench-"));
     try {
       const id = "GNO-fn118-smoke-benchcorp";
@@ -467,6 +565,7 @@ describe("macos-file-provider-smoke benchmark shape", () => {
       const json = JSON.stringify(receipt);
       expect(json).not.toContain(parent);
       expect(json).not.toContain(id);
+      expect(receipt.action).toBe("benchmark-shipped-design");
       expect(receipt.protocol).toMatchObject({
         warmups: WARMUP_COUNT,
         samplesPerLane: SAMPLE_COUNT,
@@ -475,19 +574,48 @@ describe("macos-file-provider-smoke benchmark shape", () => {
       expect(SAMPLE_COUNT).toBe(9);
       const lanes = receipt.lanes as Record<
         string,
-        { rawMs: number[]; kind: string }
+        { rawMs?: number[]; kind: string }
       >;
-      expect(lanes["discovery-traversal-baseline"]?.rawMs.length).toBe(9);
-      expect(lanes["availability-metadata"]?.rawMs.length).toBe(9);
-      expect(lanes["candidate-discovery-plus-availability"]?.rawMs.length).toBe(
+      expect(lanes["task1-protocol-any-regression"]?.rawMs?.length).toBe(9);
+      expect(lanes["any-discovery-traversal"]?.rawMs?.length).toBe(9);
+      expect(lanes["local-discovery-traversal"]?.rawMs?.length).toBe(9);
+      expect(lanes["availability-metadata-hierarchical"]?.rawMs?.length).toBe(
         9
       );
-      expect(lanes["guarded-read-hash"]?.rawMs.length).toBe(9);
+      expect(lanes["sniff-read-hash-any"]?.rawMs?.length).toBe(9);
+      expect(lanes["sniff-read-hash-local"]?.rawMs?.length).toBe(9);
       expect(lanes.conversion?.kind).toBe("not-applicable");
       expect(lanes.embedding?.kind).toBe("not-applicable");
-      expect(receipt.comparison).toHaveProperty("overheadPercent");
+      // Naive per-file candidate must not be the R6 candidate lane.
+      expect(lanes["candidate-discovery-plus-availability"]).toBeUndefined();
+      expect(receipt.comparison).toHaveProperty("taskOneProtocolControl");
+      expect(receipt.comparison).toHaveProperty(
+        "localOverheadVsImplementedAny"
+      );
+      expect(receipt.comparison).toMatchObject({
+        rejectedNaiveCandidate: {
+          measured: false,
+          preImplementationOverheadPercent: 15.2323,
+        },
+      });
+      expect(receipt.comparison).toHaveProperty(
+        "hostMeasurementInsertionPoint"
+      );
+      expect(receipt.hierarchicalProof).toMatchObject({
+        provesHierarchical: true,
+      });
       expect(receipt.protocol).toHaveProperty("complete", true);
+      expect(receipt.protocol).toMatchObject({
+        runOrder: expect.arrayContaining([
+          "task1-protocol-any-regression",
+          "any-discovery-traversal",
+          "local-discovery-traversal",
+        ]),
+      });
       expect(receipt.environment).toMatchObject({ policyScope: "process" });
+      expect(receipt.design).toMatchObject({
+        rejectedCandidateOverheadPercent: 15.2323,
+      });
     } finally {
       await safeRm(parent);
     }

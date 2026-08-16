@@ -90,7 +90,8 @@
       "properties": {
         "relPath": { "type": "string" },
         "status": {
-          "enum": ["added", "updated", "unchanged", "error", "skipped"]
+          "enum": ["added", "updated", "unchanged", "error", "skipped"],
+          "description": "skipped is used for eligibility refusals (e.g. cloud placeholders, dataless directories) and other non-error skips; error is for fail-closed and I/O failures"
         },
         "docid": { "type": "string" },
         "mirrorHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
@@ -98,7 +99,10 @@
         "contentTypeSource": {
           "enum": ["frontmatter-type", "prefix", "path-ext", "fallback"]
         },
-        "errorCode": { "type": "string" },
+        "errorCode": {
+          "type": "string",
+          "description": "Machine code for skipped/error outcomes. Source-availability codes include CLOUD_PLACEHOLDER, CLOUD_PARTIAL, DATALESS_DIRECTORY (status=skipped), and SOURCE_AVAILABILITY_UNSUPPORTED, SOURCE_AVAILABILITY_POLICY_FAILED, SOURCE_AVAILABILITY_UNKNOWN, PERMISSION, NOT_FOUND, NOT_FILE, IO_ERROR (fail-closed; unproven prefixes preserve indexed descendants). Distinct from collection egressPolicy."
+        },
         "errorMessage": { "type": "string" },
         "recordImport": {
           "$ref": "gno://schemas/record-import@1.0"

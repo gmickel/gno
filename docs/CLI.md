@@ -690,7 +690,8 @@ Shared vectors still referenced by other active collections are retained.
 
 ### gno collection policy
 
-Collection policy controls where source and derived content may travel:
+Collection policy controls where source and derived content may travel
+(`egressPolicy`). It is **not** source availability:
 
 ```bash
 gno collection policy get notes
@@ -707,6 +708,25 @@ then pass its exact numeric `revision` to `--confirm-relaxation`. The revision
 is durable and one-use: stale, replayed, cross-collection, and cross-target
 confirmations fail closed. Tightening invalidates resident sessions and queued
 work; stale jobs must be retried and rechecked.
+
+### Source availability (`sourceAvailability`)
+
+Configure on the collection in `index.yml` (no separate CLI subcommand or egress
+flag). Exact values: `any` (default) | `local`.
+
+- **`any`** — legacy source reads; behaviorally unchanged.
+- **`local`** — opt-in no-materialization guard for tested macOS File Provider
+  layouts (Google Drive, iCloud Drive, OneDrive for both validated immediate
+  SharePoint library roots only). Hierarchical directory classification +
+  guarded content recheck; skips cloud placeholders; preserves indexed
+  descendants under unproven prefixes. Unsupported platforms/filesystems fail
+  closed. Distinct from `egressPolicy`. See
+  [Configuration → Source availability](CONFIGURATION.md#source-availability).
+
+The controlled 5,000-file all-local production-walker benchmark passed both
+median gates: current `any` -1.1280% versus pre-implementation production
+`any`; hierarchical `local` +1.1841% versus current `any` (2 warmups, 9
+interleaved samples per lane).
 
 Local content-free receipts:
 

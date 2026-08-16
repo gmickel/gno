@@ -58,6 +58,8 @@ The Google race is the strongest proof of the required second check at the conte
 
 ## Performance
 
+### Pre-implementation (task 1) — naive candidate rejected
+
 The decision-grade corpus was an owned temporary local directory with 5,000 flat deterministic Markdown files, matching the scale of the existing watcher benchmark. Every measured lane used two warmups and nine retained samples; results include raw samples, median, p95, min, max, and standard deviation.
 
 | Lane                                           |     Median |         p95 | Notes                                                                           |
@@ -69,7 +71,32 @@ The decision-grade corpus was an owned temporary local directory with 5,000 flat
 | Conversion                                     |        N/A |         N/A | Markdown fixture needs no conversion                                            |
 | Embedding                                      |        N/A |         N/A | Pre-implementation smoke did not invoke production models                       |
 
+The naive candidate (one extra availability check per discovered file) is **rejected**. Production implements hierarchical memoized per-directory classification plus a guarded content recheck — not the naive pass.
+
 The 25-file provider fixture measurements also followed 2+9 and are retained as provider-specific latency evidence. Their relative overheads (Google 52.6724%, iCloud 27.7977%, OneDrive-local 22.7222%) are dominated by sub-millisecond fixed costs and are too noisy to decide R6. The 5,000-file controlled corpus is the decision basis.
+
+### Post-implementation shipped design (task 4) — PASS
+
+Command:
+
+```bash
+bun scripts/macos-file-provider-smoke.ts benchmark-local --corpus-files 5000
+```
+
+Protocol: 2 warmups + 9 retained samples per lane; raw samples, median, p95, min, max, stddev; run order fixed; hierarchical classify-call proof; contamination reported with reasons. No retained sample was contaminated.
+
+| Lane                                             | Raw samples (ms)                                                                         |   Median |      p95 |      Min |      Max |  Stddev |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------- | -------: | -------: | -------: | -------: | ------: |
+| Pre-implementation production `any` (`d0e77f15`) | 217.3163, 215.1020, 206.1665, 212.9195, 232.0113, 219.2797, 211.8805, 216.0111, 213.6919 | 215.1020 | 232.0113 | 206.1665 | 232.0113 |  6.6510 |
+| Current production `any`                         | 217.8420, 212.5191, 211.4334, 209.9733, 216.7179, 212.6756, 212.0110, 215.1051, 216.8260 | 212.6756 | 217.8420 | 209.9733 | 217.8420 |  2.6241 |
+| Current production hierarchical `local`          | 242.6054, 208.9220, 210.1628, 224.1027, 228.8533, 212.1328, 217.4458, 215.1938, 210.6183 | 215.1938 | 242.6054 | 208.9220 | 242.6054 | 10.5104 |
+| Hierarchical availability metadata               | 1.8701, 2.3031, 2.2322, 2.2826, 2.1533, 1.8579, 1.9320, 1.8377, 1.6765                   |   1.9320 |   2.3031 |   1.6765 |   2.3031 |  0.2159 |
+| Sniff/read/hash `any`                            | 157.5746, 149.6124, 161.1059, 181.0205, 154.8105, 156.6025, 156.5843, 152.9946, 154.9228 | 156.5843 | 181.0205 | 149.6124 | 181.0205 |  8.5480 |
+| Sniff/read/hash `local`                          | 92.8807, 94.2810, 93.2338, 92.2640, 93.1370, 93.4880, 92.0311, 92.8944, 93.3576          |  93.1370 |  94.2810 |  92.0311 |  94.2810 |  0.6281 |
+| Conversion                                       | N/A                                                                                      |      N/A |      N/A |      N/A |      N/A |     N/A |
+| Embedding                                        | N/A                                                                                      |      N/A |      N/A |      N/A |      N/A |     N/A |
+
+The actual current production `any` walker regressed **-1.1280%** versus the pre-implementation production walker at `d0e77f15` (PASS, ≤3%). Current production hierarchical `local` added **1.1841%** median traversal overhead versus current production `any` (PASS, ≤10%). These three lanes used the same corpus and interleaved order after two warmup rounds; the full order is in `2026-08-16-production-regression.json`. The separate phase receipt confirms the flat corpus had one directory and each local sample made two unique classifications because the configured temporary root and its canonical real path differed. That is constant per-root work, not one classification per 5,000 discovered files. Conversion and embedding are explicitly not applicable for this Markdown scan corpus. Raw structured evidence: `research/file-provider/evidence/2026-08-16-production-regression.json` and `research/file-provider/evidence/2026-08-16-post-implementation-performance.json`.
 
 ## Explicit boundaries
 
@@ -103,6 +130,7 @@ The harness never deletes. `cleanup-plan` validates the exact child and emits a 
 - `research/file-provider/evidence/2026-08-16-environment.json` — SHA-256 `ceb46475bd4e3f31fe71d7f2d35e4a7dafd8a158239d3d6982720947786ebfdb`
 - `research/file-provider/evidence/2026-08-16-provider-matrix.json` — SHA-256 `19d40150e164c8ca91f2252884f2b59e78d4fbe665b2d1e939bcc0978a24fbf0`
 - `research/file-provider/evidence/2026-08-16-performance.json` — SHA-256 `0807dc8fe26003ac7b12a529183966cd50b6c26f49d3071337a35c282a0d7835`
+- `research/file-provider/evidence/2026-08-16-post-implementation-performance.json` — SHA-256 `7a534206d7c5ed6b24e79c59d14adb8ab0297e833aadf289cde2f199fd368916`
 - `research/file-provider/evidence/2026-08-16-onedrive-libraries.json` — SHA-256 `bf75a36ac466e10366e4bdf3011334395c396517714c42f874c02ccfaf2603a0`
 
 The evidence contains provider labels and versions, hashes of roots/fixture IDs, numeric state, and timings. It contains no credentials, full provider paths, existing user-file names, or source bytes.

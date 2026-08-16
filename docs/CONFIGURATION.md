@@ -30,6 +30,10 @@ collections:
     path: /Users/you/notes
     pattern: "**/*.md"
     egressPolicy: local_only
+    # Source content availability (distinct from egressPolicy):
+    # any (default) = legacy reads; local = opt-in no-materialization guard
+    # for tested macOS File Provider layouts only.
+    sourceAvailability: any
     include: []
     exclude:
       - .git
@@ -153,6 +157,61 @@ relax collection policy; `gateway.enableWrite` does not relax it either.
 Mixed evidence and derived artifacts use the most restrictive participating
 collection. Explicit partial checks disclose every omitted collection and
 reason; normal operations never silently drop restricted evidence.
+
+## Source availability
+
+`collections[].sourceAvailability` is optional and independent of
+`egressPolicy`. Exact values: `any` | `local`. Omitted means `any`.
+
+| Mode    | Behavior                                                                                                                                                                                       |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `any`   | Default. Legacy source reads; no no-materialization guard.                                                                                                                                     |
+| `local` | Opt-in. Indexes only content that is already local; refuses cloud-placeholder materialization on the macOS File Provider layouts covered by physical evidence. Unsupported setup fails closed. |
+
+**What `local` does (macOS File Provider, evidence-qualified):**
+
+- Establishes a process-scoped no-materialization I/O policy
+  (`IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES`) for content reads.
+- Classifies directories hierarchically (memoized per operation) before descent;
+  does not add one availability syscall per discovered file.
+- Rechecks at the content boundary (sniff, hash, conversion, record import,
+  targeted sync, and watch-triggered ingestion share the same guard).
+- Skips cloud placeholders / partial content as `CLOUD_PLACEHOLDER` /
+  `CLOUD_PARTIAL` (not conversion errors).
+- Refuses descent into dataless or availability-unknown directories
+  (`DATALESS_DIRECTORY` or fail-closed codes) and **preserves previously
+  indexed descendants** under those unproven prefixes rather than proving
+  deletion.
+
+**Evidence scope (do not over-claim):**
+
+- Proven independently for Google Drive, iCloud Drive, and OneDrive on the
+  tested macOS/provider configuration.
+- OneDrive is claimed only for both installed immediate SharePoint library
+  roots under the SharedLibraries domain — not the aggregation root, not
+  arbitrary deeper trees, not untested library layouts.
+- No Windows Cloud Files or Linux/FUSE guarantee.
+- Metadata or provider bookkeeping may still occur. GNO local mode does not
+  pin, evict, or download as product behavior.
+- Availability controls **source materialization**; egress controls **where
+  derived data may travel**.
+
+**Measured scan cost:** on the controlled 5,000-file all-local Markdown corpus
+(2 warmups, 9 retained interleaved samples per lane), production traversal
+measured 215.1020 ms for pre-implementation `any`, 212.6756 ms for current
+`any` (-1.1280%, within the 3% budget), and 215.1938 ms for hierarchical
+`local` (+1.1841% versus current `any`, within the 10% budget). Conversion and
+embedding were not applicable to this corpus; raw receipts are tracked under
+`research/file-provider/evidence/`.
+
+```yaml
+collections:
+  - name: drive-notes
+    path: /Users/you/Library/CloudStorage/GoogleDrive-…/My Drive/notes
+    pattern: "**/*"
+    sourceAvailability: local
+    egressPolicy: local_only
+```
 
 Inspect and change one policy with:
 

@@ -117,7 +117,7 @@ gno daemon --detach  # headless indexing + resident MCP gateway
 
 <!-- public-truth:current-version -->
 
-> Current release: **v1.34.5** — see [CHANGELOG.md](./CHANGELOG.md)
+> Current release: **v1.34.6** — see [CHANGELOG.md](./CHANGELOG.md)
 
 <!-- /public-truth -->
 
@@ -174,6 +174,17 @@ gno daemon --detach  # headless indexing + resident MCP gateway
   `local_only`, `lan`, or `remote` boundary that follows mixed and derived
   evidence through resident serving, inference, publishing, exports, Capsules,
   and traces. Authentication never overrides policy.
+- **Source availability (`any` | `local`)**: opt-in `local` refuses
+  cloud-placeholder materialization on the macOS File Provider layouts covered
+  by physical evidence (Google Drive, iCloud Drive, and OneDrive for both
+  validated immediate SharePoint library roots). Hierarchical directory
+  classification + guarded content recheck; skips are not conversion errors;
+  unproven prefixes preserve indexed descendants. Distinct from egress.
+  Unsupported platforms fail closed; no claim of zero provider activity or
+  universal provider support. On the controlled 5,000-file all-local corpus,
+  production `any` regressed -1.1280% and hierarchical `local` added 1.1841%
+  median traversal overhead (2 warmups, 9 samples per lane; same corpus and
+  interleaved pre-implementation/current production walkers).
 - **Read-only integrity audits**: `gno audit` and MCP `gno_audit` inspect local
   links, declared provenance, and source/index freshness offline. Stable,
   bounded findings distinguish complete, partial, unavailable, and changing

@@ -1,0 +1,231 @@
+{
+  "action": "benchmark-shipped-design",
+  "design": {
+    "candidate": "hierarchical memoized per-directory availability classification + guarded content recheck",
+    "rejectedCandidate": "naive extra availability check for every discovered file",
+    "rejectedCandidateOverheadPercent": 15.2323,
+    "rejectedCandidateNote": "Task 1 measured +15.2323% on the 5,000-file all-local corpus; not re-measured as the shipped candidate",
+    "pathSupportNote": "Owned temp corpus injects availability-eligible pathSupport for mechanism-cost measurement only; production still fail-closes outside evidenced macOS File Provider layouts"
+  },
+  "environment": {
+    "platform": "darwin",
+    "bun": "1.3.14",
+    "arch": "arm64",
+    "policyScope": "process",
+    "policyScopeReason": "async Bun I/O may escape thread scope; production local mode uses process scope",
+    "osVersion": "27.0",
+    "osBuild": "26A5388g",
+    "hardware": "Apple M4 Max",
+    "gnoVersion": "1.34.6",
+    "capturedAt": "2026-08-16T13:00:05.551Z",
+    "betaOs": true
+  },
+  "provider": {
+    "label": "local",
+    "version": "n/a"
+  },
+  "corpus": {
+    "root": "sha256:bd0a5364c28604975d509f9dc63f5ad6a0bcb615f5a6f4c35d1cfdcdba4bd24b",
+    "fileCount": 5000,
+    "directoryCount": 1,
+    "shape": "deterministic-fn118-all-local-flat",
+    "notes": "Owned temporary directory; 5,000 flat Markdown files by default; not a provider root"
+  },
+  "protocol": {
+    "warmups": 2,
+    "samplesPerLane": 9,
+    "runOrder": [
+      "task1-protocol-any-regression",
+      "any-discovery-traversal",
+      "local-discovery-traversal",
+      "availability-metadata-hierarchical",
+      "sniff-read-hash-any",
+      "sniff-read-hash-local",
+      "conversion",
+      "embedding"
+    ],
+    "complete": true,
+    "thresholds": {
+      "localOverheadVsAnyPercent": 10,
+      "taskOneControlDriftPercent": 3
+    }
+  },
+  "hierarchicalProof": {
+    "directoryCount": 1,
+    "fileCount": 5000,
+    "classifyCallsPerSample": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    "uniqueDirectoriesPerSample": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    "maxClassifyCalls": 2,
+    "maxUniqueDirectories": 2,
+    "provesHierarchical": true,
+    "note": "Local mode classifies directories (memoized), not one availability call per discovered file"
+  },
+  "lanes": {
+    "task1-protocol-any-regression": {
+      "label": "unchanged any-mode discovery/traversal using the exact task-1 protocol",
+      "kind": "measured",
+      "rawMs": [
+        75.167, 72.2781, 71.7509, 72.5075, 72.5739, 71.1103, 71.5854, 69.1765,
+        70.7542
+      ],
+      "medianMs": 71.7509,
+      "p95Ms": 75.167,
+      "minMs": 69.1765,
+      "maxMs": 75.167,
+      "stddevMs": 1.5315,
+      "contaminated": [],
+      "mode": "any",
+      "phase": "discovery-traversal",
+      "regressionGate": true
+    },
+    "any-discovery-traversal": {
+      "label": "shipped FileWalker sourceAvailability=any (Bun.Glob)",
+      "kind": "measured",
+      "rawMs": [
+        241.7232, 233.0969, 226.3588, 262.9965, 244.5229, 240.0191, 235.9253,
+        231.911, 238.772
+      ],
+      "medianMs": 238.772,
+      "p95Ms": 262.9965,
+      "minMs": 226.3588,
+      "maxMs": 262.9965,
+      "stddevMs": 9.8156,
+      "contaminated": [],
+      "mode": "any",
+      "phase": "discovery-traversal"
+    },
+    "local-discovery-traversal": {
+      "label": "shipped FileWalker sourceAvailability=local (hierarchical directory classification)",
+      "kind": "measured",
+      "rawMs": [
+        249.3961, 252.0565, 233.111, 229.6224, 235.0687, 230.4967, 255.6414,
+        266.7625, 268.3583
+      ],
+      "medianMs": 249.3961,
+      "p95Ms": 268.3583,
+      "minMs": 229.6224,
+      "maxMs": 268.3583,
+      "stddevMs": 14.3822,
+      "contaminated": [],
+      "mode": "local",
+      "phase": "discovery-traversal",
+      "classification": "hierarchical-memoized-per-directory"
+    },
+    "availability-metadata-hierarchical": {
+      "label": "hierarchical directory availability metadata (SF_DATALESS under no-materialization policy)",
+      "kind": "measured",
+      "rawMs": [
+        1.8701, 2.3031, 2.2322, 2.2826, 2.1533, 1.8579, 1.932, 1.8377, 1.6765
+      ],
+      "medianMs": 1.932,
+      "p95Ms": 2.3031,
+      "minMs": 1.6765,
+      "maxMs": 2.3031,
+      "stddevMs": 0.2159,
+      "contaminated": [],
+      "phase": "availability-metadata",
+      "intermediateDirectoryCaveat": "TN3150: stat/getattrlist classify via SF_DATALESS but may materialize intermediate dataless folders",
+      "observerKind": "darwin-ffi-lstat-st_flags"
+    },
+    "sniff-read-hash-any": {
+      "label": "sniff/read/hash via AnySourceContentReader",
+      "kind": "measured",
+      "rawMs": [
+        157.5746, 149.6124, 161.1059, 181.0205, 154.8105, 156.6025, 156.5843,
+        152.9946, 154.9228
+      ],
+      "medianMs": 156.5843,
+      "p95Ms": 181.0205,
+      "minMs": 149.6124,
+      "maxMs": 181.0205,
+      "stddevMs": 8.548,
+      "contaminated": [],
+      "mode": "any",
+      "phase": "sniff-read-hash"
+    },
+    "sniff-read-hash-local": {
+      "label": "sniff/read/hash via LocalSourceContentReader (guarded no-materialization)",
+      "kind": "measured",
+      "rawMs": [
+        92.8807, 94.281, 93.2338, 92.264, 93.137, 93.488, 92.0311, 92.8944,
+        93.3576
+      ],
+      "medianMs": 93.137,
+      "p95Ms": 94.281,
+      "minMs": 92.0311,
+      "maxMs": 94.281,
+      "stddevMs": 0.6281,
+      "contaminated": [],
+      "mode": "local",
+      "phase": "sniff-read-hash"
+    },
+    "conversion": {
+      "kind": "not-applicable",
+      "reason": "Markdown fixture corpus requires no conversion",
+      "phase": "conversion"
+    },
+    "embedding": {
+      "kind": "not-applicable",
+      "reason": "Controlled all-local corpus does not invoke models or production embedding",
+      "phase": "embedding"
+    },
+    "observer-per-file-metadata-smoke": {
+      "label": "smoke observer per-file SF_DATALESS (evidence continuity; NOT the R6 candidate)",
+      "kind": "measured",
+      "rawMs": [
+        11.2392, 12.8812, 10.8322, 10.6547, 10.1101, 11.9379, 11.9308, 13.9109,
+        10.7291
+      ],
+      "medianMs": 11.2392,
+      "p95Ms": 13.9109,
+      "minMs": 10.1101,
+      "maxMs": 13.9109,
+      "stddevMs": 1.1447,
+      "contaminated": [],
+      "phase": "smoke-only",
+      "candidate": false
+    },
+    "guarded-read-hash-smoke": {
+      "label": "smoke harness guarded read/hash (evidence continuity; NOT the R6 candidate)",
+      "kind": "measured",
+      "rawMs": [
+        84.6065, 81.9025, 84.4215, 82, 86.039, 82.5775, 81.671, 84.0973, 81.1772
+      ],
+      "medianMs": 82.5775,
+      "p95Ms": 86.039,
+      "minMs": 81.1772,
+      "maxMs": 86.039,
+      "stddevMs": 1.5729,
+      "contaminated": [],
+      "phase": "smoke-only",
+      "candidate": false
+    }
+  },
+  "comparison": {
+    "localOverheadVsImplementedAny": {
+      "baselineMedianMs": 238.772,
+      "candidateMedianMs": 249.3961,
+      "overheadPercent": 4.4495,
+      "thresholdPercent": 10,
+      "passes": true,
+      "status": "pass",
+      "note": "local hierarchical mode within 10% of implemented any"
+    },
+    "rejectedNaiveCandidate": {
+      "measured": false,
+      "reason": "Naive per-discovered-file availability pass already failed R6 at +15.2323%; shipped design is hierarchical per-directory classification",
+      "preImplementationOverheadPercent": 15.2323
+    },
+    "taskOneProtocolControl": {
+      "baselineMedianMs": 71.8915,
+      "candidateMedianMs": 71.7509,
+      "overheadPercent": -0.1956,
+      "thresholdPercent": 3,
+      "passes": true,
+      "status": "pass",
+      "baselineSource": "research/file-provider/evidence/2026-08-16-performance.json",
+      "baselineCapturedAt": "2026-08-16",
+      "note": "Control-to-control drift only; production any regression is established by 2026-08-16-production-regression.json"
+    }
+  }
+}

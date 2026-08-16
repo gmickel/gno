@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Opt-in collection `sourceAvailability: local` (default `any`) for
+  cloud-placeholder-safe indexing on the macOS File Provider layouts covered by
+  physical evidence. Local mode uses process-scoped no-materialization I/O
+  policy, hierarchical memoized per-directory availability classification, and a
+  guarded content recheck shared by full sync, targeted sync, watch ingestion,
+  sniff/hash/conversion, and record import. Receipts distinguish eligible files,
+  `CLOUD_PLACEHOLDER` / `CLOUD_PARTIAL` skips, `DATALESS_DIRECTORY`, and
+  fail-closed `SOURCE_AVAILABILITY_*` codes; unproven prefixes preserve
+  previously indexed descendants. Source availability is distinct from
+  `egressPolicy`. Evidence-qualified scope: Google Drive, iCloud Drive, and
+  OneDrive only for the tested OS/provider configuration and both validated
+  immediate SharePoint library roots — not Windows/Linux cloud filesystems; no
+  claim of zero provider activity; GNO does not pin/evict/download as product
+  behavior.
+- Controlled all-local performance protocol for the shipped hierarchical design
+  (`bun scripts/macos-file-provider-smoke.ts benchmark-local --corpus-files 5000`):
+  2 warmups + 9 samples per lane, raw samples + median/p95/min/max/stddev,
+  discovery/traversal vs hierarchical availability metadata vs sniff/read/hash,
+  any-vs-pre-implementation ≤3% and local-vs-any ≤10% comparisons. The final
+  5,000-file production-walker run passed: pre-implementation `any` 215.1020 ms,
+  current `any` 212.6756 ms (-1.1280%), and current hierarchical `local`
+  215.1938 ms (+1.1841% vs current `any`). The rejected naive per-file availability
+  candidate (+15.2323% pre-implementation) was not re-measured as the candidate.
+
 ### Changed
 
 ### Fixed

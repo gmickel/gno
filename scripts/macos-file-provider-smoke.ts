@@ -51,8 +51,15 @@ export {
 } from "./macos-file-provider-smoke-lib";
 export type { IoPolicyPort } from "./macos-file-provider-smoke-lib";
 export {
+  ANY_REGRESSION_THRESHOLD_PERCENT,
+  compareAgainstThreshold,
+  instrumentDirectoryAvailability,
+  LOCAL_OVERHEAD_THRESHOLD_PERCENT,
+  percentOverhead,
+  PRE_IMPLEMENTATION_BASELINE,
   runAllLocalBenchmark,
   runOwnedLocalBenchmark,
+  runShippedDesignBenchmark,
   SAMPLE_COUNT,
   summarizeSamples,
   WARMUP_COUNT,
@@ -103,6 +110,7 @@ Usage:
   bun scripts/macos-file-provider-smoke.ts matrix --root <provider-root> --fixture-id <id> --provider <google|icloud|onedrive> [--row <row>] [--race-delay-ms <ms>]
   bun scripts/macos-file-provider-smoke.ts benchmark --root <provider-root> --fixture-id <id> --provider <google|icloud|onedrive> --provider-version <version>
   bun scripts/macos-file-provider-smoke.ts benchmark-local --corpus-files <1000..10000>
+      # shipped any|local hierarchical design (2 warmups + 9 samples/lane)
   bun scripts/macos-file-provider-smoke.ts cleanup-plan --root <provider-root> --fixture-id <id>
 
 Safety:

@@ -1,0 +1,94 @@
+{
+  "capturedAt": "2026-08-16T13:04:28.315Z",
+  "corpus": {
+    "shape": "5000 deterministic flat Markdown files in one owned temporary local directory",
+    "fileCount": 5000
+  },
+  "protocol": {
+    "warmups": 2,
+    "samplesPerLane": 9,
+    "runOrder": [
+      "warmup-0-preAny",
+      "warmup-0-currentAny",
+      "warmup-0-currentLocal",
+      "warmup-1-preAny",
+      "warmup-1-currentAny",
+      "warmup-1-currentLocal",
+      "sample-2-preAny",
+      "sample-2-currentAny",
+      "sample-2-currentLocal",
+      "sample-3-preAny",
+      "sample-3-currentAny",
+      "sample-3-currentLocal",
+      "sample-4-preAny",
+      "sample-4-currentAny",
+      "sample-4-currentLocal",
+      "sample-5-preAny",
+      "sample-5-currentAny",
+      "sample-5-currentLocal",
+      "sample-6-preAny",
+      "sample-6-currentAny",
+      "sample-6-currentLocal",
+      "sample-7-preAny",
+      "sample-7-currentAny",
+      "sample-7-currentLocal",
+      "sample-8-preAny",
+      "sample-8-currentAny",
+      "sample-8-currentLocal",
+      "sample-9-preAny",
+      "sample-9-currentAny",
+      "sample-9-currentLocal",
+      "sample-10-preAny",
+      "sample-10-currentAny",
+      "sample-10-currentLocal"
+    ],
+    "baselineCommit": "d0e77f15",
+    "currentCommit": "52bcac764cac60e56060ce4878e84f82b80d35bd"
+  },
+  "lanes": {
+    "pre-implementation-production-any": {
+      "rawMs": [
+        217.3163, 215.102, 206.1665, 212.9195, 232.0113, 219.2797, 211.8805,
+        216.0111, 213.6919
+      ],
+      "medianMs": 215.102,
+      "p95Ms": 232.0113,
+      "minMs": 206.1665,
+      "maxMs": 232.0113,
+      "stddevMs": 6.651,
+      "contaminated": []
+    },
+    "current-production-any": {
+      "rawMs": [
+        217.842, 212.5191, 211.4334, 209.9733, 216.7179, 212.6756, 212.011,
+        215.1051, 216.826
+      ],
+      "medianMs": 212.6756,
+      "p95Ms": 217.842,
+      "minMs": 209.9733,
+      "maxMs": 217.842,
+      "stddevMs": 2.6241,
+      "contaminated": []
+    },
+    "current-production-local": {
+      "rawMs": [
+        242.6054, 208.922, 210.1628, 224.1027, 228.8533, 212.1328, 217.4458,
+        215.1938, 210.6183
+      ],
+      "medianMs": 215.1938,
+      "p95Ms": 242.6054,
+      "minMs": 208.922,
+      "maxMs": 242.6054,
+      "stddevMs": 10.5104,
+      "contaminated": []
+    }
+  },
+  "comparison": {
+    "anyRegressionPercent": -1.128,
+    "anyThresholdPercent": 3,
+    "anyPass": true,
+    "localOverheadPercent": 1.1841,
+    "localThresholdPercent": 10,
+    "localPass": true
+  }
+}

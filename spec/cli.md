@@ -451,19 +451,37 @@ protection remain authoritative.
 projected wiki/markdown edges and surface in graph traversal/diagnose metadata.
 
 `collections[].sourceAvailability` is optional; omitted means `any`. Exact
-values: `any` | `local`. `any` preserves historical source reads. `local` is
-opt-in and establishes a platform-aware no-materialization content-read
-boundary (currently macOS File Provider via process-scoped
-`IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES`); unsupported platforms/filesystems
-and policy-setup failure fail closed with distinct codes
-(`SOURCE_AVAILABILITY_UNSUPPORTED`, `SOURCE_AVAILABILITY_POLICY_FAILED`,
-`SOURCE_AVAILABILITY_UNKNOWN`). Cloud-placeholder refusal
-(`EDEADLK`) surfaces as a skipped file with `CLOUD_PLACEHOLDER` /
-`CLOUD_PARTIAL`, not a conversion error. Local mode also refuses descent into
-dataless or availability-unknown directories (`DATALESS_DIRECTORY` skip, or the
-fail-closed codes above) and preserves previously indexed descendants under
-those unproven prefixes rather than marking them inactive. Source availability
-is distinct from `egressPolicy` (where indexed content may travel).
+values: `any` | `local`. There is no separate public knob beyond these two
+modes and no claim that availability is egress policy. `any` preserves
+historical source reads. `local` is opt-in and establishes a platform-aware
+no-materialization content-read boundary (currently macOS File Provider via
+process-scoped `IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES` plus hierarchical
+memoized per-directory availability classification and a content-boundary
+recheck shared by full/targeted/watch ingestion, sniff/hash/conversion, and
+record import). Unsupported platforms/filesystems and policy-setup failure fail
+closed with distinct codes (`SOURCE_AVAILABILITY_UNSUPPORTED`,
+`SOURCE_AVAILABILITY_POLICY_FAILED`, `SOURCE_AVAILABILITY_UNKNOWN`).
+Cloud-placeholder refusal (`EDEADLK`) surfaces as a skipped file with
+`CLOUD_PLACEHOLDER` / `CLOUD_PARTIAL`, not a conversion error. Local mode also
+refuses descent into dataless or availability-unknown directories
+(`DATALESS_DIRECTORY` skip, or the fail-closed codes above) and preserves
+previously indexed descendants under those unproven prefixes rather than
+marking them inactive. Eligible files have no availability `errorCode`.
+Evidence-qualified scope: Google Drive, iCloud Drive, and OneDrive only for the
+tested OS/provider configuration; OneDrive only for both validated immediate
+SharePoint library roots. No Windows/Linux guarantee; metadata/provider
+bookkeeping may occur; GNO does not pin/evict/download as product behavior.
+Source availability is distinct from `egressPolicy` (where derived content may
+travel).
+
+The fixture-scoped post-implementation performance contract is recorded by
+`benchmark-local`: at least 2 warmups and 9 retained samples per lane, raw
+samples plus median/p95/min/max/stddev, explicit contamination, and separate
+discovery/traversal, availability metadata, sniff/read/hash, conversion, and
+embedding phases. The controlled 5,000-file all-local production comparison
+used the same corpus and interleaved pre-implementation/current walkers; it
+passed the current-`any` ≤3% gate at -1.1280% and the hierarchical-`local` ≤10%
+gate at +1.1841%. It is not a provider-latency guarantee.
 
 ---
 

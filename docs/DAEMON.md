@@ -31,6 +31,16 @@ These guarantees are exercised on supported local filesystems across macOS,
 Linux, and Windows. They do not claim universal watcher semantics for network,
 removable, or coarse-timestamp filesystems.
 
+When a collection sets `sourceAvailability: local`, scheduled indexing and
+watch-triggered ingestion use the same source-availability boundary as
+foreground `gno index` / `gno update`: hierarchical directory classification,
+guarded content rechecks, cloud-placeholder skips, and preservation of indexed
+descendants under unproven prefixes. Default `any` is unchanged. Source
+availability is distinct from `egressPolicy`. Support is evidence-qualified for
+tested macOS File Provider configurations only (Google Drive, iCloud Drive, and
+OneDrive for both validated immediate SharePoint library roots); unsupported
+platforms/filesystems fail closed under `local`.
+
 It also owns saved Context Capsule reverification. Register a Capsule with
 `gno context watch <file>`; after filesystem sync and embedding work settles,
 the daemon coalesces raw document-journal changes and reverifies affected
