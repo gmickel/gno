@@ -88,6 +88,62 @@ export async function listEligibleDiskSources(
     }
 
     const remaining = Math.max(0, budget.limit - budget.visitedDirs + 1);
+    if (directoryAvailability?.mode === "local") {
+      if (!fs.readDirectChildrenSync) {
+        unprovenPrefixes.push(current);
+        continue;
+      }
+      const absPath = current === "" ? rootAbs : join(rootAbs, current);
+      const guarded = directoryAvailability.readDirectory(absPath, () =>
+        fs.readDirectChildrenSync!(rootAbs, current, remaining)
+      );
+      if (guarded.kind !== "available") {
+        unprovenPrefixes.push(current);
+        continue;
+      }
+      const listed = guarded.value;
+      if (listed.status === "missing") {
+        continue;
+      }
+      if (listed.status === "overflow") {
+        return { status: "overflow" };
+      }
+      if (listed.status !== "present") {
+        return {
+          status: "error",
+          cause:
+            listed.status === "scan_failed"
+              ? listed.cause
+              : new Error(`Disk scan failed under ${current || "."}`),
+        };
+      }
+      for (const [name, fingerprint] of listed.entries) {
+        const childRel = joinWatcherRelPath(current, name);
+        if (matchesCollectionExclusion(childRel, walkConfig.exclude)) {
+          continue;
+        }
+        if (fingerprint.kind === "symlink") {
+          if (matchesWalkPath(childRel, walkConfig)) {
+            paths.push(childRel);
+          }
+        } else if (fingerprint.kind === "directory") {
+          if (current === "") {
+            rootDirNames.push(name);
+          }
+          queue.push(childRel);
+        } else if (
+          fingerprint.kind === "file" &&
+          matchesWalkPath(childRel, walkConfig)
+        ) {
+          paths.push(childRel);
+        }
+        if (paths.length > budget.limit) {
+          return { status: "overflow" };
+        }
+      }
+      continue;
+    }
+
     const scanCurrent = async (): Promise<
       | { status: "ok" }
       | { status: "overflow" }
@@ -167,21 +223,7 @@ export async function listEligibleDiskSources(
       }
     };
 
-    let scanned: Awaited<ReturnType<typeof scanCurrent>>;
-    if (directoryAvailability?.mode === "local") {
-      const absPath = current === "" ? rootAbs : join(rootAbs, current);
-      const guarded = await directoryAvailability.readDirectory(
-        absPath,
-        scanCurrent
-      );
-      if (guarded.kind !== "available") {
-        unprovenPrefixes.push(current);
-        continue;
-      }
-      scanned = guarded.value;
-    } else {
-      scanned = await scanCurrent();
-    }
+    const scanned = await scanCurrent();
     if (scanned.status !== "ok") {
       return scanned;
     }
@@ -258,10 +300,17 @@ export async function inspectNoFollowPresence(
   };
 
   if (directoryAvailability?.mode === "local") {
+    if (!fs.lstatChildByRelSync) {
+      return {
+        status: "error",
+        cause: new Error(
+          "Synchronous anchored child metadata is unavailable in local mode"
+        ),
+      };
+    }
     const parentAbs = parent === "" ? rootAbs : join(rootAbs, parent);
-    const guarded = await directoryAvailability.readDirectory(
-      parentAbs,
-      inspectParent
+    const guarded = directoryAvailability.readDirectory(parentAbs, () =>
+      fs.lstatChildByRelSync!(rootAbs, parent, base)
     );
     if (guarded.kind !== "available") {
       return {
@@ -271,7 +320,10 @@ export async function inspectNoFollowPresence(
         ),
       };
     }
-    return guarded.value;
+    return {
+      status: "present",
+      indexable: guarded.value.isFile() || guarded.value.isSymbolicLink(),
+    };
   }
   return inspectParent();
 }

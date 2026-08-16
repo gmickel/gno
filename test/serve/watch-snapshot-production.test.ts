@@ -163,6 +163,34 @@ describe("createDefaultWatcherFs production adapter", () => {
     }
   });
 
+  test("native synchronous scan supports guarded local-mode enumeration", async () => {
+    const productionFs = createDefaultWatcherFs();
+    if (!productionFs.supportsAnchoredHandles) {
+      expect(productionFs.readDirectChildrenSync).toBeUndefined();
+      return;
+    }
+
+    await writeWatchFixture(root, "nested/local.md", "local");
+    expect(productionFs.readDirectChildrenSync).toBeDefined();
+    expect(productionFs.lstatChildByRelSync).toBeDefined();
+    const rootScan = productionFs.readDirectChildrenSync?.(root, "", 10);
+    expect(rootScan?.status).toBe("present");
+    if (rootScan?.status !== "present") return;
+    expect(rootScan.entries.get("nested")?.kind).toBe("directory");
+
+    const nestedScan = productionFs.readDirectChildrenSync?.(
+      root,
+      "nested",
+      10
+    );
+    expect(nestedScan?.status).toBe("present");
+    if (nestedScan?.status !== "present") return;
+    expect(nestedScan.entries.get("local.md")?.kind).toBe("file");
+    expect(
+      productionFs.lstatChildByRelSync?.(root, "nested", "local.md").isFile()
+    ).toBe(true);
+  });
+
   test("FIFO without writer returns promptly (ok fingerprint or fallback, never hang)", async () => {
     // Lifecycle hang regression: Darwin O_RDONLY|O_SYMLINK without O_NONBLOCK
     // blocks forever on a FIFO with no writer. Linux O_PATH should not block.

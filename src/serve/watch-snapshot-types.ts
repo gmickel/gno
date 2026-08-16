@@ -46,6 +46,12 @@ export interface WatcherSnapshot {
   >;
   /** Total no-follow entries across every directory map. */
   readonly entryCount: number;
+  /**
+   * Directory roots observed in a parent listing but not enumerated because
+   * source availability was unproven. Their stored descendant inventory is
+   * incomplete, so a later proven removal requires full reconciliation.
+   */
+  readonly unprovenSubtrees?: ReadonlySet<string>;
 }
 
 /** Injectable lstat view. `unreliable` forces the correctness-preserving fallback. */
@@ -122,6 +128,26 @@ export interface WatcherSnapshotFs {
 
   /** Deterministic close; safe to call once per open. */
   closeDir(handle: WatcherDirHandle): Promise<void>;
+
+  /**
+   * Optional production-grade synchronous scan used only while a process-wide
+   * no-materialization policy is active. Missing support fails local mode closed.
+   */
+  readDirectChildrenSync?: (
+    rootAbs: string,
+    dirRel: string,
+    maxEntries: number
+  ) =>
+    | { status: "present"; entries: Map<string, SnapshotEntryFingerprint> }
+    | { status: "missing" }
+    | ScanFailure;
+
+  /** Synchronous anchored child lstat for guarded local-mode presence checks. */
+  lstatChildByRelSync?: (
+    rootAbs: string,
+    parentRel: string,
+    name: string
+  ) => WatcherSnapshotStat;
 }
 
 export interface WatcherSnapshotClock {
@@ -137,7 +163,8 @@ export interface SnapshotMapHooks {
 export type SnapshotFallbackReason =
   | "overflow"
   | "scan_failed"
-  | "unreliable_metadata";
+  | "unreliable_metadata"
+  | "unproven_subtree";
 
 export type WatcherSnapshotBuildResult =
   | {
@@ -206,7 +233,10 @@ export type ScanFailure =
   | { status: "scan_failed"; cause: unknown }
   | { status: "unreliable_metadata" };
 
-export type DiffWorkResult = { status: "ok" } | ScanFailure;
+export type DiffWorkResult =
+  | { status: "ok" }
+  | ScanFailure
+  | { status: "unproven_subtree" };
 
 export function toBigInt(value: number | bigint | undefined): bigint | null {
   if (value === undefined) {
@@ -340,7 +370,11 @@ export function joinWatcherRelPath(dir: string, name: string): string {
 }
 
 export function createEmptyWatcherSnapshot(): WatcherSnapshot {
-  return { directories: new Map(), entryCount: 0 };
+  return {
+    directories: new Map(),
+    entryCount: 0,
+    unprovenSubtrees: new Set(),
+  };
 }
 
 export function isMissingFsError(error: unknown): boolean {

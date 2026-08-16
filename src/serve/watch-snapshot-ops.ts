@@ -68,6 +68,7 @@ export async function buildWatcherSnapshot(
   const state: MutableSnapshotMaps = {
     directories: new Map(),
     entryCount: 0,
+    unprovenSubtrees: new Set(),
   };
   // Cursor-index queue avoids O(n) shift on large directory sets.
   const queue: string[] = [""];
@@ -103,6 +104,7 @@ export async function buildWatcherSnapshot(
           ),
         };
       }
+      state.unprovenSubtrees.add(dirRel);
       continue;
     }
     if (scanned.status === "missing") {
@@ -152,6 +154,7 @@ export async function buildWatcherSnapshot(
           ))
         ) {
           // Refuse descent/enumeration; leave subtree absent from this build.
+          state.unprovenSubtrees.add(childRel);
           continue;
         }
         queue.push(childRel);
@@ -227,6 +230,16 @@ export async function diffWatcherSnapshot(
     }
   };
 
+  const subtreeInventoryIsUnproven = (dirRel: string): boolean => {
+    const prefix = `${dirRel}/`;
+    for (const unproven of nextState.unprovenSubtrees) {
+      if (unproven === dirRel || unproven.startsWith(prefix)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   const diffDirectory = async (dirRel: string): Promise<DiffWorkResult> => {
     if (visited.has(dirRel)) {
       return { status: "ok" };
@@ -281,6 +294,7 @@ export async function diffWatcherSnapshot(
       new Map<string, SnapshotEntryFingerprint>();
     const newEntries = scanned.entries;
     setDirectoryEntries(nextState, dirRel, new Map(newEntries));
+    nextState.unprovenSubtrees.delete(dirRel);
 
     if (nextState.entryCount > ceiling) {
       return { status: "overflow" };
@@ -296,6 +310,9 @@ export async function diffWatcherSnapshot(
         // Removed entry: expand prior subtree for directories; files/symlinks directly.
         // `other` was never an indexable source — drop fingerprint only.
         if (oldFp.kind === "directory") {
+          if (subtreeInventoryIsUnproven(childRel)) {
+            return { status: "unproven_subtree" };
+          }
           recordSubtreeRemovals(childRel);
         } else if (isWatcherSourceKind(oldFp.kind)) {
           removals.add(childRel);
@@ -339,6 +356,9 @@ export async function diffWatcherSnapshot(
         // Changed entry — handle kind transitions with the other-kind contract.
         if (oldFp.kind === "directory" && newFp.kind !== "directory") {
           // Directory → file/symlink/other: expand nested indexable removals.
+          if (subtreeInventoryIsUnproven(childRel)) {
+            return { status: "unproven_subtree" };
+          }
           recordSubtreeRemovals(childRel);
           if (isWatcherSourceKind(newFp.kind)) {
             candidates.add(childRel);
@@ -458,6 +478,7 @@ async function scanNewSubtree(
 ): Promise<DiffWorkResult> {
   if (!(await directoryAllowsDescent(rootAbs, dirRel, directoryAvailability))) {
     // Keep the directory fingerprint from the parent listing; do not enumerate.
+    state.unprovenSubtrees.add(dirRel);
     return { status: "ok" };
   }
   const queue = [dirRel];
@@ -478,6 +499,7 @@ async function scanNewSubtree(
       directoryAvailability
     );
     if (scanned.status === "unproven") {
+      state.unprovenSubtrees.add(current);
       continue;
     }
     if (scanned.status === "missing") {
@@ -491,6 +513,7 @@ async function scanNewSubtree(
       return scanned;
     }
     setDirectoryEntries(state, current, new Map(scanned.entries));
+    state.unprovenSubtrees.delete(current);
     if (state.entryCount > ceiling) {
       return { status: "overflow" };
     }
@@ -504,6 +527,7 @@ async function scanNewSubtree(
             directoryAvailability
           ))
         ) {
+          state.unprovenSubtrees.add(childRel);
           continue;
         }
         queue.push(childRel);

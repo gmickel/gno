@@ -107,6 +107,12 @@ export async function classifyDirtyHints(options: {
     if (diff.status === "fallback" && diff.reason === "overflow") {
       return { status: "full_reconcile", reason: "snapshot_overflow" };
     }
+    if (diff.status === "fallback" && diff.reason === "unproven_subtree") {
+      return {
+        status: "full_reconcile",
+        reason: "snapshot_unproven_subtree",
+      };
+    }
     // Fall through for scan/metadata failure — previous snapshot uncommitted.
   }
 

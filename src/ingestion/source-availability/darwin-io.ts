@@ -71,7 +71,6 @@ type LibSymbols = {
 };
 
 let cachedBundle: DarwinIoBundle | null | undefined;
-let asyncPolicyTail: Promise<void> = Promise.resolve();
 
 /** Test-only: clear FFI caches between cases. */
 export function resetDarwinIoCachesForTests(): void {
@@ -277,86 +276,6 @@ export function withNoMaterializePolicy<T>(
     throw thrown;
   }
   return { ok: true, value: value! };
-}
-
-/**
- * Async policy scope for directory enumeration. Process-wide policy changes
- * are serialized so overlapping scans cannot restore each other's prior state.
- */
-export async function withNoMaterializePolicyAsync<T>(
-  run: () => Promise<T>,
-  port: DarwinIoPolicyPort
-): Promise<
-  | { ok: true; value: T }
-  | {
-      ok: false;
-      error:
-        | "policy_get_failed"
-        | "policy_set_failed"
-        | "policy_restore_failed";
-    }
-> {
-  let release!: () => void;
-  const previous = asyncPolicyTail;
-  asyncPolicyTail = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  await previous;
-
-  try {
-    let prior: number;
-    try {
-      prior = port.get(
-        IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES,
-        IOPOL_SCOPE_PROCESS
-      );
-    } catch {
-      return { ok: false, error: "policy_get_failed" };
-    }
-    if (prior < 0) {
-      return { ok: false, error: "policy_get_failed" };
-    }
-    try {
-      if (
-        port.set(
-          IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES,
-          IOPOL_SCOPE_PROCESS,
-          IOPOL_MATERIALIZE_DATALESS_FILES_OFF
-        ) !== 0
-      ) {
-        return { ok: false, error: "policy_set_failed" };
-      }
-    } catch {
-      return { ok: false, error: "policy_set_failed" };
-    }
-
-    let value: T;
-    let thrown: unknown;
-    try {
-      value = await run();
-    } catch (error) {
-      thrown = error;
-    }
-    try {
-      if (
-        port.set(
-          IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES,
-          IOPOL_SCOPE_PROCESS,
-          prior
-        ) !== 0
-      ) {
-        return { ok: false, error: "policy_restore_failed" };
-      }
-    } catch {
-      return { ok: false, error: "policy_restore_failed" };
-    }
-    if (thrown !== undefined) {
-      throw thrown;
-    }
-    return { ok: true, value: value! };
-  } finally {
-    release();
-  }
 }
 
 export function guardedOpenFlags(): number {

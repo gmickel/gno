@@ -63,10 +63,10 @@ function mapClassifier(
   return {
     mode,
     classify: async (absPath: string) => classify(absPath),
-    readDirectory: async (absPath, read) => {
+    readDirectory: (absPath, read) => {
       const classified = classify(absPath);
       return classified.kind === "available"
-        ? { kind: "available", value: await read() }
+        ? { kind: "available", value: read() }
         : classified;
     },
   };
@@ -136,7 +136,7 @@ describe("local-mode full traversal", () => {
     const classifier: DirectoryAvailabilityPort = {
       mode: "local",
       classify: async () => ({ kind: "available" }),
-      readDirectory: async () => ({
+      readDirectory: () => ({
         kind: "dataless",
         code: "DATALESS_DIRECTORY",
         message: "became dataless before enumeration",
@@ -152,7 +152,7 @@ describe("local-mode full traversal", () => {
       sourceAvailability: "local",
       directoryAvailability: {
         ...classifier,
-        readDirectory: async (absPath, read) => {
+        readDirectory: (absPath, read) => {
           reads += 1;
           return classifier.readDirectory(absPath, read);
         },
@@ -209,7 +209,7 @@ describe("local-mode full traversal", () => {
         code: "DATALESS_DIRECTORY",
         message: "should not apply in any mode",
       }),
-      readDirectory: async () => ({
+      readDirectory: () => ({
         kind: "dataless",
         code: "DATALESS_DIRECTORY",
         message: "should not apply in any mode",

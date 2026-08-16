@@ -35,6 +35,7 @@ export const defaultFs: WatcherSnapshotFs = createDefaultWatcherFs();
 export interface MutableSnapshotMaps {
   directories: Map<string, Map<string, SnapshotEntryFingerprint>>;
   entryCount: number;
+  unprovenSubtrees: Set<string>;
 }
 
 export function cloneDirectoryMaps(
@@ -47,6 +48,7 @@ export function cloneDirectoryMaps(
   return {
     directories,
     entryCount: source.entryCount,
+    unprovenSubtrees: new Set(source.unprovenSubtrees ?? []),
   };
 }
 
@@ -61,6 +63,7 @@ export function freezeSnapshot(state: MutableSnapshotMaps): WatcherSnapshot {
   return {
     directories: frozen,
     entryCount: state.entryCount,
+    unprovenSubtrees: new Set(state.unprovenSubtrees),
   };
 }
 

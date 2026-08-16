@@ -6,8 +6,12 @@ import type { WatchListener } from "node:fs";
 
 import { describe, expect, mock, test } from "bun:test";
 
-import { defaultSyncService } from "../../src/ingestion";
+import {
+  defaultSyncService,
+  resolveSourceAvailability,
+} from "../../src/ingestion";
 import { CollectionWatchService } from "../../src/serve/watch-service";
+import { watcherCollectionFingerprint } from "../../src/serve/watch-service-lifecycle";
 import {
   createCollection,
   createStubStore,
@@ -16,6 +20,33 @@ import {
 } from "./helpers/watch-service-fixtures";
 
 installWatchServiceSyncReset();
+
+describe("watcherCollectionFingerprint", () => {
+  test("tracks the effective collection and run-level source availability", () => {
+    const collection = createCollection("notes", "/tmp/notes");
+    const defaultFingerprint = watcherCollectionFingerprint(collection, {});
+    const explicitAnyFingerprint = watcherCollectionFingerprint(
+      { ...collection, sourceAvailability: "any" },
+      {}
+    );
+    const collectionLocalFingerprint = watcherCollectionFingerprint(
+      { ...collection, sourceAvailability: "local" },
+      {}
+    );
+    const runLocalFingerprint = watcherCollectionFingerprint(collection, {
+      sourceAvailability: "local",
+    });
+    const overriddenCollectionFingerprint = watcherCollectionFingerprint(
+      { ...collection, sourceAvailability: "local" },
+      { sourceAvailability: "any" }
+    );
+
+    expect(explicitAnyFingerprint).toBe(defaultFingerprint);
+    expect(collectionLocalFingerprint).not.toBe(defaultFingerprint);
+    expect(runLocalFingerprint).toBe(collectionLocalFingerprint);
+    expect(overriddenCollectionFingerprint).toBe(defaultFingerprint);
+  });
+});
 
 describe("CollectionWatchService lifecycle", () => {
   test("updateCollections adds new watchers and removes stale ones", () => {
@@ -449,6 +480,43 @@ describe("CollectionWatchService lifecycle", () => {
 
     expect(seenFingerprints.every((fp) => fp === "after")).toBe(true);
     expect(seenPaths.some((batch) => batch.includes("doc.md"))).toBe(true);
+    await service.dispose();
+  });
+
+  test("source availability changes invalidate the generation and reconcile with the effective mode", async () => {
+    const collection = createCollection("notes", "/tmp/notes");
+    const seenModes: string[] = [];
+
+    defaultSyncService.syncCollection = (async (
+      currentCollection,
+      _store,
+      options
+    ) => {
+      seenModes.push(resolveSourceAvailability(currentCollection, options));
+      return createSyncResult();
+    }) as typeof defaultSyncService.syncCollection;
+
+    const service = new CollectionWatchService({
+      collections: [collection],
+      eventBus: null,
+      scheduler: null,
+      store: createStubStore(),
+      flushDebounceMs: 20,
+      maxFlushDelayMs: 100,
+      watchFactory: (() => ({ close: () => undefined })) as never,
+    });
+
+    service.start();
+    service.updateCollections([{ ...collection, sourceAvailability: "local" }]);
+    await Bun.sleep(350);
+    service.updateCollections(
+      [{ ...collection, sourceAvailability: "local" }],
+      { sourceAvailability: "any" }
+    );
+    await Bun.sleep(350);
+
+    expect(seenModes).toEqual(["local", "any"]);
+    expect(service.getState().queuedCollections).toEqual([]);
     await service.dispose();
   });
 });

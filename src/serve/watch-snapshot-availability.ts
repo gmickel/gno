@@ -40,9 +40,12 @@ export async function readAvailableDirectory(
   if (!classifier || classifier.mode === "any") {
     return readDirectChildren(rootAbs, dirRel, fs, maxEntries);
   }
+  if (!fs.readDirectChildrenSync) {
+    return { status: "unproven" };
+  }
   const absPath = dirRel === "" ? rootAbs : join(rootAbs, dirRel);
-  const read = await classifier.readDirectory(absPath, () =>
-    readDirectChildren(rootAbs, dirRel, fs, maxEntries)
+  const read = classifier.readDirectory(absPath, () =>
+    fs.readDirectChildrenSync!(rootAbs, dirRel, maxEntries)
   );
   return read.kind === "available" ? read.value : { status: "unproven" };
 }

@@ -250,6 +250,7 @@ describe("watcher snapshot scale", () => {
         [...directories.entries()].map(([k, v]) => [k, new Map(v)])
       ),
       entryCount,
+      unprovenSubtrees: new Set<string>(),
     };
     for (let i = 0; i < siblingCount; i += 1) {
       const name = `d${String(i).padStart(4, "0")}`;

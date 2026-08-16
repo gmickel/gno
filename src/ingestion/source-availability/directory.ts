@@ -14,7 +14,6 @@ import {
   loadDarwinIo,
   SF_DATALESS,
   withNoMaterializePolicy,
-  withNoMaterializePolicyAsync,
 } from "./darwin-io";
 import {
   classifyDarwinFileProviderPath,
@@ -26,6 +25,7 @@ import {
   type DirectoryReadResult,
   type SourceAvailabilityCode,
   type SourceAvailabilityMode,
+  type SynchronousDirectoryRead,
   isUnprovenAbsenceCode,
   sourceAvailabilityMessage,
 } from "./types";
@@ -46,11 +46,11 @@ export class AnyDirectoryAvailability implements DirectoryAvailabilityPort {
     return { kind: "available" };
   }
 
-  async readDirectory<T>(
+  readDirectory<T>(
     _absPath: string,
-    read: () => Promise<T>
-  ): Promise<DirectoryReadResult<T>> {
-    return { kind: "available", value: await read() };
+    read: SynchronousDirectoryRead<T>
+  ): DirectoryReadResult<T> {
+    return { kind: "available", value: read() };
   }
 }
 
@@ -122,10 +122,10 @@ export class LocalDirectoryAvailability implements DirectoryAvailabilityPort {
     return wrapped.value;
   }
 
-  async readDirectory<T>(
+  readDirectory<T>(
     absPath: string,
-    read: () => Promise<T>
-  ): Promise<DirectoryReadResult<T>> {
+    read: SynchronousDirectoryRead<T>
+  ): DirectoryReadResult<T> {
     const supportError = this.validateSupport(absPath);
     if (supportError) {
       return supportError;
@@ -134,12 +134,12 @@ export class LocalDirectoryAvailability implements DirectoryAvailabilityPort {
     const policy = this.policy as DarwinIoPolicyPort;
     const stat = this.stat as DarwinStatPort;
     try {
-      const wrapped = await withNoMaterializePolicyAsync(async () => {
+      const wrapped = withNoMaterializePolicy(() => {
         const classified = classifyFlags(absPath, stat);
         if (classified.kind !== "available") {
           return classified;
         }
-        return { kind: "available" as const, value: await read() };
+        return { kind: "available" as const, value: read() };
       }, policy);
       if (wrapped.ok) {
         return wrapped.value;

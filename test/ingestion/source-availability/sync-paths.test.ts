@@ -36,10 +36,10 @@ function classifierFor(
   return {
     mode,
     classify: async (absPath) => decide(absPath),
-    readDirectory: async (absPath, read) => {
+    readDirectory: (absPath, read) => {
       const classified = decide(absPath);
       return classified.kind === "available"
-        ? { kind: "available", value: await read() }
+        ? { kind: "available", value: read() }
         : classified;
     },
   };

@@ -70,4 +70,5 @@ export type {
   SourceReadFailure,
   SourceReadResult,
   SourceReadSuccess,
+  SynchronousDirectoryRead,
 } from "./types";

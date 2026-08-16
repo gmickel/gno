@@ -68,7 +68,8 @@ export type PathPresence =
 export type ClassificationFullReconcileReason =
   | "unsupported_fs"
   | "budget_overflow"
-  | "snapshot_overflow";
+  | "snapshot_overflow"
+  | "snapshot_unproven_subtree";
 
 export type ClassificationResult =
   | {

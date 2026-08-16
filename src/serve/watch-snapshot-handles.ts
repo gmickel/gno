@@ -18,13 +18,14 @@ import { join } from "node:path";
 
 import type { LoadedLibc } from "./watch-snapshot-libc";
 import type {
+  SnapshotEntryFingerprint,
   WatcherDirHandle,
   WatcherSnapshotFs,
   WatcherSnapshotStat,
 } from "./watch-snapshot-types";
 
 import { loadLibc, openatOrThrow, readDirNames } from "./watch-snapshot-libc";
-import { isMissingFsError } from "./watch-snapshot-types";
+import { fingerprintFromStat, isMissingFsError } from "./watch-snapshot-types";
 
 type NativeDir = {
   fd: number;
@@ -70,9 +71,134 @@ function mapStats(stat: {
   };
 }
 
+function openNativeDirByRel(
+  libc: LoadedLibc,
+  rootAbs: string,
+  dirRel: string
+): number {
+  let fd = openSync(rootAbs, libc.openDirFlags);
+  try {
+    for (const segment of dirRel.split("/").filter(Boolean)) {
+      const child = openatOrThrow(
+        libc,
+        fd,
+        segment,
+        libc.openChildFlags,
+        "openat"
+      );
+      closeSync(fd);
+      fd = child;
+    }
+    return fd;
+  } catch (cause) {
+    closeSync(fd);
+    throw cause;
+  }
+}
+
+function readDirectChildrenNative(
+  libc: LoadedLibc,
+  rootAbs: string,
+  dirRel: string,
+  maxEntries: number
+): ReturnType<NonNullable<WatcherSnapshotFs["readDirectChildrenSync"]>> {
+  if (!Number.isInteger(maxEntries) || maxEntries < 0) {
+    return {
+      status: "scan_failed",
+      cause: new Error("maxEntries must be a non-negative integer"),
+    };
+  }
+
+  let fd: number;
+  try {
+    fd = openNativeDirByRel(libc, rootAbs, dirRel);
+  } catch (cause) {
+    return isMissingFsError(cause)
+      ? { status: "missing" }
+      : { status: "scan_failed", cause };
+  }
+
+  try {
+    const listed = readDirNames(libc, fd, maxEntries);
+    if (listed.status === "overflow") {
+      return listed;
+    }
+    const entries = new Map<string, SnapshotEntryFingerprint>();
+    listed.names.sort((left, right) =>
+      left < right ? -1 : left > right ? 1 : 0
+    );
+    for (const name of listed.names) {
+      if (name.includes("/") || name.includes("\\") || name.includes("\0")) {
+        return {
+          status: "scan_failed",
+          cause: new Error(`Invalid directory entry name: ${name}`),
+        };
+      }
+      if (entries.size >= maxEntries) {
+        return { status: "overflow" };
+      }
+      let childFd: number | undefined;
+      try {
+        childFd = openatOrThrow(libc, fd, name, libc.openLstatFlags, "openat");
+        const fingerprinted = fingerprintFromStat(
+          mapStats(fstatSync(childFd, { bigint: true }))
+        );
+        if (!fingerprinted.ok) {
+          return { status: "unreliable_metadata" };
+        }
+        entries.set(name, fingerprinted.fingerprint);
+      } catch (cause) {
+        return { status: "scan_failed", cause };
+      } finally {
+        if (childFd !== undefined) {
+          closeSync(childFd);
+        }
+      }
+    }
+    return { status: "present", entries };
+  } catch (cause) {
+    return isMissingFsError(cause)
+      ? { status: "missing" }
+      : { status: "scan_failed", cause };
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function lstatChildByRelNative(
+  libc: LoadedLibc,
+  rootAbs: string,
+  parentRel: string,
+  name: string
+): WatcherSnapshotStat {
+  const parentFd = openNativeDirByRel(libc, rootAbs, parentRel);
+  try {
+    const childFd = openatOrThrow(
+      libc,
+      parentFd,
+      name,
+      libc.openLstatFlags,
+      "openat"
+    );
+    try {
+      return mapStats(fstatSync(childFd, { bigint: true }));
+    } finally {
+      closeSync(childFd);
+    }
+  } finally {
+    closeSync(parentFd);
+  }
+}
+
 function createNativeAnchoredFs(libc: LoadedLibc): WatcherSnapshotFs {
   return {
     supportsAnchoredHandles: true,
+
+    readDirectChildrenSync: (rootAbs, dirRel, maxEntries) =>
+      readDirectChildrenNative(libc, rootAbs, dirRel, maxEntries),
+
+    lstatChildByRelSync: (rootAbs, parentRel, name) =>
+      lstatChildByRelNative(libc, rootAbs, parentRel, name),
 
     async openDir(absPath: string): Promise<WatcherDirHandle> {
       const fd = openSync(absPath, libc.openDirFlags);

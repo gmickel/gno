@@ -13,6 +13,7 @@ import type { Collection } from "../config/types";
 import type { SyncOptions } from "../ingestion";
 import type { WatcherSnapshot } from "./watch-snapshot";
 
+import { resolveSourceAvailability } from "../ingestion/source-availability";
 import { emptyPending, type CollectionPending } from "./watch-service-state";
 
 export interface WatchLifecycleHost {
@@ -65,6 +66,7 @@ export function watcherCollectionFingerprint(
     exclude: collection.exclude,
     languageHint: collection.languageHint ?? null,
     recordAdapters: collection.recordAdapters ?? null,
+    sourceAvailability: resolveSourceAvailability(collection, syncOptions),
     limits: syncOptions.limits ?? null,
     concurrency: syncOptions.concurrency ?? null,
     contentTypeRules: syncOptions.contentTypeRules ?? null,

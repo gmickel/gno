@@ -112,7 +112,7 @@ export function instrumentDirectoryAvailability(
         unique.add(absPath);
         return port.classify(absPath);
       },
-      readDirectory: async (absPath, read) => {
+      readDirectory: (absPath, read) => {
         callCount += 1;
         unique.add(absPath);
         return port.readDirectory(absPath, read);

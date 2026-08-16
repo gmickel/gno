@@ -41,6 +41,38 @@ function memoryFs(tree: Record<string, string[]>): WatcherSnapshotFs {
   let seq = 0;
   return {
     supportsAnchoredHandles: true,
+    readDirectChildrenSync: (_rootAbs, dirRel, maxEntries) => {
+      const names = tree[dirRel] ?? [];
+      if (names.length > maxEntries) {
+        return { status: "overflow" };
+      }
+      const entries = new Map<string, SnapshotEntryFingerprint>();
+      for (const name of names) {
+        const childRel = dirRel === "" ? name : `${dirRel}/${name}`;
+        entries.set(
+          name,
+          fp(
+            Object.hasOwn(tree, childRel) ? "directory" : "file",
+            childRel.length + 10
+          )
+        );
+      }
+      return { status: "present", entries };
+    },
+    lstatChildByRelSync: (_rootAbs, parentRel, name) => {
+      const childRel = parentRel === "" ? name : `${parentRel}/${name}`;
+      const directory = Object.hasOwn(tree, childRel);
+      return {
+        isFile: () => !directory,
+        isDirectory: () => directory,
+        isSymbolicLink: () => false,
+        dev: 1,
+        ino: childRel.length + 10,
+        size: directory ? 0 : 10,
+        mtimeNs: 1n,
+        ctimeNs: 1n,
+      };
+    },
     openDir: async (absPath: string) => {
       const handle = { __watcherDirHandle: Symbol(String(++seq)) } as never;
       const key =
@@ -85,10 +117,10 @@ function directoryClassifier(
   return {
     mode: "local",
     classify: async (absPath) => decide(absPath),
-    readDirectory: async (absPath, read) => {
+    readDirectory: (absPath, read) => {
       const classified = decide(absPath);
       return classified.kind === "available"
-        ? { kind: "available", value: await read() }
+        ? { kind: "available", value: read() }
         : classified;
     },
   };
@@ -100,7 +132,7 @@ function blockAtDirectoryRead(
   return {
     mode: "local",
     classify: async () => ({ kind: "available" }),
-    readDirectory: async (absPath, read) => {
+    readDirectory: (absPath, read) => {
       if (absPath.endsWith(blockedSuffix)) {
         return {
           kind: "dataless",
@@ -108,7 +140,7 @@ function blockAtDirectoryRead(
           message: "became dataless before enumeration",
         };
       }
-      return { kind: "available", value: await read() };
+      return { kind: "available", value: read() };
     },
   };
 }
@@ -142,6 +174,7 @@ describe("watcher snapshot source-availability descent", () => {
     const rootEntries = built.snapshot.directories.get("");
     expect(rootEntries?.has("cloud")).toBe(true);
     expect(rootEntries?.has("local.md")).toBe(true);
+    expect(built.snapshot.unprovenSubtrees).toEqual(new Set(["cloud"]));
   });
 
   test("build refuses a child that becomes dataless before enumeration", async () => {
@@ -156,6 +189,87 @@ describe("watcher snapshot source-availability descent", () => {
     if (built.status !== "ok") return;
     expect(built.snapshot.directories.has("cloud")).toBe(false);
     expect(built.snapshot.directories.get("")?.has("cloud")).toBe(true);
+    expect(built.snapshot.unprovenSubtrees).toEqual(new Set(["cloud"]));
+  });
+
+  test("proven deletion of an unproven snapshot subtree forces full reconciliation", async () => {
+    const tree: Record<string, string[]> = {
+      "": ["cloud", "local.md"],
+      cloud: ["previously-indexed.md"],
+    };
+    const classifier = directoryClassifier((absPath) => {
+      if (absPath.endsWith("/cloud") || absPath === "cloud") {
+        return {
+          kind: "dataless",
+          code: "DATALESS_DIRECTORY",
+          message: "dataless",
+        };
+      }
+      return { kind: "available" };
+    });
+    const fs = memoryFs(tree);
+    const built = await buildWatcherSnapshot("/", {
+      fs,
+      directoryAvailability: classifier,
+    });
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") return;
+
+    tree[""] = ["local.md"];
+    delete tree.cloud;
+    const classified = await classifyDirtyHints({
+      collection: {
+        name: "notes",
+        path: "/",
+        pattern: "**/*.md",
+        include: [],
+        exclude: [],
+        sourceAvailability: "local",
+      },
+      store: {} as SqliteAdapter,
+      rootAbs: "/",
+      previous: built.snapshot,
+      dirtyHints: [""],
+      snapshotOptions: { fs, directoryAvailability: classifier },
+    });
+
+    expect(classified).toEqual({
+      status: "full_reconcile",
+      reason: "snapshot_unproven_subtree",
+    });
+  });
+
+  test("replacement of an unproven snapshot subtree forces full reconciliation", async () => {
+    const previous: WatcherSnapshot = {
+      directories: new Map([["", new Map([["cloud", fp("directory", 1)]])]]),
+      entryCount: 1,
+      unprovenSubtrees: new Set(["cloud"]),
+    };
+    const classified = await classifyDirtyHints({
+      collection: {
+        name: "notes",
+        path: "/",
+        pattern: "**/*.md",
+        include: [],
+        exclude: [],
+        sourceAvailability: "local",
+      },
+      store: {} as SqliteAdapter,
+      rootAbs: "/",
+      previous,
+      dirtyHints: [""],
+      snapshotOptions: {
+        fs: memoryFs({ "": ["cloud"] }),
+        directoryAvailability: directoryClassifier(() => ({
+          kind: "available",
+        })),
+      },
+    });
+
+    expect(classified).toEqual({
+      status: "full_reconcile",
+      reason: "snapshot_unproven_subtree",
+    });
   });
 
   test("diff preserves prior subtree when dirty directory becomes dataless", async () => {

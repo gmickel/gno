@@ -6,9 +6,10 @@
  * @module src/ingestion/walker
  */
 
-// node:fs/promises - Bun has no realpath / Dirent readdir equivalent for
-// no-follow hierarchical traversal and symlink-safe containment checks.
-import { lstat, readdir, realpath } from "node:fs/promises";
+// node:fs - Bun has no synchronous Dirent enumeration for the guarded local walk.
+import { readdirSync } from "node:fs";
+// node:fs/promises - Bun has no realpath equivalent for symlink-safe containment.
+import { lstat, realpath } from "node:fs/promises";
 // node:path - Bun has no path manipulation module
 import {
   extname,
@@ -424,8 +425,8 @@ export class FileWalker implements WalkerPort {
 
       let dirents;
       try {
-        const read = await classifier.readDirectory(dir.absPath, () =>
-          readdir(dir.absPath, { withFileTypes: true })
+        const read = classifier.readDirectory(dir.absPath, () =>
+          readdirSync(dir.absPath, { withFileTypes: true })
         );
         if (read.kind !== "available") {
           pushUnprovenDirectorySkip(skipped, dir.absPath, dir.relPath, read);
