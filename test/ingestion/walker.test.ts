@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { SUPPORTED_EXTENSIONS } from "../../src/converters/mime";
+import { matchesCollectionSubtreeExclusion } from "../../src/core/path-rules";
 import { FileWalker, matchesWalkPath } from "../../src/ingestion/walker";
 import { safeRm } from "../helpers/cleanup";
 
@@ -63,6 +64,26 @@ describe("matchesWalkPath", () => {
     expect(
       matchesWalkPath(".gno/records/deadbeef/collision.md", unionConfig)
     ).toBe(false);
+  });
+});
+
+describe("matchesCollectionSubtreeExclusion", () => {
+  test("recognizes trailing recursive glob roots without widening partial patterns", () => {
+    expect(matchesCollectionSubtreeExclusion("cloud", ["cloud/**"])).toBe(true);
+    expect(
+      matchesCollectionSubtreeExclusion("nested/generated", ["**/generated/**"])
+    ).toBe(true);
+    expect(
+      matchesCollectionSubtreeExclusion("archive", ["{cloud,archive}/**"])
+    ).toBe(true);
+
+    expect(matchesCollectionSubtreeExclusion("cloud", ["cloud/*"])).toBe(false);
+    expect(
+      matchesCollectionSubtreeExclusion("cloud", ["cloud/**/secret"])
+    ).toBe(false);
+    expect(matchesCollectionSubtreeExclusion("cloud", ["cloudy/**"])).toBe(
+      false
+    );
   });
 });
 

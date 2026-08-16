@@ -131,6 +131,60 @@ describe("local guarded fallback presence", () => {
 });
 
 describe("fallback root and forceFallback", () => {
+  test("recursive-glob subtree hints skip availability classification", async () => {
+    const root = await mkdtemp(join(tmpdir(), "gno-watch-excluded-glob-"));
+    try {
+      await mkdir(join(root, "cloud"), { recursive: true });
+      const availabilityPaths: string[] = [];
+      const directoryAvailability: DirectoryAvailabilityPort = {
+        mode: "local",
+        classify: async (absPath) => {
+          availabilityPaths.push(absPath);
+          if (absPath === root) {
+            return { kind: "available" };
+          }
+          return {
+            kind: "dataless",
+            code: "DATALESS_DIRECTORY",
+            message: "excluded directory must not be classified",
+          };
+        },
+        readDirectory: (absPath, read) => {
+          availabilityPaths.push(absPath);
+          if (absPath === root) {
+            return { kind: "available", value: read() };
+          }
+          return {
+            kind: "dataless",
+            code: "DATALESS_DIRECTORY",
+            message: "excluded directory must not be read",
+          };
+        },
+      };
+
+      const classified = await classifyDirtyHints({
+        collection: {
+          ...createCollection("notes", root),
+          exclude: ["cloud/**"],
+        },
+        store: createStubStore(),
+        rootAbs: root,
+        previous: null,
+        dirtyHints: ["cloud"],
+        snapshotOptions: { directoryAvailability },
+      });
+
+      expect(classified.status).toBe("ok");
+      if (classified.status === "ok") {
+        expect(classified.candidates).toEqual([]);
+        expect(classified.removals).toEqual([]);
+      }
+      expect(availabilityPaths).toEqual([root]);
+    } finally {
+      await safeRm(root);
+    }
+  });
+
   test("missing collection root errors instead of proving deletion", async () => {
     const classified = await classifyDirtyHints({
       collection: createCollection("notes", "/no/such/root-missing-xyz"),

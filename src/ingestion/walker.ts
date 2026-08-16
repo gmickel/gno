@@ -24,7 +24,10 @@ import {
 import type { SkippedEntry, WalkConfig, WalkEntry, WalkerPort } from "./types";
 
 import { SUPPORTED_EXTENSIONS } from "../converters/mime";
-import { matchesCollectionExclusion } from "../core/path-rules";
+import {
+  matchesCollectionExclusion,
+  matchesCollectionSubtreeExclusion,
+} from "../core/path-rules";
 import { isRecordVirtualPath } from "./record-path";
 import {
   createDirectoryAvailability,
@@ -495,7 +498,7 @@ export class FileWalker implements WalkerPort {
         }
 
         if (dirent.isDirectory()) {
-          if (matchesCollectionExclusion(childRel, config.exclude)) {
+          if (matchesCollectionSubtreeExclusion(childRel, config.exclude)) {
             skipped.push({
               absPath: childAbs,
               relPath: childRel,

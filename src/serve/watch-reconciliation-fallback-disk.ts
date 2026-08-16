@@ -12,7 +12,10 @@ import { join } from "node:path";
 import type { Collection } from "../config/types";
 import type { DirectoryAvailabilityPort } from "../ingestion/source-availability";
 
-import { matchesCollectionExclusion } from "../core/path-rules";
+import {
+  matchesCollectionExclusion,
+  matchesCollectionSubtreeExclusion,
+} from "../core/path-rules";
 import { collectionToWalkConfig, matchesWalkPath } from "../ingestion";
 import { findUnprovenAvailabilityPrefix } from "../ingestion/source-availability";
 import { defaultFs, openDirByRel } from "./watch-snapshot-scan";
@@ -82,6 +85,12 @@ export async function listEligibleDiskSources(
   while (head < queue.length) {
     const current = queue[head] as string;
     head += 1;
+    if (
+      current !== "" &&
+      matchesCollectionSubtreeExclusion(current, walkConfig.exclude)
+    ) {
+      continue;
+    }
     budget.visitedDirs += 1;
     if (budgetExceeded(budget)) {
       return { status: "overflow" };
@@ -119,18 +128,20 @@ export async function listEligibleDiskSources(
       }
       for (const [name, fingerprint] of listed.entries) {
         const childRel = joinWatcherRelPath(current, name);
-        if (matchesCollectionExclusion(childRel, walkConfig.exclude)) {
-          continue;
-        }
-        if (fingerprint.kind === "symlink") {
-          if (matchesWalkPath(childRel, walkConfig)) {
-            paths.push(childRel);
+        if (fingerprint.kind === "directory") {
+          if (matchesCollectionSubtreeExclusion(childRel, walkConfig.exclude)) {
+            continue;
           }
-        } else if (fingerprint.kind === "directory") {
           if (current === "") {
             rootDirNames.push(name);
           }
           queue.push(childRel);
+        } else if (matchesCollectionExclusion(childRel, walkConfig.exclude)) {
+          continue;
+        } else if (fingerprint.kind === "symlink") {
+          if (matchesWalkPath(childRel, walkConfig)) {
+            paths.push(childRel);
+          }
         } else if (
           fingerprint.kind === "file" &&
           matchesWalkPath(childRel, walkConfig)
@@ -188,6 +199,18 @@ export async function listEligibleDiskSources(
 
           const stat = await fs.lstatChild(opened.handle, name);
           const childRel = joinWatcherRelPath(current, name);
+          if (stat.isDirectory()) {
+            if (
+              matchesCollectionSubtreeExclusion(childRel, walkConfig.exclude)
+            ) {
+              continue;
+            }
+            if (current === "") {
+              rootDirNames.push(name);
+            }
+            queue.push(childRel);
+            continue;
+          }
           if (matchesCollectionExclusion(childRel, walkConfig.exclude)) {
             continue;
           }
@@ -198,13 +221,6 @@ export async function listEligibleDiskSources(
                 return { status: "overflow" };
               }
             }
-            continue;
-          }
-          if (stat.isDirectory()) {
-            if (current === "") {
-              rootDirNames.push(name);
-            }
-            queue.push(childRel);
             continue;
           }
           if (!stat.isFile() || !matchesWalkPath(childRel, walkConfig)) {

@@ -51,3 +51,37 @@ export function matchesCollectionExclusion(
   }
   return false;
 }
+
+/**
+ * Whether a known directory is the root of a fully excluded subtree.
+ * A trailing `/**` excludes every descendant even though Bun.Glob does not
+ * match the directory root itself. Other partial glob shapes must still be
+ * traversed because they may leave eligible descendants.
+ */
+export function matchesCollectionSubtreeExclusion(
+  relPath: string,
+  excludes: readonly string[]
+): boolean {
+  const normalizedPath = relPath.replaceAll("\\", "/");
+  if (matchesCollectionExclusion(normalizedPath, excludes)) {
+    return true;
+  }
+
+  for (const rawPattern of excludes) {
+    const pattern = rawPattern.replaceAll("\\", "/");
+    if (pattern === "**") {
+      return true;
+    }
+    if (!pattern.endsWith("/**")) {
+      continue;
+    }
+    const subtreeRootPattern = pattern.slice(0, -3);
+    if (
+      subtreeRootPattern.length > 0 &&
+      new Bun.Glob(subtreeRootPattern).match(normalizedPath)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}

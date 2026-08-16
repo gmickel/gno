@@ -16,7 +16,7 @@ import type { DirectoryAvailabilityPort } from "../ingestion/source-availability
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { StoreResult } from "../store/types";
 
-import { matchesCollectionExclusion } from "../core/path-rules";
+import { matchesCollectionSubtreeExclusion } from "../core/path-rules";
 import {
   collectionToWalkConfig,
   findUnprovenAvailabilityPrefix,
@@ -139,7 +139,10 @@ export async function fallbackClassifyDirtyHints(options: {
     if (budgetExceeded(budget)) {
       return overflowResult(dir);
     }
-    if (dir !== "" && matchesCollectionExclusion(dir, walkConfig.exclude)) {
+    if (
+      dir !== "" &&
+      matchesCollectionSubtreeExclusion(dir, walkConfig.exclude)
+    ) {
       continue;
     }
 

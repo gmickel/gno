@@ -381,7 +381,7 @@ describe("reconciliation preserves unproven prefixes", () => {
     const result = await syncService.syncCollection(
       {
         ...collection,
-        exclude: ["cloud"],
+        exclude: ["cloud/**"],
         sourceAvailability: "local",
       },
       adapter,
