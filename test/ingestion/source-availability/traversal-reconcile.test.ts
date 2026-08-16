@@ -298,4 +298,51 @@ describe("reconciliation preserves unproven prefixes", () => {
     const ok = await adapter.getDocument("docs", "local/ok.md");
     expect(ok.ok && ok.value?.active).toBe(true);
   });
+
+  test("new exclusion overrides dataless preservation and inactivates descendants", async () => {
+    const classifier = mapClassifier(
+      "local",
+      {
+        "": { kind: "available" },
+        cloud: {
+          kind: "dataless",
+          code: "DATALESS_DIRECTORY",
+          message: "dataless cloud",
+        },
+        local: { kind: "available" },
+      },
+      collectionDir
+    );
+    const syncService = new SyncService(
+      new FileWalker(),
+      undefined,
+      undefined,
+      undefined,
+      () =>
+        fixedReader("local", {
+          ok: true,
+          bytes: new TextEncoder().encode("# ok\n"),
+        }),
+      () => classifier
+    );
+
+    const result = await syncService.syncCollection(
+      {
+        ...collection,
+        exclude: ["cloud"],
+        sourceAvailability: "local",
+      },
+      adapter,
+      { sourceAvailability: "local" }
+    );
+
+    expect(result.filesMarkedInactive).toBe(1);
+    expect(result.errors.some((e) => e.code === "DATALESS_DIRECTORY")).toBe(
+      false
+    );
+    const excluded = await adapter.getDocument("docs", "cloud/nested/kept.md");
+    expect(excluded.ok && excluded.value?.active).toBe(false);
+    const included = await adapter.getDocument("docs", "local/ok.md");
+    expect(included.ok && included.value?.active).toBe(true);
+  });
 });

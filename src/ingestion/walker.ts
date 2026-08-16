@@ -488,6 +488,14 @@ export class FileWalker implements WalkerPort {
         }
 
         if (dirent.isDirectory()) {
+          if (matchesCollectionExclusion(childRel, config.exclude)) {
+            skipped.push({
+              absPath: childAbs,
+              relPath: childRel,
+              reason: "EXCLUDED",
+            });
+            continue;
+          }
           const classified = await classifier.classify(childAbs);
           if (isUnprovenDirectoryResult(classified)) {
             pushUnprovenDirectorySkip(skipped, childAbs, childRel, classified);
