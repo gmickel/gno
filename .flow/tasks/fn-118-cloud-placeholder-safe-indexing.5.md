@@ -44,6 +44,7 @@ Validated both installed immediate OneDrive SharePoint library roots independent
 Baseline: `bun run lint:check` green; `GATE_SKIPPED:unittest:green-receipt b22722a0 - baseline reused from prior post-gate pass`; `GATE_SKIPPED:smoke:green-receipt b22722a0 - baseline reused from prior post-gate pass`. Verify: focused smoke tests 46 pass; lint green; full `bun test` 4262 pass, 2 skip, 0 fail; smoke help exit 0.
 
 stage: impl-review - skipped(config: REVIEW_MODE=none)
+stage: plan-sync - ran [2026-08-16T11:52:20Z..2026-08-16T11:53:42Z] (model: gpt-5.6-terra)
 ## Evidence
 - Commits: a98feec143a644afb5ec481f27f2f17a87e3abb7
 - Tests: GATE_SKIPPED:unittest:green-receipt b22722a0 - baseline reused from prior post-gate pass, GATE_SKIPPED:smoke:green-receipt b22722a0 - baseline reused from prior post-gate pass, bun test test/scripts/macos-file-provider-smoke.test.ts (46 pass, 0 fail), bun run lint:check, bun test (4262 pass, 2 skip, 0 fail), bun scripts/macos-file-provider-smoke.ts --help, physical OneDrive matrix: both immediate libraries local/cached-unpinned/cloud-only; nested/pinned-offline/partial/race independently classified; EDEADLK zero-byte refusal verified where cloud-only reproduced, cleanup: both exact fixture active paths absent; active run fixture count 0

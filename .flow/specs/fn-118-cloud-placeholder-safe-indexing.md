@@ -58,7 +58,9 @@ Active tracks served by this plan:
 - Use the provider-neutral macOS filesystem contract first; provider SDK integrations are rejected as premature complexity.
 - Keep the default mode behaviorally unchanged; the new guarantee is opt-in and fail-closed where support cannot be proven.
 - A cloud-only source produces a distinct skip rather than a conversion error. A low-level guarded open may return a refusal error, which the ingestion boundary translates into that skip.
-- Google Drive and iCloud Drive require independent physical evidence. OneDrive remains unclaimed until independently tested; an unavailable provider is reported as blocked, never inferred from another provider.
+- Google Drive, iCloud Drive, and OneDrive require independent physical evidence. OneDrive is proven only for the tested OS/provider configuration and both installed immediate SharePoint library roots; unavailable or irreproducible states are reported as blocked or not available, never inferred from another provider.
+
+<!-- Updated by plan-sync: fn-118-cloud-placeholder-safe-indexing.5 proved guarded OneDrive cloud-only refusal in both installed immediate library roots, not the planned unclaimed state -->
 - fn-114 overlaps the converter boundary but creates no ordering dependency; its eventual adapter must consume the same guarded source-read contract.
 
 ## Acceptance Criteria

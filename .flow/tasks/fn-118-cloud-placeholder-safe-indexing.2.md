@@ -6,9 +6,10 @@ satisfies: [R2, R3]
 ## Description
 Implement the platform-neutral policy contract and Darwin guard bounded by task 1 physical evidence (R2/R3). Keep default `any` behavior unchanged.
 
-Task 1 proved the provider-neutral guarded-read mechanism only for dedicated Google Drive and iCloud Drive cloud-only fixtures. OneDrive cloud-placeholder support remains unclaimed and must fail closed as unsupported/unknown unless later physical evidence proves it. Do **not** add a naive extra availability check for every discovered file: it measured +15.2323% on the representative 5,000-file all-local corpus and fails the proposed <=10% R6 budget. Reusing existing traversal metadata flags and rechecking only content actually consumed or changed is an unmeasured optimization hypothesis, not a pass; preserve the content-boundary guard and require task 4 measurement before making a performance claim.
+Tasks 1 and 5 proved the provider-neutral guarded-read mechanism for dedicated Google Drive, iCloud Drive, and OneDrive cloud-only fixtures. OneDrive cloud-placeholder support is proven only for the tested OS/provider configuration and both installed immediate SharePoint library roots; unavailable or irreproducible states remain unsupported/unknown and fail closed. Do **not** add a naive extra availability check for every discovered file: it measured +15.2323% on the representative 5,000-file all-local corpus and fails the proposed <=10% R6 budget. Reusing existing traversal metadata flags and rechecking only content actually consumed or changed is an unmeasured optimization hypothesis, not a pass; preserve the content-boundary guard and require task 4 measurement before making a performance claim.
 
 <!-- Updated by plan-sync: fn-118-cloud-placeholder-safe-indexing.1 measured naive per-file availability checks at +15.2323%, not the planned acceptable local-mode approach -->
+<!-- Updated by plan-sync: fn-118-cloud-placeholder-safe-indexing.5 proved guarded OneDrive cloud-only refusal in both installed immediate library roots, not the planned unclaimed state -->
 
 **Size:** M
 **Files:** source-availability port/types and Darwin adapter, collection config parsing, focused unit/contract tests
@@ -31,7 +32,7 @@ Task 1 proved the provider-neutral guarded-read mechanism only for dedicated Goo
 - `test/ingestion/sync-max-bytes.test.ts:51-103` — rejection and converter-spy test pattern
 ## Acceptance
 - [ ] `any` remains the default with unchanged behavior.
-- [ ] `local` establishes the proven macOS no-materialization policy for Google Drive and iCloud Drive cloud-only fixtures; OneDrive cloud-placeholder support remains unsupported/unclaimed and fails closed.
+- [ ] `local` establishes the proven macOS no-materialization policy for Google Drive, iCloud Drive, and OneDrive cloud-only fixtures in both tested immediate SharePoint library roots; OneDrive support remains limited to the tested configuration, and unknown states fail closed.
 - [ ] Guarded content access converts unavailable/race outcomes into a distinct skip; unsupported/unknown safety fails closed.
 - [ ] The implementation does not add the measured-failing naive extra availability check for every discovered file; any traversal-metadata reuse optimization remains unproven until task 4 physical measurement.
 - [ ] Unit and contract tests cover policy setup failure, unknown flags, permissions, eviction race, partial content, and unsupported platforms.
