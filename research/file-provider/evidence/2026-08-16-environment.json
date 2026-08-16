@@ -1,0 +1,48 @@
+{
+  "capturedAt": "2026-08-16",
+  "host": {
+    "platform": "darwin",
+    "osVersion": "27.0",
+    "osBuild": "26A5388g",
+    "betaOs": true,
+    "hardware": "Apple M4 Max",
+    "arch": "arm64",
+    "bunVersion": "1.3.14",
+    "gnoVersion": "1.34.6"
+  },
+  "providers": [
+    {
+      "label": "google",
+      "version": "129.0+129.0.1",
+      "root": "sha256:dcee15ff632062b8acde2b613be37674a942400d34e435ad76998828753130e3",
+      "fixture": "sha256:318b00f3dc5b6356bab1ff4dc4125897202165dece98c7a10d1bf29dec341faf"
+    },
+    {
+      "label": "onedrive",
+      "version": "26.139.0720+26139.0720.0007",
+      "root": "sha256:52a67b02173e2ebf921a77825125139623f05ebc47b41123556b0d3262e9b988",
+      "fixture": "sha256:c23876cd039e32610257fc54473b1f66a73e249306a18da11d6a06c285cb4ebd"
+    },
+    {
+      "label": "icloud",
+      "version": "os-27.0+26A5388g",
+      "root": "sha256:2ec971ad94a4f49a11d702b3b43c291a0124db5661daf0e4e458a3c43a028de0",
+      "fixture": "sha256:901377400bcd81ed8330e0281829012a614d7c55ed11aea1a2e0e4c6e351d0bd"
+    }
+  ],
+  "observer": {
+    "kind": "darwin-ffi-lstat-st_flags",
+    "flag": "SF_DATALESS",
+    "policyScope": "process",
+    "policyScopeReason": "async Bun I/O may escape thread scope; smoke uses process scope",
+    "intermediateDirectoryCaveat": "TN3150: stat/getattrlist may materialize intermediate dataless directories"
+  },
+  "privacy": {
+    "existingUserFileContentsRead": false,
+    "trackedPathsRedacted": true,
+    "trackedSourceBytes": false,
+    "dedicatedFixturesOnly": true,
+    "fixturesMovedToTrash": true,
+    "fixtureRootsVerifiedAbsentAfterTrash": true
+  }
+}

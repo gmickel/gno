@@ -1,0 +1,266 @@
+{
+  "capturedAt": "2026-08-16",
+  "environment": {
+    "platform": "darwin",
+    "osVersion": "27.0",
+    "osBuild": "26A5388g",
+    "betaOs": true,
+    "hardware": "Apple M4 Max",
+    "arch": "arm64",
+    "bun": "1.3.14",
+    "gno": "1.34.6",
+    "policyScope": "process"
+  },
+  "protocol": {
+    "warmups": 2,
+    "samplesPerLane": 9,
+    "runOrder": [
+      "discovery-traversal-baseline",
+      "availability-metadata",
+      "candidate-discovery-plus-availability",
+      "guarded-read-hash"
+    ]
+  },
+  "controlledLocalCorpus": {
+    "shape": "5000 deterministic flat Markdown files in an owned temporary local directory",
+    "fileCount": 5000,
+    "complete": true,
+    "lanes": {
+      "discovery-traversal-baseline": {
+        "rawMs": [
+          72.4367, 71.0046, 71.9809, 73.4625, 71.8915, 72.3092, 71.6065,
+          71.1267, 70.703
+        ],
+        "medianMs": 71.8915,
+        "p95Ms": 73.4625,
+        "minMs": 70.703,
+        "maxMs": 73.4625,
+        "stddevMs": 0.8017,
+        "contaminated": []
+      },
+      "availability-metadata": {
+        "rawMs": [
+          12.3504, 11.3735, 11.6125, 10.9637, 10.9837, 10.1647, 11.406, 9.8926,
+          9.9532
+        ],
+        "medianMs": 10.9837,
+        "p95Ms": 12.3504,
+        "minMs": 9.8926,
+        "maxMs": 12.3504,
+        "stddevMs": 0.7828,
+        "contaminatedAttempts": [
+          {
+            "attempt": 4,
+            "reason": "metadata_observe_failed",
+            "action": "discarded-and-replaced"
+          }
+        ]
+      },
+      "candidate-discovery-plus-availability": {
+        "rawMs": [
+          83.6989, 82.9696, 82.4003, 82.8422, 82.4097, 81.4688, 84.6746, 84.1,
+          79.2362
+        ],
+        "medianMs": 82.8422,
+        "p95Ms": 84.6746,
+        "minMs": 79.2362,
+        "maxMs": 84.6746,
+        "stddevMs": 1.5133,
+        "contaminated": []
+      },
+      "guarded-read-hash": {
+        "rawMs": [
+          85.7963, 129.1571, 85.2493, 83.9033, 81.877, 84.2932, 85.0633,
+          83.2759, 84.4394
+        ],
+        "medianMs": 84.4394,
+        "p95Ms": 129.1571,
+        "minMs": 81.877,
+        "maxMs": 129.1571,
+        "stddevMs": 14.1593,
+        "contaminated": []
+      },
+      "conversion": {
+        "kind": "not-applicable",
+        "reason": "Markdown corpus requires no conversion"
+      },
+      "embedding": {
+        "kind": "not-applicable",
+        "reason": "pre-implementation smoke does not invoke models or production ingestion"
+      }
+    },
+    "comparison": {
+      "baselineMedianMs": 71.8915,
+      "candidateMedianMs": 82.8422,
+      "overheadPercent": 15.2323,
+      "localModeThresholdPercent": 10,
+      "verdict": "FAIL"
+    }
+  },
+  "providerFixtureCorpora": [
+    {
+      "provider": "google",
+      "version": "129.0+129.0.1",
+      "fileCount": 25,
+      "complete": true,
+      "lanes": {
+        "discovery-traversal-baseline": {
+          "rawMs": [
+            0.3777, 0.4209, 0.4413, 0.3504, 0.3828, 0.3307, 0.3611, 0.3205,
+            0.3201
+          ],
+          "medianMs": 0.3611,
+          "p95Ms": 0.4413,
+          "minMs": 0.3201,
+          "maxMs": 0.4413,
+          "stddevMs": 0.0405
+        },
+        "availability-metadata": {
+          "rawMs": [
+            0.0468, 0.0426, 0.0524, 0.0518, 0.0518, 0.045, 0.0417, 0.0555,
+            0.0393
+          ],
+          "medianMs": 0.0468,
+          "p95Ms": 0.0555,
+          "minMs": 0.0393,
+          "maxMs": 0.0555,
+          "stddevMs": 0.0054
+        },
+        "candidate-discovery-plus-availability": {
+          "rawMs": [
+            0.4446, 0.461, 0.484, 0.5613, 0.5389, 0.6154, 0.6642, 0.5513, 0.5653
+          ],
+          "medianMs": 0.5513,
+          "p95Ms": 0.6642,
+          "minMs": 0.4446,
+          "maxMs": 0.6642,
+          "stddevMs": 0.0673
+        },
+        "guarded-read-hash": {
+          "rawMs": [
+            0.3785, 0.3772, 0.4093, 0.3886, 0.477, 0.4352, 1.3656, 0.4867,
+            0.5044
+          ],
+          "medianMs": 0.4352,
+          "p95Ms": 1.3656,
+          "minMs": 0.3772,
+          "maxMs": 1.3656,
+          "stddevMs": 0.2969
+        }
+      },
+      "overheadPercent": 52.6724
+    },
+    {
+      "provider": "onedrive",
+      "version": "26.139.0720+26139.0720.0007",
+      "fileCount": 25,
+      "complete": true,
+      "scope": "local filesystem latency only; fixture excluded from provider sync",
+      "lanes": {
+        "discovery-traversal-baseline": {
+          "rawMs": [
+            0.5049, 0.451, 0.5675, 0.4308, 0.4467, 0.4063, 0.4104, 0.3999, 0.448
+          ],
+          "medianMs": 0.4467,
+          "p95Ms": 0.5675,
+          "minMs": 0.3999,
+          "maxMs": 0.5675,
+          "stddevMs": 0.0507
+        },
+        "availability-metadata": {
+          "rawMs": [
+            0.0549, 0.0418, 0.0541, 0.0485, 0.0432, 0.0548, 0.0641, 0.0761,
+            0.0618
+          ],
+          "medianMs": 0.0548,
+          "p95Ms": 0.0761,
+          "minMs": 0.0418,
+          "maxMs": 0.0761,
+          "stddevMs": 0.0102
+        },
+        "candidate-discovery-plus-availability": {
+          "rawMs": [
+            0.5482, 0.499, 0.5589, 0.4637, 0.5556, 0.6437, 0.5657, 0.4935,
+            0.5383
+          ],
+          "medianMs": 0.5482,
+          "p95Ms": 0.6437,
+          "minMs": 0.4637,
+          "maxMs": 0.6437,
+          "stddevMs": 0.0491
+        },
+        "guarded-read-hash": {
+          "rawMs": [
+            0.3922, 0.3638, 0.4702, 0.4735, 0.3862, 0.4333, 0.3441, 0.3833,
+            0.3496
+          ],
+          "medianMs": 0.3862,
+          "p95Ms": 0.4735,
+          "minMs": 0.3441,
+          "maxMs": 0.4735,
+          "stddevMs": 0.0459
+        }
+      },
+      "overheadPercent": 22.7222
+    },
+    {
+      "provider": "icloud",
+      "version": "os-27.0+26A5388g",
+      "fileCount": 25,
+      "complete": true,
+      "lanes": {
+        "discovery-traversal-baseline": {
+          "rawMs": [
+            0.6782, 0.5247, 0.5558, 0.4713, 0.4168, 0.4462, 0.4312, 0.4139,
+            0.4468
+          ],
+          "medianMs": 0.4468,
+          "p95Ms": 0.6782,
+          "minMs": 0.4139,
+          "maxMs": 0.6782,
+          "stddevMs": 0.0814
+        },
+        "availability-metadata": {
+          "rawMs": [
+            0.0472, 0.043, 0.057, 0.0494, 0.0538, 0.0684, 0.0577, 0.0555, 0.0377
+          ],
+          "medianMs": 0.0538,
+          "p95Ms": 0.0684,
+          "minMs": 0.0377,
+          "maxMs": 0.0684,
+          "stddevMs": 0.0085
+        },
+        "candidate-discovery-plus-availability": {
+          "rawMs": [
+            0.6729, 0.7499, 0.6743, 0.6112, 0.5296, 0.4774, 0.571, 0.4642,
+            0.4923
+          ],
+          "medianMs": 0.571,
+          "p95Ms": 0.7499,
+          "minMs": 0.4642,
+          "maxMs": 0.7499,
+          "stddevMs": 0.0952
+        },
+        "guarded-read-hash": {
+          "rawMs": [
+            0.406, 0.3898, 0.4522, 0.4153, 0.3784, 0.4062, 0.4119, 0.4402,
+            0.4186
+          ],
+          "medianMs": 0.4119,
+          "p95Ms": 0.4522,
+          "minMs": 0.3784,
+          "maxMs": 0.4522,
+          "stddevMs": 0.0215
+        }
+      },
+      "overheadPercent": 27.7977
+    }
+  ],
+  "interpretation": {
+    "providerFixtureTimingUse": "provider-specific latency evidence only; tiny fixtures are too noisy for the R6 decision",
+    "r6DecisionBasis": "controlled 5000-file local corpus",
+    "optimizationHypothesis": "reuse traversal stat flags and perform a guarded recheck only for files consumed or changed",
+    "optimizationHypothesisMeasured": false,
+    "currentCandidateProceed": false
+  }
+}

@@ -1,0 +1,205 @@
+{
+  "capturedAt": "2026-08-16",
+  "fixtureShape": {
+    "files": 25,
+    "format": "deterministic Markdown",
+    "nestedDirectory": true,
+    "raceTarget": true
+  },
+  "rows": [
+    {
+      "state": "local",
+      "google": {
+        "verdict": "PASS",
+        "beforeDataless": false,
+        "afterDataless": false,
+        "guardedRead": { "classification": "ok", "bytesRead": 43 }
+      },
+      "icloud": {
+        "verdict": "PASS",
+        "beforeDataless": false,
+        "afterDataless": false,
+        "guardedRead": { "classification": "ok", "bytesRead": 43 }
+      },
+      "onedrive": {
+        "verdict": "PASS",
+        "beforeDataless": false,
+        "afterDataless": false,
+        "guardedRead": { "classification": "ok", "bytesRead": 43 },
+        "scope": "local filesystem behavior only; fixture was excluded from provider sync"
+      }
+    },
+    {
+      "state": "pinned-offline",
+      "google": {
+        "verdict": "BLOCKED",
+        "reason": "pin action available, but provider-offline state was not safely induced"
+      },
+      "icloud": {
+        "verdict": "BLOCKED",
+        "reason": "pin action available, but provider-offline state was not safely induced"
+      },
+      "onedrive": {
+        "verdict": "NOT AVAILABLE",
+        "reason": "dedicated fixture excluded from sync; no provider pin action"
+      }
+    },
+    {
+      "state": "cached-unpinned",
+      "google": {
+        "verdict": "PASS",
+        "providerState": { "downloaded": true, "keepDownloaded": false },
+        "beforeDataless": false,
+        "afterDataless": false
+      },
+      "icloud": {
+        "verdict": "PASS",
+        "providerState": { "downloaded": true, "keepDownloaded": false },
+        "beforeDataless": false,
+        "afterDataless": false
+      },
+      "onedrive": {
+        "verdict": "NOT AVAILABLE",
+        "reason": "dedicated fixture excluded from sync"
+      }
+    },
+    {
+      "state": "cloud-only",
+      "google": {
+        "verdict": "PASS",
+        "metadata": { "beforeDataless": true, "afterDataless": true },
+        "traversal": { "beforeDataless": true, "afterDataless": true },
+        "guardedRead": {
+          "beforeDataless": true,
+          "afterDataless": true,
+          "classification": "EDEADLK",
+          "errno": 11,
+          "bytesRead": 0
+        }
+      },
+      "icloud": {
+        "verdict": "PASS",
+        "metadata": { "beforeDataless": true, "afterDataless": true },
+        "traversal": { "beforeDataless": true, "afterDataless": true },
+        "guardedRead": {
+          "beforeDataless": true,
+          "afterDataless": true,
+          "classification": "EDEADLK",
+          "errno": 11,
+          "bytesRead": 0
+        }
+      },
+      "onedrive": {
+        "verdict": "NOT AVAILABLE",
+        "reason": "dedicated fixture excluded from sync; no provider eviction action"
+      }
+    },
+    {
+      "state": "nested-dataless-directory",
+      "google": {
+        "verdict": "NOT AVAILABLE",
+        "reason": "Finder eviction action did not produce SF_DATALESS on the dedicated nested directory"
+      },
+      "icloud": {
+        "verdict": "NOT AVAILABLE",
+        "reason": "Finder eviction action did not produce SF_DATALESS on the dedicated nested directory"
+      },
+      "onedrive": {
+        "verdict": "NOT AVAILABLE",
+        "reason": "dedicated fixture excluded from sync; no provider eviction action"
+      }
+    },
+    {
+      "state": "partial-content",
+      "google": {
+        "verdict": "NOT AVAILABLE",
+        "reason": "no reproducible partial-range control for the tiny dedicated files"
+      },
+      "icloud": {
+        "verdict": "NOT AVAILABLE",
+        "reason": "no reproducible partial-range control for the tiny dedicated files"
+      },
+      "onedrive": {
+        "verdict": "NOT AVAILABLE",
+        "reason": "dedicated fixture excluded from sync"
+      }
+    },
+    {
+      "state": "classification-to-read-race",
+      "google": {
+        "verdict": "PASS",
+        "delayMs": 20000,
+        "initialDataless": false,
+        "readBoundaryDataless": true,
+        "afterDataless": true,
+        "classification": "EDEADLK",
+        "errno": 11,
+        "bytesRead": 0
+      },
+      "icloud": {
+        "verdict": "NOT AVAILABLE",
+        "delayMs": 15000,
+        "reason": "state transition not reproduced before read",
+        "initialDataless": false,
+        "readBoundaryDataless": false,
+        "afterDataless": false,
+        "classification": "ok",
+        "bytesRead": 35
+      },
+      "onedrive": {
+        "verdict": "NOT AVAILABLE",
+        "reason": "dedicated fixture excluded from sync; no provider eviction action"
+      }
+    }
+  ],
+  "boundaries": [
+    {
+      "case": "unsupported-filesystem-or-root",
+      "verdict": "PASS",
+      "evidence": "exact provider-root validation refuses arbitrary and nonexistent roots before mutation"
+    },
+    {
+      "case": "unavailable-provider",
+      "verdict": "PASS",
+      "evidence": "nonexistent installed-provider root is refused before mutation"
+    },
+    {
+      "case": "policy-setup-failure",
+      "verdict": "PASS",
+      "evidence": "focused injected failure returns policy_get_failed and performs no read"
+    },
+    {
+      "case": "policy-restore-failure",
+      "verdict": "PASS",
+      "evidence": "focused injected failure returns policy_restore_failed"
+    },
+    {
+      "case": "permission-denial",
+      "verdict": "BLOCKED",
+      "evidence": "not physically induced; non-EDEADLK read errors remain errors rather than cloud skips"
+    },
+    {
+      "case": "provider-offline",
+      "verdict": "BLOCKED",
+      "evidence": "network/provider state was not changed on the user host"
+    },
+    {
+      "case": "timeout",
+      "verdict": "BLOCKED",
+      "evidence": "no safe deterministic provider timeout control was available"
+    },
+    {
+      "case": "unknown-flags",
+      "verdict": "PASS",
+      "evidence": "focused table-driven parser test; exits nonzero"
+    },
+    {
+      "case": "race-time-refusal",
+      "verdict": "PASS",
+      "provider": "google",
+      "evidence": "materialized-to-dataless transition returned EDEADLK with zero bytes and preserved SF_DATALESS"
+    }
+  ],
+  "providerInference": false,
+  "productionBehaviorChanged": false
+}
