@@ -1,103 +1,94 @@
 # Cloud-placeholder-safe indexing
 
-## Conversation Evidence
+## Overview
 
-> user (turn 1, part 1): "Could GNO support an option to index/embed only files that are already mirrored/downloaded locally within a Drive File Provider directory, while skipping cloud-only placeholders?"
-> user (turn 1, part 2): "I want to point GNO at the full Google Drive directory because that is where nearly all of my working files live. About 95% are already local, but the remaining cloud-only files can trigger Drive downloads and heavy I/O during a scheduled index."
-> user (turn 1, part 3): "A mode that detects and skips those files would let me retain broad coverage without turning the indexing job into a sync event."
-> user (turn 1, part 4): "Something like --local-only or --skip-cloud-placeholders at the collection or index level would be ideal. Is that feasible with the macOS File Provider APIs?"
-> user (turn 1, part 5): "afaict they were indexing/embedding content on a synced (or partially synced) onedrive, google drive type deal, will assume this would also apply to icloud drive stuff."
-> user (turn 1, part 6): "i know for a fact he was on a mac, but i guess the question is, can we determine whether content has been downloaded? analyse in depth"
-> user (turn 2): "capture this, make sure the first thing to do is to do the smoke testing on macos. i am also worried this would result in a performance loss, is that the case"
+Add an opt-in source-availability policy for macOS File Provider collections so GNO can index materialized files without implicitly downloading cloud-only content. Physical macOS evidence is the mandatory first proof point: provider behavior, no-materialization semantics, and scan overhead must be measured before production ingestion changes begin.
 
-## Goal & Context
-<!-- scope: business -->
-<!-- Source-tag breakdown: 70% [user] / 30% [paraphrase] -->
+## Goal & context
 
-A macOS GNO user keeps nearly all working files in Google Drive, with most content already local and a minority represented by cloud-only File Provider placeholders. Scheduled indexing currently risks turning that minority into an unintended cloud sync event, causing heavy network and disk I/O. GNO should offer an explicit source-availability mode that indexes content already present locally while refusing to materialize cloud-only content.
+A macOS user may keep a broad Google Drive, iCloud Drive, or OneDrive tree locally visible while only part of it is materialized. Scheduled indexing must not turn cloud-only placeholders into an implicit sync job. Source availability is distinct from GNO's egress/privacy policy: it controls whether source bytes may be materialized, not whether data may leave the machine.
 
-The first work must be a physical-macOS smoke study, before production implementation. It must establish actual behavior and performance on File Provider storage rather than accepting API documentation or source inspection as sufficient proof.
+## Architecture & data flow
 
-## Architecture & Data Models
-<!-- scope: technical -->
-<!-- Source-tag breakdown: 100% [inferred] -->
+Model source availability as a collection/index policy with `any` and `local` semantics. `any` preserves current behavior. `local` enables one platform-aware availability boundary shared by traversal, targeted sync, watcher ingestion, sniffing, hashing, conversion, and record import.
 
-Model source availability as a collection/index policy separate from GNO's egress policy. The existing behavior remains the default; an opt-in local-files-only policy activates platform-aware discovery and guarded source reads.
+On macOS File Provider storage, local mode must combine supported filesystem materialization state with a process/thread I/O policy that refuses dataless materialization. Classification alone is insufficient because availability may change between discovery and content access. A dataless directory is not enumerated; reconciliation preserves previously indexed descendants when absence cannot be proven.
 
-The ingestion boundary needs one availability abstraction that can classify a source as local, dataless, or unknown and can prevent source materialization while local-files-only work runs. On macOS, the implementation should use supported filesystem materialization state and a fail-closed no-materialization I/O policy. A classification check alone is insufficient because availability can change between discovery and reading and providers may support partially materialized content.
+```mermaid
+flowchart LR
+  Source[Collection source] --> Policy{Source availability}
+  Policy -->|any| Existing[Existing ingestion]
+  Policy -->|local| Guard[macOS availability guard]
+  Guard --> Walk[Traversal]
+  Guard --> Read[Sniff/read/hash/convert]
+  Guard --> Watch[Targeted and watcher paths]
+  Walk --> Receipt[Eligible / cloud-skip / dataless-prefix receipt]
+  Read --> Receipt
+  Watch --> Receipt
+  Receipt --> Reconcile[Preserve unproven descendants]
+```
 
-Traversal must inspect directory availability before descending. Results must distinguish eligible files, cloud-only files, and skipped dataless directory prefixes so reconciliation can preserve previously indexed documents whose current source cannot safely be enumerated.
+## Quick commands
 
-Full scans, targeted incremental sync, and watch-triggered sync must pass through the same availability enforcement. No ingestion path may bypass the guarded read boundary.
+```bash
+bun run lint:check
+bun test
+bun scripts/macos-file-provider-smoke.ts --help
+```
 
-## API Contracts
-<!-- scope: technical -->
+## Boundaries / non-goals
 
-- Collection/index configuration exposes an opt-in source-availability choice with `any` and `local` semantics. [inferred]
-- CLI naming must avoid `--local-only`, which can be confused with GNO's existing local-only egress boundary; use language specific to local source files or cloud placeholders. [inferred]
-- `any` preserves current discovery and ingestion behavior. `local` accepts materialized content and skips reads that would require materialization. [paraphrase]
-- Local-files-only receipts distinguish cloud-only skips from errors and report skipped files and dataless directory prefixes. [inferred]
-- A guarded read that encounters unavailable content resolves as a cloud-placeholder skip, not a conversion failure. [inferred]
-
-## Edge Cases & Constraints
-<!-- scope: technical -->
-
-- Availability is rechecked at the content-read boundary; a discovery-time result is not trusted across an eviction or provider-state race. [inferred]
-- A dataless directory is not enumerated. Existing indexed descendants under that prefix remain active because absence was not proven. [inferred]
-- A previously indexed file that is later evicted retains its last indexed content and is reported as unavailable for refresh; a never-indexed placeholder gains no document until it becomes local. [inferred]
-- Partial-content providers must not be able to download missing ranges during sniffing, hashing, conversion, record import, or watcher-driven ingestion. [inferred]
-- Unsupported platforms or filesystems must not claim a zero-download guarantee. Initial product scope is macOS File Provider storage; broader support requires independent platform evidence. [paraphrase]
-- Metadata/provider bookkeeping may still occur. The guarantee is that GNO does not download file contents in local-files-only mode, not that provider processes perform zero work. [inferred]
-- Performance measurements separate traversal/scan time from hashing, conversion, and embedding time so ingestion cost cannot hide a traversal regression. [inferred]
-
-## Acceptance Criteria
-<!-- scope: both -->
-
-- **R1:** Before production implementation begins, a physical-macOS smoke study exercises local, pinned/offline, cached-but-unpinned, cloud-only, nested dataless-directory, and state-race cases; proves cloud-only reads fail without changing Finder/provider availability state; records timing; and verifies Google Drive and iCloud Drive, plus OneDrive before OneDrive support is claimed. [paraphrase]
-- **R2:** A user can opt a collection or index run into local-files-only source handling and index the locally materialized portion of a File Provider tree without downloading cloud-only file contents. [paraphrase]
-- **R3:** Local-files-only traversal does not materialize dataless directories, and every content-reading ingestion path is protected against materialization races or partial-content fetches. [inferred]
-- **R4:** Cloud-only sources have a distinct skipped outcome; previously indexed sources remain searchable when later evicted, while never-indexed placeholders remain absent until local. [inferred]
-- **R5:** Full indexing, targeted sync, scheduled indexing, and watch-triggered ingestion enforce identical source-availability semantics. [inferred]
-- **R6:** On the macOS smoke benchmark, the existing default mode regresses by no more than 3% median scan time and local-files-only mode adds no more than 10% median scan time on an all-local corpus, using repeated runs and reporting corpus shape and variance. [inferred]
-- **R7:** Documentation and receipts state the macOS guarantee, provider evidence, stale-index behavior after eviction, performance findings, and the distinction between source availability and egress policy. [inferred]
-
-## Boundaries
-<!-- scope: business -->
-
-- The first implementation target is macOS File Provider-backed storage, specifically the reported Google Drive case and expected iCloud Drive and OneDrive cases. [paraphrase]
-- Provider-specific Google Drive, OneDrive, or iCloud SDK integrations are out of scope unless the smoke study disproves the provider-neutral filesystem approach. [inferred]
-- Windows Cloud Files and Linux/FUSE placeholder support are out of scope for this spec. [inferred]
-- Local-files-only mode does not evict, pin, download, or otherwise change provider availability state. [inferred]
-- This feature does not redefine GNO's egress/privacy policy. [inferred]
-
-## Decision Context
-<!-- scope: both — conditionally substructured -->
-
-### Motivation
-<!-- scope: business -->
-
-- Broad collection coverage matters more than forcing a fully mirrored Drive, but scheduled indexing must not become an implicit sync job. [paraphrase]
-- macOS smoke evidence comes first because correctness and performance depend on real File Provider behavior. [user]
-- Avoiding a meaningful indexing slowdown is part of the feature outcome, not a later optimization. [paraphrase]
+- Initial guarantee: macOS File Provider storage only; Windows Cloud Files and Linux/FUSE require independent evidence.
+- No provider-specific SDK integration unless physical evidence disproves a provider-neutral filesystem approach.
+- Local-source mode never pins, evicts, downloads, or otherwise changes provider availability as product behavior.
+- The smoke study may create and manipulate only dedicated disposable fixtures; it must not read existing user-file contents or retain credentials, source names, or source bytes.
+- Metadata/provider bookkeeping may still occur. The guarantee concerns GNO-triggered file-content materialization, not zero provider-process activity.
+- This feature does not redefine GNO's egress/privacy policy.
 
 ## Strategy Alignment
 
-- The feature strengthens the local knowledge lifecycle by making ingestion dependable across cloud-backed local sources. [strategy:Local knowledge lifecycle]
-- Refusing hidden materialization reinforces the local-first approach and its requirement that network boundaries remain explicit. [strategy:Controlled portability]
-- Shared enforcement across full, scheduled, and watch ingestion supports coherent behavior across GNO surfaces. [strategy:Coherent agent and application surfaces]
+Active tracks served by this plan:
+- **Local knowledge lifecycle** — makes broad cloud-backed local collections safe and dependable to index.
+- **Controlled portability** — keeps source-content network movement explicit rather than hidden behind indexing.
+- **Coherent agent and application surfaces** — applies one source-availability contract across full, targeted, scheduled, and watcher ingestion.
 
-## Strategy Conflicts
+## Decision context
 
-None identified.
+- Physical macOS smoke evidence comes before production implementation because File Provider behavior depends on real filesystem/provider interactions.
+- Use the provider-neutral macOS filesystem contract first; provider SDK integrations are rejected as premature complexity.
+- Keep the default mode behaviorally unchanged; the new guarantee is opt-in and fail-closed where support cannot be proven.
+- A cloud-only source produces a distinct skip rather than a conversion error. A low-level guarded open may return a refusal error, which the ingestion boundary translates into that skip.
+- Google Drive and iCloud Drive require independent physical evidence. OneDrive remains unclaimed until independently tested; an unavailable provider is reported as blocked, never inferred from another provider.
+- fn-114 overlaps the converter boundary but creates no ordering dependency; its eventual adapter must consume the same guarded source-read contract.
+
+## Acceptance Criteria
+
+- **R1:** Before production implementation, a physical-macOS study records OS, hardware, Bun/GNO/provider versions and exercises dedicated fixtures for local, pinned/offline, cached-but-unpinned, cloud-only, nested dataless-directory, partial-content where reproducibly available, and state-race cases. It verifies Google Drive and iCloud Drive independently and verifies OneDrive before claiming OneDrive support. Every provider/state row is PASS, FAIL, BLOCKED, or NOT AVAILABLE with evidence; unavailable providers or irreproducible states are never inferred. The guarded probe must refuse cloud-only content without changing independently observed availability state. Errors/boundaries: unsupported filesystem, unavailable provider, policy setup failure, permission denial, provider offline, timeout, unknown flags, and race-time refusal are recorded explicitly without reading existing user content.
+- **R2:** A user can opt a collection or index run into source availability `local`; `any` remains the default and preserves existing behavior. Local mode indexes materialized content and skips content that would require materialization. Errors/boundaries: unsupported platform/filesystem or inability to establish the guard fails closed with an actionable result; malformed configuration is rejected; no ambiguous fallback claims safety.
+- **R3:** Local mode checks directory availability before descent and rechecks at the content-read boundary. Sniffing, hashing, conversion, record import, targeted sync, and watcher-triggered ingestion cannot bypass the guard or fetch missing ranges. Errors/boundaries: intermediate dataless directories, eviction between classification and read, partial content, symlinks, permissions, and provider races resolve without materialization.
+- **R4:** Receipts distinguish eligible content, cloud-placeholder skips, dataless directory prefixes, and actual errors. Previously indexed sources remain searchable when later evicted or hidden below an unenumerated dataless prefix; never-indexed placeholders remain absent until local. Errors/boundaries: unknown availability and incomplete enumeration never masquerade as proven deletion.
+- **R5:** Full indexing, targeted sync, scheduled indexing, and watch-triggered ingestion enforce identical source-availability semantics through one guarded boundary. Errors/boundaries: direct-path and watch paths cannot bypass traversal policy, and concurrent availability changes produce the same skip/error taxonomy.
+- **R6:** Performance evidence uses at least two warmups and nine measured samples per lane, reports corpus shape, run order, median, p95, min, max, standard deviation, and raw samples, and separates discovery/traversal, availability metadata, sniff/read/hash, conversion, and embedding time. Before implementation it establishes the current all-local baseline and candidate guard cost; after implementation the unchanged `any` mode regresses by no more than 3% median scan time and `local` mode adds no more than 10% median scan time on the controlled all-local corpus. Errors/boundaries: contaminated samples, changed provider state, thermal/system load, and fixture drift are flagged or discarded with reasons rather than silently averaged.
+- **R7:** User-facing contracts and receipts state the macOS guarantee, provider evidence, unsupported-provider behavior, stale-index behavior after eviction, performance findings, and the distinction between source availability and egress policy. Errors/boundaries: documentation must not claim providers or zero-download behavior beyond the physical evidence.
+
+## Early proof point
+
+Task fn-118-cloud-placeholder-safe-indexing.1 proves whether macOS can refuse dataless materialization across installed providers at acceptable scan cost. If it fails, re-evaluate the provider-neutral filesystem strategy and product guarantee before fn-118-cloud-placeholder-safe-indexing.2 or later begins.
 
 ## Requirement coverage
 
 | Requirement | Planned task |
 | --- | --- |
-| R1 | TBD — populate via `/flow-next:plan` |
-| R2 | TBD — populate via `/flow-next:plan` |
-| R3 | TBD — populate via `/flow-next:plan` |
-| R4 | TBD — populate via `/flow-next:plan` |
-| R5 | TBD — populate via `/flow-next:plan` |
-| R6 | TBD — populate via `/flow-next:plan` |
-| R7 | TBD — populate via `/flow-next:plan` |
+| R1 | fn-118-cloud-placeholder-safe-indexing.1 |
+| R2 | fn-118-cloud-placeholder-safe-indexing.2, fn-118-cloud-placeholder-safe-indexing.4 |
+| R3 | fn-118-cloud-placeholder-safe-indexing.2, fn-118-cloud-placeholder-safe-indexing.3 |
+| R4 | fn-118-cloud-placeholder-safe-indexing.3 |
+| R5 | fn-118-cloud-placeholder-safe-indexing.3 |
+| R6 | fn-118-cloud-placeholder-safe-indexing.1, fn-118-cloud-placeholder-safe-indexing.4 |
+| R7 | fn-118-cloud-placeholder-safe-indexing.4 |
+
+## References
+
+- Apple TN3150, Getting ready for data-less files.
+- Existing ingestion walker, per-file read pipeline, targeted-sync path, reconciliation path, watcher snapshot traversal, and watcher reconciliation benchmark identified in task investigation targets.
+- Overlap: fn-114-selective-anydoc-adoption-for-document; no dependency edge.
