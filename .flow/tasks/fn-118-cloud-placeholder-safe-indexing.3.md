@@ -39,9 +39,15 @@ Route every ingestion entry point through the source-availability contract and p
 - [ ] R5 all ingestion surfaces share the contract
 
 ## Done summary
-TBD
+Enforced `sourceAvailability` across hierarchical traversal, full and targeted sync, scheduled/watch ingestion, snapshot fallback, and reconciliation. Local mode now refuses dataless or unproven directory descent, preserves indexed descendants under those prefixes, caches directory checks per operation, and retains the guarded content boundary for files; default `any` behavior remains unchanged.
 
+Focused coverage exercises eligible files, cloud and dataless skips, actual availability errors, missing-root and eviction races, symlink refusal, targeted paths, watcher fallback, and run-level overrides. Full verification: 4,328 passed, 2 skipped, 0 failed.
+
+GATE_SKIPPED:unittest:green-receipt e84a2e84 - baseline reused from prior post-gate pass
+GATE_SKIPPED:smoke:green-receipt e84a2e84 - baseline reused from prior post-gate pass
+
+stage: impl-review - skipped(config: REVIEW_MODE=none)
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 3c868824549ad8e115d548a35e814febd4b877b3
+- Tests: GATE_SKIPPED:unittest:green-receipt e84a2e84 - baseline reused from prior post-gate pass, GATE_SKIPPED:smoke:green-receipt e84a2e84 - baseline reused from prior post-gate pass, bun run lint:check, bun test test/ingestion/source-availability test/ingestion/walker.test.ts test/ingestion/sync-incremental.test.ts test/serve/watch-snapshot-availability.test.ts test/serve/watch-reconciliation.test.ts test/serve/watch-reconciliation-fallback-bounds.test.ts, bun test, bun scripts/macos-file-provider-smoke.ts --help
 - PRs:
