@@ -460,14 +460,24 @@ export function statatNoFollowOrThrow(
   }
   const nameBuffer = Buffer.from(`${name}\0`);
   const statBuffer = Buffer.alloc(libc.statLayout.size);
-  const result = libc.symbols.fstatat(
-    dirfd,
-    ptr(nameBuffer),
-    ptr(statBuffer),
-    libc.atSymlinkNoFollow
-  );
-  if (result < 0) {
-    throw errnoError(readErrno(libc), "fstatat", name);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const result = libc.symbols.fstatat(
+      dirfd,
+      ptr(nameBuffer),
+      ptr(statBuffer),
+      libc.atSymlinkNoFollow
+    );
+    if (result >= 0) {
+      break;
+    }
+    const errno = readErrno(libc);
+    // Darwin/Bun can transiently surface ENOENT during large fd-relative stat
+    // batches. Retry the same anchored lookup once. A child that truly
+    // disappeared still fails on the second probe, so callers retain the
+    // scan-failed authority boundary instead of accepting a partial image.
+    if (errno !== 2 || attempt > 0) {
+      throw errnoError(errno, "fstatat", name);
+    }
   }
 
   const layout = libc.statLayout;
