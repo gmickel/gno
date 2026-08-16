@@ -58,6 +58,11 @@ interface RecordContainerInput {
   sourceMtime: string;
   sourceSize: number;
   store: StorePort;
+  /**
+   * Optional pre-read source bytes from the guarded content boundary.
+   * When set, record import streams from this buffer and never reopens the path.
+   */
+  sourceBytes?: Uint8Array;
 }
 
 interface AppliedRecordReconciliation {
@@ -283,6 +288,20 @@ const sourceStream = (
   },
 });
 
+const bytesStream = (
+  bytes: Uint8Array,
+  signal?: AbortSignal
+): AsyncIterable<Uint8Array> => ({
+  async *[Symbol.asyncIterator]() {
+    if (signal?.aborted) {
+      throw new Error("record adapter aborted");
+    }
+    if (bytes.byteLength > 0) {
+      yield bytes;
+    }
+  },
+});
+
 const loadPreviousStructure = async (
   store: StorePort,
   existing: DocumentRow | undefined
@@ -443,7 +462,10 @@ export async function processRecordContainer(
       collection: input.collection.name,
       mime: input.mime,
       ext: input.ext,
-      open: (signal) => sourceStream(input.entry.absPath, signal),
+      open: (signal) =>
+        input.sourceBytes
+          ? bytesStream(input.sourceBytes, signal)
+          : sourceStream(input.entry.absPath, signal),
       limits: {
         ...DEFAULT_RECORD_ADAPTER_LIMITS,
         timeoutMs: Math.min(

@@ -11,6 +11,20 @@ export { defaultLanguageDetector, SimpleLanguageDetector } from "./language";
 // Sync service
 export { defaultSyncService, SyncService } from "./sync";
 export { resolveContentTypeRules, withContentTypeRules } from "./sync-options";
+// Source availability (content-boundary guard)
+export {
+  createSourceContentReader,
+  DEFAULT_SOURCE_AVAILABILITY,
+  isSourceAvailabilitySkip,
+  resolveSourceAvailability,
+  SOURCE_AVAILABILITY_MODES,
+} from "./source-availability";
+export type {
+  SourceAvailabilityCode,
+  SourceAvailabilityMode,
+  SourceContentReaderPort,
+  SourceReadResult,
+} from "./source-availability";
 // Types
 export type {
   ChunkerPort,

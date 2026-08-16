@@ -69,6 +69,13 @@ import {
 } from "./frontmatter";
 import { buildLineOffsets } from "./position";
 import { processRecordContainer } from "./record-container";
+import {
+  createSourceContentReader,
+  isSourceAvailabilitySkip,
+  resolveSourceAvailability,
+  type SourceContentReaderPort,
+  type SourceReadFailure,
+} from "./source-availability";
 import { getExcludedRanges } from "./strip";
 import { collectionToWalkConfig, DEFAULT_CHUNK_PARAMS } from "./types";
 import { defaultWalker } from "./walker";
@@ -649,17 +656,23 @@ export class SyncService {
   private readonly chunker: ChunkerPort;
   private readonly mimeDetector: MimeDetector;
   private readonly pipeline: ConversionPipeline;
+  private readonly sourceReaderFactory: (
+    mode: "any" | "local"
+  ) => SourceContentReaderPort;
 
   constructor(
     walker?: WalkerPort,
     chunker?: ChunkerPort,
     mimeDetector?: MimeDetector,
-    pipeline?: ConversionPipeline
+    pipeline?: ConversionPipeline,
+    sourceReaderFactory?: (mode: "any" | "local") => SourceContentReaderPort
   ) {
     this.walker = walker ?? defaultWalker;
     this.chunker = chunker ?? defaultChunker;
     this.mimeDetector = mimeDetector ?? getDefaultMimeDetector();
     this.pipeline = pipeline ?? getDefaultPipeline();
+    this.sourceReaderFactory =
+      sourceReaderFactory ?? ((mode) => createSourceContentReader(mode));
   }
 
   private async selectRecordAdapter(
@@ -766,6 +779,28 @@ export class SyncService {
       const contentTypeRulesFingerprint =
         options.contentTypeRulesFingerprint ??
         fingerprintContentTypeMetadataRules(contentTypeRules);
+
+      // 2. Local mode performs one guarded content-boundary read. `any` keeps
+      // the legacy record-stream and sniff/read paths byte-for-byte unchanged.
+      // No availability syscall is added during discovery.
+      const availabilityMode = resolveSourceAvailability(collection, options);
+      let guardedBytes: Uint8Array | undefined;
+      if (availabilityMode === "local") {
+        const sourceRead = await this.sourceReaderFactory("local").readAll(
+          entry.absPath,
+          sourceSize
+        );
+        if (!sourceRead.ok) {
+          return await this.finishSourceAvailabilityFailure(
+            collection,
+            entry,
+            store,
+            sourceRead
+          );
+        }
+        guardedBytes = sourceRead.bytes;
+      }
+
       if (recordAdapter) {
         return await processRecordContainer({
           adapter: recordAdapter,
@@ -782,13 +817,16 @@ export class SyncService {
           sourceCtime,
           sourceMtime,
           sourceSize,
+          sourceBytes: guardedBytes,
           store,
         });
       }
 
-      const sniffBytes = new Uint8Array(
-        await Bun.file(entry.absPath).slice(0, 512).arrayBuffer()
-      );
+      const sniffBytes = guardedBytes
+        ? guardedBytes.subarray(0, Math.min(512, guardedBytes.byteLength))
+        : new Uint8Array(
+            await Bun.file(entry.absPath).slice(0, 512).arrayBuffer()
+          );
       const mime = this.mimeDetector.detect(entry.relPath, sniffBytes);
 
       const priorRecordDocuments = mustOk(
@@ -797,10 +835,9 @@ export class SyncService {
         { collection: collection.name, relPath: entry.relPath }
       );
 
-      // 2. Read byte-oriented files only after record-adapter selection.
-      const bytes = await Bun.file(entry.absPath).bytes();
+      const bytes = guardedBytes ?? (await Bun.file(entry.absPath).bytes());
 
-      // 3. Compute sourceHash
+      // 3. Compute sourceHash from source bytes. Local mode cannot reopen.
       const hasher = new Bun.CryptoHasher("sha256");
       hasher.update(bytes);
       const sourceHash = hasher.digest("hex");
@@ -1150,6 +1187,38 @@ export class SyncService {
         errorMessage: message,
       };
     }
+  }
+
+  /**
+   * Translate guarded-read failures into skip (cloud placeholder/partial) or
+   * fail-closed error outcomes. Never surfaces materialization refusal as a
+   * conversion error.
+   */
+  private async finishSourceAvailabilityFailure(
+    collection: Collection,
+    entry: WalkEntry,
+    store: StorePort,
+    failure: SourceReadFailure
+  ): Promise<FileSyncResult> {
+    const status = isSourceAvailabilitySkip(failure.code) ? "skipped" : "error";
+    await store
+      .recordError({
+        collection: collection.name,
+        relPath: entry.relPath,
+        code: failure.code,
+        message: failure.message,
+        details:
+          failure.errno === undefined || failure.errno === null
+            ? undefined
+            : { errno: failure.errno },
+      })
+      .catch(() => undefined);
+    return {
+      relPath: entry.relPath,
+      status,
+      errorCode: failure.code,
+      errorMessage: failure.message,
+    };
   }
 
   private async readPreviousStructure(

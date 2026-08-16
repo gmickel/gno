@@ -146,6 +146,11 @@ export interface SyncOptions {
   contentTypeRulesFingerprint?: string;
   /** Internal orchestration flag: defer graph projection to an outer sync. */
   projectTypedEdges?: boolean;
+  /**
+   * Optional run-level override for source availability (`any` | `local`).
+   * Wins over collection config when set. Distinct from egress policy.
+   */
+  sourceAvailability?: "any" | "local";
 }
 
 export type ContentTypeSource =

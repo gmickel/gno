@@ -56,6 +56,12 @@ export type EgressPolicy = z.infer<typeof EgressPolicySchema>;
 /** Missing policy is always interpreted as the fail-closed local-only default. */
 export const DEFAULT_EGRESS_POLICY: EgressPolicy = "local_only";
 
+/** Source byte materialization boundary for collection indexing. */
+export const SOURCE_AVAILABILITY_MODES = ["any", "local"] as const;
+export const SourceAvailabilitySchema = z.enum(SOURCE_AVAILABILITY_MODES);
+export type SourceAvailabilityMode = z.infer<typeof SourceAvailabilitySchema>;
+export const DEFAULT_SOURCE_AVAILABILITY: SourceAvailabilityMode = "any";
+
 /** Provenance for an effective collection egress policy. */
 export const EGRESS_POLICY_SOURCES = [
   "explicit",
@@ -137,6 +143,14 @@ export const CollectionSchema = z.object({
    * start at zero; guarded mutations advance it under the config write lock.
    */
   egressPolicyRevision: z.number().int().nonnegative().optional(),
+
+  /**
+   * Source content availability policy for indexing. Distinct from egress:
+   * controls whether cloud placeholders may be materialized, not where data
+   * may leave the machine. Omitted / unset means `any` (legacy read behavior);
+   * `local` is opt-in and fails closed where the platform guard is unavailable.
+   */
+  sourceAvailability: SourceAvailabilitySchema.optional(),
 
   /** Optional per-collection model overrides */
   models: z

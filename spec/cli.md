@@ -411,6 +411,10 @@ collections:
     exclude: [.git, node_modules]
     updateCmd: git pull
     languageHint: en
+    # Source content availability (distinct from egressPolicy):
+    # any (default) = legacy reads; local = opt-in no-materialization guard
+    # (macOS File Provider). Unsupported platforms fail closed under local.
+    sourceAvailability: any
     models:
       embed: file:/models/embed.gguf
 contexts:
@@ -445,6 +449,18 @@ to normalized fusion before rerank blending; rerank order and lexical top-hit
 protection remain authoritative.
 `graphHints` is active: ordered hints type
 projected wiki/markdown edges and surface in graph traversal/diagnose metadata.
+
+`collections[].sourceAvailability` is optional; omitted means `any`. Exact
+values: `any` | `local`. `any` preserves historical source reads. `local` is
+opt-in and establishes a platform-aware no-materialization content-read
+boundary (currently macOS File Provider via process-scoped
+`IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES`); unsupported platforms/filesystems
+and policy-setup failure fail closed with distinct codes
+(`SOURCE_AVAILABILITY_UNSUPPORTED`, `SOURCE_AVAILABILITY_POLICY_FAILED`,
+`SOURCE_AVAILABILITY_UNKNOWN`). Cloud-placeholder refusal
+(`EDEADLK`) surfaces as a skipped file with `CLOUD_PLACEHOLDER` /
+`CLOUD_PARTIAL`, not a conversion error. Source availability is distinct from
+`egressPolicy` (where indexed content may travel).
 
 ---
 
