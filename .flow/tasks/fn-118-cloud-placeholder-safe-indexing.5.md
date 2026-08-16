@@ -39,9 +39,12 @@ Use only uniquely named disposable `GNO-fn118-smoke-*` children inside each vali
 
 
 ## Done summary
-TBD
+Validated both installed immediate OneDrive SharePoint library roots independently with dedicated disposable fixtures and extended the non-production smoke harness to accept only those immediate roots while rejecting the aggregation root, descendants, traversal, fixture-shaped roots, and symlink escapes. Both libraries passed local, cached-unpinned, and cloud-only probes; cloud-only guarded reads preserved SF_DATALESS and refused with EDEADLK/zero bytes. The classification-to-read race passed in one library and remained NOT AVAILABLE after bounded attempts in the other; nested and partial states remain NOT AVAILABLE, pinned/offline remains BLOCKED. Redacted evidence records each independent verdict, and both fixtures were moved to Trash with active paths verified absent. No production GNO ingestion behavior changed.
 
+Baseline: `bun run lint:check` green; `GATE_SKIPPED:unittest:green-receipt b22722a0 - baseline reused from prior post-gate pass`; `GATE_SKIPPED:smoke:green-receipt b22722a0 - baseline reused from prior post-gate pass`. Verify: focused smoke tests 46 pass; lint green; full `bun test` 4262 pass, 2 skip, 0 fail; smoke help exit 0.
+
+stage: impl-review - skipped(config: REVIEW_MODE=none)
 ## Evidence
-- Commits:
-- Tests:
+- Commits: a98feec143a644afb5ec481f27f2f17a87e3abb7
+- Tests: GATE_SKIPPED:unittest:green-receipt b22722a0 - baseline reused from prior post-gate pass, GATE_SKIPPED:smoke:green-receipt b22722a0 - baseline reused from prior post-gate pass, bun test test/scripts/macos-file-provider-smoke.test.ts (46 pass, 0 fail), bun run lint:check, bun test (4262 pass, 2 skip, 0 fail), bun scripts/macos-file-provider-smoke.ts --help, physical OneDrive matrix: both immediate libraries local/cached-unpinned/cloud-only; nested/pinned-offline/partial/race independently classified; EDEADLK zero-byte refusal verified where cloud-only reproduced, cleanup: both exact fixture active paths absent; active run fixture count 0
 - PRs:
