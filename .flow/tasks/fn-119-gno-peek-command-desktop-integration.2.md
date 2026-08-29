@@ -41,9 +41,8 @@ R2 allows "documented flag or default field". Prefer documenting the existing de
 - [ ] Live evidence: real `gno search --json` showing `absPath` on a file-backed hit (and a row without it if one exists); real curl/browser GET of `{peek.serve.url}/doc?uri=<encoded>` for a known URI (document loads) and an unknown URI (UI not-found, not a CLI error). Save URLs + response/status.
 
 ## Done summary
-TBD
-
+Froze the R2 open/deep-link contract: documented `{serveUrl}/doc?uri=<encodeURIComponent(uri)>` (optional `#anchor`) as stable versus REST `GET /api/doc`, and documented `results[].source.absPath` as the default `gno search --json` source-path field with present/absent schema tests. Live search on the 1673-doc index returned absPath on all 5 file-backed hits; isolated serve at http://localhost:3458 loaded a known URI and showed UI/REST not-found for an unknown URI (no CLI error).
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 46513d6b2e1dafea57f620f4e65df43eb3c435b3
+- Tests: bun test test/spec/schemas/search-result.test.ts, bun test test/cli/search-results-format.test.ts
 - PRs:
