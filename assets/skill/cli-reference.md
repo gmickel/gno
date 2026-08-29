@@ -636,6 +636,15 @@ gno models path [--json]
 
 ## Maintenance
 
+### gno peek
+
+Cheap counts, backlog, recent files, and serve liveness. Same `peek@1.0`
+snapshot as MCP `gno_peek`. Do not compose `status` + `ls` + `changes`.
+
+```bash
+gno peek [--json]
+```
+
 ### gno status
 
 ```bash

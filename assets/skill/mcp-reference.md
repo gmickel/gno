@@ -103,8 +103,9 @@ abstains unless every substantive claim is supported. This is a support
 classification against the retained Capsule, not a guarantee that the corpus
 is complete or its sources are true. Bounded graph expansion is on by default;
 set `graph: false` or `noGraph: true` only for an explicit BM25/vector-only path.
-Check `gno_status` first when freshness or
-embeddings may be stale. Use `gno_query_diagnose` when a known target document
+Check `gno_peek` first for counts, backlog, serve liveness, or recent files.
+Use `gno_status` for activation, onboarding, or heavy health (missing vectors,
+stale embeddings). Use `gno_query_diagnose` when a known target document
 should have appeared but did not.
 
 Use `gno_section` only when durable section identity matters (create/resolve a

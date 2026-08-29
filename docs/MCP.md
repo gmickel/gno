@@ -1279,12 +1279,20 @@ into one `gno_multi_get` call per index.
 ### gno_peek
 
 Cheap read-only snapshot (`peek@1.0`) — the same payload as `gno peek --json`.
+One snapshot, three surfaces: CLI `gno peek --json`, this tool, and the skill
+recipe. Do not compose `status` + `ls` + `changes` for this job.
 
 Returns initialized flag, document/collection counts, embedding backlog, up to
 10 recent files (with `docid` and `absPath`), and pid-file serve liveness. Never
 initializes models or embeddings. Uninitialized is success (`initialized:false`
 plus pinned nulls), not an error. Use this for counts/backlog/recent/serve
 questions; use `gno_status` for the heavy health and activation payload.
+
+Open without fetching content via `gno_get`: Web UI
+`{serveUrl}/doc?uri=<encodeURIComponent(uri)>` from `serve.url` + `uri`
+(optional `#anchor`); files via `recent[].absPath` or search
+`results[].source.absPath`. If `absPath` is absent, show the URI tail and do
+not offer file-open for that row.
 
 ### gno_status
 

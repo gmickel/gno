@@ -61,6 +61,7 @@ never raw roots.
 | `gno tags`       | Manage document tags                |
 | `gno completion` | Shell tab completion                |
 | `gno vec`        | Vector index maintenance            |
+| `gno peek`       | Cheap counts, backlog, recent, serve |
 | `gno doctor`     | Check system health                 |
 
 ## Global Flags
@@ -1515,6 +1516,27 @@ gno impact gno://notes/plan.md --max-depth 3 --max-edges 250 --json
   `document-diff.schema.json`, and `impact.schema.json`.
 
 ## Admin Commands
+
+### gno peek
+
+Cheap read-only snapshot of index counts, backlog, recent files, and whether
+serve is up. One invocation; no model or embedding initialization. Use this
+instead of composing `gno status` + `gno ls` + `gno changes`. Keep
+`gno status` for activation, onboarding, and the full health payload.
+
+```bash
+gno peek
+gno peek --json
+```
+
+Uninitialized is success: `--json` returns `initialized: false` with pinned
+nulls and `recent: []`, exit 0.
+
+JSON is `peek@1.0`. `recent[].absPath` is the path to open a recent file
+without `gno get`. When `serve.running` is true, open a document in the Web
+UI with the frozen template `{serveUrl}/doc?uri=<encodeURIComponent(uri)>`
+(`serve.url` + document URI; optional `#anchor`). See
+[Document deep links](./WEB-UI.md#document-deep-links).
 
 ### gno status
 
