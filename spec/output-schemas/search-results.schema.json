@@ -237,7 +237,7 @@
           "properties": {
             "absPath": {
               "type": "string",
-              "description": "Absolute path (included with --source or in MCP)"
+              "description": "Absolute filesystem path when resolvable from collection root + relPath. Default field on gno search --json (no --source flag). Omitted when unresolvable; consumers fall back to the URI tail for display and disable file-open."
             },
             "relPath": {
               "type": "string",

@@ -78,6 +78,34 @@ describe("search-result schema", () => {
       expect(assertValid(result, schema)).toBe(true);
     });
 
+    test("accepts source.absPath when present on a file-backed hit", () => {
+      const result = {
+        docid: "#abc123",
+        score: 0.5,
+        uri: "gno://work/doc.md",
+        snippet: "text",
+        source: {
+          relPath: "doc.md",
+          mime: "text/markdown",
+          ext: ".md",
+          absPath: "/home/user/work/doc.md",
+        },
+      };
+      expect(assertValid(result, schema)).toBe(true);
+    });
+
+    test("accepts source without absPath when the path is unresolvable", () => {
+      const result = {
+        docid: "#abc123",
+        score: 0.5,
+        uri: "gno://work/doc.md",
+        snippet: "text",
+        source: { relPath: "doc.md", mime: "text/markdown", ext: ".md" },
+      };
+      expect(assertValid(result, schema)).toBe(true);
+      expect("absPath" in result.source).toBe(false);
+    });
+
     test("validates resolved configured context without changing identity", () => {
       const result = {
         docid: "#abc123",
@@ -232,5 +260,57 @@ describe("search-result schema", () => {
       };
       expect(assertInvalid(result, schema)).toBe(true);
     });
+  });
+});
+
+describe("search-results envelope source.absPath", () => {
+  let envelopeSchema: object;
+
+  beforeAll(async () => {
+    envelopeSchema = await loadSchema("search-results");
+  });
+
+  const meta = {
+    query: "doc",
+    mode: "bm25" as const,
+    totalResults: 1,
+  };
+
+  test("accepts results[].source.absPath when present", () => {
+    const payload = {
+      results: [
+        {
+          docid: "#abc123",
+          score: 0.5,
+          uri: "gno://work/doc.md",
+          snippet: "text",
+          source: {
+            relPath: "doc.md",
+            mime: "text/markdown",
+            ext: ".md",
+            absPath: "/home/user/work/doc.md",
+          },
+        },
+      ],
+      meta,
+    };
+    expect(assertValid(payload, envelopeSchema)).toBe(true);
+  });
+
+  test("accepts results[].source without absPath", () => {
+    const payload = {
+      results: [
+        {
+          docid: "#abc123",
+          score: 0.5,
+          uri: "gno://work/doc.md",
+          snippet: "text",
+          source: { relPath: "doc.md", mime: "text/markdown", ext: ".md" },
+        },
+      ],
+      meta,
+    };
+    expect(assertValid(payload, envelopeSchema)).toBe(true);
+    expect("absPath" in payload.results[0]!.source).toBe(false);
   });
 });

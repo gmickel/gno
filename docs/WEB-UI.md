@@ -624,6 +624,25 @@ Browse all indexed documents:
 - Breadcrumb navigation within collections and folders
 - Pin collections and favorite documents from the browser itself
 
+### Document deep links
+
+The document page URL is a frozen contract, stable across releases:
+
+```text
+{serveUrl}/doc?uri=<encodeURIComponent(uri)>
+```
+
+Optional section fragment: `{serveUrl}/doc?uri=<encodeURIComponent(uri)>#anchor`.
+
+`serveUrl` is the operator-facing serve origin (`http://localhost:${port}` when
+bound to loopback). Integrations derive it from `gno peek --json` `serve.url`
+plus a document URI. There is no CLI resolver and no CLI error surface for
+unknown URIs — they stay on this page and use the Web UI's own not-found
+handling.
+
+This page URL is distinct from the REST document endpoint
+`GET /api/doc?uri=`. See [Get Document](./API.md#get-document).
+
 ### AI Answers
 
 ![GNO AI Answers](../assets/screenshots/webui-ask-answer.jpg)
@@ -694,7 +713,8 @@ The document view includes a collapsible sidebar with link information:
 Long notes expose a heading-aware outline in the facts rail:
 
 - jump to sections quickly
-- copy readable deep links to section anchors (`/doc?uri=…#anchor`)
+- copy readable deep links to section anchors (`/doc?uri=…#anchor`) using the
+  frozen template above
 - optionally copy a citation link that adds a bounded, versioned `st`
   selector for durable recovery
 - keep a live sense of where you are in long notes

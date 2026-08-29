@@ -266,6 +266,10 @@ gno search 'DEC-0054'
 ```
 
 JSON results include a top-level `line` anchor when the matching chunk is known.
+`--json` also includes `results[].source.absPath` when the hit is a resolvable
+file-backed document (collection root + relative path). There is no `--source`
+flag. If `absPath` is absent, show the URI tail and do not offer file-open for
+that row.
 For non-default indexes, emitted `gno://` URIs include output-only index
 metadata, e.g. `gno://docs/api.md?index=research`; readers such as `gno get`
 can round-trip that URI back to the named index.
