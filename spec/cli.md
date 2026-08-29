@@ -1227,7 +1227,14 @@ Important notes:
 - malformed lexical syntax returns exit code `1`
 
 **Output (JSON):**
-See [Output Schemas](./output-schemas/search-result.schema.json)
+See [Output Schemas](./output-schemas/search-results.schema.json)
+
+`results[].source.absPath` is the documented source-path field. It is included
+by default when the collection root and `source.relPath` can be joined; search
+has no `--source` flag. When `absPath` is absent (unresolvable collection path,
+missing relPath, or a hit without a filesystem file), consumers display the URI
+tail and must disable file-open for that row — do not call `gno get` just to
+recover a path.
 
 Every structured search result may include `context`, the matching
 user-configured guidance joined in deterministic global, collection, then

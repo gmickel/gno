@@ -1268,6 +1268,17 @@ curl "http://localhost:3000/api/docs?collection=notes&limit=10" | jq
 GET /api/doc?uri=gno://notes/projects/readme.md
 ```
 
+This is the **REST** document endpoint (JSON body). It is not the Web UI page
+URL. The frozen Web UI deep-link template, stable across releases, is:
+
+```text
+{serveUrl}/doc?uri=<encodeURIComponent(uri)>
+```
+
+Optional section fragment: `#anchor`. Unknown URIs are handled by the Web UI
+not-found path on `/doc`; they do not produce a CLI error. See
+[Document deep links](./WEB-UI.md#document-deep-links).
+
 **Query Parameters**:
 
 | Param | Type   | Required | Description  |
