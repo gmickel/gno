@@ -36,9 +36,11 @@ Skill install ships `assets/skill/SKILL.md`; do not only edit a local copy. Host
 - [ ] Live evidence: follow the skill's status-question recipe on a real index — run the named `gno peek --json` (and MCP `gno_peek` if the recipe names it) and save the output. Confirm the skill text matches those commands (no stale `status`+`ls`+`changes` composition for this job).
 
 ## Done summary
-TBD
+Pointed the skill and CLI/MCP docs at peek for snapshot, serve, and recent-file questions. Status remains the heavy activation/health command. Live `gno peek --json` and MCP `gno_peek` on the 1673-doc default index matched field-for-field (ignore generatedAt) and match the skill recipe; serve-up capture skipped (sibling resident lock) — covered by .1/.3 live evidence.
 
+stage: impl-review - ran [conductor in-host, integrated diff 799aa1c2..b6d892b4] SHIP (model: claude-fable-5-thinking-high)
+stage: plan-sync - skipped(config: planSync.enabled != true)
 ## Evidence
-- Commits:
-- Tests:
+- Commits: b6d892b429b2e57ed04200836c99f606bfc543ce
+- Tests: bun src/index.ts peek --json, bun /tmp/fn-119.4-qa/run-gno-peek-mcp.ts
 - PRs:

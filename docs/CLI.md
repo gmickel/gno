@@ -34,35 +34,35 @@ never raw roots.
 
 ## Quick Reference
 
-| Command          | Description                         |
-| ---------------- | ----------------------------------- |
-| `gno init`       | Initialize config and database      |
-| `gno setup`      | Add a folder and prove retrieval    |
-| `gno index`      | Full index (sync + embed)           |
-| `gno update`     | Sync files from disk (no embed)     |
-| `gno embed`      | Generate embeddings only            |
-| `gno search`     | BM25 full-text search               |
-| `gno vsearch`    | Vector similarity search            |
-| `gno query`      | Hybrid search (BM25 + vector)       |
-| `gno bench`      | Benchmark retrieval fixtures        |
-| `gno ask`        | Search with AI answer               |
-| `gno get`        | Retrieve document content           |
-| `gno ls`         | List indexed documents              |
-| `gno daemon`     | Headless continuous indexing        |
-| `gno links`      | List outgoing links from document   |
-| `gno backlinks`  | List documents linking to target    |
-| `gno similar`    | Find semantically similar docs      |
-| `gno graph`      | Export knowledge graph              |
-| `gno audit`      | Read-only workspace integrity audit |
-| `gno serve`      | Start web UI server                 |
-| `gno mcp`        | Start MCP server for AI clients     |
-| `gno models`     | Manage models (list, pull, use)     |
-| `gno skill`      | Install GNO skill for AI agents     |
-| `gno tags`       | Manage document tags                |
-| `gno completion` | Shell tab completion                |
-| `gno vec`        | Vector index maintenance            |
+| Command          | Description                          |
+| ---------------- | ------------------------------------ |
+| `gno init`       | Initialize config and database       |
+| `gno setup`      | Add a folder and prove retrieval     |
+| `gno index`      | Full index (sync + embed)            |
+| `gno update`     | Sync files from disk (no embed)      |
+| `gno embed`      | Generate embeddings only             |
+| `gno search`     | BM25 full-text search                |
+| `gno vsearch`    | Vector similarity search             |
+| `gno query`      | Hybrid search (BM25 + vector)        |
+| `gno bench`      | Benchmark retrieval fixtures         |
+| `gno ask`        | Search with AI answer                |
+| `gno get`        | Retrieve document content            |
+| `gno ls`         | List indexed documents               |
+| `gno daemon`     | Headless continuous indexing         |
+| `gno links`      | List outgoing links from document    |
+| `gno backlinks`  | List documents linking to target     |
+| `gno similar`    | Find semantically similar docs       |
+| `gno graph`      | Export knowledge graph               |
+| `gno audit`      | Read-only workspace integrity audit  |
+| `gno serve`      | Start web UI server                  |
+| `gno mcp`        | Start MCP server for AI clients      |
+| `gno models`     | Manage models (list, pull, use)      |
+| `gno skill`      | Install GNO skill for AI agents      |
+| `gno tags`       | Manage document tags                 |
+| `gno completion` | Shell tab completion                 |
+| `gno vec`        | Vector index maintenance             |
 | `gno peek`       | Cheap counts, backlog, recent, serve |
-| `gno doctor`     | Check system health                 |
+| `gno doctor`     | Check system health                  |
 
 ## Global Flags
 
