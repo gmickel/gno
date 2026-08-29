@@ -26,10 +26,10 @@ diagnose can emit the closed, redacted `query-diagnose@1.1` affinity metadata.
 ## Overview
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and
-resources. GNO registers 26 tools in default read-only mode and 41 when writes
+resources. GNO registers 27 tools in default read-only mode and 42 when writes
 are explicitly enabled:
 
-- **Tools (read)**: gno_context, gno_context_verify, gno_ask, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_section, gno_multi_get, gno_status, gno_changes, gno_diff, gno_impact, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
+- **Tools (read)**: gno_context, gno_context_verify, gno_ask, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_section, gno_multi_get, gno_peek, gno_status, gno_changes, gno_diff, gno_impact, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
 - **Tools (write, opt-in)**: gno_trace_label, gno_trace_export, gno_trace_delete, gno_trace_purge, gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note
 - **Tools (jobs)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
@@ -108,6 +108,7 @@ Use the narrower tools when the request is explicit:
 | `gno_get`            | One known `gno://` URI, `#docid`, or `collection/path`                          | Use `fromLine` + `lineCount` first                  |
 | `gno_section`        | Create/resolve a durable section target; cite only exact/recovered              | Follow citation lines with `gno_get`                |
 | `gno_multi_get`      | Batch several top result refs or glob-matched docs                              | Keep `maxBytes` bounded                             |
+| `gno_peek`           | Cheap counts, backlog, recent files, or whether serve is up                     | Same `peek@1.0` snapshot as `gno peek --json`       |
 | `gno_status`         | Results look stale, vector search fails, or embeddings may be missing           | Run write-enabled `gno_index` or `gno_embed`        |
 
 With private retrieval tracing enabled, `gno_search`, `gno_vsearch`,
@@ -1274,6 +1275,16 @@ refs: ["abc123", "def456"]
 
 All refs in one call must resolve to the same index. Split mixed-index batches
 into one `gno_multi_get` call per index.
+
+### gno_peek
+
+Cheap read-only snapshot (`peek@1.0`) — the same payload as `gno peek --json`.
+
+Returns initialized flag, document/collection counts, embedding backlog, up to
+10 recent files (with `docid` and `absPath`), and pid-file serve liveness. Never
+initializes models or embeddings. Uninitialized is success (`initialized:false`
+plus pinned nulls), not an error. Use this for counts/backlog/recent/serve
+questions; use `gno_status` for the heavy health and activation payload.
 
 ### gno_status
 

@@ -56,6 +56,7 @@ export const MCP_HTTP_EGRESS_TOOLS = {
   gno_search: "snippet",
   gno_section: "metadata",
   gno_similar: "snippet",
+  gno_peek: "metadata",
   gno_status: "metadata",
   gno_sync: "metadata",
   gno_trace_delete: "retrieval_trace",

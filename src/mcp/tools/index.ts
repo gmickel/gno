@@ -65,6 +65,7 @@ import {
 import { handleListJobs } from "./list-jobs";
 import { handleListTags } from "./list-tags";
 import { handleMultiGet } from "./multi-get";
+import { handlePeek, PEEK_MCP_ANNOTATIONS } from "./peek";
 import { handleQuery, handleQueryDiagnose } from "./query";
 import { handleRemoveCollection } from "./remove-collection";
 import { handleSearch } from "./search";
@@ -129,6 +130,7 @@ export const MCP_TOOL_DESCRIPTIONS = {
     "Retrieve multiple documents by refs array or glob pattern. Use after gno_search/gno_query to batch top result URIs/docids; set maxBytes and lineNumbers to control context size.",
   section:
     "Create or resolve a durable SectionTargetV1 against one indexed document. action=create needs ref plus exactly one of anchor|line; action=resolve needs ref plus target. Exact/recovered include citation (uri, anchor, title, inclusive lines, fingerprint); ambiguous/stale/missing omit citation and are not safe to navigate or cite. Read-only — does not write or persist targets. Follow navigable ranges with gno_get fromLine/lineCount.",
+  peek: "Cheap peek@1.0 snapshot: initialized flag, document/collection counts, embedding backlog, recent files, and serve liveness. Model-free — never initializes embeddings or models. Use for counts/backlog/recent/serve questions; use gno_status for full health and activation.",
   status:
     "Get index health: collection count, document count, chunk count, embedding backlog, and per-collection stats. Check first when vector/hybrid results look stale or unavailable.",
   audit:
@@ -664,6 +666,8 @@ const multiGetInputSchema = z.object({
     .describe("Include line numbers in output"),
 });
 
+const peekInputSchema = z.object({});
+
 const statusInputSchema = z.object({});
 
 const jobStatusInputSchema = z.object({
@@ -1084,6 +1088,16 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     MCP_TOOL_DESCRIPTIONS.multiGet,
     multiGetInputSchema.shape,
     (args) => handleMultiGet(args, ctx)
+  );
+
+  server.registerTool(
+    "gno_peek",
+    {
+      description: MCP_TOOL_DESCRIPTIONS.peek,
+      inputSchema: peekInputSchema,
+      annotations: PEEK_MCP_ANNOTATIONS,
+    },
+    (args) => handlePeek(args, ctx)
   );
 
   server.tool(

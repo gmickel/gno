@@ -189,7 +189,8 @@ receipt-management tools.
 - After search/query returns a `line`, call `gno_get` with `fromLine` and `lineCount` before fetching whole documents.
 - Use `gno_section` to create or resolve durable section targets; only cite/navigate on exact/recovered citations, then follow with `gno_get` line ranges.
 - Use `gno_multi_get` to batch the top result refs. Keep `maxBytes` bounded to avoid flooding client context.
-- Check `gno_status` when results look stale, vector search is unavailable, or embedding backlog may explain missing results.
+- Use `gno_peek` for cheap initialized/counts/backlog/recent/serve questions. It is model-free and never initializes embeddings.
+- Check `gno_status` when you need the heavy health, activation, resident, or per-collection payload, or when vector search looks stale.
 
 ### Private retrieval metadata
 
@@ -1049,6 +1050,64 @@ return `isError: true`; callers must split the batch by index.
       "returned": 3,
       "skipped": 1
     }
+  }
+}
+```
+
+---
+
+### gno_peek
+
+Cheap read-only `peek@1.0` snapshot for status, counts, backlog, recent files,
+and serve liveness. Same payload as `gno peek --json`. Model-free: never
+initializes embeddings, models, or activation. Uninitialized is a successful
+`initialized:false` payload (pinned nulls, empty `recent`), not an error.
+Partial-read failure is atomic `RUNTIME` — never a half-filled payload. Serve
+liveness uses the pid-file check; the tool never HTTP-probes serve.
+
+Annotated `readOnlyHint: true`, `destructiveHint: false`.
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+**Output Schema:** `gno://schemas/peek@1.0`
+
+**Response:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "schema: peek@1.0\ninitialized: yes\ndocuments: 1234\nserve: http://localhost:3000"
+    }
+  ],
+  "structuredContent": {
+    "schemaVersion": "peek@1.0",
+    "gnoVersion": "0.42.0",
+    "generatedAt": "2026-08-29T09:00:05Z",
+    "initialized": true,
+    "indexName": "default",
+    "counts": { "documents": 1234, "collections": 5 },
+    "backlog": { "pending": 0, "failed": 0 },
+    "lastIndexedAt": "2026-08-29T09:00:00Z",
+    "recent": [
+      {
+        "docid": "#abc123",
+        "uri": "gno://notes/inbox.md",
+        "title": "Inbox",
+        "collection": "notes",
+        "absPath": "/home/user/notes/inbox.md",
+        "modifiedAt": "2026-08-29T08:55:00Z"
+      }
+    ],
+    "serve": { "running": true, "url": "http://localhost:3000" }
   }
 }
 ```
