@@ -1676,6 +1676,26 @@ function wireOnboardingCommands(program: Command): void {
       );
     });
 
+  // peek - Cheap metadata snapshot for integrations
+  program
+    .command("peek")
+    .description("Show a cheap index snapshot for integrations")
+    .option("--json", "JSON output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.peek, format);
+
+      const { peek, formatPeek } = await import("./commands/peek");
+      const globals = getGlobals();
+      const snapshot = await peek({
+        configPath: globals.config,
+        indexName: globals.index,
+      });
+      process.stdout.write(
+        `${formatPeek(snapshot, { json: format === "json" })}\n`
+      );
+    });
+
   // doctor - Diagnose configuration issues
   program
     .command("doctor")

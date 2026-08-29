@@ -1,0 +1,212 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/peek@1.0",
+  "title": "GNO Peek Snapshot",
+  "description": "Cheap read-only metadata snapshot for external integrations",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "gnoVersion",
+    "generatedAt",
+    "initialized",
+    "indexName",
+    "counts",
+    "backlog",
+    "lastIndexedAt",
+    "recent",
+    "serve"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "peek@1.0",
+      "description": "Peek snapshot schema version"
+    },
+    "gnoVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "GNO package version that produced the snapshot"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC 3339 UTC timestamp when the snapshot was built"
+    },
+    "initialized": {
+      "type": "boolean",
+      "description": "Whether a GNO config exists for this invocation"
+    },
+    "indexName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Index name for this snapshot"
+    },
+    "counts": {
+      "description": "Active document and collection counts, or null when uninitialized",
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["documents", "collections"],
+          "properties": {
+            "documents": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Active documents"
+            },
+            "collections": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Configured collections"
+            }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "backlog": {
+      "description": "Embedding pending count and recent ingest failures, or null when uninitialized",
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pending", "failed"],
+          "properties": {
+            "pending": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Chunks awaiting embedding (status.embeddingBacklog)"
+            },
+            "failed": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Recent ingest/index errors (recentErrors)"
+            }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "lastIndexedAt": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Last index update time, or null when uninitialized or never indexed"
+    },
+    "recent": {
+      "type": "array",
+      "maxItems": 10,
+      "description": "Most recently modified active documents, newest first",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "docid",
+          "uri",
+          "title",
+          "collection",
+          "absPath",
+          "modifiedAt"
+        ],
+        "properties": {
+          "docid": {
+            "type": "string",
+            "description": "Store document id as-is (leading # plus hex)",
+            "pattern": "^#[a-f0-9]{6,8}$"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Virtual URI (gno://collection/path)",
+            "pattern": "^gno://[^/]+/.+"
+          },
+          "title": {
+            "type": ["string", "null"],
+            "description": "Extracted title; null when absent"
+          },
+          "collection": {
+            "type": "string",
+            "minLength": 1
+          },
+          "absPath": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute source path (collection root + relative path)"
+          },
+          "modifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "serve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["running", "url"],
+      "properties": {
+        "running": {
+          "type": "boolean",
+          "description": "Pid-file liveness for gno serve"
+        },
+        "url": {
+          "type": ["string", "null"],
+          "description": "http://localhost:<port> when live with a recorded port"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "running": { "const": true } },
+            "required": ["running"]
+          },
+          "then": {
+            "properties": {
+              "url": {
+                "type": "string",
+                "pattern": "^http://localhost:[1-9][0-9]{0,4}$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "running": { "const": false } },
+            "required": ["running"]
+          },
+          "then": {
+            "properties": { "url": { "type": "null" } }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "description": "uninitialized snapshots pin counts/backlog/lastIndexedAt to null and recent to []",
+      "if": {
+        "properties": { "initialized": { "const": false } },
+        "required": ["initialized"]
+      },
+      "then": {
+        "properties": {
+          "counts": { "type": "null" },
+          "backlog": { "type": "null" },
+          "lastIndexedAt": { "type": "null" },
+          "recent": { "type": "array", "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "description": "initialized snapshots require populated counts and backlog objects",
+      "if": {
+        "properties": { "initialized": { "const": true } },
+        "required": ["initialized"]
+      },
+      "then": {
+        "properties": {
+          "counts": { "type": "object" },
+          "backlog": { "type": "object" }
+        }
+      }
+    }
+  ]
+}
