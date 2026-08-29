@@ -106,7 +106,6 @@ _Avoid_: project filter
 
 A per-collection fail-closed boundary describing where derived material may go: local-only, LAN, or remote. The policy is inherited by Capsules, traces, and exports so later workflows cannot silently loosen the source boundary.
 
-
 _Distinct from_: [Source Availability](#source-availability)
 
 _Avoid_: privacy mode
@@ -114,7 +113,6 @@ _Avoid_: privacy mode
 ## Source Availability
 
 A per-collection indexing policy (`any` | `local`) that controls whether source **content may be materialized** during walk, sniff, hash, conversion, targeted sync, and watch-triggered ingestion. Default `any` preserves legacy reads. Opt-in `local` refuses cloud-placeholder materialization on the macOS File Provider layouts covered by physical evidence (Google Drive, iCloud Drive, and OneDrive only for the tested OS/provider configuration and both validated immediate SharePoint library roots). Local mode uses process-scoped no-materialization I/O policy, hierarchical per-directory availability classification, and a guarded content recheck; it does not pin, evict, or download as product behavior. Unsupported platforms/filesystems and policy setup failures fail closed. Metadata or provider bookkeeping may still occur; source availability is not a promise of zero provider-process network activity. Source availability is not egress policy: availability gates source materialization; egress gates where derived data may travel.
-
 
 _Relates to_: [Collection](#collection), [Source](#sourc
 

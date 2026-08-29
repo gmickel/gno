@@ -47,9 +47,13 @@ Ship `gno peek --json` per spec R1: one cheap metadata snapshot (`peek@1.0`) wit
 - [ ] Live evidence captured on a real index: uninitialized, initialized-empty, initialized-with-docs, serve down, serve up (pid-file liveness; stale pid → `running:false`). Save raw JSON + exit codes. Record a warm-path timing note (not a failing assertion).
 
 ## Done summary
-TBD
+Implemented `gno peek --json` as a cheap `peek@1.0` snapshot: shared builder (`src/core/peek.ts`), CLI wiring, pinned JSON schema, and contract/CLI tests covering uninitialized success, initialized docs, pid-file serve liveness, and atomic RUNTIME on a failed DB.
 
+Live QA evidence (continuous-QA requirement, captured on real machine, raw JSON in /tmp/fn-119.1-qa/): uninitialized → exit 0 pinned nulls; initialized-empty (live temp init) → exit 0 zero counts; initialized-with-docs (real index, 1673 docs / 22 collections) → exit 0, store docids `#`+8hex, real absPaths; serve down (real) → running:false; serve up (real detached serve :3457) → running:true + URL, reverts after stop; warm path 163 ms (< 300 ms budget, recorded, not asserted).
+
+stage: impl-review - ran [conductor in-host, integrated diff 669f8c25..5e7492a6] SHIP (model: claude-fable-5-thinking-high)
+stage: plan-sync - skipped(config: planSync.enabled != true)
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 5e7492a681757352393d29b9ba0f091018b81d7d
+- Tests: baseline: none, bun test test/spec/schemas/peek.test.ts test/cli/peek.test.ts (worker worktree, 14/14), bun test test/spec/schemas/peek.test.ts test/cli/peek.test.ts (integrated target, 14/14), bunx oxlint --type-aware --type-check <peek surface> (0 findings), bunx oxfmt --check <peek surface> (clean), live-qa: uninitialized exit 0 pinned nulls, live-qa: initialized-empty exit 0 zero counts, live-qa: real index 1673 docs / 22 collections, docid #+8hex, real absPaths, live-qa: serve up/down via real detached serve :3457, pid-file liveness, live-qa: warm path 163 ms (budget < 300 ms, recorded not asserted)
 - PRs:
