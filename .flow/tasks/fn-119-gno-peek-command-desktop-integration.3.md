@@ -40,9 +40,11 @@ R3's `spec/cli.md` + peek schema + contract tests landed in task 1 — do not fo
 - [ ] Live evidence: real MCP `gno_peek` invocation against a real index (initialized and serve up or down). Save the structuredContent JSON next to a `gno peek --json` capture from the same index and confirm field-level match (ignore `generatedAt`).
 
 ## Done summary
-TBD
+Added read-only `gno_peek` MCP tool that returns the shared `peek@1.0` snapshot via `buildPeekSnapshot`. Registered as metadata/not-write, documented in spec/mcp.md and docs/MCP.md. Live MCP vs `gno peek --json` matched field-for-field (ignore generatedAt) on a temp index and the real 1673-doc default index (serve down); conductor re-verified the real-index parity from the raw artifacts in /tmp/fn-119.3-qa/.
 
+stage: impl-review - ran [conductor in-host, integrated diff b89d10a8..301320b4] SHIP (model: claude-fable-5-thinking-high)
+stage: plan-sync - skipped(config: planSync.enabled != true)
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 301320b4cf8441b0204f62978c0c828b3339e918
+- Tests: bun test test/mcp/tools/peek.test.ts, bun test test/egress/enforcement.test.ts, bun test test/mcp/http-parity.test.ts, bun test test/mcp/tools/peek.test.ts test/egress/enforcement.test.ts test/mcp/http-parity.test.ts (integrated target, 26/26), live-qa: real-index MCP structuredContent == CLI payload field-for-field incl recent[] (conductor re-verified, /tmp/fn-119.3-qa/)
 - PRs:
