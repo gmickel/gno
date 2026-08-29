@@ -1,0 +1,52 @@
+{
+  "branch": "fn-119-gno-peek-command-desktop-integration",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "1741d6d82dd7c4cc10d379137a8cd41585da3eee",
+    "items": [
+      {
+        "body": "Foreground gno serve (no --detach) writes no pid file, so peek reports serve running:false while the server answers HTTP 200. Matches the pinned pid-file contract (spec/cli.md: never an HTTP probe), but fn-120 plugin must start serve with --detach or users see serve-down while it runs. (surface: src/core/peek.ts)",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-a58fb374a02627e17ecd577982cc7bcf24a947cbcde451d2c414c9c4f7312d3e",
+        "id": "finding-2f6a059ccf9b14e8481aea69378372f0",
+        "lastSeenReceiptId": "review-a58fb374a02627e17ecd577982cc7bcf24a947cbcde451d2c414c9c4f7312d3e",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "peek-foreground-serve-undetected"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-a58fb374a02627e17ecd577982cc7bcf24a947cbcde451d2c414c9c4f7312d3e"
+  },
+  "head_sha": "1741d6d82dd7c4cc10d379137a8cd41585da3eee",
+  "id": "fn-119-gno-peek-command-desktop-integration",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-08-29T12:34:53Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
