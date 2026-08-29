@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-119-gno-peek-command-desktop-integration",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "ship",
+  "completion_reviewed_at": "2026-08-29T12:23:48.733571Z",
   "created_at": "2026-08-29T10:35:35.500633Z",
   "default_impl": null,
   "default_review": null,
@@ -14,6 +14,42 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "ready": true,
+  "review_attempts": [
+    {
+      "artifact_sha256": "a6de57c2a66a66bfa77b6593808b5b950cfe8513448c19daaf0cda07e9a3d72e",
+      "backend": "host",
+      "counter_kind": "plan",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "c9ddc673cc650fc2e81d9fa364d8b799ebf04744",
+      "head_sha_observed": false,
+      "kind": "completion",
+      "outcome": "verdict",
+      "output_bytes": 2755,
+      "output_sha256": "67f331e4f51e73aeefb4b12261b6f1b4c21bcfb3297c434b9049fa73b4e7f7df",
+      "reservation_id": "4ddeb641ceaa43099df6b7c26fe3d53b",
+      "round_consumed": true,
+      "scope": "completion",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-08-29T12:23:42.575910Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "plan#completion": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "completion": 0
+  },
   "spec_path": ".flow/specs/fn-119-gno-peek-command-desktop-integration.md",
   "status": "open",
   "title": "GNO peek command + desktop integration surface",
@@ -28,5 +64,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-08-29T10:35:54.490352Z"
+  "updated_at": "2026-08-29T12:23:48.734007Z"
 }
