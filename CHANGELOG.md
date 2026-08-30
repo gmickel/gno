@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Guard the committed production SPA snapshot against source drift with a
+  `sourceHash` of `src/serve/public/**` (tests fail with `bun run build:spa`)
+  and pin the shiki language-id table to installed `bundledLanguages`.
+
 ### Changed
 
 ### Fixed

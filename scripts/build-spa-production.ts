@@ -18,5 +18,5 @@ const json = JSON.stringify(assets);
 const gzip = Bun.gzipSync(json);
 await Bun.write(outPath, gzip);
 console.log(
-  `Wrote ${outPath} (${gzip.byteLength} bytes gzip, ${json.length} bytes json, ${Object.keys(assets.files).length} files)`
+  `Wrote ${outPath} (${gzip.byteLength} bytes gzip, ${json.length} bytes json, ${Object.keys(assets.files).length} files, sourceHash ${assets.sourceHash})`
 );

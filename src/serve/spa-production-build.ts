@@ -1,9 +1,10 @@
-// node:fs/promises — no Bun equivalent for mkdir/rm of the temporary SPA outdir.
-import { mkdir, rm } from "node:fs/promises";
+// node:fs/promises — no Bun equivalent for mkdir/rm of the temporary SPA
+// outdir, or for recursive directory listing.
+import { mkdir, readdir, rm } from "node:fs/promises";
 // node:os — no Bun equivalent for the platform temporary directory.
 import { tmpdir } from "node:os";
 // node:path — no Bun path utils.
-import { basename, join } from "node:path";
+import { basename, join, relative } from "node:path";
 
 export const ROOT_MOUNT_MARKER = 'getElementById("root")';
 
@@ -15,6 +16,50 @@ export type ProductionSpaFile = {
 export type ProductionSpaAssets = {
   files: Record<string, ProductionSpaFile>;
   html: string;
+  sourceHash: string;
+};
+
+const productionSpaPublicDir = (): string => join(import.meta.dir, "public");
+
+export const productionSpaEntryPath = (): string =>
+  join(productionSpaPublicDir(), "index.html");
+
+/**
+ * SHA-256 hex of every file under `src/serve/public/`, in sorted relative-path
+ * order. Used to detect a stale `assets/spa-production.json.gz` without
+ * comparing Bun.build output (minified symbols and chunk hashes differ
+ * across Bun binaries).
+ */
+export const computeSpaSourceHash = async (): Promise<string> => {
+  const publicDir = productionSpaPublicDir();
+  const entries = await readdir(publicDir, {
+    recursive: true,
+    withFileTypes: true,
+  });
+  const relativePaths: string[] = [];
+  for (const entry of entries) {
+    if (!entry.isFile()) {
+      continue;
+    }
+    relativePaths.push(
+      relative(publicDir, join(entry.parentPath, entry.name)).replaceAll(
+        "\\",
+        "/"
+      )
+    );
+  }
+  relativePaths.sort();
+
+  const hasher = new Bun.CryptoHasher("sha256");
+  for (const relativePath of relativePaths) {
+    const bytes = await Bun.file(join(publicDir, relativePath)).bytes();
+    hasher.update(relativePath);
+    hasher.update("\0");
+    hasher.update(String(bytes.byteLength));
+    hasher.update("\0");
+    hasher.update(bytes);
+  }
+  return hasher.digest("hex");
 };
 
 const SCRIPT_TAG_RE = /<script\b[^>]*\bsrc="[^"]+"[^>]*><\/script>/iu;
@@ -40,9 +85,6 @@ export const isStandaloneExecutable = (): boolean =>
 
 export const isBunfsPath = (path: string): boolean =>
   path.includes("/$bunfs/") || path.includes("\\$bunfs\\");
-
-export const productionSpaEntryPath = (): string =>
-  join(import.meta.dir, "public", "index.html");
 
 const rewriteProductionHtml = (html: string, jsEntryPath: string): string => {
   const script = `<script type="module" src="/${basename(jsEntryPath)}"></script>`;
@@ -123,7 +165,11 @@ export const buildProductionSpaAssets = async (
       };
     }
 
-    return { files, html };
+    return {
+      files,
+      html,
+      sourceHash: await computeSpaSourceHash(),
+    };
   } finally {
     await rm(outdir, { recursive: true, force: true });
   }
