@@ -2307,6 +2307,7 @@ function wireManagementCommands(program: Command): void {
       async () => {
         await collectionClearEmbeddings(name, {
           all: Boolean(cmdOpts.all),
+          indexName: getGlobals().index,
           json,
         });
         return { success: true as const };
@@ -2938,7 +2939,7 @@ function wireManagementCommands(program: Command): void {
       const { cleanup, formatCleanup } = await import("./commands/cleanup");
       const result = await withCliWriteLease(
         { indexName: getGlobals().index },
-        () => cleanup()
+        () => cleanup({ indexName: getGlobals().index })
       );
       throwIfWriteLeaseBusy(result, false);
 
@@ -2996,6 +2997,7 @@ function wireVecCommands(program: Command): void {
       () =>
         vecSync({
           configPath: globals.config,
+          indexName: globals.index,
           json: format === "json",
         })
     );
@@ -3031,6 +3033,7 @@ function wireVecCommands(program: Command): void {
       () =>
         vecRebuild({
           configPath: globals.config,
+          indexName: globals.index,
           json: format === "json",
         })
     );
@@ -3336,6 +3339,7 @@ function wireTagsCommands(program: Command): void {
       const { tagsList, formatTagsList } = await import("./commands/tags");
       const result = await tagsList({
         configPath: globals.config,
+        indexName: globals.index,
         collection: cmdOpts.collection as string | undefined,
         prefix: cmdOpts.prefix as string | undefined,
         json: format === "json",
@@ -3357,62 +3361,86 @@ function wireTagsCommands(program: Command): void {
     });
 
   // tags add <doc> <tag>
-  tagsCmd
-    .command("add <doc> <tag>")
-    .description("Add a tag to a document")
-    .option("--json", "JSON output")
-    .action(
-      async (doc: string, tag: string, cmdOpts: Record<string, unknown>) => {
-        const format = getFormat(cmdOpts);
-        const globals = getGlobals();
+  addWriteLeaseFlags(
+    tagsCmd
+      .command("add <doc> <tag>")
+      .description("Add a tag to a document")
+      .option("--json", "JSON output")
+  ).action(
+    async (doc: string, tag: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      const globals = getGlobals();
 
-        const { tagsAdd, formatTagsAdd } = await import("./commands/tags");
-        const result = await tagsAdd(doc, tag, {
-          configPath: globals.config,
-          json: format === "json",
-        });
+      const { tagsAdd, formatTagsAdd } = await import("./commands/tags");
+      const lease = parseWriteLeaseFlags(cmdOpts);
+      const result = await withCliWriteLease(
+        {
+          indexName: globals.index,
+          lockWaitMs: lease.lockWaitMs,
+          noWait: lease.noWait,
+        },
+        () =>
+          tagsAdd(doc, tag, {
+            configPath: globals.config,
+            indexName: globals.index,
+            json: format === "json",
+          })
+      );
+      throwIfWriteLeaseBusy(result, format === "json");
 
-        if (!result.success) {
-          throw new CliError(
-            result.isValidation ? "VALIDATION" : "RUNTIME",
-            result.error
-          );
-        }
-
-        process.stdout.write(
-          `${formatTagsAdd(result, { json: format === "json" })}\n`
+      if (!result.success) {
+        throw new CliError(
+          result.isValidation ? "VALIDATION" : "RUNTIME",
+          result.error
         );
       }
-    );
+
+      process.stdout.write(
+        `${formatTagsAdd(result, { json: format === "json" })}\n`
+      );
+    }
+  );
 
   // tags rm <doc> <tag>
-  tagsCmd
-    .command("rm <doc> <tag>")
-    .description("Remove a tag from a document")
-    .option("--json", "JSON output")
-    .action(
-      async (doc: string, tag: string, cmdOpts: Record<string, unknown>) => {
-        const format = getFormat(cmdOpts);
-        const globals = getGlobals();
+  addWriteLeaseFlags(
+    tagsCmd
+      .command("rm <doc> <tag>")
+      .description("Remove a tag from a document")
+      .option("--json", "JSON output")
+  ).action(
+    async (doc: string, tag: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      const globals = getGlobals();
 
-        const { tagsRm, formatTagsRm } = await import("./commands/tags");
-        const result = await tagsRm(doc, tag, {
-          configPath: globals.config,
-          json: format === "json",
-        });
+      const { tagsRm, formatTagsRm } = await import("./commands/tags");
+      const lease = parseWriteLeaseFlags(cmdOpts);
+      const result = await withCliWriteLease(
+        {
+          indexName: globals.index,
+          lockWaitMs: lease.lockWaitMs,
+          noWait: lease.noWait,
+        },
+        () =>
+          tagsRm(doc, tag, {
+            configPath: globals.config,
+            indexName: globals.index,
+            json: format === "json",
+          })
+      );
+      throwIfWriteLeaseBusy(result, format === "json");
 
-        if (!result.success) {
-          throw new CliError(
-            result.isValidation ? "VALIDATION" : "RUNTIME",
-            result.error
-          );
-        }
-
-        process.stdout.write(
-          `${formatTagsRm(result, { json: format === "json" })}\n`
+      if (!result.success) {
+        throw new CliError(
+          result.isValidation ? "VALIDATION" : "RUNTIME",
+          result.error
         );
       }
-    );
+
+      process.stdout.write(
+        `${formatTagsRm(result, { json: format === "json" })}\n`
+      );
+    }
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

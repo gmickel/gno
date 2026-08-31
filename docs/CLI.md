@@ -891,9 +891,10 @@ Options:
 - `--no-wait` - Do not wait; exit 4 immediately on contention
 
 **Concurrency**: One writer at a time on the shared index. `index`, `update`,
-`embed`, `cleanup`, `vec sync`, `vec rebuild`, and
-`collection clear-embeddings` wait by default for the same lease MCP write
-tools use (`.mcp-write.lock` next to the database). Readers (`search`,
+`embed`, `cleanup`, `vec sync`, `vec rebuild`, `collection clear-embeddings`,
+`tags add`, and `tags rm` wait by default for the same lease MCP write tools
+use (`.mcp-write.lock` next to the database); `capture` takes the same lock
+internally. Readers (`search`,
 `query`, `get`) always proceed. `--no-wait` opts out. External serialising
 wrappers are no longer required for CLI-vs-CLI and CLI-vs-MCP overlap. A
 resident watch or embed flush can still briefly contend at the SQLite level;

@@ -10,6 +10,7 @@ import { CliError } from "../../errors";
 
 interface ClearEmbeddingsOptions {
   all?: boolean;
+  indexName?: string;
   json?: boolean;
 }
 
@@ -40,7 +41,7 @@ export async function collectionClearEmbeddings(
 
   const store = new SqliteAdapter();
   const openResult = await store.open(
-    getIndexDbPath(),
+    getIndexDbPath(options.indexName),
     config.ftsTokenizer,
     config.busyTimeoutMs
   );

@@ -17,6 +17,8 @@ import { SqliteAdapter } from "../../store/sqlite/adapter";
 export interface CleanupOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
 }
 
 /**
@@ -47,7 +49,7 @@ export async function cleanup(
 
   // Open database
   const store = new SqliteAdapter();
-  const dbPath = getIndexDbPath();
+  const dbPath = getIndexDbPath(options.indexName);
 
   const openResult = await store.open(
     dbPath,

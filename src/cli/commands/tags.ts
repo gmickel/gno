@@ -18,6 +18,8 @@ import { initStore } from "./shared";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface TagsListOptions {
+  /** Index name */
+  indexName?: string;
   /** Override config path */
   configPath?: string;
   /** Filter by collection */
@@ -46,6 +48,8 @@ export interface TagsListResponse {
 export interface TagsAddOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
   /** JSON output */
   json?: boolean;
 }
@@ -60,6 +64,8 @@ export type TagsAddResult =
 export interface TagsRmOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name */
+  indexName?: string;
   /** JSON output */
   json?: boolean;
 }
@@ -339,7 +345,10 @@ function removeTagFromFrontmatter(content: string, tag: string): string {
 export async function tagsList(
   options: TagsListOptions = {}
 ): Promise<TagsListResult> {
-  const initResult = await initStore({ configPath: options.configPath });
+  const initResult = await initStore({
+    configPath: options.configPath,
+    indexName: options.indexName,
+  });
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }
@@ -394,7 +403,10 @@ export async function tagsAdd(
     };
   }
 
-  const initResult = await initStore({ configPath: options.configPath });
+  const initResult = await initStore({
+    configPath: options.configPath,
+    indexName: options.indexName,
+  });
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }
@@ -495,7 +507,10 @@ export async function tagsRm(
 ): Promise<TagsRmResult> {
   const normalized = normalizeTag(tag);
 
-  const initResult = await initStore({ configPath: options.configPath });
+  const initResult = await initStore({
+    configPath: options.configPath,
+    indexName: options.indexName,
+  });
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }
