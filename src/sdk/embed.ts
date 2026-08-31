@@ -117,9 +117,10 @@ async function forceEmbedAll(
   vectorIndex: VectorIndexPort,
   modelUri: string,
   batchSize: number
-): Promise<{ embedded: number; errors: number }> {
+): Promise<{ embedded: number; errors: number; contentionErrors: number }> {
   let embedded = 0;
   let errors = 0;
+  let contentionErrors = 0;
   let cursor: { mirrorHash: string; seq: number } | undefined;
   const retryQueue = new Map<string, { item: BacklogItem; attempts: number }>();
   const embedFingerprint = getEmbeddingFingerprint({
@@ -164,6 +165,7 @@ async function forceEmbedAll(
       });
       embedded += retryResult.embedded;
       errors += retryResult.errors;
+      contentionErrors += retryResult.contentionErrors;
       retryEmbedded += retryResult.embedded;
 
       const retryByKey = new Set(
@@ -212,6 +214,7 @@ async function forceEmbedAll(
     });
     embedded += embedResult.embedded;
     errors += embedResult.errors;
+    contentionErrors += embedResult.contentionErrors;
     enqueueRetryItems(embedResult.retryItems, 1);
 
     if (embedded > beforeEmbedded) {
@@ -232,7 +235,7 @@ async function forceEmbedAll(
     }
   }
 
-  return { embedded, errors };
+  return { embedded, errors, contentionErrors };
 }
 
 async function checkVecAvailable(db: Database): Promise<boolean> {
@@ -343,7 +346,7 @@ export async function runEmbed(
     }
 
     const startedAt = Date.now();
-    let result: { embedded: number; errors: number };
+    let result: { embedded: number; errors: number; contentionErrors: number };
     if (force) {
       result = await forceEmbedAll(
         db,
@@ -369,12 +372,14 @@ export async function runEmbed(
       result = {
         embedded: processed.value.embedded,
         errors: processed.value.errors,
+        contentionErrors: processed.value.contentionErrors ?? 0,
       };
     }
 
     return {
       embedded: result.embedded,
       errors: result.errors,
+      contentionErrors: result.contentionErrors,
       duration: (Date.now() - startedAt) / 1000,
       model: modelUri,
       searchAvailable: vectorIndex.searchAvailable,

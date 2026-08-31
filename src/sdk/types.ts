@@ -204,6 +204,8 @@ export interface GnoEmbedOptions {
 export interface GnoEmbedResult {
   embedded: number;
   errors: number;
+  /** Persistence lock-contention failures; distinct from embedding-provider `errors`. */
+  contentionErrors?: number;
   duration: number;
   model: string;
   searchAvailable: boolean;

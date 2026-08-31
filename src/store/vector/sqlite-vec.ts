@@ -193,7 +193,8 @@ export async function createVectorIndexPort(
         return Promise.resolve(
           err(
             "VECTOR_WRITE_FAILED",
-            `Vector write failed: ${e instanceof Error ? e.message : String(e)}`
+            `Vector write failed: ${e instanceof Error ? e.message : String(e)}`,
+            e
           )
         );
       }
