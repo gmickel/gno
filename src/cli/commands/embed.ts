@@ -82,6 +82,8 @@ export type EmbedResult =
       success: true;
       embedded: number;
       errors: number;
+      /** Chunks deferred by SQLITE_BUSY/LOCKED after retries (fn-127 R6). */
+      contentionErrors: number;
       duration: number;
       model: string;
       searchAvailable: boolean;
@@ -142,6 +144,7 @@ type BatchResult =
       ok: true;
       embedded: number;
       errors: number;
+      contentionErrors: number;
       duration: number;
       errorSamples: string[];
       suggestion?: string;
@@ -157,6 +160,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
   const startTime = Date.now();
   let embedded = 0;
   let errors = 0;
+  let contentionErrors = 0;
   const errorSamples: string[] = [];
   let suggestion: string | undefined;
   let cursor: Cursor | undefined;
@@ -284,6 +288,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       suggestion ||= retryResult.suggestion;
       embedded += retryResult.embedded;
       errors += retryResult.errors;
+      contentionErrors += retryResult.contentionErrors;
       retryEmbedded += retryResult.embedded;
 
       const retryByKey = new Set(
@@ -336,6 +341,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     suggestion ||= batchStoreResult.suggestion;
     embedded += batchStoreResult.embedded;
     errors += batchStoreResult.errors;
+    contentionErrors += batchStoreResult.contentionErrors;
     enqueueRetryItems(batchStoreResult.retryItems, 1);
 
     if (embedded > beforeEmbedded) {
@@ -363,6 +369,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     ok: true,
     embedded,
     errors,
+    contentionErrors,
     duration: (Date.now() - startTime) / 1000,
     errorSamples,
     suggestion,
@@ -412,7 +419,11 @@ async function initEmbedContext(
   const paths = getConfigPaths();
   store.setConfigPath(configPath ?? paths.configFile);
 
-  const openResult = await store.open(dbPath, config.ftsTokenizer);
+  const openResult = await store.open(
+    dbPath,
+    config.ftsTokenizer,
+    config.busyTimeoutMs
+  );
   if (!openResult.ok) {
     return { ok: false, error: openResult.error.message };
   }
@@ -468,6 +479,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
             success: true,
             embedded: totalToEmbed,
             errors: 0,
+            contentionErrors: 0,
             duration: 0,
             model: modelUri,
             searchAvailable: vecAvailable,
@@ -572,6 +584,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
             success: true,
             embedded: totalToEmbed,
             errors: 0,
+            contentionErrors: 0,
             duration: 0,
             model: modelUri,
             searchAvailable: vectorIndex.searchAvailable,
@@ -623,6 +636,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
             success: true,
             embedded: result.embedded,
             errors: result.errors,
+            contentionErrors: result.contentionErrors,
             duration: result.duration,
             model: modelUri,
             searchAvailable: vectorIndex.searchAvailable,
@@ -641,6 +655,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
         success: true,
         embedded: result.embedded,
         errors: result.errors,
+        contentionErrors: result.contentionErrors,
         duration: result.duration,
         model: modelUri,
         searchAvailable: vectorIndex.searchAvailable,
@@ -803,6 +818,12 @@ export function formatEmbed(
     if (result.suggestion) {
       lines.push(`Hint: ${result.suggestion}`);
     }
+  }
+
+  if (result.contentionErrors > 0) {
+    lines.push(
+      `${result.contentionErrors} chunks deferred by index contention (SQLITE_BUSY) — not embedding failures. Rerun \`gno embed\` when the other writer finishes.`
+    );
   }
 
   if (!result.searchAvailable) {

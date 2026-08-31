@@ -139,6 +139,7 @@ export async function verifyInstalledSetupContracts(
       embedFn: async () => ({
         success: true,
         embedded: 3,
+        contentionErrors: 0,
         errors: 0,
         duration: 1,
         model: "package-contract",

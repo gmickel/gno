@@ -105,7 +105,11 @@ export async function initStore(
   // Set configPath for status output
   store.setConfigPath(actualConfigPath);
 
-  const openResult = await store.open(dbPath, config.ftsTokenizer);
+  const openResult = await store.open(
+    dbPath,
+    config.ftsTokenizer,
+    config.busyTimeoutMs
+  );
   if (!openResult.ok) {
     return { ok: false, error: openResult.error.message };
   }

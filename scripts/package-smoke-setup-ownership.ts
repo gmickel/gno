@@ -67,6 +67,7 @@ export async function verifyInstalledDisabledLiveOwnership(
         return {
           success: true,
           embedded: 1,
+          contentionErrors: 0,
           errors: 0,
           duration: 1,
           model: "must-not-run",

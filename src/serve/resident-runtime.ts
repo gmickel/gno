@@ -212,7 +212,11 @@ export async function startResidentRuntime(
   const paths = (deps.getConfigPaths ?? getConfigPaths)();
   const actualConfigPath = resolve(options.configPath ?? paths.configFile);
   store.setConfigPath(actualConfigPath);
-  const openResult = await store.open(dbPath, initialConfig.ftsTokenizer);
+  const openResult = await store.open(
+    dbPath,
+    initialConfig.ftsTokenizer,
+    initialConfig.busyTimeoutMs
+  );
   if (!openResult.ok) {
     await ownerLock.release();
     return { success: false, error: openResult.error.message };

@@ -9,9 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Concurrent `gno index` / `gno update` / `gno embed` runs now serialise on the
+  shared write lease (`.mcp-write.lock`, the same one MCP write tools use)
+  instead of failing with `Error: database is locked`. Writers wait up to
+  `--lock-wait` (default 120s; `--no-wait` fails fast), contention exits with
+  dedicated code 4 (BUSY) and a message naming the holder, and `--json` carries
+  a machine-readable contention result. SQLite `busy_timeout` is configurable
+  (`busyTimeoutMs`, default 60000, inspectable via `gno doctor`).
+
 ### Changed
 
 ### Fixed
+
+- Chunk persistence hitting `SQLITE_BUSY`/`SQLITE_LOCKED` retries with backoff
+  and is reported as index contention (exit 4), never as "chunks failed to
+  embed". A write-lock holder killed with SIGKILL no longer leaves the
+  advisory lock held.
 
 ## [1.37.1] - 2026-08-30
 

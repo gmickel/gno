@@ -9,6 +9,7 @@ describe("formatEmbed", () => {
         success: true,
         embedded: 100,
         errors: 2,
+        contentionErrors: 0,
         duration: 12,
         model: "hf:test/embed.gguf",
         searchAvailable: true,

@@ -1591,6 +1591,13 @@ function wireOnboardingCommands(program: Command): void {
         throw new CliError("RUNTIME", result.error ?? "Index failed");
       }
       process.stdout.write(`${formatIndex(result, opts)}\n`);
+      if ((result.embedResult?.contentionErrors ?? 0) > 0) {
+        throw new CliError(
+          "BUSY",
+          "Some chunks were deferred by index contention",
+          { silent: true }
+        );
+      }
     }
   );
 
@@ -2899,6 +2906,13 @@ function wireManagementCommands(program: Command): void {
         throw new CliError("RUNTIME", result.error ?? "Embed failed");
       }
       process.stdout.write(`${formatEmbed(result, opts)}\n`);
+      if (result.contentionErrors > 0) {
+        throw new CliError(
+          "BUSY",
+          "Some chunks were deferred by index contention",
+          { silent: true }
+        );
+      }
     }
   );
 

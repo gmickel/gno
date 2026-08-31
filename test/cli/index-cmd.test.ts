@@ -33,6 +33,7 @@ describe("formatIndex", () => {
         embedResult: {
           embedded: 2597,
           errors: 31,
+          contentionErrors: 0,
           duration: 327,
         },
       },

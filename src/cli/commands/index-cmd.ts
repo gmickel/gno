@@ -49,7 +49,12 @@ export type IndexResult =
       success: true;
       syncResult: SyncResult;
       embedSkipped: boolean;
-      embedResult?: { embedded: number; errors: number; duration: number };
+      embedResult?: {
+        embedded: number;
+        errors: number;
+        contentionErrors: number;
+        duration: number;
+      };
     }
   | { success: false; error: string; contention?: WriteLeaseContention };
 
@@ -86,7 +91,12 @@ export async function index(options: IndexOptions = {}): Promise<IndexResult> {
       // Embedding phase
       const embedSkipped = options.noEmbed ?? false;
       let embedResult:
-        | { embedded: number; errors: number; duration: number }
+        | {
+            embedded: number;
+            errors: number;
+            contentionErrors: number;
+            duration: number;
+          }
         | undefined;
 
       if (!embedSkipped) {
@@ -102,6 +112,7 @@ export async function index(options: IndexOptions = {}): Promise<IndexResult> {
           embedResult = {
             embedded: result.embedded,
             errors: result.errors,
+            contentionErrors: result.contentionErrors,
             duration: result.duration,
           };
         }
@@ -155,12 +166,17 @@ export function formatIndex(
     lines.push("Embedding skipped (--no-embed)");
   } else if (result.embedResult) {
     lines.push("");
-    const { embedded, errors, duration } = result.embedResult;
+    const { embedded, errors, contentionErrors, duration } = result.embedResult;
     lines.push(
       `Embedded ${embedded.toLocaleString()} chunks in ${formatDuration(duration)}`
     );
     if (errors > 0) {
       lines.push(`${errors.toLocaleString()} chunks failed to embed.`);
+    }
+    if (contentionErrors > 0) {
+      lines.push(
+        `${contentionErrors.toLocaleString()} chunks deferred by index contention (SQLITE_BUSY) — not embedding failures. Rerun \`gno embed\` when the other writer finishes.`
+      );
     }
   }
 
