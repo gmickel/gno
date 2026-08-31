@@ -121,7 +121,7 @@ function normalizedBusyTimeout(timeoutMs: number): number {
   return Math.min(Math.max(0, Math.floor(timeoutMs)), MAX_BUSY_TIMEOUT_MS);
 }
 
-function isSqliteLockContention(cause: unknown): boolean {
+export function isSqliteLockContention(cause: unknown): boolean {
   if (cause === null || typeof cause !== "object") {
     return false;
   }
