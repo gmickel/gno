@@ -26,6 +26,8 @@ import {
   formatWriteLeaseBusyMessage,
   isWriteLeaseBusyResult,
   parseLockWaitMs,
+  withCliWriteLease,
+  type WriteLeaseBusyFailure,
 } from "../core/write-lease";
 import { setColorsEnabled } from "./colors";
 import {
@@ -254,10 +256,9 @@ function parseWriteLeaseFlags(cmdOpts: Record<string, unknown>): {
   };
 }
 
-function throwIfWriteLeaseBusy(
-  result: { success: boolean; error?: string; contention?: unknown },
-  json: boolean
-): void {
+function throwIfWriteLeaseBusy<
+  T extends { success: boolean; error?: string; contention?: unknown },
+>(result: T | WriteLeaseBusyFailure, json: boolean): asserts result is T {
   if (!isWriteLeaseBusyResult(result)) {
     return;
   }
@@ -2287,19 +2288,32 @@ function wireManagementCommands(program: Command): void {
       });
     });
 
-  collectionCmd
-    .command("clear-embeddings <name>")
-    .description("Clear stale or all embeddings for a collection")
-    .option("--all", "remove all embeddings for the collection")
-    .option("--json", "JSON output")
-    .action(async (name: string, cmdOpts: Record<string, unknown>) => {
-      const { collectionClearEmbeddings } =
-        await import("./commands/collection");
-      await collectionClearEmbeddings(name, {
-        all: Boolean(cmdOpts.all),
-        json: Boolean(cmdOpts.json),
-      });
-    });
+  addWriteLeaseFlags(
+    collectionCmd
+      .command("clear-embeddings <name>")
+      .description("Clear stale or all embeddings for a collection")
+      .option("--all", "remove all embeddings for the collection")
+      .option("--json", "JSON output")
+  ).action(async (name: string, cmdOpts: Record<string, unknown>) => {
+    const { collectionClearEmbeddings } = await import("./commands/collection");
+    const json = Boolean(cmdOpts.json);
+    const lease = parseWriteLeaseFlags(cmdOpts);
+    const result = await withCliWriteLease(
+      {
+        indexName: getGlobals().index,
+        lockWaitMs: lease.lockWaitMs,
+        noWait: lease.noWait,
+      },
+      async () => {
+        await collectionClearEmbeddings(name, {
+          all: Boolean(cmdOpts.all),
+          json,
+        });
+        return { success: true as const };
+      }
+    );
+    throwIfWriteLeaseBusy(result, json);
+  });
 
   const collectionPolicyCmd = collectionCmd
     .command("policy")
@@ -2922,7 +2936,11 @@ function wireManagementCommands(program: Command): void {
     .description("Clean orphaned data from index")
     .action(async () => {
       const { cleanup, formatCleanup } = await import("./commands/cleanup");
-      const result = await cleanup();
+      const result = await withCliWriteLease(
+        { indexName: getGlobals().index },
+        () => cleanup()
+      );
+      throwIfWriteLeaseBusy(result, false);
 
       if (!result.success) {
         throw new CliError("RUNTIME", result.error ?? "Cleanup failed");
@@ -2958,52 +2976,74 @@ function wireVecCommands(program: Command): void {
   const vecCmd = program.command("vec").description("Vector index maintenance");
 
   // vec sync
-  vecCmd
-    .command("sync")
-    .description("Sync vec0 index with content_vectors")
-    .option("--json", "JSON output")
-    .action(async (cmdOpts: Record<string, unknown>) => {
-      const format = getFormat(cmdOpts);
-      const globals = getGlobals();
+  addWriteLeaseFlags(
+    vecCmd
+      .command("sync")
+      .description("Sync vec0 index with content_vectors")
+      .option("--json", "JSON output")
+  ).action(async (cmdOpts: Record<string, unknown>) => {
+    const format = getFormat(cmdOpts);
+    const globals = getGlobals();
 
-      const { vecSync, formatVecSync } = await import("./commands/vec");
-      const result = await vecSync({
-        configPath: globals.config,
-        json: format === "json",
-      });
+    const { vecSync, formatVecSync } = await import("./commands/vec");
+    const lease = parseWriteLeaseFlags(cmdOpts);
+    const result = await withCliWriteLease(
+      {
+        indexName: globals.index,
+        lockWaitMs: lease.lockWaitMs,
+        noWait: lease.noWait,
+      },
+      () =>
+        vecSync({
+          configPath: globals.config,
+          json: format === "json",
+        })
+    );
+    throwIfWriteLeaseBusy(result, format === "json");
 
-      if (!result.success) {
-        throw new CliError("RUNTIME", result.error);
-      }
+    if (!result.success) {
+      throw new CliError("RUNTIME", result.error);
+    }
 
-      process.stdout.write(
-        `${formatVecSync(result, { json: format === "json" })}\n`
-      );
-    });
+    process.stdout.write(
+      `${formatVecSync(result, { json: format === "json" })}\n`
+    );
+  });
 
   // vec rebuild
-  vecCmd
-    .command("rebuild")
-    .description("Rebuild vec0 index from content_vectors")
-    .option("--json", "JSON output")
-    .action(async (cmdOpts: Record<string, unknown>) => {
-      const format = getFormat(cmdOpts);
-      const globals = getGlobals();
+  addWriteLeaseFlags(
+    vecCmd
+      .command("rebuild")
+      .description("Rebuild vec0 index from content_vectors")
+      .option("--json", "JSON output")
+  ).action(async (cmdOpts: Record<string, unknown>) => {
+    const format = getFormat(cmdOpts);
+    const globals = getGlobals();
 
-      const { vecRebuild, formatVecRebuild } = await import("./commands/vec");
-      const result = await vecRebuild({
-        configPath: globals.config,
-        json: format === "json",
-      });
+    const { vecRebuild, formatVecRebuild } = await import("./commands/vec");
+    const lease = parseWriteLeaseFlags(cmdOpts);
+    const result = await withCliWriteLease(
+      {
+        indexName: globals.index,
+        lockWaitMs: lease.lockWaitMs,
+        noWait: lease.noWait,
+      },
+      () =>
+        vecRebuild({
+          configPath: globals.config,
+          json: format === "json",
+        })
+    );
+    throwIfWriteLeaseBusy(result, format === "json");
 
-      if (!result.success) {
-        throw new CliError("RUNTIME", result.error);
-      }
+    if (!result.success) {
+      throw new CliError("RUNTIME", result.error);
+    }
 
-      process.stdout.write(
-        `${formatVecRebuild(result, { json: format === "json" })}\n`
-      );
-    });
+    process.stdout.write(
+      `${formatVecRebuild(result, { json: format === "json" })}\n`
+    );
+  });
 }
 
 function wirePublishCommand(program: Command): void {

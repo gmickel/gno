@@ -141,7 +141,11 @@ export async function init(options: InitOptions = {}): Promise<InitResult> {
   }
 
   const store = new SqliteAdapter();
-  const opened = await store.open(dbPath, mutation.config.ftsTokenizer);
+  const opened = await store.open(
+    dbPath,
+    mutation.config.ftsTokenizer,
+    mutation.config.busyTimeoutMs
+  );
   if (!opened.ok) {
     return {
       success: false,

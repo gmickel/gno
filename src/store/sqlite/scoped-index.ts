@@ -38,7 +38,11 @@ export async function openScopedIndexStore(options: {
 
   const store = new SqliteAdapter();
   store.setConfigPath(options.configPath ?? "<inline-config>");
-  const openResult = await store.open(dbPath, options.config.ftsTokenizer);
+  const openResult = await store.open(
+    dbPath,
+    options.config.ftsTokenizer,
+    options.config.busyTimeoutMs
+  );
   if (!openResult.ok) {
     throw new Error(openResult.error.message);
   }

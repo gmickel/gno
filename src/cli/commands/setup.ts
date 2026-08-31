@@ -259,7 +259,8 @@ async function executeSetup(
   store.setConfigPath(configPath);
   const opened = await store.open(
     getIndexDbPath(indexName),
-    configResult.value.ftsTokenizer
+    configResult.value.ftsTokenizer,
+    configResult.value.busyTimeoutMs
   );
   if (!opened.ok) {
     await store.close();

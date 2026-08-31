@@ -247,7 +247,11 @@ export async function status(
   // Set configPath for status output
   store.setConfigPath(options.configPath ?? paths.configFile);
 
-  const openResult = await store.open(dbPath, config.ftsTokenizer);
+  const openResult = await store.open(
+    dbPath,
+    config.ftsTokenizer,
+    config.busyTimeoutMs
+  );
   if (!openResult.ok) {
     return { success: false, error: openResult.error.message };
   }

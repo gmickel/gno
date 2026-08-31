@@ -783,6 +783,7 @@ export function formatEmbed(
       {
         embedded: result.embedded,
         errors: result.errors,
+        contentionErrors: result.contentionErrors,
         duration: result.duration,
         model: result.model,
         searchAvailable: result.searchAvailable,
@@ -799,7 +800,11 @@ export function formatEmbed(
     return `Dry run: would embed ${result.embedded.toLocaleString()} chunks with model ${result.model}`;
   }
 
-  if (result.embedded === 0 && result.errors === 0) {
+  if (
+    result.embedded === 0 &&
+    result.errors === 0 &&
+    result.contentionErrors === 0
+  ) {
     return "No chunks need embedding. All up to date.";
   }
 

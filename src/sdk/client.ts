@@ -276,7 +276,9 @@ async function resolveClientState(
 
   const store = new SqliteAdapter();
   store.setConfigPath(configPath ?? "<inline-config>");
-  unwrapStore(await store.open(dbPath, config.ftsTokenizer));
+  unwrapStore(
+    await store.open(dbPath, config.ftsTokenizer, config.busyTimeoutMs)
+  );
   unwrapStore(await store.syncCollections(config.collections));
   unwrapStore(await store.syncContexts(config.contexts ?? []));
 

@@ -891,11 +891,14 @@ Options:
 - `--no-wait` - Do not wait; exit 4 immediately on contention
 
 **Concurrency**: One writer at a time on the shared index. `index`, `update`,
-and `embed` wait by default for the same lease MCP write tools use
-(`.mcp-write.lock` next to the database). Readers (`search`, `query`, `get`)
-always proceed. `--no-wait` opts out. External serialising wrappers are no
-longer required. A resident watch or embed flush can still briefly contend at
-the SQLite level; that window is absorbed by `busy_timeout` and retry.
+`embed`, `cleanup`, `vec sync`, `vec rebuild`, and
+`collection clear-embeddings` wait by default for the same lease MCP write
+tools use (`.mcp-write.lock` next to the database). Readers (`search`,
+`query`, `get`) always proceed. `--no-wait` opts out. External serialising
+wrappers are no longer required for CLI-vs-CLI and CLI-vs-MCP overlap. A
+resident watch or embed flush can still briefly contend at the SQLite level;
+that window is absorbed by `busy_timeout` and retry, and a deferred chunk is
+reported as contention, never as an embedding failure.
 
 **Incremental**: Both `gno index` and `gno update` are incremental. Files are tracked by SHA-256 hash. Only new or modified files are processed. Unchanged files are skipped instantly.
 

@@ -39,7 +39,11 @@ export async function collectionClearEmbeddings(
   }
 
   const store = new SqliteAdapter();
-  const openResult = await store.open(getIndexDbPath(), config.ftsTokenizer);
+  const openResult = await store.open(
+    getIndexDbPath(),
+    config.ftsTokenizer,
+    config.busyTimeoutMs
+  );
   if (!openResult.ok) {
     throw new CliError("RUNTIME", openResult.error.message);
   }

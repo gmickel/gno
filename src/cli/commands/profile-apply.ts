@@ -218,7 +218,11 @@ export async function runProjectProfileApplyCommand(
   try {
     await mkdir(dataDir, { recursive: true });
     store.setConfigPath(configPath);
-    const opened = await store.open(indexPath, startingConfig.ftsTokenizer);
+    const opened = await store.open(
+      indexPath,
+      startingConfig.ftsTokenizer,
+      startingConfig.busyTimeoutMs
+    );
     if (!opened.ok) {
       return {
         result: failedApplyResult("failed", discovery.summary, [

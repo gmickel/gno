@@ -130,6 +130,14 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
         console.error("[embed-scheduler] Embed failed:", result.error.message);
         return { embedded: 0, errors: 0 };
       }
+      if ((result.value.contentionErrors ?? 0) > 0) {
+        // Chunks deferred by SQLITE_BUSY stay in the backlog; retry the run
+        // instead of silently leaving embeddings a pass behind (fn-127 R6).
+        console.error(
+          `[embed-scheduler] ${result.value.contentionErrors} chunks deferred by index contention; rescheduling`
+        );
+        needsRerun = true;
+      }
       if (result.value.embedded > 0) onEmbedded?.(result.value);
       return result.value;
     } finally {

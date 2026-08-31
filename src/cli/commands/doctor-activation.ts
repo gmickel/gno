@@ -43,7 +43,11 @@ export async function buildDoctorActivation(
 
   const store = new SqliteAdapter();
   store.setConfigPath(options.configPath ?? "");
-  const opened = await store.open(dbPath, config.ftsTokenizer);
+  const opened = await store.open(
+    dbPath,
+    config.ftsTokenizer,
+    config.busyTimeoutMs
+  );
   if (!opened.ok) {
     return unavailableActivation(config);
   }

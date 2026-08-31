@@ -21,6 +21,8 @@ const HOLDER_SIDECAR_SUFFIX = ".holder.json";
 const LOCK_SLICE_MS = 5_000;
 const WAIT_PROGRESS_INTERVAL_MS = 15_000;
 const LOCK_WAIT_PATTERN = /^(?<value>\d+)(?<unit>s|m)?$/;
+/** Ceiling on any lease wait: a longer value is a misconfiguration, not a queue. */
+export const MAX_LOCK_WAIT_MS = 86_400_000;
 
 export type WriteLeaseResult =
   | { ok: true; release: () => Promise<void> }
@@ -90,7 +92,11 @@ export function parseLockWaitMs(raw: unknown): number | null {
     return null;
   }
   const unit = match.groups?.unit ?? "s";
-  return unit === "m" ? value * 60_000 : value * 1_000;
+  const ms = unit === "m" ? value * 60_000 : value * 1_000;
+  if (!Number.isSafeInteger(ms) || ms > MAX_LOCK_WAIT_MS) {
+    return null;
+  }
+  return ms;
 }
 
 export function formatWriteLeaseBusyMessage(contention: {
@@ -143,7 +149,11 @@ export async function acquireCliWriteLease(
   options: AcquireCliWriteLeaseOptions
 ): Promise<WriteLeaseResult> {
   const lockPath = writeLeasePath(options.dbPath);
-  const waitMs = options.noWait ? 0 : Math.max(0, options.waitMs);
+  // A non-finite or out-of-range wait must never loop unbounded (fn-127 review).
+  const requestedWaitMs = Number.isFinite(options.waitMs)
+    ? Math.min(Math.max(0, options.waitMs), MAX_LOCK_WAIT_MS)
+    : DEFAULT_LOCK_WAIT_MS;
+  const waitMs = options.noWait ? 0 : requestedWaitMs;
   const startedAt = Date.now();
   let lastProgressAt = -WAIT_PROGRESS_INTERVAL_MS;
 

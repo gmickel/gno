@@ -49,7 +49,11 @@ export async function cleanup(
   const store = new SqliteAdapter();
   const dbPath = getIndexDbPath();
 
-  const openResult = await store.open(dbPath, config.ftsTokenizer);
+  const openResult = await store.open(
+    dbPath,
+    config.ftsTokenizer,
+    config.busyTimeoutMs
+  );
   if (!openResult.ok) {
     return { success: false, error: openResult.error.message };
   }

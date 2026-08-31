@@ -409,7 +409,8 @@ export async function setupWithActivation(
     store.setConfigPath(configPath);
     const opened = await store.open(
       getIndexDbPath(indexName),
-      configResult.value.ftsTokenizer
+      configResult.value.ftsTokenizer,
+      configResult.value.busyTimeoutMs
     );
     if (!opened.ok) {
       return withProfileResult(
