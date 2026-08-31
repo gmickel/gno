@@ -114,9 +114,12 @@ import { buildUri, deriveDocid, stripUriIndex } from "../../app/constants";
 import {
   type Collection,
   type Context,
+  DEFAULT_BUSY_TIMEOUT_MS,
   type EgressPolicy,
   type EgressPolicySource,
   type FtsTokenizer,
+  MAX_BUSY_TIMEOUT_MS,
+  MIN_BUSY_TIMEOUT_MS,
   resolveConfiguredEgressPolicy,
 } from "../../config/types";
 import {
@@ -476,6 +479,19 @@ function isDatabaseLockedError(cause: unknown): boolean {
   );
 }
 
+/** Resolve a caller-supplied busy_timeout, defaulting rather than using 0. */
+function resolveBusyTimeoutMs(busyTimeoutMs?: number): number {
+  if (
+    busyTimeoutMs === undefined ||
+    !Number.isInteger(busyTimeoutMs) ||
+    busyTimeoutMs < MIN_BUSY_TIMEOUT_MS ||
+    busyTimeoutMs > MAX_BUSY_TIMEOUT_MS
+  ) {
+    return DEFAULT_BUSY_TIMEOUT_MS;
+  }
+  return busyTimeoutMs;
+}
+
 export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private db: Database | null = null;
   private dbPath = "";
@@ -492,7 +508,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
   async open(
     dbPath: string,
-    ftsTokenizer: FtsTokenizer
+    ftsTokenizer: FtsTokenizer,
+    busyTimeoutMs: number = DEFAULT_BUSY_TIMEOUT_MS
   ): Promise<StoreResult<MigrationResult>> {
     try {
       this.db = new Database(dbPath, { create: true });
@@ -501,7 +518,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       // Enable pragmas for performance and safety
       this.db.exec("PRAGMA foreign_keys = ON");
-      this.db.exec("PRAGMA busy_timeout = 5000");
+      this.db.exec(
+        `PRAGMA busy_timeout = ${resolveBusyTimeoutMs(busyTimeoutMs)}`
+      );
 
       // Keep WAL everywhere so readers can continue while a writer is active.
       // CI still relaxes fsync/temp-store for speed, but MEMORY journal mode
@@ -558,12 +577,17 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   }
 
   /** Open an existing index with SQLite enforced query-only semantics. */
-  openReadOnly(dbPath: string): StoreResult<void> {
+  openReadOnly(
+    dbPath: string,
+    busyTimeoutMs: number = DEFAULT_BUSY_TIMEOUT_MS
+  ): StoreResult<void> {
     try {
       this.db = new Database(dbPath, { readonly: true, strict: true });
       this.dbPath = dbPath;
       this.db.exec("PRAGMA query_only = ON");
-      this.db.exec("PRAGMA busy_timeout = 5000");
+      this.db.exec(
+        `PRAGMA busy_timeout = ${resolveBusyTimeoutMs(busyTimeoutMs)}`
+      );
       this.contextGeneration += 1;
       return ok(undefined);
     } catch (cause) {

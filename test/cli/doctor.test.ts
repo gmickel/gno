@@ -9,6 +9,9 @@ import {
   checkRetrievalActivation,
 } from "../../src/cli/commands/doctor-activation";
 import { runCli } from "../../src/cli/run";
+import { getConfigPaths } from "../../src/config";
+import { loadConfigFromPath } from "../../src/config/loader";
+import { saveConfigToPath } from "../../src/config/saver";
 import { safeRm } from "../helpers/cleanup";
 
 let stdoutData = "";
@@ -157,6 +160,58 @@ describe("gno doctor activation exit semantics", () => {
       "Semantic retrieval remains separate (vector_unavailable).",
     ]);
     expect(check.details?.join(" ")).not.toContain("pending");
+  });
+
+  test("reports the live sqlite busy_timeout in human and json output", async () => {
+    const emptyDir = join(testDir, "empty");
+    await mkdir(emptyDir, { recursive: true });
+    expect((await cli("init", emptyDir, "--name", "empty")).code).toBe(0);
+
+    const jsonResult = await cli("doctor", "--json");
+    const parsed = JSON.parse(jsonResult.stdout) as {
+      checks: Array<{ name: string; status: string; message: string }>;
+    };
+    expect(parsed.checks).toContainEqual(
+      expect.objectContaining({
+        name: "busy-timeout",
+        status: "ok",
+        message: expect.stringContaining("60000"),
+      })
+    );
+
+    const humanResult = await cli("doctor");
+    expect(humanResult.stdout).toContain("busy-timeout");
+    expect(humanResult.stdout).toContain("60000");
+  });
+
+  test("doctor busy_timeout reflects the configured pragma, not a config echo", async () => {
+    const notesDir = join(testDir, "notes");
+    await mkdir(notesDir, { recursive: true });
+    await Bun.write(join(notesDir, "note.md"), "# Note\nhello\n");
+    expect((await cli("init", notesDir, "--name", "notes")).code).toBe(0);
+
+    const configPath = getConfigPaths().configFile;
+    const loaded = await loadConfigFromPath(configPath);
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    const saved = await saveConfigToPath(
+      { ...loaded.value, busyTimeoutMs: 45_000 },
+      configPath
+    );
+    expect(saved.ok).toBe(true);
+
+    const jsonResult = await cli("doctor", "--json");
+    const parsed = JSON.parse(jsonResult.stdout) as {
+      checks: Array<{ name: string; status: string; message: string }>;
+    };
+    const check = parsed.checks.find(({ name }) => name === "busy-timeout");
+    expect(check).toMatchObject({
+      name: "busy-timeout",
+      status: "ok",
+      message: "busy_timeout 45000ms",
+    });
   });
 
   test("keeps the store open until a healthy lexical proof completes", async () => {
