@@ -21,9 +21,13 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { Collection, Context } from "../../src/config/types";
 import type { ChunkInput, DocumentInput } from "../../src/store/types";
 
+import {
+  type Collection,
+  type Context,
+  DEFAULT_BUSY_TIMEOUT_MS,
+} from "../../src/config/types";
 import { getEmbeddingFingerprint } from "../../src/embed/fingerprint";
 import { SqliteAdapter } from "../../src/store";
 import { safeRm } from "../helpers/cleanup";
@@ -70,6 +74,43 @@ describe("SqliteAdapter", () => {
       expect(result.value.applied).toContain(4);
       expect(result.value.currentVersion).toBe(26);
       expect(result.value.ftsTokenizer).toBe("unicode61");
+    });
+
+    test("applies default busy_timeout of 60000ms", async () => {
+      const result = await adapter.open(dbPath, "unicode61");
+      expect(result.ok).toBe(true);
+
+      const timeout = adapter
+        .getRawDb()
+        .query<{ timeout: number }, []>("PRAGMA busy_timeout")
+        .get()?.timeout;
+      expect(timeout).toBe(DEFAULT_BUSY_TIMEOUT_MS);
+    });
+
+    test("applies configured busy_timeout", async () => {
+      const result = await adapter.open(dbPath, "unicode61", 12_000);
+      expect(result.ok).toBe(true);
+
+      const timeout = adapter
+        .getRawDb()
+        .query<{ timeout: number }, []>("PRAGMA busy_timeout")
+        .get()?.timeout;
+      expect(timeout).toBe(12_000);
+    });
+
+    test("openReadOnly applies configured busy_timeout", async () => {
+      const created = await adapter.open(dbPath, "unicode61", 45_000);
+      expect(created.ok).toBe(true);
+      await adapter.close();
+
+      const readonly = adapter.openReadOnly(dbPath, 45_000);
+      expect(readonly.ok).toBe(true);
+
+      const timeout = adapter
+        .getRawDb()
+        .query<{ timeout: number }, []>("PRAGMA busy_timeout")
+        .get()?.timeout;
+      expect(timeout).toBe(45_000);
     });
 
     test("skips migrations on reopened database", async () => {

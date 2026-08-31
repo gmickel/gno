@@ -7,6 +7,7 @@
 import {
   CONFIG_VERSION,
   type Config,
+  DEFAULT_BUSY_TIMEOUT_MS,
   DEFAULT_FTS_TOKENIZER,
   PROJECT_AFFINITY_MAX_CONTRIBUTION,
 } from "./types";
@@ -19,6 +20,7 @@ export function createDefaultConfig(): Config {
   return {
     version: CONFIG_VERSION,
     ftsTokenizer: DEFAULT_FTS_TOKENIZER,
+    busyTimeoutMs: DEFAULT_BUSY_TIMEOUT_MS,
     collections: [],
     contexts: [],
     contentTypes: [],

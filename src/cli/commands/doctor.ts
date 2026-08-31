@@ -14,7 +14,12 @@ import type { Config } from "../../config/types";
 import type { ActivationStatus } from "../../core/activation-status";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
-import { getConfigPaths, isInitialized, loadConfig } from "../../config";
+import {
+  DEFAULT_BUSY_TIMEOUT_MS,
+  getConfigPaths,
+  isInitialized,
+  loadConfig,
+} from "../../config";
 import { isConnectorActivationComplete } from "../../core/activation-connector-health";
 import { getCodeChunkingStatus } from "../../ingestion/chunker";
 import { ModelCache } from "../../llm/cache";
@@ -140,6 +145,64 @@ async function checkDatabase(indexName?: string): Promise<DoctorCheck> {
   }
 }
 
+/**
+ * Report the live SQLite busy_timeout (PRAGMA), not the config echo.
+ */
+async function checkBusyTimeout(
+  config: Config,
+  indexName?: string
+): Promise<DoctorCheck> {
+  const dbPath = getIndexDbPath(indexName);
+
+  try {
+    await stat(dbPath);
+  } catch {
+    return {
+      name: "busy-timeout",
+      status: "warn",
+      message: "Database not found. Run: gno init",
+    };
+  }
+
+  const store = new SqliteAdapter();
+  const paths = getConfigPaths();
+  store.setConfigPath(paths.configFile);
+
+  const openResult = await store.open(
+    dbPath,
+    config.ftsTokenizer,
+    config.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS
+  );
+  if (!openResult.ok) {
+    return {
+      name: "busy-timeout",
+      status: "warn",
+      message: `busy_timeout unavailable: ${openResult.error.message}`,
+    };
+  }
+
+  try {
+    const timeout = store
+      .getRawDb()
+      .query<{ timeout: number }, []>("PRAGMA busy_timeout")
+      .get()?.timeout;
+    if (timeout === undefined) {
+      return {
+        name: "busy-timeout",
+        status: "warn",
+        message: "PRAGMA busy_timeout returned no value",
+      };
+    }
+    return {
+      name: "busy-timeout",
+      status: "ok",
+      message: `busy_timeout ${timeout}ms`,
+    };
+  } finally {
+    await store.close();
+  }
+}
+
 async function checkModels(config: Config): Promise<DoctorCheck[]> {
   const checks: DoctorCheck[] = [];
   const cache = new ModelCache(getModelsCachePath());
@@ -209,7 +272,11 @@ async function checkEmbeddingFingerprints(
   const paths = getConfigPaths();
   store.setConfigPath(paths.configFile);
 
-  const openResult = await store.open(dbPath, config.ftsTokenizer);
+  const openResult = await store.open(
+    dbPath,
+    config.ftsTokenizer,
+    config.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS
+  );
   if (!openResult.ok) {
     return {
       name: "embedding-fingerprint",
@@ -526,6 +593,9 @@ export async function doctor(
   // SQLite extension checks
   const sqliteChecks = await checkSqliteExtensions();
   checks.push(...sqliteChecks);
+
+  // Live busy_timeout from the open index (not the config echo)
+  checks.push(await checkBusyTimeout(config, options.indexName));
 
   // Code chunking capability
   checks.push(checkCodeChunking());

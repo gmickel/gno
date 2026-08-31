@@ -48,6 +48,17 @@ export type FtsTokenizer = (typeof FTS_TOKENIZERS)[number];
 /** Default FTS tokenizer - snowball english for multilingual stemming */
 export const DEFAULT_FTS_TOKENIZER: FtsTokenizer = "snowball english";
 
+/**
+ * SQLite `busy_timeout` in milliseconds. Writers wait this long for a lock
+ * before failing with SQLITE_BUSY. Matched to real embedding-pass duration
+ * rather than a fail-fast 5s floor.
+ */
+export const DEFAULT_BUSY_TIMEOUT_MS = 60_000;
+export const MIN_BUSY_TIMEOUT_MS = 1_000;
+export const MAX_BUSY_TIMEOUT_MS = 600_000;
+const BUSY_TIMEOUT_RANGE_MESSAGE =
+  "busyTimeoutMs must be an integer between 1000 and 600000";
+
 /** Collection-owned boundary for where indexed content may travel. */
 export const EGRESS_POLICIES = ["local_only", "lan", "remote"] as const;
 export const EgressPolicySchema = z.enum(EGRESS_POLICIES);
@@ -502,6 +513,21 @@ export const ConfigSchema = z.object({
   /** FTS tokenizer (immutable after init) */
   ftsTokenizer: z.enum(FTS_TOKENIZERS).default(DEFAULT_FTS_TOKENIZER),
 
+  /**
+   * SQLite busy_timeout in milliseconds. Default 60000. Range 1000-600000.
+   * Raise for long embedding passes on slow disks.
+   */
+  busyTimeoutMs: z
+    .number()
+    .refine(
+      (value) =>
+        Number.isInteger(value) &&
+        value >= MIN_BUSY_TIMEOUT_MS &&
+        value <= MAX_BUSY_TIMEOUT_MS,
+      { message: BUSY_TIMEOUT_RANGE_MESSAGE }
+    )
+    .default(DEFAULT_BUSY_TIMEOUT_MS),
+
   /** Optional terminal hyperlink editor URI template */
   editorUriTemplate: z.string().min(1).optional(),
 
@@ -546,8 +572,13 @@ export const ConfigSchema = z.object({
     .optional(),
 });
 
-export type Config = Omit<z.infer<typeof ConfigSchema>, "contentTypes"> & {
+export type Config = Omit<
+  z.infer<typeof ConfigSchema>,
+  "contentTypes" | "busyTimeoutMs"
+> & {
   contentTypes?: ContentTypeConfig[];
+  /** Present after schema parse; omitted on hand-built Config objects. */
+  busyTimeoutMs?: number;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

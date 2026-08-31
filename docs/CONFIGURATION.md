@@ -19,6 +19,10 @@ version: "1.0"
 # FTS tokenizer (set at init, cannot change)
 ftsTokenizer: snowball english
 
+# SQLite busy_timeout in ms (default 60000; range 1000-600000).
+# Raise for long embedding passes on slow disks.
+# busyTimeoutMs: 60000
+
 # Trusted local CLI project affinity
 projectAffinity:
   enabled: true
@@ -953,6 +957,23 @@ Use `unicode61` for language-neutral Unicode tokenization without stemming.
 # Initialize with unicode61 (no stemming)
 gno init --tokenizer unicode61
 ```
+
+## SQLite busy timeout
+
+`busyTimeoutMs` sets SQLite's `busy_timeout` pragma: how long a connection waits
+for a lock before failing with `SQLITE_BUSY`. The default is `60000` (60
+seconds). Valid values are integers from `1000` to `600000` milliseconds.
+
+Raise this when embedding passes run for tens of seconds to minutes on slow
+disks, so a brief overlap with another writer queues instead of failing in 5
+seconds. Invalid values are rejected at config load.
+
+```yaml
+busyTimeoutMs: 120000
+```
+
+Inspect the live value (the pragma on the open database, not the config echo)
+with `gno doctor` or `gno doctor --json`.
 
 ## Environment Variables
 
