@@ -37,6 +37,11 @@ export interface EmbedBacklogDeps {
 export interface EmbedBacklogResult {
   embedded: number;
   errors: number;
+  /**
+   * Chunks whose persistence failed after SQLITE_BUSY/SQLITE_LOCKED retries.
+   * Distinct from `errors` (embedding-provider failures). Default 0.
+   */
+  contentionErrors?: number;
   /** Error message if vec index sync failed (embeddings stored, but search may be stale) */
   syncError?: string;
 }
@@ -66,6 +71,7 @@ export async function embedBacklog(
 
   let embedded = 0;
   let errors = 0;
+  let contentionErrors = 0;
   let cursor: Cursor | undefined;
   const retryQueue = new Map<string, { item: BacklogItem; attempts: number }>();
 
@@ -107,6 +113,7 @@ export async function embedBacklog(
 
       embedded += retryResult.embedded;
       errors += retryResult.errors;
+      contentionErrors += retryResult.contentionErrors;
       retryEmbedded += retryResult.embedded;
 
       const retryByKey = new Set(
@@ -165,6 +172,7 @@ export async function embedBacklog(
       });
       embedded += batchStoreResult.embedded;
       errors += batchStoreResult.errors;
+      contentionErrors += batchStoreResult.contentionErrors;
       enqueueRetryItems(batchStoreResult.retryItems, 1);
 
       if (embedded > beforeEmbedded) {
@@ -190,7 +198,7 @@ export async function embedBacklog(
       }
     }
 
-    return ok({ embedded, errors, syncError });
+    return ok({ embedded, errors, contentionErrors, syncError });
   } catch (e) {
     return err(
       "INTERNAL",
