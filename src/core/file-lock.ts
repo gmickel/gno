@@ -12,7 +12,6 @@ import { dirname } from "node:path";
 
 import { MCP_ERRORS } from "./errors";
 const DEFAULT_TIMEOUT_MS = 5000;
-const HOLD_SECONDS = 60 * 60 * 24 * 365;
 const READY_TOKEN = "READY";
 const SQLITE_LOCK_SUFFIX = ".sqlite";
 const MAX_BUSY_TIMEOUT_MS = 60_000;
@@ -67,7 +66,9 @@ function resolveLockCommand(): LockCommand | null {
 }
 
 function buildHoldCommand(): string {
-  return `printf '${READY_TOKEN}\\n'; exec sleep ${HOLD_SECONDS}`;
+  // Block on stdin so parent death (including SIGKILL) closes the pipe,
+  // the holder exits, and the OS advisory lock is released.
+  return `printf '${READY_TOKEN}\\n'; read _`;
 }
 
 async function waitForReady(
@@ -181,10 +182,12 @@ export async function acquireWriteLock(
     [cmd.path, ...cmd.args(lockPath, timeoutSeconds, holdCommand)],
     {
       detached: true,
+      stdin: "pipe",
       stdout: "pipe",
       stderr: "pipe",
     }
   );
+  const stdin = proc.stdin;
 
   const ready = await waitForReady(proc);
   if (!ready) {
@@ -193,7 +196,16 @@ export async function acquireWriteLock(
   }
 
   return {
-    release: () => terminateLockProcess(proc),
+    release: async () => {
+      if (stdin && typeof stdin !== "number") {
+        try {
+          await stdin.end();
+        } catch {
+          // Ignore: terminateLockProcess still reaps the holder.
+        }
+      }
+      await terminateLockProcess(proc);
+    },
   };
 }
 

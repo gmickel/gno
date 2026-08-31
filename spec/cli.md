@@ -15,6 +15,7 @@ This document specifies the command-line interface for GNO, a local knowledge in
 | 1    | VALIDATION  | Validation or usage error (bad args, missing required params) |
 | 2    | RUNTIME     | Runtime failure (IO, DB, conversion, model, network)          |
 | 3    | NOT_RUNNING | `--status`/`--stop` found no live matching process            |
+| 4    | BUSY        | Write-lease contention on `index` / `update` / `embed`        |
 
 ### Global Flags
 
@@ -957,7 +958,7 @@ Sync files from disk into the index (ingestion without embedding).
 **Synopsis:**
 
 ```bash
-gno update [--git-pull] [--json]
+gno update [--git-pull] [--json] [--lock-wait <duration>] [--no-wait]
 ```
 
 **Options:**
@@ -965,6 +966,10 @@ gno update [--git-pull] [--json]
 |--------|------|-------------|
 | `--git-pull` | boolean | Run `git pull` in git repositories before scanning |
 | `--json` | boolean | Emit the complete deterministic sync result on stdout |
+| `--lock-wait <duration>` | duration | How long to wait for the index write lease (default: `120s`). Accepts `120`, `120s`, or `2m`. |
+| `--no-wait` | boolean | Do not wait; fail immediately if another writer holds the lease |
+
+**Concurrency:** One writer at a time on the shared index database. `update` waits up to `--lock-wait` for the lease (the same `.mcp-write.lock` MCP write tools use). `--no-wait` opts out. Reads (`search`, `query`, `get`) never take the lease. External serialising wrappers are no longer required.
 
 **Behavior:**
 
@@ -986,6 +991,7 @@ record failure was reported. Human progress and diagnostics remain on stderr.
 
 - 0: Success (conversion warnings do not affect exit code)
 - 2: DB failure or critical IO error
+- 4: Write lease busy (contention after `--lock-wait`, or immediately with `--no-wait`)
 
 ---
 
@@ -996,7 +1002,7 @@ Build or update the index end-to-end (update + embed).
 **Synopsis:**
 
 ```bash
-gno index [collection] [--no-embed] [--models-pull] [--git-pull] [--json] [--yes]
+gno index [collection] [--no-embed] [--models-pull] [--git-pull] [--json] [--yes] [--lock-wait <duration>] [--no-wait]
 ```
 
 **Options:**
@@ -1008,24 +1014,29 @@ gno index [collection] [--no-embed] [--models-pull] [--git-pull] [--json] [--yes
 | `--git-pull` | boolean | Run `git pull` in git repositories |
 | `--json` | boolean | Emit the complete deterministic sync and embedding result on stdout |
 | `--yes` | boolean | Accept defaults, no prompts |
+| `--lock-wait <duration>` | duration | How long to wait for the index write lease (default: `120s`). Accepts `120`, `120s`, or `2m`. |
+| `--no-wait` | boolean | Do not wait; fail immediately if another writer holds the lease |
 
 **Behavior:**
 
 - Runs `update` then `embed` by default
 - With `--no-embed`, runs `update` only
+- Waits by default for the shared write lease; `--no-wait` fails immediately with exit 4
 
 **JSON output:** Emits `{ syncResult, embedSkipped, embedResult? }`.
 `syncResult.collections[].files[].recordImport`, when present, conforms to
 [`record-import@1.0`](./output-schemas/record-import.schema.json) with the same
 deterministic ordering, bounds, truncation disclosure, and partial-snapshot
 warnings as `gno update --json`. Human progress and diagnostics remain on
-stderr.
+stderr. On lease timeout, stdout is one object `{ success: false, error, contention }`
+and the process exits 4.
 
 **Exit Codes:**
 
 - 0: Success
-- 1: Invalid collection name
+- 1: Invalid collection name or invalid `--lock-wait`
 - 2: DB or model failure
+- 4: Write lease busy (contention, not corruption)
 
 **Examples:**
 
@@ -1060,25 +1071,30 @@ memory pressure prevents creating the full pool.
 **Synopsis:**
 
 ```bash
-gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--json]
+gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--json] [--lock-wait <duration>] [--no-wait]
 ```
 
 **Options:**
 
-| Option         | Type    | Default | Description                                   |
-| -------------- | ------- | ------- | --------------------------------------------- |
-| `--force`      | boolean | false   | Re-embed all chunks (ignore existing vectors) |
-| `--model`      | string  | config  | Override embedding model URI                  |
-| `--batch-size` | integer | 32      | Chunks per batch                              |
-| `--dry-run`    | boolean | false   | Show what would be embedded without doing it  |
-| `--yes`, `-y`  | boolean | false   | Skip confirmation prompts                     |
-| `--json`       | boolean | false   | Output result as JSON                         |
+| Option                   | Type     | Default | Description                                                                 |
+| ------------------------ | -------- | ------- | --------------------------------------------------------------------------- |
+| `--force`                | boolean  | false   | Re-embed all chunks (ignore existing vectors)                               |
+| `--model`                | string   | config  | Override embedding model URI                                                |
+| `--batch-size`           | integer  | 32      | Chunks per batch                                                            |
+| `--dry-run`              | boolean  | false   | Show what would be embedded without doing it                                |
+| `--yes`, `-y`            | boolean  | false   | Skip confirmation prompts                                                   |
+| `--json`                 | boolean  | false   | Output result as JSON                                                       |
+| `--lock-wait <duration>` | duration | `120s`  | How long to wait for the index write lease. Accepts `120`, `120s`, or `2m`. |
+| `--no-wait`              | boolean  | false   | Do not wait; fail immediately if another writer holds the lease             |
+
+Waits by default for the same write lease as `index` / `update` / MCP writers. `--no-wait` opts out.
 
 **Exit Codes:**
 
 - 0: Success
-- 1: User cancelled
+- 1: User cancelled or invalid `--lock-wait`
 - 2: Model not available or embedding failure
+- 4: Write lease busy (contention, not corruption)
 
 **JSON Output:**
 
@@ -3615,7 +3631,11 @@ Errors are written to stderr. With `--json` flag, errors are also returned as:
 }
 ```
 
-Error codes match exit codes: `VALIDATION` (exit 1), `RUNTIME` (exit 2), `NOT_RUNNING` (exit 3).
+Error codes match exit codes: `VALIDATION` (exit 1), `RUNTIME` (exit 2), `NOT_RUNNING` (exit 3), `BUSY` (exit 4).
+
+Write-lease contention on `index` / `update` / `embed` does not use the generic envelope. Text mode writes the dedicated "index is busy" message to stderr; `--json` writes `{ success: false, error, contention }` to stdout. Both exit 4. `gno audit` also uses exit 4 for findings.
+
+**`NOT_RUNNING` is not an error envelope.**
 
 **`NOT_RUNNING` is not an error envelope.** `gno serve|daemon --status --json` returns a `process-status`-shaped payload on stdout with exit 3 when no live matching process is found (it reports observable state, not failure). `--stop` exits 3 silently when there is nothing to stop and does not accept `--json`. The error envelope above is reserved for `VALIDATION` and `RUNTIME` failures where the command could not produce its structured output at all.
 

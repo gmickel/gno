@@ -6,6 +6,11 @@
  */
 
 import {
+  type CliWriteLeaseOptions,
+  type WriteLeaseContention,
+  withCliWriteLease,
+} from "../../core/write-lease";
+import {
   defaultSyncService,
   type SyncResult,
   withContentTypeRules,
@@ -15,7 +20,7 @@ import { formatSyncResultLines, initStore } from "./shared";
 /**
  * Options for index command.
  */
-export interface IndexOptions {
+export interface IndexOptions extends CliWriteLeaseOptions {
   /** Override config path */
   configPath?: string;
   /** Index name */
@@ -46,64 +51,67 @@ export type IndexResult =
       embedSkipped: boolean;
       embedResult?: { embedded: number; errors: number; duration: number };
     }
-  | { success: false; error: string };
+  | { success: false; error: string; contention?: WriteLeaseContention };
 
 /**
  * Execute gno index command.
  */
 export async function index(options: IndexOptions = {}): Promise<IndexResult> {
-  const initResult = await initStore({
-    configPath: options.configPath,
-    indexName: options.indexName,
-    collection: options.collection,
-  });
-  if (!initResult.ok) {
-    return { success: false, error: initResult.error };
-  }
-
-  const { store, collections, config } = initResult;
-
-  try {
-    // Run sync service (update phase)
-    const syncResult = await defaultSyncService.syncAll(
-      collections,
-      store,
-      withContentTypeRules(
-        {
-          gitPull: options.gitPull,
-          runUpdateCmd: true,
-        },
-        config
-      )
-    );
-
-    // Embedding phase
-    const embedSkipped = options.noEmbed ?? false;
-    let embedResult:
-      | { embedded: number; errors: number; duration: number }
-      | undefined;
-
-    if (!embedSkipped) {
-      const { embed } = await import("./embed");
-      const result = await embed({
-        configPath: options.configPath,
-        indexName: options.indexName,
-        collection: options.collection,
-        verbose: options.verbose,
-      });
-      if (result.success) {
-        embedResult = {
-          embedded: result.embedded,
-          errors: result.errors,
-          duration: result.duration,
-        };
-      }
+  return await withCliWriteLease(options, async () => {
+    const initResult = await initStore({
+      configPath: options.configPath,
+      indexName: options.indexName,
+      collection: options.collection,
+    });
+    if (!initResult.ok) {
+      return { success: false, error: initResult.error };
     }
 
-    return { success: true, syncResult, embedSkipped, embedResult };
-  } finally {
-    await store.close();
-  }
+    const { store, collections, config } = initResult;
+
+    try {
+      // Run sync service (update phase)
+      const syncResult = await defaultSyncService.syncAll(
+        collections,
+        store,
+        withContentTypeRules(
+          {
+            gitPull: options.gitPull,
+            runUpdateCmd: true,
+          },
+          config
+        )
+      );
+
+      // Embedding phase
+      const embedSkipped = options.noEmbed ?? false;
+      let embedResult:
+        | { embedded: number; errors: number; duration: number }
+        | undefined;
+
+      if (!embedSkipped) {
+        const { embed } = await import("./embed");
+        const result = await embed({
+          configPath: options.configPath,
+          indexName: options.indexName,
+          collection: options.collection,
+          verbose: options.verbose,
+          skipWriteLease: true,
+        });
+        if (result.success) {
+          embedResult = {
+            embedded: result.embedded,
+            errors: result.errors,
+            duration: result.duration,
+          };
+        }
+      }
+
+      return { success: true, syncResult, embedSkipped, embedResult };
+    } finally {
+      await store.close();
+    }
+  });
 }
 
 /**

@@ -790,6 +790,7 @@ Generate embeddings for all collections or one collection.
 gno embed
 gno embed travel
 gno embed --collection travel
+gno embed --no-wait          # Exit 4 immediately if a writer holds the lease
 ```
 
 If you only want one collection to catch up after a model change, use the
@@ -833,12 +834,15 @@ Sync files from disk into the index (BM25/FTS only, no embeddings). Incremental 
 gno update
 gno update --git-pull       # Pull git repos first
 gno update --json           # Complete deterministic sync receipt
+gno update --no-wait        # Fail immediately if another writer holds the lease
 ```
 
 Options:
 
 - `--git-pull` - Run `git pull` in git repositories
 - `--json` - Emit the complete sync result on stdout
+- `--lock-wait <duration>` - How long to wait for the write lease (default `120s`; `120`, `120s`, or `2m`)
+- `--no-wait` - Do not wait; exit 4 immediately on contention
 
 Use `gno update` when you only need keyword search, or when you want to quickly sync changes and run `gno embed` separately.
 
@@ -870,6 +874,8 @@ gno index notes             # Index specific collection
 gno index --no-embed        # Skip embedding (same as gno update)
 gno index --git-pull        # Pull git repos first
 gno index --json            # Sync receipt plus embedding outcome
+gno index --lock-wait 5m    # Wait longer if another writer is running
+gno index --no-wait         # Fail immediately on contention (exit 4)
 ```
 
 Options:
@@ -881,6 +887,15 @@ Options:
 - `--json` - Emit `{ syncResult, embedSkipped, embedResult? }` on stdout;
   logical-record receipts live at
   `syncResult.collections[].files[].recordImport`
+- `--lock-wait <duration>` - How long to wait for the write lease (default `120s`; `120`, `120s`, or `2m`)
+- `--no-wait` - Do not wait; exit 4 immediately on contention
+
+**Concurrency**: One writer at a time on the shared index. `index`, `update`,
+and `embed` wait by default for the same lease MCP write tools use
+(`.mcp-write.lock` next to the database). Readers (`search`, `query`, `get`)
+always proceed. `--no-wait` opts out. External serialising wrappers are no
+longer required. A resident watch or embed flush can still briefly contend at
+the SQLite level; that window is absorbed by `busy_timeout` and retry.
 
 **Incremental**: Both `gno index` and `gno update` are incremental. Files are tracked by SHA-256 hash. Only new or modified files are processed. Unchanged files are skipped instantly.
 
@@ -899,6 +914,8 @@ contexts.
 ```bash
 gno embed
 gno embed notes
+gno embed --lock-wait 2m
+gno embed --no-wait
 ```
 
 ## Private Retrieval Trace Commands
@@ -1663,8 +1680,9 @@ gno search "test" --json | jq '.results[].uri'
 | 1    | Validation error (bad input)                                         |
 | 2    | Runtime error (IO, DB, model)                                        |
 | 3    | `NOT_RUNNING` — `--status` / `--stop` found no live matching process |
+| 4    | `BUSY` — `index` / `update` / `embed` write-lease contention         |
 
-Exit code `3` is reserved for `gno serve --status` / `--stop` and `gno daemon --status` / `--stop`. See [Long-Running Processes](#long-running-processes) below for the management contract.
+Exit code `3` is reserved for `gno serve --status` / `--stop` and `gno daemon --status` / `--stop`. See [Long-Running Processes](#long-running-processes) below for the management contract. Exit code `4` on mutating index commands means another writer holds the lease — retry when it finishes, or raise `--lock-wait`. `gno audit` also uses `4` when the report contains findings.
 
 ## Long-Running Processes
 

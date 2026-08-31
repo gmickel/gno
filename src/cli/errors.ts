@@ -1,6 +1,6 @@
 /**
  * CLI error model aligned to spec.
- * Exit codes: 0=success, 1=validation, 2=runtime
+ * Exit codes: 0=success, 1=validation, 2=runtime, 3=not-running, 4=busy/audit-findings, 5=audit-partial
  *
  * @module src/cli/errors
  */
@@ -13,6 +13,7 @@ export type CliErrorCode =
   | "VALIDATION"
   | "RUNTIME"
   | "NOT_RUNNING"
+  | "BUSY"
   | "AUDIT_FINDINGS"
   | "AUDIT_PARTIAL";
 
@@ -74,7 +75,7 @@ export function exitCodeFor(err: CliError): 1 | 2 | 3 | 4 | 5 {
   if (err.code === "NOT_RUNNING") {
     return 3;
   }
-  if (err.code === "AUDIT_FINDINGS") return 4;
+  if (err.code === "BUSY" || err.code === "AUDIT_FINDINGS") return 4;
   if (err.code === "AUDIT_PARTIAL") return 5;
   return 2;
 }

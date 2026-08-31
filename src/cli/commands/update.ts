@@ -6,6 +6,11 @@
  */
 
 import {
+  type CliWriteLeaseOptions,
+  type WriteLeaseContention,
+  withCliWriteLease,
+} from "../../core/write-lease";
+import {
   defaultSyncService,
   type SyncResult,
   withContentTypeRules,
@@ -15,7 +20,7 @@ import { formatSyncResultLines, initStore } from "./shared";
 /**
  * Options for update command.
  */
-export interface UpdateOptions {
+export interface UpdateOptions extends CliWriteLeaseOptions {
   /** Override config path */
   configPath?: string;
   /** Index name */
@@ -33,7 +38,7 @@ export interface UpdateOptions {
  */
 export type UpdateResult =
   | { success: true; result: SyncResult }
-  | { success: false; error: string };
+  | { success: false; error: string; contention?: WriteLeaseContention };
 
 /**
  * Execute gno update command.
@@ -41,34 +46,36 @@ export type UpdateResult =
 export async function update(
   options: UpdateOptions = {}
 ): Promise<UpdateResult> {
-  const initResult = await initStore({
-    configPath: options.configPath,
-    indexName: options.indexName,
+  return await withCliWriteLease(options, async () => {
+    const initResult = await initStore({
+      configPath: options.configPath,
+      indexName: options.indexName,
+    });
+    if (!initResult.ok) {
+      return { success: false, error: initResult.error };
+    }
+
+    const { store, collections, config } = initResult;
+
+    try {
+      // Run sync service
+      const result = await defaultSyncService.syncAll(
+        collections,
+        store,
+        withContentTypeRules(
+          {
+            gitPull: options.gitPull,
+            runUpdateCmd: true,
+          },
+          config
+        )
+      );
+
+      return { success: true, result };
+    } finally {
+      await store.close();
+    }
   });
-  if (!initResult.ok) {
-    return { success: false, error: initResult.error };
-  }
-
-  const { store, collections, config } = initResult;
-
-  try {
-    // Run sync service
-    const result = await defaultSyncService.syncAll(
-      collections,
-      store,
-      withContentTypeRules(
-        {
-          gitPull: options.gitPull,
-          runUpdateCmd: true,
-        },
-        config
-      )
-    );
-
-    return { success: true, result };
-  } finally {
-    await store.close();
-  }
 }
 
 /**
