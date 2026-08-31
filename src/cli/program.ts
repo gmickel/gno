@@ -2932,22 +2932,26 @@ function wireManagementCommands(program: Command): void {
   );
 
   // cleanup - Clean stale data
-  program
-    .command("cleanup")
-    .description("Clean orphaned data from index")
-    .action(async () => {
-      const { cleanup, formatCleanup } = await import("./commands/cleanup");
-      const result = await withCliWriteLease(
-        { indexName: getGlobals().index },
-        () => cleanup({ indexName: getGlobals().index })
-      );
-      throwIfWriteLeaseBusy(result, false);
+  addWriteLeaseFlags(
+    program.command("cleanup").description("Clean orphaned data from index")
+  ).action(async (cmdOpts: Record<string, unknown>) => {
+    const { cleanup, formatCleanup } = await import("./commands/cleanup");
+    const lease = parseWriteLeaseFlags(cmdOpts);
+    const result = await withCliWriteLease(
+      {
+        indexName: getGlobals().index,
+        lockWaitMs: lease.lockWaitMs,
+        noWait: lease.noWait,
+      },
+      () => cleanup({ indexName: getGlobals().index })
+    );
+    throwIfWriteLeaseBusy(result, false);
 
-      if (!result.success) {
-        throw new CliError("RUNTIME", result.error ?? "Cleanup failed");
-      }
-      process.stdout.write(`${formatCleanup(result)}\n`);
-    });
+    if (!result.success) {
+      throw new CliError("RUNTIME", result.error ?? "Cleanup failed");
+    }
+    process.stdout.write(`${formatCleanup(result)}\n`);
+  });
 
   // reset - Reset GNO to fresh state
   program
