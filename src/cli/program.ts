@@ -364,6 +364,7 @@ export function createProgram(): Command {
   wireKnowledgeDeltaCommands(program);
   wireMcpCommand(program);
   wireSkillCommands(program);
+  wireAgentsCommands(program);
   wireDaemonCommand(program);
   wireServeCommand(program);
   wireCompletionCommand(program);
@@ -3317,6 +3318,109 @@ function wireSkillCommands(program: Command): void {
           | "all",
         json: Boolean(cmdOpts.json),
       });
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Agents Commands (install, update, verify, uninstall)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function wireAgentsCommands(program: Command): void {
+  const agentsCmd = program
+    .command("agents")
+    .description(
+      "Manage the GNO protocol block in global harness instruction files"
+    );
+
+  const targetDescription =
+    "target harness (claude, codex, cursor, opencode, grok, hermes, openclaw, all)";
+
+  const collectExtraDir = (value: string, previous: string[]): string[] => [
+    ...previous,
+    value,
+  ];
+
+  const parseCommonOpts = async (cmdOpts: Record<string, unknown>) => {
+    const { parseTargetOption } = await import("./commands/agents/commands.js");
+    return {
+      target: parseTargetOption((cmdOpts.target as string) ?? "all"),
+      extraDirs: (cmdOpts.extraDir as string[] | undefined) ?? [],
+      dryRun: Boolean(cmdOpts.dryRun),
+      // The root program also defines a global --json and may consume the
+      // flag; leave undefined here so the runner falls back to globals.
+      json: cmdOpts.json ? true : undefined,
+    };
+  };
+
+  agentsCmd
+    .command("install")
+    .description(
+      "Install the GNO protocol block into detected harnesses' global instruction files"
+    )
+    .option("-t, --target <target>", targetDescription, "all")
+    .option(
+      "--extra-dir <path>",
+      "additional instruction dir (repeatable, for nonstandard layouts)",
+      collectExtraDir,
+      [] as string[]
+    )
+    .option("--dry-run", "print the unified diff and write nothing")
+    .option("--json", "JSON output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { installAgents } = await import("./commands/agents/commands.js");
+      await installAgents(await parseCommonOpts(cmdOpts), "install");
+    });
+
+  agentsCmd
+    .command("update")
+    .description("Refresh an installed GNO protocol block in place")
+    .option("-t, --target <target>", targetDescription, "all")
+    .option(
+      "--extra-dir <path>",
+      "additional instruction dir (repeatable, for nonstandard layouts)",
+      collectExtraDir,
+      [] as string[]
+    )
+    .option("--dry-run", "print the unified diff and write nothing")
+    .option("--json", "JSON output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { installAgents } = await import("./commands/agents/commands.js");
+      await installAgents(await parseCommonOpts(cmdOpts), "update");
+    });
+
+  agentsCmd
+    .command("verify")
+    .description(
+      "Verify installed GNO protocol blocks (one block, version + hash, links)"
+    )
+    .option("-t, --target <target>", targetDescription, "all")
+    .option(
+      "--extra-dir <path>",
+      "additional instruction dir (repeatable, for nonstandard layouts)",
+      collectExtraDir,
+      [] as string[]
+    )
+    .option("--json", "JSON output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { verifyAgents } = await import("./commands/agents/commands.js");
+      await verifyAgents(await parseCommonOpts(cmdOpts));
+    });
+
+  agentsCmd
+    .command("uninstall")
+    .description("Remove the GNO protocol block and markers from harness files")
+    .option("-t, --target <target>", targetDescription, "all")
+    .option(
+      "--extra-dir <path>",
+      "additional instruction dir (repeatable, for nonstandard layouts)",
+      collectExtraDir,
+      [] as string[]
+    )
+    .option("--dry-run", "print the unified diff and write nothing")
+    .option("--json", "JSON output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { uninstallAgents } = await import("./commands/agents/commands.js");
+      await uninstallAgents(await parseCommonOpts(cmdOpts));
     });
 }
 

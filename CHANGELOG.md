@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `gno agents install|update|verify|uninstall` — marker-managed installer for a
+  compact, versioned GNO protocol block in the global (user-scope) instruction
+  files of every detected harness (Claude Code, Codex, Cursor Agent, OpenCode,
+  Hermes, OpenClaw; Grok Build is covered via its Claude-global import chain).
+  Backup-first, idempotent, symlink-aware, fail-closed on malformed markers,
+  with `--dry-run` diffs, repeatable `--extra-dir` for nonstandard layouts, and
+  `--json` everywhere. See `docs/AGENT-INSTRUCTIONS.md`.
+
 ### Changed
 
 ### Fixed
