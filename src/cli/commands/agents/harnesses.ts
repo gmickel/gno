@@ -14,7 +14,14 @@
 // (symlink-aware identity) with no Bun equivalent.
 import { existsSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { isAbsolute, join, normalize, resolve } from "node:path";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  normalize,
+  resolve,
+} from "node:path";
 
 import { CliError } from "../../errors.js";
 import { resolveSkillPaths, type SkillTarget } from "../skill/paths.js";
@@ -165,7 +172,27 @@ function realIdentity(file: string): string {
   try {
     return realpathSync(file);
   } catch {
-    return normalize(file);
+    // The file does not exist yet. Resolve the nearest existing ancestor so
+    // targets reaching the same not-yet-created file through different
+    // symlinked parent dirs still share one identity — otherwise planTargets
+    // misses the dedupe and the second (backup-less) install write clobbers
+    // the first.
+    const normalized = normalize(file);
+    let ancestor = dirname(normalized);
+    const trailing: string[] = [basename(normalized)];
+    while (!existsSync(ancestor)) {
+      const parent = dirname(ancestor);
+      if (parent === ancestor) {
+        break;
+      }
+      trailing.unshift(basename(ancestor));
+      ancestor = parent;
+    }
+    try {
+      return join(realpathSync(ancestor), ...trailing);
+    } catch {
+      return normalized;
+    }
   }
 }
 

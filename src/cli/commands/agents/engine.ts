@@ -11,11 +11,6 @@
  * @module src/cli/commands/agents/engine
  */
 
-import { existsSync } from "node:fs";
-// node:fs realpath/lstat are needed for symlink-aware write identity;
-// copyFile for content backups. No Bun equivalents.
-import { copyFile } from "node:fs/promises";
-
 import type { ResolvedTarget } from "./harnesses.js";
 
 import { CliError } from "../../errors.js";
@@ -182,7 +177,7 @@ export async function planTargets(
         detail: `covered via ${owner} (same file)`,
         oldContent: "",
         newContent: "",
-        fileExists: existsSync(target.file),
+        fileExists: await Bun.file(target.file).exists(),
       });
       continue;
     }
@@ -294,7 +289,7 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
       .replace(/Z$/, "");
     backupPath = `${writePath}.gno-agents.bak.${timestamp}`;
     try {
-      await copyFile(writePath, backupPath);
+      await Bun.write(backupPath, Bun.file(writePath));
     } catch (err) {
       throw new CliError(
         "RUNTIME",

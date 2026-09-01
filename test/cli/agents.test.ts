@@ -343,6 +343,38 @@ describe("agents CLI commands", () => {
       expect(await readlink(join(FAKE_HOME, "AGENTS.md"))).toBe(CODEX_FILE);
     });
 
+    test("aliases of a not-yet-created file via symlinked parents dedupe", async () => {
+      // Regression: realpathSync(file) throws for a file that does not exist
+      // yet, and the old fallback (normalize) left two aliases through
+      // symlinked parent dirs with different identities — planTargets then
+      // applied two backup-less install writes to the same physical file.
+      await setupHome([".codex"]);
+      // ~/.codex/AGENTS.md does not exist; an extra dir reaches the same
+      // (missing) file through a symlinked parent.
+      const alias = join(FAKE_HOME, "codex-alias");
+      await symlink(join(FAKE_HOME, ".codex"), alias);
+
+      await installAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        extraDirs: [alias],
+        json: true,
+      });
+      const report = JSON.parse(stdoutOutput.join(""));
+      const codexResult = report.results.find(
+        (r: { target: string }) => r.target === "codex"
+      );
+      expect(codexResult.action).toBe("install");
+      const extraResult = report.results.find(
+        (r: { target: string }) => r.target === "extra-dir"
+      );
+      expect(extraResult.action).toBe("covered");
+      expect(extraResult.via).toBe("codex");
+
+      const content = await Bun.file(CODEX_FILE).text();
+      expect(content.split(BEGIN_MARKER).length - 1).toBe(1);
+    });
+
     test("verify dedupes shared real files even when skill states differ", async () => {
       // Regression: cursor's skill target is claude; codex has its own. With
       // ~/AGENTS.md symlinked to the codex file and only the claude skill
