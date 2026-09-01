@@ -1,0 +1,50 @@
+{
+  "branch": "fn-129-gno-agents-install-global-instruction",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "74d65fff707984800785ddbc34752aad93f4ff42",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-ca969e93d30c05cf41ce08bcf8e5ccbdaff71065156fc495dd1d09d9799395d1"
+  },
+  "head_sha": "74d65fff707984800785ddbc34752aad93f4ff42",
+  "id": "fn-129-gno-agents-install-global-instruction",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "timestamp": "2026-09-01T15:40:50Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
