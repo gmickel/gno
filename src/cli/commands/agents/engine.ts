@@ -43,6 +43,41 @@ export interface TargetPlan {
   /** Content after the change (equal to oldContent for no-op actions). */
   newContent: string;
   fileExists: boolean;
+  /**
+   * The existing file began with a UTF-8 BOM. Content strings exclude it;
+   * the write path re-prepends it so operator bytes outside the markers stay
+   * byte-identical.
+   */
+  bom?: boolean;
+}
+
+const UTF8_BOM = "﻿";
+const utf8Fatal = new TextDecoder("utf-8", { fatal: true });
+
+/**
+ * Decode an instruction file's bytes without normalizing operator content:
+ * a UTF-8 BOM is split off (and reported) rather than dropped, and any
+ * non-UTF-8 sequence is a hard error rather than a silent replacement
+ * character — rewriting such a file would corrupt bytes outside the markers.
+ */
+export function decodeInstructionFile(
+  bytes: Uint8Array,
+  path: string
+): { content: string; bom: boolean } {
+  const bom =
+    bytes.length >= 3 &&
+    bytes[0] === 0xef &&
+    bytes[1] === 0xbb &&
+    bytes[2] === 0xbf;
+  const body = bom ? bytes.subarray(3) : bytes;
+  try {
+    return { content: utf8Fatal.decode(body), bom };
+  } catch {
+    throw new CliError(
+      "VALIDATION",
+      `${path} is not valid UTF-8; refusing to rewrite it (bytes outside the GNO agents block would be altered). Convert the file to UTF-8, then re-run.`
+    );
+  }
 }
 
 export type PlanMode = "install" | "uninstall";
@@ -159,12 +194,15 @@ export function aggregateSkillInstalled(
 
 async function readFileIfExists(
   path: string
-): Promise<{ exists: boolean; content: string }> {
+): Promise<{ exists: boolean; content: string; bom: boolean }> {
   const file = Bun.file(path);
   if (await file.exists()) {
-    return { exists: true, content: await file.text() };
+    // Bytes, not .text(): text() strips a BOM and replaces invalid sequences,
+    // which would silently alter operator-owned bytes on the rewrite.
+    const { content, bom } = decodeInstructionFile(await file.bytes(), path);
+    return { exists: true, content, bom };
   }
-  return { exists: false, content: "" };
+  return { exists: false, content: "", bom: false };
 }
 
 /**
@@ -244,8 +282,9 @@ export async function planTargets(
 
     let exists = false;
     let content = "";
+    let bom = false;
     try {
-      ({ exists, content } = await readFileIfExists(target.file));
+      ({ exists, content, bom } = await readFileIfExists(target.file));
     } catch (err) {
       plans.push({
         target,
@@ -290,6 +329,7 @@ export async function planTargets(
         oldContent: content,
         newContent: withoutBlock(content, extraction.block),
         fileExists: exists,
+        bom,
       });
       continue;
     }
@@ -323,6 +363,7 @@ export async function planTargets(
       oldContent: content,
       newContent,
       fileExists: exists,
+      bom,
     });
   }
 
@@ -370,7 +411,7 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
   }
 
   try {
-    await Bun.write(writePath, plan.newContent);
+    await Bun.write(writePath, (plan.bom ? UTF8_BOM : "") + plan.newContent);
   } catch (err) {
     throw new CliError(
       "RUNTIME",

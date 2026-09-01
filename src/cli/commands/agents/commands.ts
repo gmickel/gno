@@ -21,6 +21,7 @@ import {
 import {
   aggregateSkillInstalled,
   applyPlan,
+  decodeInstructionFile,
   type PlanMode,
   planTargets,
   planWrites,
@@ -333,10 +334,11 @@ async function verifyTarget(
       detail: "instruction file not found",
     };
   }
-  const content = await file.text();
-
+  let content: string;
   let extraction: ReturnType<typeof extractBlock>;
   try {
+    // Same byte-exact decoder as planning: BOM split off, non-UTF-8 refused.
+    ({ content } = decodeInstructionFile(await file.bytes(), target.file));
     extraction = extractBlock(content, target.file);
   } catch (err) {
     return {

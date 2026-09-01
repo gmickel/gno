@@ -532,6 +532,60 @@ describe("agents CLI commands", () => {
       expect(await Bun.file(CODEX_FILE).text()).toBe(malformed);
     });
 
+    test("preserves a UTF-8 BOM across install, verify, and uninstall", async () => {
+      await setupHome([".codex"]);
+      const bom = new Uint8Array([0xef, 0xbb, 0xbf]);
+      const body = new TextEncoder().encode("# Rules\n\nKeep it simple.\n");
+      const original = new Uint8Array(bom.length + body.length);
+      original.set(bom);
+      original.set(body, bom.length);
+      await Bun.write(CODEX_FILE, original);
+
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      const installed = await Bun.file(CODEX_FILE).bytes();
+      // BOM still leads the file; the block was spliced after the body.
+      expect(Array.from(installed.subarray(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
+      expect(new TextDecoder().decode(installed)).toContain(BEGIN_MARKER);
+
+      stdoutOutput = [];
+      await verifyAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      expect(JSON.parse(stdoutOutput.join("")).ok).toBe(true);
+
+      await uninstallAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        json: true,
+      });
+      expect(Array.from(await Bun.file(CODEX_FILE).bytes())).toEqual(
+        Array.from(original)
+      );
+    });
+
+    test("refuses to rewrite a non-UTF-8 file; bytes untouched", async () => {
+      await setupHome([".codex"]);
+      // 0xff is never valid in UTF-8.
+      const original = new Uint8Array([0x23, 0x20, 0xff, 0xfe, 0x0a]);
+      await Bun.write(CODEX_FILE, original);
+
+      let thrown: unknown;
+      try {
+        await installAgents({
+          target: "codex",
+          homeDir: FAKE_HOME,
+          json: true,
+        });
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(CliError);
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.results[0].action).toBe("error");
+      expect(report.results[0].detail).toMatch(/not valid UTF-8/);
+      expect(Array.from(await Bun.file(CODEX_FILE).bytes())).toEqual(
+        Array.from(original)
+      );
+    });
+
     test("--dry-run prints the diff and writes nothing (no backup either)", async () => {
       await setupHome([".codex"]);
       await Bun.write(CODEX_FILE, EXISTING_CODEX_CONTENT);

@@ -2781,7 +2781,11 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    `<file>.gno-agents.bak.<timestamp>` before the write.
 3. Idempotent: a current block is a `current` no-op (no write, no backup).
 4. Fail-closed marker validation: malformed or duplicate markers → per-target
-   `error` with guidance, nothing written to that file, exit 1.
+   `error` with guidance, nothing written to that file, exit 1. Files are read
+   and written as bytes: a leading UTF-8 BOM is preserved across
+   install/update/uninstall, and a file that is not valid UTF-8 is refused
+   (per-target `error`, nothing written) rather than rewritten with
+   replacement characters.
 5. Symlink-aware: writes go through the resolved real file; targets resolving
    to the same real file are written once (`covered via <target> (same file)`).
 6. State-aware skill pointer: the block references `/gno` only when the GNO

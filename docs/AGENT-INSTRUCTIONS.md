@@ -93,7 +93,9 @@ harness in the state that `gno agents update`/`verify` checks, including a
 partial install where some targets already exist. That state is read from the
 same effective config dir as the instruction file, so a harness redirected via
 `CLAUDE_CONFIG_DIR` / `CODEX_HOME` is checked — and installed into — under
-that dir. A file shared by several harnesses (a
+that dir. Files are handled as bytes: a leading UTF-8 BOM survives every
+operation, and a file that is not valid UTF-8 is refused rather than
+rewritten. A file shared by several harnesses (a
 symlinked `~/AGENTS.md`, an
 import chain) gets the conservative pointer whenever any consumer lacks the
 skill — and that consumer aggregation always spans the full harness matrix,
