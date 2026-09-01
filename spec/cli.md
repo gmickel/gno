@@ -2816,6 +2816,8 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
 
 `action` is one of `install`, `update`, `current`, `covered`, `not-detected`,
 `error`. With `--dry-run`, a `diffs` array of unified diffs is included.
+Schema: `spec/output-schemas/agents-mutation.schema.json` (shared by install,
+update, and uninstall).
 
 **Exit Codes:**
 
@@ -2855,6 +2857,8 @@ gno agents verify [--target <...>] [--extra-dir <path>]... [--json]
 - Block stamp hash matches the block body (tamper detection)
 - Block version and content match the installed release (`outdated` otherwise)
 - Filesystem references inside the block resolve (vacuous when it has none)
+- Targets resolving to the same real file are verified once, using install's
+  ownership order; the rest report `covered via <target> (same file)`
 
 **Output (JSON):**
 
@@ -2879,7 +2883,7 @@ gno agents verify [--target <...>] [--extra-dir <path>]... [--json]
 ```
 
 `status` is one of `ok`, `outdated`, `missing`, `malformed`, `covered`,
-`not-detected`.
+`not-detected`. Schema: `spec/output-schemas/agents-verify.schema.json`.
 
 **Exit Codes:**
 

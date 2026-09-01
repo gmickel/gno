@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/agents-mutation@1.0",
+  "title": "GNO Agents Mutation Receipt",
+  "description": "JSON receipt for `gno agents install|update|uninstall --json`",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["command", "blockVersion", "dryRun", "results"],
+  "allOf": [
+    {
+      "if": {
+        "properties": { "dryRun": { "const": false } },
+        "required": ["dryRun"]
+      },
+      "then": {
+        "not": { "properties": { "diffs": true }, "required": ["diffs"] }
+      }
+    }
+  ],
+  "properties": {
+    "command": {
+      "enum": ["install", "update", "uninstall"],
+      "description": "The mutation verb that produced this receipt"
+    },
+    "blockVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Protocol block version of the installed release"
+    },
+    "dryRun": {
+      "type": "boolean",
+      "description": "True when nothing was written; diffs carries the planned changes"
+    },
+    "results": {
+      "type": "array",
+      "description": "One row per resolved target",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "label", "path", "action", "detected"],
+        "allOf": [
+          {
+            "if": {
+              "properties": { "action": { "const": "covered" } },
+              "required": ["action"]
+            },
+            "then": {
+              "properties": { "via": true, "detail": true },
+              "required": ["via", "detail"]
+            }
+          }
+        ],
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "Harness id (claude, codex, cursor, ...) or extra-dir id"
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable harness label"
+          },
+          "path": {
+            "type": "string",
+            "description": "Instruction file path for this target"
+          },
+          "action": {
+            "enum": [
+              "install",
+              "update",
+              "current",
+              "remove",
+              "absent",
+              "covered",
+              "not-detected",
+              "error"
+            ],
+            "description": "What the run did (or would do) for this target"
+          },
+          "detected": {
+            "type": "boolean",
+            "description": "Whether the harness config dir exists on this machine"
+          },
+          "via": {
+            "type": "string",
+            "description": "Target id that covers this one (import chain or shared real file)"
+          },
+          "detail": {
+            "type": "string",
+            "description": "Human-readable detail (coverage reason, error guidance)"
+          },
+          "backup": {
+            "type": ["string", "null"],
+            "description": "Backup file path for a written target; null when no backup was made (new file or dry run). Omitted for no-op rows."
+          }
+        }
+      }
+    },
+    "diffs": {
+      "type": "array",
+      "description": "Unified diffs of planned writes; present only with dryRun",
+      "items": { "type": "string" }
+    }
+  }
+}

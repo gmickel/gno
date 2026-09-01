@@ -166,15 +166,23 @@ export function extractBlock(
 const FILE_REF_RE = /(?:^|[\s("'`])((?:~|\/)[\w~./-]+)/g;
 
 /**
+ * Slash-command pointer, not a path: a single extensionless segment after the
+ * root slash (e.g. `/gno`). Real absolute file references always carry a
+ * nested segment or an extension.
+ */
+const SLASH_COMMAND_RE = /^\/[\w-]+$/;
+
+/**
  * Extract filesystem references (absolute or ~-prefixed paths) from a block
- * body. gno:// URIs and bare commands are not filesystem references.
+ * body. gno:// URIs, bare commands, and slash-command pointers such as
+ * `/gno` are not filesystem references.
  * Vacuous (empty result) when the block carries none.
  */
 export function extractFileReferences(body: string): string[] {
   const refs = new Set<string>();
   for (const match of body.matchAll(FILE_REF_RE)) {
     const ref = match[1];
-    if (ref && ref.length > 1) {
+    if (ref && ref.length > 1 && !SLASH_COMMAND_RE.test(ref)) {
       refs.add(ref);
     }
   }

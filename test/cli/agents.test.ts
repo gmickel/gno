@@ -8,6 +8,7 @@ import {
   BLOCK_VERSION,
   END_MARKER,
   extractBlock,
+  extractFileReferences,
   hashBlockBody,
   renderBlock,
   renderBlockBody,
@@ -83,6 +84,17 @@ describe("agents CLI commands", () => {
       expect(renderBlockBody({ skillInstalled: false })).toContain(
         "gno skill install"
       );
+    });
+
+    test("`/gno` skill command is not a filesystem link (verify stays ok)", () => {
+      // Regression: `/gno` matched the absolute-path regex, so verify probed
+      // existsSync("/gno") and flagged a fresh skill-installed block outdated.
+      const body = renderBlockBody({ skillInstalled: true });
+      expect(extractFileReferences(body)).toEqual([]);
+      // Real paths are still extracted.
+      expect(
+        extractFileReferences("see `~/notes/a.md` and /etc/hosts and /gno")
+      ).toEqual(["~/notes/a.md", "/etc/hosts"]);
     });
   });
 
@@ -200,6 +212,72 @@ describe("agents CLI commands", () => {
       expect(existsSync(join(FAKE_HOME, ".grok/AGENTS.md"))).toBe(false);
     });
 
+    test("--target grok resolves the covering claude target and installs its block", async () => {
+      await setupHome([".claude", ".grok"]);
+      await installAgents({ target: "grok", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+
+      const claudeResult = report.results.find(
+        (r: { target: string }) => r.target === "claude"
+      );
+      expect(claudeResult.action).toBe("install");
+      const grokResult = report.results.find(
+        (r: { target: string }) => r.target === "grok"
+      );
+      expect(grokResult.action).toBe("covered");
+      expect(grokResult.via).toBe("claude");
+
+      expect(await Bun.file(CLAUDE_FILE).text()).toContain(BEGIN_MARKER);
+      expect(existsSync(join(FAKE_HOME, ".grok/AGENTS.md"))).toBe(false);
+    });
+
+    test("verify --target grok fails when the covering claude file has no block", async () => {
+      await setupHome([".claude", ".grok"]);
+      let thrown: unknown;
+      try {
+        await verifyAgents({ target: "grok", homeDir: FAKE_HOME, json: true });
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(CliError);
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.ok).toBe(false);
+      const claudeResult = report.results.find(
+        (r: { target: string }) => r.target === "claude"
+      );
+      expect(claudeResult.status).toBe("missing");
+      const grokResult = report.results.find(
+        (r: { target: string }) => r.target === "grok"
+      );
+      expect(grokResult.status).toBe("covered");
+    });
+
+    test("verify --target grok passes once the covering claude block is installed", async () => {
+      await setupHome([".claude", ".grok"]);
+      await installAgents({ target: "grok", homeDir: FAKE_HOME, json: true });
+      stdoutOutput = [];
+      await verifyAgents({ target: "grok", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.ok).toBe(true);
+      const claudeResult = report.results.find(
+        (r: { target: string }) => r.target === "claude"
+      );
+      expect(claudeResult.status).toBe("ok");
+    });
+
+    test("detected grok promotes an undetected claude covering target", async () => {
+      // ~/.claude does not exist, but grok imports the claude global file —
+      // coverage is only real once that file carries the block.
+      await setupHome([".grok"]);
+      await installAgents({ target: "all", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+      const claudeResult = report.results.find(
+        (r: { target: string }) => r.target === "claude"
+      );
+      expect(claudeResult.action).toBe("install");
+      expect(await Bun.file(CLAUDE_FILE).text()).toContain(BEGIN_MARKER);
+    });
+
     test("targets resolving to the same real file are written once", async () => {
       await setupHome([".codex", ".cursor"]);
       await Bun.write(CODEX_FILE, "# Shared\n");
@@ -217,6 +295,37 @@ describe("agents CLI commands", () => {
       expect(content.split(BEGIN_MARKER).length - 1).toBe(1);
       // The symlink itself is untouched.
       expect(await readlink(join(FAKE_HOME, "AGENTS.md"))).toBe(CODEX_FILE);
+    });
+
+    test("verify dedupes shared real files even when skill states differ", async () => {
+      // Regression: cursor's skill target is claude; codex has its own. With
+      // ~/AGENTS.md symlinked to the codex file and only the claude skill
+      // installed, install writes once with codex's skill pointer — verify
+      // must treat cursor as covered by the same-file owner, not re-render
+      // expectations under cursor's skill state and flag the block outdated.
+      await setupHome([".codex", ".cursor", ".claude/skills/gno"]);
+      await Bun.write(
+        join(FAKE_HOME, ".claude/skills/gno/SKILL.md"),
+        "# gno\n"
+      );
+      await Bun.write(CODEX_FILE, "# Shared\n");
+      await symlink(CODEX_FILE, join(FAKE_HOME, "AGENTS.md"));
+
+      await installAgents({ target: "all", homeDir: FAKE_HOME, json: true });
+
+      stdoutOutput = [];
+      await verifyAgents({ target: "all", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.ok).toBe(true);
+      const codexResult = report.results.find(
+        (r: { target: string }) => r.target === "codex"
+      );
+      expect(codexResult.status).toBe("ok");
+      const cursorResult = report.results.find(
+        (r: { target: string }) => r.target === "cursor"
+      );
+      expect(cursorResult.status).toBe("covered");
+      expect(cursorResult.via).toBe("codex");
     });
   });
 
@@ -338,6 +447,25 @@ describe("agents CLI commands", () => {
       const after = await Bun.file(CODEX_FILE).text();
       expect(after).not.toContain(BEGIN_MARKER);
       expect(after).not.toContain(END_MARKER);
+    });
+
+    test("uninstall preserves a missing final newline byte-identically", async () => {
+      await setupHome([".codex"]);
+      const noFinalNewline = "# My rules\n\nKeep it simple.";
+      await Bun.write(CODEX_FILE, noFinalNewline);
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+
+      const installed = await Bun.file(CODEX_FILE).text();
+      expect(installed.startsWith(`${noFinalNewline}\n${BEGIN_MARKER}`)).toBe(
+        true
+      );
+
+      await uninstallAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        json: true,
+      });
+      expect(await Bun.file(CODEX_FILE).text()).toBe(noFinalNewline);
     });
   });
 

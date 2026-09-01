@@ -55,13 +55,16 @@ export type PlanMode = "install" | "uninstall";
 // Content Transforms
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ensureTrailingNewline(content: string): string {
-  return content.length === 0 || content.endsWith("\n")
-    ? content
-    : `${content}\n`;
-}
-
-/** Append or replace the managed block; bytes outside the block untouched. */
+/**
+ * Append or replace the managed block; bytes outside the block untouched.
+ *
+ * Append separators encode the original trailing-newline state so uninstall
+ * can restore the file byte-identically:
+ * - empty file → block only
+ * - ends with `\n` → one blank line, then the block
+ * - missing final newline → a single added `\n`, then the block (no blank
+ *   line — its absence is the marker that install added that newline)
+ */
 function withBlock(
   oldContent: string,
   block: { start: number; end: number } | null,
@@ -72,12 +75,17 @@ function withBlock(
       oldContent.slice(0, block.start) + rendered + oldContent.slice(block.end)
     );
   }
-  const base = ensureTrailingNewline(oldContent);
-  const separator = base.length === 0 ? "" : "\n";
-  return `${base}${separator}${rendered}\n`;
+  const separator =
+    oldContent.length === 0 || oldContent.endsWith("\n") ? "" : "\n";
+  const blankLine = oldContent.endsWith("\n") ? "\n" : "";
+  return `${oldContent}${separator}${blankLine}${rendered}\n`;
 }
 
-/** Remove the managed block plus the one blank line install added above it. */
+/**
+ * Remove the managed block plus whatever separator install added above it —
+ * the one blank line (original file ended in `\n`), or the single newline
+ * install appended to a file that had no final newline (see withBlock).
+ */
 function withoutBlock(
   oldContent: string,
   block: { start: number; end: number }
@@ -88,8 +96,12 @@ function withoutBlock(
   if (oldContent[end] === "\n") {
     end += 1;
   }
-  // Consume the single separating blank line install added, when present.
   if (oldContent.slice(start - 2, start) === "\n\n") {
+    // Consume the single separating blank line install added.
+    start -= 1;
+  } else if (end >= oldContent.length && oldContent[start - 1] === "\n") {
+    // Block at EOF with only a single newline above: install added that
+    // newline to a file missing its final newline — remove it too.
     start -= 1;
   }
   return oldContent.slice(0, start) + oldContent.slice(end);
@@ -121,8 +133,18 @@ export async function planTargets(
   /** Real-file identity → id of the target that owns the write. */
   const owners = new Map<string, string>();
 
+  // A detected covered target (e.g. grok → claude) is only truly covered
+  // when its covering target's file converges too — so the covering target
+  // is planned even when its own harness is not detected on this machine.
+  const requiredCovering = new Set<string>();
+  for (const t of targets) {
+    if (t.detected && t.coveredBy) {
+      requiredCovering.add(t.coveredBy);
+    }
+  }
+
   for (const target of targets) {
-    if (!target.detected) {
+    if (!(target.detected || requiredCovering.has(target.id))) {
       plans.push({
         target,
         action: "not-detected",
@@ -134,11 +156,16 @@ export async function planTargets(
     }
 
     if (target.coveredBy) {
+      // Coverage is only reportable when the covering target is resolved in
+      // this run (its own plan row carries the actual convergence).
+      const coveringResolved = targets.some((t) => t.id === target.coveredBy);
       plans.push({
         target,
-        action: "covered",
-        via: target.coveredBy,
-        detail: `covered via ${target.coveredBy}`,
+        action: coveringResolved ? "covered" : "error",
+        ...(coveringResolved && { via: target.coveredBy }),
+        detail: coveringResolved
+          ? `covered via ${target.coveredBy}`
+          : `covered via ${target.coveredBy}, but ${target.coveredBy} was not resolved in this run`,
         oldContent: "",
         newContent: "",
         fileExists: false,

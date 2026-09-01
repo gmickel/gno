@@ -1399,7 +1399,9 @@ gno agents update
 ### gno agents verify
 
 Deterministic per-target checks: exactly one marker block, version + hash
-match the installed release, file references inside the block resolve.
+match the installed release, file references inside the block resolve. Targets
+sharing one real file (symlink schemes) are verified once via the same
+ownership order as install; the rest report `covered`.
 
 ```bash
 gno agents verify

@@ -256,8 +256,26 @@ function resolveExtraDir(dir: string, home: string): ResolvedTarget {
 }
 
 /**
+ * Expand an explicit target to include its covering chain (e.g. grok →
+ * claude), covering targets first. "Covered via X" is only truthful when X
+ * itself is resolved and converged in the same run, so an explicit covered
+ * target always pulls its covering target(s) into the run.
+ */
+function withCoveringChain(id: HarnessId): HarnessId[] {
+  const chain: HarnessId[] = [id];
+  let cursor = HARNESS_DEFS[id].coveredBy;
+  while (cursor && !chain.includes(cursor)) {
+    chain.unshift(cursor);
+    cursor = HARNESS_DEFS[cursor].coveredBy;
+  }
+  return chain;
+}
+
+/**
  * Resolve all requested targets to concrete instruction files.
  * `target: "all"` = every supported harness (detection filters at plan time).
+ * An explicit covered target (e.g. `grok`) also resolves its covering
+ * target(s) so the covering instruction file is actually planned/verified.
  */
 export function resolveTargets(
   target: HarnessId | "all",
@@ -271,7 +289,8 @@ export function resolveTargets(
   const home =
     opts.homeDir ?? process.env[ENV_AGENTS_HOME_OVERRIDE] ?? homedir();
 
-  const ids: HarnessId[] = target === "all" ? HARNESS_IDS : [target];
+  const ids: HarnessId[] =
+    target === "all" ? HARNESS_IDS : withCoveringChain(target);
   const results = ids.map((id) =>
     resolveHarness(HARNESS_DEFS[id], home, explicitHome)
   );

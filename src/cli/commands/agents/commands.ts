@@ -238,7 +238,13 @@ function expandHome(ref: string, home: string): string {
 
 async function verifyTarget(
   target: ResolvedTarget,
-  home: string
+  home: string,
+  runContext: {
+    resolvedIds: Set<string>;
+    requiredCovering: Set<string>;
+    /** Real-file identity → id of the target that owns verification. */
+    owners: Map<string, string>;
+  }
 ): Promise<VerifyReport> {
   const base: Pick<VerifyReport, "target" | "label" | "path" | "detected"> = {
     target: target.id,
@@ -247,10 +253,21 @@ async function verifyTarget(
     detected: target.detected,
   };
 
-  if (!target.detected) {
+  // A covering target required by a detected covered target (grok → claude)
+  // is verified even when its own harness is not detected on this machine.
+  if (!(target.detected || runContext.requiredCovering.has(target.id))) {
     return { ...base, status: "not-detected" };
   }
   if (target.coveredBy) {
+    // Coverage is only truthful when the covering target is verified in the
+    // same run — its own row carries the actual block status.
+    if (!runContext.resolvedIds.has(target.coveredBy)) {
+      return {
+        ...base,
+        status: "missing",
+        detail: `covered via ${target.coveredBy}, but ${target.coveredBy} was not resolved in this run`,
+      };
+    }
     return {
       ...base,
       status: "covered",
@@ -258,6 +275,22 @@ async function verifyTarget(
       detail: `covered via ${target.coveredBy}`,
     };
   }
+
+  // Same-real-file dedupe, mirroring installation ownership: the first
+  // non-covered target owns the write (and rendered the block with its own
+  // skill state), so it also owns verification. Verifying the shared file
+  // again under a different target's expectations would falsely report the
+  // block outdated when the two targets' skill pointers differ.
+  const owner = runContext.owners.get(target.realFile);
+  if (owner) {
+    return {
+      ...base,
+      status: "covered",
+      via: owner,
+      detail: `covered via ${owner} (same file)`,
+    };
+  }
+  runContext.owners.set(target.realFile, target.id);
 
   const file = Bun.file(target.file);
   if (!(await file.exists())) {
@@ -345,9 +378,24 @@ export async function verifyAgents(opts: AgentsOptions = {}): Promise<void> {
     extraDirs: opts.extraDirs,
   });
 
+  const resolvedIds = new Set(targets.map((t) => t.id as string));
+  const requiredCovering = new Set<string>();
+  for (const t of targets) {
+    if (t.detected && t.coveredBy) {
+      requiredCovering.add(t.coveredBy);
+    }
+  }
+
+  const owners = new Map<string, string>();
   const results: VerifyReport[] = [];
   for (const target of targets) {
-    results.push(await verifyTarget(target, home));
+    results.push(
+      await verifyTarget(target, home, {
+        resolvedIds,
+        requiredCovering,
+        owners,
+      })
+    );
   }
 
   const failing = results.filter(

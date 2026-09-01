@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/agents-verify@1.0",
+  "title": "GNO Agents Verify Receipt",
+  "description": "JSON receipt for `gno agents verify --json`",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["command", "blockVersion", "ok", "results"],
+  "properties": {
+    "command": { "const": "verify" },
+    "blockVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Protocol block version of the installed release"
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "True when no target is outdated, missing, or malformed (covered / not-detected do not fail)"
+    },
+    "results": {
+      "type": "array",
+      "description": "One row per resolved target",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "label", "path", "status", "detected"],
+        "allOf": [
+          {
+            "if": {
+              "properties": { "status": { "const": "covered" } },
+              "required": ["status"]
+            },
+            "then": {
+              "properties": { "via": true, "detail": true },
+              "required": ["via", "detail"]
+            }
+          }
+        ],
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "Harness id (claude, codex, cursor, ...) or extra-dir id"
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable harness label"
+          },
+          "path": {
+            "type": "string",
+            "description": "Instruction file path for this target"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "outdated",
+              "missing",
+              "malformed",
+              "covered",
+              "not-detected"
+            ],
+            "description": "Verification outcome for this target"
+          },
+          "detected": {
+            "type": "boolean",
+            "description": "Whether the harness config dir exists on this machine"
+          },
+          "via": {
+            "type": "string",
+            "description": "Target id whose row carries the actual block status (import chain or shared real file)"
+          },
+          "detail": {
+            "type": "string",
+            "description": "Human-readable detail (coverage reason, failure guidance)"
+          },
+          "blockVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Version stamped on the found block; omitted when the stamp is unparseable"
+          },
+          "hashOk": {
+            "type": "boolean",
+            "description": "Block body matches its stamp hash (tamper detection)"
+          },
+          "linksOk": {
+            "type": "boolean",
+            "description": "All filesystem references inside the block resolve"
+          },
+          "unresolvedLinks": {
+            "type": "array",
+            "minItems": 1,
+            "description": "File references inside the block that do not resolve",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

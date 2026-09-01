@@ -93,6 +93,8 @@ async function loadAllSchemas(): Promise<void> {
     "section",
     "file-refactor-preview",
     "file-refactor-apply-result",
+    "agents-mutation",
+    "agents-verify",
   ];
 
   for (const name of schemaFiles) {
