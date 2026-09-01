@@ -258,8 +258,9 @@ function resolveExtraDir(dir: string, home: string): ResolvedTarget {
 /**
  * Expand an explicit target to include its covering chain (e.g. grok →
  * claude), covering targets first. "Covered via X" is only truthful when X
- * itself is resolved and converged in the same run, so an explicit covered
- * target always pulls its covering target(s) into the run.
+ * itself is resolved and converged in the same run, so an explicit *detected*
+ * covered target pulls its covering target(s) into the run (resolveTargets
+ * drops the chain again when the requested leaf turns out to be absent).
  */
 function withCoveringChain(id: HarnessId): HarnessId[] {
   const chain: HarnessId[] = [id];
@@ -275,7 +276,10 @@ function withCoveringChain(id: HarnessId): HarnessId[] {
  * Resolve all requested targets to concrete instruction files.
  * `target: "all"` = every supported harness (detection filters at plan time).
  * An explicit covered target (e.g. `grok`) also resolves its covering
- * target(s) so the covering instruction file is actually planned/verified.
+ * target(s) so the covering instruction file is actually planned/verified —
+ * but only when the requested target itself is detected. An absent explicit
+ * target resolves to just itself (reported `not-detected` at plan time), so
+ * the run never touches the covering harness's file on its behalf.
  */
 export function resolveTargets(
   target: HarnessId | "all",
@@ -291,9 +295,21 @@ export function resolveTargets(
 
   const ids: HarnessId[] =
     target === "all" ? HARNESS_IDS : withCoveringChain(target);
-  const results = ids.map((id) =>
+  let results = ids.map((id) =>
     resolveHarness(HARNESS_DEFS[id], home, explicitHome)
   );
+
+  if (target !== "all") {
+    // The covering chain is only truthful for a target that is actually
+    // present. An absent explicit target must not pull its covering
+    // harness(es) into the run — otherwise `--target grok` on a machine
+    // without ~/.grok would install into / verify against / uninstall from
+    // Claude's file. Resolve just the leaf so it reports `not-detected`.
+    const leaf = results.find((t) => t.id === target);
+    if (leaf && !leaf.detected) {
+      results = [leaf];
+    }
+  }
 
   for (const dir of opts.extraDirs ?? []) {
     results.push(resolveExtraDir(dir, home));

@@ -51,9 +51,9 @@ Ladder — scope to a collection first (\`--collection <name>\`):
 1. Exact term/identifier/quote/error: \`gno search "<text>"\`
 2. Entity or known document: \`gno query "<question>" --fast -n 10\`
 3. Multi-document evidence for a goal: \`gno context build "<goal>" --budget 12000\`
-4. Change/dependency questions: \`gno changes\` / \`gno diff\` / \`gno impact\`
+4. Change/dependency questions: \`gno changes\` / \`gno diff <doc>\` / \`gno impact <doc>\`
 5. Generated factual answer: \`gno ask "<question>" --verify\` (abstention is valid)
-6. Expected document missing: reformulate + re-check collection scope (\`gno query diagnose\`) before any grep fallback.
+6. Expected document missing: reformulate + re-check collection scope (\`gno query diagnose "<query>" --target <doc>\`) before any grep fallback.
 
 Writing: retrieve first — a question alone is read-only. Edit an existing canonical note in its source file; \`gno capture\` creates genuinely new notes (collection, title/path, source kind, provenance) — never an update API. After writes: reindex the collection, verify retrieval.
 

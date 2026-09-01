@@ -265,6 +265,52 @@ describe("agents CLI commands", () => {
       expect(claudeResult.status).toBe("ok");
     });
 
+    test("install --target grok skips the covering claude target when grok is absent", async () => {
+      // Regression: with ~/.claude present but ~/.grok absent, the covering
+      // chain must not activate — the run must not touch Claude's file on
+      // behalf of a harness that is not installed.
+      await setupHome([".claude"]);
+      await installAgents({ target: "grok", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+
+      expect(report.results).toHaveLength(1);
+      const grokResult = report.results.find(
+        (r: { target: string }) => r.target === "grok"
+      );
+      expect(grokResult.action).toBe("not-detected");
+      expect(existsSync(CLAUDE_FILE)).toBe(false);
+    });
+
+    test("uninstall --target grok leaves the claude installation intact when grok is absent", async () => {
+      await setupHome([".claude"]);
+      await installAgents({ target: "claude", homeDir: FAKE_HOME, json: true });
+      stdoutOutput = [];
+
+      await uninstallAgents({
+        target: "grok",
+        homeDir: FAKE_HOME,
+        json: true,
+      });
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.results).toHaveLength(1);
+      expect(report.results[0].target).toBe("grok");
+      expect(report.results[0].action).toBe("not-detected");
+      // Claude's block survives.
+      expect(await Bun.file(CLAUDE_FILE).text()).toContain(BEGIN_MARKER);
+    });
+
+    test("verify --target grok reports not-detected instead of failing on claude state", async () => {
+      // ~/.claude exists with no block — that must not fail a grok verify
+      // when grok itself is absent.
+      await setupHome([".claude"]);
+      await verifyAgents({ target: "grok", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.ok).toBe(true);
+      expect(report.results).toHaveLength(1);
+      expect(report.results[0].target).toBe("grok");
+      expect(report.results[0].status).toBe("not-detected");
+    });
+
     test("detected grok promotes an undetected claude covering target", async () => {
       // ~/.claude does not exist, but grok imports the claude global file —
       // coverage is only real once that file carries the block.

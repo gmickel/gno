@@ -2772,7 +2772,11 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
 
 1. Detects harnesses (config dir exists); undetected targets are reported
    `not-detected` and skipped — the installer never fabricates harness dirs
-   (creating the instruction FILE inside a detected dir is fine).
+   (creating the instruction FILE inside a detected dir is fine). An explicit
+   detected covered target (e.g. `--target grok`) also resolves its covering
+   target so the covering file actually converges; when the explicit target is
+   absent, the covering chain never activates — the run reports only
+   `not-detected` and touches no other harness's file.
 2. Backup-first: every touched existing file is copied to
    `<file>.gno-agents.bak.<timestamp>` before the write.
 3. Idempotent: a current block is a `current` no-op (no write, no backup).

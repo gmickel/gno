@@ -1383,7 +1383,10 @@ gno agents install --json
 - Backup-first (`<file>.gno-agents.bak.<timestamp>`), idempotent (second run
   is a no-op), symlink-aware (writes through links; shared files written once).
 - Grok Build imports the Claude global file, so it is reported
-  `covered via claude` — no double block.
+  `covered via claude` — no double block. `--target grok` resolves the
+  covering claude target too, but only when Grok itself is detected; on a
+  machine without `~/.grok` the run reports `not-detected` and leaves
+  Claude's file alone.
 - `--extra-dir` (repeatable) serves nonstandard/multi-instance layouts
   explicitly; discovery never guesses.
 
