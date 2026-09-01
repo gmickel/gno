@@ -12,7 +12,13 @@
 
 // node:fs is used because detection needs synchronous lstat/realpath checks
 // (symlink-aware identity) with no Bun equivalent.
-import { existsSync, realpathSync, statSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  readlinkSync,
+  realpathSync,
+  statSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import {
   basename,
@@ -172,12 +178,14 @@ function realIdentity(file: string): string {
   try {
     return realpathSync(file);
   } catch {
-    // The file does not exist yet. Resolve the nearest existing ancestor so
-    // targets reaching the same not-yet-created file through different
-    // symlinked parent dirs still share one identity — otherwise planTargets
-    // misses the dedupe and the second (backup-less) install write clobbers
-    // the first.
-    const normalized = normalize(file);
+    // The file does not exist yet. First follow the leaf itself while it is a
+    // (dangling) symlink: two harness files linked to the same missing shared
+    // target must converge on that target's identity, not on their distinct
+    // link names. Then resolve the nearest existing ancestor so targets
+    // reaching the same not-yet-created file through different symlinked
+    // parent dirs still share one identity — otherwise planTargets misses the
+    // dedupe and the second (backup-less) install write clobbers the first.
+    const normalized = followDanglingSymlinks(normalize(file));
     let ancestor = dirname(normalized);
     const trailing: string[] = [basename(normalized)];
     while (!existsSync(ancestor)) {
@@ -194,6 +202,31 @@ function realIdentity(file: string): string {
       return normalized;
     }
   }
+}
+
+/** Bound on symlink hops — mirrors the kernel's ELOOP guard. */
+const MAX_SYMLINK_HOPS = 40;
+
+/**
+ * Follow a chain of symlinks whose final destination may not exist yet.
+ * Stops at the first non-symlink path component (existing or absent) or at
+ * the hop bound; a cycle simply exhausts the bound and returns the last path.
+ */
+function followDanglingSymlinks(path: string): string {
+  let current = path;
+  for (let hop = 0; hop < MAX_SYMLINK_HOPS; hop++) {
+    let link: string;
+    try {
+      if (!lstatSync(current).isSymbolicLink()) {
+        return current;
+      }
+      link = readlinkSync(current);
+    } catch {
+      return current; // absent (not a symlink) or unreadable — nothing to follow
+    }
+    current = normalize(isAbsolute(link) ? link : join(dirname(current), link));
+  }
+  return current;
 }
 
 function isDirectory(path: string): boolean {

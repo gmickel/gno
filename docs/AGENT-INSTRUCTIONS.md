@@ -95,7 +95,9 @@ same effective config dir as the instruction file, so a harness redirected via
 `CLAUDE_CONFIG_DIR` / `CODEX_HOME` is checked — and installed into — under
 that dir. Files are handled as bytes: a leading UTF-8 BOM survives every
 operation, and a file that is not valid UTF-8 is refused rather than
-rewritten. A file shared by several harnesses (a
+rewritten. Shared-file identity is resolved even before the file exists
+(dangling symlinks followed, nearest existing ancestor canonicalized), so
+aliases of one not-yet-created file are written once. A file shared by several harnesses (a
 symlinked `~/AGENTS.md`, an
 import chain) gets the conservative pointer whenever any consumer lacks the
 skill — and that consumer aggregation always spans the full harness matrix,

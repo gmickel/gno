@@ -375,6 +375,29 @@ describe("agents CLI commands", () => {
       expect(content.split(BEGIN_MARKER).length - 1).toBe(1);
     });
 
+    test("dangling instruction-file symlinks to one missing target dedupe", async () => {
+      // Regression: when the instruction files themselves are dangling
+      // symlinks to the same not-yet-created shared file, the parent-only
+      // fallback kept each link's distinct basename, so the aliases got
+      // different identities and the second install overwrote the first
+      // (backup-less, possibly with a different skill-pointer render).
+      await setupHome([".codex", ".cursor", "shared"]);
+      const shared = join(FAKE_HOME, "shared", "AGENTS.md"); // does not exist yet
+      await symlink(shared, CODEX_FILE);
+      await symlink(shared, join(FAKE_HOME, "AGENTS.md")); // cursor's file
+
+      await installAgents({ target: "all", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+      const byTarget = (id: string) =>
+        report.results.find((r: { target: string }) => r.target === id);
+      expect(byTarget("codex").action).toBe("install");
+      expect(byTarget("cursor").action).toBe("covered");
+      expect(byTarget("cursor").via).toBe("codex");
+
+      const content = await Bun.file(shared).text();
+      expect(content.split(BEGIN_MARKER).length - 1).toBe(1);
+    });
+
     test("verify dedupes shared real files even when skill states differ", async () => {
       // Regression: cursor's skill target is claude; codex has its own. With
       // ~/AGENTS.md symlinked to the codex file and only the claude skill

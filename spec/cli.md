@@ -2788,6 +2788,9 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    replacement characters.
 5. Symlink-aware: writes go through the resolved real file; targets resolving
    to the same real file are written once (`covered via <target> (same file)`).
+   Identity is resolved even for files that do not exist yet — dangling leaf
+   symlinks are followed and the nearest existing ancestor is canonicalized —
+   so aliases of one not-yet-created file dedupe before any write.
 6. State-aware skill pointer: the block references `/gno` only when the GNO
    agent skill is installed for EVERY detected harness that reads the file,
    else `gno skill install --scope user --force --target all` (user scope +
