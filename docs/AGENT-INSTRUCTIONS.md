@@ -93,7 +93,7 @@ content hash, and a state-aware pointer: `/gno` when the GNO agent skill is
 installed for every harness that reads the file, otherwise a remediation
 scoped to the consumers that lack it — one
 `gno skill install --scope user --force --target <harness>` per such harness
-(and `… --target claude --skills-dir "<dir>/skills"` for an extra-dir instance),
+(and `… --target claude --skills-dir '<dir>/skills'` for an extra-dir instance — single-quoted, so nothing in the path expands),
 never `--target all`, so following the pointer never fabricates skill or
 config dirs for harnesses you never installed. `--force` keeps it idempotent
 across partial installs. That state is read from the

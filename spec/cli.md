@@ -2779,7 +2779,9 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    absent, the covering chain never activates — the run reports only
    `not-detected` and touches no other harness's file.
 2. Backup-first: every touched existing file is copied to
-   `<file>.gno-agents.bak.<timestamp>` before the write.
+   `<file>.gno-agents.bak.<timestamp>` before the write. The backup inherits
+   the source file's permission mode (a 0600 file yields a 0600 backup, never
+   a umask-default world-readable copy).
 3. Idempotent: a current block is a `current` no-op (no write, no backup).
 4. Fail-closed marker validation: malformed or duplicate markers → per-target
    `error` with guidance, nothing written to that file, exit 1. The stamp hash
@@ -2800,9 +2802,10 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    agent skill is installed for EVERY detected harness that reads the file,
    else a remediation scoped to the consumers that lack it — one
    `gno skill install --scope user --force --target <harness>` per such
-   harness, and `gno skill install --scope user --force --target claude --skills-dir "<dir>/skills"`
-   for an `--extra-dir` instance (quoted path, portable `--skills-dir` option
-   rather than shell-specific env syntax) — never `--target all`, which would create
+   harness, and `gno skill install --scope user --force --target claude --skills-dir '<dir>/skills'`
+   for an `--extra-dir` instance (single-quoted path — literal in POSIX shells
+   and PowerShell, so `$VAR`, backticks, and `$(…)` in a path never expand;
+   portable `--skills-dir` option rather than env syntax) — never `--target all`, which would create
    skill/config dirs for harnesses the operator never installed (and a later
    `update` would then write instruction files into them). `--force` keeps the
    remediation idempotent across partial installs. Consumer aggregation always spans the full harness matrix, even on

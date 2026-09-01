@@ -67,16 +67,21 @@ export interface BlockRenderOptions {
   remediation?: SkillRemediation;
 }
 
-/** Double-quote a path for a shell command line (POSIX shells and PowerShell/cmd alike). */
+/**
+ * Single-quote a path for a shell command line. Single quotes are literal in
+ * POSIX shells AND PowerShell — no parameter/command substitution, no
+ * backtick or `$` expansion — unlike double quotes. An embedded `'` uses the
+ * POSIX `'\''` idiom (a `'` in a config-dir path is pathological anyway).
+ */
 function quotePath(path: string): string {
-  return `"${path.replace(/["\\]/g, "\\$&")}"`;
+  return `'${path.replace(/'/g, "'\\''")}'`;
 }
 
 /**
  * Render the remediation the conservative pointer asks the agent to run.
  * One `gno skill install` per consumer harness that lacks the skill; an
  * `--extra-dir` instance is addressed through its own skills dir via the
- * portable `--skills-dir` option (quoted — no shell-specific env syntax).
+ * portable `--skills-dir` option (single-quoted — expansion-safe).
  */
 export function renderRemediation(remediation?: SkillRemediation): string {
   const targets = [...new Set(remediation?.targets ?? [])];
@@ -271,8 +276,8 @@ const FILE_REF_RE = /(?:^|[\s("'`])((?:~|\/)[\w~./-]+)/g;
  */
 const SLASH_COMMAND_RE = /^\/[\w-]+$/;
 
-/** Text ending in the `--skills-dir "` prefix of a quoted remediation operand. */
-const SKILLS_DIR_OPERAND_RE = /--skills-dir\s+"$/;
+/** Text ending in the `--skills-dir '` prefix of a quoted remediation operand. */
+const SKILLS_DIR_OPERAND_RE = /--skills-dir\s+['"]$/;
 
 /**
  * Extract filesystem references (absolute or ~-prefixed paths) from a block

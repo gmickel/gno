@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, readdirSync } from "node:fs";
-import { mkdir, readlink, symlink } from "node:fs/promises";
+import { chmod, mkdir, readlink, stat, symlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
@@ -96,17 +96,24 @@ describe("agents CLI commands", () => {
       );
       expect(scoped).toContain("--target opencode; ");
       expect(scoped).toContain(
-        'gno skill install --scope user --force --target claude --skills-dir "/x/inst/skills"'
+        "gno skill install --scope user --force --target claude --skills-dir '/x/inst/skills'"
       );
       expect(scoped).not.toContain("--target all");
       // The quoted instance path is not a link to validate.
       expect(extractFileReferences(scoped)).toEqual([]);
-      // Paths with spaces/quotes stay a single shell argument.
-      const spaced = renderBlockBody({
+      // Paths with spaces, `$VAR`, `$(…)`, backticks, and quotes stay one
+      // literal argument: single quotes suppress every expansion, and an
+      // embedded `'` uses the POSIX '\'' idiom.
+      const hostile = renderBlockBody({
         skillInstalled: false,
-        remediation: { targets: [], extraDirs: ['/x/my "inst" dir'] },
+        remediation: {
+          targets: [],
+          extraDirs: ["/x/my $HOME `id` $(rm) it's dir"],
+        },
       });
-      expect(spaced).toContain('--skills-dir "/x/my \\"inst\\" dir/skills"');
+      expect(hostile).toContain(
+        "--skills-dir '/x/my $HOME `id` $(rm) it'\\''s dir/skills'"
+      );
     });
 
     test("`/gno` skill command is not a filesystem link (verify stays ok)", () => {
@@ -225,7 +232,7 @@ describe("agents CLI commands", () => {
       const withoutSkill = await Bun.file(join(instance, "AGENTS.md")).text();
       // The remediation addresses the instance itself via its skills dir.
       expect(withoutSkill).toContain(
-        `gno skill install --scope user --force --target claude --skills-dir "${instance}/skills"`
+        `gno skill install --scope user --force --target claude --skills-dir '${instance}/skills'`
       );
       expect(withoutSkill).not.toContain("`/gno`");
 
@@ -621,6 +628,23 @@ describe("agents CLI commands", () => {
       expect(thrown).toBeInstanceOf(CliError);
       expect(String(thrown)).toMatch(/failed for 1 target/);
       expect(await Bun.file(CODEX_FILE).text()).toBe(malformed);
+    });
+
+    test("backup inherits the source file's restrictive mode", async () => {
+      if (process.platform === "win32") {
+        return; // POSIX permission bits only
+      }
+      await setupHome([".codex"]);
+      await Bun.write(CODEX_FILE, "# Private rules\n");
+      await chmod(CODEX_FILE, 0o600);
+
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+      const backup = report.results[0].backup as string;
+      expect(backup).toBeTruthy();
+      // The backup is a byte-for-byte copy of private content — it must be
+      // exactly as private, not umask-default 0644.
+      expect((await stat(backup)).mode & 0o777).toBe(0o600);
     });
 
     test("preserves a UTF-8 BOM across install, verify, and uninstall", async () => {

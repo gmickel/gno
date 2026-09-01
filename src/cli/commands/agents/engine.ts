@@ -11,6 +11,10 @@
  * @module src/cli/commands/agents/engine
  */
 
+// node:fs/promises: Bun has no API to read or set a file's permission mode;
+// the backup must inherit the source file's (possibly restrictive) mode.
+import { chmod, stat } from "node:fs/promises";
+
 import type { ExtractedBlock, SkillRemediation } from "./block.js";
 import type { ResolvedTarget } from "./harnesses.js";
 
@@ -463,6 +467,11 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
     backupPath = `${writePath}.gno-agents.bak.${timestamp}`;
     try {
       await Bun.write(backupPath, Bun.file(writePath));
+      // Bun.write creates the backup with the process umask; a 0600 source
+      // would yield a world-readable 0644 copy of private instructions.
+      // Inherit the source mode so the backup is exactly as private.
+      const { mode } = await stat(writePath);
+      await chmod(backupPath, mode & 0o777);
     } catch (err) {
       throw new CliError(
         "RUNTIME",
