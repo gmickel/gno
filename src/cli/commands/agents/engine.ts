@@ -170,16 +170,22 @@ async function readFileIfExists(
 /**
  * Build a per-target plan. Fail-closed per file: a target with malformed
  * markers gets an `error` plan (and never a write); other targets proceed.
+ *
+ * `skillByFile` is the consumer aggregation used to render each file's
+ * skill pointer. Callers with an explicit-target run must compute it over
+ * the FULL harness matrix (every detected consumer of each real file), not
+ * over the filtered `targets` — otherwise a shared file is rendered from
+ * the requested targets' skill states alone. Defaults to aggregating over
+ * `targets`, which is only correct when they already span the full matrix.
  */
 export async function planTargets(
   targets: ResolvedTarget[],
-  mode: PlanMode
+  mode: PlanMode,
+  skillByFile: Map<string, boolean> = aggregateSkillInstalled(targets)
 ): Promise<TargetPlan[]> {
   const plans: TargetPlan[] = [];
   /** Real-file identity → id of the target that owns the write. */
   const owners = new Map<string, string>();
-  /** Real-file identity → all detected consumers have the skill. */
-  const skillByFile = aggregateSkillInstalled(targets);
 
   // A detected covered target (e.g. grok → claude) is only truly covered
   // when its covering target's file converges too — so the covering target

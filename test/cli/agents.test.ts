@@ -82,7 +82,7 @@ describe("agents CLI commands", () => {
     test("skill pointer is state-aware", () => {
       expect(renderBlockBody({ skillInstalled: true })).toContain("`/gno`");
       expect(renderBlockBody({ skillInstalled: false })).toContain(
-        "gno skill install"
+        "gno skill install --scope user --target all"
       );
     });
 
@@ -420,7 +420,9 @@ describe("agents CLI commands", () => {
       await installAgents({ target: "all", homeDir: FAKE_HOME, json: true });
 
       const content = await Bun.file(CODEX_FILE).text();
-      expect(content).toContain("run `gno skill install`");
+      expect(content).toContain(
+        "run `gno skill install --scope user --target all`"
+      );
       expect(content).not.toContain("`/gno`");
 
       // Verify mirrors the same aggregation: the shared file is ok, not
@@ -453,6 +455,59 @@ describe("agents CLI commands", () => {
       stdoutOutput = [];
       await verifyAgents({ target: "all", homeDir: FAKE_HOME, json: true });
       expect(JSON.parse(stdoutOutput.join("")).ok).toBe(true);
+    });
+
+    test("explicit-target install aggregates unrequested detected consumers of a shared file", async () => {
+      // Regression: OpenCode's AGENTS.md symlinked to Codex's file, only the
+      // codex skill installed. `install --target codex` filters resolution to
+      // codex, but the skill aggregation must still span the full harness
+      // matrix — otherwise the run emits `/gno` into a shared file OpenCode
+      // cannot follow, and `verify --target all` flags the fresh block
+      // outdated.
+      await setupHome([".codex/skills/gno", ".config/opencode"]);
+      await Bun.write(join(FAKE_HOME, ".codex/skills/gno/SKILL.md"), "# gno\n");
+      await Bun.write(CODEX_FILE, "# Shared\n");
+      await symlink(CODEX_FILE, join(FAKE_HOME, ".config/opencode/AGENTS.md"));
+
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+      // Explicit-target runs still only write the requested target's file.
+      expect(report.results).toHaveLength(1);
+      expect(report.results[0].target).toBe("codex");
+      expect(report.results[0].action).toBe("install");
+
+      const content = await Bun.file(CODEX_FILE).text();
+      expect(content).toContain(
+        "run `gno skill install --scope user --target all`"
+      );
+      expect(content).not.toContain("`/gno`");
+
+      // The bot-reported symptom: an all-target verify right after an
+      // explicit-target install must pass, not report the block outdated.
+      stdoutOutput = [];
+      await verifyAgents({ target: "all", homeDir: FAKE_HOME, json: true });
+      expect(JSON.parse(stdoutOutput.join("")).ok).toBe(true);
+    });
+
+    test("explicit-target verify mirrors the full-matrix aggregation", async () => {
+      // Same shared-file layout, converged via --target all: a filtered
+      // `verify --target codex` must render its expectation from every
+      // detected consumer, not from codex's solo skill state.
+      await setupHome([".codex/skills/gno", ".config/opencode"]);
+      await Bun.write(join(FAKE_HOME, ".codex/skills/gno/SKILL.md"), "# gno\n");
+      await Bun.write(CODEX_FILE, "# Shared\n");
+      await symlink(CODEX_FILE, join(FAKE_HOME, ".config/opencode/AGENTS.md"));
+
+      await installAgents({ target: "all", homeDir: FAKE_HOME, json: true });
+
+      stdoutOutput = [];
+      await verifyAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.ok).toBe(true);
+      const codexResult = report.results.find(
+        (r: { target: string }) => r.target === "codex"
+      );
+      expect(codexResult.status).toBe("ok");
     });
   });
 

@@ -86,10 +86,15 @@ contract (retrieve first; edit canonical notes in place; `gno capture` for
 genuinely new notes; reindex + verify after writes), and gno:// citation
 discipline — in well under 1,500 characters. It carries a version stamp and a
 content hash, and a state-aware pointer: `/gno` when the GNO agent skill is
-installed for every harness that reads the file, otherwise `gno skill
-install`. A file shared by several harnesses (a symlinked `~/AGENTS.md`, an
+installed for every harness that reads the file, otherwise
+`gno skill install --scope user --target all` — user scope and all targets, so
+following the pointer remediates every consuming harness in the state that
+`gno agents update`/`verify` checks. A file shared by several harnesses (a
+symlinked `~/AGENTS.md`, an
 import chain) gets the conservative pointer whenever any consumer lacks the
-skill.
+skill — and that consumer aggregation always spans the full harness matrix,
+even on an explicit `--target` run (the flag filters which files are written,
+never which consumers constrain a shared file's render).
 
 Detailed workflows stay in the skill; the block is the routing contract.
 

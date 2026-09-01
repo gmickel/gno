@@ -78,6 +78,31 @@ function outputSettings(opts: AgentsOptions): {
   };
 }
 
+/**
+ * Consumer aggregation universe for skill-state rendering: the FULL harness
+ * matrix (plus any extra dirs), independent of the requested target filter.
+ * An explicit-target run still only writes the requested targets' files, but
+ * the skill pointer rendered into a shared real file must account for EVERY
+ * detected consumer of that file (e.g. OpenCode's AGENTS.md symlinked to
+ * Codex's) — otherwise `install --target codex` emits `/gno` into a file an
+ * unrequested harness without the skill also reads, and a later
+ * `verify --target all` reports the fresh block outdated.
+ */
+function aggregateSkillState(
+  requested: HarnessId | "all",
+  requestedTargets: ResolvedTarget[],
+  opts: AgentsOptions
+): Map<string, boolean> {
+  const universe =
+    requested === "all"
+      ? requestedTargets
+      : resolveTargets("all", {
+          homeDir: opts.homeDir,
+          extraDirs: opts.extraDirs,
+        });
+  return aggregateSkillInstalled(universe);
+}
+
 interface TargetReport {
   target: string;
   label: string;
@@ -127,11 +152,16 @@ async function runMutation(
   const { json, quiet } = outputSettings(opts);
   const dryRun = opts.dryRun ?? false;
 
-  const targets = resolveTargets(opts.target ?? "all", {
+  const requested = opts.target ?? "all";
+  const targets = resolveTargets(requested, {
     homeDir: opts.homeDir,
     extraDirs: opts.extraDirs,
   });
-  const plans = await planTargets(targets, mode);
+  const plans = await planTargets(
+    targets,
+    mode,
+    aggregateSkillState(requested, targets, opts)
+  );
 
   const reports: TargetReport[] = [];
   const diffs: string[] = [];
@@ -383,7 +413,8 @@ export async function verifyAgents(opts: AgentsOptions = {}): Promise<void> {
   const home =
     opts.homeDir ?? process.env[ENV_AGENTS_HOME_OVERRIDE] ?? homedir();
 
-  const targets = resolveTargets(opts.target ?? "all", {
+  const requested = opts.target ?? "all";
+  const targets = resolveTargets(requested, {
     homeDir: opts.homeDir,
     extraDirs: opts.extraDirs,
   });
@@ -397,7 +428,7 @@ export async function verifyAgents(opts: AgentsOptions = {}): Promise<void> {
   }
 
   const owners = new Map<string, string>();
-  const skillByFile = aggregateSkillInstalled(targets);
+  const skillByFile = aggregateSkillState(requested, targets, opts);
   const results: VerifyReport[] = [];
   for (const target of targets) {
     results.push(

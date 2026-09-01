@@ -2784,8 +2784,13 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    `error` with guidance, nothing written to that file, exit 1.
 5. Symlink-aware: writes go through the resolved real file; targets resolving
    to the same real file are written once (`covered via <target> (same file)`).
-6. State-aware skill pointer: the block references `/gno` when the GNO agent
-   skill is installed for that harness, else `gno skill install`.
+6. State-aware skill pointer: the block references `/gno` only when the GNO
+   agent skill is installed for EVERY detected harness that reads the file,
+   else `gno skill install --scope user --target all` (user scope + all
+   targets, so the remediation covers every consuming harness of a shared
+   file). Consumer aggregation always spans the full harness matrix, even on
+   an explicit-target run — `--target` filters which files are written, never
+   which consumers constrain a shared file's render.
 7. `GNO_AGENTS_HOME_OVERRIDE` overrides the home directory (testing/sandboxed
    verification); any home override suppresses harness config-dir env vars.
 
