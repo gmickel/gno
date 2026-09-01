@@ -55,7 +55,7 @@ export interface BlockRenderOptions {
 export function renderBlockBody(opts: BlockRenderOptions): string {
   const skillPointer = opts.skillInstalled
     ? "load the installed `gno` skill (`/gno`)"
-    : "run `gno skill install --scope user --target all` and load the `gno` skill";
+    : "run `gno skill install --scope user --force --target all` and load the `gno` skill";
   return `## GNO knowledge retrieval
 
 Local knowledge search over indexed collections. Source files are the truth; the GNO index is disposable, machine-local.

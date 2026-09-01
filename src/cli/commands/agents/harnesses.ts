@@ -204,9 +204,24 @@ function isDirectory(path: string): boolean {
   }
 }
 
-function skillInstalledFor(target: SkillTarget, homeDir: string): boolean {
+function skillInstalledFor(
+  target: SkillTarget,
+  homeDir: string,
+  explicitHome: boolean
+): boolean {
   try {
-    const paths = resolveSkillPaths({ scope: "user", target, homeDir });
+    // Skill state is derived from the SAME effective config dir the
+    // instruction file resolves under: resolveSkillPaths honors the harness
+    // config-dir env override (CODEX_HOME, CLAUDE_CONFIG_DIR) for user scope,
+    // with the dedicated skills-dir env var still winning. Passing an explicit
+    // homeDir suppresses those redirects — the same isolation rule
+    // resolveHarness applies to the instruction file — so only forward it
+    // when a home override is active.
+    const paths = resolveSkillPaths({
+      scope: "user",
+      target,
+      homeDir: explicitHome ? homeDir : undefined,
+    });
     return existsSync(join(paths.gnoDir, "SKILL.md"));
   } catch {
     return false;
@@ -246,7 +261,7 @@ function resolveHarness(
     realFile: realIdentity(file),
     detected: isDirectory(configDir),
     coveredBy: def.coveredBy,
-    skillInstalled: skillInstalledFor(def.skillTarget, home),
+    skillInstalled: skillInstalledFor(def.skillTarget, home, explicitHome),
   };
 }
 
@@ -254,7 +269,11 @@ function resolveHarness(
 const EXTRA_DIR_FILE_CANDIDATES = ["CLAUDE.md", "AGENTS.md", "SOUL.md"];
 const DEFAULT_EXTRA_DIR_FILE = "AGENTS.md";
 
-function resolveExtraDir(dir: string, home: string): ResolvedTarget {
+function resolveExtraDir(
+  dir: string,
+  home: string,
+  explicitHome: boolean
+): ResolvedTarget {
   const abs = resolve(dir);
   if (!isDirectory(abs)) {
     throw new CliError(
@@ -269,7 +288,7 @@ function resolveExtraDir(dir: string, home: string): ResolvedTarget {
   // Extra dirs are nonstandard by definition; use any-harness skill presence.
   const skillInstalled = (
     ["claude", "codex", "opencode", "openclaw", "hermes"] as SkillTarget[]
-  ).some((t) => skillInstalledFor(t, home));
+  ).some((t) => skillInstalledFor(t, home, explicitHome));
 
   return {
     id: "extra-dir",
@@ -339,7 +358,7 @@ export function resolveTargets(
   }
 
   for (const dir of opts.extraDirs ?? []) {
-    results.push(resolveExtraDir(dir, home));
+    results.push(resolveExtraDir(dir, home, explicitHome));
   }
 
   return results;

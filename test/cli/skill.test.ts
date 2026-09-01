@@ -4,7 +4,9 @@ import { join } from "node:path";
 
 import { installSkill } from "../../src/cli/commands/skill/install";
 import {
+  ENV_CODEX_SKILLS_DIR,
   ENV_HERMES_SKILLS_DIR,
+  ENV_SKILLS_HOME_OVERRIDE,
   resolveAllPaths,
   resolveSkillPaths,
   validatePathForDeletion,
@@ -187,6 +189,78 @@ describe("skill CLI commands", () => {
       } finally {
         delete process.env[ENV_HERMES_SKILLS_DIR];
       }
+    });
+
+    // Harness config-dir overrides (CODEX_HOME / CLAUDE_CONFIG_DIR): user
+    // scope resolves under the redirected harness so install and the agents
+    // installer's skill-state check agree on where the skill lives.
+    const withEnv = (
+      vars: Record<string, string | undefined>,
+      fn: () => void
+    ) => {
+      const saved: Record<string, string | undefined> = {};
+      for (const [k, v] of Object.entries(vars)) {
+        saved[k] = process.env[k];
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+      try {
+        fn();
+      } finally {
+        for (const [k, v] of Object.entries(saved)) {
+          if (v === undefined) delete process.env[k];
+          else process.env[k] = v;
+        }
+      }
+    };
+
+    test("user/codex resolves under CODEX_HOME when set", () => {
+      const codexHome = join(TEST_DIR, "custom-codex-home");
+      withEnv(
+        { CODEX_HOME: codexHome, [ENV_SKILLS_HOME_OVERRIDE]: undefined },
+        () => {
+          const paths = resolveSkillPaths({ scope: "user", target: "codex" });
+          expect(paths.base).toBe(codexHome);
+          expect(paths.gnoDir).toBe(join(codexHome, "skills", "gno"));
+        }
+      );
+    });
+
+    test("explicit homeDir suppresses CODEX_HOME (isolation)", () => {
+      withEnv({ CODEX_HOME: join(TEST_DIR, "custom-codex-home") }, () => {
+        const paths = resolveSkillPaths({
+          scope: "user",
+          target: "codex",
+          homeDir: FAKE_HOME,
+        });
+        expect(paths.gnoDir).toBe(join(FAKE_HOME, ".codex", "skills", "gno"));
+      });
+    });
+
+    test("CODEX_SKILLS_DIR wins over CODEX_HOME", () => {
+      const skillsDir = join(TEST_DIR, "custom-codex-skills");
+      withEnv(
+        {
+          CODEX_HOME: join(TEST_DIR, "custom-codex-home"),
+          [ENV_CODEX_SKILLS_DIR]: skillsDir,
+          [ENV_SKILLS_HOME_OVERRIDE]: undefined,
+        },
+        () => {
+          const paths = resolveSkillPaths({ scope: "user", target: "codex" });
+          expect(paths.skillsDir).toBe(skillsDir);
+        }
+      );
+    });
+
+    test("rejects relative CODEX_HOME", () => {
+      withEnv(
+        { CODEX_HOME: "relative/codex", [ENV_SKILLS_HOME_OVERRIDE]: undefined },
+        () => {
+          expect(() =>
+            resolveSkillPaths({ scope: "user", target: "codex" })
+          ).toThrow("CODEX_HOME must be an absolute path");
+        }
+      );
     });
   });
 

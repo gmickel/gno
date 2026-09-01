@@ -84,6 +84,13 @@ interface TargetPathConfig {
   userBase: string; // e.g., ".claude" (joined with homedir) or ".config/opencode"
   skillsSubdir: string; // e.g., "skills" or "skill"
   envVar: string;
+  /**
+   * The harness's own documented config-dir override (e.g. CODEX_HOME). User
+   * scope resolves under it so a redirected harness instance finds the skill
+   * where it actually loads skills from. Less specific than `envVar`, and
+   * suppressed by an explicit homeDir / GNO_SKILLS_HOME_OVERRIDE (isolation).
+   */
+  configDirEnvVar?: string;
 }
 
 const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
@@ -92,12 +99,14 @@ const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
     userBase: ".claude",
     skillsSubdir: "skills",
     envVar: ENV_CLAUDE_SKILLS_DIR,
+    configDirEnvVar: "CLAUDE_CONFIG_DIR",
   },
   codex: {
     projectBase: ".codex",
     userBase: ".codex",
     skillsSubdir: "skills",
     envVar: ENV_CODEX_SKILLS_DIR,
+    configDirEnvVar: "CODEX_HOME",
   },
   opencode: {
     projectBase: ".opencode",
@@ -150,8 +159,26 @@ export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
   let base: string;
 
   if (scope === "user") {
-    const home = homeDir ?? process.env[ENV_SKILLS_HOME_OVERRIDE] ?? homedir();
-    base = join(home, config.userBase);
+    // An explicit home (option or GNO_SKILLS_HOME_OVERRIDE) is an isolation
+    // request and suppresses the harness config-dir redirect — the same rule
+    // the agents installer applies to the instruction file.
+    const isolated =
+      homeDir !== undefined ||
+      process.env[ENV_SKILLS_HOME_OVERRIDE] !== undefined;
+    const configOverride =
+      !isolated && config.configDirEnvVar
+        ? process.env[config.configDirEnvVar]
+        : undefined;
+    if (configOverride) {
+      if (!isAbsolute(configOverride)) {
+        throw new Error(`${config.configDirEnvVar} must be an absolute path`);
+      }
+      base = normalize(configOverride);
+    } else {
+      const home =
+        homeDir ?? process.env[ENV_SKILLS_HOME_OVERRIDE] ?? homedir();
+      base = join(home, config.userBase);
+    }
   } else {
     const projectRoot = cwd ?? process.cwd();
     base = join(projectRoot, config.projectBase);

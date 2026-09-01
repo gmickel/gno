@@ -82,7 +82,7 @@ describe("agents CLI commands", () => {
     test("skill pointer is state-aware", () => {
       expect(renderBlockBody({ skillInstalled: true })).toContain("`/gno`");
       expect(renderBlockBody({ skillInstalled: false })).toContain(
-        "gno skill install --scope user --target all"
+        "gno skill install --scope user --force --target all"
       );
     });
 
@@ -421,7 +421,7 @@ describe("agents CLI commands", () => {
 
       const content = await Bun.file(CODEX_FILE).text();
       expect(content).toContain(
-        "run `gno skill install --scope user --target all`"
+        "run `gno skill install --scope user --force --target all`"
       );
       expect(content).not.toContain("`/gno`");
 
@@ -478,7 +478,7 @@ describe("agents CLI commands", () => {
 
       const content = await Bun.file(CODEX_FILE).text();
       expect(content).toContain(
-        "run `gno skill install --scope user --target all`"
+        "run `gno skill install --scope user --force --target all`"
       );
       expect(content).not.toContain("`/gno`");
 

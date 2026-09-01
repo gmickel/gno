@@ -2786,11 +2786,15 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    to the same real file are written once (`covered via <target> (same file)`).
 6. State-aware skill pointer: the block references `/gno` only when the GNO
    agent skill is installed for EVERY detected harness that reads the file,
-   else `gno skill install --scope user --target all` (user scope + all
-   targets, so the remediation covers every consuming harness of a shared
-   file). Consumer aggregation always spans the full harness matrix, even on
+   else `gno skill install --scope user --force --target all` (user scope +
+   all targets + force, so the remediation covers every consuming harness of
+   a shared file and stays idempotent when some targets are already
+   installed). Consumer aggregation always spans the full harness matrix, even on
    an explicit-target run — `--target` filters which files are written, never
-   which consumers constrain a shared file's render.
+   which consumers constrain a shared file's render. Skill state is read from
+   the same effective config dir as the instruction file: a harness redirected
+   via `CLAUDE_CONFIG_DIR` / `CODEX_HOME` is checked (and, following the
+   pointer, installed) under that dir, not the ordinary home.
 7. `GNO_AGENTS_HOME_OVERRIDE` overrides the home directory (testing/sandboxed
    verification); any home override suppresses harness config-dir env vars.
 
@@ -3828,16 +3832,18 @@ Write-lease contention on `index` / `update` / `embed` does not use the generic 
 
 ## Environment Variables
 
-| Variable                   | Description                                                           |
-| -------------------------- | --------------------------------------------------------------------- |
-| `GNO_CONFIG_DIR`           | Override config directory                                             |
-| `GNO_DATA_DIR`             | Override data directory (DB location)                                 |
-| `GNO_CACHE_DIR`            | Override cache directory (models)                                     |
-| `NO_COLOR`                 | Disable colored output (standard)                                     |
-| `PAGER`                    | Pager for long output (default: less -R on Unix, built-in on Windows) |
-| `GNO_SKILLS_HOME_OVERRIDE` | Override home dir for skill user scope (testing)                      |
-| `CLAUDE_SKILLS_DIR`        | Override Claude skills directory                                      |
-| `CODEX_SKILLS_DIR`         | Override Codex skills directory                                       |
+| Variable                   | Description                                                                                                                                               |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GNO_CONFIG_DIR`           | Override config directory                                                                                                                                 |
+| `GNO_DATA_DIR`             | Override data directory (DB location)                                                                                                                     |
+| `GNO_CACHE_DIR`            | Override cache directory (models)                                                                                                                         |
+| `NO_COLOR`                 | Disable colored output (standard)                                                                                                                         |
+| `PAGER`                    | Pager for long output (default: less -R on Unix, built-in on Windows)                                                                                     |
+| `GNO_SKILLS_HOME_OVERRIDE` | Override home dir for skill user scope (testing)                                                                                                          |
+| `CLAUDE_SKILLS_DIR`        | Override Claude skills directory                                                                                                                          |
+| `CODEX_SKILLS_DIR`         | Override Codex skills directory                                                                                                                           |
+| `CLAUDE_CONFIG_DIR`        | Claude Code config dir; user-scope skill paths and `gno agents` resolve under it (dedicated `*_SKILLS_DIR` wins; suppressed by an explicit home override) |
+| `CODEX_HOME`               | Codex config dir; same rule as `CLAUDE_CONFIG_DIR`                                                                                                        |
 
 ---
 
