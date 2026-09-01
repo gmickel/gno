@@ -11,11 +11,11 @@
  * @module src/cli/commands/agents/engine
  */
 
-import type { ExtractedBlock } from "./block.js";
+import type { ExtractedBlock, SkillRemediation } from "./block.js";
 import type { ResolvedTarget } from "./harnesses.js";
 
 import { CliError } from "../../errors.js";
-import { extractBlock, renderBlock } from "./block.js";
+import { extractBlock, renderBlock, stampAuthenticates } from "./block.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -188,6 +188,55 @@ export function aggregateSkillInstalled(
   return skillByFile;
 }
 
+/** The file a detected consumer actually reads (import chain followed). */
+function consumedFile(
+  target: ResolvedTarget,
+  byId: Map<string, ResolvedTarget>
+): ResolvedTarget | undefined {
+  let consumed: ResolvedTarget | undefined = target;
+  const visited = new Set<string>();
+  while (consumed?.coveredBy && !visited.has(consumed.id)) {
+    visited.add(consumed.id);
+    consumed = byId.get(consumed.coveredBy);
+  }
+  return consumed;
+}
+
+/**
+ * Per consumed real file, the consumers that still LACK the skill — what the
+ * conservative pointer's remediation must install for. Scoped to actual
+ * consumers so following it never creates skill/config dirs for harnesses
+ * the operator never installed (which a later `agents update` would then
+ * detect and write instruction files into). Same keying and chain-following
+ * as `aggregateSkillInstalled`.
+ */
+export function aggregateRemediation(
+  targets: ResolvedTarget[]
+): Map<string, SkillRemediation> {
+  const byId = new Map(targets.map((t) => [t.id, t]));
+  const byFile = new Map<string, SkillRemediation>();
+  for (const target of targets) {
+    if (!target.detected || target.skillInstalled) {
+      continue;
+    }
+    const consumed = consumedFile(target, byId);
+    if (!consumed) {
+      continue;
+    }
+    const entry = byFile.get(consumed.realFile) ?? {
+      targets: [],
+      extraDirs: [],
+    };
+    if (target.id === "extra-dir") {
+      entry.extraDirs.push(target.configDir);
+    } else if (!entry.targets.includes(target.skillTarget)) {
+      entry.targets.push(target.skillTarget);
+    }
+    byFile.set(consumed.realFile, entry);
+  }
+  return byFile;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Planning
 // ─────────────────────────────────────────────────────────────────────────────
@@ -219,7 +268,10 @@ async function readFileIfExists(
 export async function planTargets(
   targets: ResolvedTarget[],
   mode: PlanMode,
-  skillByFile: Map<string, boolean> = aggregateSkillInstalled(targets)
+  skillByFile: Map<string, boolean> = aggregateSkillInstalled(targets),
+  remediationByFile: Map<string, SkillRemediation> = aggregateRemediation(
+    targets
+  )
 ): Promise<TargetPlan[]> {
   const plans: TargetPlan[] = [];
   /** Real-file identity → id of the target that owns the write. */
@@ -336,9 +388,14 @@ export async function planTargets(
 
     // Fresh install onto a file missing its final newline: withBlock will
     // append one, and the stamp records that fact for uninstall. Updates
-    // carry the recorded provenance forward unchanged.
+    // carry the recorded provenance forward — but only when the stamp
+    // authenticates it (hash covers body + token). A hand-edited stamp is
+    // untrusted: drop the claim rather than let a forged token make uninstall
+    // consume a newline the operator owns (the conservative direction — it can
+    // leave an install-added newline behind, never remove operator bytes).
     const addedLeadingNewline = extraction.found
-      ? (extraction.block.stamp?.addedLeadingNewline ?? false)
+      ? stampAuthenticates(extraction.block) &&
+        (extraction.block.stamp?.addedLeadingNewline ?? false)
       : content.length > 0 && !content.endsWith("\n");
     const rendered = renderBlock({
       // Aggregate across every detected consumer of this real file — the
@@ -346,6 +403,7 @@ export async function planTargets(
       // skill (a shared file can serve harnesses with different states).
       skillInstalled: skillByFile.get(target.realFile) ?? target.skillInstalled,
       addedLeadingNewline,
+      remediation: remediationByFile.get(target.realFile),
     });
     const newContent = withBlock(
       content,

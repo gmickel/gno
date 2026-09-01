@@ -15,10 +15,12 @@ import {
   BLOCK_VERSION,
   extractBlock,
   extractFileReferences,
-  hashBlockBody,
   renderBlock,
+  type SkillRemediation,
+  stampAuthenticates,
 } from "./block.js";
 import {
+  aggregateRemediation,
   aggregateSkillInstalled,
   applyPlan,
   decodeInstructionFile,
@@ -93,7 +95,10 @@ function aggregateSkillState(
   requested: HarnessId | "all",
   requestedTargets: ResolvedTarget[],
   opts: AgentsOptions
-): Map<string, boolean> {
+): {
+  skillByFile: Map<string, boolean>;
+  remediationByFile: Map<string, SkillRemediation>;
+} {
   const universe =
     requested === "all"
       ? requestedTargets
@@ -101,7 +106,10 @@ function aggregateSkillState(
           homeDir: opts.homeDir,
           extraDirs: opts.extraDirs,
         });
-  return aggregateSkillInstalled(universe);
+  return {
+    skillByFile: aggregateSkillInstalled(universe),
+    remediationByFile: aggregateRemediation(universe),
+  };
 }
 
 interface TargetReport {
@@ -158,10 +166,12 @@ async function runMutation(
     homeDir: opts.homeDir,
     extraDirs: opts.extraDirs,
   });
+  const aggregated = aggregateSkillState(requested, targets, opts);
   const plans = await planTargets(
     targets,
     mode,
-    aggregateSkillState(requested, targets, opts)
+    aggregated.skillByFile,
+    aggregated.remediationByFile
   );
 
   const reports: TargetReport[] = [];
@@ -278,6 +288,8 @@ async function verifyTarget(
     owners: Map<string, string>;
     /** Real-file identity → all detected consumers have the skill. */
     skillByFile: Map<string, boolean>;
+    /** Real-file identity → consumers lacking the skill (remediation). */
+    remediationByFile: Map<string, SkillRemediation>;
   }
 ): Promise<VerifyReport> {
   const base: Pick<VerifyReport, "target" | "label" | "path" | "detected"> = {
@@ -353,17 +365,18 @@ async function verifyTarget(
   }
 
   const { block } = extraction;
-  const hashOk =
-    block.stamp !== null && block.stamp.hash === hashBlockBody(block.body);
+  // The stamp hash covers body + `+nl` token, so a stripped/forged token
+  // fails here rather than being mirrored into the expected render below.
+  const hashOk = stampAuthenticates(block);
   // Expected inner text = current render for this file's aggregated skill
-  // state (every detected consumer of the shared real file, mirroring what
-  // install renders), without the surrounding marker lines. The stamp's
-  // `+nl` provenance token is install-time state, not content — mirror it
-  // into the expected render.
+  // state and remediation set (every detected consumer of the shared real
+  // file, mirroring what install renders), without the marker lines. The
+  // `+nl` token is install-time provenance — mirrored only once authenticated.
   const expectedInner = renderBlock({
     skillInstalled:
       runContext.skillByFile.get(target.realFile) ?? target.skillInstalled,
-    addedLeadingNewline: block.stamp?.addedLeadingNewline ?? false,
+    addedLeadingNewline: hashOk && (block.stamp?.addedLeadingNewline ?? false),
+    remediation: runContext.remediationByFile.get(target.realFile),
   })
     .split("\n")
     .slice(1, -1)
@@ -430,7 +443,11 @@ export async function verifyAgents(opts: AgentsOptions = {}): Promise<void> {
   }
 
   const owners = new Map<string, string>();
-  const skillByFile = aggregateSkillState(requested, targets, opts);
+  const { skillByFile, remediationByFile } = aggregateSkillState(
+    requested,
+    targets,
+    opts
+  );
   const results: VerifyReport[] = [];
   for (const target of targets) {
     results.push(
@@ -439,6 +456,7 @@ export async function verifyAgents(opts: AgentsOptions = {}): Promise<void> {
         requiredCovering,
         owners,
         skillByFile,
+        remediationByFile,
       })
     );
   }

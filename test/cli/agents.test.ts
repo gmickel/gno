@@ -79,11 +79,28 @@ describe("agents CLI commands", () => {
       expect(block).toContain(`gno-agents block v${BLOCK_VERSION} sha256:`);
     });
 
-    test("skill pointer is state-aware", () => {
+    test("skill pointer is state-aware and remediation is scoped to consumers", () => {
       expect(renderBlockBody({ skillInstalled: true })).toContain("`/gno`");
+      // No consumer information → generic fallback.
       expect(renderBlockBody({ skillInstalled: false })).toContain(
         "gno skill install --scope user --force --target all"
       );
+      // Consumers known → one install per harness lacking the skill, plus the
+      // instance-local env form for an --extra-dir; never `--target all`.
+      const scoped = renderBlockBody({
+        skillInstalled: false,
+        remediation: { targets: ["codex", "opencode"], extraDirs: ["/x/inst"] },
+      });
+      expect(scoped).toContain(
+        "gno skill install --scope user --force --target codex; "
+      );
+      expect(scoped).toContain("--target opencode; ");
+      expect(scoped).toContain(
+        "CLAUDE_SKILLS_DIR=/x/inst/skills gno skill install --scope user --force --target claude"
+      );
+      expect(scoped).not.toContain("--target all");
+      // The instance path inside the env assignment is not a link to validate.
+      expect(extractFileReferences(scoped)).toEqual([]);
     });
 
     test("`/gno` skill command is not a filesystem link (verify stays ok)", () => {
@@ -200,7 +217,10 @@ describe("agents CLI commands", () => {
         json: true,
       });
       const withoutSkill = await Bun.file(join(instance, "AGENTS.md")).text();
-      expect(withoutSkill).toContain("gno skill install --scope user --force");
+      // The remediation addresses the instance itself via its skills dir.
+      expect(withoutSkill).toContain(
+        `CLAUDE_SKILLS_DIR=${instance}/skills gno skill install --scope user --force --target claude`
+      );
       expect(withoutSkill).not.toContain("`/gno`");
 
       // Install the skill INTO the instance → the pointer flips on update.
@@ -481,9 +501,12 @@ describe("agents CLI commands", () => {
       await installAgents({ target: "all", homeDir: FAKE_HOME, json: true });
 
       const content = await Bun.file(CODEX_FILE).text();
+      // Only cursor (Claude-backed skill) lacks the skill → remediation names
+      // exactly that target, not `all` (which would fabricate absent harnesses).
       expect(content).toContain(
-        "run `gno skill install --scope user --force --target all`"
+        "run `gno skill install --scope user --force --target claude`"
       );
+      expect(content).not.toContain("--target all");
       expect(content).not.toContain("`/gno`");
 
       // Verify mirrors the same aggregation: the shared file is ok, not
@@ -538,8 +561,9 @@ describe("agents CLI commands", () => {
       expect(report.results[0].action).toBe("install");
 
       const content = await Bun.file(CODEX_FILE).text();
+      // OpenCode is the consumer lacking the skill → scoped remediation.
       expect(content).toContain(
-        "run `gno skill install --scope user --force --target all`"
+        "run `gno skill install --scope user --force --target opencode`"
       );
       expect(content).not.toContain("`/gno`");
 
@@ -620,6 +644,44 @@ describe("agents CLI commands", () => {
       expect(Array.from(await Bun.file(CODEX_FILE).bytes())).toEqual(
         Array.from(original)
       );
+    });
+
+    test("newline-provenance token is authenticated by the stamp hash", async () => {
+      // Regression: the hash covered the body only, so deleting ` +nl` from
+      // the stamp left the block "current" while uninstall would then leave
+      // the install-added newline behind.
+      await setupHome([".codex"]);
+      await Bun.write(CODEX_FILE, "abc"); // no final newline → install stamps +nl
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      const installed = await Bun.file(CODEX_FILE).text();
+      expect(installed).toContain(" +nl ");
+
+      // Tamper: strip the provenance token by hand.
+      await Bun.write(CODEX_FILE, installed.replace(" +nl ", " "));
+      stdoutOutput = [];
+      let thrown: unknown;
+      try {
+        await verifyAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(CliError);
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.results[0].status).toBe("outdated");
+      expect(report.results[0].hashOk).toBe(false);
+
+      // Update re-stamps; the forged provenance is dropped rather than trusted,
+      // so a later uninstall never consumes a newline it cannot prove it added.
+      await installAgents(
+        { target: "codex", homeDir: FAKE_HOME, json: true },
+        "update"
+      );
+      await uninstallAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        json: true,
+      });
+      expect(await Bun.file(CODEX_FILE).text()).toBe("abc\n");
     });
 
     test("refuses to rewrite a non-UTF-8 file; bytes untouched", async () => {
@@ -789,11 +851,14 @@ describe("agents CLI commands", () => {
       await Bun.write(CODEX_FILE, noFinalNewline);
       await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
 
-      // Simulate a stale block: keep the +nl token, change version/body.
+      // Simulate a stale-but-genuine block from an older release: different
+      // version and body, +nl token kept, and a stamp hash that AUTHENTICATES
+      // that body+token (a forged/unauthenticated token is dropped instead —
+      // covered by the tamper test in the marker-safety section).
       const installed = await Bun.file(CODEX_FILE).text();
       const stale = installed.replace(
         /<!-- gno-agents block v\d+ sha256:[0-9a-f]{16} \+nl —[^>]*-->[\s\S]*?(?=\n<!-- gno:agents:end -->)/,
-        "<!-- gno-agents block v0 sha256:0000000000000000 +nl — stale -->\nold body"
+        `<!-- gno-agents block v0 sha256:${hashBlockBody("old body", true)} +nl — stale -->\nold body`
       );
       expect(stale).not.toBe(installed);
       await Bun.write(CODEX_FILE, stale);

@@ -90,11 +90,13 @@ contract (retrieve first; edit canonical notes in place; `gno capture` for
 genuinely new notes; reindex + verify after writes), and gno:// citation
 discipline — in well under 1,500 characters. It carries a version stamp and a
 content hash, and a state-aware pointer: `/gno` when the GNO agent skill is
-installed for every harness that reads the file, otherwise
-`gno skill install --scope user --force --target all` — user scope, all
-targets, and force, so following the pointer remediates every consuming
-harness in the state that `gno agents update`/`verify` checks, including a
-partial install where some targets already exist. That state is read from the
+installed for every harness that reads the file, otherwise a remediation
+scoped to the consumers that lack it — one
+`gno skill install --scope user --force --target <harness>` per such harness
+(and the `CLAUDE_SKILLS_DIR=<dir>/skills …` form for an extra-dir instance),
+never `--target all`, so following the pointer never fabricates skill or
+config dirs for harnesses you never installed. `--force` keeps it idempotent
+across partial installs. That state is read from the
 same effective config dir as the instruction file, so a harness redirected via
 `CLAUDE_CONFIG_DIR` / `CODEX_HOME` is checked — and installed into — under
 that dir. Files are handled as bytes: a leading UTF-8 BOM survives every

@@ -160,6 +160,8 @@ export interface ResolvedTarget {
   realFile: string;
   /** Whether the harness is detected on this machine. */
   detected: boolean;
+  /** Skill target this consumer loads the GNO skill from. */
+  skillTarget: SkillTarget;
   /** Import chain target this harness is covered by, when applicable. */
   coveredBy?: HarnessId;
   /** Whether the GNO agent skill is installed for this harness (user scope). */
@@ -299,6 +301,7 @@ function resolveHarness(
     detected: isDirectory(configDir),
     coveredBy: def.coveredBy,
     skillInstalled: skillInstalledFor(def.skillTarget, home, explicitHome),
+    skillTarget: def.skillTarget,
   };
 }
 
@@ -334,6 +337,9 @@ function resolveExtraDir(dir: string): ResolvedTarget {
     realFile: realIdentity(file),
     detected: true,
     skillInstalled,
+    // Instances share the skills/<name> layout of every target; claude is the
+    // env-override vehicle (CLAUDE_SKILLS_DIR) the remediation uses.
+    skillTarget: "claude",
   };
 }
 

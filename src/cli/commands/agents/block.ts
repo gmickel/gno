@@ -8,6 +8,8 @@
  * @module src/cli/commands/agents/block
  */
 
+import type { SkillTarget } from "../skill/paths.js";
+
 import { CliError } from "../../errors.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,15 +38,57 @@ const ADDED_NEWLINE_TOKEN = " +nl";
 // Rendering
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * The consumers of one instruction file that still lack the skill — drives a
+ * remediation scoped to exactly those harnesses, so following it never
+ * fabricates skill/config dirs for harnesses the operator never installed.
+ */
+export interface SkillRemediation {
+  /** Standard harness skill targets lacking the skill (deduped). */
+  targets: SkillTarget[];
+  /** `--extra-dir` instances lacking the skill (their config dir). */
+  extraDirs: string[];
+}
+
 export interface BlockRenderOptions {
-  /** Whether the GNO agent skill is installed for this harness. */
+  /** Whether the GNO agent skill is installed for every consumer. */
   skillInstalled: boolean;
   /**
    * Install appended a final newline to a file that had none. Stamped into
    * the block (` +nl`) so uninstall knows the newline above the block is
-   * install-owned, not user content. Never affects the body hash.
+   * install-owned, not user content. Authenticated by the stamp hash: the
+   * hash covers body + token, so a stripped or added token fails verify.
    */
   addedLeadingNewline?: boolean;
+  /**
+   * Consumers lacking the skill, for the remediation command. Absent (no
+   * consumer information) falls back to the generic all-targets form.
+   */
+  remediation?: SkillRemediation;
+}
+
+/**
+ * Render the remediation the conservative pointer asks the agent to run.
+ * One `gno skill install` per consumer harness that lacks the skill; an
+ * `--extra-dir` instance is addressed through its own skills dir
+ * (`CLAUDE_SKILLS_DIR=<dir>/skills`, the layout every target shares).
+ */
+export function renderRemediation(remediation?: SkillRemediation): string {
+  const targets = [...new Set(remediation?.targets ?? [])];
+  const extraDirs = remediation?.extraDirs ?? [];
+  if (targets.length === 0 && extraDirs.length === 0) {
+    return "gno skill install --scope user --force --target all";
+  }
+  const commands = [
+    ...targets.map(
+      (t) => `gno skill install --scope user --force --target ${t}`
+    ),
+    ...extraDirs.map(
+      (dir) =>
+        `CLAUDE_SKILLS_DIR=${dir}/skills gno skill install --scope user --force --target claude`
+    ),
+  ];
+  return commands.join("; ");
 }
 
 /**
@@ -55,7 +99,7 @@ export interface BlockRenderOptions {
 export function renderBlockBody(opts: BlockRenderOptions): string {
   const skillPointer = opts.skillInstalled
     ? "load the installed `gno` skill (`/gno`)"
-    : "run `gno skill install --scope user --force --target all` and load the `gno` skill";
+    : `run \`${renderRemediation(opts.remediation)}\` and load the \`gno\` skill`;
   return `## GNO knowledge retrieval
 
 Local knowledge search over indexed collections. Source files are the truth; the GNO index is disposable, machine-local.
@@ -74,20 +118,43 @@ Writing: retrieve first — a question alone is read-only. Edit an existing cano
 Cite with gno:// URIs. Advanced retrieval (structured queries, filters, backlinks, similar, capture recipes): ${skillPointer}.`;
 }
 
-/** SHA-256 hex digest, truncated for the stamp line. */
-export function hashBlockBody(body: string): string {
+/**
+ * SHA-256 hex digest, truncated for the stamp line. Covers the body AND the
+ * newline-provenance token, so the token is authenticated material: deleting
+ * or adding ` +nl` by hand invalidates the stamp instead of silently changing
+ * what uninstall will consume.
+ */
+export function hashBlockBody(
+  body: string,
+  addedLeadingNewline = false
+): string {
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(body);
+  if (addedLeadingNewline) {
+    hasher.update(`\n${ADDED_NEWLINE_TOKEN}`);
+  }
   return hasher.digest("hex").slice(0, HASH_PREFIX_LENGTH);
 }
 
-/** Render the stamp line carrying version + body hash (+ `+nl` provenance). */
+/** Render the stamp line carrying version + authenticated hash (+ `+nl`). */
 export function renderStampLine(
   body: string,
   addedLeadingNewline = false
 ): string {
   const token = addedLeadingNewline ? ADDED_NEWLINE_TOKEN : "";
-  return `<!-- gno-agents block v${BLOCK_VERSION} sha256:${hashBlockBody(body)}${token} — managed by \`gno agents\`; manual edits inside the markers are overwritten -->`;
+  return `<!-- gno-agents block v${BLOCK_VERSION} sha256:${hashBlockBody(body, addedLeadingNewline)}${token} — managed by \`gno agents\`; manual edits inside the markers are overwritten -->`;
+}
+
+/** True when the extracted stamp authenticates the body + provenance token. */
+export function stampAuthenticates(block: {
+  body: string;
+  stamp: { hash: string; addedLeadingNewline: boolean } | null;
+}): boolean {
+  return (
+    block.stamp !== null &&
+    block.stamp.hash ===
+      hashBlockBody(block.body, block.stamp.addedLeadingNewline)
+  );
 }
 
 /** Render the complete block: BEGIN marker, stamp, body, END marker. */

@@ -2781,8 +2781,12 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    `<file>.gno-agents.bak.<timestamp>` before the write.
 3. Idempotent: a current block is a `current` no-op (no write, no backup).
 4. Fail-closed marker validation: malformed or duplicate markers → per-target
-   `error` with guidance, nothing written to that file, exit 1. Files are read
-   and written as bytes: a leading UTF-8 BOM is preserved across
+   `error` with guidance, nothing written to that file, exit 1. The stamp hash
+   covers the block body AND the `+nl` newline-provenance token, so a
+   hand-edited token fails `verify` (`hashOk: false`) and `update` drops an
+   unauthenticated provenance claim rather than trusting it (uninstall then
+   preserves the newline — it never removes operator bytes on a forged claim).
+   Files are read and written as bytes: a leading UTF-8 BOM is preserved across
    install/update/uninstall, and a file that is not valid UTF-8 is refused
    (per-target `error`, nothing written) rather than rewritten with
    replacement characters.
@@ -2793,10 +2797,13 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    so aliases of one not-yet-created file dedupe before any write.
 6. State-aware skill pointer: the block references `/gno` only when the GNO
    agent skill is installed for EVERY detected harness that reads the file,
-   else `gno skill install --scope user --force --target all` (user scope +
-   all targets + force, so the remediation covers every consuming harness of
-   a shared file and stays idempotent when some targets are already
-   installed). Consumer aggregation always spans the full harness matrix, even on
+   else a remediation scoped to the consumers that lack it — one
+   `gno skill install --scope user --force --target <harness>` per such
+   harness, and `CLAUDE_SKILLS_DIR=<dir>/skills gno skill install --scope user --force --target claude`
+   for an `--extra-dir` instance — never `--target all`, which would create
+   skill/config dirs for harnesses the operator never installed (and a later
+   `update` would then write instruction files into them). `--force` keeps the
+   remediation idempotent across partial installs. Consumer aggregation always spans the full harness matrix, even on
    an explicit-target run — `--target` filters which files are written, never
    which consumers constrain a shared file's render. Skill state is read from
    the same effective config dir as the instruction file: a harness redirected
