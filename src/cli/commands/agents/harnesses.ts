@@ -30,7 +30,11 @@ import {
 } from "node:path";
 
 import { CliError } from "../../errors.js";
-import { resolveSkillPaths, type SkillTarget } from "../skill/paths.js";
+import {
+  resolveSkillPaths,
+  SKILL_NAME,
+  type SkillTarget,
+} from "../skill/paths.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Environment Variables
@@ -302,11 +306,7 @@ function resolveHarness(
 const EXTRA_DIR_FILE_CANDIDATES = ["CLAUDE.md", "AGENTS.md", "SOUL.md"];
 const DEFAULT_EXTRA_DIR_FILE = "AGENTS.md";
 
-function resolveExtraDir(
-  dir: string,
-  home: string,
-  explicitHome: boolean
-): ResolvedTarget {
+function resolveExtraDir(dir: string): ResolvedTarget {
   const abs = resolve(dir);
   if (!isDirectory(abs)) {
     throw new CliError(
@@ -318,10 +318,13 @@ function resolveExtraDir(
     existsSync(join(abs, name))
   );
   const file = join(abs, existing ?? DEFAULT_EXTRA_DIR_FILE);
-  // Extra dirs are nonstandard by definition; use any-harness skill presence.
-  const skillInstalled = (
-    ["claude", "codex", "opencode", "openclaw", "hermes"] as SkillTarget[]
-  ).some((t) => skillInstalledFor(t, home, explicitHome));
+  // An extra dir is a harness instance of its own: the skill it can load is
+  // the one under ITS config dir (<dir>/skills/gno), never a standard
+  // harness's. Operators install into an instance via the dedicated
+  // skills-dir env override (e.g. CLAUDE_SKILLS_DIR=<dir>/skills).
+  const skillInstalled = existsSync(
+    join(abs, "skills", SKILL_NAME, "SKILL.md")
+  );
 
   return {
     id: "extra-dir",
@@ -391,7 +394,7 @@ export function resolveTargets(
   }
 
   for (const dir of opts.extraDirs ?? []) {
-    results.push(resolveExtraDir(dir, home, explicitHome));
+    results.push(resolveExtraDir(dir));
   }
 
   return results;

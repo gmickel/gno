@@ -2750,11 +2750,11 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
 
 **Options:**
 
-| Option        | Type    | Default | Description                                                                                     |
-| ------------- | ------- | ------- | ----------------------------------------------------------------------------------------------- |
-| `--target`    | string  | all     | Harness to install for; `all` = every harness detected on this machine                          |
-| `--extra-dir` | string  | —       | Additional instruction dir (repeatable, for nonstandard/multi-instance layouts). Never guessed. |
-| `--dry-run`   | boolean | false   | Print per-target unified diffs; write nothing                                                   |
+| Option        | Type    | Default | Description                                                                                                                                                                      |
+| ------------- | ------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--target`    | string  | all     | Harness to install for; `all` = every harness detected on this machine                                                                                                           |
+| `--extra-dir` | string  | —       | Additional instruction dir (repeatable, for nonstandard/multi-instance layouts). Never guessed. Its skill state is read from `<path>/skills/gno`, not from any standard harness. |
+| `--dry-run`   | boolean | false   | Print per-target unified diffs; write nothing                                                                                                                                    |
 
 **Harness matrix (standard documented locations):**
 

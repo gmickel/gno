@@ -182,6 +182,44 @@ describe("agents CLI commands", () => {
       expect(content.startsWith("# Instance\n")).toBe(true);
     });
 
+    test("--extra-dir skill state comes from that instance, not standard harnesses", async () => {
+      // Regression: an extra dir used any-standard-harness skill presence, so
+      // an instance without the skill got a `/gno` pointer it cannot load.
+      await setupHome([".claude", ".claude/skills/gno"]);
+      await Bun.write(
+        join(FAKE_HOME, ".claude/skills/gno/SKILL.md"),
+        "# gno\n"
+      );
+      const instance = join(FAKE_HOME, "instance");
+      await mkdir(instance, { recursive: true });
+
+      await installAgents({
+        target: "claude",
+        homeDir: FAKE_HOME,
+        extraDirs: [instance],
+        json: true,
+      });
+      const withoutSkill = await Bun.file(join(instance, "AGENTS.md")).text();
+      expect(withoutSkill).toContain("gno skill install --scope user --force");
+      expect(withoutSkill).not.toContain("`/gno`");
+
+      // Install the skill INTO the instance → the pointer flips on update.
+      await mkdir(join(instance, "skills", "gno"), { recursive: true });
+      await Bun.write(join(instance, "skills/gno/SKILL.md"), "# gno\n");
+      stdoutOutput = [];
+      await installAgents(
+        {
+          target: "claude",
+          homeDir: FAKE_HOME,
+          extraDirs: [instance],
+          json: true,
+        },
+        "update"
+      );
+      const withSkill = await Bun.file(join(instance, "AGENTS.md")).text();
+      expect(withSkill).toContain("`/gno`");
+    });
+
     test("--extra-dir rejects a nonexistent directory", async () => {
       await setupHome([".claude"]);
       let thrown: unknown;
