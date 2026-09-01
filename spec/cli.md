@@ -2568,16 +2568,17 @@ Install GNO agent skill for Claude Code, Codex, OpenCode, OpenClaw, or Hermes.
 **Synopsis:**
 
 ```bash
-gno skill install [--scope <project|user>] [--target <claude|codex|opencode|openclaw|hermes|all>] [--force] [--json]
+gno skill install [--scope <project|user>] [--target <claude|codex|opencode|openclaw|hermes|all>] [--force] [--skills-dir <path>] [--json]
 ```
 
 **Options:**
 
-| Option     | Type    | Default | Description                                                   |
-| ---------- | ------- | ------- | ------------------------------------------------------------- |
-| `--scope`  | string  | project | `project` (.claude/skills/) or `user` (~/.claude/skills/)     |
-| `--target` | string  | claude  | `claude`, `codex`, `opencode`, `openclaw`, `hermes`, or `all` |
-| `--force`  | boolean | false   | Overwrite existing skill without prompting                    |
+| Option         | Type    | Default | Description                                                                                                                                           |
+| -------------- | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--scope`      | string  | project | `project` (.claude/skills/) or `user` (~/.claude/skills/)                                                                                             |
+| `--target`     | string  | claude  | `claude`, `codex`, `opencode`, `openclaw`, `hermes`, or `all`                                                                                         |
+| `--force`      | boolean | false   | Overwrite existing skill without prompting                                                                                                            |
+| `--skills-dir` | string  | —       | Explicit absolute skills directory; wins over `*_SKILLS_DIR` / config-dir env and home resolution (addresses a nonstandard harness instance portably) |
 
 **Behavior:**
 
@@ -2799,8 +2800,9 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    agent skill is installed for EVERY detected harness that reads the file,
    else a remediation scoped to the consumers that lack it — one
    `gno skill install --scope user --force --target <harness>` per such
-   harness, and `CLAUDE_SKILLS_DIR=<dir>/skills gno skill install --scope user --force --target claude`
-   for an `--extra-dir` instance — never `--target all`, which would create
+   harness, and `gno skill install --scope user --force --target claude --skills-dir "<dir>/skills"`
+   for an `--extra-dir` instance (quoted path, portable `--skills-dir` option
+   rather than shell-specific env syntax) — never `--target all`, which would create
    skill/config dirs for harnesses the operator never installed (and a later
    `update` would then write instruction files into them). `--force` keeps the
    remediation idempotent across partial installs. Consumer aggregation always spans the full harness matrix, even on

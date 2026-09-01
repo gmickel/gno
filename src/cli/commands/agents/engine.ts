@@ -131,12 +131,15 @@ function withoutBlock(oldContent: string, block: ExtractedBlock): string {
     start -= 1;
   } else if (
     block.stamp?.addedLeadingNewline === true &&
+    stampAuthenticates(block) &&
     end >= oldContent.length &&
     oldContent[start - 1] === "\n"
   ) {
     // The stamp records that install appended this newline to a file that
-    // had no final newline — consume it to restore the original bytes. The
-    // EOF guard keeps lines intact if content was later added below the
+    // had no final newline — consume it to restore the original bytes. Only
+    // an AUTHENTICATED claim may consume bytes outside the markers: a `+nl`
+    // added by hand fails the body+token hash and the newline is preserved.
+    // The EOF guard keeps lines intact if content was later added below the
     // block (the newline then terminates the preceding line).
     start -= 1;
   }

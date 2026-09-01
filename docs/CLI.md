@@ -1302,6 +1302,7 @@ gno skill install --target codex     # For Codex instead of Claude
 gno skill install --target hermes    # For Hermes Agent
 gno skill install --target all       # All supported agents
 gno skill install --force            # Overwrite existing
+gno skill install --scope user --target claude --skills-dir ~/.claude-instances/work-cli/skills  # Nonstandard instance
 ```
 
 Options:

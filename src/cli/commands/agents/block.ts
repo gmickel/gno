@@ -67,11 +67,16 @@ export interface BlockRenderOptions {
   remediation?: SkillRemediation;
 }
 
+/** Double-quote a path for a shell command line (POSIX shells and PowerShell/cmd alike). */
+function quotePath(path: string): string {
+  return `"${path.replace(/["\\]/g, "\\$&")}"`;
+}
+
 /**
  * Render the remediation the conservative pointer asks the agent to run.
  * One `gno skill install` per consumer harness that lacks the skill; an
- * `--extra-dir` instance is addressed through its own skills dir
- * (`CLAUDE_SKILLS_DIR=<dir>/skills`, the layout every target shares).
+ * `--extra-dir` instance is addressed through its own skills dir via the
+ * portable `--skills-dir` option (quoted — no shell-specific env syntax).
  */
 export function renderRemediation(remediation?: SkillRemediation): string {
   const targets = [...new Set(remediation?.targets ?? [])];
@@ -85,7 +90,7 @@ export function renderRemediation(remediation?: SkillRemediation): string {
     ),
     ...extraDirs.map(
       (dir) =>
-        `CLAUDE_SKILLS_DIR=${dir}/skills gno skill install --scope user --force --target claude`
+        `gno skill install --scope user --force --target claude --skills-dir ${quotePath(`${dir}/skills`)}`
     ),
   ];
   return commands.join("; ");
@@ -266,6 +271,9 @@ const FILE_REF_RE = /(?:^|[\s("'`])((?:~|\/)[\w~./-]+)/g;
  */
 const SLASH_COMMAND_RE = /^\/[\w-]+$/;
 
+/** Text ending in the `--skills-dir "` prefix of a quoted remediation operand. */
+const SKILLS_DIR_OPERAND_RE = /--skills-dir\s+"$/;
+
 /**
  * Extract filesystem references (absolute or ~-prefixed paths) from a block
  * body. gno:// URIs, bare commands, and slash-command pointers such as
@@ -276,9 +284,17 @@ export function extractFileReferences(body: string): string[] {
   const refs = new Set<string>();
   for (const match of body.matchAll(FILE_REF_RE)) {
     const ref = match[1];
-    if (ref && ref.length > 1 && !SLASH_COMMAND_RE.test(ref)) {
-      refs.add(ref);
+    if (!ref || ref.length <= 1 || SLASH_COMMAND_RE.test(ref)) {
+      continue;
     }
+    // The remediation's `--skills-dir "<path>"` operand names where the skill
+    // SHOULD be installed — absent by construction while the conservative
+    // pointer renders — so it is a command argument, not a link to validate.
+    const refStart = (match.index ?? 0) + match[0].length - ref.length;
+    if (SKILLS_DIR_OPERAND_RE.test(body.slice(0, refStart))) {
+      continue;
+    }
+    refs.add(ref);
   }
   return Array.from(refs);
 }

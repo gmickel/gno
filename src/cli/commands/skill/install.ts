@@ -80,6 +80,8 @@ export interface InstallOptions {
   cwd?: string;
   /** Override for testing */
   homeDir?: string;
+  /** Explicit skills directory (`--skills-dir`); wins over env/home resolution. */
+  skillsDir?: string;
   /** JSON output (defaults to globals.json) */
   json?: boolean;
   /** Non-interactive mode (defaults to globals.yes) */
@@ -101,7 +103,7 @@ export async function installSkillToTarget(
   scope: SkillScope,
   target: SkillTarget,
   force: boolean,
-  overrides?: { cwd?: string; homeDir?: string }
+  overrides?: { cwd?: string; homeDir?: string; skillsDir?: string }
 ): Promise<SkillInstallResult> {
   const sourceDir = getSkillSourceDir();
   const paths = resolveSkillPaths({ scope, target, ...overrides });
@@ -217,6 +219,7 @@ export async function installSkill(opts: InstallOptions = {}): Promise<void> {
     const result = await installSkillToTarget(scope, t, force || yes, {
       cwd: opts.cwd,
       homeDir: opts.homeDir,
+      skillsDir: opts.skillsDir,
     });
     results.push(result);
   }

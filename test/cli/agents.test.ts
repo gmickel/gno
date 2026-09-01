@@ -96,11 +96,17 @@ describe("agents CLI commands", () => {
       );
       expect(scoped).toContain("--target opencode; ");
       expect(scoped).toContain(
-        "CLAUDE_SKILLS_DIR=/x/inst/skills gno skill install --scope user --force --target claude"
+        'gno skill install --scope user --force --target claude --skills-dir "/x/inst/skills"'
       );
       expect(scoped).not.toContain("--target all");
-      // The instance path inside the env assignment is not a link to validate.
+      // The quoted instance path is not a link to validate.
       expect(extractFileReferences(scoped)).toEqual([]);
+      // Paths with spaces/quotes stay a single shell argument.
+      const spaced = renderBlockBody({
+        skillInstalled: false,
+        remediation: { targets: [], extraDirs: ['/x/my "inst" dir'] },
+      });
+      expect(spaced).toContain('--skills-dir "/x/my \\"inst\\" dir/skills"');
     });
 
     test("`/gno` skill command is not a filesystem link (verify stays ok)", () => {
@@ -219,7 +225,7 @@ describe("agents CLI commands", () => {
       const withoutSkill = await Bun.file(join(instance, "AGENTS.md")).text();
       // The remediation addresses the instance itself via its skills dir.
       expect(withoutSkill).toContain(
-        `CLAUDE_SKILLS_DIR=${instance}/skills gno skill install --scope user --force --target claude`
+        `gno skill install --scope user --force --target claude --skills-dir "${instance}/skills"`
       );
       expect(withoutSkill).not.toContain("`/gno`");
 
@@ -676,6 +682,30 @@ describe("agents CLI commands", () => {
         { target: "codex", homeDir: FAKE_HOME, json: true },
         "update"
       );
+      await uninstallAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        json: true,
+      });
+      expect(await Bun.file(CODEX_FILE).text()).toBe("abc\n");
+    });
+
+    test("uninstall never consumes a newline on a forged +nl claim", async () => {
+      // A user-owned newline precedes the block; someone adds ` +nl` to the
+      // stamp by hand. The token fails the body+token hash, so uninstall must
+      // preserve that newline instead of trusting the claim.
+      await setupHome([".codex"]);
+      await Bun.write(CODEX_FILE, "abc\n");
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      const installed = await Bun.file(CODEX_FILE).text();
+      // Installed shape: "abc\n\n<block>\n". Collapse to one user newline and
+      // forge the provenance token.
+      const forged = installed
+        .replace("abc\n\n", "abc\n")
+        .replace(/ sha256:([0-9a-f]{16}) —/, " sha256:$1 +nl —");
+      expect(forged).toContain(" +nl —");
+      await Bun.write(CODEX_FILE, forged);
+
       await uninstallAgents({
         target: "codex",
         homeDir: FAKE_HOME,

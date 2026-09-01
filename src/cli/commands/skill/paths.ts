@@ -60,6 +60,12 @@ export interface SkillPathOptions {
   cwd?: string;
   /** Override home dir for user scope (testing) */
   homeDir?: string;
+  /**
+   * Explicit skills directory (the `--skills-dir` CLI option). Wins over every
+   * env-derived location — the portable way to address a nonstandard harness
+   * instance (`<instance>/skills`) without shell-specific env syntax.
+   */
+  skillsDir?: string;
 }
 
 export interface SkillPaths {
@@ -138,6 +144,19 @@ const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
 export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
   const { scope, target, cwd, homeDir } = opts;
   const config = TARGET_CONFIGS[target];
+
+  // An explicit --skills-dir wins over everything (CLI beats env).
+  if (opts.skillsDir !== undefined) {
+    if (!isAbsolute(opts.skillsDir)) {
+      throw new Error("--skills-dir must be an absolute path");
+    }
+    const skillsDir = normalize(opts.skillsDir);
+    return {
+      base: join(skillsDir, ".."),
+      skillsDir,
+      gnoDir: join(skillsDir, SKILL_NAME),
+    };
+  }
 
   // Check for env overrides first
   const envOverride = process.env[config.envVar];

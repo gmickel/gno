@@ -3166,10 +3166,15 @@ function wireSkillCommands(program: Command): void {
       "claude"
     )
     .option("-f, --force", "overwrite existing installation")
+    .option(
+      "--skills-dir <path>",
+      "explicit skills directory (absolute; overrides env/home resolution — for nonstandard harness instances)"
+    )
     .option("--json", "JSON output")
     .action(async (cmdOpts: Record<string, unknown>) => {
       const scope = cmdOpts.scope as string;
       const target = cmdOpts.target as string;
+      const skillsDir = cmdOpts.skillsDir as string | undefined;
 
       // Validate scope
       if (!["project", "user"].includes(scope)) {
@@ -3201,6 +3206,7 @@ function wireSkillCommands(program: Command): void {
           | "hermes"
           | "all",
         force: Boolean(cmdOpts.force),
+        skillsDir,
         json: Boolean(cmdOpts.json),
       });
     });

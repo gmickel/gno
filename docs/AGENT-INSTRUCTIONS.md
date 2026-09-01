@@ -80,7 +80,7 @@ Inside an extra dir the installer manages the first existing of `CLAUDE.md`,
 an instance of its own: its skill state is read from `<dir>/skills/gno`, never
 from a standard harness, so the block only names `/gno` once the skill is
 installed into that instance — for example
-`CLAUDE_SKILLS_DIR=~/.claude-instances/work-cli/skills gno skill install --scope user --force --target claude`.
+`gno skill install --scope user --force --target claude --skills-dir ~/.claude-instances/work-cli/skills`.
 
 ## Block content
 
@@ -93,7 +93,7 @@ content hash, and a state-aware pointer: `/gno` when the GNO agent skill is
 installed for every harness that reads the file, otherwise a remediation
 scoped to the consumers that lack it — one
 `gno skill install --scope user --force --target <harness>` per such harness
-(and the `CLAUDE_SKILLS_DIR=<dir>/skills …` form for an extra-dir instance),
+(and `… --target claude --skills-dir "<dir>/skills"` for an extra-dir instance),
 never `--target all`, so following the pointer never fabricates skill or
 config dirs for harnesses you never installed. `--force` keeps it idempotent
 across partial installs. That state is read from the

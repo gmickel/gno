@@ -252,6 +252,33 @@ describe("skill CLI commands", () => {
       );
     });
 
+    test("--skills-dir option wins over env and home", () => {
+      const skillsDir = join(TEST_DIR, "instance", "skills");
+      withEnv(
+        {
+          CODEX_HOME: join(TEST_DIR, "custom-codex-home"),
+          [ENV_CODEX_SKILLS_DIR]: join(TEST_DIR, "env-skills"),
+        },
+        () => {
+          const paths = resolveSkillPaths({
+            scope: "user",
+            target: "codex",
+            homeDir: FAKE_HOME,
+            skillsDir,
+          });
+          expect(paths.skillsDir).toBe(skillsDir);
+          expect(paths.gnoDir).toBe(join(skillsDir, "gno"));
+        }
+      );
+      expect(() =>
+        resolveSkillPaths({
+          scope: "user",
+          target: "codex",
+          skillsDir: "relative/skills",
+        })
+      ).toThrow("--skills-dir must be an absolute path");
+    });
+
     test("rejects relative CODEX_HOME", () => {
       withEnv(
         { CODEX_HOME: "relative/codex", [ENV_SKILLS_HOME_OVERRIDE]: undefined },

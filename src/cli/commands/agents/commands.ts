@@ -4,8 +4,6 @@
  * @module src/cli/commands/agents/commands
  */
 
-// node:fs existsSync used for synchronous link-resolution checks in verify.
-import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -387,7 +385,12 @@ async function verifyTarget(
     block.inner === expectedInner;
 
   const refs = extractFileReferences(block.body);
-  const unresolved = refs.filter((ref) => !existsSync(expandHome(ref, home)));
+  const unresolved: string[] = [];
+  for (const ref of refs) {
+    if (!(await Bun.file(expandHome(ref, home)).exists())) {
+      unresolved.push(ref);
+    }
+  }
   const linksOk = unresolved.length === 0;
 
   if (!isCurrent) {
