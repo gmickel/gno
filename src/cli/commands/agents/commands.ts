@@ -19,6 +19,7 @@ import {
   renderBlock,
 } from "./block.js";
 import {
+  aggregateSkillInstalled,
   applyPlan,
   type PlanMode,
   planTargets,
@@ -244,6 +245,8 @@ async function verifyTarget(
     requiredCovering: Set<string>;
     /** Real-file identity → id of the target that owns verification. */
     owners: Map<string, string>;
+    /** Real-file identity → all detected consumers have the skill. */
+    skillByFile: Map<string, boolean>;
   }
 ): Promise<VerifyReport> {
   const base: Pick<VerifyReport, "target" | "label" | "path" | "detected"> = {
@@ -320,9 +323,16 @@ async function verifyTarget(
   const { block } = extraction;
   const hashOk =
     block.stamp !== null && block.stamp.hash === hashBlockBody(block.body);
-  // Expected inner text = current render for this target's skill state,
-  // without the surrounding marker lines.
-  const expectedInner = renderBlock({ skillInstalled: target.skillInstalled })
+  // Expected inner text = current render for this file's aggregated skill
+  // state (every detected consumer of the shared real file, mirroring what
+  // install renders), without the surrounding marker lines. The stamp's
+  // `+nl` provenance token is install-time state, not content — mirror it
+  // into the expected render.
+  const expectedInner = renderBlock({
+    skillInstalled:
+      runContext.skillByFile.get(target.realFile) ?? target.skillInstalled,
+    addedLeadingNewline: block.stamp?.addedLeadingNewline ?? false,
+  })
     .split("\n")
     .slice(1, -1)
     .join("\n");
@@ -387,6 +397,7 @@ export async function verifyAgents(opts: AgentsOptions = {}): Promise<void> {
   }
 
   const owners = new Map<string, string>();
+  const skillByFile = aggregateSkillInstalled(targets);
   const results: VerifyReport[] = [];
   for (const target of targets) {
     results.push(
@@ -394,6 +405,7 @@ export async function verifyAgents(opts: AgentsOptions = {}): Promise<void> {
         resolvedIds,
         requiredCovering,
         owners,
+        skillByFile,
       })
     );
   }

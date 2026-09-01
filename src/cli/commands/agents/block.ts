@@ -21,8 +21,16 @@ export const BLOCK_VERSION = 1;
 export const BEGIN_MARKER = "<!-- gno:agents:begin -->";
 export const END_MARKER = "<!-- gno:agents:end -->";
 
-const STAMP_RE = /^<!-- gno-agents block v(\d+) sha256:([0-9a-f]{16}) /;
+const STAMP_RE = /^<!-- gno-agents block v(\d+) sha256:([0-9a-f]{16})( \+nl)? /;
 const HASH_PREFIX_LENGTH = 16;
+
+/**
+ * Stamp-line provenance token: install appended a final newline to a file
+ * that had none, so uninstall must consume that one newline to restore the
+ * original bytes. Recorded inside the markers because separator provenance
+ * cannot be inferred from file shape at uninstall time.
+ */
+const ADDED_NEWLINE_TOKEN = " +nl";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Rendering
@@ -31,6 +39,12 @@ const HASH_PREFIX_LENGTH = 16;
 export interface BlockRenderOptions {
   /** Whether the GNO agent skill is installed for this harness. */
   skillInstalled: boolean;
+  /**
+   * Install appended a final newline to a file that had none. Stamped into
+   * the block (` +nl`) so uninstall knows the newline above the block is
+   * install-owned, not user content. Never affects the body hash.
+   */
+  addedLeadingNewline?: boolean;
 }
 
 /**
@@ -67,15 +81,19 @@ export function hashBlockBody(body: string): string {
   return hasher.digest("hex").slice(0, HASH_PREFIX_LENGTH);
 }
 
-/** Render the stamp line carrying version + body hash. */
-export function renderStampLine(body: string): string {
-  return `<!-- gno-agents block v${BLOCK_VERSION} sha256:${hashBlockBody(body)} — managed by \`gno agents\`; manual edits inside the markers are overwritten -->`;
+/** Render the stamp line carrying version + body hash (+ `+nl` provenance). */
+export function renderStampLine(
+  body: string,
+  addedLeadingNewline = false
+): string {
+  const token = addedLeadingNewline ? ADDED_NEWLINE_TOKEN : "";
+  return `<!-- gno-agents block v${BLOCK_VERSION} sha256:${hashBlockBody(body)}${token} — managed by \`gno agents\`; manual edits inside the markers are overwritten -->`;
 }
 
 /** Render the complete block: BEGIN marker, stamp, body, END marker. */
 export function renderBlock(opts: BlockRenderOptions): string {
   const body = renderBlockBody(opts);
-  return `${BEGIN_MARKER}\n${renderStampLine(body)}\n${body}\n${END_MARKER}`;
+  return `${BEGIN_MARKER}\n${renderStampLine(body, opts.addedLeadingNewline ?? false)}\n${body}\n${END_MARKER}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -92,7 +110,12 @@ export interface ExtractedBlock {
   /** Body without the stamp line (equal to inner when no stamp present). */
   body: string;
   /** Parsed stamp, when present and well-formed. */
-  stamp: { version: number; hash: string } | null;
+  stamp: {
+    version: number;
+    hash: string;
+    /** Install recorded that it appended the file's missing final newline. */
+    addedLeadingNewline: boolean;
+  } | null;
 }
 
 export type BlockExtraction =
@@ -152,7 +175,11 @@ export function extractBlock(
   const firstLine = newlineIdx === -1 ? inner : inner.slice(0, newlineIdx);
   const stampMatch = STAMP_RE.exec(firstLine);
   const stamp = stampMatch
-    ? { version: Number(stampMatch[1]), hash: stampMatch[2] ?? "" }
+    ? {
+        version: Number(stampMatch[1]),
+        hash: stampMatch[2] ?? "",
+        addedLeadingNewline: stampMatch[3] !== undefined,
+      }
     : null;
   const body = stamp && newlineIdx !== -1 ? inner.slice(newlineIdx + 1) : inner;
 

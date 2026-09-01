@@ -11,6 +11,7 @@
  * @module src/cli/commands/agents/engine
  */
 
+import type { ExtractedBlock } from "./block.js";
 import type { ResolvedTarget } from "./harnesses.js";
 
 import { CliError } from "../../errors.js";
@@ -53,12 +54,12 @@ export type PlanMode = "install" | "uninstall";
 /**
  * Append or replace the managed block; bytes outside the block untouched.
  *
- * Append separators encode the original trailing-newline state so uninstall
- * can restore the file byte-identically:
+ * Append separators preserve the original trailing-newline state:
  * - empty file → block only
  * - ends with `\n` → one blank line, then the block
- * - missing final newline → a single added `\n`, then the block (no blank
- *   line — its absence is the marker that install added that newline)
+ * - missing final newline → a single added `\n`, then the block; the caller
+ *   records that fact inside the block (stamp `+nl` token) so uninstall can
+ *   restore the file byte-identically without inferring from file shape
  */
 function withBlock(
   oldContent: string,
@@ -79,12 +80,11 @@ function withBlock(
 /**
  * Remove the managed block plus whatever separator install added above it —
  * the one blank line (original file ended in `\n`), or the single newline
- * install appended to a file that had no final newline (see withBlock).
+ * install appended to a file that had no final newline. The latter is only
+ * consumed when the block's stamp records it (`+nl` token): a lone newline
+ * before the block is otherwise user content and must be preserved.
  */
-function withoutBlock(
-  oldContent: string,
-  block: { start: number; end: number }
-): string {
+function withoutBlock(oldContent: string, block: ExtractedBlock): string {
   let start = block.start;
   let end = block.end;
   // Consume the newline terminating the block line.
@@ -94,12 +94,63 @@ function withoutBlock(
   if (oldContent.slice(start - 2, start) === "\n\n") {
     // Consume the single separating blank line install added.
     start -= 1;
-  } else if (end >= oldContent.length && oldContent[start - 1] === "\n") {
-    // Block at EOF with only a single newline above: install added that
-    // newline to a file missing its final newline — remove it too.
+  } else if (
+    block.stamp?.addedLeadingNewline === true &&
+    end >= oldContent.length &&
+    oldContent[start - 1] === "\n"
+  ) {
+    // The stamp records that install appended this newline to a file that
+    // had no final newline — consume it to restore the original bytes. The
+    // EOF guard keeps lines intact if content was later added below the
+    // block (the newline then terminates the preceding line).
     start -= 1;
   }
   return oldContent.slice(0, start) + oldContent.slice(end);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Consumer Aggregation
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Effective skill state per consumed real file: every detected harness that
+ * reads a given instruction file must have the skill for the file's block to
+ * carry the skill-installed pointer. One shared file can serve consumers
+ * with different skill states (a symlinked `~/AGENTS.md`, an import chain),
+ * and a `/gno` pointer is only followable when ALL of them have the skill —
+ * otherwise the conservative `gno skill install` pointer is rendered.
+ *
+ * Keyed by real-file identity. A detected covered target (import chain, e.g.
+ * grok → claude) consumes its covering target's file, so its skill state
+ * constrains that file too. Undetected targets consume nothing — a covering
+ * target planned only as a write vehicle does not constrain the render.
+ */
+export function aggregateSkillInstalled(
+  targets: ResolvedTarget[]
+): Map<string, boolean> {
+  const byId = new Map(targets.map((t) => [t.id, t]));
+  const skillByFile = new Map<string, boolean>();
+  for (const target of targets) {
+    if (!target.detected) {
+      continue;
+    }
+    // Follow the import chain to the file this harness actually reads.
+    let consumed: ResolvedTarget | undefined = target;
+    const visited = new Set<string>();
+    while (consumed?.coveredBy && !visited.has(consumed.id)) {
+      visited.add(consumed.id);
+      consumed = byId.get(consumed.coveredBy);
+    }
+    if (!consumed) {
+      continue;
+    }
+    const key = consumed.realFile;
+    skillByFile.set(
+      key,
+      (skillByFile.get(key) ?? true) && target.skillInstalled
+    );
+  }
+  return skillByFile;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -127,6 +178,8 @@ export async function planTargets(
   const plans: TargetPlan[] = [];
   /** Real-file identity → id of the target that owns the write. */
   const owners = new Map<string, string>();
+  /** Real-file identity → all detected consumers have the skill. */
+  const skillByFile = aggregateSkillInstalled(targets);
 
   // A detected covered target (e.g. grok → claude) is only truly covered
   // when its covering target's file converges too — so the covering target
@@ -235,7 +288,19 @@ export async function planTargets(
       continue;
     }
 
-    const rendered = renderBlock({ skillInstalled: target.skillInstalled });
+    // Fresh install onto a file missing its final newline: withBlock will
+    // append one, and the stamp records that fact for uninstall. Updates
+    // carry the recorded provenance forward unchanged.
+    const addedLeadingNewline = extraction.found
+      ? (extraction.block.stamp?.addedLeadingNewline ?? false)
+      : content.length > 0 && !content.endsWith("\n");
+    const rendered = renderBlock({
+      // Aggregate across every detected consumer of this real file — the
+      // skill-installed pointer is rendered only when ALL of them have the
+      // skill (a shared file can serve harnesses with different states).
+      skillInstalled: skillByFile.get(target.realFile) ?? target.skillInstalled,
+      addedLeadingNewline,
+    });
     const newContent = withBlock(
       content,
       extraction.found ? extraction.block : null,

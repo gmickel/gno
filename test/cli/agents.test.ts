@@ -405,6 +405,55 @@ describe("agents CLI commands", () => {
       expect(cursorResult.status).toBe("covered");
       expect(cursorResult.via).toBe("codex");
     });
+
+    test("shared real file renders the conservative pointer when any consumer lacks the skill", async () => {
+      // Regression: codex owns the write to the shared file, but cursor
+      // (Claude-backed skill, absent here) reads the same file via its
+      // ~/AGENTS.md symlink. Rendering from the owner's skill state alone
+      // would emit `/gno`, a pointer cursor cannot follow — the block must
+      // aggregate all consumers and stay conservative.
+      await setupHome([".codex/skills/gno", ".cursor"]);
+      await Bun.write(join(FAKE_HOME, ".codex/skills/gno/SKILL.md"), "# gno\n");
+      await Bun.write(CODEX_FILE, "# Shared\n");
+      await symlink(CODEX_FILE, join(FAKE_HOME, "AGENTS.md"));
+
+      await installAgents({ target: "all", homeDir: FAKE_HOME, json: true });
+
+      const content = await Bun.file(CODEX_FILE).text();
+      expect(content).toContain("run `gno skill install`");
+      expect(content).not.toContain("`/gno`");
+
+      // Verify mirrors the same aggregation: the shared file is ok, not
+      // "outdated" against the owner's solo skill state.
+      stdoutOutput = [];
+      await verifyAgents({ target: "all", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.ok).toBe(true);
+      const codexResult = report.results.find(
+        (r: { target: string }) => r.target === "codex"
+      );
+      expect(codexResult.status).toBe("ok");
+    });
+
+    test("shared real file renders the skill pointer once every consumer has the skill", async () => {
+      // Same layout, but both codex's and cursor's (Claude-backed) skills
+      // are installed — every consumer can follow `/gno`.
+      await setupHome([".codex/skills/gno", ".cursor", ".claude/skills/gno"]);
+      await Bun.write(join(FAKE_HOME, ".codex/skills/gno/SKILL.md"), "# gno\n");
+      await Bun.write(
+        join(FAKE_HOME, ".claude/skills/gno/SKILL.md"),
+        "# gno\n"
+      );
+      await Bun.write(CODEX_FILE, "# Shared\n");
+      await symlink(CODEX_FILE, join(FAKE_HOME, "AGENTS.md"));
+
+      await installAgents({ target: "all", homeDir: FAKE_HOME, json: true });
+      expect(await Bun.file(CODEX_FILE).text()).toContain("`/gno`");
+
+      stdoutOutput = [];
+      await verifyAgents({ target: "all", homeDir: FAKE_HOME, json: true });
+      expect(JSON.parse(stdoutOutput.join("")).ok).toBe(true);
+    });
   });
 
   describe("marker safety, dry-run, backups (R3)", () => {
@@ -537,6 +586,8 @@ describe("agents CLI commands", () => {
       expect(installed.startsWith(`${noFinalNewline}\n${BEGIN_MARKER}`)).toBe(
         true
       );
+      // The added newline is recorded inside the block, not inferred later.
+      expect(installed).toContain(" +nl —");
 
       await uninstallAgents({
         target: "codex",
@@ -544,6 +595,79 @@ describe("agents CLI commands", () => {
         json: true,
       });
       expect(await Bun.file(CODEX_FILE).text()).toBe(noFinalNewline);
+    });
+
+    test("uninstall preserves a lone user-owned newline before an unstamped block", async () => {
+      // Regression: a block preceded by exactly one newline (e.g. pasted
+      // after a normally terminated line) carries no `+nl` provenance, so
+      // that newline is user content — `abc\n<block>\n` → `abc\n`, not `abc`.
+      await setupHome([".codex"]);
+      const block = renderBlock({ skillInstalled: false });
+      await Bun.write(CODEX_FILE, `# My rules\n${block}\n`);
+
+      await uninstallAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        json: true,
+      });
+      expect(await Bun.file(CODEX_FILE).text()).toBe("# My rules\n");
+    });
+
+    test("update preserves the +nl provenance across block replacement", async () => {
+      await setupHome([".codex"]);
+      const noFinalNewline = "# My rules\n\nKeep it simple.";
+      await Bun.write(CODEX_FILE, noFinalNewline);
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+
+      // Simulate a stale block: keep the +nl token, change version/body.
+      const installed = await Bun.file(CODEX_FILE).text();
+      const stale = installed.replace(
+        /<!-- gno-agents block v\d+ sha256:[0-9a-f]{16} \+nl —[^>]*-->[\s\S]*?(?=\n<!-- gno:agents:end -->)/,
+        "<!-- gno-agents block v0 sha256:0000000000000000 +nl — stale -->\nold body"
+      );
+      expect(stale).not.toBe(installed);
+      await Bun.write(CODEX_FILE, stale);
+
+      await installAgents(
+        { target: "codex", homeDir: FAKE_HOME, json: true },
+        "update"
+      );
+      expect(await Bun.file(CODEX_FILE).text()).toContain(" +nl —");
+
+      await uninstallAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        json: true,
+      });
+      expect(await Bun.file(CODEX_FILE).text()).toBe(noFinalNewline);
+    });
+
+    test("uninstall keeps line structure when content follows a +nl block", async () => {
+      // Mid-file +nl block: the install-added newline now terminates the
+      // preceding line, so consuming it would merge lines — keep it.
+      await setupHome([".codex"]);
+      await Bun.write(CODEX_FILE, "# My rules");
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      const installed = await Bun.file(CODEX_FILE).text();
+      await Bun.write(CODEX_FILE, `${installed}# After\n`);
+
+      await uninstallAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        json: true,
+      });
+      expect(await Bun.file(CODEX_FILE).text()).toBe("# My rules\n# After\n");
+    });
+
+    test("verify reports ok for a +nl-stamped install", async () => {
+      await setupHome([".codex"]);
+      await Bun.write(CODEX_FILE, "# My rules");
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      stdoutOutput = [];
+
+      await verifyAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.results[0].status).toBe("ok");
     });
   });
 

@@ -47,7 +47,10 @@ future chains are new entries, not code changes.
 ## Installer guarantees
 
 - **Owned block only** — content outside the markers stays byte-identical
-  (hash-verified in the test suite).
+  (hash-verified in the test suite). When install has to append a final
+  newline to a file that had none, that fact is recorded inside the block
+  (stamp `+nl` token) so uninstall restores the original bytes exactly —
+  separator provenance is never inferred from file shape.
 - **Backup-first** — every touched existing file is copied to
   `<file>.gno-agents.bak.<timestamp>` before the write.
 - **Idempotent** — re-running when current is a no-op (no write, no backup).
@@ -83,7 +86,10 @@ contract (retrieve first; edit canonical notes in place; `gno capture` for
 genuinely new notes; reindex + verify after writes), and gno:// citation
 discipline — in well under 1,500 characters. It carries a version stamp and a
 content hash, and a state-aware pointer: `/gno` when the GNO agent skill is
-installed for that harness, otherwise `gno skill install`.
+installed for every harness that reads the file, otherwise `gno skill
+install`. A file shared by several harnesses (a symlinked `~/AGENTS.md`, an
+import chain) gets the conservative pointer whenever any consumer lacks the
+skill.
 
 Detailed workflows stay in the skill; the block is the routing contract.
 
