@@ -8,6 +8,7 @@ import {
   symlink,
   unlink,
 } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
 
 import {
@@ -805,6 +806,31 @@ describe("agents CLI commands", () => {
       expect(String(thrown)).toMatch(/symlink retargeted/);
       expect(await Bun.file(shared1).text()).toBe("# One\n");
       expect(await Bun.file(shared2).text()).toBe("# Two\n");
+    });
+
+    test("an absent explicit covered target never resolves its covering chain", () => {
+      // `--target grok` with ~/.grok absent must report the leaf not-detected
+      // even when Claude's env is misconfigured — the covering harness is only
+      // resolved once the leaf is detected.
+      if (existsSync(join(homedir(), ".grok"))) {
+        return; // real ~/.grok present: the covering chain would legitimately expand
+      }
+      const saved = {
+        CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
+        GNO_AGENTS_HOME_OVERRIDE: process.env.GNO_AGENTS_HOME_OVERRIDE,
+      };
+      process.env.CLAUDE_CONFIG_DIR = "relative/claude";
+      delete process.env.GNO_AGENTS_HOME_OVERRIDE;
+      try {
+        const results = resolveTargets("grok"); // read-only detection against the real home
+        expect(results.map((t) => t.id)).toEqual(["grok"]);
+        expect(results[0]?.detected).toBe(false);
+      } finally {
+        for (const [k, v] of Object.entries(saved)) {
+          if (v === undefined) delete process.env[k];
+          else process.env[k] = v;
+        }
+      }
     });
 
     test("lenient resolution drops an unrequested harness with misconfigured env", () => {

@@ -279,6 +279,27 @@ describe("skill CLI commands", () => {
       ).toThrow("--skills-dir must be an absolute path");
     });
 
+    test("a short explicit skills dir is removable when it is the resolved destination", () => {
+      // Regression: the total-length heuristic rejected `/tmp/x/skills/gno`
+      // even though it is exactly the explicit --skills-dir destination,
+      // breaking uninstall and the idempotent --force remediation.
+      expect(
+        validatePathForDeletion(
+          "/tmp/x/skills/gno",
+          "/tmp/x",
+          "/tmp/x/skills/gno"
+        )
+      ).toBeNull();
+      // Without an explicit destination the heuristic still guards short paths.
+      expect(validatePathForDeletion("/tmp/x/skills/gno", "/tmp/x")).toBe(
+        "Path is suspiciously short"
+      );
+      // A near-root destination is refused even when explicit (depth guard).
+      expect(validatePathForDeletion("/skills/gno", "/", "/skills/gno")).toBe(
+        "Path is too close to the filesystem root"
+      );
+    });
+
     test("uninstall honors --skills-dir (portable removal path)", async () => {
       const skillsDir = join(TEST_DIR, "instance", "skills");
       await installSkill({

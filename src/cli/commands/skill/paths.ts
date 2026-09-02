@@ -289,9 +289,23 @@ export function validatePathForDeletion(
     return `Path does not end with expected suffix (${expectedSuffixes.join(" or ")})`;
   }
 
-  // Minimum length sanity check
-  if (normalized.length < 20) {
+  // Minimum length sanity check — a heuristic against deleting a near-root
+  // path when only the suffix matched. An explicit resolved destination
+  // (`--skills-dir` / env override, passed as expectedDir) is already exact:
+  // it carries the `<skills>/<name>` structure and is containment-checked
+  // below, so a short but legitimate `/tmp/x/skills/gno` must stay removable
+  // (the documented matching removal path; also what makes the generated
+  // `--force` remediation idempotent).
+  if (!matchesExpectedDir && normalized.length < 20) {
     return "Path is suspiciously short";
+  }
+  // Structural guard that does not depend on total length: the skill dir is
+  // always `<something>/<skills>/<name>`, so a resolved destination with fewer
+  // than three path segments (e.g. `/skills/gno`) sits next to the filesystem
+  // root and is never a legitimate target.
+  const depth = normalized.split(sep).filter(Boolean).length;
+  if (depth < 3) {
+    return "Path is too close to the filesystem root";
   }
 
   // Must not equal base

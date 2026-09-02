@@ -496,9 +496,7 @@ export function resolveTargets(
   const home =
     opts.homeDir ?? process.env[ENV_AGENTS_HOME_OVERRIDE] ?? homedir();
 
-  const ids: HarnessId[] =
-    target === "all" ? HARNESS_IDS : withCoveringChain(target);
-  let results = ids.flatMap((id) => {
+  const resolveOne = (id: HarnessId): ResolvedTarget[] => {
     try {
       return [resolveHarness(HARNESS_DEFS[id], home, explicitHome)];
     } catch (err) {
@@ -511,18 +509,27 @@ export function resolveTargets(
       }
       throw err;
     }
-  });
+  };
 
-  if (target !== "all") {
-    // The covering chain is only truthful for a target that is actually
-    // present. An absent explicit target must not pull its covering
-    // harness(es) into the run — otherwise `--target grok` on a machine
-    // without ~/.grok would install into / verify against / uninstall from
-    // Claude's file. Resolve just the leaf so it reports `not-detected`.
-    const leaf = results.find((t) => t.id === target);
-    if (leaf && !leaf.detected) {
-      results = [leaf];
-    }
+  let results: ResolvedTarget[];
+  if (target === "all") {
+    results = HARNESS_IDS.flatMap(resolveOne);
+  } else {
+    // Resolve the requested LEAF first. The covering chain is only truthful
+    // for a target that is actually present: an absent explicit target must
+    // not pull its covering harness(es) into the run — otherwise `--target
+    // grok` on a machine without ~/.grok would install into / verify against /
+    // uninstall from Claude's file, and a misconfigured covering env (e.g. a
+    // relative CLAUDE_CONFIG_DIR) would abort a run that should simply report
+    // the leaf `not-detected`. Expand the chain only once the leaf is detected.
+    const leaf = resolveOne(target);
+    const detected = leaf.some((t) => t.detected);
+    results = detected
+      ? withCoveringChain(target)
+          .filter((id) => id !== target)
+          .flatMap(resolveOne)
+          .concat(leaf)
+      : leaf;
   }
 
   for (const dir of opts.extraDirs ?? []) {
