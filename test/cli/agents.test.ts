@@ -22,11 +22,16 @@ import {
   verifyAgents,
 } from "../../src/cli/commands/agents/commands";
 import {
+  aggregateRemediation,
   applyPlan,
   planTargets,
   unifiedDiff,
 } from "../../src/cli/commands/agents/engine";
-import { resolveTargets } from "../../src/cli/commands/agents/harnesses";
+import {
+  type ResolvedTarget,
+  resolveTargets,
+  skillStateLocation,
+} from "../../src/cli/commands/agents/harnesses";
 import { CliError } from "../../src/cli/errors";
 import { resetGlobals } from "../../src/cli/program";
 import { safeRm } from "../helpers/cleanup";
@@ -698,6 +703,84 @@ describe("agents CLI commands", () => {
           else process.env[k] = v;
         }
       }
+    });
+
+    test("a skill consumer is checked at the standard location despite the owner's redirect", () => {
+      // Cursor loads Claude's skill from ~/.claude/skills even when
+      // CLAUDE_CONFIG_DIR redirects Claude itself; Claude's own state follows
+      // the redirect. While the redirect is active the consumer's remediation
+      // must target the standard dir, not the redirected instance.
+      const saved = process.env.CLAUDE_CONFIG_DIR;
+      process.env.CLAUDE_CONFIG_DIR = join(TEST_DIR, "redirected-claude");
+      try {
+        const claude = skillStateLocation("claude", FAKE_HOME, false);
+        expect(claude).toEqual({ target: "claude", homeDir: undefined });
+        const cursor = skillStateLocation("cursor", FAKE_HOME, false);
+        expect(cursor).toEqual({
+          target: "claude",
+          homeDir: FAKE_HOME,
+          skillHome: join(FAKE_HOME, ".claude"),
+        });
+        // Explicit home (isolation) suppresses the redirect entirely.
+        expect(skillStateLocation("cursor", FAKE_HOME, true)).toEqual({
+          target: "claude",
+          homeDir: FAKE_HOME,
+        });
+      } finally {
+        if (saved === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+        else process.env.CLAUDE_CONFIG_DIR = saved;
+      }
+
+      // The remediation for such a consumer installs into the standard dir.
+      const consumer: ResolvedTarget = {
+        id: "cursor",
+        label: "Cursor Agent",
+        configDir: join(FAKE_HOME, ".cursor"),
+        file: join(FAKE_HOME, "AGENTS.md"),
+        realFile: join(FAKE_HOME, "AGENTS.md"),
+        detected: true,
+        skillInstalled: false,
+        skillTarget: "claude",
+        skillHome: join(FAKE_HOME, ".claude"),
+      };
+      const remediation = aggregateRemediation([consumer]).get(
+        consumer.realFile
+      );
+      expect(remediation).toEqual({
+        targets: [],
+        extraDirs: [join(FAKE_HOME, ".claude")],
+      });
+      expect(renderBlockBody({ skillInstalled: false, remediation })).toContain(
+        `--skills-dir '${join(FAKE_HOME, ".claude")}/skills'`
+      );
+    });
+
+    test("runtime apply failures exit with the RUNTIME code, receipt still emitted", async () => {
+      if (process.platform === "win32" || process.getuid?.() === 0) {
+        return; // needs POSIX permission enforcement (root bypasses it)
+      }
+      await setupHome([".codex"]);
+      await Bun.write(CODEX_FILE, "# Rules\n");
+      const codexDir = join(FAKE_HOME, ".codex");
+      await chmod(codexDir, 0o500); // backup file cannot be created
+      let thrown: unknown;
+      try {
+        await installAgents({
+          target: "codex",
+          homeDir: FAKE_HOME,
+          json: true,
+        });
+      } catch (err) {
+        thrown = err;
+      } finally {
+        await chmod(codexDir, 0o700);
+      }
+      expect(thrown).toBeInstanceOf(CliError);
+      expect((thrown as CliError).code).toBe("RUNTIME");
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.results[0].action).toBe("error");
+      expect(report.results[0].detail).toMatch(/Backup failed/);
+      expect(await Bun.file(CODEX_FILE).text()).toBe("# Rules\n");
     });
 
     test("backup inherits the source file's restrictive mode", async () => {

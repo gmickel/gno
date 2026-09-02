@@ -271,6 +271,14 @@ export function aggregateRemediation(
     };
     if (target.id === "extra-dir") {
       entry.extraDirs.push(target.configDir);
+    } else if (target.skillHome !== undefined) {
+      // A consumer decoupled from its skill target's active redirect (e.g.
+      // Cursor while CLAUDE_CONFIG_DIR is set) needs the skill at the
+      // STANDARD location — `--target claude` would install into the
+      // redirected instance it cannot load from.
+      if (!entry.extraDirs.includes(target.skillHome)) {
+        entry.extraDirs.push(target.skillHome);
+      }
     } else if (!entry.targets.includes(target.skillTarget)) {
       entry.targets.push(target.skillTarget);
     }

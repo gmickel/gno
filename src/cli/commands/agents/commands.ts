@@ -186,6 +186,7 @@ async function runMutation(
   const reports: TargetReport[] = [];
   const diffs: string[] = [];
   let errors = 0;
+  let runtimeErrors = 0;
 
   for (const plan of plans) {
     if (plan.action === "error") {
@@ -214,6 +215,9 @@ async function runMutation(
       reports.push(reportFor(plan, backup));
     } catch (err) {
       errors += 1;
+      if (err instanceof CliError && err.code === "RUNTIME") {
+        runtimeErrors += 1;
+      }
       reports.push({
         ...reportFor(plan, undefined),
         action: "error",
@@ -249,8 +253,14 @@ async function runMutation(
   }
 
   if (errors > 0) {
+    // Exit-code contract (spec/cli.md): 1 = validation (bad input, malformed
+    // markers), 2 = runtime (I/O). Keep the category: when every failure was a
+    // runtime apply error (backup/write/concurrent edit), exit 2 so automation
+    // can tell an I/O failure from invalid input.
+    const code =
+      runtimeErrors > 0 && runtimeErrors === errors ? "RUNTIME" : "VALIDATION";
     throw new CliError(
-      "VALIDATION",
+      code,
       `${verb} failed for ${errors} target(s); see per-target detail above. Nothing was written to the failing file(s).`
     );
   }

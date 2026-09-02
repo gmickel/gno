@@ -2829,7 +2829,12 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    no aggregation at all. Skill state is read from
    the same effective config dir as the instruction file: a harness redirected
    via `CLAUDE_CONFIG_DIR` / `CODEX_HOME` is checked (and, following the
-   pointer, installed) under that dir, not the ordinary home.
+   pointer, installed) under that dir, not the ordinary home. A consumer of
+   another harness's skill (Cursor and Grok load Claude's from
+   `~/.claude/skills`) is checked at that standard location regardless of the
+   redirect, and while the redirect is active its remediation renders
+   `--skills-dir '<home>/.claude/skills'` so the install lands where that
+   consumer actually loads from.
 7. `GNO_AGENTS_HOME_OVERRIDE` overrides the home directory (testing/sandboxed
    verification); any home override suppresses harness config-dir env vars.
 
@@ -2871,6 +2876,9 @@ update, and uninstall).
 
 - 0: Success (including no-op)
 - 1: Validation failure (unknown target, missing `--extra-dir`, malformed markers)
+- 2: Runtime failure — every failing target hit an I/O error (backup or write
+  failed, or the file changed after planning); the receipt still lists every
+  target's outcome
 - 2: IO failure (backup or write failed)
 
 ---

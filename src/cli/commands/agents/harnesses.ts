@@ -162,6 +162,13 @@ export interface ResolvedTarget {
   detected: boolean;
   /** Skill target this consumer loads the GNO skill from. */
   skillTarget: SkillTarget;
+  /**
+   * Set when this consumer loads ANOTHER harness's skill from that harness's
+   * standard config dir while that harness itself is redirected by env (e.g.
+   * Cursor reads `~/.claude/skills` even when `CLAUDE_CONFIG_DIR` points
+   * elsewhere): the standard config dir the remediation must install into.
+   */
+  skillHome?: string;
   /** Import chain target this harness is covered by, when applicable. */
   coveredBy?: HarnessId;
   /** Whether the GNO agent skill is installed for this harness (user scope). */
@@ -250,6 +257,41 @@ function isDirectory(path: string): boolean {
   }
 }
 
+/**
+ * Where a harness's skill state is read from. A harness that owns its skill
+ * target (claude→claude, codex→codex) follows that target's config-dir env
+ * redirect; a CONSUMER of another harness's skill (cursor/grok → claude) loads
+ * it from the standard location and must be checked there regardless of the
+ * redirect — otherwise a skill present only in a redirected Claude instance
+ * would make Cursor's block advertise `/gno` it cannot load. Returns the
+ * `resolveSkillPaths` location plus the standard config dir when the consumer
+ * is decoupled from an active redirect (the remediation must target it).
+ */
+export function skillStateLocation(
+  id: HarnessId,
+  home: string,
+  explicitHome: boolean
+): { target: SkillTarget; homeDir?: string; skillHome?: string } {
+  const def = HARNESS_DEFS[id];
+  const target = def.skillTarget;
+  const ownsSkillTarget = id === target;
+  if (ownsSkillTarget) {
+    return { target, homeDir: explicitHome ? home : undefined };
+  }
+  // Consumer: always the standard location (explicit home suppresses env).
+  const skillDef = HARNESS_DEFS[target as HarnessId];
+  const redirectActive =
+    !explicitHome &&
+    skillDef?.configDirEnvVar !== undefined &&
+    process.env[skillDef.configDirEnvVar] !== undefined;
+  return {
+    target,
+    homeDir: home,
+    ...(redirectActive &&
+      skillDef && { skillHome: join(home, skillDef.configDir) }),
+  };
+}
+
 function skillInstalledFor(
   target: SkillTarget,
   homeDir: string,
@@ -294,6 +336,7 @@ function resolveHarness(
     }
   }
 
+  const location = skillStateLocation(def.id, home, explicitHome);
   const file =
     def.instructionFile.dir === "home"
       ? join(home, def.instructionFile.name)
@@ -307,8 +350,13 @@ function resolveHarness(
     realFile: realIdentity(file),
     detected: isDirectory(configDir),
     coveredBy: def.coveredBy,
-    skillInstalled: skillInstalledFor(def.skillTarget, home, explicitHome),
+    skillInstalled: skillInstalledFor(
+      location.target,
+      home,
+      location.homeDir !== undefined
+    ),
     skillTarget: def.skillTarget,
+    ...(location.skillHome !== undefined && { skillHome: location.skillHome }),
   };
 }
 
