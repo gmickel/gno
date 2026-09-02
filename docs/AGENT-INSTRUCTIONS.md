@@ -50,11 +50,12 @@ future chains are new entries, not code changes.
   (hash-verified in the test suite). The separator install adds above the
   block — a blank line after a newline-terminated file, or the single newline
   a file without one lacked — is recorded inside the block together with a
-  hash of the bytes right before it (stamp `sep:<kind> pre:<hash>`), so
-  uninstall restores the original bytes exactly, and never consumes
-  whitespace it cannot prove it added (a block you paste or move after your
-  own blank line keeps that blank line). Provenance is never inferred from
-  file shape.
+  hash of the bytes right before it (stamp `sep:<kind> pre:<hash>`; an
+  install into an empty file records `sep:none`), so uninstall restores the
+  original bytes exactly, and never consumes whitespace it cannot prove it
+  added — that covers the newline after the END marker too, so a block you
+  paste or move into other content keeps every surrounding line break.
+  Provenance is never inferred from file shape.
 - **Backup-first** — every touched existing file is copied to
   `<file>.gno-agents.bak.<timestamp>` before the write.
 - **Idempotent** — re-running when current is a no-op (no write, no backup).

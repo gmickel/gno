@@ -62,6 +62,12 @@ export interface TargetPlan {
    * byte-identical.
    */
   bom?: boolean;
+  /**
+   * For `action: "error"`: the failure category (exit-code contract — 1 for
+   * invalid input such as malformed markers or non-UTF-8 content, 2 for
+   * filesystem failures such as an unreadable file).
+   */
+  errorCode?: "VALIDATION" | "RUNTIME";
 }
 
 const UTF8_BOM = "﻿";
@@ -144,8 +150,14 @@ function provenSeparator(
   if (!separator || !stampAuthenticates(block)) {
     return undefined;
   }
-  // Both kinds occupy exactly one `\n` right before the block; the operator
-  // content precedes that byte.
+  if (separator.kind === "none") {
+    // Installed into an empty file: the block must still start the file.
+    return block.start === 0 && separatorContextHash("") === separator.pre
+      ? separator
+      : undefined;
+  }
+  // `blank` and `nl` occupy exactly one `\n` right before the block; the
+  // operator content precedes that byte.
   if (block.start < 1 || content[block.start - 1] !== "\n") {
     return undefined;
   }
@@ -167,11 +179,14 @@ function provenSeparator(
 function withoutBlock(oldContent: string, block: ExtractedBlock): string {
   let start = block.start;
   let end = block.end;
-  // Consume the newline terminating the block line.
-  if (oldContent[end] === "\n") {
+  const separator = provenSeparator(oldContent, block);
+  // Install writes exactly one `\n` after the END marker. Consume it only when
+  // provenance proves this block was installed here — for a pasted or moved
+  // block that byte may be the operator's (`abc<block>\nxyz` must keep its
+  // line break), so without proof it stays.
+  if (separator && oldContent[end] === "\n") {
     end += 1;
   }
-  const separator = provenSeparator(oldContent, block);
   if (separator?.kind === "blank") {
     // Install added one blank line after the operator's `\n`-terminated file.
     start -= 1;
@@ -391,6 +406,12 @@ export async function planTargets(
       plans.push({
         target,
         action: "error",
+        // Non-UTF-8 content is a VALIDATION refusal; anything else here is a
+        // filesystem failure (permissions, I/O) — a RUNTIME category.
+        errorCode:
+          err instanceof CliError && err.code === "VALIDATION"
+            ? "VALIDATION"
+            : "RUNTIME",
         detail: `cannot read ${target.file}: ${err instanceof Error ? err.message : String(err)}`,
         oldContent: "",
         newContent: "",
@@ -447,9 +468,14 @@ export async function planTargets(
     let separator: SeparatorProvenance | undefined;
     if (extraction.found) {
       separator = provenSeparator(content, extraction.block);
-    } else if (content.length > 0) {
+    } else {
       separator = {
-        kind: content.endsWith("\n") ? "blank" : "nl",
+        kind:
+          content.length === 0
+            ? "none"
+            : content.endsWith("\n")
+              ? "blank"
+              : "nl",
         pre: separatorContextHash(content),
       };
     }

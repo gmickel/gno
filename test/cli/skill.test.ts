@@ -279,6 +279,25 @@ describe("skill CLI commands", () => {
       ).toThrow("--skills-dir must be an absolute path");
     });
 
+    test("--skills-dir with --target all is rejected as validation", async () => {
+      let thrown: unknown;
+      try {
+        await installSkill({
+          scope: "user",
+          target: "all",
+          skillsDir: join(TEST_DIR, "instance", "skills"),
+          homeDir: FAKE_HOME,
+          cwd: FAKE_CWD,
+          json: true,
+        });
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(CliError);
+      expect((thrown as CliError).code).toBe("VALIDATION");
+      expect(String(thrown)).toMatch(/single --target/);
+    });
+
     test("rejects relative CODEX_HOME", () => {
       withEnv(
         { CODEX_HOME: "relative/codex", [ENV_SKILLS_HOME_OVERRIDE]: undefined },

@@ -211,6 +211,16 @@ export async function installSkill(opts: InstallOptions = {}): Promise<void> {
   const yes = opts.yes ?? globals.yes;
   const quiet = opts.quiet ?? globals.quiet;
 
+  if (target === "all" && opts.skillsDir !== undefined) {
+    // One explicit directory cannot serve five targets: without --force the
+    // second iteration would abort as "already installed", with it the same
+    // dir would be rewritten five times and reported as five installs.
+    throw new CliError(
+      "VALIDATION",
+      "--skills-dir names one directory, so it requires a single --target (not 'all')."
+    );
+  }
+
   const targets: SkillTarget[] = target === "all" ? SKILL_TARGETS : [target];
 
   const results: SkillInstallResult[] = [];

@@ -24,7 +24,7 @@ export const BEGIN_MARKER = "<!-- gno:agents:begin -->";
 export const END_MARKER = "<!-- gno:agents:end -->";
 
 const STAMP_RE =
-  /^<!-- gno-agents block v(\d+) sha256:([0-9a-f]{16})(?: sep:(blank|nl) pre:([0-9a-f]{8}))? /;
+  /^<!-- gno-agents block v(\d+) sha256:([0-9a-f]{16})(?: sep:(blank|nl|none) pre:([0-9a-f]{8}))? /;
 const HASH_PREFIX_LENGTH = 16;
 /** Chars of preceding operator content hashed into the separator context. */
 const SEPARATOR_CONTEXT_CHARS = 32;
@@ -34,14 +34,16 @@ const SEPARATOR_CONTEXT_HASH_LENGTH = 8;
  * Separator provenance, recorded inside the markers because it cannot be
  * inferred from file shape at uninstall time: which separator install added
  * ABOVE the block (`blank` — one blank line after a `\n`-terminated file; `nl`
- * — the single `\n` appended to a file lacking a final newline), plus a hash
- * of the operator bytes immediately preceding it. Uninstall consumes the
- * separator only when the claim authenticates AND the context still matches —
- * a block pasted/moved after existing whitespace, or a hand-edited claim, never
- * costs the operator a byte outside the markers.
+ * — the single `\n` appended to a file lacking a final newline; `none` — the
+ * block was installed into an empty file, nothing above it), plus a hash of
+ * the operator bytes immediately preceding it. Every genuine install carries
+ * one, and it also vouches for the single `\n` install writes AFTER the END
+ * marker. Uninstall consumes those bytes only when the claim authenticates
+ * AND the context still matches — a block pasted/moved into other content, or
+ * a hand-edited claim, never costs the operator a byte outside the markers.
  */
 export interface SeparatorProvenance {
-  kind: "blank" | "nl";
+  kind: "blank" | "nl" | "none";
   /** `separatorContextHash` of the content preceding the separator. */
   pre: string;
 }

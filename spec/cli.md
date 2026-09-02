@@ -2573,12 +2573,12 @@ gno skill install [--scope <project|user>] [--target <claude|codex|opencode|open
 
 **Options:**
 
-| Option         | Type    | Default | Description                                                                                                                                           |
-| -------------- | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--scope`      | string  | project | `project` (.claude/skills/) or `user` (~/.claude/skills/)                                                                                             |
-| `--target`     | string  | claude  | `claude`, `codex`, `opencode`, `openclaw`, `hermes`, or `all`                                                                                         |
-| `--force`      | boolean | false   | Overwrite existing skill without prompting                                                                                                            |
-| `--skills-dir` | string  | —       | Explicit absolute skills directory; wins over `*_SKILLS_DIR` / config-dir env and home resolution (addresses a nonstandard harness instance portably) |
+| Option         | Type    | Default | Description                                                                                                                                                                                                            |
+| -------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--scope`      | string  | project | `project` (.claude/skills/) or `user` (~/.claude/skills/)                                                                                                                                                              |
+| `--target`     | string  | claude  | `claude`, `codex`, `opencode`, `openclaw`, `hermes`, or `all`                                                                                                                                                          |
+| `--force`      | boolean | false   | Overwrite existing skill without prompting                                                                                                                                                                             |
+| `--skills-dir` | string  | —       | Explicit absolute skills directory; wins over `*_SKILLS_DIR` / config-dir env and home resolution (addresses a nonstandard harness instance portably). Requires a single `--target` — one directory cannot serve `all` |
 
 **Behavior:**
 
@@ -2793,11 +2793,14 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
 4. Fail-closed marker validation: malformed or duplicate markers → per-target
    `error` with guidance, nothing written to that file, exit 1. Separator
    provenance is recorded in the stamp — `sep:blank` (one blank line added
-   after a `\n`-terminated file) or `sep:nl` (the single `\n` appended to a
-   file lacking a final newline) plus `pre:<hash>` of the operator bytes
-   immediately preceding the separator — and the stamp hash covers body AND
-   token. Uninstall consumes a separator only when the claim authenticates and
-   its context still matches; a hand-edited token (fails `verify`,
+   after a `\n`-terminated file), `sep:nl` (the single `\n` appended to a
+   file lacking a final newline), or `sep:none` (installed into an empty
+   file) plus `pre:<hash>` of the operator bytes immediately preceding the
+   separator — and the stamp hash covers body AND token. Every genuine install
+   carries one; it also vouches for the single `\n` install writes after the
+   END marker. Uninstall consumes the separator and that trailing newline only
+   when the claim authenticates and its context still matches; a hand-edited
+   token (fails `verify`,
    `hashOk: false`) or a block pasted/moved after existing whitespace (context
    mismatch) leaves that whitespace intact, and `update` drops a provenance
    claim it cannot prove rather than trusting it — operator bytes outside the

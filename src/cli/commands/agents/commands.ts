@@ -191,6 +191,9 @@ async function runMutation(
   for (const plan of plans) {
     if (plan.action === "error") {
       errors += 1;
+      if (plan.errorCode === "RUNTIME") {
+        runtimeErrors += 1;
+      }
       reports.push(reportFor(plan, undefined));
       continue;
     }

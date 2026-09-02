@@ -803,6 +803,32 @@ describe("agents CLI commands", () => {
       expect(await Bun.file(CODEX_FILE).text()).toBe("# Rules\n");
     });
 
+    test("an unreadable instruction file is a RUNTIME failure, not validation", async () => {
+      if (process.platform === "win32" || process.getuid?.() === 0) {
+        return; // needs POSIX permission enforcement (root bypasses it)
+      }
+      await setupHome([".codex"]);
+      await Bun.write(CODEX_FILE, "# Rules\n");
+      await chmod(CODEX_FILE, 0o000);
+      let thrown: unknown;
+      try {
+        await installAgents({
+          target: "codex",
+          homeDir: FAKE_HOME,
+          json: true,
+        });
+      } catch (err) {
+        thrown = err;
+      } finally {
+        await chmod(CODEX_FILE, 0o600);
+      }
+      expect(thrown).toBeInstanceOf(CliError);
+      expect((thrown as CliError).code).toBe("RUNTIME");
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.results[0].action).toBe("error");
+      expect(report.results[0].detail).toMatch(/cannot read/);
+    });
+
     test("backup inherits the source file's restrictive mode", async () => {
       if (process.platform === "win32") {
         return; // POSIX permission bits only
@@ -876,8 +902,11 @@ describe("agents CLI commands", () => {
       expect(report.results[0].status).toBe("outdated");
       expect(report.results[0].hashOk).toBe(false);
 
-      // Update re-stamps; the forged provenance is dropped rather than trusted,
-      // so a later uninstall never consumes a newline it cannot prove it added.
+      // Update re-stamps; the tampered provenance is dropped rather than
+      // trusted, so a later uninstall consumes NO byte outside the markers —
+      // neither the install-added leading newline nor the newline after END
+      // (both stay: "abc" + "\n" + "\n"). Byte-identity is forfeited only
+      // because the operator edited inside the managed block.
       await installAgents(
         { target: "codex", homeDir: FAKE_HOME, json: true },
         "update"
@@ -887,7 +916,7 @@ describe("agents CLI commands", () => {
         homeDir: FAKE_HOME,
         json: true,
       });
-      expect(await Bun.file(CODEX_FILE).text()).toBe("abc\n");
+      expect(await Bun.file(CODEX_FILE).text()).toBe("abc\n\n");
     });
 
     test("uninstall never consumes a newline on a forged sep:nl claim", async () => {
@@ -911,7 +940,8 @@ describe("agents CLI commands", () => {
         homeDir: FAKE_HOME,
         json: true,
       });
-      expect(await Bun.file(CODEX_FILE).text()).toBe("abc\n");
+      // Unproven claim → the user's newline AND the newline after END stay.
+      expect(await Bun.file(CODEX_FILE).text()).toBe("abc\n\n");
     });
 
     test("refuses to rewrite a non-UTF-8 file; bytes untouched", async () => {
@@ -1059,10 +1089,11 @@ describe("agents CLI commands", () => {
       expect(await Bun.file(CODEX_FILE).text()).toBe(noFinalNewline);
     });
 
-    test("uninstall preserves a lone user-owned newline before an unstamped block", async () => {
+    test("uninstall preserves user-owned newlines around an unstamped block", async () => {
       // Regression: a block preceded by exactly one newline (e.g. pasted
       // after a normally terminated line) carries no separator provenance, so
-      // that newline is user content — `abc\n<block>\n` → `abc\n`, not `abc`.
+      // BOTH the newline before it and the one after its END marker are user
+      // content — nothing outside the markers is consumed.
       await setupHome([".codex"]);
       const block = renderBlock({ skillInstalled: false });
       await Bun.write(CODEX_FILE, `# My rules\n${block}\n`);
@@ -1072,7 +1103,38 @@ describe("agents CLI commands", () => {
         homeDir: FAKE_HOME,
         json: true,
       });
-      expect(await Bun.file(CODEX_FILE).text()).toBe("# My rules\n");
+      expect(await Bun.file(CODEX_FILE).text()).toBe("# My rules\n\n");
+    });
+
+    test("uninstall keeps the line break after an inline pasted block", async () => {
+      // Regression: the newline after END was consumed unconditionally, so
+      // `abc<block>\nxyz` collapsed to `abcxyz`. Without provenance that byte
+      // is the operator's line break.
+      await setupHome([".codex"]);
+      const block = renderBlock({ skillInstalled: false });
+      await Bun.write(CODEX_FILE, `abc${block}\nxyz`);
+
+      await uninstallAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        json: true,
+      });
+      expect(await Bun.file(CODEX_FILE).text()).toBe("abc\nxyz");
+    });
+
+    test("install into an empty file round-trips to empty (sep:none)", async () => {
+      await setupHome([".codex"]);
+      await Bun.write(CODEX_FILE, "");
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      expect(await Bun.file(CODEX_FILE).text()).toMatch(
+        /^<!-- gno:agents:begin -->\n<!-- gno-agents block v\d+ sha256:[0-9a-f]{16} sep:none pre:[0-9a-f]{8} /
+      );
+      await uninstallAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        json: true,
+      });
+      expect(await Bun.file(CODEX_FILE).text()).toBe("");
     });
 
     test("uninstall leaves an operator's blank line intact under a moved block", async () => {
@@ -1092,7 +1154,9 @@ describe("agents CLI commands", () => {
         homeDir: FAKE_HOME,
         json: true,
       });
-      expect(await Bun.file(CODEX_FILE).text()).toBe("abc\n\n");
+      // No proven provenance here → neither the blank line above nor the
+      // newline after END is consumed; only the markers and body go.
+      expect(await Bun.file(CODEX_FILE).text()).toBe("abc\n\n\n");
     });
 
     test("install after a newline-terminated file round-trips byte-identically", async () => {
