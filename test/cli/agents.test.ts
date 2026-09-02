@@ -31,6 +31,7 @@ import {
   type ResolvedTarget,
   resolveTargets,
   skillStateLocation,
+  skillStateLocations,
 } from "../../src/cli/commands/agents/harnesses";
 import { CliError } from "../../src/cli/errors";
 import { resetGlobals } from "../../src/cli/program";
@@ -527,23 +528,23 @@ describe("agents CLI commands", () => {
     });
 
     test("shared real file renders the conservative pointer when any consumer lacks the skill", async () => {
-      // Regression: codex owns the write to the shared file, but cursor
-      // (Claude-backed skill, absent here) reads the same file via its
-      // ~/AGENTS.md symlink. Rendering from the owner's skill state alone
-      // would emit `/gno`, a pointer cursor cannot follow — the block must
-      // aggregate all consumers and stay conservative.
-      await setupHome([".codex/skills/gno", ".cursor"]);
+      // Regression: codex owns the write to the shared file, but OpenCode
+      // (its own skill dir, absent here) reads the same file via a symlink.
+      // Rendering from the owner's skill state alone would emit `/gno`, a
+      // pointer OpenCode cannot follow — the block must aggregate all
+      // consumers and stay conservative.
+      await setupHome([".codex/skills/gno", ".config/opencode"]);
       await Bun.write(join(FAKE_HOME, ".codex/skills/gno/SKILL.md"), "# gno\n");
       await Bun.write(CODEX_FILE, "# Shared\n");
-      await symlink(CODEX_FILE, join(FAKE_HOME, "AGENTS.md"));
+      await symlink(CODEX_FILE, join(FAKE_HOME, ".config/opencode/AGENTS.md"));
 
       await installAgents({ target: "all", homeDir: FAKE_HOME, json: true });
 
       const content = await Bun.file(CODEX_FILE).text();
-      // Only cursor (Claude-backed skill) lacks the skill → remediation names
-      // exactly that target, not `all` (which would fabricate absent harnesses).
+      // Only OpenCode lacks the skill → remediation names exactly that target,
+      // not `all` (which would fabricate absent harnesses).
       expect(content).toContain(
-        "run `gno skill install --scope user --force --target claude`"
+        "run `gno skill install --scope user --force --target opencode`"
       );
       expect(content).not.toContain("--target all");
       expect(content).not.toContain("`/gno`");
@@ -561,14 +562,12 @@ describe("agents CLI commands", () => {
     });
 
     test("shared real file renders the skill pointer once every consumer has the skill", async () => {
-      // Same layout, but both codex's and cursor's (Claude-backed) skills
-      // are installed — every consumer can follow `/gno`.
-      await setupHome([".codex/skills/gno", ".cursor", ".claude/skills/gno"]);
+      // Codex's file shared with cursor via ~/AGENTS.md. Only the CODEX skill
+      // is installed — but Cursor loads skills from both ~/.claude/skills and
+      // ~/.codex/skills (spec/cli.md compatibility), so every consumer can
+      // follow `/gno` and no remediation is rendered.
+      await setupHome([".codex/skills/gno", ".cursor"]);
       await Bun.write(join(FAKE_HOME, ".codex/skills/gno/SKILL.md"), "# gno\n");
-      await Bun.write(
-        join(FAKE_HOME, ".claude/skills/gno/SKILL.md"),
-        "# gno\n"
-      );
       await Bun.write(CODEX_FILE, "# Shared\n");
       await symlink(CODEX_FILE, join(FAKE_HOME, "AGENTS.md"));
 
@@ -747,6 +746,11 @@ describe("agents CLI commands", () => {
           target: "claude",
           skillsDir: standardSkills,
         });
+        // Cursor can load from either Claude's or Codex's standard dir; the
+        // first location is the remediation vehicle.
+        expect(
+          skillStateLocations("cursor", FAKE_HOME, true).map((l) => l.skillsDir)
+        ).toEqual([standardSkills, join(FAKE_HOME, ".codex", "skills")]);
       } finally {
         restore();
       }

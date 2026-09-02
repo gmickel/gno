@@ -98,8 +98,13 @@ interface HarnessDef {
    * are matrix entries, not code changes.
    */
   coveredBy?: HarnessId;
-  /** Skill target used for the state-aware skill pointer in the block. */
-  skillTarget: SkillTarget;
+  /**
+   * Skill targets this harness can load the GNO skill from, in preference
+   * order. The first is the remediation vehicle; the skill counts as
+   * installed when ANY of them has it (Cursor reads both Claude's and
+   * Codex's skill dirs).
+   */
+  skillTargets: readonly [SkillTarget, ...SkillTarget[]];
 }
 
 const HARNESS_DEFS: Record<HarnessId, HarnessDef> = {
@@ -109,7 +114,7 @@ const HARNESS_DEFS: Record<HarnessId, HarnessDef> = {
     configDir: ".claude",
     instructionFile: { dir: "config", name: "CLAUDE.md" },
     configDirEnvVar: "CLAUDE_CONFIG_DIR",
-    skillTarget: "claude",
+    skillTargets: ["claude"],
   },
   codex: {
     id: "codex",
@@ -117,7 +122,7 @@ const HARNESS_DEFS: Record<HarnessId, HarnessDef> = {
     configDir: ".codex",
     instructionFile: { dir: "config", name: "AGENTS.md" },
     configDirEnvVar: "CODEX_HOME",
-    skillTarget: "codex",
+    skillTargets: ["codex"],
   },
   cursor: {
     id: "cursor",
@@ -126,16 +131,17 @@ const HARNESS_DEFS: Record<HarnessId, HarnessDef> = {
     // Cursor Agent discovers AGENTS.md walking from the working directory
     // towards the home directory; ~/AGENTS.md is its user-global surface.
     instructionFile: { dir: "home", name: "AGENTS.md" },
-    // Cursor reads .claude/skills in addition to its own; the skill
-    // installer has no dedicated cursor target.
-    skillTarget: "claude",
+    // Cursor loads skills from BOTH ~/.claude/skills and ~/.codex/skills
+    // (spec/cli.md skill compatibility); the installer has no dedicated
+    // cursor target, so claude is the remediation vehicle.
+    skillTargets: ["claude", "codex"],
   },
   opencode: {
     id: "opencode",
     label: "OpenCode",
     configDir: ".config/opencode",
     instructionFile: { dir: "config", name: "AGENTS.md" },
-    skillTarget: "opencode",
+    skillTargets: ["opencode"],
   },
   grok: {
     id: "grok",
@@ -144,21 +150,21 @@ const HARNESS_DEFS: Record<HarnessId, HarnessDef> = {
     // Grok imports the Claude global instruction file — no file of its own.
     instructionFile: { dir: "config", name: "AGENTS.md" },
     coveredBy: "claude",
-    skillTarget: "claude",
+    skillTargets: ["claude"],
   },
   hermes: {
     id: "hermes",
     label: "Hermes",
     configDir: ".hermes",
     instructionFile: { dir: "config", name: "SOUL.md" },
-    skillTarget: "hermes",
+    skillTargets: ["hermes"],
   },
   openclaw: {
     id: "openclaw",
     label: "OpenClaw",
     configDir: ".openclaw/workspace",
     instructionFile: { dir: "config", name: "AGENTS.md" },
-    skillTarget: "openclaw",
+    skillTargets: ["openclaw"],
   },
 };
 
@@ -294,19 +300,18 @@ export interface SkillStateLocation {
 export function skillStateLocation(
   id: HarnessId,
   home: string,
-  explicitHome: boolean
+  explicitHome: boolean,
+  target: SkillTarget = HARNESS_DEFS[id].skillTargets[0]
 ): SkillStateLocation {
-  const def = HARNESS_DEFS[id];
-  const target = def.skillTarget;
   if (id === target) {
     // Owns its skill target: follows that target's env redirects (config-dir
     // and dedicated skills-dir), unless an explicit home isolates the run.
     return { target, homeDir: explicitHome ? home : undefined };
   }
-  // Borrowed skill (cursor/grok → claude): the consumer loads from the skill
-  // owner's STANDARD dir, so pin it — neither the owner's config-dir redirect
-  // (CLAUDE_CONFIG_DIR) nor its dedicated skills-dir override
-  // (CLAUDE_SKILLS_DIR) applies to what this consumer can load.
+  // Borrowed skill (cursor/grok → claude, cursor → codex): the consumer loads
+  // from the skill owner's STANDARD dir, so pin it — neither the owner's
+  // config-dir redirect (CLAUDE_CONFIG_DIR) nor its dedicated skills-dir
+  // override (CLAUDE_SKILLS_DIR) applies to what this consumer can load.
   const skillDef = HARNESS_DEFS[target as HarnessId];
   const standardHome = join(home, skillDef?.configDir ?? `.${target}`);
   const redirectActive =
@@ -319,6 +324,21 @@ export function skillStateLocation(
     skillsDir: join(standardHome, "skills"),
     ...(redirectActive && { skillHome: standardHome }),
   };
+}
+
+/**
+ * Every location a harness can load the skill from (one per entry in its
+ * `skillTargets`). The skill counts as installed when ANY of them has it; the
+ * FIRST is the remediation vehicle when none does.
+ */
+export function skillStateLocations(
+  id: HarnessId,
+  home: string,
+  explicitHome: boolean
+): SkillStateLocation[] {
+  return HARNESS_DEFS[id].skillTargets.map((target) =>
+    skillStateLocation(id, home, explicitHome, target)
+  );
 }
 
 function skillInstalledFor(location: SkillStateLocation): boolean {
@@ -359,6 +379,8 @@ function resolveHarness(
     }
   }
 
+  const locations = skillStateLocations(def.id, home, explicitHome);
+  // Remediation vehicle = the first skill target (tuple type guarantees one).
   const location = skillStateLocation(def.id, home, explicitHome);
   const file =
     def.instructionFile.dir === "home"
@@ -373,8 +395,9 @@ function resolveHarness(
     realFile: realIdentity(file),
     detected: isDirectory(configDir),
     coveredBy: def.coveredBy,
-    skillInstalled: skillInstalledFor(location),
-    skillTarget: def.skillTarget,
+    // Installed when ANY loadable location has it (Cursor: claude OR codex).
+    skillInstalled: locations.some((loc) => skillInstalledFor(loc)),
+    skillTarget: location.target,
     ...(location.skillHome !== undefined && { skillHome: location.skillHome }),
   };
 }

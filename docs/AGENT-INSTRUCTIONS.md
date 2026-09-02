@@ -105,9 +105,10 @@ across partial installs. That state is read from the
 same effective config dir as the instruction file, so a harness redirected via
 `CLAUDE_CONFIG_DIR` / `CODEX_HOME` is checked — and installed into — under
 that dir. Cursor and Grok load Claude's skill from the standard
-`~/.claude/skills` regardless of `CLAUDE_CONFIG_DIR` or `CLAUDE_SKILLS_DIR`,
-so they are checked there, and while either override is active their
-remediation points at that standard directory. Files are handled as bytes: a leading UTF-8 BOM survives every
+`~/.claude/skills` regardless of `CLAUDE_CONFIG_DIR` or `CLAUDE_SKILLS_DIR`
+(Cursor also loads `~/.codex/skills`, and counts as installed when either has
+the skill), so they are checked there, and while either override is active
+their remediation points at that standard directory. Files are handled as bytes: a leading UTF-8 BOM survives every
 operation, and a file that is not valid UTF-8 is refused rather than
 rewritten. Shared-file identity is resolved even before the file exists
 (dangling symlinks followed, nearest existing ancestor canonicalized), so

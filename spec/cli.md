@@ -2837,9 +2837,10 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    via `CLAUDE_CONFIG_DIR` / `CODEX_HOME` is checked (and, following the
    pointer, installed) under that dir, not the ordinary home. A consumer of
    another harness's skill (Cursor and Grok load Claude's from
-   `~/.claude/skills`) is checked at that standard location regardless of any
-   Claude override (`CLAUDE_CONFIG_DIR` or `CLAUDE_SKILLS_DIR`), and while an
-   override is active its remediation renders
+   `~/.claude/skills`; Cursor additionally loads `~/.codex/skills` and counts
+   as installed when EITHER has the skill) is checked at those standard
+   locations regardless of any Claude override (`CLAUDE_CONFIG_DIR` or
+   `CLAUDE_SKILLS_DIR`), and while an override is active its remediation renders
    `--skills-dir '<home>/.claude/skills'` so the install lands where that
    consumer actually loads from.
 7. `GNO_AGENTS_HOME_OVERRIDE` overrides the home directory (testing/sandboxed
