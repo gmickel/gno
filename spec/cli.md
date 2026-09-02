@@ -2792,8 +2792,8 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    (quota, I/O error) leaves the live file unchanged and no temp file
    behind. The file is re-read and compared
    to the bytes it was planned from twice — before the backup is made, and
-   again as the last step before the active-file write (the backup copy and
-   permission steps are themselves a window); if it changed in between
+   again as the last step before the rename (the backup copy, permission, and
+   temp-file preparation steps are themselves a window); if it changed in between
    (editor, dotfile sync, concurrent run) the write is refused with a
    per-target `RUNTIME` error, any backup just made is removed, nothing is
    written, and the run must be repeated against the current file.

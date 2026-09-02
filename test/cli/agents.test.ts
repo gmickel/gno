@@ -880,6 +880,28 @@ describe("agents CLI commands", () => {
       expect(await readlink(CODEX_FILE)).toBe(sharedTarget);
     });
 
+    test("refuses to recreate a dangling link's resolved parent removed after planning", async () => {
+      // The link points outside the config dir; its target dir existed at plan
+      // time. Removing it before apply must not be undone by the mkdir.
+      await setupHome([".codex", "shared/rules"]);
+      const sharedTarget = join(FAKE_HOME, "shared", "rules", "AGENTS.md");
+      await symlink(sharedTarget, CODEX_FILE);
+      const targets = resolveTargets("codex", { homeDir: FAKE_HOME });
+      const [plan] = await planTargets(targets, "install");
+      expect(plan?.fileExists).toBe(false);
+
+      await rm(join(FAKE_HOME, "shared"), { recursive: true });
+      let thrown: unknown;
+      try {
+        await applyPlan(plan!);
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(CliError);
+      expect(String(thrown)).toMatch(/disappeared or moved/);
+      expect(existsSync(join(FAKE_HOME, "shared"))).toBe(false);
+    });
+
     test("refuses to recreate a config dir removed after a new file was planned", async () => {
       // The leaf check sees absent === absent; without revalidating the parent,
       // Bun.write would fabricate ~/.codex again and report success.

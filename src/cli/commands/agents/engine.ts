@@ -68,6 +68,13 @@ export interface TargetPlan {
    */
   configDirIdentity?: string | null;
   /**
+   * Same for the parent of `target.realFile` (differs from the config dir
+   * when a dangling link points outside it): a resolved parent tree removed
+   * after planning is not recreated; absent-at-plan is created (dangling-link
+   * install).
+   */
+  writeParentIdentity?: string | null;
+  /**
    * The existing file began with a UTF-8 BOM. Content strings exclude it;
    * the write path re-prepends it so operator bytes outside the markers stay
    * byte-identical.
@@ -559,7 +566,8 @@ export async function planTargets(
       oldContent: content,
       newContent,
       fileExists: exists,
-      configDirIdentity: await configDirIdentity(target.configDir),
+      configDirIdentity: await directoryIdentity(target.configDir),
+      writeParentIdentity: await directoryIdentity(dirname(target.realFile)),
       bom,
     });
   }
@@ -577,13 +585,11 @@ const WRITE_ACTIONS: PlanAction[] = ["install", "update", "remove"];
  * Real identity of a config directory, or `null` when it is absent (or not a
  * directory). Recorded at plan time and compared before a planned-new write.
  */
-export async function configDirIdentity(
-  configDir: string
-): Promise<string | null> {
-  const isDir = await stat(configDir)
+export async function directoryIdentity(dir: string): Promise<string | null> {
+  const isDir = await stat(dir)
     .then((s) => s.isDirectory())
     .catch(() => false);
-  return isDir ? realIdentity(configDir) : null;
+  return isDir ? realIdentity(dir) : null;
 }
 
 export function planWrites(plan: TargetPlan): boolean {
@@ -611,10 +617,24 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
   // in the meantime, writing would silently overwrite the newer operator
   // content — so the file is re-read and compared against the planned bytes
   // TWICE: once before any side effect, and again as the very last await
-  // before the active-file write (the backup copy / stat / chmod awaits sit
-  // in between and are themselves a window). A filesystem write has no CAS,
-  // so this leaves exactly one read→write hop unguarded — the minimum.
-  const assertUnchanged = async (): Promise<void> => {
+  // before the atomic rename (the backup copy / stat / chmod and the temp-file
+  // preparation awaits sit in between and are themselves a window). rename(2)
+  // has no CAS, so this leaves exactly one read→rename hop unguarded — the
+  // minimum.
+  // `phase: "final"` runs after the temp file (and, for a planned-new file,
+  // its parent directories) was created: a directory planned as ABSENT has
+  // legitimately appeared by then, so only directories that existed at plan
+  // time are still compared.
+  const assertUnchanged = async (phase: "initial" | "final"): Promise<void> => {
+    const dirUnchanged = async (
+      dir: string,
+      planned: string | null | undefined
+    ): Promise<boolean> => {
+      if (planned === undefined || (phase === "final" && planned === null)) {
+        return true;
+      }
+      return (await directoryIdentity(dir)) === planned;
+    };
     // The plan resolved `target.file` to `realFile` (symlinks followed). If
     // the operator retargeted the link in the meantime, the harness now reads
     // a different file — writing the cached destination would modify (and
@@ -635,13 +655,27 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
     // is "same state as planned", not "must exist".
     if (
       !plan.fileExists &&
-      plan.configDirIdentity !== undefined &&
-      (await configDirIdentity(plan.target.configDir)) !==
-        plan.configDirIdentity
+      !(await dirUnchanged(plan.target.configDir, plan.configDirIdentity))
     ) {
       throw new CliError(
         "RUNTIME",
         `${plan.target.configDir} disappeared or moved after ${writePath} was planned — nothing was written. Re-run to plan against the current state.`
+      );
+    }
+    // Same rule for the RESOLVED destination's parent: a dangling link may
+    // point outside the config dir, and that external tree existing at plan
+    // time but removed before apply must not be recreated by the mkdir below.
+    // (Absent at plan time → still absent is the supported dangling-link
+    // install and is created.)
+    const writeParent = dirname(writePath);
+    if (
+      !plan.fileExists &&
+      writeParent !== plan.target.configDir &&
+      !(await dirUnchanged(writeParent, plan.writeParentIdentity))
+    ) {
+      throw new CliError(
+        "RUNTIME",
+        `${writeParent} disappeared or moved after ${writePath} was planned — nothing was written. Re-run to plan against the current state.`
       );
     }
     const currentFile = Bun.file(writePath);
@@ -666,7 +700,7 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
       );
     }
   };
-  await assertUnchanged();
+  await assertUnchanged("initial");
 
   let backupPath: string | null = null;
   if (plan.fileExists) {
@@ -703,29 +737,24 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
     }
   }
 
-  // Second check — the backup preparation above awaited several times; a
-  // change that slipped in during those awaits must not be overwritten. The
-  // backup made a moment ago holds pre-change bytes and nothing was written,
-  // so remove it before failing.
-  try {
-    await assertUnchanged();
-  } catch (err) {
-    if (backupPath) {
-      await unlink(backupPath).catch(() => {});
-    }
-    throw err;
-  }
-
   // Atomic replace: write a sibling temp file and rename it over the
   // destination. Writing the live file in place could truncate it or leave
   // partial bytes when the write fails midway (quota, I/O error) — the harness
   // would then read a corrupted file until the backup is restored by hand.
   // rename(2) is atomic on the same filesystem, which a sibling guarantees.
   const tempPath = `${writePath}.gno-agents.tmp.${process.pid}`;
+  // Nothing has touched the live file yet at any failure below: remove the
+  // temp file and the backup (it holds only pre-change bytes) before failing.
+  const abandon = async (): Promise<void> => {
+    await unlink(tempPath).catch(() => {});
+    if (backupPath) {
+      await unlink(backupPath).catch(() => {});
+    }
+  };
   try {
     if (!plan.fileExists) {
       // Dangling-link install: the resolved target's parent may not exist yet
-      // (the config dir itself was revalidated above).
+      // (the config dir and that parent were revalidated above).
       await mkdir(dirname(writePath), { recursive: true });
     }
     await Bun.write(tempPath, (plan.bom ? UTF8_BOM : "") + plan.newContent);
@@ -735,6 +764,25 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
       const { mode } = await stat(writePath);
       await chmod(tempPath, mode & 0o777);
     }
+  } catch (err) {
+    await abandon();
+    throw new CliError(
+      "RUNTIME",
+      `Write failed for ${writePath}: ${err instanceof Error ? err.message : String(err)}; the live file is unchanged.`
+    );
+  }
+
+  // Second check — the backup and temp-file preparation above awaited several
+  // times; a change that slipped in during those awaits must not be replaced.
+  // This is the LAST await before the rename.
+  try {
+    await assertUnchanged("final");
+  } catch (err) {
+    await abandon();
+    throw err;
+  }
+
+  try {
     await rename(tempPath, writePath);
   } catch (err) {
     await unlink(tempPath).catch(() => {});
