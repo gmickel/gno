@@ -163,8 +163,82 @@ describe("gno search smoke tests", () => {
   test("search rejects a positional query together with --query-file", async () => {
     const queryPath = join(testDir, "query.txt");
     await writeFile(queryPath, "markdown\n");
-    const { code } = await cli("search", "markdown", "--query-file", queryPath);
-    expect(code).not.toBe(0);
+    const { code, stderr } = await cli(
+      "search",
+      "markdown",
+      "--query-file",
+      queryPath
+    );
+    expect(code).toBe(1);
+    expect(stderr).toContain("Pass a query or --query-file, not both");
+  });
+
+  test("search --query-file missing file exits 1", async () => {
+    const { code, stderr } = await cli(
+      "search",
+      "--query-file",
+      join(testDir, "missing-query.txt")
+    );
+    expect(code).toBe(1);
+    expect(stderr).toContain("Failed to read --query-file");
+  });
+
+  test("search --query-file empty file exits 1", async () => {
+    const queryPath = join(testDir, "empty-query.txt");
+    await writeFile(queryPath, "");
+    const { code, stderr } = await cli("search", "--query-file", queryPath);
+    expect(code).toBe(1);
+    expect(stderr).toContain("Query cannot be empty");
+  });
+
+  test("query diagnose rejects --query-file", async () => {
+    const queryPath = join(testDir, "diag-query.txt");
+    await writeFile(queryPath, "markdown\n");
+    const { code, stderr } = await cli(
+      "query",
+      "diagnose",
+      "--target",
+      "gno://docs/test.md",
+      "--query-file",
+      queryPath
+    );
+    expect(code).toBe(1);
+    expect(stderr).toContain("query diagnose does not accept --query-file");
+  });
+
+  test("search --query-file - reads stdin", async () => {
+    const repoRoot = join(import.meta.dir, "../..");
+    const proc = Bun.spawn(
+      [
+        "bun",
+        join(repoRoot, "src/index.ts"),
+        "search",
+        "--query-file",
+        "-",
+        "--json",
+      ],
+      {
+        cwd: repoRoot,
+        stdin: new Blob(["markdown\n"]),
+        env: {
+          ...process.env,
+          GNO_CONFIG_DIR: process.env.GNO_CONFIG_DIR,
+          GNO_DATA_DIR: process.env.GNO_DATA_DIR,
+          GNO_CACHE_DIR: process.env.GNO_CACHE_DIR,
+        },
+        stdout: "pipe",
+        stderr: "pipe",
+      }
+    );
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    expect(exitCode).toBe(0);
+    expect(stderr).toBe("");
+    const parsed = JSON.parse(stdout);
+    expect(parsed.results?.length).toBeGreaterThan(0);
   });
 
   test("search --json validates against schema", async () => {

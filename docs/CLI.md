@@ -227,6 +227,8 @@ gno search "project deadlines"
 gno search "error handling" -n 5
 gno search "auth" --json
 gno search "meeting" --files
+gno search --query-file /run/user/1000/gno-recall/q.XXXX --json
+printf '%s' "auth" | gno search --query-file - --json
 ```
 
 **Document-level indexing**: Finds documents where terms appear anywhere, even across sections. "authentication JWT" matches docs with those terms in different parts.
@@ -245,6 +247,7 @@ gno search "meeting" --files
 
 Options:
 
+- `--query-file <path>` - Read the query from a file (`-` reads stdin). Keeps the query off argv. Do not also pass a positional query.
 - `-n, --limit <n>` - Limit results (default: 5; 20 with --json/--files)
 - `--min-score <n>` - Minimum score threshold (0-1)
 - `--full` - Show full document content (not just snippet)
@@ -308,6 +311,7 @@ Hybrid search combining BM25 and vector results. This is the recommended search 
 
 ```bash
 gno query "database optimization"
+gno query --query-file /run/user/1000/gno-recall/q.XXXX --json
 gno query "API design patterns" --explain
 gno query "auth" --fast              # Fastest: ~0.7s
 gno query "auth" --thorough          # Full pipeline: ~5-8s
@@ -339,6 +343,7 @@ gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 
 Additional options:
 
+- `--query-file <path>` - Same as `gno search`. Invalid with a positional query and invalid on `query diagnose`.
 - `--fast` - Skip query expansion and reranking (fastest, ~0.7s)
 - `--thorough` - Use the widest retrieval/rerank budget (slower, best recall)
 - `--no-expand` - Disable query expansion

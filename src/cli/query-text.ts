@@ -29,7 +29,7 @@ export const resolveCliQueryText = async (
   positional: string | undefined,
   queryFile: unknown
 ): Promise<string> => {
-  const file = typeof queryFile === "string" ? queryFile.trim() : "";
+  const file = typeof queryFile === "string" ? queryFile : "";
   const pos = positional ?? "";
   if (file !== "" && pos.trim() !== "") {
     throw new CliError("VALIDATION", "Pass a query or --query-file, not both");

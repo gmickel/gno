@@ -9,12 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `gno search` and `gno query` accept `--query-file <path>` (`-` reads stdin) so
-  desktop callers can keep the query off argv.
-
 ### Changed
 
 ### Fixed
+
+## [1.39.2] - 2026-09-02
+
+### Added
+
+- `gno search` and `gno query` accept `--query-file <path>` (`-` reads stdin) so
+  desktop callers can keep the query off argv.
 
 ## [1.39.1] - 2026-09-02
 
@@ -2325,7 +2329,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.39.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.39.2...HEAD
+[1.39.2]: https://github.com/gmickel/gno/compare/v1.39.1...v1.39.2
 [1.39.1]: https://github.com/gmickel/gno/compare/v1.39.0...v1.39.1
 [1.39.0]: https://github.com/gmickel/gno/compare/v1.38.0...v1.39.0
 [1.38.0]: https://github.com/gmickel/gno/compare/v1.37.1...v1.38.0

@@ -1346,6 +1346,7 @@ gno query diagnose <query> --target <doc> [-n <num>] [--min-score <num>] [-c <co
 **Additional Options:**
 | Option | Type | Description |
 |--------|------|-------------|
+| `--query-file` | string | Same as `gno search`: read the query from a file (`-` is stdin). Invalid with a positional query and invalid on `query diagnose`. |
 | `--no-expand` | boolean | Disable query expansion |
 | `--no-rerank` | boolean | Disable cross-encoder reranking |
 | `--graph` | boolean | Explicitly enable the default bounded one-hop graph neighbor expansion |
@@ -1358,7 +1359,7 @@ gno query diagnose <query> --target <doc> [-n <num>] [--min-score <num>] [-c <co
 | `--target` | ref | Required for `query diagnose`; target document to diagnose |
 
 `query diagnose` accepts the same `--project-root` and
-`--no-project-affinity` controls as `query`.
+`--no-project-affinity` controls as `query`. It rejects `--query-file`.
 
 **Compatibility / Migration:**
 
