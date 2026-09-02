@@ -880,6 +880,26 @@ describe("agents CLI commands", () => {
       expect(await readlink(CODEX_FILE)).toBe(sharedTarget);
     });
 
+    test("a pre-planted symlink at a predictable temp path is never written through", async () => {
+      // A writable shared dir lets another principal pre-create
+      // `<file>.gno-agents.tmp.<pid>` as a link to a victim file. The temp
+      // name is random and created exclusively, so the victim is untouched
+      // and the install still succeeds.
+      await setupHome([".codex", "victim"]);
+      await Bun.write(CODEX_FILE, "# Rules\n");
+      const victim = join(FAKE_HOME, "victim", "secret.md");
+      await Bun.write(victim, "victim\n");
+      await symlink(victim, `${CODEX_FILE}.gno-agents.tmp.${process.pid}`);
+
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.results[0].action).toBe("install");
+      expect(await Bun.file(victim).text()).toBe("victim\n");
+      expect(await Bun.file(CODEX_FILE).text()).toContain(BEGIN_MARKER);
+      // The planted link is not ours; it stays, the live file is a real file.
+      expect((await stat(CODEX_FILE)).isFile()).toBe(true);
+    });
+
     test("refuses to recreate a dangling link's resolved parent removed after planning", async () => {
       // The link points outside the config dir; its target dir existed at plan
       // time. Removing it before apply must not be undone by the mkdir.

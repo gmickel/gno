@@ -2787,10 +2787,11 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    a umask-default world-readable copy; if the copy fails midway or the mode
    cannot be applied, the partial backup is removed and the target fails).
    The write itself is atomic: content goes to a sibling
-   `<file>.gno-agents.tmp.<pid>` (given the live file's mode when replacing
-   one) and is `rename`d over the resolved destination, so a failed write
-   (quota, I/O error) leaves the live file unchanged and no temp file
-   behind. The file is re-read and compared
+   `<file>.gno-agents.tmp.<random>` created exclusively (never through a
+   pre-existing link; given the live file's mode and, when the caller is a
+   different user, its owner/group when replacing one) and is `rename`d over
+   the resolved destination, so a failed write (quota, I/O error) leaves the
+   live file unchanged and no temp file behind. The file is re-read and compared
    to the bytes it was planned from twice — before the backup is made, and
    again as the last step before the rename (the backup copy, permission, and
    temp-file preparation steps are themselves a window); if it changed in between

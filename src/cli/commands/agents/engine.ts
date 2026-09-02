@@ -15,7 +15,9 @@
 // the backup must inherit the source file's (possibly restrictive) mode.
 // mkdir: directory creation for a dangling link's resolved parent.
 // rename: atomic replace of the live instruction file (Bun.write is in-place).
-import { chmod, mkdir, rename, stat, unlink } from "node:fs/promises";
+// open: Bun.write cannot create exclusively (O_EXCL) without following a
+// pre-planted symlink, nor set ownership on the resulting inode.
+import { chmod, mkdir, open, rename, stat, unlink } from "node:fs/promises";
 // node:path: no Bun path utilities.
 import { dirname } from "node:path";
 
@@ -742,7 +744,11 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
   // partial bytes when the write fails midway (quota, I/O error) — the harness
   // would then read a corrupted file until the backup is restored by hand.
   // rename(2) is atomic on the same filesystem, which a sibling guarantees.
-  const tempPath = `${writePath}.gno-agents.tmp.${process.pid}`;
+  // Random, not PID-based: in a directory another principal can write to
+  // (shared --extra-dir, privileged invocation) a predictable name can be
+  // pre-created as a symlink, which a following open would write through and
+  // the rename would then install as the live file.
+  const tempPath = `${writePath}.gno-agents.tmp.${crypto.randomUUID()}`;
   // Nothing has touched the live file yet at any failure below: remove the
   // temp file and the backup (it holds only pre-change bytes) before failing.
   const abandon = async (): Promise<void> => {
@@ -757,12 +763,31 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
       // (the config dir and that parent were revalidated above).
       await mkdir(dirname(writePath), { recursive: true });
     }
-    await Bun.write(tempPath, (plan.bom ? UTF8_BOM : "") + plan.newContent);
-    if (plan.fileExists) {
-      // The temp file was created with the process umask; the replacement
-      // must keep the live file's (possibly restrictive) mode.
-      const { mode } = await stat(writePath);
-      await chmod(tempPath, mode & 0o777);
+    // "wx" = O_CREAT|O_EXCL: fails if ANY entry — including a planted symlink,
+    // dangling or not — already exists at the path, so the write never follows
+    // a link. Created private (0600) and widened to the source mode below.
+    const handle = await open(tempPath, "wx", 0o600);
+    try {
+      await handle.writeFile((plan.bom ? UTF8_BOM : "") + plan.newContent);
+      if (plan.fileExists) {
+        // The replacement inode must carry the live file's identity, not the
+        // caller's: its (possibly restrictive) mode, and — when the command
+        // runs as another user (sudo, shared or dotfile-managed file) — its
+        // uid/gid, or the harness user would lose write access to a file that
+        // is now owned by the caller. Failing is the safe path when the
+        // ownership cannot be applied.
+        const source = await stat(writePath);
+        await handle.chmod(source.mode & 0o777);
+        if (
+          process.getuid !== undefined &&
+          process.getgid !== undefined &&
+          (source.uid !== process.getuid() || source.gid !== process.getgid())
+        ) {
+          await handle.chown(source.uid, source.gid);
+        }
+      }
+    } finally {
+      await handle.close();
     }
   } catch (err) {
     await abandon();
