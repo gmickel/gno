@@ -389,6 +389,7 @@ describe("agents CLI commands", () => {
       const grok = r.receipt.results.find((x) => x.target === "grok");
       expect(grok?.action).toBe("covered");
       expect(grok?.via).toBe("claude");
+      expect(grok?.path).toBe(CLAUDE_FILE); // the file grok actually reads
       expect(existsSync(join(FAKE_HOME, ".grok/AGENTS.md"))).toBe(false);
       expect(await text(CLAUDE_FILE)).toContain(BEGIN_MARKER);
       const v = await verify("grok");
@@ -581,6 +582,16 @@ describe("agents CLI commands", () => {
       // update repairs the tamper
       expect((await update("codex")).receipt.results[0]?.action).toBe("update");
       expect((await verify("codex")).receipt.ok).toBe(true);
+
+      // a block with no stamp line is reported as such, not as a hash mismatch
+      const stamped = await text(CODEX_FILE);
+      await Bun.write(
+        CODEX_FILE,
+        stamped.replace(/<!-- gno-agents block v\d+ [^\n]*\n/, "")
+      );
+      v = await verify("codex");
+      expect(v.receipt.results[0]?.status).toBe("outdated");
+      expect(v.receipt.results[0]?.detail).toMatch(/no valid stamp line/);
     });
 
     test("not-detected harnesses are skipped and never fabricated", async () => {

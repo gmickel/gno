@@ -2816,7 +2816,7 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
     {
       "target": "grok",
       "label": "Grok Build",
-      "path": "/home/user/.grok/AGENTS.md",
+      "path": "/home/user/.claude/CLAUDE.md",
       "action": "covered",
       "detected": true,
       "via": "claude",
@@ -2827,7 +2827,9 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
 ```
 
 `action` is one of `install`, `update`, `current`, `covered`, `not-detected`,
-`error`. With `--dry-run`, a `diffs` array of unified diffs is included. When
+`error` (and `remove`, `absent` for uninstall). A covered row's `path` is the
+file the harness actually reads (its covering target's file). With
+`--dry-run`, a `diffs` array of unified diffs is included. When
 any target failed on install/update, `manualBlock` carries the complete block
 text to paste. Schema: `spec/output-schemas/agents-mutation.schema.json`
 (shared by install, update, and uninstall).

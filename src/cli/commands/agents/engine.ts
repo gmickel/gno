@@ -17,8 +17,8 @@
  */
 
 // node:fs/promises: Bun has no chmod (the backup and the replacement must
-// keep the source file's mode) and no atomic rename.
-import { chmod, rename, stat } from "node:fs/promises";
+// keep the source file's mode), no atomic rename, and no unlink.
+import { chmod, rename, stat, unlink } from "node:fs/promises";
 
 import type { ExtractedBlock } from "./block.js";
 import type { ResolvedTarget } from "./harnesses.js";
@@ -334,6 +334,8 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
     await chmod(tempPath, mode);
     await rename(tempPath, writePath);
   } catch (err) {
+    // Best-effort: never accumulate temp files across repeated failures.
+    await unlink(tempPath).catch(() => {});
     throw new CliError(
       "RUNTIME",
       `Write failed for ${writePath}: ${describe(err)}; the live file is unchanged`

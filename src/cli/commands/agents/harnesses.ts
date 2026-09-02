@@ -108,7 +108,8 @@ const HARNESS_DEFS: Record<HarnessId, HarnessDef> = {
     id: "grok",
     label: "Grok Build",
     configDir: ".grok",
-    // Grok imports the Claude global instruction file — no file of its own.
+    // Grok imports the Claude global instruction file — no file of its own;
+    // `coveredBy` makes resolution report Claude's file for it.
     instructionFile: { dir: "config", name: "AGENTS.md" },
     coveredBy: "claude",
   },
@@ -202,8 +203,11 @@ function resolveHarness(
     }
   }
 
-  const file =
-    def.instructionFile.dir === "home"
+  // A covered harness (grok → claude) reads its covering harness's file and
+  // has none of its own, so that is the file its rows report.
+  const file = def.coveredBy
+    ? resolveHarness(HARNESS_DEFS[def.coveredBy], home, explicitHome).file
+    : def.instructionFile.dir === "home"
       ? join(home, def.instructionFile.name)
       : join(configDir, def.instructionFile.name);
 

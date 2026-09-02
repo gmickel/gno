@@ -345,11 +345,13 @@ async function verifyTarget(
   if (isCurrent) {
     return { ...base, status: "ok", ...versioned };
   }
-  const detail = !hashOk
-    ? "block content does not match its stamp hash (edited inside markers?) — run `gno agents update`"
-    : !versionOk
-      ? `block v${block.stamp?.version ?? "?"} does not match installed release v${BLOCK_VERSION} — run \`gno agents update\``
-      : "block content differs from the installed release — run `gno agents update`";
+  const detail = !block.stamp
+    ? "block has no valid stamp line (missing or unparseable) — run `gno agents update`"
+    : !hashOk
+      ? "block content does not match its stamp hash (edited inside markers?) — run `gno agents update`"
+      : !versionOk
+        ? `block v${block.stamp?.version ?? "?"} does not match installed release v${BLOCK_VERSION} — run \`gno agents update\``
+        : "block content differs from the installed release — run `gno agents update`";
   return { ...base, status: "outdated", ...versioned, detail };
 }
 
