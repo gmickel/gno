@@ -10,6 +10,7 @@ import {
   extractBlock,
   extractFileReferences,
   hashBlockBody,
+  quotePathForShell,
   renderBlock,
   renderBlockBody,
 } from "../../src/cli/commands/agents/block";
@@ -19,7 +20,11 @@ import {
   uninstallAgents,
   verifyAgents,
 } from "../../src/cli/commands/agents/commands";
-import { unifiedDiff } from "../../src/cli/commands/agents/engine";
+import {
+  applyPlan,
+  planTargets,
+  unifiedDiff,
+} from "../../src/cli/commands/agents/engine";
 import { resolveTargets } from "../../src/cli/commands/agents/harnesses";
 import { CliError } from "../../src/cli/errors";
 import { resetGlobals } from "../../src/cli/program";
@@ -113,6 +118,21 @@ describe("agents CLI commands", () => {
       });
       expect(hostile).toContain(
         "--skills-dir '/x/my $HOME `id` $(rm) it'\\''s dir/skills'"
+      );
+    });
+
+    test("remediation path quoting uses the active shell's apostrophe idiom", () => {
+      // POSIX: close/reopen. PowerShell: double it (about_Quoting_Rules).
+      expect(quotePathForShell("/x/O'Brien/skills", "linux")).toBe(
+        "'/x/O'\\''Brien/skills'"
+      );
+      expect(quotePathForShell("C:\\Users\\O'Brien\\skills", "win32")).toBe(
+        "'C:\\Users\\O''Brien\\skills'"
+      );
+      // No expansion characters are ever escaped or altered — single quotes
+      // make them literal on both platforms.
+      expect(quotePathForShell("/x/$HOME/`id`/$(rm)", "linux")).toBe(
+        "'/x/$HOME/`id`/$(rm)'"
       );
     });
 
@@ -628,6 +648,55 @@ describe("agents CLI commands", () => {
       expect(thrown).toBeInstanceOf(CliError);
       expect(String(thrown)).toMatch(/failed for 1 target/);
       expect(await Bun.file(CODEX_FILE).text()).toBe(malformed);
+    });
+
+    test("refuses to write when the file changed after planning (no backup, nothing written)", async () => {
+      // TOCTOU: an editor / dotfile sync / concurrent `gno agents` changes the
+      // file between plan and write. The stale plan must not overwrite it.
+      await setupHome([".codex"]);
+      await Bun.write(CODEX_FILE, "# Original\n");
+      const targets = resolveTargets("codex", { homeDir: FAKE_HOME });
+      const [plan] = await planTargets(targets, "install");
+      expect(plan?.action).toBe("install");
+
+      await Bun.write(CODEX_FILE, "# Edited concurrently\n");
+      let thrown: unknown;
+      try {
+        await applyPlan(plan!);
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(CliError);
+      expect(String(thrown)).toMatch(/changed after it was planned/);
+      expect(await Bun.file(CODEX_FILE).text()).toBe("# Edited concurrently\n");
+      expect(
+        readdirSync(join(FAKE_HOME, ".codex")).filter((f) =>
+          f.includes(".gno-agents.bak.")
+        )
+      ).toEqual([]);
+    });
+
+    test("lenient resolution drops an unrequested harness with misconfigured env", () => {
+      // An explicit-target run aggregates skill state over the full matrix;
+      // an unrelated harness's bad env (relative CLAUDE_CONFIG_DIR) must not
+      // abort it. Requested/strict resolution still fails closed.
+      const saved = {
+        CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
+        GNO_AGENTS_HOME_OVERRIDE: process.env.GNO_AGENTS_HOME_OVERRIDE,
+      };
+      process.env.CLAUDE_CONFIG_DIR = "relative/claude";
+      delete process.env.GNO_AGENTS_HOME_OVERRIDE; // env redirects apply only without a home override
+      try {
+        expect(() => resolveTargets("all")).toThrow(CliError);
+        const lenient = resolveTargets("all", { lenient: true }); // read-only detection against the real home
+        expect(lenient.some((t) => t.id === "claude")).toBe(false);
+        expect(lenient.some((t) => t.id === "codex")).toBe(true);
+      } finally {
+        for (const [k, v] of Object.entries(saved)) {
+          if (v === undefined) delete process.env[k];
+          else process.env[k] = v;
+        }
+      }
     });
 
     test("backup inherits the source file's restrictive mode", async () => {

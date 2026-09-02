@@ -458,6 +458,32 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
   // Write through symlinks: the resolved identity is the real file.
   const writePath = plan.fileExists ? plan.target.realFile : plan.target.file;
 
+  // Revalidate immediately before writing: `plan.newContent` was derived from
+  // the bytes read at plan time. If an editor, a dotfile sync, or another
+  // `gno agents` process changed the file since, writing would silently
+  // overwrite the newer operator content — refuse instead (nothing written,
+  // no backup), and let the operator re-run against the current file.
+  const currentFile = Bun.file(writePath);
+  const existsNow = await currentFile.exists();
+  if (existsNow !== plan.fileExists) {
+    throw new CliError(
+      "RUNTIME",
+      `${writePath} ${existsNow ? "appeared" : "disappeared"} after it was planned — nothing was written. Re-run to plan against the current file.`
+    );
+  }
+  if (existsNow) {
+    const current = decodeInstructionFile(await currentFile.bytes(), writePath);
+    if (
+      current.content !== plan.oldContent ||
+      current.bom !== (plan.bom ?? false)
+    ) {
+      throw new CliError(
+        "RUNTIME",
+        `${writePath} changed after it was planned (concurrent edit?) — nothing was written. Re-run to plan against the current file.`
+      );
+    }
+  }
+
   let backupPath: string | null = null;
   if (plan.fileExists) {
     const timestamp = new Date()

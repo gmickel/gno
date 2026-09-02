@@ -174,6 +174,13 @@ export interface ResolveOptions {
   homeDir?: string;
   /** Explicit extra instruction dirs (nonstandard/multi-instance layouts). */
   extraDirs?: string[];
+  /**
+   * Drop harnesses whose resolution throws (misconfigured env) instead of
+   * aborting — for the skill-state aggregation universe, where unrequested
+   * harnesses must not be able to fail an explicit-target run. Extra dirs
+   * are always strict (they are explicitly requested).
+   */
+  lenient?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -383,9 +390,20 @@ export function resolveTargets(
 
   const ids: HarnessId[] =
     target === "all" ? HARNESS_IDS : withCoveringChain(target);
-  let results = ids.map((id) =>
-    resolveHarness(HARNESS_DEFS[id], home, explicitHome)
-  );
+  let results = ids.flatMap((id) => {
+    try {
+      return [resolveHarness(HARNESS_DEFS[id], home, explicitHome)];
+    } catch (err) {
+      // Lenient resolution (skill-state aggregation universe): a harness the
+      // operator did not request must not abort the run because ITS env is
+      // misconfigured (e.g. a relative CLAUDE_CONFIG_DIR) — drop it from the
+      // aggregation instead. Requested targets stay strict.
+      if (opts.lenient) {
+        return [];
+      }
+      throw err;
+    }
+  });
 
   if (target !== "all") {
     // The covering chain is only truthful for a target that is actually

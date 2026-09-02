@@ -92,17 +92,28 @@ function outputSettings(opts: AgentsOptions): {
 function aggregateSkillState(
   requested: HarnessId | "all",
   requestedTargets: ResolvedTarget[],
-  opts: AgentsOptions
+  opts: AgentsOptions,
+  mode: PlanMode = "install"
 ): {
   skillByFile: Map<string, boolean>;
   remediationByFile: Map<string, SkillRemediation>;
 } {
+  // Uninstall renders no block, so it needs no skill-state aggregation — and
+  // must not touch (or be aborted by) harnesses the operator did not request.
+  if (mode === "uninstall") {
+    return { skillByFile: new Map(), remediationByFile: new Map() };
+  }
+  // The aggregation universe is resolved leniently: an unrequested harness
+  // with misconfigured env (e.g. a relative CLAUDE_CONFIG_DIR) is dropped from
+  // the aggregation rather than aborting an explicit-target run. Requested
+  // targets were already resolved strictly by the caller.
   const universe =
     requested === "all"
       ? requestedTargets
       : resolveTargets("all", {
           homeDir: opts.homeDir,
           extraDirs: opts.extraDirs,
+          lenient: true,
         });
   return {
     skillByFile: aggregateSkillInstalled(universe),
@@ -164,7 +175,7 @@ async function runMutation(
     homeDir: opts.homeDir,
     extraDirs: opts.extraDirs,
   });
-  const aggregated = aggregateSkillState(requested, targets, opts);
+  const aggregated = aggregateSkillState(requested, targets, opts, mode);
   const plans = await planTargets(
     targets,
     mode,

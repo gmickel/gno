@@ -70,11 +70,20 @@ export interface BlockRenderOptions {
 /**
  * Single-quote a path for a shell command line. Single quotes are literal in
  * POSIX shells AND PowerShell — no parameter/command substitution, no
- * backtick or `$` expansion — unlike double quotes. An embedded `'` uses the
- * POSIX `'\''` idiom (a `'` in a config-dir path is pathological anyway).
+ * backtick or `$` expansion — unlike double quotes. The one divergence is an
+ * embedded `'`: POSIX closes/reopens (`'\''`), PowerShell doubles (`''`). The
+ * block is rendered on the machine that will run the command, so the active
+ * platform picks the idiom.
  */
-function quotePath(path: string): string {
-  return `'${path.replace(/'/g, "'\\''")}'`;
+export function quotePathForShell(
+  path: string,
+  platform: NodeJS.Platform = process.platform
+): string {
+  const escaped =
+    platform === "win32"
+      ? path.replace(/'/g, "''")
+      : path.replace(/'/g, "'\\''");
+  return `'${escaped}'`;
 }
 
 /**
@@ -95,7 +104,7 @@ export function renderRemediation(remediation?: SkillRemediation): string {
     ),
     ...extraDirs.map(
       (dir) =>
-        `gno skill install --scope user --force --target claude --skills-dir ${quotePath(`${dir}/skills`)}`
+        `gno skill install --scope user --force --target claude --skills-dir ${quotePathForShell(`${dir}/skills`)}`
     ),
   ];
   return commands.join("; ");

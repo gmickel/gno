@@ -2781,7 +2781,11 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
 2. Backup-first: every touched existing file is copied to
    `<file>.gno-agents.bak.<timestamp>` before the write. The backup inherits
    the source file's permission mode (a 0600 file yields a 0600 backup, never
-   a umask-default world-readable copy).
+   a umask-default world-readable copy). Immediately before writing, the file
+   is re-read and compared to the bytes it was planned from; if it changed in
+   between (editor, dotfile sync, concurrent run) the write is refused with a
+   per-target error — nothing written, no backup — and the run must be
+   repeated against the current file.
 3. Idempotent: a current block is a `current` no-op (no write, no backup).
 4. Fail-closed marker validation: malformed or duplicate markers → per-target
    `error` with guidance, nothing written to that file, exit 1. The stamp hash
@@ -2804,13 +2808,19 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    `gno skill install --scope user --force --target <harness>` per such
    harness, and `gno skill install --scope user --force --target claude --skills-dir '<dir>/skills'`
    for an `--extra-dir` instance (single-quoted path — literal in POSIX shells
-   and PowerShell, so `$VAR`, backticks, and `$(…)` in a path never expand;
-   portable `--skills-dir` option rather than env syntax) — never `--target all`, which would create
+   and PowerShell, so `$VAR`, backticks, and `$(…)` in a path never expand; an
+   embedded `'` is escaped for the platform the block is rendered on, `'\''`
+   on POSIX and `''` on Windows/PowerShell; portable `--skills-dir` option
+   rather than env syntax) — never `--target all`, which would create
    skill/config dirs for harnesses the operator never installed (and a later
    `update` would then write instruction files into them). `--force` keeps the
    remediation idempotent across partial installs. Consumer aggregation always spans the full harness matrix, even on
    an explicit-target run — `--target` filters which files are written, never
-   which consumers constrain a shared file's render. Skill state is read from
+   which consumers constrain a shared file's render. That aggregation resolves
+   unrequested harnesses leniently (one with misconfigured env, e.g. a
+   relative `CLAUDE_CONFIG_DIR`, is dropped from the aggregation rather than
+   aborting the run; requested targets stay strict), and `uninstall` performs
+   no aggregation at all. Skill state is read from
    the same effective config dir as the instruction file: a harness redirected
    via `CLAUDE_CONFIG_DIR` / `CODEX_HOME` is checked (and, following the
    pointer, installed) under that dir, not the ordinary home.
