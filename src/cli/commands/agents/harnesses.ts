@@ -304,11 +304,27 @@ function directoryEntryExists(path: string): boolean {
   }
 }
 
+/** stat errors that mean "nothing is there" — every other failure is I/O. */
+const ABSENT_ERRNOS = new Set(["ENOENT", "ENOTDIR"]);
+
+/**
+ * Whether a config directory exists. Absence (`ENOENT`/`ENOTDIR`) reads as
+ * not-detected; any other stat failure (an ancestor denying traversal, an I/O
+ * error) is surfaced as RUNTIME — reporting a requested harness `not-detected`
+ * there would let install/verify exit 0 without touching or checking it.
+ */
 function isDirectory(path: string): boolean {
   try {
     return statSync(path).isDirectory();
-  } catch {
-    return false;
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== undefined && ABSENT_ERRNOS.has(code)) {
+      return false;
+    }
+    throw new CliError(
+      "RUNTIME",
+      `Cannot inspect ${path}: ${err instanceof Error ? err.message : String(err)}`
+    );
   }
 }
 

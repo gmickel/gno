@@ -285,19 +285,24 @@ export function extractBlock(
   const newlineIdx = inner.indexOf("\n");
   const firstLine = newlineIdx === -1 ? inner : inner.slice(0, newlineIdx);
   const stampMatch = STAMP_RE.exec(firstLine);
-  const stamp = stampMatch
-    ? {
-        version: Number(stampMatch[1]),
-        hash: stampMatch[2] ?? "",
-        ...(stampMatch[3] !== undefined &&
-          stampMatch[4] !== undefined && {
-            separator: {
-              kind: stampMatch[3] as SeparatorProvenance["kind"],
-              pre: stampMatch[4],
-            },
-          }),
-      }
-    : null;
+  // A version that is not a finite safe integer (a 400-digit run of decimals
+  // reads as Infinity, which JSON serializes as null and violates the verify
+  // schema) makes the stamp unparseable rather than a numeric verdict.
+  const version = stampMatch ? Number(stampMatch[1]) : Number.NaN;
+  const stamp =
+    stampMatch && Number.isSafeInteger(version)
+      ? {
+          version,
+          hash: stampMatch[2] ?? "",
+          ...(stampMatch[3] !== undefined &&
+            stampMatch[4] !== undefined && {
+              separator: {
+                kind: stampMatch[3] as SeparatorProvenance["kind"],
+                pre: stampMatch[4],
+              },
+            }),
+        }
+      : null;
   const body = stamp && newlineIdx !== -1 ? inner.slice(newlineIdx + 1) : inner;
 
   return { found: true, block: { start, end, inner, body, stamp } };

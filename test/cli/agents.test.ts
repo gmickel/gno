@@ -880,6 +880,58 @@ describe("agents CLI commands", () => {
       expect(await readlink(CODEX_FILE)).toBe(sharedTarget);
     });
 
+    test("a non-finite stamp version is unparseable, never serialized as null", async () => {
+      // A 400-digit version reads as Infinity → JSON null → schema violation.
+      await setupHome([".codex"]);
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      const huge = "9".repeat(400);
+      const text = await Bun.file(CODEX_FILE).text();
+      expect(text).toContain("gno-agents block v1 ");
+      await Bun.write(
+        CODEX_FILE,
+        text.replace("gno-agents block v1 ", `gno-agents block v${huge} `)
+      );
+      stdoutOutput = [];
+      await verifyAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        json: true,
+      }).catch(() => {});
+      const report = JSON.parse(stdoutOutput.join(""));
+      const row = report.results[0];
+      expect(row.status).toBe("outdated");
+      expect(row).not.toHaveProperty("blockVersion");
+      expect(JSON.stringify(row)).not.toContain('"blockVersion":null');
+    });
+
+    test("a config dir that cannot be statted is a RUNTIME error, not not-detected", async () => {
+      // An ancestor denying traversal is I/O, not absence: reporting
+      // not-detected would let install/verify exit 0 without touching the
+      // requested harness.
+      if (process.platform === "win32" || process.getuid?.() === 0) {
+        return;
+      }
+      const lockedHome = join(FAKE_HOME, "locked-home");
+      await mkdir(join(lockedHome, ".codex"), { recursive: true });
+      await chmod(lockedHome, 0o000);
+      let thrown: unknown;
+      try {
+        resolveTargets("codex", { homeDir: lockedHome });
+      } catch (err) {
+        thrown = err;
+      } finally {
+        await chmod(lockedHome, 0o700);
+      }
+      expect(thrown).toBeInstanceOf(CliError);
+      expect((thrown as CliError).code).toBe("RUNTIME");
+      expect(String(thrown)).toMatch(/Cannot inspect/);
+      // Plain absence is still not-detected.
+      const absent = resolveTargets("codex", {
+        homeDir: join(FAKE_HOME, "nowhere"),
+      });
+      expect(absent[0]?.detected).toBe(false);
+    });
+
     test("verify reports an unreadable instruction file as a RUNTIME error, not malformed", async () => {
       // Permissions/I/O failures are "could not check" (exit 2), distinct from
       // a content verdict (exit 1).
