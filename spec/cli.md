@@ -1194,7 +1194,7 @@ BM25 keyword search over indexed documents.
 **Synopsis:**
 
 ```bash
-gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
+gno search [query] [--query-file <path>] [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
 ```
 
 **Arguments:**
@@ -1204,24 +1204,25 @@ gno search <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <da
 
 **Options:**
 
-| Option                  | Type     | Default                   | Description                                                                                   |
-| ----------------------- | -------- | ------------------------- | --------------------------------------------------------------------------------------------- |
-| `-n`                    | integer  | 5 (20 for --json/--files) | Max results                                                                                   |
-| `--min-score`           | number   | 0                         | Minimum score threshold                                                                       |
-| `-c, --collection`      | string   | all                       | Filter to collection                                                                          |
-| `--since`               | string   | none                      | Modified-at lower bound (ISO date/time or relative token)                                     |
-| `--until`               | string   | none                      | Modified-at upper bound (ISO date/time or relative token)                                     |
-| `--category`            | string   | none                      | Filter to docs with matching category/content type (comma-separated)                          |
-| `--author`              | string   | none                      | Filter to docs where author contains value (case-insensitive)                                 |
-| `--intent`              | string   | none                      | Disambiguating context for ambiguous queries; steers snippets without being searched directly |
-| `--exclude`             | string   | none                      | Hard-prune docs containing any comma-separated term in title/path/body                        |
-| `--tags-all`            | string   | none                      | Filter to docs with ALL tags (comma-separated)                                                |
-| `--tags-any`            | string   | none                      | Filter to docs with ANY tag (comma-separated)                                                 |
-| `--project-root`        | string[] | cwd                       | Trusted project root; repeatable, replaces default cwd/repository affinity                    |
-| `--no-project-affinity` | boolean  | false                     | Disable project-aware soft ranking; invalid with `--project-root`                             |
-| `--full`                | boolean  | false                     | Include full mirror content instead of snippet                                                |
-| `--line-numbers`        | boolean  | false                     | Include line numbers in output                                                                |
-| `--lang`                | string   | auto                      | Language filter/hint (BCP-47)                                                                 |
+| Option                  | Type     | Default                   | Description                                                                                                          |
+| ----------------------- | -------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `--query-file`          | string   | none                      | Read the query from a file; `-` reads stdin so the query never appears on argv. Do not also pass a positional query. |
+| `-n`                    | integer  | 5 (20 for --json/--files) | Max results                                                                                                          |
+| `--min-score`           | number   | 0                         | Minimum score threshold                                                                                              |
+| `-c, --collection`      | string   | all                       | Filter to collection                                                                                                 |
+| `--since`               | string   | none                      | Modified-at lower bound (ISO date/time or relative token)                                                            |
+| `--until`               | string   | none                      | Modified-at upper bound (ISO date/time or relative token)                                                            |
+| `--category`            | string   | none                      | Filter to docs with matching category/content type (comma-separated)                                                 |
+| `--author`              | string   | none                      | Filter to docs where author contains value (case-insensitive)                                                        |
+| `--intent`              | string   | none                      | Disambiguating context for ambiguous queries; steers snippets without being searched directly                        |
+| `--exclude`             | string   | none                      | Hard-prune docs containing any comma-separated term in title/path/body                                               |
+| `--tags-all`            | string   | none                      | Filter to docs with ALL tags (comma-separated)                                                                       |
+| `--tags-any`            | string   | none                      | Filter to docs with ANY tag (comma-separated)                                                                        |
+| `--project-root`        | string[] | cwd                       | Trusted project root; repeatable, replaces default cwd/repository affinity                                           |
+| `--no-project-affinity` | boolean  | false                     | Disable project-aware soft ranking; invalid with `--project-root`                                                    |
+| `--full`                | boolean  | false                     | Include full mirror content instead of snippet                                                                       |
+| `--line-numbers`        | boolean  | false                     | Include line numbers in output                                                                                       |
+| `--lang`                | string   | auto                      | Language filter/hint (BCP-47)                                                                                        |
 
 **Scoring:**
 
@@ -1336,7 +1337,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 **Synopsis:**
 
 ```bash
-gno query <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
+gno query [query...] [--query-file <path>] [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
 gno query diagnose <query> --target <doc> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--json]
 ```
 

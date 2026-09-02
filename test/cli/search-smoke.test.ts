@@ -144,6 +144,29 @@ describe("gno search smoke tests", () => {
     expect(stdout).toContain("result(s)");
   });
 
+  test("search --query-file reads the query from a file", async () => {
+    const queryPath = join(testDir, "query.txt");
+    await writeFile(queryPath, "markdown\n");
+    const { code, stdout } = await cli(
+      "search",
+      "--query-file",
+      queryPath,
+      "--json"
+    );
+    expect(code).toBe(0);
+    const parsed = JSON.parse(stdout);
+    expect(
+      parsed.results[0]?.uri || parsed.results[0]?.source?.relPath
+    ).toBeDefined();
+  });
+
+  test("search rejects a positional query together with --query-file", async () => {
+    const queryPath = join(testDir, "query.txt");
+    await writeFile(queryPath, "markdown\n");
+    const { code } = await cli("search", "markdown", "--query-file", queryPath);
+    expect(code).not.toBe(0);
+  });
+
   test("search --json validates against schema", async () => {
     const { code, stdout } = await cli("search", "markdown", "--json");
     expect(code).toBe(0);

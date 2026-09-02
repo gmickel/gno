@@ -46,6 +46,7 @@ import {
   parseOptionalFloat,
   parsePositiveInt,
 } from "./options";
+import { resolveCliQueryText } from "./query-text";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Global State (set by preAction hook)
@@ -625,8 +626,12 @@ function wireTraceCommands(program: Command): void {
 function wireSearchCommands(program: Command): void {
   // search - BM25 keyword search
   program
-    .command("search <query>")
+    .command("search [query]")
     .description("BM25 keyword search")
+    .option(
+      "--query-file <path>",
+      "read query from file; use - for stdin (keeps the query off argv)"
+    )
     .option("-n, --limit <num>", "max results")
     .option("--min-score <num>", "minimum score threshold")
     .option("-c, --collection <name>", "filter by collection")
@@ -662,95 +667,104 @@ function wireSearchCommands(program: Command): void {
     .option("--csv", "CSV output")
     .option("--xml", "XML output")
     .option("--files", "file paths only")
-    .action(async (queryText: string, cmdOpts: Record<string, unknown>) => {
-      const format = getFormat(cmdOpts);
-      assertFormatSupported(CMD.search, format);
-      const globals = getGlobals();
+    .action(
+      async (
+        queryText: string | undefined,
+        cmdOpts: Record<string, unknown>
+      ) => {
+        const format = getFormat(cmdOpts);
+        assertFormatSupported(CMD.search, format);
+        const globals = getGlobals();
+        queryText = await resolveCliQueryText(queryText, cmdOpts.queryFile);
 
-      // Validate empty query
-      if (!queryText.trim()) {
-        throw new CliError("VALIDATION", "Query cannot be empty");
+        // Validate empty query
+        if (!queryText.trim()) {
+          throw new CliError("VALIDATION", "Query cannot be empty");
+        }
+
+        // Validate minScore range
+        const minScore = parseOptionalFloat("min-score", cmdOpts.minScore);
+        if (minScore !== undefined && (minScore < 0 || minScore > 1)) {
+          throw new CliError(
+            "VALIDATION",
+            "--min-score must be between 0 and 1"
+          );
+        }
+
+        // Parse and validate tag filters
+        let tagsAll: string[] | undefined;
+        let tagsAny: string[] | undefined;
+        try {
+          tagsAll = cmdOpts.tagsAll
+            ? parseAndValidateTagFilter(cmdOpts.tagsAll as string)
+            : undefined;
+          tagsAny = cmdOpts.tagsAny
+            ? parseAndValidateTagFilter(cmdOpts.tagsAny as string)
+            : undefined;
+        } catch (error) {
+          throw new CliError(
+            "VALIDATION",
+            error instanceof Error ? error.message : "Invalid tag filter"
+          );
+        }
+
+        const limit = cmdOpts.limit
+          ? parsePositiveInt("limit", cmdOpts.limit)
+          : cmdOpts.verify
+            ? 5
+            : getDefaultLimit(format);
+        const categories = parseCsvValues(cmdOpts.category);
+        const exclude = parseCsvValues(cmdOpts.exclude);
+        const projectAffinity = parseCliProjectAffinityOptions(cmdOpts);
+
+        const { search, formatSearch } = await import("./commands/search");
+        const result = await search(queryText, {
+          configPath: globals.config,
+          indexName: globals.index,
+          limit,
+          minScore,
+          collection: cmdOpts.collection as string | undefined,
+          lang: cmdOpts.lang as string | undefined,
+          since: cmdOpts.since as string | undefined,
+          until: cmdOpts.until as string | undefined,
+          categories,
+          author: cmdOpts.author as string | undefined,
+          intent: cmdOpts.intent as string | undefined,
+          exclude,
+          tagsAll,
+          tagsAny,
+          ...projectAffinity,
+          full: Boolean(cmdOpts.full),
+          lineNumbers: Boolean(cmdOpts.lineNumbers),
+          json: format === "json",
+          md: format === "md",
+          csv: format === "csv",
+          xml: format === "xml",
+          files: format === "files",
+        });
+
+        // Check success before printing - stdout is for successful outputs only
+        if (!result.success) {
+          // Map validation errors to exit code 1
+          throw new CliError(
+            result.isValidation ? "VALIDATION" : "RUNTIME",
+            result.error
+          );
+        }
+        const output = formatSearch(result, {
+          json: format === "json",
+          md: format === "md",
+          csv: format === "csv",
+          xml: format === "xml",
+          files: format === "files",
+          full: Boolean(cmdOpts.full),
+          lineNumbers: Boolean(cmdOpts.lineNumbers),
+          terminalLinks: await resolveTerminalLinkPolicy(format),
+        });
+        await writeOutput(output, format);
+        writeRetrievalTraceReceipt(result.metadata);
       }
-
-      // Validate minScore range
-      const minScore = parseOptionalFloat("min-score", cmdOpts.minScore);
-      if (minScore !== undefined && (minScore < 0 || minScore > 1)) {
-        throw new CliError("VALIDATION", "--min-score must be between 0 and 1");
-      }
-
-      // Parse and validate tag filters
-      let tagsAll: string[] | undefined;
-      let tagsAny: string[] | undefined;
-      try {
-        tagsAll = cmdOpts.tagsAll
-          ? parseAndValidateTagFilter(cmdOpts.tagsAll as string)
-          : undefined;
-        tagsAny = cmdOpts.tagsAny
-          ? parseAndValidateTagFilter(cmdOpts.tagsAny as string)
-          : undefined;
-      } catch (error) {
-        throw new CliError(
-          "VALIDATION",
-          error instanceof Error ? error.message : "Invalid tag filter"
-        );
-      }
-
-      const limit = cmdOpts.limit
-        ? parsePositiveInt("limit", cmdOpts.limit)
-        : cmdOpts.verify
-          ? 5
-          : getDefaultLimit(format);
-      const categories = parseCsvValues(cmdOpts.category);
-      const exclude = parseCsvValues(cmdOpts.exclude);
-      const projectAffinity = parseCliProjectAffinityOptions(cmdOpts);
-
-      const { search, formatSearch } = await import("./commands/search");
-      const result = await search(queryText, {
-        configPath: globals.config,
-        indexName: globals.index,
-        limit,
-        minScore,
-        collection: cmdOpts.collection as string | undefined,
-        lang: cmdOpts.lang as string | undefined,
-        since: cmdOpts.since as string | undefined,
-        until: cmdOpts.until as string | undefined,
-        categories,
-        author: cmdOpts.author as string | undefined,
-        intent: cmdOpts.intent as string | undefined,
-        exclude,
-        tagsAll,
-        tagsAny,
-        ...projectAffinity,
-        full: Boolean(cmdOpts.full),
-        lineNumbers: Boolean(cmdOpts.lineNumbers),
-        json: format === "json",
-        md: format === "md",
-        csv: format === "csv",
-        xml: format === "xml",
-        files: format === "files",
-      });
-
-      // Check success before printing - stdout is for successful outputs only
-      if (!result.success) {
-        // Map validation errors to exit code 1
-        throw new CliError(
-          result.isValidation ? "VALIDATION" : "RUNTIME",
-          result.error
-        );
-      }
-      const output = formatSearch(result, {
-        json: format === "json",
-        md: format === "md",
-        csv: format === "csv",
-        xml: format === "xml",
-        files: format === "files",
-        full: Boolean(cmdOpts.full),
-        lineNumbers: Boolean(cmdOpts.lineNumbers),
-        terminalLinks: await resolveTerminalLinkPolicy(format),
-      });
-      await writeOutput(output, format);
-      writeRetrievalTraceReceipt(result.metadata);
-    });
+    );
 
   // vsearch - Vector similarity search
   program
@@ -876,8 +890,12 @@ function wireSearchCommands(program: Command): void {
 
   // query - Hybrid search with expansion and reranking
   program
-    .command("query <query...>")
+    .command("query [query...]")
     .description("Hybrid search with expansion and reranking")
+    .option(
+      "--query-file <path>",
+      "read query from file; use - for stdin (keeps the query off argv)"
+    )
     .option("-n, --limit <num>", "max results")
     .option("--min-score <num>", "minimum score threshold")
     .option("-c, --collection <name>", "filter by collection")
@@ -931,103 +949,158 @@ function wireSearchCommands(program: Command): void {
     .option("--csv", "CSV output")
     .option("--xml", "XML output")
     .option("--files", "file paths only")
-    .action(async (queryParts: string[], cmdOpts: Record<string, unknown>) => {
-      const format = getFormat(cmdOpts);
-      const isDiagnose =
-        queryParts[0] === "diagnose" && Boolean(cmdOpts.target);
-      assertFormatSupported(isDiagnose ? CMD.queryDiagnose : CMD.query, format);
-      const diagnoseFormat = format === "json" ? "json" : "terminal";
-      const globals = getGlobals();
-      let queryText = isDiagnose
-        ? queryParts.slice(1).join(" ")
-        : queryParts.join(" ");
-
-      // Validate empty query
-      if (!queryText.trim()) {
-        throw new CliError("VALIDATION", "Query cannot be empty");
-      }
-
-      // Validate minScore range
-      const minScore = parseOptionalFloat("min-score", cmdOpts.minScore);
-      if (minScore !== undefined && (minScore < 0 || minScore > 1)) {
-        throw new CliError("VALIDATION", "--min-score must be between 0 and 1");
-      }
-
-      // Parse optional structured query modes
-      let queryModes: import("../pipeline/types").QueryModeInput[] | undefined;
-      if (Array.isArray(cmdOpts.queryMode) && cmdOpts.queryMode.length > 0) {
-        const { parseQueryModeSpecs } = await import("../pipeline/query-modes");
-        const parsed = parseQueryModeSpecs(cmdOpts.queryMode as string[]);
-        if (!parsed.ok) {
-          throw new CliError("VALIDATION", parsed.error.message);
-        }
-        queryModes = parsed.value;
-      }
-
-      const { normalizeStructuredQueryInput } =
-        await import("../core/structured-query");
-      const normalizedInput = normalizeStructuredQueryInput(
-        queryText,
-        queryModes ?? []
-      );
-      if (!normalizedInput.ok) {
-        throw new CliError("VALIDATION", normalizedInput.error.message);
-      }
-      queryText = normalizedInput.value.query;
-      queryModes =
-        normalizedInput.value.queryModes.length > 0
-          ? normalizedInput.value.queryModes
-          : undefined;
-
-      // Parse and validate tag filters
-      let tagsAll: string[] | undefined;
-      let tagsAny: string[] | undefined;
-      try {
-        tagsAll = cmdOpts.tagsAll
-          ? parseAndValidateTagFilter(cmdOpts.tagsAll as string)
-          : undefined;
-        tagsAny = cmdOpts.tagsAny
-          ? parseAndValidateTagFilter(cmdOpts.tagsAny as string)
-          : undefined;
-      } catch (error) {
-        throw new CliError(
-          "VALIDATION",
-          error instanceof Error ? error.message : "Invalid tag filter"
+    .action(
+      async (
+        queryParts: string[] | undefined,
+        cmdOpts: Record<string, unknown>
+      ) => {
+        const parts = queryParts ?? [];
+        const format = getFormat(cmdOpts);
+        const isDiagnose = parts[0] === "diagnose" && Boolean(cmdOpts.target);
+        assertFormatSupported(
+          isDiagnose ? CMD.queryDiagnose : CMD.query,
+          format
         );
-      }
+        const diagnoseFormat = format === "json" ? "json" : "terminal";
+        const globals = getGlobals();
+        if (isDiagnose && cmdOpts.queryFile) {
+          throw new CliError(
+            "VALIDATION",
+            "query diagnose does not accept --query-file"
+          );
+        }
+        let queryText = isDiagnose
+          ? parts.slice(1).join(" ")
+          : await resolveCliQueryText(parts.join(" "), cmdOpts.queryFile);
 
-      const limit = cmdOpts.limit
-        ? parsePositiveInt("limit", cmdOpts.limit)
-        : getDefaultLimit(format);
-      const { loadConfig } = await import("../config");
-      const { getActivePreset } = await import("../llm/registry");
-      const configResult = await loadConfig(globals.config);
-      const activePresetId = configResult.ok
-        ? getActivePreset(configResult.value).id
-        : "slim-tuned";
-      const candidateLimit = cmdOpts.candidateLimit
-        ? parsePositiveInt("candidate-limit", cmdOpts.candidateLimit)
-        : undefined;
-      const categories = parseCsvValues(cmdOpts.category);
-      const exclude = parseCsvValues(cmdOpts.exclude);
-      const projectAffinity = parseCliProjectAffinityOptions(cmdOpts);
+        // Validate empty query
+        if (!queryText.trim()) {
+          throw new CliError("VALIDATION", "Query cannot be empty");
+        }
 
-      const depthPolicy = resolveDepthPolicy({
-        presetId: activePresetId,
-        fast: Boolean(cmdOpts.fast),
-        thorough: Boolean(cmdOpts.thorough),
-        expand: cmdOpts.expand === false ? false : undefined,
-        rerank: cmdOpts.rerank === false ? false : undefined,
-        candidateLimit,
-      });
+        // Validate minScore range
+        const minScore = parseOptionalFloat("min-score", cmdOpts.minScore);
+        if (minScore !== undefined && (minScore < 0 || minScore > 1)) {
+          throw new CliError(
+            "VALIDATION",
+            "--min-score must be between 0 and 1"
+          );
+        }
 
-      if (isDiagnose) {
-        const { queryDiagnose, formatQueryDiagnose } =
-          await import("./commands/query");
-        const result = await queryDiagnose(queryText, {
+        // Parse optional structured query modes
+        let queryModes:
+          | import("../pipeline/types").QueryModeInput[]
+          | undefined;
+        if (Array.isArray(cmdOpts.queryMode) && cmdOpts.queryMode.length > 0) {
+          const { parseQueryModeSpecs } =
+            await import("../pipeline/query-modes");
+          const parsed = parseQueryModeSpecs(cmdOpts.queryMode as string[]);
+          if (!parsed.ok) {
+            throw new CliError("VALIDATION", parsed.error.message);
+          }
+          queryModes = parsed.value;
+        }
+
+        const { normalizeStructuredQueryInput } =
+          await import("../core/structured-query");
+        const normalizedInput = normalizeStructuredQueryInput(
+          queryText,
+          queryModes ?? []
+        );
+        if (!normalizedInput.ok) {
+          throw new CliError("VALIDATION", normalizedInput.error.message);
+        }
+        queryText = normalizedInput.value.query;
+        queryModes =
+          normalizedInput.value.queryModes.length > 0
+            ? normalizedInput.value.queryModes
+            : undefined;
+
+        // Parse and validate tag filters
+        let tagsAll: string[] | undefined;
+        let tagsAny: string[] | undefined;
+        try {
+          tagsAll = cmdOpts.tagsAll
+            ? parseAndValidateTagFilter(cmdOpts.tagsAll as string)
+            : undefined;
+          tagsAny = cmdOpts.tagsAny
+            ? parseAndValidateTagFilter(cmdOpts.tagsAny as string)
+            : undefined;
+        } catch (error) {
+          throw new CliError(
+            "VALIDATION",
+            error instanceof Error ? error.message : "Invalid tag filter"
+          );
+        }
+
+        const limit = cmdOpts.limit
+          ? parsePositiveInt("limit", cmdOpts.limit)
+          : getDefaultLimit(format);
+        const { loadConfig } = await import("../config");
+        const { getActivePreset } = await import("../llm/registry");
+        const configResult = await loadConfig(globals.config);
+        const activePresetId = configResult.ok
+          ? getActivePreset(configResult.value).id
+          : "slim-tuned";
+        const candidateLimit = cmdOpts.candidateLimit
+          ? parsePositiveInt("candidate-limit", cmdOpts.candidateLimit)
+          : undefined;
+        const categories = parseCsvValues(cmdOpts.category);
+        const exclude = parseCsvValues(cmdOpts.exclude);
+        const projectAffinity = parseCliProjectAffinityOptions(cmdOpts);
+
+        const depthPolicy = resolveDepthPolicy({
+          presetId: activePresetId,
+          fast: Boolean(cmdOpts.fast),
+          thorough: Boolean(cmdOpts.thorough),
+          expand: cmdOpts.expand === false ? false : undefined,
+          rerank: cmdOpts.rerank === false ? false : undefined,
+          candidateLimit,
+        });
+
+        if (isDiagnose) {
+          const { queryDiagnose, formatQueryDiagnose } =
+            await import("./commands/query");
+          const result = await queryDiagnose(queryText, {
+            configPath: globals.config,
+            indexName: globals.index,
+            target: cmdOpts.target as string,
+            limit,
+            minScore,
+            collection: cmdOpts.collection as string | undefined,
+            lang: cmdOpts.lang as string | undefined,
+            since: cmdOpts.since as string | undefined,
+            until: cmdOpts.until as string | undefined,
+            categories,
+            author: cmdOpts.author as string | undefined,
+            intent: cmdOpts.intent as string | undefined,
+            exclude,
+            tagsAll,
+            tagsAny,
+            ...projectAffinity,
+            noExpand: depthPolicy.noExpand,
+            noRerank: depthPolicy.noRerank,
+            graph: cmdOpts.graph !== false,
+            noGraph: Boolean(cmdOpts.fast) || cmdOpts.graph === false,
+            candidateLimit: depthPolicy.candidateLimit,
+            queryModes,
+            json: diagnoseFormat === "json",
+          });
+
+          if (!result.success) {
+            throw new CliError("RUNTIME", result.error);
+          }
+          await writeOutput(
+            formatQueryDiagnose(result, { format: diagnoseFormat }),
+            diagnoseFormat
+          );
+          return;
+        }
+
+        const { query, formatQuery } = await import("./commands/query");
+        const result = await query(queryText, {
           configPath: globals.config,
           indexName: globals.index,
-          target: cmdOpts.target as string,
           limit,
           minScore,
           collection: cmdOpts.collection as string | undefined,
@@ -1041,70 +1114,35 @@ function wireSearchCommands(program: Command): void {
           tagsAll,
           tagsAny,
           ...projectAffinity,
+          full: Boolean(cmdOpts.full),
+          lineNumbers: Boolean(cmdOpts.lineNumbers),
           noExpand: depthPolicy.noExpand,
           noRerank: depthPolicy.noRerank,
           graph: cmdOpts.graph !== false,
           noGraph: Boolean(cmdOpts.fast) || cmdOpts.graph === false,
           candidateLimit: depthPolicy.candidateLimit,
           queryModes,
-          json: diagnoseFormat === "json",
+          explain: Boolean(cmdOpts.explain),
+          json: format === "json",
+          md: format === "md",
+          csv: format === "csv",
+          xml: format === "xml",
+          files: format === "files",
         });
 
         if (!result.success) {
           throw new CliError("RUNTIME", result.error);
         }
-        await writeOutput(
-          formatQueryDiagnose(result, { format: diagnoseFormat }),
-          diagnoseFormat
-        );
-        return;
+        const output = formatQuery(result, {
+          format,
+          full: Boolean(cmdOpts.full),
+          lineNumbers: Boolean(cmdOpts.lineNumbers),
+          terminalLinks: await resolveTerminalLinkPolicy(format),
+        });
+        await writeOutput(output, format);
+        writeRetrievalTraceReceipt(result.metadata);
       }
-
-      const { query, formatQuery } = await import("./commands/query");
-      const result = await query(queryText, {
-        configPath: globals.config,
-        indexName: globals.index,
-        limit,
-        minScore,
-        collection: cmdOpts.collection as string | undefined,
-        lang: cmdOpts.lang as string | undefined,
-        since: cmdOpts.since as string | undefined,
-        until: cmdOpts.until as string | undefined,
-        categories,
-        author: cmdOpts.author as string | undefined,
-        intent: cmdOpts.intent as string | undefined,
-        exclude,
-        tagsAll,
-        tagsAny,
-        ...projectAffinity,
-        full: Boolean(cmdOpts.full),
-        lineNumbers: Boolean(cmdOpts.lineNumbers),
-        noExpand: depthPolicy.noExpand,
-        noRerank: depthPolicy.noRerank,
-        graph: cmdOpts.graph !== false,
-        noGraph: Boolean(cmdOpts.fast) || cmdOpts.graph === false,
-        candidateLimit: depthPolicy.candidateLimit,
-        queryModes,
-        explain: Boolean(cmdOpts.explain),
-        json: format === "json",
-        md: format === "md",
-        csv: format === "csv",
-        xml: format === "xml",
-        files: format === "files",
-      });
-
-      if (!result.success) {
-        throw new CliError("RUNTIME", result.error);
-      }
-      const output = formatQuery(result, {
-        format,
-        full: Boolean(cmdOpts.full),
-        lineNumbers: Boolean(cmdOpts.lineNumbers),
-        terminalLinks: await resolveTerminalLinkPolicy(format),
-      });
-      await writeOutput(output, format);
-      writeRetrievalTraceReceipt(result.metadata);
-    });
+    );
 
   // bench - Retrieval benchmark fixture runner
   program
