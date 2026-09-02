@@ -214,7 +214,7 @@ export interface ResolveOptions {
 // Resolution
 // ─────────────────────────────────────────────────────────────────────────────
 
-function realIdentity(file: string): string {
+export function realIdentity(file: string): string {
   try {
     return realpathSync(file);
   } catch {

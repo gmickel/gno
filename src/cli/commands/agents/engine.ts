@@ -29,6 +29,7 @@ import {
   separatorContextHash,
   stampAuthenticates,
 } from "./block.js";
+import { realIdentity } from "./harnesses.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -542,6 +543,16 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
   // in between and are themselves a window). A filesystem write has no CAS,
   // so this leaves exactly one read→write hop unguarded — the minimum.
   const assertUnchanged = async (): Promise<void> => {
+    // The plan resolved `target.file` to `realFile` (symlinks followed). If
+    // the operator retargeted the link in the meantime, the harness now reads
+    // a different file — writing the cached destination would modify (and
+    // back up) a file nobody reads while reporting success.
+    if (realIdentity(plan.target.file) !== plan.target.realFile) {
+      throw new CliError(
+        "RUNTIME",
+        `${plan.target.file} no longer resolves to ${plan.target.realFile} (symlink retargeted after planning) — nothing was written. Re-run to plan against the current file.`
+      );
+    }
     const currentFile = Bun.file(writePath);
     const existsNow = await currentFile.exists();
     if (existsNow !== plan.fileExists) {

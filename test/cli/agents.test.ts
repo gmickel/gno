@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, readdirSync } from "node:fs";
-import { chmod, mkdir, readlink, stat, symlink } from "node:fs/promises";
+import {
+  chmod,
+  mkdir,
+  readlink,
+  stat,
+  symlink,
+  unlink,
+} from "node:fs/promises";
 import { join } from "node:path";
 
 import {
@@ -126,6 +133,14 @@ describe("agents CLI commands", () => {
       expect(hostile).toContain(
         "--skills-dir '/x/my $HOME `id` $(rm) it'\\''s dir/skills'"
       );
+      // The WHOLE quoted operand is masked from link extraction — a backtick
+      // inside the path must not open a fresh `/…` reference (`/z/skills`).
+      expect(extractFileReferences(hostile)).toEqual([]);
+      const backtickPath = renderBlockBody({
+        skillInstalled: false,
+        remediation: { targets: [], extraDirs: ["/tmp/a`/z"] },
+      });
+      expect(extractFileReferences(backtickPath)).toEqual([]);
     });
 
     test("remediation path quoting uses the active shell's apostrophe idiom", () => {
@@ -679,6 +694,34 @@ describe("agents CLI commands", () => {
           f.includes(".gno-agents.bak.")
         )
       ).toEqual([]);
+    });
+
+    test("refuses to write when the instruction-file symlink was retargeted after planning", async () => {
+      // The plan resolved ~/.codex/AGENTS.md → shared-1. Retargeting the link
+      // to shared-2 before apply must fail: writing the cached destination
+      // would modify a file the harness no longer reads.
+      await setupHome([".codex", "shared"]);
+      const shared1 = join(FAKE_HOME, "shared", "one.md");
+      const shared2 = join(FAKE_HOME, "shared", "two.md");
+      await Bun.write(shared1, "# One\n");
+      await Bun.write(shared2, "# Two\n");
+      await symlink(shared1, CODEX_FILE);
+      const targets = resolveTargets("codex", { homeDir: FAKE_HOME });
+      const [plan] = await planTargets(targets, "install");
+      expect(plan?.action).toBe("install");
+
+      await unlink(CODEX_FILE);
+      await symlink(shared2, CODEX_FILE);
+      let thrown: unknown;
+      try {
+        await applyPlan(plan!);
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(CliError);
+      expect(String(thrown)).toMatch(/symlink retargeted/);
+      expect(await Bun.file(shared1).text()).toBe("# One\n");
+      expect(await Bun.file(shared2).text()).toBe("# Two\n");
     });
 
     test("lenient resolution drops an unrequested harness with misconfigured env", () => {

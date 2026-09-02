@@ -279,6 +279,48 @@ describe("skill CLI commands", () => {
       ).toThrow("--skills-dir must be an absolute path");
     });
 
+    test("uninstall honors --skills-dir (portable removal path)", async () => {
+      const skillsDir = join(TEST_DIR, "instance", "skills");
+      await installSkill({
+        scope: "user",
+        target: "claude",
+        skillsDir,
+        homeDir: FAKE_HOME,
+        cwd: FAKE_CWD,
+        json: true,
+      });
+      expect(await Bun.file(join(skillsDir, "gno", "SKILL.md")).exists()).toBe(
+        true
+      );
+      stdoutOutput = [];
+      await uninstallSkill({
+        scope: "user",
+        target: "claude",
+        skillsDir,
+        homeDir: FAKE_HOME,
+        cwd: FAKE_CWD,
+        json: true,
+      });
+      expect(await Bun.file(join(skillsDir, "gno", "SKILL.md")).exists()).toBe(
+        false
+      );
+      // Same single-target constraint as install.
+      let thrown: unknown;
+      try {
+        await uninstallSkill({
+          scope: "user",
+          target: "all",
+          skillsDir,
+          homeDir: FAKE_HOME,
+          cwd: FAKE_CWD,
+          json: true,
+        });
+      } catch (err) {
+        thrown = err;
+      }
+      expect((thrown as CliError).code).toBe("VALIDATION");
+    });
+
     test("--skills-dir with --target all is rejected as validation", async () => {
       let thrown: unknown;
       try {

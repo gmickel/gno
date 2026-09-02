@@ -316,8 +316,16 @@ const FILE_REF_RE = /(?:^|[\s("'`])((?:~|\/)[\w~./-]+)/g;
  */
 const SLASH_COMMAND_RE = /^\/[\w-]+$/;
 
-/** Text ending in the `--skills-dir '` prefix of a quoted remediation operand. */
-const SKILLS_DIR_OPERAND_RE = /--skills-dir\s+['"]$/;
+/**
+ * The complete quoted `--skills-dir` operand of a remediation command — a
+ * single-quoted argument in either the POSIX (`'\''`) or PowerShell (`''`)
+ * embedded-quote idiom, or a double-quoted one. Masked out BEFORE scanning for
+ * file references: it names where the skill SHOULD be installed (absent by
+ * construction while the conservative pointer renders), and any quote-like
+ * byte inside the path must not start a new reference.
+ */
+const SKILLS_DIR_OPERAND_RE =
+  /--skills-dir\s+(?:'(?:[^']|'\\''|'')*'|"(?:[^"\\]|\\.)*")/g;
 
 /**
  * Extract filesystem references (absolute or ~-prefixed paths) from a block
@@ -327,16 +335,15 @@ const SKILLS_DIR_OPERAND_RE = /--skills-dir\s+['"]$/;
  */
 export function extractFileReferences(body: string): string[] {
   const refs = new Set<string>();
-  for (const match of body.matchAll(FILE_REF_RE)) {
+  // Mask the whole quoted remediation operand (same length, so offsets are
+  // preserved) rather than testing the text before each match — a backtick
+  // or quote INSIDE the path would otherwise open a fresh reference.
+  const scannable = body.replace(SKILLS_DIR_OPERAND_RE, (operand) =>
+    " ".repeat(operand.length)
+  );
+  for (const match of scannable.matchAll(FILE_REF_RE)) {
     const ref = match[1];
     if (!ref || ref.length <= 1 || SLASH_COMMAND_RE.test(ref)) {
-      continue;
-    }
-    // The remediation's `--skills-dir "<path>"` operand names where the skill
-    // SHOULD be installed — absent by construction while the conservative
-    // pointer renders — so it is a command argument, not a link to validate.
-    const refStart = (match.index ?? 0) + match[0].length - ref.length;
-    if (SKILLS_DIR_OPERAND_RE.test(body.slice(0, refStart))) {
       continue;
     }
     refs.add(ref);

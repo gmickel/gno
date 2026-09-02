@@ -1323,6 +1323,7 @@ Remove installed skill.
 gno skill uninstall
 gno skill uninstall --scope user
 gno skill uninstall --target all
+gno skill uninstall --scope user --target claude --skills-dir ~/.claude-instances/work-cli/skills  # Nonstandard instance
 ```
 
 Options:

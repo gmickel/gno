@@ -2627,10 +2627,13 @@ Remove GNO agent skill.
 **Synopsis:**
 
 ```bash
-gno skill uninstall [--scope <project|user>] [--target <claude|codex|opencode|openclaw|hermes|all>] [--json]
+gno skill uninstall [--scope <project|user>] [--target <claude|codex|opencode|openclaw|hermes|all>] [--skills-dir <path>] [--json]
 ```
 
-**Options:** Same as `skill install` (except `--force`)
+**Options:** Same as `skill install` (except `--force`). `--skills-dir` removes
+from the same explicit directory an install with `--skills-dir` wrote to, so a
+nonstandard instance has a matching portable removal path; like install it
+requires a single `--target`.
 
 **Safety Checks:**
 
