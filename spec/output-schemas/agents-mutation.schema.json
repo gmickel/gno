@@ -99,6 +99,10 @@
       "type": "array",
       "description": "Unified diffs of planned writes; present only with dryRun",
       "items": { "type": "string" }
+    },
+    "manualBlock": {
+      "type": "string",
+      "description": "The complete block to paste by hand; present on install/update when at least one target reported an error"
     }
   }
 }

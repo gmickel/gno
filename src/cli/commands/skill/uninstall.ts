@@ -29,8 +29,6 @@ export interface UninstallOptions {
   cwd?: string;
   /** Override for testing */
   homeDir?: string;
-  /** Explicit skills directory (`--skills-dir`); mirrors install's option. */
-  skillsDir?: string;
   /** JSON output (defaults to globals.json) */
   json?: boolean;
   /** Quiet mode (defaults to globals.quiet) */
@@ -49,7 +47,7 @@ interface UninstallResult {
 async function uninstallFromTarget(
   scope: SkillScope,
   target: SkillTarget,
-  overrides?: { cwd?: string; homeDir?: string; skillsDir?: string }
+  overrides?: { cwd?: string; homeDir?: string }
 ): Promise<UninstallResult | null> {
   const paths = resolveSkillPaths({ scope, target, ...overrides });
 
@@ -107,14 +105,6 @@ export async function uninstallSkill(
   const json = opts.json ?? globals.json;
   const quiet = opts.quiet ?? globals.quiet;
 
-  if (target === "all" && opts.skillsDir !== undefined) {
-    // Mirrors install: one explicit directory cannot stand for every target.
-    throw new CliError(
-      "VALIDATION",
-      "--skills-dir names one directory, so it requires a single --target (not 'all')."
-    );
-  }
-
   const targets: SkillTarget[] = target === "all" ? SKILL_TARGETS : [target];
 
   const results: UninstallResult[] = [];
@@ -124,7 +114,6 @@ export async function uninstallSkill(
     const result = await uninstallFromTarget(scope, t, {
       cwd: opts.cwd,
       homeDir: opts.homeDir,
-      skillsDir: opts.skillsDir,
     });
     if (result) {
       results.push(result);

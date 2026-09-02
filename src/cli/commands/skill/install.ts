@@ -80,8 +80,6 @@ export interface InstallOptions {
   cwd?: string;
   /** Override for testing */
   homeDir?: string;
-  /** Explicit skills directory (`--skills-dir`); wins over env/home resolution. */
-  skillsDir?: string;
   /** JSON output (defaults to globals.json) */
   json?: boolean;
   /** Non-interactive mode (defaults to globals.yes) */
@@ -103,7 +101,7 @@ export async function installSkillToTarget(
   scope: SkillScope,
   target: SkillTarget,
   force: boolean,
-  overrides?: { cwd?: string; homeDir?: string; skillsDir?: string }
+  overrides?: { cwd?: string; homeDir?: string }
 ): Promise<SkillInstallResult> {
   const sourceDir = getSkillSourceDir();
   const paths = resolveSkillPaths({ scope, target, ...overrides });
@@ -211,16 +209,6 @@ export async function installSkill(opts: InstallOptions = {}): Promise<void> {
   const yes = opts.yes ?? globals.yes;
   const quiet = opts.quiet ?? globals.quiet;
 
-  if (target === "all" && opts.skillsDir !== undefined) {
-    // One explicit directory cannot serve five targets: without --force the
-    // second iteration would abort as "already installed", with it the same
-    // dir would be rewritten five times and reported as five installs.
-    throw new CliError(
-      "VALIDATION",
-      "--skills-dir names one directory, so it requires a single --target (not 'all')."
-    );
-  }
-
   const targets: SkillTarget[] = target === "all" ? SKILL_TARGETS : [target];
 
   const results: SkillInstallResult[] = [];
@@ -229,7 +217,6 @@ export async function installSkill(opts: InstallOptions = {}): Promise<void> {
     const result = await installSkillToTarget(scope, t, force || yes, {
       cwd: opts.cwd,
       homeDir: opts.homeDir,
-      skillsDir: opts.skillsDir,
     });
     results.push(result);
   }

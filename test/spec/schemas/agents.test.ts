@@ -222,7 +222,6 @@ describe("agents receipt schemas", () => {
           detected: true,
           blockVersion: 1,
           hashOk: true,
-          linksOk: true,
           rawFileContent: "must not cross the receipt boundary",
         },
       ],

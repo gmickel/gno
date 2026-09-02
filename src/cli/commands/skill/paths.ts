@@ -11,8 +11,6 @@ import { existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, normalize, relative, sep } from "node:path";
 
-import { CliError } from "../../errors.js";
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Environment Variables
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,12 +60,6 @@ export interface SkillPathOptions {
   cwd?: string;
   /** Override home dir for user scope (testing) */
   homeDir?: string;
-  /**
-   * Explicit skills directory (the `--skills-dir` CLI option). Wins over every
-   * env-derived location — the portable way to address a nonstandard harness
-   * instance (`<instance>/skills`) without shell-specific env syntax.
-   */
-  skillsDir?: string;
 }
 
 export interface SkillPaths {
@@ -92,13 +84,6 @@ interface TargetPathConfig {
   userBase: string; // e.g., ".claude" (joined with homedir) or ".config/opencode"
   skillsSubdir: string; // e.g., "skills" or "skill"
   envVar: string;
-  /**
-   * The harness's own documented config-dir override (e.g. CODEX_HOME). User
-   * scope resolves under it so a redirected harness instance finds the skill
-   * where it actually loads skills from. Less specific than `envVar`, and
-   * suppressed by an explicit homeDir / GNO_SKILLS_HOME_OVERRIDE (isolation).
-   */
-  configDirEnvVar?: string;
 }
 
 const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
@@ -107,14 +92,12 @@ const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
     userBase: ".claude",
     skillsSubdir: "skills",
     envVar: ENV_CLAUDE_SKILLS_DIR,
-    configDirEnvVar: "CLAUDE_CONFIG_DIR",
   },
   codex: {
     projectBase: ".codex",
     userBase: ".codex",
     skillsSubdir: "skills",
     envVar: ENV_CODEX_SKILLS_DIR,
-    configDirEnvVar: "CODEX_HOME",
   },
   opencode: {
     projectBase: ".opencode",
@@ -140,46 +123,6 @@ const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
 // Path Resolution
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** `<skills-dir>/<name>` must have ≥ 3 segments to be removable; see below. */
-const MIN_EXPLICIT_SKILLS_DIR_DEPTH = 2;
-
-/**
- * Paths for an explicitly named skills directory (`--skills-dir` or a
- * dedicated env override). The directory is anchored at its *resolved* root:
- * when `<dir>/skills` is itself a symlink to a shared skills directory, the
- * lexical parent would be an unrelated instance dir and the realpath
- * containment check in `validatePathForDeletion` would refuse the very
- * destination we installed into — breaking `--force` and uninstall. A
- * not-yet-existing directory (fresh install) keeps its normalized lexical path.
- */
-function explicitSkillPaths(dir: string, label: string): SkillPaths {
-  let skillsDir = normalize(dir);
-  if (existsSync(skillsDir)) {
-    try {
-      skillsDir = realpathSync(skillsDir);
-    } catch {
-      // Unresolvable (race/permissions): fall back to the lexical path; the
-      // deletion validator still performs its own containment checks.
-    }
-  }
-  // `validatePathForDeletion` refuses destinations with fewer than three
-  // segments (`/tmp/gno`), so a skills dir like `/tmp` would install once and
-  // then be unmanageable through `--force` and `skill uninstall`. Refuse it up
-  // front instead of leaving a stranded installation.
-  const depth = skillsDir.split(sep).filter(Boolean).length;
-  if (depth < MIN_EXPLICIT_SKILLS_DIR_DEPTH) {
-    throw new CliError(
-      "VALIDATION",
-      `${label} must be at least two levels below the filesystem root (e.g. /opt/agent/skills) so the installed skill can be removed again`
-    );
-  }
-  return {
-    base: dirname(skillsDir),
-    skillsDir,
-    gnoDir: join(skillsDir, SKILL_NAME),
-  };
-}
-
 /**
  * Resolve skill installation paths for a given scope and target.
  */
@@ -187,56 +130,28 @@ export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
   const { scope, target, cwd, homeDir } = opts;
   const config = TARGET_CONFIGS[target];
 
-  // An explicit --skills-dir wins over everything (CLI beats env).
-  if (opts.skillsDir !== undefined) {
-    if (!isAbsolute(opts.skillsDir)) {
-      // Invalid CLI operand → exit 1 (validation), not a runtime failure.
-      throw new CliError("VALIDATION", "--skills-dir must be an absolute path");
-    }
-    return explicitSkillPaths(opts.skillsDir, "--skills-dir");
-  }
-
   // Check for env overrides first
   const envOverride = process.env[config.envVar];
 
   if (envOverride) {
     // Require absolute path for security
     if (!isAbsolute(envOverride)) {
-      throw new CliError(
-        "VALIDATION",
-        `${config.envVar} must be an absolute path`
-      );
+      throw new Error(`${config.envVar} must be an absolute path`);
     }
-    return explicitSkillPaths(envOverride, config.envVar);
+    const skillsDir = normalize(envOverride);
+    return {
+      base: join(skillsDir, ".."),
+      skillsDir,
+      gnoDir: join(skillsDir, SKILL_NAME),
+    };
   }
 
   // Resolve base directory
   let base: string;
 
   if (scope === "user") {
-    // An explicit home (option or GNO_SKILLS_HOME_OVERRIDE) is an isolation
-    // request and suppresses the harness config-dir redirect — the same rule
-    // the agents installer applies to the instruction file.
-    const isolated =
-      homeDir !== undefined ||
-      process.env[ENV_SKILLS_HOME_OVERRIDE] !== undefined;
-    const configOverride =
-      !isolated && config.configDirEnvVar
-        ? process.env[config.configDirEnvVar]
-        : undefined;
-    if (configOverride) {
-      if (!isAbsolute(configOverride)) {
-        throw new CliError(
-          "VALIDATION",
-          `${config.configDirEnvVar} must be an absolute path`
-        );
-      }
-      base = normalize(configOverride);
-    } else {
-      const home =
-        homeDir ?? process.env[ENV_SKILLS_HOME_OVERRIDE] ?? homedir();
-      base = join(home, config.userBase);
-    }
+    const home = homeDir ?? process.env[ENV_SKILLS_HOME_OVERRIDE] ?? homedir();
+    base = join(home, config.userBase);
   } else {
     const projectRoot = cwd ?? process.cwd();
     base = join(projectRoot, config.projectBase);
@@ -319,23 +234,9 @@ export function validatePathForDeletion(
     return `Path does not end with expected suffix (${expectedSuffixes.join(" or ")})`;
   }
 
-  // Minimum length sanity check — a heuristic against deleting a near-root
-  // path when only the suffix matched. An explicit resolved destination
-  // (`--skills-dir` / env override, passed as expectedDir) is already exact:
-  // it carries the `<skills>/<name>` structure and is containment-checked
-  // below, so a short but legitimate `/tmp/x/skills/gno` must stay removable
-  // (the documented matching removal path; also what makes the generated
-  // `--force` remediation idempotent).
-  if (!matchesExpectedDir && normalized.length < 20) {
+  // Minimum length sanity check
+  if (normalized.length < 20) {
     return "Path is suspiciously short";
-  }
-  // Structural guard that does not depend on total length: the skill dir is
-  // always `<something>/<skills>/<name>`, so a resolved destination with fewer
-  // than three path segments (e.g. `/skills/gno`) sits next to the filesystem
-  // root and is never a legitimate target.
-  const depth = normalized.split(sep).filter(Boolean).length;
-  if (depth < 3) {
-    return "Path is too close to the filesystem root";
   }
 
   // Must not equal base

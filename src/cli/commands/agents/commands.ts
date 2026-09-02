@@ -4,22 +4,15 @@
  * @module src/cli/commands/agents/commands
  */
 
-import { homedir } from "node:os";
-import { join } from "node:path";
-
 import { CliError } from "../../errors.js";
 import { getGlobals } from "../../program.js";
 import {
   BLOCK_VERSION,
   extractBlock,
-  extractFileReferences,
   renderBlock,
-  type SkillRemediation,
   stampAuthenticates,
 } from "./block.js";
 import {
-  aggregateRemediation,
-  aggregateSkillInstalled,
   applyPlan,
   decodeInstructionFile,
   type PlanMode,
@@ -29,7 +22,6 @@ import {
   unifiedDiff,
 } from "./engine.js";
 import {
-  ENV_AGENTS_HOME_OVERRIDE,
   type HarnessId,
   HARNESS_IDS,
   type ResolvedTarget,
@@ -76,48 +68,6 @@ function outputSettings(opts: AgentsOptions): {
   return {
     json: opts.json ?? globals.json,
     quiet: opts.quiet ?? globals.quiet,
-  };
-}
-
-/**
- * Consumer aggregation universe for skill-state rendering: the FULL harness
- * matrix (plus any extra dirs), independent of the requested target filter.
- * An explicit-target run still only writes the requested targets' files, but
- * the skill pointer rendered into a shared real file must account for EVERY
- * detected consumer of that file (e.g. OpenCode's AGENTS.md symlinked to
- * Codex's) — otherwise `install --target codex` emits `/gno` into a file an
- * unrequested harness without the skill also reads, and a later
- * `verify --target all` reports the fresh block outdated.
- */
-function aggregateSkillState(
-  requested: HarnessId | "all",
-  requestedTargets: ResolvedTarget[],
-  opts: AgentsOptions,
-  mode: PlanMode = "install"
-): {
-  skillByFile: Map<string, boolean>;
-  remediationByFile: Map<string, SkillRemediation>;
-} {
-  // Uninstall renders no block, so it needs no skill-state aggregation — and
-  // must not touch (or be aborted by) harnesses the operator did not request.
-  if (mode === "uninstall") {
-    return { skillByFile: new Map(), remediationByFile: new Map() };
-  }
-  // The aggregation universe is resolved leniently: an unrequested harness
-  // with misconfigured env (e.g. a relative CLAUDE_CONFIG_DIR) is dropped from
-  // the aggregation rather than aborting an explicit-target run. Requested
-  // targets were already resolved strictly by the caller.
-  const universe =
-    requested === "all"
-      ? requestedTargets
-      : resolveTargets("all", {
-          homeDir: opts.homeDir,
-          extraDirs: opts.extraDirs,
-          lenient: true,
-        });
-  return {
-    skillByFile: aggregateSkillInstalled(universe),
-    remediationByFile: aggregateRemediation(universe),
   };
 }
 
@@ -170,32 +120,22 @@ async function runMutation(
   const { json, quiet } = outputSettings(opts);
   const dryRun = opts.dryRun ?? false;
 
-  const requested = opts.target ?? "all";
-  const targets = resolveTargets(requested, {
+  const targets = resolveTargets(opts.target ?? "all", {
     homeDir: opts.homeDir,
     extraDirs: opts.extraDirs,
-    // Uninstall neither reads nor renders skill state; a broken skills
-    // override must not block a removal.
-    probeSkillState: mode !== "uninstall",
   });
-  const aggregated = aggregateSkillState(requested, targets, opts, mode);
-  const plans = await planTargets(
-    targets,
-    mode,
-    aggregated.skillByFile,
-    aggregated.remediationByFile
-  );
+  const plans = await planTargets(targets, mode);
 
   const reports: TargetReport[] = [];
   const diffs: string[] = [];
-  let errors = 0;
-  let runtimeErrors = 0;
+  const failedPaths: string[] = [];
+  let validationErrors = 0;
 
   for (const plan of plans) {
     if (plan.action === "error") {
-      errors += 1;
-      if (plan.errorCode === "RUNTIME") {
-        runtimeErrors += 1;
+      failedPaths.push(plan.target.file);
+      if (plan.errorCode !== "RUNTIME") {
+        validationErrors += 1;
       }
       reports.push(reportFor(plan, undefined));
       continue;
@@ -211,19 +151,13 @@ async function runMutation(
       reports.push(reportFor(plan, null));
       continue;
     }
-    // A failing apply (backup error, concurrent edit detected, write error)
-    // must not abort the run before the receipt is emitted: earlier targets
-    // may already have been written, and the operator needs to see exactly
-    // which. Record an `error` row and keep going; the accumulated receipt is
-    // printed below and the run still exits non-zero.
+    // A failing write must not abort the run before the receipt is emitted:
+    // earlier targets may already have been written, and the operator needs
+    // to see exactly which. Record an `error` row and keep going.
     try {
-      const backup = await applyPlan(plan);
-      reports.push(reportFor(plan, backup));
+      reports.push(reportFor(plan, await applyPlan(plan)));
     } catch (err) {
-      errors += 1;
-      if (err instanceof CliError && err.code === "RUNTIME") {
-        runtimeErrors += 1;
-      }
+      failedPaths.push(plan.target.file);
       reports.push({
         ...reportFor(plan, undefined),
         action: "error",
@@ -231,6 +165,12 @@ async function runMutation(
       });
     }
   }
+
+  // Fallback: when the installer could not apply the block somewhere, hand
+  // the operator the exact block to paste (install/update only — uninstall
+  // guidance is in the per-target detail).
+  const manualBlock =
+    failedPaths.length > 0 && mode === "install" ? renderBlock() : undefined;
 
   if (json) {
     process.stdout.write(
@@ -241,6 +181,7 @@ async function runMutation(
           dryRun,
           results: reports,
           ...(dryRun && { diffs }),
+          ...(manualBlock !== undefined && { manualBlock }),
         },
         null,
         2
@@ -256,18 +197,21 @@ async function runMutation(
       }
       process.stdout.write("\nDry run — nothing was written.\n");
     }
+    if (manualBlock !== undefined) {
+      process.stdout.write(
+        `\nCould not apply the block to: ${failedPaths.join(", ")}\n` +
+          "Append this block to the file yourself (replacing any existing gno:agents block):\n\n" +
+          `${manualBlock}\n`
+      );
+    }
   }
 
-  if (errors > 0) {
-    // Exit-code contract (spec/cli.md): 1 = validation (bad input, malformed
-    // markers), 2 = runtime (I/O). Keep the category: when every failure was a
-    // runtime apply error (backup/write/concurrent edit), exit 2 so automation
-    // can tell an I/O failure from invalid input.
-    const code =
-      runtimeErrors > 0 && runtimeErrors === errors ? "RUNTIME" : "VALIDATION";
+  if (failedPaths.length > 0) {
+    // Exit-code contract (spec/cli.md): 1 = validation (malformed markers,
+    // non-UTF-8), 2 = runtime (I/O). Any validation failure makes it 1.
     throw new CliError(
-      code,
-      `${verb} failed for ${errors} target(s); see per-target detail above. Nothing was written to the failing file(s).`
+      validationErrors > 0 ? "VALIDATION" : "RUNTIME",
+      `${verb} failed for ${failedPaths.length} target(s); see per-target detail above. Nothing was written to the failing file(s).`
     );
   }
 }
@@ -293,62 +237,52 @@ export function uninstallAgents(opts: AgentsOptions = {}): Promise<void> {
 // Verify
 // ─────────────────────────────────────────────────────────────────────────────
 
+type VerifyStatus =
+  | "ok"
+  | "outdated"
+  | "missing"
+  | "malformed"
+  | "error"
+  | "covered"
+  | "not-detected";
+
 interface VerifyReport {
   target: string;
   label: string;
   path: string;
-  status:
-    | "ok"
-    | "outdated"
-    | "missing"
-    | "malformed"
-    | "error"
-    | "covered"
-    | "not-detected";
+  status: VerifyStatus;
   detected: boolean;
   via?: string;
   detail?: string;
-  /** Set on `error` rows: the failure category (RUNTIME = I/O, not content). */
-  errorCode?: "RUNTIME";
   blockVersion?: number;
   hashOk?: boolean;
-  linksOk?: boolean;
-  unresolvedLinks?: string[];
 }
 
-function expandHome(ref: string, home: string): string {
-  return ref.startsWith("~") ? join(home, ref.slice(1)) : ref;
+/** Inner text (stamp + body, no markers) of the current release's block. */
+function expectedInner(): string {
+  return renderBlock().split("\n").slice(1, -1).join("\n");
 }
 
 async function verifyTarget(
   target: ResolvedTarget,
-  home: string,
   runContext: {
     resolvedIds: Set<string>;
     requiredCovering: Set<string>;
     /** Real-file identity → id of the target that owns verification. */
     owners: Map<string, string>;
-    /** Real-file identity → all detected consumers have the skill. */
-    skillByFile: Map<string, boolean>;
-    /** Real-file identity → consumers lacking the skill (remediation). */
-    remediationByFile: Map<string, SkillRemediation>;
   }
 ): Promise<VerifyReport> {
-  const base: Pick<VerifyReport, "target" | "label" | "path" | "detected"> = {
+  const base = {
     target: target.id,
     label: target.label,
     path: target.file,
     detected: target.detected,
   };
 
-  // A covering target required by a detected covered target (grok → claude)
-  // is verified even when its own harness is not detected on this machine.
   if (!(target.detected || runContext.requiredCovering.has(target.id))) {
     return { ...base, status: "not-detected" };
   }
   if (target.coveredBy) {
-    // Coverage is only truthful when the covering target is verified in the
-    // same run — its own row carries the actual block status.
     if (!runContext.resolvedIds.has(target.coveredBy)) {
       return {
         ...base,
@@ -363,12 +297,6 @@ async function verifyTarget(
       detail: `covered via ${target.coveredBy}`,
     };
   }
-
-  // Same-real-file dedupe, mirroring installation ownership: the first
-  // non-covered target owns the write (and rendered the block with its own
-  // skill state), so it also owns verification. Verifying the shared file
-  // again under a different target's expectations would falsely report the
-  // block outdated when the two targets' skill pointers differ.
   const owner = runContext.owners.get(target.realFile);
   if (owner) {
     return {
@@ -382,15 +310,8 @@ async function verifyTarget(
 
   const file = Bun.file(target.file);
   if (!(await file.exists())) {
-    return {
-      ...base,
-      status: "missing",
-      detail: "instruction file not found",
-    };
+    return { ...base, status: "missing", detail: "instruction file not found" };
   }
-  // Reading is an I/O step (permissions, I/O error, existence race): a failure
-  // there is a RUNTIME `error`, not a content verdict — `malformed` is
-  // reserved for what the decoder and marker validation say about the bytes.
   let bytes: Uint8Array;
   try {
     bytes = await file.bytes();
@@ -398,15 +319,12 @@ async function verifyTarget(
     return {
       ...base,
       status: "error",
-      errorCode: "RUNTIME",
       detail: `could not read instruction file: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
-  let content: string;
   let extraction: ReturnType<typeof extractBlock>;
   try {
-    // Same byte-exact decoder as planning: BOM split off, non-UTF-8 refused.
-    ({ content } = decodeInstructionFile(bytes, target.file));
+    const { content } = decodeInstructionFile(bytes, target.file);
     extraction = extractBlock(content, target.file);
   } catch (err) {
     return {
@@ -415,83 +333,29 @@ async function verifyTarget(
       detail: err instanceof Error ? err.message : String(err),
     };
   }
-
   if (!extraction.found) {
     return { ...base, status: "missing", detail: "no GNO agents block" };
   }
 
   const { block } = extraction;
-  // The stamp hash covers body + separator-provenance token, so a stripped or
-  // forged token fails here rather than being mirrored into the render below.
   const hashOk = stampAuthenticates(block);
-  // Expected inner text = current render for this file's aggregated skill
-  // state and remediation set (every detected consumer of the shared real
-  // file, mirroring what install renders), without the marker lines. The
-  // separator token is install-time provenance — mirrored only once
-  // authenticated.
-  const expectedInner = renderBlock({
-    skillInstalled:
-      runContext.skillByFile.get(target.realFile) ?? target.skillInstalled,
-    separator: hashOk ? block.stamp?.separator : undefined,
-    remediation: runContext.remediationByFile.get(target.realFile),
-  })
-    .split("\n")
-    .slice(1, -1)
-    .join("\n");
-  const isCurrent =
-    block.stamp?.version === BLOCK_VERSION &&
-    hashOk &&
-    block.inner === expectedInner;
-
-  const refs = extractFileReferences(block.body);
-  const unresolved: string[] = [];
-  for (const ref of refs) {
-    if (!(await Bun.file(expandHome(ref, home)).exists())) {
-      unresolved.push(ref);
-    }
+  const versionOk = block.stamp?.version === BLOCK_VERSION;
+  const isCurrent = versionOk && hashOk && block.inner === expectedInner();
+  const versioned = { blockVersion: block.stamp?.version, hashOk };
+  if (isCurrent) {
+    return { ...base, status: "ok", ...versioned };
   }
-  const linksOk = unresolved.length === 0;
-
-  if (!isCurrent) {
-    return {
-      ...base,
-      status: "outdated",
-      blockVersion: block.stamp?.version,
-      hashOk,
-      linksOk,
-      ...(unresolved.length > 0 && { unresolvedLinks: unresolved }),
-      detail: (() => {
-        if (!hashOk) {
-          return "block content does not match its stamp hash (edited inside markers?) — run `gno agents update`";
-        }
-        if (block.stamp?.version !== BLOCK_VERSION) {
-          return `block v${block.stamp?.version ?? "?"} does not match installed release v${BLOCK_VERSION} — run \`gno agents update\``;
-        }
-        return "block content differs from the installed release's render (e.g. skill pointer changed) — run `gno agents update`";
-      })(),
-    };
-  }
-
-  return {
-    ...base,
-    status: linksOk ? "ok" : "outdated",
-    blockVersion: block.stamp?.version,
-    hashOk,
-    linksOk,
-    ...(unresolved.length > 0 && {
-      unresolvedLinks: unresolved,
-      detail: `unresolved file reference(s): ${unresolved.join(", ")}`,
-    }),
-  };
+  const detail = !hashOk
+    ? "block content does not match its stamp hash (edited inside markers?) — run `gno agents update`"
+    : !versionOk
+      ? `block v${block.stamp?.version ?? "?"} does not match installed release v${BLOCK_VERSION} — run \`gno agents update\``
+      : "block content differs from the installed release — run `gno agents update`";
+  return { ...base, status: "outdated", ...versioned, detail };
 }
 
 export async function verifyAgents(opts: AgentsOptions = {}): Promise<void> {
   const { json, quiet } = outputSettings(opts);
-  const home =
-    opts.homeDir ?? process.env[ENV_AGENTS_HOME_OVERRIDE] ?? homedir();
-
-  const requested = opts.target ?? "all";
-  const targets = resolveTargets(requested, {
+  const targets = resolveTargets(opts.target ?? "all", {
     homeDir: opts.homeDir,
     extraDirs: opts.extraDirs,
   });
@@ -503,23 +367,11 @@ export async function verifyAgents(opts: AgentsOptions = {}): Promise<void> {
       requiredCovering.add(t.coveredBy);
     }
   }
-
   const owners = new Map<string, string>();
-  const { skillByFile, remediationByFile } = aggregateSkillState(
-    requested,
-    targets,
-    opts
-  );
   const results: VerifyReport[] = [];
   for (const target of targets) {
     results.push(
-      await verifyTarget(target, home, {
-        resolvedIds,
-        requiredCovering,
-        owners,
-        skillByFile,
-        remediationByFile,
-      })
+      await verifyTarget(target, { resolvedIds, requiredCovering, owners })
     );
   }
 
@@ -546,8 +398,8 @@ export async function verifyAgents(opts: AgentsOptions = {}): Promise<void> {
   }
 
   if (!ok) {
-    // Same category rule as mutations: when every failure is an I/O error,
-    // exit 2 so automation can tell "could not check" from "check failed".
+    // 2 when the only failures were unreadable files (could not check),
+    // 1 for any content verdict (outdated / missing / malformed).
     const allRuntime = failing.every((r) => r.status === "error");
     throw new CliError(
       allRuntime ? "RUNTIME" : "VALIDATION",

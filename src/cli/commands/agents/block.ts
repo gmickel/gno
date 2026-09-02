@@ -3,12 +3,12 @@
  *
  * One compact, versioned instruction block bounded by stable BEGIN/END
  * markers. Install/update/uninstall touch ONLY the owned block; content
- * outside the markers stays byte-identical.
+ * outside the markers stays byte-identical. The block content is static —
+ * identical on every machine — so a block is current exactly when its stamp
+ * version matches the installed release and its hash matches its body.
  *
  * @module src/cli/commands/agents/block
  */
-
-import type { SkillTarget } from "../skill/paths.js";
 
 import { CliError } from "../../errors.js";
 
@@ -17,135 +17,26 @@ import { CliError } from "../../errors.js";
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Version of the protocol block content. Bump on any content change. */
-export const BLOCK_VERSION = 1;
+export const BLOCK_VERSION = 2;
 
 /** Stable across block versions — never change these once shipped. */
 export const BEGIN_MARKER = "<!-- gno:agents:begin -->";
 export const END_MARKER = "<!-- gno:agents:end -->";
 
-const STAMP_RE =
-  /^<!-- gno-agents block v(\d+) sha256:([0-9a-f]{16})(?: sep:(blank|nl|none) pre:([0-9a-f]{8}))? /;
+const STAMP_RE = /^<!-- gno-agents block v(\d+) sha256:([0-9a-f]{16}) /;
 const HASH_PREFIX_LENGTH = 16;
-/** Chars of preceding operator content hashed into the separator context. */
-const SEPARATOR_CONTEXT_CHARS = 32;
-const SEPARATOR_CONTEXT_HASH_LENGTH = 8;
-
-/**
- * Separator provenance, recorded inside the markers because it cannot be
- * inferred from file shape at uninstall time: which separator install added
- * ABOVE the block (`blank` — one blank line after a `\n`-terminated file; `nl`
- * — the single `\n` appended to a file lacking a final newline; `none` — the
- * block was installed into an empty file, nothing above it), plus a hash of
- * the operator bytes immediately preceding it. Every genuine install carries
- * one, and it also vouches for the single `\n` install writes AFTER the END
- * marker. Uninstall consumes those bytes only when the claim authenticates
- * AND the context still matches — a block pasted/moved into other content, or
- * a hand-edited claim, never costs the operator a byte outside the markers.
- */
-export interface SeparatorProvenance {
-  kind: "blank" | "nl" | "none";
-  /** `separatorContextHash` of the content preceding the separator. */
-  pre: string;
-}
-
-/** Hash of the tail of the operator content that precedes install's separator. */
-export function separatorContextHash(precedingContent: string): string {
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(precedingContent.slice(-SEPARATOR_CONTEXT_CHARS));
-  return hasher.digest("hex").slice(0, SEPARATOR_CONTEXT_HASH_LENGTH);
-}
-
-function separatorToken(separator?: SeparatorProvenance): string {
-  return separator ? ` sep:${separator.kind} pre:${separator.pre}` : "";
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Rendering
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * The consumers of one instruction file that still lack the skill — drives a
- * remediation scoped to exactly those harnesses, so following it never
- * fabricates skill/config dirs for harnesses the operator never installed.
+ * The protocol block body (between stamp line and end marker). Compact by
+ * design: the retrieval ladder + the writing contract. Detailed workflows live
+ * in the GNO skill; the block just points at it. No filesystem paths — the
+ * text is the same on every machine.
  */
-export interface SkillRemediation {
-  /** Standard harness skill targets lacking the skill (deduped). */
-  targets: SkillTarget[];
-  /** `--extra-dir` instances lacking the skill (their config dir). */
-  extraDirs: string[];
-}
-
-export interface BlockRenderOptions {
-  /** Whether the GNO agent skill is installed for every consumer. */
-  skillInstalled: boolean;
-  /**
-   * Which separator install added above the block, and the context it was
-   * added in. Stamped into the block (` sep:<kind> pre:<hash>`) so uninstall
-   * can restore the file byte-identically without inferring from file shape.
-   * Authenticated by the stamp hash (body + token), and context-checked at
-   * uninstall time, so a forged token or a moved block never consumes
-   * operator whitespace.
-   */
-  separator?: SeparatorProvenance;
-  /**
-   * Consumers lacking the skill, for the remediation command. Absent (no
-   * consumer information) falls back to the generic all-targets form.
-   */
-  remediation?: SkillRemediation;
-}
-
-/**
- * Single-quote a path for a shell command line. Single quotes are literal in
- * POSIX shells AND PowerShell — no parameter/command substitution, no
- * backtick or `$` expansion — unlike double quotes. The one divergence is an
- * embedded `'`: POSIX closes/reopens (`'\''`), PowerShell doubles (`''`). The
- * block is rendered on the machine that will run the command, so the active
- * platform picks the idiom.
- */
-export function quotePathForShell(
-  path: string,
-  platform: NodeJS.Platform = process.platform
-): string {
-  const escaped =
-    platform === "win32"
-      ? path.replace(/'/g, "''")
-      : path.replace(/'/g, "'\\''");
-  return `'${escaped}'`;
-}
-
-/**
- * Render the remediation the conservative pointer asks the agent to run.
- * One `gno skill install` per consumer harness that lacks the skill; an
- * `--extra-dir` instance is addressed through its own skills dir via the
- * portable `--skills-dir` option (single-quoted — expansion-safe).
- */
-export function renderRemediation(remediation?: SkillRemediation): string {
-  const targets = [...new Set(remediation?.targets ?? [])];
-  const extraDirs = remediation?.extraDirs ?? [];
-  if (targets.length === 0 && extraDirs.length === 0) {
-    return "gno skill install --scope user --force --target all";
-  }
-  const commands = [
-    ...targets.map(
-      (t) => `gno skill install --scope user --force --target ${t}`
-    ),
-    ...extraDirs.map(
-      (dir) =>
-        `gno skill install --scope user --force --target claude --skills-dir ${quotePathForShell(`${dir}/skills`)}`
-    ),
-  ];
-  return commands.join("; ");
-}
-
-/**
- * Render the protocol block body (between stamp line and end marker).
- * Compact by design: the retrieval ladder + the writing contract. Detailed
- * workflows live in the GNO skill, referenced by the state-aware pointer.
- */
-export function renderBlockBody(opts: BlockRenderOptions): string {
-  const skillPointer = opts.skillInstalled
-    ? "load the installed `gno` skill (`/gno`)"
-    : `run \`${renderRemediation(opts.remediation)}\` and load the \`gno\` skill`;
+export function renderBlockBody(): string {
   return `## GNO knowledge retrieval
 
 Local knowledge search over indexed collections. Source files are the truth; the GNO index is disposable, machine-local.
@@ -161,50 +52,30 @@ Ladder — scope to a collection first (\`--collection <name>\`):
 
 Writing: retrieve first — a question alone is read-only. Edit an existing canonical note in its source file; \`gno capture\` creates genuinely new notes (collection, title/path, source kind, provenance) — never an update API. After writes: reindex the collection, verify retrieval.
 
-Cite with gno:// URIs. Advanced retrieval (structured queries, filters, backlinks, similar, capture recipes): ${skillPointer}.`;
+Cite with gno:// URIs. Advanced retrieval (structured queries, filters, backlinks, similar, capture recipes) lives in the \`gno\` skill: load it (\`/gno\`) when installed, otherwise run \`gno skill install --scope user\` first.`;
 }
 
-/**
- * SHA-256 hex digest, truncated for the stamp line. Covers the body AND the
- * separator-provenance token, so the token is authenticated material: editing
- * or adding it by hand invalidates the stamp instead of silently changing
- * what uninstall will consume.
- */
-export function hashBlockBody(
-  body: string,
-  separator?: SeparatorProvenance
-): string {
+/** SHA-256 hex digest of the body, truncated for the stamp line. */
+export function hashBlockBody(body: string): string {
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(body);
-  if (separator) {
-    hasher.update(`\n${separatorToken(separator)}`);
-  }
   return hasher.digest("hex").slice(0, HASH_PREFIX_LENGTH);
 }
 
-/** Render the stamp line carrying version + authenticated hash (+ provenance). */
-export function renderStampLine(
-  body: string,
-  separator?: SeparatorProvenance
-): string {
-  return `<!-- gno-agents block v${BLOCK_VERSION} sha256:${hashBlockBody(body, separator)}${separatorToken(separator)} — managed by \`gno agents\`; manual edits inside the markers are overwritten -->`;
-}
-
-/** True when the extracted stamp authenticates the body + provenance token. */
-export function stampAuthenticates(block: {
-  body: string;
-  stamp: { hash: string; separator?: SeparatorProvenance } | null;
-}): boolean {
-  return (
-    block.stamp !== null &&
-    block.stamp.hash === hashBlockBody(block.body, block.stamp.separator)
-  );
+/** Render the stamp line carrying version + body hash. */
+export function renderStampLine(body: string): string {
+  return `<!-- gno-agents block v${BLOCK_VERSION} sha256:${hashBlockBody(body)} — managed by \`gno agents\`; manual edits inside the markers are overwritten -->`;
 }
 
 /** Render the complete block: BEGIN marker, stamp, body, END marker. */
-export function renderBlock(opts: BlockRenderOptions): string {
-  const body = renderBlockBody(opts);
-  return `${BEGIN_MARKER}\n${renderStampLine(body, opts.separator)}\n${body}\n${END_MARKER}`;
+export function renderBlock(): string {
+  const body = renderBlockBody();
+  return `${BEGIN_MARKER}\n${renderStampLine(body)}\n${body}\n${END_MARKER}`;
+}
+
+/** True when the extracted stamp's hash matches the extracted body. */
+export function stampAuthenticates(block: ExtractedBlock): boolean {
+  return block.stamp !== null && block.stamp.hash === hashBlockBody(block.body);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -221,12 +92,7 @@ export interface ExtractedBlock {
   /** Body without the stamp line (equal to inner when no stamp present). */
   body: string;
   /** Parsed stamp, when present and well-formed. */
-  stamp: {
-    version: number;
-    hash: string;
-    /** Install's recorded separator provenance, when stamped. */
-    separator?: SeparatorProvenance;
-  } | null;
+  stamp: { version: number; hash: string } | null;
 }
 
 export type BlockExtraction =
@@ -243,6 +109,9 @@ function countOccurrences(haystack: string, needle: string): number {
   return count;
 }
 
+const MARKER_GUIDANCE =
+  "Fix or remove the markers manually (or restore the file from its .gno-agents.bak backup), then re-run.";
+
 /**
  * Extract the managed block from file content.
  * Fail-closed: malformed or duplicate markers throw with guidance — the
@@ -258,12 +127,10 @@ export function extractBlock(
   if (begins === 0 && ends === 0) {
     return { found: false };
   }
-
   if (begins !== 1 || ends !== 1) {
     throw new CliError(
       "VALIDATION",
-      `Malformed GNO agents markers in ${filePath}: found ${begins} BEGIN and ${ends} END marker(s), expected exactly one of each. ` +
-        "Fix or remove the markers manually (or restore the file from its .gno-agents.bak backup), then re-run."
+      `Malformed GNO agents markers in ${filePath}: found ${begins} BEGIN and ${ends} END marker(s), expected exactly one of each. ${MARKER_GUIDANCE}`
     );
   }
 
@@ -272,8 +139,7 @@ export function extractBlock(
   if (endMarkerStart < start) {
     throw new CliError(
       "VALIDATION",
-      `Malformed GNO agents markers in ${filePath}: END marker appears before BEGIN marker. ` +
-        "Fix or remove the markers manually (or restore the file from its .gno-agents.bak backup), then re-run."
+      `Malformed GNO agents markers in ${filePath}: END marker appears before BEGIN marker. ${MARKER_GUIDANCE}`
     );
   }
 
@@ -285,73 +151,14 @@ export function extractBlock(
   const newlineIdx = inner.indexOf("\n");
   const firstLine = newlineIdx === -1 ? inner : inner.slice(0, newlineIdx);
   const stampMatch = STAMP_RE.exec(firstLine);
-  // A version that is not a finite safe integer (a 400-digit run of decimals
-  // reads as Infinity, which JSON serializes as null and violates the verify
-  // schema) makes the stamp unparseable rather than a numeric verdict.
   const version = stampMatch ? Number(stampMatch[1]) : Number.NaN;
+  // An absurd version (not a safe integer) is an unparseable stamp, not a
+  // numeric verdict — it would otherwise serialize as null in JSON receipts.
   const stamp =
     stampMatch && Number.isSafeInteger(version)
-      ? {
-          version,
-          hash: stampMatch[2] ?? "",
-          ...(stampMatch[3] !== undefined &&
-            stampMatch[4] !== undefined && {
-              separator: {
-                kind: stampMatch[3] as SeparatorProvenance["kind"],
-                pre: stampMatch[4],
-              },
-            }),
-        }
+      ? { version, hash: stampMatch[2] ?? "" }
       : null;
   const body = stamp && newlineIdx !== -1 ? inner.slice(newlineIdx + 1) : inner;
 
   return { found: true, block: { start, end, inner, body, stamp } };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Link Resolution (verify)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const FILE_REF_RE = /(?:^|[\s("'`])((?:~|\/)[\w~./-]+)/g;
-
-/**
- * Slash-command pointer, not a path: a single extensionless segment after the
- * root slash (e.g. `/gno`). Real absolute file references always carry a
- * nested segment or an extension.
- */
-const SLASH_COMMAND_RE = /^\/[\w-]+$/;
-
-/**
- * The complete quoted `--skills-dir` operand of a remediation command — a
- * single-quoted argument in either the POSIX (`'\''`) or PowerShell (`''`)
- * embedded-quote idiom, or a double-quoted one. Masked out BEFORE scanning for
- * file references: it names where the skill SHOULD be installed (absent by
- * construction while the conservative pointer renders), and any quote-like
- * byte inside the path must not start a new reference.
- */
-const SKILLS_DIR_OPERAND_RE =
-  /--skills-dir\s+(?:'(?:[^']|'\\''|'')*'|"(?:[^"\\]|\\.)*")/g;
-
-/**
- * Extract filesystem references (absolute or ~-prefixed paths) from a block
- * body. gno:// URIs, bare commands, and slash-command pointers such as
- * `/gno` are not filesystem references.
- * Vacuous (empty result) when the block carries none.
- */
-export function extractFileReferences(body: string): string[] {
-  const refs = new Set<string>();
-  // Mask the whole quoted remediation operand (same length, so offsets are
-  // preserved) rather than testing the text before each match — a backtick
-  // or quote INSIDE the path would otherwise open a fresh reference.
-  const scannable = body.replace(SKILLS_DIR_OPERAND_RE, (operand) =>
-    " ".repeat(operand.length)
-  );
-  for (const match of scannable.matchAll(FILE_REF_RE)) {
-    const ref = match[1];
-    if (!ref || ref.length <= 1 || SLASH_COMMAND_RE.test(ref)) {
-      continue;
-    }
-    refs.add(ref);
-  }
-  return Array.from(refs);
 }

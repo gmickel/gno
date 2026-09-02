@@ -9,7 +9,6 @@ export {
   BLOCK_VERSION,
   END_MARKER,
   extractBlock,
-  extractFileReferences,
   hashBlockBody,
   renderBlock,
   renderBlockBody,

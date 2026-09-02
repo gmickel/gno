@@ -59,11 +59,7 @@
               "covered",
               "not-detected"
             ],
-            "description": "Verification outcome for this target (`error` = the file could not be read; see errorCode)"
-          },
-          "errorCode": {
-            "enum": ["RUNTIME"],
-            "description": "Failure category for `error` rows: RUNTIME = I/O (permissions, read error, existence race), never a content verdict"
+            "description": "Verification outcome for this target (`error` = the file exists but could not be read)"
           },
           "detected": {
             "type": "boolean",
@@ -85,16 +81,6 @@
           "hashOk": {
             "type": "boolean",
             "description": "Block body matches its stamp hash (tamper detection)"
-          },
-          "linksOk": {
-            "type": "boolean",
-            "description": "All filesystem references inside the block resolve"
-          },
-          "unresolvedLinks": {
-            "type": "array",
-            "minItems": 1,
-            "description": "File references inside the block that do not resolve",
-            "items": { "type": "string" }
           }
         }
       }

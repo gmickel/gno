@@ -1302,7 +1302,6 @@ gno skill install --target codex     # For Codex instead of Claude
 gno skill install --target hermes    # For Hermes Agent
 gno skill install --target all       # All supported agents
 gno skill install --force            # Overwrite existing
-gno skill install --scope user --target claude --skills-dir ~/.claude-instances/work-cli/skills  # Nonstandard instance
 ```
 
 Options:
@@ -1310,7 +1309,6 @@ Options:
 - `--scope <project|user>` - Installation scope (default: project)
 - `--target <claude|codex|opencode|openclaw|hermes|all>` - Target agent (default: claude)
 - `--force` - Overwrite existing installation
-- `--skills-dir <path>` - Explicit absolute skills directory for a nonstandard instance (single `--target` only). Must be at least two levels below the filesystem root so the skill stays removable; a symlinked directory is anchored at its resolved path
 
 Supported targets: Claude Code, Codex, OpenCode, OpenClaw, Hermes Agent. Use `all` to install to every target.
 
@@ -1324,7 +1322,6 @@ Remove installed skill.
 gno skill uninstall
 gno skill uninstall --scope user
 gno skill uninstall --target all
-gno skill uninstall --scope user --target claude --skills-dir ~/.claude-instances/work-cli/skills  # Nonstandard instance
 ```
 
 Options:
@@ -1383,20 +1380,21 @@ gno agents install --json
 
 - Detects harnesses by their standard config dirs; undetected harnesses are
   skipped (never fabricated).
-- Backup-first (`<file>.gno-agents.bak.<timestamp>`), idempotent (second run
-  is a no-op), symlink-aware (writes through links; shared files written once).
+- Backup-first (`<file>.gno-agents.bak.<timestamp>`), atomic write, idempotent
+  (second run is a no-op), symlink-aware (writes through links; shared files
+  written once).
 - Grok Build imports the Claude global file, so it is reported
   `covered via claude` — no double block. `--target grok` resolves the
-  covering claude target too, but only when Grok itself is detected; on a
-  machine without `~/.grok` the run reports `not-detected` and leaves
-  Claude's file alone.
+  covering claude target too, but only when Grok itself is detected.
 - `--extra-dir` (repeatable) serves nonstandard/multi-instance layouts
   explicitly; discovery never guesses.
+- If a file cannot be updated (malformed markers, not UTF-8, unwritable), the
+  command reports the failure and prints the complete block so you can paste
+  it yourself; other targets still proceed.
 
 ### gno agents update
 
-Refresh an installed block in place after a GNO upgrade (block version bump,
-skill-pointer change):
+Refresh an installed block in place after a GNO upgrade (block version bump):
 
 ```bash
 gno agents update
@@ -1404,10 +1402,10 @@ gno agents update
 
 ### gno agents verify
 
-Deterministic per-target checks: exactly one marker block, version + hash
-match the installed release, file references inside the block resolve. Targets
-sharing one real file (symlink schemes) are verified once via the same
-ownership order as install; the rest report `covered`.
+Deterministic per-target checks: exactly one marker block, version + hash match
+the installed release. Targets sharing one real file (symlink schemes) are
+verified once via the same ownership order as install; the rest report
+`covered`.
 
 ```bash
 gno agents verify

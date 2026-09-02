@@ -3166,15 +3166,10 @@ function wireSkillCommands(program: Command): void {
       "claude"
     )
     .option("-f, --force", "overwrite existing installation")
-    .option(
-      "--skills-dir <path>",
-      "explicit skills directory (absolute; overrides env/home resolution — for nonstandard harness instances)"
-    )
     .option("--json", "JSON output")
     .action(async (cmdOpts: Record<string, unknown>) => {
       const scope = cmdOpts.scope as string;
       const target = cmdOpts.target as string;
-      const skillsDir = cmdOpts.skillsDir as string | undefined;
 
       // Validate scope
       if (!["project", "user"].includes(scope)) {
@@ -3206,7 +3201,6 @@ function wireSkillCommands(program: Command): void {
           | "hermes"
           | "all",
         force: Boolean(cmdOpts.force),
-        skillsDir,
         json: Boolean(cmdOpts.json),
       });
     });
@@ -3224,15 +3218,10 @@ function wireSkillCommands(program: Command): void {
       "target agent (claude, codex, opencode, openclaw, hermes, all)",
       "claude"
     )
-    .option(
-      "--skills-dir <path>",
-      "explicit skills directory to remove from (absolute; mirrors install --skills-dir)"
-    )
     .option("--json", "JSON output")
     .action(async (cmdOpts: Record<string, unknown>) => {
       const scope = cmdOpts.scope as string;
       const target = cmdOpts.target as string;
-      const skillsDir = cmdOpts.skillsDir as string | undefined;
 
       // Validate scope
       if (!["project", "user"].includes(scope)) {
@@ -3256,7 +3245,6 @@ function wireSkillCommands(program: Command): void {
       const { uninstallSkill } = await import("./commands/skill/uninstall.js");
       await uninstallSkill({
         scope: scope as "project" | "user",
-        skillsDir,
         target: target as
           | "claude"
           | "codex"
@@ -3403,7 +3391,7 @@ function wireAgentsCommands(program: Command): void {
   agentsCmd
     .command("verify")
     .description(
-      "Verify installed GNO protocol blocks (one block, version + hash, links)"
+      "Verify installed GNO protocol blocks (one block, version + hash)"
     )
     .option("-t, --target <target>", targetDescription, "all")
     .option(
