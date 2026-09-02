@@ -507,20 +507,26 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
   // Write through symlinks: the resolved identity is the real file.
   const writePath = plan.fileExists ? plan.target.realFile : plan.target.file;
 
-  // Revalidate immediately before writing: `plan.newContent` was derived from
-  // the bytes read at plan time. If an editor, a dotfile sync, or another
-  // `gno agents` process changed the file since, writing would silently
-  // overwrite the newer operator content — refuse instead (nothing written,
-  // no backup), and let the operator re-run against the current file.
-  const currentFile = Bun.file(writePath);
-  const existsNow = await currentFile.exists();
-  if (existsNow !== plan.fileExists) {
-    throw new CliError(
-      "RUNTIME",
-      `${writePath} ${existsNow ? "appeared" : "disappeared"} after it was planned — nothing was written. Re-run to plan against the current file.`
-    );
-  }
-  if (existsNow) {
+  // `plan.newContent` was derived from the bytes read at plan time. If an
+  // editor, a dotfile sync, or another `gno agents` process changes the file
+  // in the meantime, writing would silently overwrite the newer operator
+  // content — so the file is re-read and compared against the planned bytes
+  // TWICE: once before any side effect, and again as the very last await
+  // before the active-file write (the backup copy / stat / chmod awaits sit
+  // in between and are themselves a window). A filesystem write has no CAS,
+  // so this leaves exactly one read→write hop unguarded — the minimum.
+  const assertUnchanged = async (): Promise<void> => {
+    const currentFile = Bun.file(writePath);
+    const existsNow = await currentFile.exists();
+    if (existsNow !== plan.fileExists) {
+      throw new CliError(
+        "RUNTIME",
+        `${writePath} ${existsNow ? "appeared" : "disappeared"} after it was planned — nothing was written. Re-run to plan against the current file.`
+      );
+    }
+    if (!existsNow) {
+      return;
+    }
     const current = decodeInstructionFile(await currentFile.bytes(), writePath);
     if (
       current.content !== plan.oldContent ||
@@ -531,7 +537,8 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
         `${writePath} changed after it was planned (concurrent edit?) — nothing was written. Re-run to plan against the current file.`
       );
     }
-  }
+  };
+  await assertUnchanged();
 
   let backupPath: string | null = null;
   if (plan.fileExists) {
@@ -563,6 +570,19 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
         `Backup failed for ${writePath}: could not apply the source file's permissions to the backup (${err instanceof Error ? err.message : String(err)}); the backup was removed and nothing was written.`
       );
     }
+  }
+
+  // Second check — the backup preparation above awaited several times; a
+  // change that slipped in during those awaits must not be overwritten. The
+  // backup made a moment ago holds pre-change bytes and nothing was written,
+  // so remove it before failing.
+  try {
+    await assertUnchanged();
+  } catch (err) {
+    if (backupPath) {
+      await unlink(backupPath).catch(() => {});
+    }
+    throw err;
   }
 
   try {

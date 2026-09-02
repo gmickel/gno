@@ -2782,11 +2782,13 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    `<file>.gno-agents.bak.<timestamp>` before the write. The backup inherits
    the source file's permission mode (a 0600 file yields a 0600 backup, never
    a umask-default world-readable copy; if the mode cannot be applied the
-   backup is removed and the target fails). Immediately before writing, the file
-   is re-read and compared to the bytes it was planned from; if it changed in
-   between (editor, dotfile sync, concurrent run) the write is refused with a
-   per-target error — nothing written, no backup — and the run must be
-   repeated against the current file.
+   backup is removed and the target fails). The file is re-read and compared
+   to the bytes it was planned from twice — before the backup is made, and
+   again as the last step before the active-file write (the backup copy and
+   permission steps are themselves a window); if it changed in between
+   (editor, dotfile sync, concurrent run) the write is refused with a
+   per-target `RUNTIME` error, any backup just made is removed, nothing is
+   written, and the run must be repeated against the current file.
 3. Idempotent: a current block is a `current` no-op (no write, no backup).
 4. Fail-closed marker validation: malformed or duplicate markers → per-target
    `error` with guidance, nothing written to that file, exit 1. Separator
