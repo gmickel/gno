@@ -1310,6 +1310,7 @@ Options:
 - `--scope <project|user>` - Installation scope (default: project)
 - `--target <claude|codex|opencode|openclaw|hermes|all>` - Target agent (default: claude)
 - `--force` - Overwrite existing installation
+- `--skills-dir <path>` - Explicit absolute skills directory for a nonstandard instance (single `--target` only). Must be at least two levels below the filesystem root so the skill stays removable; a symlinked directory is anchored at its resolved path
 
 Supported targets: Claude Code, Codex, OpenCode, OpenClaw, Hermes Agent. Use `all` to install to every target.
 

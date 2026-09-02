@@ -277,6 +277,11 @@ describe("skill CLI commands", () => {
           skillsDir: "relative/skills",
         })
       ).toThrow("--skills-dir must be an absolute path");
+      // `/tmp` would install `/tmp/gno` once and then fail the deletion depth
+      // guard on `--force` and uninstall — refuse it before the first install.
+      expect(() =>
+        resolveSkillPaths({ scope: "user", target: "codex", skillsDir: "/tmp" })
+      ).toThrow("--skills-dir must be at least two levels below");
     });
 
     test("a short explicit skills dir is removable when it is the resolved destination", () => {

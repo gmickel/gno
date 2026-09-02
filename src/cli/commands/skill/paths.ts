@@ -140,6 +140,9 @@ const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
 // Path Resolution
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** `<skills-dir>/<name>` must have ≥ 3 segments to be removable; see below. */
+const MIN_EXPLICIT_SKILLS_DIR_DEPTH = 2;
+
 /**
  * Paths for an explicitly named skills directory (`--skills-dir` or a
  * dedicated env override). The directory is anchored at its *resolved* root:
@@ -149,7 +152,7 @@ const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
  * destination we installed into — breaking `--force` and uninstall. A
  * not-yet-existing directory (fresh install) keeps its normalized lexical path.
  */
-function explicitSkillPaths(dir: string): SkillPaths {
+function explicitSkillPaths(dir: string, label: string): SkillPaths {
   let skillsDir = normalize(dir);
   if (existsSync(skillsDir)) {
     try {
@@ -158,6 +161,17 @@ function explicitSkillPaths(dir: string): SkillPaths {
       // Unresolvable (race/permissions): fall back to the lexical path; the
       // deletion validator still performs its own containment checks.
     }
+  }
+  // `validatePathForDeletion` refuses destinations with fewer than three
+  // segments (`/tmp/gno`), so a skills dir like `/tmp` would install once and
+  // then be unmanageable through `--force` and `skill uninstall`. Refuse it up
+  // front instead of leaving a stranded installation.
+  const depth = skillsDir.split(sep).filter(Boolean).length;
+  if (depth < MIN_EXPLICIT_SKILLS_DIR_DEPTH) {
+    throw new CliError(
+      "VALIDATION",
+      `${label} must be at least two levels below the filesystem root (e.g. /opt/agent/skills) so the installed skill can be removed again`
+    );
   }
   return {
     base: dirname(skillsDir),
@@ -179,7 +193,7 @@ export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
       // Invalid CLI operand → exit 1 (validation), not a runtime failure.
       throw new CliError("VALIDATION", "--skills-dir must be an absolute path");
     }
-    return explicitSkillPaths(opts.skillsDir);
+    return explicitSkillPaths(opts.skillsDir, "--skills-dir");
   }
 
   // Check for env overrides first
@@ -193,7 +207,7 @@ export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
         `${config.envVar} must be an absolute path`
       );
     }
-    return explicitSkillPaths(envOverride);
+    return explicitSkillPaths(envOverride, config.envVar);
   }
 
   // Resolve base directory

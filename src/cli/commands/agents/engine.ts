@@ -13,7 +13,10 @@
 
 // node:fs/promises: Bun has no API to read or set a file's permission mode;
 // the backup must inherit the source file's (possibly restrictive) mode.
-import { chmod, stat, unlink } from "node:fs/promises";
+// mkdir: directory creation for a dangling link's resolved parent.
+import { chmod, mkdir, stat, unlink } from "node:fs/promises";
+// node:path: no Bun path utilities.
+import { dirname } from "node:path";
 
 import type {
   ExtractedBlock,
@@ -57,6 +60,12 @@ export interface TargetPlan {
   /** Content after the change (equal to oldContent for no-op actions). */
   newContent: string;
   fileExists: boolean;
+  /**
+   * Real identity of `target.configDir` at plan time (`null` = absent, as for
+   * an undetected covering target); revalidated before a planned-new file is
+   * written so a config dir removed/moved after planning is not recreated.
+   */
+  configDirIdentity?: string | null;
   /**
    * The existing file began with a UTF-8 BOM. Content strings exclude it;
    * the write path re-prepends it so operator bytes outside the markers stay
@@ -540,6 +549,7 @@ export async function planTargets(
       oldContent: content,
       newContent,
       fileExists: exists,
+      configDirIdentity: await configDirIdentity(target.configDir),
       bom,
     });
   }
@@ -552,6 +562,19 @@ export async function planTargets(
 // ─────────────────────────────────────────────────────────────────────────────
 
 const WRITE_ACTIONS: PlanAction[] = ["install", "update", "remove"];
+
+/**
+ * Real identity of a config directory, or `null` when it is absent (or not a
+ * directory). Recorded at plan time and compared before a planned-new write.
+ */
+export async function configDirIdentity(
+  configDir: string
+): Promise<string | null> {
+  const isDir = await stat(configDir)
+    .then((s) => s.isDirectory())
+    .catch(() => false);
+  return isDir ? realIdentity(configDir) : null;
+}
 
 export function planWrites(plan: TargetPlan): boolean {
   return WRITE_ACTIONS.includes(plan.action);
@@ -567,8 +590,11 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
     return null;
   }
 
-  // Write through symlinks: the resolved identity is the real file.
-  const writePath = plan.fileExists ? plan.target.realFile : plan.target.file;
+  // Write through symlinks: the resolved identity is the real file. This holds
+  // for a dangling link too — its target (and, below, the target's parent) is
+  // created while the link itself is preserved. Opening the lexical link would
+  // fail with ENOENT when the target's parent is missing.
+  const writePath = plan.target.realFile;
 
   // `plan.newContent` was derived from the bytes read at plan time. If an
   // editor, a dotfile sync, or another `gno agents` process changes the file
@@ -587,6 +613,25 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
       throw new CliError(
         "RUNTIME",
         `${plan.target.file} no longer resolves to ${plan.target.realFile} (symlink retargeted after planning) — nothing was written. Re-run to plan against the current file.`
+      );
+    }
+    // A file planned as absent is only legitimate while the harness config
+    // directory it was planned under still exists and is the same directory.
+    // `Bun.write` recreates missing parents, so without this check a config
+    // dir deleted or moved after planning would be silently fabricated (the
+    // leaf check below sees absent === absent).
+    // A config dir that was ABSENT at plan time (an undetected covering target
+    // promoted by a detected importer) is legitimately created, so the rule
+    // is "same state as planned", not "must exist".
+    if (
+      !plan.fileExists &&
+      plan.configDirIdentity !== undefined &&
+      (await configDirIdentity(plan.target.configDir)) !==
+        plan.configDirIdentity
+    ) {
+      throw new CliError(
+        "RUNTIME",
+        `${plan.target.configDir} disappeared or moved after ${writePath} was planned — nothing was written. Re-run to plan against the current state.`
       );
     }
     const currentFile = Bun.file(writePath);
@@ -659,6 +704,11 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
   }
 
   try {
+    if (!plan.fileExists) {
+      // Dangling-link install: the resolved target's parent may not exist yet
+      // (the config dir itself was revalidated above).
+      await mkdir(dirname(writePath), { recursive: true });
+    }
     await Bun.write(writePath, (plan.bom ? UTF8_BOM : "") + plan.newContent);
   } catch (err) {
     throw new CliError(
