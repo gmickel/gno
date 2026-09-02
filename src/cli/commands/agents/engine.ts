@@ -14,7 +14,8 @@
 // node:fs/promises: Bun has no API to read or set a file's permission mode;
 // the backup must inherit the source file's (possibly restrictive) mode.
 // mkdir: directory creation for a dangling link's resolved parent.
-import { chmod, mkdir, stat, unlink } from "node:fs/promises";
+// rename: atomic replace of the live instruction file (Bun.write is in-place).
+import { chmod, mkdir, rename, stat, unlink } from "node:fs/promises";
 // node:path: no Bun path utilities.
 import { dirname } from "node:path";
 
@@ -325,13 +326,22 @@ export function aggregateRemediation(
         entry.targets.push(consumer.skillTarget);
       }
     }
-    // Pass 2 — consumers with alternatives add a remediation only when nothing
-    // already selected for this file satisfies them: the standard dir when a
-    // redirect decouples them from their preferred target, else that target.
+    // Pass 2 — consumers with alternatives add a remediation only when
+    // something already selected for this file puts the skill where they LOAD
+    // it from: a selected target satisfies them only when no env redirect
+    // decouples them from it (`--target claude` under CLAUDE_CONFIG_DIR installs
+    // into the redirected instance, while Cursor keeps reading
+    // `~/.claude/skills`); a selected standard dir satisfies them when it is
+    // the one they load from. Otherwise: the standard dir when redirected from
+    // their preferred target, else that target.
     for (const consumer of flexible) {
-      const satisfied = consumer.skillTargets.some((t) =>
-        entry.targets.includes(t)
-      );
+      const redirected = consumer.redirectedSkillTargets ?? [];
+      const satisfied =
+        consumer.skillTargets.some(
+          (t) => entry.targets.includes(t) && !redirected.includes(t)
+        ) ||
+        (consumer.skillHome !== undefined &&
+          entry.extraDirs.includes(consumer.skillHome));
       if (satisfied) {
         continue;
       }
@@ -668,6 +678,9 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
     try {
       await Bun.write(backupPath, Bun.file(writePath));
     } catch (err) {
+      // A copy that failed midway (disk full, quota) may have left a partial,
+      // umask-mode file holding private instruction bytes — remove it.
+      await unlink(backupPath).catch(() => {});
       throw new CliError(
         "RUNTIME",
         `Backup failed for ${writePath}: ${err instanceof Error ? err.message : String(err)} — nothing was written.`
@@ -703,17 +716,31 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
     throw err;
   }
 
+  // Atomic replace: write a sibling temp file and rename it over the
+  // destination. Writing the live file in place could truncate it or leave
+  // partial bytes when the write fails midway (quota, I/O error) — the harness
+  // would then read a corrupted file until the backup is restored by hand.
+  // rename(2) is atomic on the same filesystem, which a sibling guarantees.
+  const tempPath = `${writePath}.gno-agents.tmp.${process.pid}`;
   try {
     if (!plan.fileExists) {
       // Dangling-link install: the resolved target's parent may not exist yet
       // (the config dir itself was revalidated above).
       await mkdir(dirname(writePath), { recursive: true });
     }
-    await Bun.write(writePath, (plan.bom ? UTF8_BOM : "") + plan.newContent);
+    await Bun.write(tempPath, (plan.bom ? UTF8_BOM : "") + plan.newContent);
+    if (plan.fileExists) {
+      // The temp file was created with the process umask; the replacement
+      // must keep the live file's (possibly restrictive) mode.
+      const { mode } = await stat(writePath);
+      await chmod(tempPath, mode & 0o777);
+    }
+    await rename(tempPath, writePath);
   } catch (err) {
+    await unlink(tempPath).catch(() => {});
     throw new CliError(
       "RUNTIME",
-      `Write failed for ${writePath}: ${err instanceof Error ? err.message : String(err)}` +
+      `Write failed for ${writePath}: ${err instanceof Error ? err.message : String(err)}; the live file is unchanged` +
         (backupPath ? ` (backup preserved at ${backupPath})` : "")
     );
   }

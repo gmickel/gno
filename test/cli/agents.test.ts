@@ -556,6 +556,61 @@ describe("agents CLI commands", () => {
       });
     });
 
+    test("a redirected Claude selected in pass 1 does not satisfy a co-consuming Cursor", () => {
+      // Claude and Cursor share a file, both lack the skill, CLAUDE_CONFIG_DIR
+      // redirects Claude: `--target claude` installs into the redirected
+      // instance while Cursor keeps loading `~/.claude/skills`, so Cursor
+      // still needs the standard dir. (A Grok that already forced that
+      // standard dir satisfies Cursor without a further entry.)
+      const shared = join(FAKE_HOME, "AGENTS.md");
+      const standardHome = join(FAKE_HOME, ".claude");
+      const claude: ResolvedTarget = {
+        id: "claude",
+        label: "Claude Code",
+        configDir: join(FAKE_HOME, "redirected-claude"),
+        file: shared,
+        realFile: shared,
+        detected: true,
+        skillInstalled: false,
+        skillTarget: "claude",
+        skillTargets: ["claude"],
+      };
+      const cursor: ResolvedTarget = {
+        id: "cursor",
+        label: "Cursor Agent",
+        configDir: join(FAKE_HOME, ".cursor"),
+        file: shared,
+        realFile: shared,
+        detected: true,
+        skillInstalled: false,
+        skillTarget: "claude",
+        skillTargets: ["claude", "codex"],
+        skillHome: standardHome,
+        redirectedSkillTargets: ["claude"],
+      };
+      expect(aggregateRemediation([claude, cursor]).get(shared)).toEqual({
+        targets: ["claude"],
+        extraDirs: [standardHome],
+      });
+      const grok: ResolvedTarget = {
+        id: "grok",
+        label: "Grok Build",
+        configDir: join(FAKE_HOME, ".grok"),
+        file: shared,
+        realFile: shared,
+        detected: true,
+        skillInstalled: false,
+        skillTarget: "claude",
+        skillTargets: ["claude"],
+        skillHome: standardHome,
+        redirectedSkillTargets: ["claude"],
+      };
+      expect(aggregateRemediation([grok, cursor]).get(shared)).toEqual({
+        targets: [],
+        extraDirs: [standardHome],
+      });
+    });
+
     test("dangling instruction-file symlinks to one missing target dedupe", async () => {
       // Regression: when the instruction files themselves are dangling
       // symlinks to the same not-yet-created shared file, the parent-only
@@ -1060,6 +1115,15 @@ describe("agents CLI commands", () => {
       // The backup is a byte-for-byte copy of private content — it must be
       // exactly as private, not umask-default 0644.
       expect((await stat(backup)).mode & 0o777).toBe(0o600);
+      // The live file is replaced atomically via a sibling temp file; the
+      // replacement keeps the source mode and no temp file is left behind.
+      expect((await stat(CODEX_FILE)).mode & 0o777).toBe(0o600);
+      expect(await Bun.file(CODEX_FILE).text()).toContain(BEGIN_MARKER);
+      expect(
+        readdirSync(join(FAKE_HOME, ".codex")).filter((f) =>
+          f.includes(".gno-agents.tmp.")
+        )
+      ).toEqual([]);
     });
 
     test("preserves a UTF-8 BOM across install, verify, and uninstall", async () => {

@@ -191,6 +191,13 @@ export interface ResolvedTarget {
    * elsewhere): the standard config dir the remediation must install into.
    */
   skillHome?: string;
+  /**
+   * Skill targets (out of `skillTargets`) whose env redirect decouples this
+   * consumer from them: `gno skill install --target <t>` would land in the
+   * redirected instance, not the standard dir this consumer loads from, so a
+   * selection of `<t>` for a co-consumer does NOT satisfy this one.
+   */
+  redirectedSkillTargets?: readonly SkillTarget[];
   /** Import chain target this harness is covered by, when applicable. */
   coveredBy?: HarnessId;
   /** Whether the GNO agent skill is installed for this harness (user scope). */
@@ -403,6 +410,9 @@ function resolveHarness(
   const locations = skillStateLocations(def.id, home, explicitHome);
   // Remediation vehicle = the first skill target (tuple type guarantees one).
   const location = skillStateLocation(def.id, home, explicitHome);
+  const redirected = locations
+    .filter((loc) => loc.skillHome !== undefined)
+    .map((loc) => loc.target);
   const file =
     def.instructionFile.dir === "home"
       ? join(home, def.instructionFile.name)
@@ -421,6 +431,7 @@ function resolveHarness(
     skillTarget: location.target,
     skillTargets: def.skillTargets,
     ...(location.skillHome !== undefined && { skillHome: location.skillHome }),
+    ...(redirected.length > 0 && { redirectedSkillTargets: redirected }),
   };
 }
 
