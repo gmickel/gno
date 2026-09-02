@@ -2788,11 +2788,17 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    repeated against the current file.
 3. Idempotent: a current block is a `current` no-op (no write, no backup).
 4. Fail-closed marker validation: malformed or duplicate markers → per-target
-   `error` with guidance, nothing written to that file, exit 1. The stamp hash
-   covers the block body AND the `+nl` newline-provenance token, so a
-   hand-edited token fails `verify` (`hashOk: false`) and `update` drops an
-   unauthenticated provenance claim rather than trusting it (uninstall then
-   preserves the newline — it never removes operator bytes on a forged claim).
+   `error` with guidance, nothing written to that file, exit 1. Separator
+   provenance is recorded in the stamp — `sep:blank` (one blank line added
+   after a `\n`-terminated file) or `sep:nl` (the single `\n` appended to a
+   file lacking a final newline) plus `pre:<hash>` of the operator bytes
+   immediately preceding the separator — and the stamp hash covers body AND
+   token. Uninstall consumes a separator only when the claim authenticates and
+   its context still matches; a hand-edited token (fails `verify`,
+   `hashOk: false`) or a block pasted/moved after existing whitespace (context
+   mismatch) leaves that whitespace intact, and `update` drops a provenance
+   claim it cannot prove rather than trusting it — operator bytes outside the
+   markers are never removed on an unproven claim.
    Files are read and written as bytes: a leading UTF-8 BOM is preserved across
    install/update/uninstall, and a file that is not valid UTF-8 is refused
    (per-target `error`, nothing written) rather than rewritten with

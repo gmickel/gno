@@ -204,8 +204,22 @@ async function runMutation(
       reports.push(reportFor(plan, null));
       continue;
     }
-    const backup = await applyPlan(plan);
-    reports.push(reportFor(plan, backup));
+    // A failing apply (backup error, concurrent edit detected, write error)
+    // must not abort the run before the receipt is emitted: earlier targets
+    // may already have been written, and the operator needs to see exactly
+    // which. Record an `error` row and keep going; the accumulated receipt is
+    // printed below and the run still exits non-zero.
+    try {
+      const backup = await applyPlan(plan);
+      reports.push(reportFor(plan, backup));
+    } catch (err) {
+      errors += 1;
+      reports.push({
+        ...reportFor(plan, undefined),
+        action: "error",
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   if (json) {
@@ -374,17 +388,18 @@ async function verifyTarget(
   }
 
   const { block } = extraction;
-  // The stamp hash covers body + `+nl` token, so a stripped/forged token
-  // fails here rather than being mirrored into the expected render below.
+  // The stamp hash covers body + separator-provenance token, so a stripped or
+  // forged token fails here rather than being mirrored into the render below.
   const hashOk = stampAuthenticates(block);
   // Expected inner text = current render for this file's aggregated skill
   // state and remediation set (every detected consumer of the shared real
   // file, mirroring what install renders), without the marker lines. The
-  // `+nl` token is install-time provenance — mirrored only once authenticated.
+  // separator token is install-time provenance — mirrored only once
+  // authenticated.
   const expectedInner = renderBlock({
     skillInstalled:
       runContext.skillByFile.get(target.realFile) ?? target.skillInstalled,
-    addedLeadingNewline: hashOk && (block.stamp?.addedLeadingNewline ?? false),
+    separator: hashOk ? block.stamp?.separator : undefined,
     remediation: runContext.remediationByFile.get(target.realFile),
   })
     .split("\n")

@@ -13,6 +13,7 @@ import {
   quotePathForShell,
   renderBlock,
   renderBlockBody,
+  separatorContextHash,
 } from "../../src/cli/commands/agents/block";
 import {
   installAgents,
@@ -745,18 +746,21 @@ describe("agents CLI commands", () => {
       );
     });
 
-    test("newline-provenance token is authenticated by the stamp hash", async () => {
-      // Regression: the hash covered the body only, so deleting ` +nl` from
-      // the stamp left the block "current" while uninstall would then leave
-      // the install-added newline behind.
+    test("separator-provenance token is authenticated by the stamp hash", async () => {
+      // Regression: the hash covered the body only, so deleting the provenance
+      // token from the stamp left the block "current" while uninstall would
+      // then leave the install-added newline behind.
       await setupHome([".codex"]);
-      await Bun.write(CODEX_FILE, "abc"); // no final newline → install stamps +nl
+      await Bun.write(CODEX_FILE, "abc"); // no final newline → install stamps sep:nl
       await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
       const installed = await Bun.file(CODEX_FILE).text();
-      expect(installed).toContain(" +nl ");
+      expect(installed).toMatch(/ sep:nl pre:[0-9a-f]{8} /);
 
       // Tamper: strip the provenance token by hand.
-      await Bun.write(CODEX_FILE, installed.replace(" +nl ", " "));
+      await Bun.write(
+        CODEX_FILE,
+        installed.replace(/ sep:nl pre:[0-9a-f]{8} /, " ")
+      );
       stdoutOutput = [];
       let thrown: unknown;
       try {
@@ -783,20 +787,20 @@ describe("agents CLI commands", () => {
       expect(await Bun.file(CODEX_FILE).text()).toBe("abc\n");
     });
 
-    test("uninstall never consumes a newline on a forged +nl claim", async () => {
-      // A user-owned newline precedes the block; someone adds ` +nl` to the
-      // stamp by hand. The token fails the body+token hash, so uninstall must
-      // preserve that newline instead of trusting the claim.
+    test("uninstall never consumes a newline on a forged sep:nl claim", async () => {
+      // A user-owned newline precedes the block; someone edits the stamp's
+      // provenance to claim install added it. The token fails the body+token
+      // hash, so uninstall must preserve that newline instead of trusting it.
       await setupHome([".codex"]);
       await Bun.write(CODEX_FILE, "abc\n");
       await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
       const installed = await Bun.file(CODEX_FILE).text();
-      // Installed shape: "abc\n\n<block>\n". Collapse to one user newline and
-      // forge the provenance token.
+      // Installed shape: "abc\n\n<block>\n" stamped sep:blank. Collapse to one
+      // user newline and forge the provenance token to sep:nl.
       const forged = installed
         .replace("abc\n\n", "abc\n")
-        .replace(/ sha256:([0-9a-f]{16}) —/, " sha256:$1 +nl —");
-      expect(forged).toContain(" +nl —");
+        .replace(/ sep:blank pre:([0-9a-f]{8}) —/, " sep:nl pre:$1 —");
+      expect(forged).toMatch(/ sep:nl pre:[0-9a-f]{8} —/);
       await Bun.write(CODEX_FILE, forged);
 
       await uninstallAgents({
@@ -942,7 +946,7 @@ describe("agents CLI commands", () => {
         true
       );
       // The added newline is recorded inside the block, not inferred later.
-      expect(installed).toContain(" +nl —");
+      expect(installed).toMatch(/ sep:nl pre:[0-9a-f]{8} —/);
 
       await uninstallAgents({
         target: "codex",
@@ -954,7 +958,7 @@ describe("agents CLI commands", () => {
 
     test("uninstall preserves a lone user-owned newline before an unstamped block", async () => {
       // Regression: a block preceded by exactly one newline (e.g. pasted
-      // after a normally terminated line) carries no `+nl` provenance, so
+      // after a normally terminated line) carries no separator provenance, so
       // that newline is user content — `abc\n<block>\n` → `abc\n`, not `abc`.
       await setupHome([".codex"]);
       const block = renderBlock({ skillInstalled: false });
@@ -968,20 +972,59 @@ describe("agents CLI commands", () => {
       expect(await Bun.file(CODEX_FILE).text()).toBe("# My rules\n");
     });
 
-    test("update preserves the +nl provenance across block replacement", async () => {
+    test("uninstall leaves an operator's blank line intact under a moved block", async () => {
+      // Regression: the `\n\n` branch consumed a newline unconditionally, so a
+      // block pasted after an existing blank line (`abc\n\n<block>`) lost the
+      // operator's newline. A moved block carries a valid stamp whose context
+      // hash does not match its new surroundings — provenance must not apply.
+      await setupHome([".codex"]);
+      const moved = renderBlock({
+        skillInstalled: false,
+        separator: { kind: "blank", pre: separatorContextHash("elsewhere\n") },
+      });
+      await Bun.write(CODEX_FILE, `abc\n\n${moved}\n`);
+
+      await uninstallAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        json: true,
+      });
+      expect(await Bun.file(CODEX_FILE).text()).toBe("abc\n\n");
+    });
+
+    test("install after a newline-terminated file round-trips byte-identically", async () => {
+      await setupHome([".codex"]);
+      await Bun.write(CODEX_FILE, "abc\n");
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      expect(await Bun.file(CODEX_FILE).text()).toMatch(
+        /^abc\n\n<!-- gno:agents:begin -->\n<!-- gno-agents block v\d+ sha256:[0-9a-f]{16} sep:blank pre:[0-9a-f]{8} /
+      );
+      await uninstallAgents({
+        target: "codex",
+        homeDir: FAKE_HOME,
+        json: true,
+      });
+      expect(await Bun.file(CODEX_FILE).text()).toBe("abc\n");
+    });
+
+    test("update preserves the separator provenance across block replacement", async () => {
       await setupHome([".codex"]);
       const noFinalNewline = "# My rules\n\nKeep it simple.";
       await Bun.write(CODEX_FILE, noFinalNewline);
       await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
 
       // Simulate a stale-but-genuine block from an older release: different
-      // version and body, +nl token kept, and a stamp hash that AUTHENTICATES
-      // that body+token (a forged/unauthenticated token is dropped instead —
-      // covered by the tamper test in the marker-safety section).
+      // version and body, sep:nl token kept with its real context hash, and a
+      // stamp hash that AUTHENTICATES that body+token (a forged/unauthenticated
+      // token is dropped instead — covered by the tamper tests).
       const installed = await Bun.file(CODEX_FILE).text();
+      const separator = {
+        kind: "nl" as const,
+        pre: separatorContextHash(noFinalNewline),
+      };
       const stale = installed.replace(
-        /<!-- gno-agents block v\d+ sha256:[0-9a-f]{16} \+nl —[^>]*-->[\s\S]*?(?=\n<!-- gno:agents:end -->)/,
-        `<!-- gno-agents block v0 sha256:${hashBlockBody("old body", true)} +nl — stale -->\nold body`
+        /<!-- gno-agents block v\d+ sha256:[0-9a-f]{16} sep:nl pre:[0-9a-f]{8} —[^>]*-->[\s\S]*?(?=\n<!-- gno:agents:end -->)/,
+        `<!-- gno-agents block v0 sha256:${hashBlockBody("old body", separator)} sep:nl pre:${separator.pre} — stale -->\nold body`
       );
       expect(stale).not.toBe(installed);
       await Bun.write(CODEX_FILE, stale);
@@ -990,7 +1033,9 @@ describe("agents CLI commands", () => {
         { target: "codex", homeDir: FAKE_HOME, json: true },
         "update"
       );
-      expect(await Bun.file(CODEX_FILE).text()).toContain(" +nl —");
+      expect(await Bun.file(CODEX_FILE).text()).toMatch(
+        / sep:nl pre:[0-9a-f]{8} —/
+      );
 
       await uninstallAgents({
         target: "codex",
@@ -1000,8 +1045,8 @@ describe("agents CLI commands", () => {
       expect(await Bun.file(CODEX_FILE).text()).toBe(noFinalNewline);
     });
 
-    test("uninstall keeps line structure when content follows a +nl block", async () => {
-      // Mid-file +nl block: the install-added newline now terminates the
+    test("uninstall keeps line structure when content follows a sep:nl block", async () => {
+      // Mid-file sep:nl block: the install-added newline now terminates the
       // preceding line, so consuming it would merge lines — keep it.
       await setupHome([".codex"]);
       await Bun.write(CODEX_FILE, "# My rules");
@@ -1017,7 +1062,7 @@ describe("agents CLI commands", () => {
       expect(await Bun.file(CODEX_FILE).text()).toBe("# My rules\n# After\n");
     });
 
-    test("verify reports ok for a +nl-stamped install", async () => {
+    test("verify reports ok for a sep:nl-stamped install", async () => {
       await setupHome([".codex"]);
       await Bun.write(CODEX_FILE, "# My rules");
       await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });

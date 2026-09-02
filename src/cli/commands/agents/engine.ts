@@ -15,11 +15,20 @@
 // the backup must inherit the source file's (possibly restrictive) mode.
 import { chmod, stat } from "node:fs/promises";
 
-import type { ExtractedBlock, SkillRemediation } from "./block.js";
+import type {
+  ExtractedBlock,
+  SeparatorProvenance,
+  SkillRemediation,
+} from "./block.js";
 import type { ResolvedTarget } from "./harnesses.js";
 
 import { CliError } from "../../errors.js";
-import { extractBlock, renderBlock, stampAuthenticates } from "./block.js";
+import {
+  extractBlock,
+  renderBlock,
+  separatorContextHash,
+  stampAuthenticates,
+} from "./block.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -95,10 +104,12 @@ export type PlanMode = "install" | "uninstall";
  *
  * Append separators preserve the original trailing-newline state:
  * - empty file → block only
- * - ends with `\n` → one blank line, then the block
- * - missing final newline → a single added `\n`, then the block; the caller
- *   records that fact inside the block (stamp `+nl` token) so uninstall can
- *   restore the file byte-identically without inferring from file shape
+ * - ends with `\n` → one blank line, then the block (`sep:blank`)
+ * - missing final newline → a single added `\n`, then the block (`sep:nl`)
+ * The caller records which separator it added — plus a hash of the operator
+ * bytes right before it — inside the block (stamp `sep:<kind> pre:<hash>`),
+ * so uninstall can restore the file byte-identically without inferring from
+ * file shape, and never consumes whitespace it cannot prove it added.
  */
 function withBlock(
   oldContent: string,
@@ -117,11 +128,41 @@ function withBlock(
 }
 
 /**
- * Remove the managed block plus whatever separator install added above it —
- * the one blank line (original file ended in `\n`), or the single newline
- * install appended to a file that had no final newline. The latter is only
- * consumed when the block's stamp records it (`+nl` token): a lone newline
- * before the block is otherwise user content and must be preserved.
+ * The separator install added above a block, when the block's stamp proves it:
+ * the claim must authenticate (body + token hash) AND the recorded context
+ * hash must still match the operator bytes immediately preceding the
+ * separator. A block pasted/moved after existing whitespace carries a stamp
+ * whose context no longer matches; a hand-edited token fails the hash. Either
+ * way the answer is `undefined` — whitespace outside the markers is then
+ * treated as operator content.
+ */
+function provenSeparator(
+  content: string,
+  block: ExtractedBlock
+): SeparatorProvenance | undefined {
+  const separator = block.stamp?.separator;
+  if (!separator || !stampAuthenticates(block)) {
+    return undefined;
+  }
+  // Both kinds occupy exactly one `\n` right before the block; the operator
+  // content precedes that byte.
+  if (block.start < 1 || content[block.start - 1] !== "\n") {
+    return undefined;
+  }
+  const preceding = content.slice(0, block.start - 1);
+  if (separator.kind === "blank" && !preceding.endsWith("\n")) {
+    return undefined; // a blank line needs the operator's own `\n` before it
+  }
+  return separatorContextHash(preceding) === separator.pre
+    ? separator
+    : undefined;
+}
+
+/**
+ * Remove the managed block plus the separator install added above it — but
+ * ONLY when the block's authenticated, context-matched provenance says install
+ * added it (`provenSeparator`). Whitespace without proven provenance is
+ * operator content and is left intact.
  */
 function withoutBlock(oldContent: string, block: ExtractedBlock): string {
   let start = block.start;
@@ -130,21 +171,15 @@ function withoutBlock(oldContent: string, block: ExtractedBlock): string {
   if (oldContent[end] === "\n") {
     end += 1;
   }
-  if (oldContent.slice(start - 2, start) === "\n\n") {
-    // Consume the single separating blank line install added.
+  const separator = provenSeparator(oldContent, block);
+  if (separator?.kind === "blank") {
+    // Install added one blank line after the operator's `\n`-terminated file.
     start -= 1;
-  } else if (
-    block.stamp?.addedLeadingNewline === true &&
-    stampAuthenticates(block) &&
-    end >= oldContent.length &&
-    oldContent[start - 1] === "\n"
-  ) {
-    // The stamp records that install appended this newline to a file that
-    // had no final newline — consume it to restore the original bytes. Only
-    // an AUTHENTICATED claim may consume bytes outside the markers: a `+nl`
-    // added by hand fails the body+token hash and the newline is preserved.
-    // The EOF guard keeps lines intact if content was later added below the
-    // block (the newline then terminates the preceding line).
+  } else if (separator?.kind === "nl" && end >= oldContent.length) {
+    // Install appended this newline to a file that had no final newline —
+    // consume it to restore the original bytes. The EOF guard keeps lines
+    // intact if content was later added below the block (the newline then
+    // terminates the preceding line).
     start -= 1;
   }
   return oldContent.slice(0, start) + oldContent.slice(end);
@@ -393,23 +428,29 @@ export async function planTargets(
       continue;
     }
 
-    // Fresh install onto a file missing its final newline: withBlock will
-    // append one, and the stamp records that fact for uninstall. Updates
-    // carry the recorded provenance forward — but only when the stamp
-    // authenticates it (hash covers body + token). A hand-edited stamp is
-    // untrusted: drop the claim rather than let a forged token make uninstall
-    // consume a newline the operator owns (the conservative direction — it can
-    // leave an install-added newline behind, never remove operator bytes).
-    const addedLeadingNewline = extraction.found
-      ? stampAuthenticates(extraction.block) &&
-        (extraction.block.stamp?.addedLeadingNewline ?? false)
-      : content.length > 0 && !content.endsWith("\n");
+    // Fresh install: withBlock adds one separator above the block (a blank
+    // line after a `\n`-terminated file, or the single `\n` a file without a
+    // final newline lacked); record which, plus the context it was added in,
+    // so uninstall can restore the original bytes. Updates carry provenance
+    // forward only when it still PROVES (authenticated stamp + matching
+    // context); anything else is dropped — the conservative direction, which
+    // can leave an install-added separator behind but never removes operator
+    // bytes on a forged or displaced claim.
+    let separator: SeparatorProvenance | undefined;
+    if (extraction.found) {
+      separator = provenSeparator(content, extraction.block);
+    } else if (content.length > 0) {
+      separator = {
+        kind: content.endsWith("\n") ? "blank" : "nl",
+        pre: separatorContextHash(content),
+      };
+    }
     const rendered = renderBlock({
       // Aggregate across every detected consumer of this real file — the
       // skill-installed pointer is rendered only when ALL of them have the
       // skill (a shared file can serve harnesses with different states).
       skillInstalled: skillByFile.get(target.realFile) ?? target.skillInstalled,
-      addedLeadingNewline,
+      separator,
       remediation: remediationByFile.get(target.realFile),
     });
     const newContent = withBlock(

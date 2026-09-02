@@ -23,16 +23,39 @@ export const BLOCK_VERSION = 1;
 export const BEGIN_MARKER = "<!-- gno:agents:begin -->";
 export const END_MARKER = "<!-- gno:agents:end -->";
 
-const STAMP_RE = /^<!-- gno-agents block v(\d+) sha256:([0-9a-f]{16})( \+nl)? /;
+const STAMP_RE =
+  /^<!-- gno-agents block v(\d+) sha256:([0-9a-f]{16})(?: sep:(blank|nl) pre:([0-9a-f]{8}))? /;
 const HASH_PREFIX_LENGTH = 16;
+/** Chars of preceding operator content hashed into the separator context. */
+const SEPARATOR_CONTEXT_CHARS = 32;
+const SEPARATOR_CONTEXT_HASH_LENGTH = 8;
 
 /**
- * Stamp-line provenance token: install appended a final newline to a file
- * that had none, so uninstall must consume that one newline to restore the
- * original bytes. Recorded inside the markers because separator provenance
- * cannot be inferred from file shape at uninstall time.
+ * Separator provenance, recorded inside the markers because it cannot be
+ * inferred from file shape at uninstall time: which separator install added
+ * ABOVE the block (`blank` — one blank line after a `\n`-terminated file; `nl`
+ * — the single `\n` appended to a file lacking a final newline), plus a hash
+ * of the operator bytes immediately preceding it. Uninstall consumes the
+ * separator only when the claim authenticates AND the context still matches —
+ * a block pasted/moved after existing whitespace, or a hand-edited claim, never
+ * costs the operator a byte outside the markers.
  */
-const ADDED_NEWLINE_TOKEN = " +nl";
+export interface SeparatorProvenance {
+  kind: "blank" | "nl";
+  /** `separatorContextHash` of the content preceding the separator. */
+  pre: string;
+}
+
+/** Hash of the tail of the operator content that precedes install's separator. */
+export function separatorContextHash(precedingContent: string): string {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(precedingContent.slice(-SEPARATOR_CONTEXT_CHARS));
+  return hasher.digest("hex").slice(0, SEPARATOR_CONTEXT_HASH_LENGTH);
+}
+
+function separatorToken(separator?: SeparatorProvenance): string {
+  return separator ? ` sep:${separator.kind} pre:${separator.pre}` : "";
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Rendering
@@ -54,12 +77,14 @@ export interface BlockRenderOptions {
   /** Whether the GNO agent skill is installed for every consumer. */
   skillInstalled: boolean;
   /**
-   * Install appended a final newline to a file that had none. Stamped into
-   * the block (` +nl`) so uninstall knows the newline above the block is
-   * install-owned, not user content. Authenticated by the stamp hash: the
-   * hash covers body + token, so a stripped or added token fails verify.
+   * Which separator install added above the block, and the context it was
+   * added in. Stamped into the block (` sep:<kind> pre:<hash>`) so uninstall
+   * can restore the file byte-identically without inferring from file shape.
+   * Authenticated by the stamp hash (body + token), and context-checked at
+   * uninstall time, so a forged token or a moved block never consumes
+   * operator whitespace.
    */
-  addedLeadingNewline?: boolean;
+  separator?: SeparatorProvenance;
   /**
    * Consumers lacking the skill, for the remediation command. Absent (no
    * consumer information) falls back to the generic all-targets form.
@@ -139,47 +164,45 @@ Cite with gno:// URIs. Advanced retrieval (structured queries, filters, backlink
 
 /**
  * SHA-256 hex digest, truncated for the stamp line. Covers the body AND the
- * newline-provenance token, so the token is authenticated material: deleting
- * or adding ` +nl` by hand invalidates the stamp instead of silently changing
+ * separator-provenance token, so the token is authenticated material: editing
+ * or adding it by hand invalidates the stamp instead of silently changing
  * what uninstall will consume.
  */
 export function hashBlockBody(
   body: string,
-  addedLeadingNewline = false
+  separator?: SeparatorProvenance
 ): string {
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(body);
-  if (addedLeadingNewline) {
-    hasher.update(`\n${ADDED_NEWLINE_TOKEN}`);
+  if (separator) {
+    hasher.update(`\n${separatorToken(separator)}`);
   }
   return hasher.digest("hex").slice(0, HASH_PREFIX_LENGTH);
 }
 
-/** Render the stamp line carrying version + authenticated hash (+ `+nl`). */
+/** Render the stamp line carrying version + authenticated hash (+ provenance). */
 export function renderStampLine(
   body: string,
-  addedLeadingNewline = false
+  separator?: SeparatorProvenance
 ): string {
-  const token = addedLeadingNewline ? ADDED_NEWLINE_TOKEN : "";
-  return `<!-- gno-agents block v${BLOCK_VERSION} sha256:${hashBlockBody(body, addedLeadingNewline)}${token} — managed by \`gno agents\`; manual edits inside the markers are overwritten -->`;
+  return `<!-- gno-agents block v${BLOCK_VERSION} sha256:${hashBlockBody(body, separator)}${separatorToken(separator)} — managed by \`gno agents\`; manual edits inside the markers are overwritten -->`;
 }
 
 /** True when the extracted stamp authenticates the body + provenance token. */
 export function stampAuthenticates(block: {
   body: string;
-  stamp: { hash: string; addedLeadingNewline: boolean } | null;
+  stamp: { hash: string; separator?: SeparatorProvenance } | null;
 }): boolean {
   return (
     block.stamp !== null &&
-    block.stamp.hash ===
-      hashBlockBody(block.body, block.stamp.addedLeadingNewline)
+    block.stamp.hash === hashBlockBody(block.body, block.stamp.separator)
   );
 }
 
 /** Render the complete block: BEGIN marker, stamp, body, END marker. */
 export function renderBlock(opts: BlockRenderOptions): string {
   const body = renderBlockBody(opts);
-  return `${BEGIN_MARKER}\n${renderStampLine(body, opts.addedLeadingNewline ?? false)}\n${body}\n${END_MARKER}`;
+  return `${BEGIN_MARKER}\n${renderStampLine(body, opts.separator)}\n${body}\n${END_MARKER}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -199,8 +222,8 @@ export interface ExtractedBlock {
   stamp: {
     version: number;
     hash: string;
-    /** Install recorded that it appended the file's missing final newline. */
-    addedLeadingNewline: boolean;
+    /** Install's recorded separator provenance, when stamped. */
+    separator?: SeparatorProvenance;
   } | null;
 }
 
@@ -264,7 +287,13 @@ export function extractBlock(
     ? {
         version: Number(stampMatch[1]),
         hash: stampMatch[2] ?? "",
-        addedLeadingNewline: stampMatch[3] !== undefined,
+        ...(stampMatch[3] !== undefined &&
+          stampMatch[4] !== undefined && {
+            separator: {
+              kind: stampMatch[3] as SeparatorProvenance["kind"],
+              pre: stampMatch[4],
+            },
+          }),
       }
     : null;
   const body = stamp && newlineIdx !== -1 ? inner.slice(newlineIdx + 1) : inner;
