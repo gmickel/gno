@@ -277,10 +277,16 @@ describe("skill CLI commands", () => {
           skillsDir: "relative/skills",
         })
       ).toThrow("--skills-dir must be an absolute path");
-      // `/tmp` would install `/tmp/gno` once and then fail the deletion depth
-      // guard on `--force` and uninstall — refuse it before the first install.
+      // A root-level dir would install `<dir>/gno` once and then fail the
+      // deletion depth guard on `--force` and uninstall — refuse it before the
+      // first install. A nonexistent path keeps the check host-independent
+      // (`/tmp` realpaths to `/private/tmp` on macOS, which is deep enough).
       expect(() =>
-        resolveSkillPaths({ scope: "user", target: "codex", skillsDir: "/tmp" })
+        resolveSkillPaths({
+          scope: "user",
+          target: "codex",
+          skillsDir: "/gno-root-level-skills",
+        })
       ).toThrow("--skills-dir must be at least two levels below");
     });
 
