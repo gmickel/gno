@@ -271,6 +271,16 @@ function followDanglingSymlinks(path: string): string {
   return current;
 }
 
+/** True when a directory entry exists at `path` — including a dangling symlink. */
+function directoryEntryExists(path: string): boolean {
+  try {
+    lstatSync(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function isDirectory(path: string): boolean {
   try {
     return statSync(path).isDirectory();
@@ -417,8 +427,12 @@ function resolveExtraDir(dir: string): ResolvedTarget {
       `--extra-dir ${dir} does not exist or is not a directory. The installer never fabricates harness directories.`
     );
   }
+  // lstat, not exists: a DANGLING symlink (an instruction file pointed at a
+  // shared file that does not exist yet) is still the instance's chosen
+  // instruction file — the engine writes through it. `existsSync` follows the
+  // link and would report it absent, silently creating a second file.
   const existing = EXTRA_DIR_FILE_CANDIDATES.find((name) =>
-    existsSync(join(abs, name))
+    directoryEntryExists(join(abs, name))
   );
   const file = join(abs, existing ?? DEFAULT_EXTRA_DIR_FILE);
   // An extra dir is a harness instance of its own: the skill it can load is

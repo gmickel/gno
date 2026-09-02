@@ -488,6 +488,72 @@ describe("agents CLI commands", () => {
       expect(content.split(BEGIN_MARKER).length - 1).toBe(1);
     });
 
+    test("--extra-dir selects a dangling instruction-file symlink as the candidate", async () => {
+      // Regression: `existsSync` follows the link and reported the dangling
+      // CLAUDE.md absent, so a fresh AGENTS.md was created beside it and the
+      // file the instance actually reads stayed unmanaged.
+      await setupHome([".claude", "instance", "shared"]);
+      const instance = join(FAKE_HOME, "instance");
+      const sharedTarget = join(FAKE_HOME, "shared", "instance-rules.md"); // absent
+      await symlink(sharedTarget, join(instance, "CLAUDE.md"));
+
+      await installAgents({
+        target: "claude",
+        homeDir: FAKE_HOME,
+        extraDirs: [instance],
+        json: true,
+      });
+      const report = JSON.parse(stdoutOutput.join(""));
+      const extra = report.results.find(
+        (r: { target: string }) => r.target === "extra-dir"
+      );
+      expect(extra.path).toBe(join(instance, "CLAUDE.md"));
+      expect(extra.action).toBe("install");
+      // Written THROUGH the link: the shared target now exists with the block,
+      // and no stray AGENTS.md was created.
+      expect(await Bun.file(sharedTarget).text()).toContain(BEGIN_MARKER);
+      expect(existsSync(join(instance, "AGENTS.md"))).toBe(false);
+    });
+
+    test("redirected Cursor still defers to a Codex install on a shared file", () => {
+      // Cursor with skillHome (CLAUDE_CONFIG_DIR active) shares a file with a
+      // skill-less Codex: the codex target satisfies Cursor, so no standard
+      // Claude dir is added to the remediation.
+      const shared = join(FAKE_HOME, ".codex", "AGENTS.md");
+      const codex: ResolvedTarget = {
+        id: "codex",
+        label: "Codex",
+        configDir: join(FAKE_HOME, ".codex"),
+        file: shared,
+        realFile: shared,
+        detected: true,
+        skillInstalled: false,
+        skillTarget: "codex",
+        skillTargets: ["codex"],
+      };
+      const cursor: ResolvedTarget = {
+        id: "cursor",
+        label: "Cursor Agent",
+        configDir: join(FAKE_HOME, ".cursor"),
+        file: join(FAKE_HOME, "AGENTS.md"),
+        realFile: shared,
+        detected: true,
+        skillInstalled: false,
+        skillTarget: "claude",
+        skillTargets: ["claude", "codex"],
+        skillHome: join(FAKE_HOME, ".claude"),
+      };
+      expect(aggregateRemediation([codex, cursor]).get(shared)).toEqual({
+        targets: ["codex"],
+        extraDirs: [],
+      });
+      // Alone, the redirected Cursor still remediates via its standard dir.
+      expect(aggregateRemediation([cursor]).get(shared)).toEqual({
+        targets: [],
+        extraDirs: [join(FAKE_HOME, ".claude")],
+      });
+    });
+
     test("dangling instruction-file symlinks to one missing target dedupe", async () => {
       // Regression: when the instruction files themselves are dangling
       // symlinks to the same not-yet-created shared file, the parent-only

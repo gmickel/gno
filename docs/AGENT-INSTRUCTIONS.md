@@ -81,7 +81,9 @@ gno agents install \
 ```
 
 Inside an extra dir the installer manages the first existing of `CLAUDE.md`,
-`AGENTS.md`, `SOUL.md` (creating `AGENTS.md` when none exists). An extra dir is
+`AGENTS.md`, `SOUL.md` (creating `AGENTS.md` when none exists; a dangling
+symlink counts as existing and is written through, so a link to a not-yet-created
+shared file stays the managed file). An extra dir is
 an instance of its own: its skill state is read from `<dir>/skills/gno`, never
 from a standard harness, so the block only names `/gno` once the skill is
 installed into that instance — for example
