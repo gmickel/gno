@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -12,10 +12,9 @@ describe("resolveCliQueryText", () => {
   });
 
   test("reads a query file and strips a trailing newline", async () => {
-    const dir = join(tmpdir(), `gno-query-text-${Date.now()}`);
-    await mkdir(dir, { recursive: true });
+    const dir = await mkdtemp(join(tmpdir(), "gno-query-text-"));
     const path = join(dir, "q.txt");
-    await writeFile(path, "ramen bowl\n");
+    await writeFile(path, "ramen bowl\n", { flag: "wx" });
     try {
       expect(await resolveCliQueryText("", path)).toBe("ramen bowl");
     } finally {

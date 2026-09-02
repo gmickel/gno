@@ -146,7 +146,7 @@ describe("gno search smoke tests", () => {
 
   test("search --query-file reads the query from a file", async () => {
     const queryPath = join(testDir, "query.txt");
-    await writeFile(queryPath, "markdown\n");
+    await writeFile(queryPath, "markdown\n", { flag: "wx" });
     const { code, stdout } = await cli(
       "search",
       "--query-file",
@@ -162,7 +162,7 @@ describe("gno search smoke tests", () => {
 
   test("search rejects a positional query together with --query-file", async () => {
     const queryPath = join(testDir, "query.txt");
-    await writeFile(queryPath, "markdown\n");
+    await writeFile(queryPath, "markdown\n", { flag: "wx" });
     const { code, stderr } = await cli(
       "search",
       "markdown",
@@ -185,7 +185,7 @@ describe("gno search smoke tests", () => {
 
   test("search --query-file empty file exits 1", async () => {
     const queryPath = join(testDir, "empty-query.txt");
-    await writeFile(queryPath, "");
+    await writeFile(queryPath, "", { flag: "wx" });
     const { code, stderr } = await cli("search", "--query-file", queryPath);
     expect(code).toBe(1);
     expect(stderr).toContain("Query cannot be empty");
@@ -193,7 +193,7 @@ describe("gno search smoke tests", () => {
 
   test("query diagnose rejects --query-file", async () => {
     const queryPath = join(testDir, "diag-query.txt");
-    await writeFile(queryPath, "markdown\n");
+    await writeFile(queryPath, "markdown\n", { flag: "wx" });
     const { code, stderr } = await cli(
       "query",
       "diagnose",

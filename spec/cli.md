@@ -1198,9 +1198,10 @@ gno search [query] [--query-file <path>] [-n <num>] [--min-score <num>] [-c <col
 ```
 
 **Arguments:**
-| Arg | Type | Description |
-|-----|------|-------------|
-| `<query>` | string | Search query |
+
+| Arg       | Type   | Description                                                          |
+| --------- | ------ | -------------------------------------------------------------------- |
+| `[query]` | string | Search query. Optional when `--query-file` is set. Do not pass both. |
 
 **Options:**
 
@@ -1340,6 +1341,8 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 gno query [query...] [--query-file <path>] [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
 gno query diagnose <query> --target <doc> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--json]
 ```
+
+The positional query is optional when `--query-file` is set. Do not pass both. `--query-file` is invalid on `query diagnose`.
 
 **Options:** Same as `gno search`, plus:
 

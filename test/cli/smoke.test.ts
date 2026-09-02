@@ -566,7 +566,7 @@ describe("CLI smoke tests", () => {
     test("search requires query", async () => {
       const { code, stderr } = await cli("search");
       expect(code).toBe(1);
-      expect(stderr).toContain("missing required argument");
+      expect(stderr).toContain("Query cannot be empty");
     });
 
     test("vsearch requires query", async () => {
@@ -578,7 +578,7 @@ describe("CLI smoke tests", () => {
     test("query requires query", async () => {
       const { code, stderr } = await cli("query");
       expect(code).toBe(1);
-      expect(stderr).toContain("missing required argument");
+      expect(stderr).toContain("Query cannot be empty");
     });
 
     test("ask requires query", async () => {
