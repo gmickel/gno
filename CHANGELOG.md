@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `gno skill install|uninstall|paths --json` printed human-readable text when
+  the global `--json` flag was consumed by the root program; the subcommands
+  now fall back to the global flag like every other command.
+
 ## [1.39.0] - 2026-09-02
 
 ### Added

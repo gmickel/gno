@@ -3201,7 +3201,9 @@ function wireSkillCommands(program: Command): void {
           | "hermes"
           | "all",
         force: Boolean(cmdOpts.force),
-        json: Boolean(cmdOpts.json),
+        // The root program also defines a global --json and may consume the
+        // flag; leave undefined here so the runner falls back to globals.
+        json: cmdOpts.json === true ? true : undefined,
       });
     });
 
@@ -3252,7 +3254,7 @@ function wireSkillCommands(program: Command): void {
           | "openclaw"
           | "hermes"
           | "all",
-        json: Boolean(cmdOpts.json),
+        json: cmdOpts.json === true ? true : undefined,
       });
     });
 
@@ -3316,7 +3318,7 @@ function wireSkillCommands(program: Command): void {
           | "openclaw"
           | "hermes"
           | "all",
-        json: Boolean(cmdOpts.json),
+        json: cmdOpts.json === true ? true : undefined,
       });
     });
 }
