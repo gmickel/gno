@@ -1037,14 +1037,21 @@ describe("agents CLI commands", () => {
       }
     });
 
-    test("an invalid dedicated skills override fails a requested harness, not 'skill missing'", () => {
+    test("an invalid dedicated skills override fails a requested harness, not 'skill missing'", async () => {
       // CLAUDE_SKILLS_DIR=relative is a broken environment; treating it as an
       // absent skill would write a block whose remediation inherits the same
-      // invalid env and fails immediately. Requested → VALIDATION; unrequested
-      // (lenient aggregation) → dropped.
+      // invalid env and fails immediately. Requested + detected → VALIDATION;
+      // unrequested (lenient aggregation) → dropped. Skill state is only
+      // probed where it is used: an uninstall proceeds, and an UNDETECTED
+      // harness under `all` is reported not-detected rather than aborting.
       const saved = process.env.CLAUDE_SKILLS_DIR;
       process.env.CLAUDE_SKILLS_DIR = "relative/skills";
       try {
+        // Undetected claude: never probed, `all` resolves without throwing.
+        const undetected = resolveTargets("all", { homeDir: FAKE_HOME });
+        expect(undetected.find((t) => t.id === "claude")?.detected).toBe(false);
+
+        await setupHome([".claude"]);
         expect(() => resolveTargets("claude", { homeDir: FAKE_HOME })).toThrow(
           CliError
         );
@@ -1053,6 +1060,30 @@ describe("agents CLI commands", () => {
           lenient: true,
         });
         expect(lenient.some((t) => t.id === "claude")).toBe(false);
+        // Uninstall does not read skill state → not probed, no throw.
+        const forUninstall = resolveTargets("claude", {
+          homeDir: FAKE_HOME,
+          probeSkillState: false,
+        });
+        expect(forUninstall[0]?.detected).toBe(true);
+        await installAgents({
+          target: "claude",
+          homeDir: FAKE_HOME,
+          json: true,
+        }).catch(() => {}); // install itself fails on the broken env
+        await Bun.write(
+          CLAUDE_FILE,
+          `# Mine\n\n${renderBlock({ skillInstalled: false })}\n`
+        );
+        stdoutOutput = [];
+        await uninstallAgents({
+          target: "claude",
+          homeDir: FAKE_HOME,
+          json: true,
+        });
+        expect(JSON.parse(stdoutOutput.join("")).results[0].action).toBe(
+          "remove"
+        );
       } finally {
         if (saved === undefined) delete process.env.CLAUDE_SKILLS_DIR;
         else process.env.CLAUDE_SKILLS_DIR = saved;

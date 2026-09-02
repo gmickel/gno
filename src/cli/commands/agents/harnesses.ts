@@ -217,6 +217,12 @@ export interface ResolveOptions {
    * are always strict (they are explicitly requested).
    */
   lenient?: boolean;
+  /**
+   * Probe skill state (default true). Uninstall neither reads nor renders it,
+   * so it passes false: an invalid dedicated skills override must not stop a
+   * removal. Undetected harnesses are never probed regardless.
+   */
+  probeSkillState?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -400,7 +406,8 @@ function skillInstalledFor(location: SkillStateLocation): boolean {
 function resolveHarness(
   def: HarnessDef,
   home: string,
-  explicitHome: boolean
+  explicitHome: boolean,
+  probeSkillState: boolean
 ): ResolvedTarget {
   let configDir = join(home, def.configDir);
 
@@ -427,6 +434,7 @@ function resolveHarness(
     def.instructionFile.dir === "home"
       ? join(home, def.instructionFile.name)
       : join(configDir, def.instructionFile.name);
+  const detected = isDirectory(configDir);
 
   return {
     id: def.id,
@@ -434,10 +442,17 @@ function resolveHarness(
     configDir,
     file,
     realFile: realIdentity(file),
-    detected: isDirectory(configDir),
+    detected,
     coveredBy: def.coveredBy,
     // Installed when ANY loadable location has it (Cursor: claude OR codex).
-    skillInstalled: locations.some((loc) => skillInstalledFor(loc)),
+    // Probed only for a detected harness in an operation that uses skill
+    // state: an invalid skills override (which the probe surfaces as
+    // VALIDATION) must fail exactly the runs that would render from it — not
+    // an uninstall, and not `--target all` on account of an absent harness.
+    skillInstalled:
+      detected && probeSkillState
+        ? locations.some((loc) => skillInstalledFor(loc))
+        : false,
     skillTarget: location.target,
     skillTargets: def.skillTargets,
     ...(location.skillHome !== undefined && { skillHome: location.skillHome }),
@@ -528,7 +543,14 @@ export function resolveTargets(
 
   const resolveOne = (id: HarnessId): ResolvedTarget[] => {
     try {
-      return [resolveHarness(HARNESS_DEFS[id], home, explicitHome)];
+      return [
+        resolveHarness(
+          HARNESS_DEFS[id],
+          home,
+          explicitHome,
+          opts.probeSkillState ?? true
+        ),
+      ];
     } catch (err) {
       // Lenient resolution (skill-state aggregation universe): a harness the
       // operator did not request must not abort the run because ITS env is

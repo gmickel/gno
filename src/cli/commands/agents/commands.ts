@@ -174,6 +174,9 @@ async function runMutation(
   const targets = resolveTargets(requested, {
     homeDir: opts.homeDir,
     extraDirs: opts.extraDirs,
+    // Uninstall neither reads nor renders skill state; a broken skills
+    // override must not block a removal.
+    probeSkillState: mode !== "uninstall",
   });
   const aggregated = aggregateSkillState(requested, targets, opts, mode);
   const plans = await planTargets(
