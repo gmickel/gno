@@ -189,6 +189,7 @@ export const groupAuditPhysicalSources = (
 const observeDocument = async (
   document: DocumentRow,
   roots: ReadonlyMap<string, string>,
+  managedCollections: ReadonlySet<string>,
   readFrontmatter: boolean,
   inspectFreshness: boolean,
   signal?: AbortSignal
@@ -196,6 +197,8 @@ const observeDocument = async (
   const markdownSource = MARKDOWN_SOURCE_EXTENSIONS.has(
     document.sourceExt.toLowerCase()
   );
+  const memoryManaged = managedCollections.has(document.collection);
+  const memoryUnreadable = memoryManaged ? { content: null } : undefined;
   const root = roots.get(document.collection);
   if (!root) {
     return {
@@ -206,6 +209,7 @@ const observeDocument = async (
         sourceState: "unreadable",
         captureSourceSupported: markdownSource,
         captureSourceDeclared: false,
+        memory: memoryUnreadable,
         record: document,
       },
       freshness: {
@@ -238,6 +242,7 @@ const observeDocument = async (
           sourceState: "missing",
           captureSourceSupported: markdownSource,
           captureSourceDeclared: false,
+          memory: memoryUnreadable,
           record: document,
         },
         freshness: {
@@ -286,6 +291,11 @@ const observeDocument = async (
         captureSource: incompleteFrontmatter
           ? undefined
           : extractCaptureSourceFromFrontmatter(frontmatter),
+        // Memory facts are small single files, so the bounded frontmatter
+        // read covers the whole record the validator needs.
+        memory: memoryManaged
+          ? { content: incompleteFrontmatter ? null : frontmatter }
+          : undefined,
         record: document,
       },
       freshness: {
@@ -316,6 +326,7 @@ const observeDocument = async (
         sourceState: "unreadable",
         captureSourceSupported: markdownSource,
         captureSourceDeclared: false,
+        memory: memoryUnreadable,
         record: document,
       },
       freshness: {
@@ -382,11 +393,17 @@ const loadWorkspaceSnapshot = async (
   const needsSourceObservation =
     options.categories.includes("provenance") ||
     options.categories.includes("freshness");
+  const managedCollections = new Set(
+    options.collections
+      .filter((collection) => collection.memoryManaged === true)
+      .map((collection) => collection.name)
+  );
   const observed = needsSourceObservation
     ? await mapConcurrent(selected.documents, (document) =>
         observeDocument(
           document,
           roots,
+          managedCollections,
           options.categories.includes("provenance"),
           options.categories.includes("freshness"),
           options.signal

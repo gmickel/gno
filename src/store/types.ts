@@ -643,6 +643,35 @@ export interface FtsSearchOptions {
   categories?: string[];
   /** Filter by author field (case-insensitive contains) */
   author?: string;
+  /**
+   * Managed-memory scope filter: keep only documents carrying at least one of
+   * these normalized scopes. Applied inside the FTS candidate subquery, before
+   * any LIMIT, so an out-of-scope document never occupies the window.
+   */
+  memoryScopesAny?: string[];
+  /**
+   * Exclude documents that an active document supersedes (typed edge
+   * `supersedes` pointing at them). Applied inside the candidate subquery.
+   */
+  excludeSuperseded?: boolean;
+  /** Match documents containing ANY positive term instead of ALL of them. */
+  anyTerm?: boolean;
+}
+
+/** Managed-memory eligibility query (unbounded, executed in one SQL query). */
+export interface MemoryEligibleDocumentsOptions {
+  collection: string;
+  /** Normalized scopes; any-intersection semantics. */
+  scopes: string[];
+  excludeSuperseded?: boolean;
+}
+
+/** Minimal identity of a memory record eligible for managed recall. */
+export interface MemoryEligibleDocument {
+  id: number;
+  docid: string;
+  uri: string;
+  mirrorHash: string;
 }
 
 /** Single FTS search result */
@@ -2021,6 +2050,31 @@ export interface StorePort {
    * Get all tags for a document.
    */
   getTagsForDoc(documentId: number): Promise<StoreResult<TagRow[]>>;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Memory scopes (managed memory records)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Replace the indexed scope set of one document. An empty list clears it,
+   * which removes the document from managed recall.
+   */
+  setDocMemoryScopes(
+    documentId: number,
+    scopes: string[]
+  ): Promise<StoreResult<void>>;
+
+  /** Indexed scopes for one document (sorted). */
+  getDocMemoryScopes(documentId: number): Promise<StoreResult<string[]>>;
+
+  /**
+   * Every active document in the collection carrying at least one requested
+   * scope, optionally excluding superseded records. One unbounded query, so
+   * the result is the exact eligible set rather than a candidate window.
+   */
+  listMemoryEligibleDocuments(
+    options: MemoryEligibleDocumentsOptions
+  ): Promise<StoreResult<MemoryEligibleDocument[]>>;
 
   /**
    * Get tags for multiple documents in a single query.

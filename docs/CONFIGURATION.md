@@ -38,6 +38,9 @@ collections:
     # any (default) = legacy reads; local = opt-in no-materialization guard
     # for tested macOS File Provider layouts only.
     sourceAvailability: any
+    # Memory substrate flag: only collections with memoryManaged: true accept
+    # gno remember writes (omitted = false).
+    # memoryManaged: true
     include: []
     exclude:
       - .git
@@ -161,6 +164,25 @@ relax collection policy; `gateway.enableWrite` does not relax it either.
 Mixed evidence and derived artifacts use the most restrictive participating
 collection. Explicit partial checks disclose every omitted collection and
 reason; normal operations never silently drop restricted evidence.
+
+## Memory-managed collections
+
+`collections[].memoryManaged` is optional (`true` | omitted). It declares the
+collection as a GNO-managed memory substrate: `gno remember` writes one fact
+file per record there (`facts/<date>/mem-<id>.md` with `memory:` frontmatter
+carrying record id, scopes, caller/session identity, timestamp, content hash,
+and `relations.supersedes` edges) and refuses to write into any collection
+without the flag. `gno recall` reads only from memory-managed collections.
+Ordinary indexing, search, and egress policy are unaffected by the flag;
+malformed hand-edited records are reported by `gno status` and `gno audit`.
+
+```yaml
+collections:
+  - name: memory
+    path: /Users/you/notes/memory
+    pattern: "**/*.md"
+    memoryManaged: true
+```
 
 ## Source availability
 

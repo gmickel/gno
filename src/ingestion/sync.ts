@@ -60,6 +60,7 @@ import {
   parseLinks,
   parseTargetParts,
 } from "../core/links";
+import { extractMemoryScopes } from "../core/memory-record";
 import { normalizeTag, validateTag } from "../core/tags";
 import { defaultChunker } from "./chunker";
 import {
@@ -1072,6 +1073,19 @@ export class SyncService {
         mustOk(tagsResult, "setDocTags", {
           docId,
           tagCount: extractedTags.length,
+        });
+
+        // 13b. Index managed-memory scopes. Only a record that passes the
+        // memory validator gets scope rows; a malformed file clears them and
+        // therefore drops out of managed recall while staying searchable.
+        const memoryScopes = extractMemoryScopes(artifact.markdown);
+        const scopesResult = await store.setDocMemoryScopes(
+          docId,
+          memoryScopes
+        );
+        mustOk(scopesResult, "setDocMemoryScopes", {
+          docId,
+          scopeCount: memoryScopes.length,
         });
 
         // 14. Extract and store links (wiki and markdown links)

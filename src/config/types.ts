@@ -163,6 +163,13 @@ export const CollectionSchema = z.object({
    */
   sourceAvailability: SourceAvailabilitySchema.optional(),
 
+  /**
+   * Declares the collection as a GNO-managed memory substrate: `remember`
+   * writes fact files here and refuses every collection without the flag.
+   * Omitted means false; ordinary retrieval is unaffected either way.
+   */
+  memoryManaged: z.boolean().optional(),
+
   /** Optional per-collection model overrides */
   models: z
     .object({

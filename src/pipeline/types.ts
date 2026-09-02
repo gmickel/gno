@@ -212,6 +212,14 @@ export interface SearchOptions {
   intent?: string;
   /** Explicit exclusion terms for hard candidate pruning */
   exclude?: string[];
+  /**
+   * Internal managed-memory filter: scope any-intersection plus superseded
+   * exclusion, executed inside the retrieval query (never post-hoc).
+   */
+  memoryFilter?: {
+    scopes: string[];
+    excludeSuperseded: boolean;
+  };
 }
 
 /** Structured query mode identifier */

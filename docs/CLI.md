@@ -788,6 +788,13 @@ findings, and `5` partial, unavailable, inconclusive, cancelled, or repeatedly
 changed during the run. This command is unrelated to `gno egress-audit`, which
 manages content-free transport-policy receipts.
 
+The `provenance` category also runs `provenance.memory-record`: every file in a
+`memoryManaged` collection is checked against the managed memory record
+contract, and each malformed file yields one warning per diagnostic code
+(`MEMORY_FRONTMATTER_MISSING`, `MEMORY_SCOPES_EMPTY`,
+`MEMORY_CONTENT_HASH_MISMATCH`, ...). Malformed files stay visible to ordinary
+search but are excluded from managed recall until repaired.
+
 ### gno embed
 
 Generate embeddings for all collections or one collection.
@@ -1668,6 +1675,11 @@ direct `gno status` invocation reports `mode:"direct-cli"` and
 Status also projects `contentTypeBoost.rules` as redacted rule IDs and effective
 factors plus the full `rulesFingerprint`. Configured path prefixes are never
 included. The same projection is available from REST, MCP, and SDK status.
+
+The `Memory:` section (JSON `memory`) counts valid managed memory records per
+`memoryManaged` collection and lists malformed files with their diagnostic
+codes; those files are excluded from managed recall until repaired. Without any
+memory-managed collection it reads `Memory: no memory-managed collections`.
 
 ### gno doctor
 

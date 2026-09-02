@@ -153,8 +153,15 @@
             "additionalProperties": false,
             "required": ["id", "searchBoost"],
             "properties": {
-              "id": { "type": "string", "minLength": 1 },
-              "searchBoost": { "type": "number", "minimum": 0.5, "maximum": 2 }
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "searchBoost": {
+                "type": "number",
+                "minimum": 0.5,
+                "maximum": 2
+              }
             }
           }
         }
@@ -172,9 +179,15 @@
         "connectorProjection"
       ],
       "properties": {
-        "schemaVersion": { "const": "1.0" },
-        "usable": { "type": "boolean" },
-        "healthy": { "type": "boolean" },
+        "schemaVersion": {
+          "const": "1.0"
+        },
+        "usable": {
+          "type": "boolean"
+        },
+        "healthy": {
+          "type": "boolean"
+        },
         "collections": {
           "type": "array",
           "items": {
@@ -189,8 +202,12 @@
               "remediation"
             ],
             "properties": {
-              "collection": { "type": "string" },
-              "ready": { "type": "boolean" },
+              "collection": {
+                "type": "string"
+              },
+              "ready": {
+                "type": "boolean"
+              },
               "generatedAt": {
                 "type": ["string", "null"],
                 "format": "date-time"
@@ -222,12 +239,18 @@
                   {
                     "if": {
                       "properties": {
-                        "code": { "const": "vector_unavailable" }
+                        "code": {
+                          "const": "vector_unavailable"
+                        }
                       },
                       "required": ["code"]
                     },
                     "then": {
-                      "properties": { "status": { "const": "skipped" } }
+                      "properties": {
+                        "status": {
+                          "const": "skipped"
+                        }
+                      }
                     }
                   },
                   {
@@ -244,12 +267,18 @@
                       "required": ["code"]
                     },
                     "then": {
-                      "properties": { "status": { "const": "pending" } }
+                      "properties": {
+                        "status": {
+                          "const": "pending"
+                        }
+                      }
                     }
                   }
                 ],
                 "properties": {
-                  "status": { "enum": ["pending", "skipped"] },
+                  "status": {
+                    "enum": ["pending", "skipped"]
+                  },
                   "code": {
                     "enum": [
                       "models_missing",
@@ -258,7 +287,9 @@
                       "semantic_not_checked"
                     ]
                   },
-                  "command": { "type": "string" }
+                  "command": {
+                    "type": "string"
+                  }
                 }
               },
               "remediation": {
@@ -272,8 +303,12 @@
                   "code": {
                     "$ref": "#/properties/activation/definitions/code"
                   },
-                  "command": { "type": "string" },
-                  "message": { "type": "string" }
+                  "command": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -287,15 +322,21 @@
             "additionalProperties": false,
             "required": ["collection", "target", "status", "remediation"],
             "properties": {
-              "collection": { "type": "string" },
-              "target": { "type": "string" },
+              "collection": {
+                "type": "string"
+              },
+              "target": {
+                "type": "string"
+              },
               "status": {
                 "enum": ["passed", "pending", "failed", "skipped"]
               },
               "code": {
                 "$ref": "#/properties/activation/definitions/code"
               },
-              "remediation": { "type": ["string", "null"] }
+              "remediation": {
+                "type": ["string", "null"]
+              }
             }
           }
         },
@@ -352,12 +393,18 @@
             "status": {
               "enum": ["passed", "pending", "failed", "skipped"]
             },
-            "startedAt": { "type": ["string", "null"], "format": "date-time" },
+            "startedAt": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            },
             "completedAt": {
               "type": ["string", "null"],
               "format": "date-time"
             },
-            "latencyMs": { "type": ["integer", "null"], "minimum": 0 },
+            "latencyMs": {
+              "type": ["integer", "null"],
+              "minimum": 0
+            },
             "code": {
               "$ref": "#/properties/activation/definitions/code"
             }
@@ -504,11 +551,15 @@
           "properties": {
             "expectedCollections": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string"
+              }
             },
             "activeCollections": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string"
+              }
             },
             "failedCollections": {
               "type": "array",
@@ -516,18 +567,26 @@
                 "type": "object",
                 "required": ["collection", "reason"],
                 "properties": {
-                  "collection": { "type": "string" },
-                  "reason": { "type": "string" }
+                  "collection": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
                 }
               }
             },
             "queuedCollections": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string"
+              }
             },
             "syncingCollections": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string"
+              }
             },
             "lastEventAt": {
               "type": ["string", "null"],
@@ -550,14 +609,22 @@
             "lastResult"
           ],
           "properties": {
-            "available": { "type": "boolean" },
+            "available": {
+              "type": "boolean"
+            },
             "pendingDocCount": {
               "type": "integer",
               "minimum": 0
             },
-            "running": { "type": "boolean" },
-            "nextRunAt": { "type": ["integer", "null"] },
-            "lastRunAt": { "type": ["integer", "null"] },
+            "running": {
+              "type": "boolean"
+            },
+            "nextRunAt": {
+              "type": ["integer", "null"]
+            },
+            "lastRunAt": {
+              "type": ["integer", "null"]
+            },
             "lastResult": {
               "type": ["object", "null"],
               "required": ["embedded", "errors"],
@@ -607,25 +674,44 @@
             "detail"
           ],
           "properties": {
-            "kind": { "type": "string", "enum": ["bun"] },
+            "kind": {
+              "type": "string",
+              "enum": ["bun"]
+            },
             "strategy": {
               "type": "string",
               "enum": ["manual-install-beta"]
             },
-            "currentVersion": { "type": "string" },
-            "requiredVersion": { "type": "string" },
-            "ready": { "type": "boolean" },
-            "managedByApp": { "type": "boolean" },
-            "summary": { "type": "string" },
-            "detail": { "type": "string" }
+            "currentVersion": {
+              "type": "string"
+            },
+            "requiredVersion": {
+              "type": "string"
+            },
+            "ready": {
+              "type": "boolean"
+            },
+            "managedByApp": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            }
           }
         },
         "policy": {
           "type": "object",
           "required": ["offline", "allowDownload", "source", "summary"],
           "properties": {
-            "offline": { "type": "boolean" },
-            "allowDownload": { "type": "boolean" },
+            "offline": {
+              "type": "boolean"
+            },
+            "allowDownload": {
+              "type": "boolean"
+            },
             "source": {
               "type": "string",
               "enum": [
@@ -635,16 +721,25 @@
                 "no-auto-download"
               ]
             },
-            "summary": { "type": "string" }
+            "summary": {
+              "type": "string"
+            }
           }
         },
         "cache": {
           "type": "object",
           "required": ["path", "totalSizeBytes", "totalSizeLabel"],
           "properties": {
-            "path": { "type": "string" },
-            "totalSizeBytes": { "type": "integer", "minimum": 0 },
-            "totalSizeLabel": { "type": "string" }
+            "path": {
+              "type": "string"
+            },
+            "totalSizeBytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "totalSizeLabel": {
+              "type": "string"
+            }
           }
         },
         "models": {
@@ -660,13 +755,29 @@
             "entries"
           ],
           "properties": {
-            "activePresetId": { "type": "string" },
-            "activePresetName": { "type": "string" },
-            "estimatedFootprint": { "type": ["string", "null"] },
-            "downloading": { "type": "boolean" },
-            "cachedCount": { "type": "integer", "minimum": 0 },
-            "totalCount": { "type": "integer", "minimum": 0 },
-            "summary": { "type": "string" },
+            "activePresetId": {
+              "type": "string"
+            },
+            "activePresetName": {
+              "type": "string"
+            },
+            "estimatedFootprint": {
+              "type": ["string", "null"]
+            },
+            "downloading": {
+              "type": "boolean"
+            },
+            "cachedCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "totalCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "string"
+            },
             "entries": {
               "type": "array",
               "items": {
@@ -684,11 +795,115 @@
                     "type": "string",
                     "enum": ["embed", "rerank", "expand", "gen"]
                   },
-                  "uri": { "type": "string" },
-                  "cached": { "type": "boolean" },
-                  "path": { "type": ["string", "null"] },
-                  "sizeBytes": { "type": ["integer", "null"], "minimum": 0 },
-                  "statusLabel": { "type": "string" }
+                  "uri": {
+                    "type": "string"
+                  },
+                  "cached": {
+                    "type": "boolean"
+                  },
+                  "path": {
+                    "type": ["string", "null"]
+                  },
+                  "sizeBytes": {
+                    "type": ["integer", "null"],
+                    "minimum": 0
+                  },
+                  "statusLabel": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "memory": {
+      "type": "object",
+      "description": "Managed-memory diagnostics: record counts and malformed files excluded from recall",
+      "additionalProperties": false,
+      "required": ["managedCollections", "records", "malformed", "collections"],
+      "properties": {
+        "managedCollections": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "records": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "malformed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "collections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "collection",
+              "documents",
+              "records",
+              "malformed",
+              "malformedRecords",
+              "truncated"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "documents": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "records": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "malformed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "truncated": {
+                "type": "boolean"
+              },
+              "malformedRecords": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["uri", "relPath", "codes", "diagnostics"],
+                  "properties": {
+                    "uri": {
+                      "type": "string"
+                    },
+                    "relPath": {
+                      "type": "string"
+                    },
+                    "codes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "diagnostics": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["code", "message"],
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }

@@ -75,6 +75,8 @@ import type {
   IndexStatus,
   IngestErrorInput,
   IngestErrorRow,
+  MemoryEligibleDocument,
+  MemoryEligibleDocumentsOptions,
   MigrationResult,
   RetrievalTraceAppendResult,
   RetrievalTraceBundle,
@@ -333,7 +335,17 @@ type FtsQueryBuildResult =
  * - negation with at least one positive term
  * - hyphenated compounds handled intentionally
  */
-function buildFts5Query(query: string): FtsQueryBuildResult {
+/**
+ * SQL fragment excluding documents superseded by an active document via the
+ * typed `supersedes` edge. `docIdExpr` names the candidate document id column.
+ */
+const SUPERSEDED_EXCLUSION_SQL = (docIdExpr: string): string =>
+  `AND NOT EXISTS (SELECT 1 FROM doc_edges se JOIN documents sd ON sd.id = se.src_doc_id AND sd.active = 1 WHERE se.dst_doc_id = ${docIdExpr} AND se.edge_type = 'supersedes')`;
+
+function buildFts5Query(
+  query: string,
+  options: { anyTerm?: boolean } = {}
+): FtsQueryBuildResult {
   const trimmed = query.trim();
   if (!trimmed) {
     return { ok: false, error: "Search query cannot be empty" };
@@ -454,7 +466,9 @@ function buildFts5Query(query: string): FtsQueryBuildResult {
     };
   }
 
-  let ftsQuery = positive.join(" AND ");
+  let ftsQuery = options.anyTerm
+    ? `(${positive.join(" OR ")})`
+    : positive.join(" AND ");
   for (const negation of negative) {
     ftsQuery = `${ftsQuery} NOT ${negation}`;
   }
@@ -2635,7 +2649,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     try {
       const db = this.ensureOpen();
       const limit = options.limit ?? 20;
-      const builtQuery = buildFts5Query(query);
+      const builtQuery = buildFts5Query(query, { anyTerm: options.anyTerm });
       if (!builtQuery.ok) {
         return err("INVALID_INPUT", builtQuery.error);
       }
@@ -2683,6 +2697,21 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         params.push(`%${options.author.toLowerCase()}%`);
       }
 
+      // Scope and supersession filters run inside the candidate subquery so
+      // they narrow the corpus before the FTS LIMIT (never a post-filter).
+      const innerConditions: string[] = [];
+      const innerParams: string[] = [];
+      if (options.memoryScopesAny && options.memoryScopesAny.length > 0) {
+        const placeholders = options.memoryScopesAny.map(() => "?").join(",");
+        innerConditions.push(
+          `AND EXISTS (SELECT 1 FROM doc_memory_scopes ms WHERE ms.document_id = documents.id AND ms.scope IN (${placeholders}))`
+        );
+        innerParams.push(...options.memoryScopesAny);
+      }
+      if (options.excludeSuperseded) {
+        innerConditions.push(SUPERSEDED_EXCLUSION_SQL("documents.id"));
+      }
+
       const hasOuterFilters = tagConditions.length > 0;
       const ftsLimit = hasOuterFilters ? limit * 10 : limit;
       params.push(limit);
@@ -2711,6 +2740,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                 ? "AND (COALESCE(NULLIF(record_source_path, ''), rel_path) = ? OR substr(COALESCE(NULLIF(record_source_path, ''), rel_path), 1, length(?) + 1) = ? || '/')"
                 : ""
             }
+            ${innerConditions.join("\n            ")}
           )
           ORDER BY score
           LIMIT ?
@@ -2789,6 +2819,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
               options.relPathPrefix,
             ]
           : []),
+        ...innerParams,
         ftsLimit,
         ...params,
       ];
@@ -3071,6 +3102,99 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to set document tags",
+        cause
+      );
+    }
+  }
+
+  async setDocMemoryScopes(
+    documentId: number,
+    scopes: string[]
+  ): Promise<StoreResult<void>> {
+    try {
+      const db = this.ensureOpen();
+      const transaction = db.transaction(() => {
+        db.run("DELETE FROM doc_memory_scopes WHERE document_id = ?", [
+          documentId,
+        ]);
+        if (scopes.length > 0) {
+          const stmt = db.prepare(
+            "INSERT OR IGNORE INTO doc_memory_scopes (document_id, scope) VALUES (?, ?)"
+          );
+          for (const scope of scopes) {
+            stmt.run(documentId, scope);
+          }
+        }
+      });
+      transaction();
+      return ok(undefined);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to set memory scopes",
+        cause
+      );
+    }
+  }
+
+  async getDocMemoryScopes(documentId: number): Promise<StoreResult<string[]>> {
+    try {
+      const db = this.ensureOpen();
+      const rows = db
+        .query<{ scope: string }, [number]>(
+          "SELECT scope FROM doc_memory_scopes WHERE document_id = ? ORDER BY scope"
+        )
+        .all(documentId);
+      return ok(rows.map((row) => row.scope));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to read memory scopes",
+        cause
+      );
+    }
+  }
+
+  async listMemoryEligibleDocuments(
+    options: MemoryEligibleDocumentsOptions
+  ): Promise<StoreResult<MemoryEligibleDocument[]>> {
+    try {
+      const db = this.ensureOpen();
+      if (options.scopes.length === 0) {
+        return ok([]);
+      }
+      const placeholders = options.scopes.map(() => "?").join(",");
+      const rows = db
+        .query<
+          { id: number; docid: string; uri: string; mirror_hash: string },
+          string[]
+        >(
+          `
+          SELECT d.id, d.docid, d.uri, d.mirror_hash
+          FROM documents d
+          WHERE d.active = 1
+            AND d.collection = ?
+            AND d.mirror_hash IS NOT NULL
+            AND EXISTS (SELECT 1 FROM doc_memory_scopes ms WHERE ms.document_id = d.id AND ms.scope IN (${placeholders}))
+            ${options.excludeSuperseded ? SUPERSEDED_EXCLUSION_SQL("d.id") : ""}
+          ORDER BY d.id
+          `
+        )
+        .all(options.collection, ...options.scopes);
+      return ok(
+        rows.map((row) => ({
+          id: row.id,
+          docid: row.docid,
+          uri: row.uri,
+          mirrorHash: row.mirror_hash,
+        }))
+      );
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list memory-eligible documents",
         cause
       );
     }

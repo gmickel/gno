@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Core memory service (`src/core/memory.ts`): transport-neutral `remember()` /
+  `recall()` over a `memoryManaged` collection. Facts are one markdown file
+  per record with `memory:` frontmatter (record id, 1-8 normalized scopes,
+  caller/session identity, timestamp, content hash) and supersession as the
+  existing `relations.supersedes` typed edge. `remember` proposes candidates
+  when no decision is given (BM25 top-16 within the scope intersection;
+  cosine >= 0.83 when embeddings are ready, else normalized-token Jaccard >=
+  0.5), returns the existing record for exact duplicates, and requires
+  predecessor URI + hash for `supersede` (concurrent supersedes yield one
+  successor and one conflict under the shared write lease, which the service
+  acquires itself). `recall` requires explicit scopes and caller/session
+  identity, filters scopes and superseded records inside the retrieval query,
+  applies an 8-fact / 512-token budget, and returns `gno://` cites with
+  `egressLineage` plus a content-free fencing receipt that `remember` uses to
+  reject replayed spans and `derivedFrom` gno:// input.
+- `collections[].memoryManaged` config flag, `doc_memory_scopes` index table
+  (migration 027), and in-query `memoryScopesAny` / `excludeSuperseded` /
+  `anyTerm` FTS filters.
+- Malformed memory files are diagnosed with stable codes and projected through
+  `gno status` (`Memory:` section, JSON `memory`) and `gno audit`
+  (`provenance.memory-record` rule); they stay searchable but are excluded from
+  managed recall.
+
 ### Changed
 
 ### Fixed

@@ -15,6 +15,7 @@
 --   doc_tags          - Document tags (frontmatter and user-added)
 --   doc_links         - Wiki and markdown links between documents
 --   doc_edges         - Derived semantic document relationships
+--   doc_memory_scopes - Indexed scopes for managed memory records
 --   activation_receipts - Bounded per-collection retrieval proof receipts
 --   retrieval_traces - Opt-in private retrieval trace headers
 --   retrieval_trace_runs/events/judgments - Bounded trace outcome records
@@ -532,6 +533,22 @@ CREATE TABLE IF NOT EXISTS doc_edges (
 
 CREATE INDEX IF NOT EXISTS idx_doc_edges_src_type ON doc_edges(src_doc_id, edge_type);
 CREATE INDEX IF NOT EXISTS idx_doc_edges_dst_type ON doc_edges(dst_doc_id, edge_type);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Memory Scopes (indexed, filtered inside retrieval queries)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- One row per (managed memory record, normalized scope). Rows exist only for
+-- records that pass the memory-record validator; malformed files carry no
+-- scopes and therefore never enter managed recall.
+CREATE TABLE IF NOT EXISTS doc_memory_scopes (
+  document_id INTEGER NOT NULL,
+  scope TEXT NOT NULL,
+  PRIMARY KEY (document_id, scope),
+  FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_doc_memory_scopes_scope ON doc_memory_scopes(scope, document_id);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Saved Context Capsules (metadata only)

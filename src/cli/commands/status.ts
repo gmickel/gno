@@ -7,6 +7,7 @@
 
 import type { ContentTypeBoostStatus } from "../../config/content-types";
 import type { ActivationStatus } from "../../core/activation-status";
+import type { MemoryStatus } from "../../core/memory-diagnostics";
 import type { IndexStatus } from "../../store/types";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
@@ -18,6 +19,10 @@ import {
 } from "../../config";
 import { isConnectorActivationComplete } from "../../core/activation-connector-health";
 import { buildActivationStatus } from "../../core/activation-status";
+import {
+  buildMemoryStatus,
+  formatMemoryStatusLines,
+} from "../../core/memory-diagnostics";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { getConnectorVerificationTargets } from "../../serve/connectors";
@@ -47,6 +52,7 @@ export type StatusResult =
       status: IndexStatus;
       activation: ActivationStatus;
       contentTypeBoost: ContentTypeBoostStatus;
+      memory: MemoryStatus;
     }
   | { success: false; error: string };
 
@@ -75,7 +81,8 @@ function isStatusHealthy(
 function formatTerminal(
   indexStatus: IndexStatus,
   activation: ActivationStatus,
-  contentTypeBoost: ContentTypeBoostStatus
+  contentTypeBoost: ContentTypeBoostStatus,
+  memory: MemoryStatus
 ): string {
   const lines: string[] = [];
 
@@ -146,6 +153,7 @@ function formatTerminal(
   if (projectionLine) {
     lines.push(projectionLine);
   }
+  lines.push(...formatMemoryStatusLines(memory));
 
   return lines.join("\n");
 }
@@ -156,7 +164,8 @@ function formatTerminal(
 function formatMarkdown(
   indexStatus: IndexStatus,
   activation: ActivationStatus,
-  contentTypeBoost: ContentTypeBoostStatus
+  contentTypeBoost: ContentTypeBoostStatus,
+  memory: MemoryStatus
 ): string {
   const lines: string[] = [];
 
@@ -215,6 +224,12 @@ function formatMarkdown(
   const projectionLine = connectorProjectionLine(activation);
   if (projectionLine) {
     lines.push(`- **${projectionLine}**`);
+  }
+  lines.push("");
+  lines.push("## Memory");
+  lines.push("");
+  for (const line of formatMemoryStatusLines(memory)) {
+    lines.push(`- ${line.trim()}`);
   }
 
   return lines.join("\n");
@@ -285,6 +300,7 @@ export async function status(
       status: statusResult.value,
       activation,
       contentTypeBoost: buildContentTypeBoostStatus(config.contentTypes ?? []),
+      memory: await buildMemoryStatus(store, config.collections),
     };
   } finally {
     await store.close();
@@ -327,6 +343,7 @@ export function formatStatus(
         healthy: isStatusHealthy(s, result.activation),
         contentTypeBoost: result.contentTypeBoost,
         activation: result.activation,
+        memory: result.memory,
       },
       null,
       2
@@ -337,13 +354,15 @@ export function formatStatus(
     return formatMarkdown(
       result.status,
       result.activation,
-      result.contentTypeBoost
+      result.contentTypeBoost,
+      result.memory
     );
   }
 
   return formatTerminal(
     result.status,
     result.activation,
-    result.contentTypeBoost
+    result.contentTypeBoost,
+    result.memory
   );
 }

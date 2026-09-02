@@ -211,6 +211,8 @@ export async function searchBm25(
     until: temporalRange.until,
     categories: options.categories,
     author: options.author,
+    memoryScopesAny: options.memoryFilter?.scopes,
+    excludeSuperseded: options.memoryFilter?.excludeSuperseded,
   });
 
   if (!ftsResult.ok) {

@@ -5,6 +5,7 @@ import type { CaptureSource } from "./capture";
 
 import { compareAuditFindingDrafts } from "./audit";
 import { validateDeclaredCaptureProvenance } from "./capture";
+import { diagnoseMemoryContent } from "./memory-diagnostics";
 import {
   hasDeclaredRecordProvenance,
   validateDeclaredRecordProvenance,
@@ -20,6 +21,11 @@ export interface AuditProvenanceDocument {
   captureSourceSupported?: boolean;
   captureSource?: Partial<CaptureSource>;
   captureSourceDeclared: boolean;
+  /**
+   * Present only for documents in a memory-managed collection: the file
+   * content the memory-record validator runs against (null when unreadable).
+   */
+  memory?: { content: string | null };
   record: {
     recordKey?: string | null;
     recordSourceLocator?: string | null;
@@ -51,6 +57,90 @@ const issueFinding = (input: {
     `Supply a valid ${input.field} value or remove the declaring provenance block`,
   ],
 });
+
+const memoryFinding = (
+  document: AuditProvenanceDocument,
+  code: string,
+  message: string
+): AuditFindingDraft => ({
+  subject: document.uri,
+  location: code,
+  severity: "warning",
+  message: `memory record excluded from recall: ${message}`,
+  evidence: [
+    {
+      kind: "memory-record-contract",
+      summary: code,
+      uri: document.uri,
+      path: document.relPath,
+    },
+  ],
+  guidance: [
+    "Repair the memory frontmatter (memory.recordId/scopes/caller/session/createdAt/contentHash) or re-create the fact with gno remember",
+  ],
+});
+
+/**
+ * Managed memory files are audited against the memory-record contract; each
+ * malformed file yields one finding per diagnostic code. Ordinary retrieval
+ * still sees such files; managed recall does not.
+ */
+export const evaluateMemoryRecordAudit = (
+  documents: readonly AuditProvenanceDocument[],
+  options: { truncated?: boolean } = {}
+): AuditRuleContribution => {
+  const findings: AuditFindingDraft[] = [];
+  let managedDocuments = 0;
+  let unreadable = 0;
+  for (const document of documents) {
+    if (document.memory === undefined) continue;
+    managedDocuments += 1;
+    if (document.memory.content === null) {
+      unreadable += 1;
+      continue;
+    }
+    const diagnostics = diagnoseMemoryContent(document.memory.content) ?? [];
+    for (const diagnostic of diagnostics) {
+      findings.push(
+        memoryFinding(document, diagnostic.code, diagnostic.message)
+      );
+    }
+  }
+  findings.sort(compareAuditFindingDrafts);
+  const truncated = options.truncated === true;
+  return {
+    ruleId: "provenance.memory-record",
+    category: "provenance",
+    status: truncated
+      ? "inconclusive"
+      : unreadable > 0
+        ? "unavailable"
+        : findings.length > 0
+          ? "fail"
+          : managedDocuments === 0
+            ? "skip"
+            : "pass",
+    message: truncated
+      ? "Audit selection was truncated; memory record contract not fully evaluated"
+      : unreadable > 0
+        ? `${unreadable} memory-managed source(s) could not be read`
+        : findings.length > 0
+          ? `${findings.length} memory record contract violation(s) across ${managedDocuments} managed document(s)`
+          : managedDocuments === 0
+            ? "No memory-managed collections in scope"
+            : `${managedDocuments} managed memory record(s) satisfy the contract`,
+    findings: findings.slice(0, PROVENANCE_AUDIT_MAX_FINDINGS_PER_RULE),
+    findingCount: findings.length,
+    examinedCount: managedDocuments,
+    skipReason: truncated
+      ? "snapshot_truncated"
+      : unreadable > 0
+        ? "source_unavailable"
+        : managedDocuments === 0
+          ? "no_memory_managed_collections"
+          : null,
+  };
+};
 
 /** Missing provenance is completeness evidence, never a truth judgment. */
 export const evaluateProvenanceAudit = (
@@ -150,5 +240,6 @@ export const evaluateProvenanceAudit = (
       recordFindings,
       declaredRecordDocuments
     ),
+    evaluateMemoryRecordAudit(documents, options),
   ];
 };
