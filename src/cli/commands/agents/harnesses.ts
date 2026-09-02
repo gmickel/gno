@@ -31,10 +31,24 @@ import {
 
 import { CliError } from "../../errors.js";
 import {
+  ENV_CLAUDE_SKILLS_DIR,
+  ENV_CODEX_SKILLS_DIR,
+  ENV_HERMES_SKILLS_DIR,
+  ENV_OPENCLAW_SKILLS_DIR,
+  ENV_OPENCODE_SKILLS_DIR,
   resolveSkillPaths,
   SKILL_NAME,
   type SkillTarget,
 } from "../skill/paths.js";
+
+/** Dedicated skills-dir env override per skill target (installer contract). */
+const SKILLS_DIR_ENV: Record<SkillTarget, string> = {
+  claude: ENV_CLAUDE_SKILLS_DIR,
+  codex: ENV_CODEX_SKILLS_DIR,
+  opencode: ENV_OPENCODE_SKILLS_DIR,
+  openclaw: ENV_OPENCLAW_SKILLS_DIR,
+  hermes: ENV_HERMES_SKILLS_DIR,
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Environment Variables
@@ -267,48 +281,57 @@ function isDirectory(path: string): boolean {
  * `resolveSkillPaths` location plus the standard config dir when the consumer
  * is decoupled from an active redirect (the remediation must target it).
  */
+export interface SkillStateLocation {
+  target: SkillTarget;
+  /** Forwarded to resolveSkillPaths: set ⇒ env redirects suppressed. */
+  homeDir?: string;
+  /** Pinned skills dir (wins over every env override) — borrowed skills. */
+  skillsDir?: string;
+  /** Standard config dir the remediation must install into (redirect active). */
+  skillHome?: string;
+}
+
 export function skillStateLocation(
   id: HarnessId,
   home: string,
   explicitHome: boolean
-): { target: SkillTarget; homeDir?: string; skillHome?: string } {
+): SkillStateLocation {
   const def = HARNESS_DEFS[id];
   const target = def.skillTarget;
-  const ownsSkillTarget = id === target;
-  if (ownsSkillTarget) {
+  if (id === target) {
+    // Owns its skill target: follows that target's env redirects (config-dir
+    // and dedicated skills-dir), unless an explicit home isolates the run.
     return { target, homeDir: explicitHome ? home : undefined };
   }
-  // Consumer: always the standard location (explicit home suppresses env).
+  // Borrowed skill (cursor/grok → claude): the consumer loads from the skill
+  // owner's STANDARD dir, so pin it — neither the owner's config-dir redirect
+  // (CLAUDE_CONFIG_DIR) nor its dedicated skills-dir override
+  // (CLAUDE_SKILLS_DIR) applies to what this consumer can load.
   const skillDef = HARNESS_DEFS[target as HarnessId];
+  const standardHome = join(home, skillDef?.configDir ?? `.${target}`);
   const redirectActive =
     !explicitHome &&
-    skillDef?.configDirEnvVar !== undefined &&
-    process.env[skillDef.configDirEnvVar] !== undefined;
+    ((skillDef?.configDirEnvVar !== undefined &&
+      process.env[skillDef.configDirEnvVar] !== undefined) ||
+      process.env[SKILLS_DIR_ENV[target]] !== undefined);
   return {
     target,
-    homeDir: home,
-    ...(redirectActive &&
-      skillDef && { skillHome: join(home, skillDef.configDir) }),
+    skillsDir: join(standardHome, "skills"),
+    ...(redirectActive && { skillHome: standardHome }),
   };
 }
 
-function skillInstalledFor(
-  target: SkillTarget,
-  homeDir: string,
-  explicitHome: boolean
-): boolean {
+function skillInstalledFor(location: SkillStateLocation): boolean {
   try {
-    // Skill state is derived from the SAME effective config dir the
-    // instruction file resolves under: resolveSkillPaths honors the harness
-    // config-dir env override (CODEX_HOME, CLAUDE_CONFIG_DIR) for user scope,
-    // with the dedicated skills-dir env var still winning. Passing an explicit
-    // homeDir suppresses those redirects — the same isolation rule
-    // resolveHarness applies to the instruction file — so only forward it
-    // when a home override is active.
+    // Skill state is derived from where THIS consumer loads the skill: the
+    // owner's effective config dir (env redirects honored, explicit home
+    // suppressing them — the same isolation rule resolveHarness applies to
+    // the instruction file), or the pinned standard dir for a borrowed skill.
     const paths = resolveSkillPaths({
       scope: "user",
-      target,
-      homeDir: explicitHome ? homeDir : undefined,
+      target: location.target,
+      homeDir: location.homeDir,
+      skillsDir: location.skillsDir,
     });
     return existsSync(join(paths.gnoDir, "SKILL.md"));
   } catch {
@@ -350,11 +373,7 @@ function resolveHarness(
     realFile: realIdentity(file),
     detected: isDirectory(configDir),
     coveredBy: def.coveredBy,
-    skillInstalled: skillInstalledFor(
-      location.target,
-      home,
-      location.homeDir !== undefined
-    ),
+    skillInstalled: skillInstalledFor(location),
     skillTarget: def.skillTarget,
     ...(location.skillHome !== undefined && { skillHome: location.skillHome }),
   };

@@ -13,7 +13,7 @@
 
 // node:fs/promises: Bun has no API to read or set a file's permission mode;
 // the backup must inherit the source file's (possibly restrictive) mode.
-import { chmod, stat } from "node:fs/promises";
+import { chmod, stat, unlink } from "node:fs/promises";
 
 import type {
   ExtractedBlock,
@@ -542,15 +542,25 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
     backupPath = `${writePath}.gno-agents.bak.${timestamp}`;
     try {
       await Bun.write(backupPath, Bun.file(writePath));
+    } catch (err) {
+      throw new CliError(
+        "RUNTIME",
+        `Backup failed for ${writePath}: ${err instanceof Error ? err.message : String(err)} — nothing was written.`
+      );
+    }
+    try {
       // Bun.write creates the backup with the process umask; a 0600 source
       // would yield a world-readable 0644 copy of private instructions.
       // Inherit the source mode so the backup is exactly as private.
       const { mode } = await stat(writePath);
       await chmod(backupPath, mode & 0o777);
     } catch (err) {
+      // Never leave a copy behind that is less private than its source: the
+      // umask-mode backup already exists, so remove it before failing.
+      await unlink(backupPath).catch(() => {});
       throw new CliError(
         "RUNTIME",
-        `Backup failed for ${writePath}: ${err instanceof Error ? err.message : String(err)} — nothing was written.`
+        `Backup failed for ${writePath}: could not apply the source file's permissions to the backup (${err instanceof Error ? err.message : String(err)}); the backup was removed and nothing was written.`
       );
     }
   }

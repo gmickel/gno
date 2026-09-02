@@ -710,25 +710,45 @@ describe("agents CLI commands", () => {
       // CLAUDE_CONFIG_DIR redirects Claude itself; Claude's own state follows
       // the redirect. While the redirect is active the consumer's remediation
       // must target the standard dir, not the redirected instance.
-      const saved = process.env.CLAUDE_CONFIG_DIR;
-      process.env.CLAUDE_CONFIG_DIR = join(TEST_DIR, "redirected-claude");
+      const standardSkills = join(FAKE_HOME, ".claude", "skills");
+      const saved = {
+        CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
+        CLAUDE_SKILLS_DIR: process.env.CLAUDE_SKILLS_DIR,
+      };
+      const restore = () => {
+        for (const [k, v] of Object.entries(saved)) {
+          if (v === undefined) delete process.env[k];
+          else process.env[k] = v;
+        }
+      };
       try {
-        const claude = skillStateLocation("claude", FAKE_HOME, false);
-        expect(claude).toEqual({ target: "claude", homeDir: undefined });
-        const cursor = skillStateLocation("cursor", FAKE_HOME, false);
-        expect(cursor).toEqual({
+        // Config-dir redirect: Claude follows it; Cursor pins the standard dir.
+        delete process.env.CLAUDE_SKILLS_DIR;
+        process.env.CLAUDE_CONFIG_DIR = join(TEST_DIR, "redirected-claude");
+        expect(skillStateLocation("claude", FAKE_HOME, false)).toEqual({
           target: "claude",
-          homeDir: FAKE_HOME,
+          homeDir: undefined,
+        });
+        expect(skillStateLocation("cursor", FAKE_HOME, false)).toEqual({
+          target: "claude",
+          skillsDir: standardSkills,
           skillHome: join(FAKE_HOME, ".claude"),
         });
-        // Explicit home (isolation) suppresses the redirect entirely.
+        // Dedicated skills-dir override: also ignored for the borrowed skill.
+        delete process.env.CLAUDE_CONFIG_DIR;
+        process.env.CLAUDE_SKILLS_DIR = join(TEST_DIR, "custom-claude-skills");
+        expect(skillStateLocation("cursor", FAKE_HOME, false)).toEqual({
+          target: "claude",
+          skillsDir: standardSkills,
+          skillHome: join(FAKE_HOME, ".claude"),
+        });
+        // Explicit home (isolation): pinned standard dir, no remediation redirect.
         expect(skillStateLocation("cursor", FAKE_HOME, true)).toEqual({
           target: "claude",
-          homeDir: FAKE_HOME,
+          skillsDir: standardSkills,
         });
       } finally {
-        if (saved === undefined) delete process.env.CLAUDE_CONFIG_DIR;
-        else process.env.CLAUDE_CONFIG_DIR = saved;
+        restore();
       }
 
       // The remediation for such a consumer installs into the standard dir.

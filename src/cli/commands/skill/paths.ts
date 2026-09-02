@@ -11,6 +11,8 @@ import { existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, normalize, relative, sep } from "node:path";
 
+import { CliError } from "../../errors.js";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Environment Variables
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,7 +150,8 @@ export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
   // An explicit --skills-dir wins over everything (CLI beats env).
   if (opts.skillsDir !== undefined) {
     if (!isAbsolute(opts.skillsDir)) {
-      throw new Error("--skills-dir must be an absolute path");
+      // Invalid CLI operand → exit 1 (validation), not a runtime failure.
+      throw new CliError("VALIDATION", "--skills-dir must be an absolute path");
     }
     const skillsDir = normalize(opts.skillsDir);
     return {
@@ -164,7 +167,10 @@ export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
   if (envOverride) {
     // Require absolute path for security
     if (!isAbsolute(envOverride)) {
-      throw new Error(`${config.envVar} must be an absolute path`);
+      throw new CliError(
+        "VALIDATION",
+        `${config.envVar} must be an absolute path`
+      );
     }
     const skillsDir = normalize(envOverride);
     return {
@@ -190,7 +196,10 @@ export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
         : undefined;
     if (configOverride) {
       if (!isAbsolute(configOverride)) {
-        throw new Error(`${config.configDirEnvVar} must be an absolute path`);
+        throw new CliError(
+          "VALIDATION",
+          `${config.configDirEnvVar} must be an absolute path`
+        );
       }
       base = normalize(configOverride);
     } else {

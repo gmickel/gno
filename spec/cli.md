@@ -2781,7 +2781,8 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
 2. Backup-first: every touched existing file is copied to
    `<file>.gno-agents.bak.<timestamp>` before the write. The backup inherits
    the source file's permission mode (a 0600 file yields a 0600 backup, never
-   a umask-default world-readable copy). Immediately before writing, the file
+   a umask-default world-readable copy; if the mode cannot be applied the
+   backup is removed and the target fails). Immediately before writing, the file
    is re-read and compared to the bytes it was planned from; if it changed in
    between (editor, dotfile sync, concurrent run) the write is refused with a
    per-target error — nothing written, no backup — and the run must be
@@ -2831,8 +2832,9 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    via `CLAUDE_CONFIG_DIR` / `CODEX_HOME` is checked (and, following the
    pointer, installed) under that dir, not the ordinary home. A consumer of
    another harness's skill (Cursor and Grok load Claude's from
-   `~/.claude/skills`) is checked at that standard location regardless of the
-   redirect, and while the redirect is active its remediation renders
+   `~/.claude/skills`) is checked at that standard location regardless of any
+   Claude override (`CLAUDE_CONFIG_DIR` or `CLAUDE_SKILLS_DIR`), and while an
+   override is active its remediation renders
    `--skills-dir '<home>/.claude/skills'` so the install lands where that
    consumer actually loads from.
 7. `GNO_AGENTS_HOME_OVERRIDE` overrides the home directory (testing/sandboxed
