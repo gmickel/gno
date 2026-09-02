@@ -591,10 +591,14 @@ const MAX_BACKUP_NAME_ATTEMPTS = 100;
  * directory). Recorded at plan time and compared before a planned-new write.
  */
 export async function directoryIdentity(dir: string): Promise<string | null> {
-  const isDir = await stat(dir)
-    .then((s) => s.isDirectory())
-    .catch(() => false);
-  return isDir ? realIdentity(dir) : null;
+  const info = await stat(dir).catch(() => null);
+  if (!info?.isDirectory()) {
+    return null;
+  }
+  // Canonical path PLUS the filesystem object (device:inode): a directory
+  // removed and recreated at the same pathname (dotfile sync) is a different
+  // object, and a plan made against the old one must not write into the new.
+  return `${realIdentity(dir)}|${info.dev}:${info.ino}`;
 }
 
 export function planWrites(plan: TargetPlan): boolean {

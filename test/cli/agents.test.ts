@@ -1044,6 +1044,27 @@ describe("agents CLI commands", () => {
       expect(existsSync(join(FAKE_HOME, "shared"))).toBe(false);
     });
 
+    test("refuses to write into a config dir removed and recreated after planning", async () => {
+      // Same pathname, different filesystem object (dotfile sync): the path
+      // identity alone would compare equal.
+      await setupHome([".codex"]);
+      const targets = resolveTargets("codex", { homeDir: FAKE_HOME });
+      const [plan] = await planTargets(targets, "install");
+      expect(plan?.fileExists).toBe(false);
+
+      await rm(join(FAKE_HOME, ".codex"), { recursive: true });
+      await mkdir(join(FAKE_HOME, ".codex"));
+      let thrown: unknown;
+      try {
+        await applyPlan(plan!);
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(CliError);
+      expect(String(thrown)).toMatch(/disappeared or moved/);
+      expect(existsSync(CODEX_FILE)).toBe(false);
+    });
+
     test("refuses to recreate a config dir removed after a new file was planned", async () => {
       // The leaf check sees absent === absent; without revalidating the parent,
       // Bun.write would fabricate ~/.codex again and report success.
