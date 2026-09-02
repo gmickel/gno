@@ -74,8 +74,8 @@
           },
           "blockVersion": {
             "type": "integer",
-            "minimum": 1,
-            "description": "Version stamped on the found block; omitted when the stamp is unparseable"
+            "minimum": 0,
+            "description": "Version stamped on the found block (a legacy/pre-release stamp may read 0 — the `outdated` migration case); omitted when the stamp is unparseable"
           },
           "hashOk": {
             "type": "boolean",

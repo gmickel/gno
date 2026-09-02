@@ -132,6 +132,35 @@ describe("agents receipt schemas", () => {
     expect(badReceipt.results.some((r) => r.status === "outdated")).toBe(true);
   });
 
+  test("verify receipt for a legacy v0-stamped block stays schema-valid", async () => {
+    // The `outdated` migration scenario `agents update` supports: a stamp from
+    // an earlier release reads v0. The per-row blockVersion must be allowed to
+    // report 0 (the release-level blockVersion stays >= 1).
+    await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+    stdoutOutput = [];
+    const content = await Bun.file(CODEX_FILE).text();
+    await Bun.write(
+      CODEX_FILE,
+      content.replace(/gno-agents block v\d+ /, "gno-agents block v0 ")
+    );
+    let threw = false;
+    try {
+      await verifyAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(true);
+    const legacy = takeReceipt() as {
+      blockVersion: number;
+      results: { target: string; status: string; blockVersion?: number }[];
+    };
+    expect(assertValid(legacy, verifySchema)).toBe(true);
+    expect(legacy.blockVersion).toBeGreaterThanOrEqual(1);
+    const codex = legacy.results.find((r) => r.target === "codex");
+    expect(codex?.status).toBe("outdated");
+    expect(codex?.blockVersion).toBe(0);
+  });
+
   test("rejects a mutation receipt with an unknown action", () => {
     const receipt = {
       command: "install",
