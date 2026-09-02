@@ -258,11 +258,14 @@ const MAX_SYMLINK_HOPS = 40;
 
 /**
  * Follow a chain of symlinks whose final destination may not exist yet.
- * Stops at the first non-symlink path component (existing or absent) or at
- * the hop bound; a cycle simply exhausts the bound and returns the last path.
+ * Stops at the first non-symlink path component (existing or absent). A
+ * cycle (a path seen twice, or the hop bound exhausted) is refused: returning
+ * a lexical path there would read as a dangling destination, and the install
+ * would then rename a generated file over the operator's link.
  */
 function followDanglingSymlinks(path: string): string {
   let current = path;
+  const seen = new Set<string>();
   for (let hop = 0; hop < MAX_SYMLINK_HOPS; hop++) {
     let link: string;
     try {
@@ -273,9 +276,16 @@ function followDanglingSymlinks(path: string): string {
     } catch {
       return current; // absent (not a symlink) or unreadable — nothing to follow
     }
+    seen.add(current);
     current = normalize(isAbsolute(link) ? link : join(dirname(current), link));
+    if (seen.has(current)) {
+      break;
+    }
   }
-  return current;
+  throw new CliError(
+    "VALIDATION",
+    `${path}: symlink cycle (or more than ${MAX_SYMLINK_HOPS} hops) — refusing to treat it as an instruction file. Fix the link and re-run.`
+  );
 }
 
 /** True when a directory entry exists at `path` — including a dangling symlink. */

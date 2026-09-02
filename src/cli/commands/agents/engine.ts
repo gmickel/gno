@@ -17,7 +17,7 @@
 // rename: atomic replace of the live instruction file (Bun.write is in-place).
 // open: Bun.write cannot create exclusively (O_EXCL) without following a
 // pre-planted symlink, nor set ownership on the resulting inode.
-import { chmod, mkdir, open, rename, stat, unlink } from "node:fs/promises";
+import { mkdir, open, rename, stat, unlink } from "node:fs/promises";
 // node:path: no Bun path utilities.
 import { dirname } from "node:path";
 
@@ -583,6 +583,9 @@ export async function planTargets(
 
 const WRITE_ACTIONS: PlanAction[] = ["install", "update", "remove"];
 
+/** Same-millisecond backup name collisions to tolerate before failing. */
+const MAX_BACKUP_NAME_ATTEMPTS = 100;
+
 /**
  * Real identity of a config directory, or `null` when it is absent (or not a
  * directory). Recorded at plan time and compared before a planned-new write.
@@ -710,31 +713,49 @@ export async function applyPlan(plan: TargetPlan): Promise<string | null> {
       .toISOString()
       .replace(/[:.]/g, "-")
       .replace(/Z$/, "");
-    backupPath = `${writePath}.gno-agents.bak.${timestamp}`;
-    try {
-      await Bun.write(backupPath, Bun.file(writePath));
-    } catch (err) {
-      // A copy that failed midway (disk full, quota) may have left a partial,
-      // umask-mode file holding private instruction bytes — remove it.
-      await unlink(backupPath).catch(() => {});
-      throw new CliError(
-        "RUNTIME",
-        `Backup failed for ${writePath}: ${err instanceof Error ? err.message : String(err)} — nothing was written.`
-      );
+    // Exclusive, no-follow create (like the temp file below): the name is
+    // predictable, so in a shared writable dir a pre-planted symlink at it
+    // must fail the open rather than be written through. An EXISTING backup
+    // with the same timestamp (two runs within one millisecond) is never
+    // clobbered either — the name gets a `-N` suffix instead. Created private
+    // (0600) and then given the source mode — a 0600 source must never yield
+    // a umask-default world-readable copy of private instructions.
+    const backupBase = `${writePath}.gno-agents.bak.${timestamp}`;
+    let handle: Awaited<ReturnType<typeof open>> | undefined;
+    for (let attempt = 0; handle === undefined; attempt++) {
+      const candidate = attempt === 0 ? backupBase : `${backupBase}-${attempt}`;
+      try {
+        handle = await open(candidate, "wx", 0o600);
+        backupPath = candidate;
+      } catch (err) {
+        const exists =
+          (err as NodeJS.ErrnoException).code === "EEXIST" &&
+          attempt < MAX_BACKUP_NAME_ATTEMPTS;
+        if (!exists) {
+          throw new CliError(
+            "RUNTIME",
+            `Backup failed for ${writePath}: ${err instanceof Error ? err.message : String(err)}; nothing was written.`
+          );
+        }
+      }
     }
     try {
-      // Bun.write creates the backup with the process umask; a 0600 source
-      // would yield a world-readable 0644 copy of private instructions.
-      // Inherit the source mode so the backup is exactly as private.
-      const { mode } = await stat(writePath);
-      await chmod(backupPath, mode & 0o777);
+      try {
+        await handle.writeFile(await Bun.file(writePath).bytes());
+        const { mode } = await stat(writePath);
+        await handle.chmod(mode & 0o777);
+      } finally {
+        await handle.close();
+      }
     } catch (err) {
-      // Never leave a copy behind that is less private than its source: the
-      // umask-mode backup already exists, so remove it before failing.
-      await unlink(backupPath).catch(() => {});
+      // Never leave a partial or less-private copy behind: remove whatever
+      // the failed step created before failing.
+      if (backupPath) {
+        await unlink(backupPath).catch(() => {});
+      }
       throw new CliError(
         "RUNTIME",
-        `Backup failed for ${writePath}: could not apply the source file's permissions to the backup (${err instanceof Error ? err.message : String(err)}); the backup was removed and nothing was written.`
+        `Backup failed for ${writePath}: ${err instanceof Error ? err.message : String(err)}; the backup was removed and nothing was written.`
       );
     }
   }

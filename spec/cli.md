@@ -2782,7 +2782,9 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    absent, the covering chain never activates — the run reports only
    `not-detected` and touches no other harness's file.
 2. Backup-first: every touched existing file is copied to
-   `<file>.gno-agents.bak.<timestamp>` before the write. The backup inherits
+   `<file>.gno-agents.bak.<timestamp>` before the write (created exclusively,
+   never through a pre-existing link; a same-millisecond collision gets a
+   `-N` suffix rather than overwriting the earlier backup). The backup inherits
    the source file's permission mode (a 0600 file yields a 0600 backup, never
    a umask-default world-readable copy; if the copy fails midway or the mode
    cannot be applied, the partial backup is removed and the target fails).
@@ -2957,13 +2959,18 @@ gno agents verify [--target <...>] [--extra-dir <path>]... [--json]
 }
 ```
 
-`status` is one of `ok`, `outdated`, `missing`, `malformed`, `covered`,
-`not-detected`. Schema: `spec/output-schemas/agents-verify.schema.json`.
+`status` is one of `ok`, `outdated`, `missing`, `malformed`, `error`,
+`covered`, `not-detected`. `error` (with `errorCode: "RUNTIME"`) means the
+instruction file exists but could not be read (permissions, I/O error,
+existence race) — a "could not check", never a content verdict; `malformed`
+is reserved for what the decoder and marker validation say about the bytes.
+Schema: `spec/output-schemas/agents-verify.schema.json`.
 
 **Exit Codes:**
 
 - 0: All verified targets ok (covered / not-detected do not fail)
 - 1: One or more targets `outdated`, `missing`, or `malformed`
+- 2: Every failing target is an `error` (I/O) row
 
 ---
 

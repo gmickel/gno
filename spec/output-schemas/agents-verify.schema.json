@@ -55,10 +55,15 @@
               "outdated",
               "missing",
               "malformed",
+              "error",
               "covered",
               "not-detected"
             ],
-            "description": "Verification outcome for this target"
+            "description": "Verification outcome for this target (`error` = the file could not be read; see errorCode)"
+          },
+          "errorCode": {
+            "enum": ["RUNTIME"],
+            "description": "Failure category for `error` rows: RUNTIME = I/O (permissions, read error, existence race), never a content verdict"
           },
           "detected": {
             "type": "boolean",

@@ -1411,7 +1411,7 @@ ownership order as install; the rest report `covered`.
 
 ```bash
 gno agents verify
-gno agents verify --json    # exit 1 when any target is outdated/missing/malformed
+gno agents verify --json    # exit 1 when any target is outdated/missing/malformed; exit 2 when a file could not be read (status "error")
 ```
 
 ### gno agents uninstall

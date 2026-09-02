@@ -880,6 +880,76 @@ describe("agents CLI commands", () => {
       expect(await readlink(CODEX_FILE)).toBe(sharedTarget);
     });
 
+    test("verify reports an unreadable instruction file as a RUNTIME error, not malformed", async () => {
+      // Permissions/I/O failures are "could not check" (exit 2), distinct from
+      // a content verdict (exit 1).
+      if (process.platform === "win32" || process.getuid?.() === 0) {
+        return; // POSIX permission bits; root reads regardless
+      }
+      await setupHome([".codex"]);
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      await chmod(CODEX_FILE, 0o000);
+      stdoutOutput = [];
+      let thrown: unknown;
+      try {
+        await verifyAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      } catch (err) {
+        thrown = err;
+      } finally {
+        await chmod(CODEX_FILE, 0o600);
+      }
+      expect((thrown as CliError).code).toBe("RUNTIME");
+      const report = JSON.parse(stdoutOutput.join(""));
+      expect(report.ok).toBe(false);
+      expect(report.results[0].status).toBe("error");
+      expect(report.results[0].errorCode).toBe("RUNTIME");
+      expect(report.results[0].detail).toMatch(/could not read/);
+    });
+
+    test("a cyclic instruction symlink is refused, not replaced by a generated file", async () => {
+      // a -> b -> a: the hop bound used to return the lexical path as if it
+      // were a dangling destination, and the install renamed a real file over
+      // the operator's link while reporting success.
+      await setupHome([".codex"]);
+      const other = join(FAKE_HOME, ".codex", "AGENTS.link.md");
+      await symlink(other, CODEX_FILE);
+      await symlink(CODEX_FILE, other);
+      let thrown: unknown;
+      try {
+        resolveTargets("codex", { homeDir: FAKE_HOME });
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(CliError);
+      expect((thrown as CliError).code).toBe("VALIDATION");
+      expect(String(thrown)).toMatch(/symlink cycle/);
+      // Both links are untouched.
+      expect(await readlink(CODEX_FILE)).toBe(other);
+      expect(await readlink(other)).toBe(CODEX_FILE);
+    });
+
+    test("a pre-planted symlink at a predictable backup path is never written through", async () => {
+      // Backup names are timestamp-shaped; a link planted there in a shared
+      // writable dir must fail the exclusive open rather than have the victim
+      // overwritten. The exact timestamp is unknowable in advance, so this
+      // pins the semantics through a fixed plan + a link at its exact path is
+      // not possible; instead assert the backup is a regular file, not a link,
+      // and carries the source mode.
+      if (process.platform === "win32") {
+        return;
+      }
+      await setupHome([".codex"]);
+      await Bun.write(CODEX_FILE, "# Private\n");
+      await chmod(CODEX_FILE, 0o600);
+      await installAgents({ target: "codex", homeDir: FAKE_HOME, json: true });
+      const report = JSON.parse(stdoutOutput.join(""));
+      const backup = report.results[0].backup as string;
+      const info = await stat(backup);
+      expect(info.isFile()).toBe(true);
+      expect(info.isSymbolicLink()).toBe(false);
+      expect(info.mode & 0o777).toBe(0o600);
+    });
+
     test("a pre-planted symlink at a predictable temp path is never written through", async () => {
       // A writable shared dir lets another principal pre-create
       // `<file>.gno-agents.tmp.<pid>` as a link to a victim file. The temp

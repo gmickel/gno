@@ -299,11 +299,14 @@ interface VerifyReport {
     | "outdated"
     | "missing"
     | "malformed"
+    | "error"
     | "covered"
     | "not-detected";
   detected: boolean;
   via?: string;
   detail?: string;
+  /** Set on `error` rows: the failure category (RUNTIME = I/O, not content). */
+  errorCode?: "RUNTIME";
   blockVersion?: number;
   hashOk?: boolean;
   linksOk?: boolean;
@@ -382,11 +385,25 @@ async function verifyTarget(
       detail: "instruction file not found",
     };
   }
+  // Reading is an I/O step (permissions, I/O error, existence race): a failure
+  // there is a RUNTIME `error`, not a content verdict — `malformed` is
+  // reserved for what the decoder and marker validation say about the bytes.
+  let bytes: Uint8Array;
+  try {
+    bytes = await file.bytes();
+  } catch (err) {
+    return {
+      ...base,
+      status: "error",
+      errorCode: "RUNTIME",
+      detail: `could not read instruction file: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
   let content: string;
   let extraction: ReturnType<typeof extractBlock>;
   try {
     // Same byte-exact decoder as planning: BOM split off, non-UTF-8 refused.
-    ({ content } = decodeInstructionFile(await file.bytes(), target.file));
+    ({ content } = decodeInstructionFile(bytes, target.file));
     extraction = extractBlock(content, target.file);
   } catch (err) {
     return {
@@ -526,8 +543,11 @@ export async function verifyAgents(opts: AgentsOptions = {}): Promise<void> {
   }
 
   if (!ok) {
+    // Same category rule as mutations: when every failure is an I/O error,
+    // exit 2 so automation can tell "could not check" from "check failed".
+    const allRuntime = failing.every((r) => r.status === "error");
     throw new CliError(
-      "VALIDATION",
+      allRuntime ? "RUNTIME" : "VALIDATION",
       `verification failed for ${failing.length} target(s): ${failing
         .map((r) => `${r.target} (${r.status})`)
         .join(", ")}`
