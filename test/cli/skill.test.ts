@@ -342,6 +342,38 @@ describe("skill CLI commands", () => {
       expect((thrown as CliError).code).toBe("VALIDATION");
     });
 
+    test("a symlinked --skills-dir stays manageable (--force + uninstall)", async () => {
+      // `<instance>/skills -> <shared>`: containment must be checked against
+      // the resolved skills root, not the lexical parent, or the initial
+      // install succeeds while the idempotent --force command and the
+      // matching uninstall are refused as "outside expected base".
+      const shared = join(TEST_DIR, "shared-skills");
+      const instance = join(TEST_DIR, "linked-instance");
+      const skillsDir = join(instance, "skills");
+      await mkdir(shared, { recursive: true });
+      await mkdir(instance, { recursive: true });
+      await symlink(shared, skillsDir);
+      const base = {
+        scope: "user" as const,
+        target: "claude" as const,
+        skillsDir,
+        homeDir: FAKE_HOME,
+        cwd: FAKE_CWD,
+        json: true,
+      };
+      await installSkill(base);
+      expect(await Bun.file(join(shared, "gno", "SKILL.md")).exists()).toBe(
+        true
+      );
+      stdoutOutput = [];
+      await installSkill({ ...base, force: true });
+      stdoutOutput = [];
+      await uninstallSkill(base);
+      expect(await Bun.file(join(shared, "gno", "SKILL.md")).exists()).toBe(
+        false
+      );
+    });
+
     test("--skills-dir with --target all is rejected as validation", async () => {
       let thrown: unknown;
       try {

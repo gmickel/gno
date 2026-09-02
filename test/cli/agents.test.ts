@@ -833,6 +833,28 @@ describe("agents CLI commands", () => {
       }
     });
 
+    test("an invalid dedicated skills override fails a requested harness, not 'skill missing'", () => {
+      // CLAUDE_SKILLS_DIR=relative is a broken environment; treating it as an
+      // absent skill would write a block whose remediation inherits the same
+      // invalid env and fails immediately. Requested → VALIDATION; unrequested
+      // (lenient aggregation) → dropped.
+      const saved = process.env.CLAUDE_SKILLS_DIR;
+      process.env.CLAUDE_SKILLS_DIR = "relative/skills";
+      try {
+        expect(() => resolveTargets("claude", { homeDir: FAKE_HOME })).toThrow(
+          CliError
+        );
+        const lenient = resolveTargets("all", {
+          homeDir: FAKE_HOME,
+          lenient: true,
+        });
+        expect(lenient.some((t) => t.id === "claude")).toBe(false);
+      } finally {
+        if (saved === undefined) delete process.env.CLAUDE_SKILLS_DIR;
+        else process.env.CLAUDE_SKILLS_DIR = saved;
+      }
+    });
+
     test("lenient resolution drops an unrequested harness with misconfigured env", () => {
       // An explicit-target run aggregates skill state over the full matrix;
       // an unrelated harness's bad env (relative CLAUDE_CONFIG_DIR) must not

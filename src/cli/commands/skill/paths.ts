@@ -141,6 +141,32 @@ const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Paths for an explicitly named skills directory (`--skills-dir` or a
+ * dedicated env override). The directory is anchored at its *resolved* root:
+ * when `<dir>/skills` is itself a symlink to a shared skills directory, the
+ * lexical parent would be an unrelated instance dir and the realpath
+ * containment check in `validatePathForDeletion` would refuse the very
+ * destination we installed into — breaking `--force` and uninstall. A
+ * not-yet-existing directory (fresh install) keeps its normalized lexical path.
+ */
+function explicitSkillPaths(dir: string): SkillPaths {
+  let skillsDir = normalize(dir);
+  if (existsSync(skillsDir)) {
+    try {
+      skillsDir = realpathSync(skillsDir);
+    } catch {
+      // Unresolvable (race/permissions): fall back to the lexical path; the
+      // deletion validator still performs its own containment checks.
+    }
+  }
+  return {
+    base: dirname(skillsDir),
+    skillsDir,
+    gnoDir: join(skillsDir, SKILL_NAME),
+  };
+}
+
+/**
  * Resolve skill installation paths for a given scope and target.
  */
 export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
@@ -153,12 +179,7 @@ export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
       // Invalid CLI operand → exit 1 (validation), not a runtime failure.
       throw new CliError("VALIDATION", "--skills-dir must be an absolute path");
     }
-    const skillsDir = normalize(opts.skillsDir);
-    return {
-      base: join(skillsDir, ".."),
-      skillsDir,
-      gnoDir: join(skillsDir, SKILL_NAME),
-    };
+    return explicitSkillPaths(opts.skillsDir);
   }
 
   // Check for env overrides first
@@ -172,12 +193,7 @@ export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
         `${config.envVar} must be an absolute path`
       );
     }
-    const skillsDir = normalize(envOverride);
-    return {
-      base: join(skillsDir, ".."),
-      skillsDir,
-      gnoDir: join(skillsDir, SKILL_NAME),
-    };
+    return explicitSkillPaths(envOverride);
   }
 
   // Resolve base directory

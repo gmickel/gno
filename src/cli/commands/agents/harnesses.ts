@@ -366,7 +366,16 @@ function skillInstalledFor(location: SkillStateLocation): boolean {
       skillsDir: location.skillsDir,
     });
     return existsSync(join(paths.gnoDir, "SKILL.md"));
-  } catch {
+  } catch (err) {
+    // A VALIDATION error (e.g. a relative CLAUDE_SKILLS_DIR) is the operator's
+    // environment being wrong, not the skill being absent: propagate it so a
+    // requested harness fails the run instead of rendering a remediation that
+    // inherits the same broken env. Unrequested harnesses are dropped by the
+    // caller's lenient resolution. Anything else (unreadable dir) reads as
+    // "not installed".
+    if (err instanceof CliError && err.code === "VALIDATION") {
+      throw err;
+    }
     return false;
   }
 }
