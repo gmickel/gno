@@ -272,7 +272,13 @@ export function aggregateRemediation(
   targets: ResolvedTarget[]
 ): Map<string, SkillRemediation> {
   const byId = new Map(targets.map((t) => [t.id, t]));
-  const byFile = new Map<string, SkillRemediation>();
+  // Group the lacking consumers per real file first: the remediation set is
+  // computed per file so consumers with ALTERNATIVES (Cursor loads claude OR
+  // codex) can be satisfied by a target another consumer already forces,
+  // instead of adding their preferred target on top — an unnecessary install
+  // would create a harness dir the operator never had, which a later
+  // all-target `agents update` would then detect and write into.
+  const lackingByFile = new Map<string, ResolvedTarget[]>();
   for (const target of targets) {
     if (!target.detected || target.skillInstalled) {
       continue;
@@ -281,24 +287,46 @@ export function aggregateRemediation(
     if (!consumed) {
       continue;
     }
-    const entry = byFile.get(consumed.realFile) ?? {
-      targets: [],
-      extraDirs: [],
-    };
-    if (target.id === "extra-dir") {
-      entry.extraDirs.push(target.configDir);
-    } else if (target.skillHome !== undefined) {
-      // A consumer decoupled from its skill target's active redirect (e.g.
-      // Cursor while CLAUDE_CONFIG_DIR is set) needs the skill at the
-      // STANDARD location — `--target claude` would install into the
-      // redirected instance it cannot load from.
-      if (!entry.extraDirs.includes(target.skillHome)) {
-        entry.extraDirs.push(target.skillHome);
+    const list = lackingByFile.get(consumed.realFile) ?? [];
+    list.push(target);
+    lackingByFile.set(consumed.realFile, list);
+  }
+
+  const byFile = new Map<string, SkillRemediation>();
+  for (const [realFile, consumers] of lackingByFile) {
+    const entry: SkillRemediation = { targets: [], extraDirs: [] };
+    const flexible: ResolvedTarget[] = [];
+    // Pass 1 — consumers with exactly one way to get the skill.
+    for (const consumer of consumers) {
+      if (consumer.id === "extra-dir") {
+        entry.extraDirs.push(consumer.configDir);
+      } else if (consumer.skillHome !== undefined) {
+        // Decoupled from its skill target's active redirect (e.g. Cursor while
+        // CLAUDE_CONFIG_DIR is set): needs the skill at the STANDARD location —
+        // `--target claude` would install into the redirected instance it
+        // cannot load from.
+        if (!entry.extraDirs.includes(consumer.skillHome)) {
+          entry.extraDirs.push(consumer.skillHome);
+        }
+      } else if (consumer.skillTargets.length <= 1) {
+        if (!entry.targets.includes(consumer.skillTarget)) {
+          entry.targets.push(consumer.skillTarget);
+        }
+      } else {
+        flexible.push(consumer);
       }
-    } else if (!entry.targets.includes(target.skillTarget)) {
-      entry.targets.push(target.skillTarget);
     }
-    byFile.set(consumed.realFile, entry);
+    // Pass 2 — consumers with alternatives add their preferred target only
+    // when nothing already selected for this file satisfies them.
+    for (const consumer of flexible) {
+      const satisfied = consumer.skillTargets.some((t) =>
+        entry.targets.includes(t)
+      );
+      if (!satisfied && !entry.targets.includes(consumer.skillTarget)) {
+        entry.targets.push(consumer.skillTarget);
+      }
+    }
+    byFile.set(realFile, entry);
   }
   return byFile;
 }

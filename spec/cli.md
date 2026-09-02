@@ -2821,7 +2821,9 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    agent skill is installed for EVERY detected harness that reads the file,
    else a remediation scoped to the consumers that lack it — one
    `gno skill install --scope user --force --target <harness>` per such
-   harness, and `gno skill install --scope user --force --target claude --skills-dir '<dir>/skills'`
+   harness, minimized across consumers of the same file (a consumer with
+   alternatives, e.g. Cursor loading claude or codex, adds nothing when a
+   target already selected for that file satisfies it), and `gno skill install --scope user --force --target claude --skills-dir '<dir>/skills'`
    for an `--extra-dir` instance (single-quoted path — literal in POSIX shells
    and PowerShell, so `$VAR`, backticks, and `$(…)` in a path never expand; an
    embedded `'` is escaped for the platform the block is rendered on, `'\''`

@@ -180,8 +180,10 @@ export interface ResolvedTarget {
   realFile: string;
   /** Whether the harness is detected on this machine. */
   detected: boolean;
-  /** Skill target this consumer loads the GNO skill from. */
+  /** Preferred skill target (remediation vehicle) for this consumer. */
   skillTarget: SkillTarget;
+  /** Every skill target this consumer can load from (`skillTarget` first). */
+  skillTargets: readonly SkillTarget[];
   /**
    * Set when this consumer loads ANOTHER harness's skill from that harness's
    * standard config dir while that harness itself is redirected by env (e.g.
@@ -398,6 +400,7 @@ function resolveHarness(
     // Installed when ANY loadable location has it (Cursor: claude OR codex).
     skillInstalled: locations.some((loc) => skillInstalledFor(loc)),
     skillTarget: location.target,
+    skillTargets: def.skillTargets,
     ...(location.skillHome !== undefined && { skillHome: location.skillHome }),
   };
 }
@@ -435,8 +438,9 @@ function resolveExtraDir(dir: string): ResolvedTarget {
     detected: true,
     skillInstalled,
     // Instances share the skills/<name> layout of every target; claude is the
-    // env-override vehicle (CLAUDE_SKILLS_DIR) the remediation uses.
+    // vehicle the --skills-dir remediation uses.
     skillTarget: "claude",
+    skillTargets: ["claude"],
   };
 }
 

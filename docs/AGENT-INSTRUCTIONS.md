@@ -97,7 +97,10 @@ discipline — in well under 1,500 characters. It carries a version stamp and a
 content hash, and a state-aware pointer: `/gno` when the GNO agent skill is
 installed for every harness that reads the file, otherwise a remediation
 scoped to the consumers that lack it — one
-`gno skill install --scope user --force --target <harness>` per such harness
+`gno skill install --scope user --force --target <harness>` per such harness,
+and no more than needed (Cursor, which loads either Claude's or Codex's
+skill, is satisfied by whichever of those the file's other consumers already
+require)
 (and `… --target claude --skills-dir '<dir>/skills'` for an extra-dir instance — single-quoted, so nothing in the path expands; an apostrophe is escaped in the idiom of the platform the block was rendered on),
 never `--target all`, so following the pointer never fabricates skill or
 config dirs for harnesses you never installed. `--force` keeps it idempotent

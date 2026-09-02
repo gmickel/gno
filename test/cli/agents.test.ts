@@ -594,6 +594,23 @@ describe("agents CLI commands", () => {
       expect(JSON.parse(stdoutOutput.join("")).ok).toBe(true);
     });
 
+    test("remediation for a shared file is minimal across consumers with alternatives", async () => {
+      // Codex and Cursor share the file, neither has the skill. Codex can only
+      // be fixed by `--target codex`; Cursor loads codex OR claude, so the
+      // codex install already satisfies it — adding `--target claude` would
+      // fabricate ~/.claude for a harness the operator never had.
+      await setupHome([".codex", ".cursor"]);
+      await Bun.write(CODEX_FILE, "# Shared\n");
+      await symlink(CODEX_FILE, join(FAKE_HOME, "AGENTS.md"));
+
+      await installAgents({ target: "all", homeDir: FAKE_HOME, json: true });
+      const content = await Bun.file(CODEX_FILE).text();
+      expect(content).toContain(
+        "run `gno skill install --scope user --force --target codex` and load"
+      );
+      expect(content).not.toContain("--target claude");
+    });
+
     test("explicit-target install aggregates unrequested detected consumers of a shared file", async () => {
       // Regression: OpenCode's AGENTS.md symlinked to Codex's file, only the
       // codex skill installed. `install --target codex` filters resolution to
@@ -808,6 +825,7 @@ describe("agents CLI commands", () => {
         detected: true,
         skillInstalled: false,
         skillTarget: "claude",
+        skillTargets: ["claude", "codex"],
         skillHome: join(FAKE_HOME, ".claude"),
       };
       const remediation = aggregateRemediation([consumer]).get(
