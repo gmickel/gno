@@ -7,7 +7,7 @@ import Ajv from "ajv";
 // oxlint-disable-next-line import/no-namespace -- ajv-formats requires namespace for .default
 import * as addFormatsModule from "ajv-formats";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -65,8 +65,9 @@ function restoreOutput() {
 const TEST_ROOT = join(tmpdir(), "gno-search-smoke");
 let testCounter = 0;
 
-function getTestDir(): string {
-  const dir = join(TEST_ROOT, `test-${Date.now()}-${testCounter}`);
+async function getTestDir(): Promise<string> {
+  await mkdir(TEST_ROOT, { recursive: true });
+  const dir = await mkdtemp(join(TEST_ROOT, `test-${testCounter}-`));
   testCounter += 1;
   return dir;
 }
@@ -98,7 +99,7 @@ async function cli(
 }
 
 async function setupTestWithContent(): Promise<string> {
-  const testDir = getTestDir();
+  const testDir = await getTestDir();
   await setupTestEnv(testDir);
 
   const docsDir = join(testDir, "docs");
@@ -146,7 +147,7 @@ describe("gno search smoke tests", () => {
 
   test("search --query-file reads the query from a file", async () => {
     const queryPath = join(testDir, "query.txt");
-    await writeFile(queryPath, "markdown\n", { flag: "wx" });
+    await writeFile(queryPath, "markdown\n", { flag: "wx", mode: 0o600 });
     const { code, stdout } = await cli(
       "search",
       "--query-file",
@@ -162,7 +163,7 @@ describe("gno search smoke tests", () => {
 
   test("search rejects a positional query together with --query-file", async () => {
     const queryPath = join(testDir, "query.txt");
-    await writeFile(queryPath, "markdown\n", { flag: "wx" });
+    await writeFile(queryPath, "markdown\n", { flag: "wx", mode: 0o600 });
     const { code, stderr } = await cli(
       "search",
       "markdown",
@@ -185,7 +186,7 @@ describe("gno search smoke tests", () => {
 
   test("search --query-file empty file exits 1", async () => {
     const queryPath = join(testDir, "empty-query.txt");
-    await writeFile(queryPath, "", { flag: "wx" });
+    await writeFile(queryPath, "", { flag: "wx", mode: 0o600 });
     const { code, stderr } = await cli("search", "--query-file", queryPath);
     expect(code).toBe(1);
     expect(stderr).toContain("Query cannot be empty");
@@ -193,7 +194,7 @@ describe("gno search smoke tests", () => {
 
   test("query diagnose rejects --query-file", async () => {
     const queryPath = join(testDir, "diag-query.txt");
-    await writeFile(queryPath, "markdown\n", { flag: "wx" });
+    await writeFile(queryPath, "markdown\n", { flag: "wx", mode: 0o600 });
     const { code, stderr } = await cli(
       "query",
       "diagnose",
@@ -404,7 +405,7 @@ describe("search on empty index", () => {
   let testDir: string;
 
   beforeEach(async () => {
-    testDir = getTestDir();
+    testDir = await getTestDir();
     await setupTestEnv(testDir);
     // Create empty docs dir and init with it
     const docsDir = join(testDir, "docs");

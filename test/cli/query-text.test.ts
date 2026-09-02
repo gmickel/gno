@@ -14,7 +14,7 @@ describe("resolveCliQueryText", () => {
   test("reads a query file and strips a trailing newline", async () => {
     const dir = await mkdtemp(join(tmpdir(), "gno-query-text-"));
     const path = join(dir, "q.txt");
-    await writeFile(path, "ramen bowl\n", { flag: "wx" });
+    await writeFile(path, "ramen bowl\n", { flag: "wx", mode: 0o600 });
     try {
       expect(await resolveCliQueryText("", path)).toBe("ramen bowl");
     } finally {
