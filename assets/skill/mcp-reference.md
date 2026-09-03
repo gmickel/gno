@@ -100,7 +100,10 @@ gateway) advertises only `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`,
 `gno_context`, `gno_changes`, and `gno_recall`, plus `gno_capture` and
 `gno_remember` with `--enable-write`; their descriptions state when to call
 each and what comes back. Every other tool named below is available under the
-default `full` profile.
+default `full` profile. Pick the profile once per client at install time with
+`gno mcp install --target <client> --tool-profile core` (add `--force` to
+switch an existing registration); `gno mcp status` shows the profile each
+registration carries.
 
 For normal questions, start with `gno_query`, then read targeted snippets with
 `gno_get` or batch refs with `gno_multi_get`. Use `gno_context` for one bounded,

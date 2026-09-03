@@ -748,6 +748,8 @@ gno mcp install [options]
 | `-s, --scope`  | target default | Scope: `user`, `project`  |
 | `-f, --force`  | false          | Overwrite existing config |
 | `--dry-run`    | false          | Preview changes           |
+| `--enable-write` | false        | Registered server starts with write tools enabled |
+| `--tool-profile` | full         | Advertised tool set the registration starts with: `core` (7 read tools, plus `gno_capture` and `gno_remember` with `--enable-write`) or `full`; omitted writes no flag |
 
 Targets: `claude-desktop`, `claude-code`, `codex`, `cursor`, `zed`,
 `windsurf`, `opencode`, `amp`, `lmstudio`, and `librechat`. Project scope is
@@ -762,6 +764,12 @@ gno mcp install
 
 # Claude Code (user scope)
 gno mcp install -t claude-code
+
+# Claude Code on the slim core profile, with capture and remember enabled
+gno mcp install -t claude-code --tool-profile core --enable-write
+
+# Switch an existing registration to core (nothing migrates on its own)
+gno mcp install -t cursor --tool-profile core --force
 
 # Claude Code (project scope)
 gno mcp install -t claude-code -s project
