@@ -45,8 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   identity, filters scopes and superseded records inside the retrieval query,
   applies an 8-fact / 512-token budget, and returns `gno://` cites with
   `egressLineage` plus a content-free fencing receipt that `remember` uses to
-  reject replayed spans and `derivedFrom` gno:// input.
-- `collections[].memoryManaged` config flag, `doc_memory_scopes` index table
+  reject replayed spans and `derivedFrom` gno:// input. Optional `source`
+  evidence (`--source`) is stored as `memory.source` and echoed on the
+  record. Exact-duplicate idempotency is decided under the write lease, and a
+  supersede returns `superseded` only once its `supersedes` edge is
+  projected (`MEMORY_SUPERSEDE_PROJECTION_FAILED` otherwise).
+- `collections[].memoryManaged` config flag (memory scopes are indexed only
+  for managed collections), `doc_memory_scopes` index table
   (migration 027), and in-query `memoryScopesAny` / `excludeSuperseded` /
   `anyTerm` FTS filters.
 - Malformed memory files are diagnosed with stable codes and projected through
