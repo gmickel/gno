@@ -14,11 +14,7 @@
  * @module src/mcp/tool-descriptions-core
  */
 
-import {
-  MCP_CORE_READ_TOOL_NAMES,
-  MCP_CORE_WRITE_TOOL_NAMES,
-  type McpToolProfile,
-} from "./tool-profile";
+import { type McpToolProfile, mcpToolProfileAllowlist } from "./tool-profile";
 
 export const MCP_CORE_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
   gno_query:
@@ -56,7 +52,5 @@ export function profileToolDescription(
 }
 
 /** Every core tool, read and write, in one set for table-coverage checks. */
-export const MCP_CORE_TOOL_NAMES: ReadonlySet<string> = new Set([
-  ...MCP_CORE_READ_TOOL_NAMES,
-  ...MCP_CORE_WRITE_TOOL_NAMES,
-]);
+export const MCP_CORE_TOOL_NAMES: ReadonlySet<string> =
+  mcpToolProfileAllowlist("core") ?? new Set();

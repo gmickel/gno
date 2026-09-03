@@ -8,8 +8,6 @@
 // node:path for join/dirname (no Bun path utils)
 import { dirname, join } from "node:path";
 
-import type { McpToolProfile } from "./tool-profile";
-
 import {
   DEFAULT_INDEX_NAME,
   MCP_SERVER_NAME,
@@ -22,6 +20,7 @@ import { envIsSet } from "../llm/policy";
 import { MCP_ACTIVATION_VERIFICATION_ENV } from "./activation-verification-mode";
 import { createToolContext, Mutex, type ToolContext } from "./context";
 import { serveMcpStdio } from "./stdio-serving";
+import { DEFAULT_MCP_TOOL_PROFILE, type McpToolProfile } from "./tool-profile";
 
 export type { ToolContext } from "./context";
 
@@ -199,7 +198,7 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
   });
 
   console.error(
-    `[MCP] ${MCP_SERVER_NAME} v${VERSION} ready on stdio (tool profile: ${options.toolProfile ?? "full"})`
+    `[MCP] ${MCP_SERVER_NAME} v${VERSION} ready on stdio (tool profile: ${options.toolProfile ?? DEFAULT_MCP_TOOL_PROFILE})`
   );
 
   // Block forever until shutdown signal or stdin closes

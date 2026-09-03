@@ -9,7 +9,13 @@
  * @module src/mcp/tool-profile
  */
 
-import type { McpServer } from "@modelcontextprotocol/server";
+import type {
+  Icon,
+  McpServer,
+  StandardSchemaWithJSON,
+  ToolAnnotations,
+  ToolCallback,
+} from "@modelcontextprotocol/server";
 
 export const MCP_TOOL_PROFILES = ["core", "full"] as const;
 
@@ -66,26 +72,41 @@ export function mcpToolProfileAllowlist(
   return new Set([...MCP_CORE_READ_TOOL_NAMES, ...MCP_CORE_WRITE_TOOL_NAMES]);
 }
 
-type RegisterTool = McpServer["registerTool"];
+/**
+ * Registration through a profile. Mirrors `McpServer.registerTool`'s
+ * schema-object overload minus the return value: a tool outside the profile
+ * is never registered, so there is no `RegisteredTool` to hand back, and
+ * `registerTools` never reads one.
+ */
+export type ProfileToolRegistrar = <
+  OutputArgs extends StandardSchemaWithJSON,
+  InputArgs extends StandardSchemaWithJSON | undefined = undefined,
+>(
+  name: string,
+  config: {
+    title?: string;
+    description?: string;
+    inputSchema?: InputArgs;
+    outputSchema?: OutputArgs;
+    annotations?: ToolAnnotations;
+    icons?: Icon[];
+    _meta?: Record<string, unknown>;
+  },
+  cb: ToolCallback<InputArgs>
+) => void;
 
 /**
  * Wrap `server.registerTool` so tools outside the profile are never
- * registered. `full` returns the server's own method, so registration order
+ * registered. `full` forwards every call unchanged, so registration order
  * and wire bytes stay identical to an unprofiled server.
  */
 export function createProfileToolRegistrar(
   server: McpServer,
   profile: McpToolProfile
-): RegisterTool {
+): ProfileToolRegistrar {
   const allowlist = mcpToolProfileAllowlist(profile);
-  if (allowlist === null) return server.registerTool.bind(server);
-  const registrar = (
-    name: string,
-    config: Parameters<RegisterTool>[1],
-    cb: Parameters<RegisterTool>[2]
-  ) =>
-    allowlist.has(name) ? server.registerTool(name, config, cb) : undefined;
-  // The skip branch has no RegisteredTool to return and registerTools never
-  // reads one; the cast keeps the overloaded generic call signature intact.
-  return registrar as unknown as RegisterTool;
+  return (name, config, cb) => {
+    if (allowlist !== null && !allowlist.has(name)) return;
+    server.registerTool(name, config, cb);
+  };
 }
