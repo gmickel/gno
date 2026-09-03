@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+// node:fs/promises for mkdir and node:path for join: filesystem structure
+// helpers with no Bun equivalent (see AGENTS.md "Acceptable node:*").
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 

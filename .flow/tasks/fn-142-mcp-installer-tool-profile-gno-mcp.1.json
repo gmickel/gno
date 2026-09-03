@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-142-mcp-installer-tool-profile-gno-mcp",
   "spec_path": ".flow/tasks/fn-142-mcp-installer-tool-profile-gno-mcp.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement gno mcp install --tool-profile",
   "updated_at": "2026-09-03T21:27:59.805973Z"
 }
