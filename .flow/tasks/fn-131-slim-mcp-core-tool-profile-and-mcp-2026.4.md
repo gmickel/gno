@@ -43,3 +43,4 @@ stage: impl-review - skipped(config: REVIEW_MODE=none)
 - Commits: 5ce23888e6061bd68081032e469c05a09b3faf41, aa569a36e3f4f868f54c9653bf98d37287fadb93
 - Tests: bun run lint:check, bun test (4637 pass, 2 skip, 0 fail; receipt aa569a36-unittest), bun test test/mcp/legacy-parity.test.ts, bun test test/mcp test/core/connector-verifier.test.ts test/indexed-uri-roundtrip.test.ts test/memory-fence-e2e.test.ts test/serve/resident-concurrency.test.ts, bun install --frozen-lockfile
 - PRs:
+stage: plan-sync - skipped(config: planSync.enabled != true)
