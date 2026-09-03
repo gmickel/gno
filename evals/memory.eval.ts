@@ -29,6 +29,7 @@ import type {
 } from "./helpers/memory-fixtures";
 
 import {
+  buildFixtureManifest,
   loadMemoryFixture,
   manifestDigest,
   verifyFixtureManifest,
@@ -58,12 +59,21 @@ export const MEMORY_GATE = {
   recallAt5: 0.8,
   /** Suite 3: every returned gno:// URI resolves through the SDK. */
   citeValidity: 1,
-  /** Suite 3: facts <= 8 and tokens <= 512 on every recall. */
+  /** Suite 3: facts <= recallMaxFacts and tokens <= recallMaxTokens on every recall. */
   budgetRespected: 1,
+  /**
+   * Suite 3: the recall budget as literals. Both the observed payload and the
+   * implementation constants (MEMORY_RECALL_MAX_*) are asserted against these,
+   * so a cap regression in src/ fails the gate instead of moving it.
+   */
+  recallMaxFacts: 8,
+  recallMaxTokens: 512,
   /** Suite 4: receipted replays and gno:// derived origins rejected. */
   exactReplayRejection: 1,
   /** Suite 5: facts from a foreign scope returned or reused (must be 0). */
   scopeLeakage: 0,
+  /** Suite 5: expected in-scope facts missing from a read (must be 0). */
+  scopeReadMisses: 0,
   /** Suite 6: end state equals the committed golden; every turn as scripted. */
   agentDayMatch: 1,
   /** Suite 7 (graded): recall p95 over `latencySamples` sequential fast-path calls. */
@@ -155,7 +165,11 @@ evalite("Memory 3: recall quality under budget", {
       expected: null,
     },
   ],
-  task: runRecallSuite,
+  task: (fixture) =>
+    runRecallSuite(fixture, {
+      maxFacts: MEMORY_GATE.recallMaxFacts,
+      maxTokens: MEMORY_GATE.recallMaxTokens,
+    }),
   scorers: [
     {
       name: `Recall@5 >= ${MEMORY_GATE.recallAt5}`,
@@ -177,13 +191,24 @@ evalite("Memory 3: recall quality under budget", {
     },
     {
       name: "Budget respected",
-      description:
-        "facts <= 8 and tokens <= 512 on every recall; the budget query hit the cap",
-      scorer: ({ output }) =>
-        pass(
+      description: `facts <= ${MEMORY_GATE.recallMaxFacts} and tokens <= ${MEMORY_GATE.recallMaxTokens} on every recall (payload caps and MEMORY_RECALL_MAX_* pinned to the same literals); every budget query filled the fact cap with facts left over`,
+      scorer: ({ output }) => ({
+        score:
           output.budgetRespected >= MEMORY_GATE.budgetRespected &&
-            output.budgetQueryExercisedCap
-        ),
+          output.implementationLimitsMatch &&
+          output.budgetQueryExercisedCap
+            ? 1
+            : 0,
+        metadata: {
+          pinned: {
+            maxFacts: MEMORY_GATE.recallMaxFacts,
+            maxTokens: MEMORY_GATE.recallMaxTokens,
+          },
+          implementation: output.implementationLimits,
+          budgetQueries: output.budgetQueryCount,
+          budgetQueryExercisedCap: output.budgetQueryExercisedCap,
+        },
+      }),
     },
   ],
   columns: ({ output }) => [
@@ -280,6 +305,18 @@ evalite("Memory 5: scope isolation", {
         },
       }),
     },
+    {
+      name: "In-scope recall",
+      description: `Every read returns its expected in-scope facts (gate ${MEMORY_GATE.scopeReadMisses} misses); an all-empty recall is a miss, not isolation`,
+      scorer: ({ output }) => ({
+        score: output.readMisses <= MEMORY_GATE.scopeReadMisses ? 1 : 0,
+        metadata: {
+          missed: output.reads
+            .filter((r) => r.missed.length > 0)
+            .map((r) => `${r.id}: ${r.missed.join("+")}`),
+        },
+      }),
+    },
   ],
   columns: ({ output }) => [
     {
@@ -293,6 +330,7 @@ evalite("Memory 5: scope isolation", {
       value: output.writes.map((w) => `${w.id}: ${w.outcome}`).join(" | "),
     },
     { label: "Leaks", value: String(output.leakage) },
+    { label: "Misses", value: String(output.readMisses) },
   ],
 });
 
@@ -374,13 +412,29 @@ evalite("Memory 7: recall latency envelope", {
 
 evalite("Memory 0: fixture integrity", {
   data: async () => [{ input: "manifest.json", expected: null }],
-  task: async () => manifestDigest(await verifyFixtureManifest()),
+  task: async () => {
+    // verifyFixtureManifest throws on drift or an unpinned file; the digests
+    // below make the same check explicit for the scorer.
+    const committed = manifestDigest(await verifyFixtureManifest());
+    const rebuilt = manifestDigest(await buildFixtureManifest());
+    return { committed, rebuilt };
+  },
   scorers: [
     {
       name: "Fixtures match manifest",
-      description: "Every committed fixture hashes to its manifest pin",
-      scorer: ({ output }) => pass(output.length === 16),
+      description:
+        "The digest of the committed manifest equals the digest rebuilt from the fixture bytes on disk",
+      scorer: ({ output }) => ({
+        score: output.committed === output.rebuilt ? 1 : 0,
+        metadata: output,
+      }),
     },
   ],
-  columns: ({ output }) => [{ label: "Fixture set", value: output }],
+  columns: ({ output }) => [
+    { label: "Fixture set", value: output.committed },
+    {
+      label: "On disk",
+      value: output.committed === output.rebuilt ? "match" : output.rebuilt,
+    },
+  ],
 });

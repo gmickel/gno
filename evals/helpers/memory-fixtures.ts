@@ -10,6 +10,8 @@
  * @module evals/helpers/memory-fixtures
  */
 
+// node:fs/promises readdir enumerates the fixture directory (structure op)
+import { readdir } from "node:fs/promises";
 // node:path has no Bun path utilities
 import { dirname, join } from "node:path";
 // node:url resolves this module's directory under both Bun and vitest workers
@@ -116,6 +118,8 @@ export interface ScopeRead {
   id: string;
   query: string;
   scopes: string[];
+  /** In-scope fact ids that must come back (empty only for a pure negative read). */
+  expect: { includes: string[] };
 }
 
 export interface ScopeWrite {
@@ -240,9 +244,22 @@ export async function writeFixtureManifest(): Promise<MemoryFixtureManifest> {
 
 let verifiedManifest: Promise<MemoryFixtureManifest> | null = null;
 
+/** `.json` files in the fixture directory that neither the manifest nor the pin list covers. */
+export async function listUnpinnedFixtures(): Promise<string[]> {
+  const pinned = new Set<string>([
+    ...MEMORY_FIXTURE_FILES,
+    MEMORY_FIXTURE_MANIFEST,
+  ]);
+  const entries = await readdir(MEMORY_FIXTURE_ROOT);
+  return entries
+    .filter((name) => name.endsWith(".json") && !pinned.has(name))
+    .sort();
+}
+
 /**
- * Verify every pinned fixture against the committed manifest. Throws with the
- * drifted file list and the refresh command on any mismatch.
+ * Verify every pinned fixture against the committed manifest and refuse any
+ * unpinned `.json` in the fixture directory. Throws with the drifted file
+ * list and the refresh command on any mismatch.
  */
 export function verifyFixtureManifest(): Promise<MemoryFixtureManifest> {
   if (verifiedManifest) return verifiedManifest;
@@ -251,6 +268,13 @@ export function verifyFixtureManifest(): Promise<MemoryFixtureManifest> {
     if (!(await file.exists())) {
       throw new Error(
         `Memory fixture manifest missing at ${file.name}; run: bun run eval:memory:fixtures`
+      );
+    }
+    const unpinned = await listUnpinnedFixtures();
+    if (unpinned.length > 0) {
+      throw new Error(
+        `Unpinned memory fixtures in ${MEMORY_FIXTURE_ROOT}: ${unpinned.join(", ")}. ` +
+          "Add them to MEMORY_FIXTURE_FILES (evals/helpers/memory-fixtures.ts) or remove them."
       );
     }
     const committed = (await file.json()) as MemoryFixtureManifest;

@@ -194,6 +194,12 @@ export async function runSupersessionCase(
 // 3. Recall quality under budget
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** The recall budget the gate pins (literals, never the implementation constants). */
+export interface RecallBudgetLimits {
+  maxFacts: number;
+  maxTokens: number;
+}
+
 export interface RecallQueryOutcome {
   id: string;
   kind: "quality" | "budget";
@@ -202,6 +208,7 @@ export interface RecallQueryOutcome {
   usedTokens: number;
   omitted: number;
   citeValid: boolean;
+  /** Observed facts/tokens within the pinned caps and the payload's own caps equal them. */
   budgetRespected: boolean;
 }
 
@@ -210,6 +217,11 @@ export interface RecallSuiteOutcome {
   recallAt5: number;
   citeValidity: number;
   budgetRespected: number;
+  /** MEMORY_RECALL_MAX_FACTS / MEMORY_RECALL_MAX_TOKENS still equal the pinned literals. */
+  implementationLimits: RecallBudgetLimits;
+  implementationLimitsMatch: boolean;
+  /** At least one budget query, and every one filled the fact cap with facts left over. */
+  budgetQueryCount: number;
   budgetQueryExercisedCap: boolean;
 }
 
@@ -230,7 +242,8 @@ async function citesResolve(
 }
 
 export async function runRecallSuite(
-  fixture: RecallFixture
+  fixture: RecallFixture,
+  limits: RecallBudgetLimits
 ): Promise<RecallSuiteOutcome> {
   const ctx = await getMemoryEvalClient();
   const collection = "mem-recall";
@@ -268,10 +281,13 @@ export async function runRecallSuite(
       omitted: result.budget.omitted,
       citeValid: await citesResolve(ctx.client, result),
       budgetRespected:
-        result.facts.length <= MEMORY_RECALL_MAX_FACTS &&
-        result.budget.usedTokens <= MEMORY_RECALL_MAX_TOKENS,
+        result.facts.length <= limits.maxFacts &&
+        result.budget.usedTokens <= limits.maxTokens &&
+        result.budget.maxFacts === limits.maxFacts &&
+        result.budget.maxTokens === limits.maxTokens,
     });
   }
+  const budgetQueries = queries.filter((query) => query.kind === "budget");
   const quality = queries.filter((query) => query.kind === "quality");
   const mean = (values: number[]) =>
     values.length === 0
@@ -284,9 +300,19 @@ export async function runRecallSuite(
     budgetRespected: mean(
       queries.map((query) => (query.budgetRespected ? 1 : 0))
     ),
-    budgetQueryExercisedCap: queries
-      .filter((query) => query.kind === "budget")
-      .every((query) => query.omitted > 0),
+    implementationLimits: {
+      maxFacts: MEMORY_RECALL_MAX_FACTS,
+      maxTokens: MEMORY_RECALL_MAX_TOKENS,
+    },
+    implementationLimitsMatch:
+      MEMORY_RECALL_MAX_FACTS === limits.maxFacts &&
+      MEMORY_RECALL_MAX_TOKENS === limits.maxTokens,
+    budgetQueryCount: budgetQueries.length,
+    budgetQueryExercisedCap:
+      budgetQueries.length > 0 &&
+      budgetQueries.every(
+        (query) => query.factsReturned === limits.maxFacts && query.omitted > 0
+      ),
   };
 }
 
@@ -389,7 +415,13 @@ export async function runFenceSuite(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ScopeSuiteOutcome {
-  reads: Array<{ id: string; returned: string[]; leaked: string[] }>;
+  reads: Array<{
+    id: string;
+    returned: string[];
+    leaked: string[];
+    /** Expected in-scope facts that did not come back. */
+    missed: string[];
+  }>;
   writes: Array<{
     id: string;
     expected: string;
@@ -397,6 +429,8 @@ export interface ScopeSuiteOutcome {
     scopesOk: boolean;
   }>;
   readLeaks: number;
+  /** Expected in-scope facts missing across all reads (an all-empty recall is a miss, not a pass). */
+  readMisses: number;
   writeLeaks: number;
   leakage: number;
 }
@@ -418,12 +452,16 @@ export async function runScopeSuite(
       scopes: read.scopes,
     });
     const wanted = new Set(read.scopes);
+    const returned = result.facts.map(
+      (fact) => idByUri.get(fact.uri) ?? fact.uri
+    );
     reads.push({
       id: read.id,
-      returned: result.facts.map((fact) => idByUri.get(fact.uri) ?? fact.uri),
+      returned,
       leaked: result.facts
         .filter((fact) => !fact.scopes.some((scope) => wanted.has(scope)))
         .map((fact) => idByUri.get(fact.uri) ?? fact.uri),
+      missed: read.expect.includes.filter((id) => !returned.includes(id)),
     });
   }
   const writes: ScopeSuiteOutcome["writes"] = [];
@@ -448,6 +486,7 @@ export async function runScopeSuite(
     });
   }
   const readLeaks = reads.reduce((sum, read) => sum + read.leaked.length, 0);
+  const readMisses = reads.reduce((sum, read) => sum + read.missed.length, 0);
   const writeLeaks = writes.filter(
     (write) => write.outcome !== write.expected || !write.scopesOk
   ).length;
@@ -455,6 +494,7 @@ export async function runScopeSuite(
     reads,
     writes,
     readLeaks,
+    readMisses,
     writeLeaks,
     leakage: readLeaks + writeLeaks,
   };

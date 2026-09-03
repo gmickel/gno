@@ -19,7 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `evals/fixtures/memory/` are content-hashed via `manifest.json`
   (`bun run eval:memory:fixtures [--golden]` refreshes the pins); thresholds
   live in `MEMORY_GATE` in `evals/memory.eval.ts` and the gate contract plus
-  fixture format are documented in `docs/MEMORY.md`.
+  fixture format are documented in `docs/MEMORY.md`. The gate pins the recall
+  budget as literals (8 facts / 512 tokens) and asserts both the recall
+  payload and `MEMORY_RECALL_MAX_*` against them, requires every scope read to
+  return its expected in-scope facts (`expect.includes`), requires the budget
+  query to fill the fact cap, refuses unpinned fixture files, and tears down
+  its temp index via an explicit `afterAll`.
 
 ### Changed
 

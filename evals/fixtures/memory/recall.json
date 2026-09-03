@@ -1,6 +1,6 @@
 {
   "suite": "recall",
-  "description": "Recall quality under the 8-fact/512-token budget. Quality queries carry relevance judgments (recall@5); the budget query has more relevant facts than the budget admits and checks the caps. Every returned URI must resolve through the SDK.",
+  "description": "Recall quality under the 8-fact/512-token budget. Quality queries carry relevance judgments (recall@5); the budget query has ten relevant facts sized so the 8-fact cap binds before the token cap (each ~45 tokens), and checks both caps. Every returned URI must resolve through the SDK.",
   "facts": [
     {
       "id": "f01",
@@ -68,43 +68,43 @@
     },
     {
       "id": "r01",
-      "text": "Orbit retry policy, rule 1 of 10: the queue worker retries a failed job with exponential backoff starting at 1 seconds, doubling on every attempt, and gives up after 3 attempts before parking the job in the dead-letter queue, keeping the job identifier, the attempt count, and the last error message in the parked record so an operator can replay it by hand."
+      "text": "Orbit retry policy, rule 1 of 10: the queue worker retries a failed job with exponential backoff starting at 1 seconds and parks it in the dead-letter queue after 3 attempts."
     },
     {
       "id": "r02",
-      "text": "Orbit retry policy, rule 2 of 10: the queue worker retries a failed job with exponential backoff starting at 2 seconds, doubling on every attempt, and gives up after 4 attempts before parking the job in the dead-letter queue, keeping the job identifier, the attempt count, and the last error message in the parked record so an operator can replay it by hand."
+      "text": "Orbit retry policy, rule 2 of 10: the queue worker retries a failed job with exponential backoff starting at 2 seconds and parks it in the dead-letter queue after 4 attempts."
     },
     {
       "id": "r03",
-      "text": "Orbit retry policy, rule 3 of 10: the queue worker retries a failed job with exponential backoff starting at 3 seconds, doubling on every attempt, and gives up after 5 attempts before parking the job in the dead-letter queue, keeping the job identifier, the attempt count, and the last error message in the parked record so an operator can replay it by hand."
+      "text": "Orbit retry policy, rule 3 of 10: the queue worker retries a failed job with exponential backoff starting at 3 seconds and parks it in the dead-letter queue after 5 attempts."
     },
     {
       "id": "r04",
-      "text": "Orbit retry policy, rule 4 of 10: the queue worker retries a failed job with exponential backoff starting at 4 seconds, doubling on every attempt, and gives up after 6 attempts before parking the job in the dead-letter queue, keeping the job identifier, the attempt count, and the last error message in the parked record so an operator can replay it by hand."
+      "text": "Orbit retry policy, rule 4 of 10: the queue worker retries a failed job with exponential backoff starting at 4 seconds and parks it in the dead-letter queue after 6 attempts."
     },
     {
       "id": "r05",
-      "text": "Orbit retry policy, rule 5 of 10: the queue worker retries a failed job with exponential backoff starting at 5 seconds, doubling on every attempt, and gives up after 7 attempts before parking the job in the dead-letter queue, keeping the job identifier, the attempt count, and the last error message in the parked record so an operator can replay it by hand."
+      "text": "Orbit retry policy, rule 5 of 10: the queue worker retries a failed job with exponential backoff starting at 5 seconds and parks it in the dead-letter queue after 7 attempts."
     },
     {
       "id": "r06",
-      "text": "Orbit retry policy, rule 6 of 10: the queue worker retries a failed job with exponential backoff starting at 6 seconds, doubling on every attempt, and gives up after 8 attempts before parking the job in the dead-letter queue, keeping the job identifier, the attempt count, and the last error message in the parked record so an operator can replay it by hand."
+      "text": "Orbit retry policy, rule 6 of 10: the queue worker retries a failed job with exponential backoff starting at 6 seconds and parks it in the dead-letter queue after 8 attempts."
     },
     {
       "id": "r07",
-      "text": "Orbit retry policy, rule 7 of 10: the queue worker retries a failed job with exponential backoff starting at 7 seconds, doubling on every attempt, and gives up after 9 attempts before parking the job in the dead-letter queue, keeping the job identifier, the attempt count, and the last error message in the parked record so an operator can replay it by hand."
+      "text": "Orbit retry policy, rule 7 of 10: the queue worker retries a failed job with exponential backoff starting at 7 seconds and parks it in the dead-letter queue after 9 attempts."
     },
     {
       "id": "r08",
-      "text": "Orbit retry policy, rule 8 of 10: the queue worker retries a failed job with exponential backoff starting at 8 seconds, doubling on every attempt, and gives up after 10 attempts before parking the job in the dead-letter queue, keeping the job identifier, the attempt count, and the last error message in the parked record so an operator can replay it by hand."
+      "text": "Orbit retry policy, rule 8 of 10: the queue worker retries a failed job with exponential backoff starting at 8 seconds and parks it in the dead-letter queue after 10 attempts."
     },
     {
       "id": "r09",
-      "text": "Orbit retry policy, rule 9 of 10: the queue worker retries a failed job with exponential backoff starting at 9 seconds, doubling on every attempt, and gives up after 11 attempts before parking the job in the dead-letter queue, keeping the job identifier, the attempt count, and the last error message in the parked record so an operator can replay it by hand."
+      "text": "Orbit retry policy, rule 9 of 10: the queue worker retries a failed job with exponential backoff starting at 9 seconds and parks it in the dead-letter queue after 11 attempts."
     },
     {
       "id": "r10",
-      "text": "Orbit retry policy, rule 10 of 10: the queue worker retries a failed job with exponential backoff starting at 10 seconds, doubling on every attempt, and gives up after 12 attempts before parking the job in the dead-letter queue, keeping the job identifier, the attempt count, and the last error message in the parked record so an operator can replay it by hand."
+      "text": "Orbit retry policy, rule 10 of 10: the queue worker retries a failed job with exponential backoff starting at 10 seconds and parks it in the dead-letter queue after 12 attempts."
     }
   ],
   "queries": [
