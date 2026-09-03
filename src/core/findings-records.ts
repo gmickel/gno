@@ -51,6 +51,12 @@ export interface ApplyFindingsRecordsInput {
   /** False when the report is truncated or partial: absence proves nothing. */
   allowResolve: boolean;
   now: Date;
+  /**
+   * Removes one record file; must treat ENOENT as already deleted. Defaults to
+   * `removePathRequired`. Injectable so the listing-to-deletion race is testable
+   * without patching module bindings.
+   */
+  removePath?: (path: string) => Promise<void>;
 }
 
 export interface ApplyFindingsRecordsResult {
@@ -240,6 +246,7 @@ export async function applyFindingsRecords(
 ): Promise<ApplyFindingsRecordsResult> {
   const root = await resolveRecordRoot(input.root);
   const nowIso = input.now.toISOString();
+  const removePath = input.removePath ?? removePathRequired;
   const existing = new Map(
     (await listFindingsRecords(root)).map((header) => [
       header.findingId,
@@ -311,7 +318,7 @@ export async function applyFindingsRecords(
   // A record removed by hand between listing and retention is already gone:
   // ENOENT counts as deleted instead of failing the whole pass.
   for (const header of expired) {
-    await removePathRequired(header.path);
+    await removePath(header.path);
     existing.delete(header.findingId);
     result.deleted += 1;
   }
@@ -324,7 +331,7 @@ export async function applyFindingsRecords(
       )
       .slice(0, existing.size - FINDINGS_MAX_RECORDS);
     for (const header of surplus) {
-      await removePathRequired(header.path);
+      await removePath(header.path);
       existing.delete(header.findingId);
       result.deleted += 1;
     }

@@ -1,12 +1,19 @@
-import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
-import * as fsPromises from "node:fs/promises";
-import { mkdir, mkdtemp, readdir, stat, writeFile } from "node:fs/promises";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  stat,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { AuditFinding } from "../../src/core/audit-contract";
 
 import { materializeAuditFinding } from "../../src/core/audit-report";
+import { removePathRequired } from "../../src/core/file-ops";
 import {
   applyFindingsRecords,
   findingsRecordFilename,
@@ -139,24 +146,19 @@ describe("findings records", () => {
     await apply([finding]);
     await apply([], LATER);
     const path = join(root, findingsRecordFilename(finding.id));
-    const realUnlink = fsPromises.unlink;
+    const removed: string[] = [];
     // Simulate the race: the record vanishes after listing, right before the
-    // retention pass removes it.
-    const unlinkSpy = spyOn(fsPromises, "unlink").mockImplementation(
-      async (target) => {
-        if (target === path) await realUnlink(path).catch(() => undefined);
-        return realUnlink(target);
-      }
-    );
-    try {
-      const muchLater = new Date(LATER.getTime() + 31 * 86_400_000);
-      const result = await apply([], muchLater);
-      expect(unlinkSpy).toHaveBeenCalledWith(path);
-      expect(result).toMatchObject({ deleted: 1, open: 0 });
-      expect(await readdir(root)).toEqual([]);
-    } finally {
-      unlinkSpy.mockRestore();
-    }
+    // retention pass removes it (the default remover must tolerate ENOENT).
+    const removePath = async (target: string): Promise<void> => {
+      removed.push(target);
+      if (target === path) await unlink(path);
+      await removePathRequired(target);
+    };
+    const muchLater = new Date(LATER.getTime() + 31 * 86_400_000);
+    const result = await apply([], muchLater, { removePath });
+    expect(removed).toEqual([path]);
+    expect(result).toMatchObject({ deleted: 1, open: 0 });
+    expect(await readdir(root)).toEqual([]);
   });
 
   test("a resolved record with an unparsable resolvedAt ages from now, not into immediate deletion", async () => {
