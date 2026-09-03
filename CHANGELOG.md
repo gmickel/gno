@@ -27,6 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   warning, and GNO missing / below 1.41.0 / timeouts / malformed output
   degrade to a clear `disabled` response. Read-only: the plugin never writes
   a memory file.
+- Hermes memory provider (fn-135): `integrations/hermes-gno-memory/` ships an
+  external Hermes Agent memory provider (verified against v0.20.5) that maps
+  `prefetch` to `gno recall --json` with the configured scopes and the
+  model-invoked `gno_remember` tool to `gno remember --json` with the
+  propose/add/supersede decision; `sync_turn` never writes. Every remember
+  after a recall presents that session's latest recall receipt
+  (`--receipt`, a 0600 temp file) so a replayed span is fenced. GNO missing,
+  below 1.41.0, timeouts, and malformed output disable memory with a clear
+  reason while the session continues.
 
 ### Changed
 

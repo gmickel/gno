@@ -62,6 +62,9 @@ the matching recipe, then run the commands it names.
 | Summarize a source                  | `recipes/source-summary.md`          | Source-summary note with provenance verified  |
 | Preserve an idea                    | `recipes/idea-capture.md`            | Original phrasing captured and findable       |
 | Verify claims and citations         | `recipes/citation-and-provenance.md` | Claims labeled with evidence or explicit gaps |
+| File a fact that may change         | `recipes/memory-file-decision.md`    | Fact stored (add) or proposal resolved, cited |
+| Replace a stale recalled fact       | `recipes/memory-supersede-fact.md`   | Successor written, predecessor superseded     |
+| What do we know/believe about X     | `recipes/memory-scoped-recall.md`    | Current facts recalled under budget, cited    |
 
 Recipe rules:
 

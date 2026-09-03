@@ -295,7 +295,7 @@ After installation, restart your agent. It will detect the GNO skill and can sea
 
 - `SKILL.md` - Instructions for the agent on how to use GNO
 - CLI references for search, query, retrieval, links, capture, MCP, and examples
-- `recipes/` - Second-brain playbooks for lookup, capture, meetings, email context, source summaries, ideas, and citations
+- `recipes/` - Second-brain playbooks for lookup, capture, meetings, email context, source summaries, ideas, citations, and memory (file a decision, supersede a stale fact, scoped recall)
 
 The recipes are agent-facing guidance, not native connectors. Email, calendar, chat, and web material must be user-supplied or exported unless you use a separate connector outside GNO.
 
@@ -311,9 +311,12 @@ gno skill show --file recipes/email-context.md
 gno skill show --file recipes/source-summary.md
 gno skill show --file recipes/idea-capture.md
 gno skill show --file recipes/citation-and-provenance.md
+gno skill show --file recipes/memory-file-decision.md
+gno skill show --file recipes/memory-supersede-fact.md
+gno skill show --file recipes/memory-scoped-recall.md
 ```
 
-Use these when an agent should search local context first, write durable notes with provenance, or verify claims with citations. Write-flavored recipes require post-write verification with `gno index`, `gno embed`, `gno search`, `gno query`, or `gno get` as appropriate.
+Use these when an agent should search local context first, write durable notes with provenance, verify claims with citations, or store and recall facts through `gno remember` / `gno recall` (see [MEMORY.md](MEMORY.md)). Write-flavored recipes require post-write verification with `gno index`, `gno embed`, `gno search`, `gno query`, or `gno get` as appropriate.
 
 ### Option 2: MCP Server
 

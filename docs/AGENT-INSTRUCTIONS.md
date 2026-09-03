@@ -7,7 +7,7 @@ supported harness, bounded by stable markers:
 
 ```
 <!-- gno:agents:begin -->
-<!-- gno-agents block v2 sha256:... — managed by `gno agents`; ... -->
+<!-- gno-agents block v3 sha256:... — managed by `gno agents`; ... -->
 ...ladder + writing contract...
 <!-- gno:agents:end -->
 ```
@@ -81,11 +81,12 @@ Inside an extra dir the installer manages the first existing of `CLAUDE.md`,
 
 ## Block content
 
-The block teaches the retrieval ladder (search → query → context build →
-changes/diff/impact → ask --verify → diagnose-before-grep), the writing
+The block teaches the retrieval ladder (search → recall → query → context
+build → changes/diff/impact → ask --verify → diagnose-before-grep), the writing
 contract (retrieve first; edit canonical notes in place; `gno capture` for
-genuinely new notes; reindex + verify after writes), and gno:// citation
-discipline — in well under 1,500 characters. It carries a version stamp and a
+genuinely new notes; `gno remember` with the add/supersede decision and the
+recall receipt for facts that may change; reindex + verify after writes), and
+gno:// citation discipline — in well under 1,500 characters. It carries a version stamp and a
 content hash, and points at the `gno` skill for advanced retrieval: load it
 (`/gno`) when installed, otherwise run `gno skill install --scope user` first.
 The text is identical on every machine and contains no filesystem paths, so
