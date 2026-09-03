@@ -181,7 +181,7 @@ import {
   multiGetDocuments,
 } from "./documents";
 import { runEmbed } from "./embed";
-import { sdkError } from "./errors";
+import { type GnoSdkErrorCode, sdkError } from "./errors";
 
 interface OpenedClientState {
   config: Config;
@@ -305,28 +305,35 @@ async function resolveClientState(
   };
 }
 
-const MEMORY_NOT_FOUND_CODES: ReadonlySet<MemoryErrorCode> = new Set([
-  "MEMORY_COLLECTION_NOT_FOUND",
-  "MEMORY_PREDECESSOR_NOT_FOUND",
-]);
-const MEMORY_RUNTIME_CODES: ReadonlySet<MemoryErrorCode> = new Set([
-  "MEMORY_PREDECESSOR_HASH_MISMATCH",
-  "MEMORY_SUPERSEDE_CONFLICT",
-  "MEMORY_WRITE_LEASE_BUSY",
-  "MEMORY_SYNC_FAILED",
-  "MEMORY_SUPERSEDE_PROJECTION_FAILED",
-  "MEMORY_QUERY_FAILED",
-]);
+/** SDK error family per memory code; exhaustive so a new code fails to compile. */
+const MEMORY_ERROR_TO_SDK: Readonly<Record<MemoryErrorCode, GnoSdkErrorCode>> =
+  {
+    MEMORY_TEXT_REQUIRED: "VALIDATION",
+    MEMORY_TEXT_TOO_LARGE: "VALIDATION",
+    MEMORY_QUERY_REQUIRED: "VALIDATION",
+    MEMORY_COLLECTION_REQUIRED: "VALIDATION",
+    MEMORY_COLLECTION_NOT_FOUND: "NOT_FOUND",
+    MEMORY_COLLECTION_UNMANAGED: "VALIDATION",
+    MEMORY_SCOPES_REQUIRED: "VALIDATION",
+    MEMORY_SCOPES_INVALID: "VALIDATION",
+    MEMORY_IDENTITY_REQUIRED: "VALIDATION",
+    MEMORY_DECISION_INVALID: "VALIDATION",
+    MEMORY_PREDECESSOR_REQUIRED: "VALIDATION",
+    MEMORY_PREDECESSOR_NOT_FOUND: "NOT_FOUND",
+    MEMORY_PREDECESSOR_HASH_MISMATCH: "RUNTIME",
+    MEMORY_SUPERSEDE_CONFLICT: "RUNTIME",
+    MEMORY_SUPERSEDE_PROJECTION_FAILED: "RUNTIME",
+    MEMORY_FENCED_REPLAY: "VALIDATION",
+    MEMORY_FENCED_DERIVED: "VALIDATION",
+    MEMORY_WRITE_LEASE_BUSY: "RUNTIME",
+    MEMORY_SYNC_FAILED: "RUNTIME",
+    MEMORY_QUERY_FAILED: "RUNTIME",
+  };
 
 /** Map a core MemoryError onto the SDK error family; the memory code survives in `details.code`. */
 function toMemorySdkError(cause: unknown): unknown {
   if (!(cause instanceof MemoryError)) return cause;
-  const code = MEMORY_NOT_FOUND_CODES.has(cause.code)
-    ? "NOT_FOUND"
-    : MEMORY_RUNTIME_CODES.has(cause.code)
-      ? "RUNTIME"
-      : "VALIDATION";
-  return sdkError(code, cause.message, {
+  return sdkError(MEMORY_ERROR_TO_SDK[cause.code], cause.message, {
     cause,
     details: { code: cause.code },
   });
