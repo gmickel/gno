@@ -725,6 +725,7 @@ Open `http://localhost:3000` to:
 - **Create in place**: New notes in the current folder/collection with presets and command-palette flows
 - **Capture with provenance**: `gno capture` and Web UI Quick Capture write quick notes to an editable collection with structured `source:` metadata, typed preset scaffolds, and a receipt that separates write, sync, and embed state
 - **Same capture contract everywhere**: CLI, MCP `gno_capture`, REST `/api/capture`, SDK `client.capture()`, and Web UI Quick Capture return the same provenance receipt shape
+- **Agent memory**: `gno remember` / `gno recall` (also MCP, REST, SDK) store single facts with explicit scopes and supersession, and return budgeted, cited recall with a fencing receipt. See [Memory](docs/MEMORY.md).
 - **Browser clipper**: npm-distributed unpacked Chromium extension for explicit
   visible selection or Reader capture through a local preview/confirm flow.
   See [Browser Clipper](docs/integrations/browser-clipper.md).

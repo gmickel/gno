@@ -87,6 +87,8 @@ export const CMD = {
   diff: "diff",
   impact: "impact",
   capture: "capture",
+  remember: "remember",
+  recall: "recall",
 } as const;
 
 export type CommandId = (typeof CMD)[keyof typeof CMD];
@@ -122,6 +124,8 @@ const FORMAT_SUPPORT: Record<CommandId, OutputFormat[]> = {
   [CMD.diff]: ["terminal", "json"],
   [CMD.impact]: ["terminal", "json"],
   [CMD.capture]: ["terminal", "json"],
+  [CMD.remember]: ["terminal", "json"],
+  [CMD.recall]: ["terminal", "json"],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

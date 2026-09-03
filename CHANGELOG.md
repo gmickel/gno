@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Agent memory: `remember` / `recall` as one shared contract on all four
+  surfaces. CLI `gno remember` / `gno recall` (repeatable `--scope`, `--add` /
+  `--supersede <uri> --predecessor-hash <hash>`, `--receipt`, `--derived-from`,
+  `--max-facts` / `--max-tokens`, `--json`; identity from `--caller` /
+  `--session`, `$GNO_MEMORY_CALLER` / `$GNO_MEMORY_SESSION`, then
+  `cli:<user>` / `ppid:<pid>`; exit 1 validation, 4 supersede conflict or
+  lease busy, 2 runtime with `details.memoryCode`), MCP `gno_recall` (read
+  set) and `gno_remember` (behind `--enable-write`; identity mapped from the
+  client name and session, never from tool arguments), REST
+  `POST /api/memory/remember` (201 when written, 200 for existing/candidates)
+  and `POST /api/memory/recall` with `MEMORY_*` codes mapped to 400/404/409/500,
+  and SDK `client.remember()` / `client.recall()` (`GnoSdkError` with the code
+  in `details.code`). Results are the core `RememberResult` / `RecallResult`
+  objects verbatim and validate against the new
+  `spec/output-schemas/memory-remember.schema.json` /
+  `memory-recall.schema.json`; a cross-surface contract test pins core, REST,
+  and SDK to identical results, and a fence e2e test runs the recall ->
+  replay-remember loop live on CLI and MCP (receipts fence across surfaces).
+  New `docs/MEMORY.md` covers the edit / capture / remember taxonomy, scopes,
+  supersession, fencing and its paraphrase limit, and the deliberate
+  exclusions (no auto-capture, no model adjudication, no delete, no implicit
+  global scope).
 - Core memory service (`src/core/memory.ts`): transport-neutral `remember()` /
   `recall()` over a `memoryManaged` collection. Facts are one markdown file
   per record with `memory:` frontmatter (record id, 1-8 normalized scopes,
