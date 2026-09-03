@@ -26,12 +26,13 @@ diagnose can emit the closed, redacted `query-diagnose@1.1` affinity metadata.
 ## Overview
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and
-resources. GNO registers 33 tools in default read-only mode and 51 when writes
-are explicitly enabled:
+resources. GNO registers 34 tools in default read-only mode and 53 when writes
+are explicitly enabled (the default `full` profile; the opt-in `core` profile
+advertises 7 read tools plus 2 write tools, see [Tool Profiles](#tool-profiles)):
 
-- **Tools (read)**: gno_context, gno_context_verify, gno_ask, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_section, gno_multi_get, gno_peek, gno_status, gno_changes, gno_diff, gno_impact, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
-- **Tools (write, opt-in)**: gno_trace_label, gno_trace_export, gno_trace_delete, gno_trace_purge, gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note
-- **Tools (jobs)**: gno_job_status, gno_list_jobs
+- **Tools (read)**: gno_context, gno_context_verify, gno_ask, gno_recall, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_section, gno_multi_get, gno_peek, gno_status, gno_audit, gno_egress_policy_get, gno_egress_check, gno_egress_audit_list, gno_egress_audit_show, gno_egress_audit_status, gno_changes, gno_diff, gno_impact, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
+- **Tools (write, opt-in)**: gno_egress_policy_set, gno_egress_audit_delete, gno_egress_audit_purge, gno_trace_label, gno_trace_export, gno_trace_delete, gno_trace_purge, gno_remember, gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note
+- **Tools (jobs, read)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
 
 ## Design: Retrieval First, Verified Synthesis by Explicit Opt-In
