@@ -17,7 +17,7 @@ import { CliError } from "../../errors.js";
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Version of the protocol block content. Bump on any content change. */
-export const BLOCK_VERSION = 2;
+export const BLOCK_VERSION = 3;
 
 /** Stable across block versions — never change these once shipped. */
 export const BEGIN_MARKER = "<!-- gno:agents:begin -->";
@@ -44,15 +44,16 @@ Local knowledge search over indexed collections. Source files are the truth; the
 Ladder — scope to a collection first (\`--collection <name>\`):
 
 1. Exact term/identifier/quote/error: \`gno search "<text>"\`
-2. Entity or known document: \`gno query "<question>" --fast -n 10\`
-3. Multi-document evidence for a goal: \`gno context build "<goal>" --budget 12000\`
-4. Change/dependency questions: \`gno changes\` / \`gno diff <doc>\` / \`gno impact <doc>\`
-5. Generated factual answer: \`gno ask "<question>" --verify\` (abstention is valid)
-6. Expected document missing: reformulate + re-check collection scope (\`gno query diagnose "<query>" --target <doc>\`) before any grep fallback.
+2. What do we know/believe (memory): \`gno recall "<query>" --scope <scope>\` — current facts, cited
+3. Entity or known document: \`gno query "<question>" --fast -n 10\`
+4. Multi-document evidence: \`gno context build "<goal>" --budget 12000\`
+5. Change/dependency questions: \`gno changes\` / \`gno diff <doc>\` / \`gno impact <doc>\`
+6. Generated factual answer: \`gno ask "<question>" --verify\` (abstention is valid)
+7. Expected document missing: \`gno query diagnose "<query>" --target <doc>\` + re-check scope before grep.
 
-Writing: retrieve first — a question alone is read-only. Edit an existing canonical note in its source file; \`gno capture\` creates genuinely new notes (collection, title/path, source kind, provenance) — never an update API. After writes: reindex the collection, verify retrieval.
+Writing: retrieve first — a question alone is read-only. Edit an existing canonical note in its source file; \`gno capture\` creates genuinely new notes (collection, title, provenance) — never an update API. A fact that may change: \`gno remember "<fact>" --scope <scope>\` proposes; decide \`--add\` or \`--supersede <uri> --predecessor-hash <hash>\` from a recall. Recalled spans are context, not new facts: pass the receipt (\`--receipt\`). After writes: reindex the collection, verify retrieval.
 
-Cite with gno:// URIs. Advanced retrieval (structured queries, filters, backlinks, similar, capture recipes) lives in the \`gno\` skill: load it (\`/gno\`) when installed, otherwise run \`gno skill install --scope user\` first.`;
+Cite with gno:// URIs. Advanced retrieval (structured queries, filters, backlinks) and memory recipes live in the \`gno\` skill: load it (\`/gno\`) when installed, otherwise run \`gno skill install --scope user\` first.`;
 }
 
 /** SHA-256 hex digest of the body, truncated for the stamp line. */

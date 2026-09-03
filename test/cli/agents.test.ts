@@ -176,6 +176,25 @@ describe("agents CLI commands", () => {
       expect(renderBlock()).toBe(block); // deterministic
     });
 
+    test("carries the memory rungs in the decided ladder shape", () => {
+      const body = renderBlockBody();
+      // recall sits near the top of the ladder, after exact search and
+      // before the document rungs; remember lives in the writing contract.
+      const search = body.indexOf("gno search");
+      const recall = body.indexOf("gno recall");
+      const query = body.indexOf("gno query");
+      const writing = body.indexOf("Writing:");
+      const remember = body.indexOf("gno remember");
+      expect(recall).toBeGreaterThan(search);
+      expect(recall).toBeLessThan(query);
+      expect(remember).toBeGreaterThan(writing);
+      expect(body).toContain("know/believe");
+      expect(body).toContain("--add");
+      expect(body).toContain("--supersede <uri> --predecessor-hash <hash>");
+      expect(body).toContain("Recalled spans are context, not new facts");
+      expect(body).toContain("--receipt");
+    });
+
     test("extraction round-trips and fails closed on malformed markers", () => {
       const block = renderBlock();
       const found = extractBlock(`intro\n\n${block}\n`, "f.md");

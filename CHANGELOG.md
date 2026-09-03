@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Memory adapters (fn-135): the `gno agents` protocol block is now v3 and
+  carries the memory rungs — `gno recall` near the top of the retrieval
+  ladder for "what do we know/believe" questions, and `gno remember` in the
+  writing contract with the add/supersede decision and the fence note
+  (recalled spans are context, not new facts). `gno agents update` migrates an
+  installed v1/v2 block in place; the block stays under its size budget. The
+  `gno` skill gains three memory recipes (`memory-file-decision`,
+  `memory-supersede-fact`, `memory-scoped-recall`), and `docs/MEMORY.md`
+  documents the ladder integration.
+
 ### Changed
 
 ### Fixed

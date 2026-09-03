@@ -327,10 +327,39 @@ These are exclusions, not gaps. Each one is a decision.
 - **No implicit global scope.** Every call names its scopes.
 - **No cross-machine coordination.** Files replicate through your vault
   sync; each index catches up on its own.
-- **No harness adapters.** Framework-specific memory providers are a
-  separate follow-up; the four surfaces above are the whole contract.
+- **No write path outside the contract.** The adapters below map harness
+  slots onto the four surfaces above; none of them adds a way to store a
+  fact that bypasses `remember`.
 
 ## Adapters
+
+### Ladder integration
+
+The [`gno agents`](AGENT-INSTRUCTIONS.md) protocol block (v3) carries the
+memory contract into every harness's global instruction file, and the `gno`
+skill carries the workflows. Neither is a runtime adapter: they tell an agent
+when to call `recall` and `remember`, and the agent calls them like any other
+command.
+
+- **Recall rung.** The retrieval ladder gains `gno recall "<query>" --scope <scope>`
+  near the top, after exact search and before the document rungs, for "what
+  do we know / believe" questions. It returns current facts only, cited.
+- **Remember in the writing contract.** `gno remember "<fact>" --scope <scope>`
+  proposes; the agent decides `--add` or `--supersede <uri> --predecessor-hash <hash>`
+  from a recall. The block states the fence in one line: recalled spans are
+  context, not new facts, so the recall receipt travels back as `--receipt`.
+- **Migration.** `gno agents update` replaces an installed v1 or v2 block in
+  place; `gno agents verify` reports `outdated` until it runs. The block stays
+  under its 1,500-character budget and contains no filesystem paths.
+- **Skill recipes.** `gno skill install` ships three memory recipes alongside
+  the existing ones: `recipes/memory-file-decision.md` (propose, decide,
+  add), `recipes/memory-supersede-fact.md` (hash-checked replacement, conflict
+  handling), and `recipes/memory-scoped-recall.md` (scopes, budget, empty and
+  lexical responses). Read one with
+  `gno skill show --file recipes/memory-scoped-recall.md`.
+
+The autoresearch skill eval was not re-run for this change (operator default,
+2026-09-01).
 
 ### Hermes provider
 
