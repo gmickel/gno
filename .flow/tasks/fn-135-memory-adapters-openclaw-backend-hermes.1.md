@@ -37,3 +37,4 @@ stage: impl-review - skipped(config: REVIEW_MODE=none)
 - Commits: c6b64bfddd073d28e1d7c87e05dd73144e80eefd
 - Tests: bun run eval:memory (fn-134 gate, R5: score 100% / threshold 100%, 19 evals, passed), bun test integrations/hermes-gno-memory (18 pass, faked gno subprocess), bun test (4717 pass, 2 skip, 0 fail; receipt .flow/tmp/green-receipts/c6b64bfd-unittest.json), bun run lint:check (clean), ivan E2E: hermes chat sessions 20260903_115247_3cabb8 (explicit remember), 20260903_115339_ccedbb (ambient negative, 0 writes), 20260903_115349_5abd1c (live supersede), 20260903_115605_ce5d62 (prefetch injection, api_content <memory-context>); transcripts /tmp/fn-135.1-e2e/
 - PRs:
+stage: plan-sync - skipped(config: planSync.enabled != true)
