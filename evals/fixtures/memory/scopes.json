@@ -1,0 +1,120 @@
+{
+  "suite": "scopes",
+  "description": "Scope isolation over a multi-scope corpus with deliberately overlapping vocabulary. Reads in scope A must never return scope-B-only facts and must return their expected in-scope facts (expect.includes; empty only for a-secrets, the pure negative read whose terms exist in scope B alone); a write in scope A of text that exists only in scope B must add a new A-scoped record, never return B's.",
+  "scopes": {
+    "a": "eval:scope:a",
+    "b": "eval:scope:b"
+  },
+  "facts": [
+    {
+      "id": "a1",
+      "text": "Team A deploys Orbit on Fridays.",
+      "scopes": ["eval:scope:a"]
+    },
+    {
+      "id": "a2",
+      "text": "Team A's Orbit reviewer is Lena.",
+      "scopes": ["eval:scope:a"]
+    },
+    {
+      "id": "a3",
+      "text": "Team A pins Orbit to Node 22.",
+      "scopes": ["eval:scope:a"]
+    },
+    {
+      "id": "b1",
+      "text": "Team B deploys Orbit on Mondays.",
+      "scopes": ["eval:scope:b"]
+    },
+    {
+      "id": "b2",
+      "text": "Team B's Orbit reviewer is Tomas.",
+      "scopes": ["eval:scope:b"]
+    },
+    {
+      "id": "b3",
+      "text": "Team B pins Orbit to Node 20.",
+      "scopes": ["eval:scope:b"]
+    },
+    {
+      "id": "b4",
+      "text": "Team B keeps Orbit secrets in Vault.",
+      "scopes": ["eval:scope:b"]
+    },
+    {
+      "id": "ab1",
+      "text": "Orbit deploys need a change ticket.",
+      "scopes": ["eval:scope:a", "eval:scope:b"]
+    }
+  ],
+  "reads": [
+    {
+      "id": "a-deploys",
+      "query": "deploys Orbit",
+      "scopes": ["eval:scope:a"],
+      "expect": {
+        "includes": ["a1", "ab1"]
+      }
+    },
+    {
+      "id": "a-reviewer",
+      "query": "Orbit reviewer",
+      "scopes": ["eval:scope:a"],
+      "expect": {
+        "includes": ["a2"]
+      }
+    },
+    {
+      "id": "a-node",
+      "query": "pins Orbit Node",
+      "scopes": ["eval:scope:a"],
+      "expect": {
+        "includes": ["a3"]
+      }
+    },
+    {
+      "id": "a-secrets",
+      "query": "Orbit secrets Vault",
+      "scopes": ["eval:scope:a"],
+      "expect": {
+        "includes": []
+      }
+    },
+    {
+      "id": "b-deploys",
+      "query": "deploys Orbit",
+      "scopes": ["eval:scope:b"],
+      "expect": {
+        "includes": ["b1", "ab1"]
+      }
+    },
+    {
+      "id": "b-reviewer",
+      "query": "Orbit reviewer",
+      "scopes": ["eval:scope:b"],
+      "expect": {
+        "includes": ["b2"]
+      }
+    }
+  ],
+  "writes": [
+    {
+      "id": "a-writes-b-text",
+      "text": "Team B keeps Orbit secrets in Vault.",
+      "scopes": ["eval:scope:a"],
+      "expect": "added"
+    },
+    {
+      "id": "a-writes-a-text",
+      "text": "Team A pins Orbit to Node 22.",
+      "scopes": ["eval:scope:a"],
+      "expect": "existing"
+    },
+    {
+      "id": "b-writes-shared-text",
+      "text": "Orbit deploys need a change ticket.",
+      "scopes": ["eval:scope:b"],
+      "expect": "existing"
+    }
+  ]
+}

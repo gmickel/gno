@@ -72,6 +72,7 @@ standard release workflow because generation-backed suites are machine-intensive
 ```bash
 bun run eval          # Run full eval suite (~5s)
 bun run eval:hybrid   # Run hybrid benchmark suite only
+bun run eval:memory   # Memory adapter gate (fn-134): threshold 100, ~2s, offline
 bun run eval:watch    # Watch mode for development
 ```
 
@@ -86,6 +87,29 @@ bun run eval:watch    # Watch mode for development
 | `multilingual.eval.ts` | Cross-language retrieval (placeholder)         | 70%       |
 | `thoroughness.eval.ts` | Fast/balanced/thorough comparison (stats only) | 70%       |
 | `ask.eval.ts`          | Answer quality by preset                       | 70%       |
+| `memory.eval.ts`       | Memory adapter gate: upsert, supersession, recall budget, fence, scopes, agent day, latency | 100% (gate) |
+
+**Memory gate contract** (`bun run eval:memory`, spec fn-134): seven
+deterministic suites drive the fn-130 remember/recall contracts through the
+SDK against a temp index, offline and lexical-only, with every fixture
+content-hashed in `evals/fixtures/memory/manifest.json`. Thresholds live in
+`MEMORY_GATE` at the top of `evals/memory.eval.ts` (exact metrics at 1.0/0,
+recall@5 >= 0.8, recall p95 <= 25ms, recall budget pinned as the literals
+8 facts / 512 tokens) and the run passes only at 100%. Green at
+those thresholds is the go signal for the harness adapters (fn-135). A
+sub-threshold result is a finding against the memory slice: file it as an
+fn-130 follow-up spec (`flowctl spec create`) with the failing suite and the
+evalite row; never lower a threshold or edit a fixture to make it pass. The
+fixture format and the golden refresh (`bun run eval:memory:fixtures
+[--golden]`) are documented in `docs/MEMORY.md` ("Eval gate and fixtures").
+
+**Per-eval thresholds**: Evalite applies a single `scoreThreshold` (70 in
+`evalite.config.ts`) per run and has no per-file override. Stricter gates are
+encoded in `EVAL_THRESHOLDS` in `scripts/update-eval-scores.ts` (next to
+`NON_GATING_EVALS` / `LLM_EVALS`); `bun run evals` passes each file's value as
+`--threshold`, so `memory.eval.ts` is recorded against 100 in the aggregate
+run, not the global 70. Add a new strict eval to that map and to a dedicated
+`--threshold` package script (like `eval:memory`) in the same commit.
 
 **Fixtures** (in `evals/fixtures/`):
 
@@ -94,6 +118,7 @@ bun run eval:watch    # Watch mode for development
 - `hybrid-adversarial.json` - entity/phrase/negation/ambiguity cases
 - `hybrid-baseline/` - benchmark snapshot artifacts (json + md)
 - `ask-cases.json` - 8 ask test cases
+- `memory/` - memory gate fixtures (one JSON per suite + `agent-day.golden.json`), sha256-pinned in `manifest.json`
 
 **Key Design Decisions:**
 
@@ -118,6 +143,7 @@ bun run eval:watch    # Watch mode for development
 | `cpu-embed-autoresearch.ts`       | Benchmarks CPU embedding context-count variants with synthetic scheduling or real GGUF embedding paths, and prints the Windows memory heuristic used by the native embedding path. |
 | `native-embedding-batch-probe.ts` | Probes whether the installed node-llama-cpp binding can retrieve distinct embeddings from a multi-sequence native batch.                                                           |
 | `generate-test-fixtures.ts`       | Generates test fixtures for unit tests.                                                                                                                                            |
+| `memory-eval-fixtures.ts`         | Refreshes the memory eval fixture pins in `evals/fixtures/memory/manifest.json`; `--golden` also regenerates `agent-day.golden.json` from a fresh run (`bun run eval:memory:fixtures`). |
 | `og-screenshots.ts`               | Generates PNG screenshots from OG image HTML templates using Playwright.                                                                                                           |
 | `sync-assets.ts`                  | Syncs all website assets: OG images, screenshots, README hero. Run before release.                                                                                                 |
 

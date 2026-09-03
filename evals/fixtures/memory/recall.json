@@ -1,0 +1,189 @@
+{
+  "suite": "recall",
+  "description": "Recall quality under the 8-fact/512-token budget. Quality queries carry relevance judgments (recall@5); the budget query has ten relevant facts sized so the 8-fact cap binds before the token cap (each ~45 tokens), and checks both caps. Every returned URI must resolve through the SDK.",
+  "facts": [
+    {
+      "id": "f01",
+      "text": "Orbit's search service is written in Go and deployed on Kubernetes."
+    },
+    {
+      "id": "f02",
+      "text": "The Orbit search index rebuilds every night at 01:00 UTC."
+    },
+    {
+      "id": "f03",
+      "text": "Mara is the on-call lead for Orbit search this quarter."
+    },
+    {
+      "id": "f04",
+      "text": "Orbit billing invoices are generated on the first business day of the month."
+    },
+    {
+      "id": "f05",
+      "text": "Billing disputes for Orbit go to the finance mailbox, not to support."
+    },
+    {
+      "id": "f06",
+      "text": "The Orbit billing service stores amounts in minor units (cents)."
+    },
+    {
+      "id": "f07",
+      "text": "Orbit's mobile app targets iOS 17 and Android 14 as minimum versions."
+    },
+    {
+      "id": "f08",
+      "text": "The Orbit mobile team ships a release train every two weeks."
+    },
+    {
+      "id": "f09",
+      "text": "Orbit dashboards are built with Grafana and read from Prometheus."
+    },
+    {
+      "id": "f10",
+      "text": "Alert thresholds for Orbit latency are p95 over 800 milliseconds for five minutes."
+    },
+    {
+      "id": "f11",
+      "text": "Orbit customer data lives in the eu-west-1 region only."
+    },
+    {
+      "id": "f12",
+      "text": "Orbit backups are encrypted with a per-tenant KMS key."
+    },
+    {
+      "id": "f13",
+      "text": "Jonas maintains the Orbit Terraform modules."
+    },
+    {
+      "id": "f14",
+      "text": "Orbit design reviews happen on Thursdays at 15:00 CET."
+    },
+    {
+      "id": "f15",
+      "text": "The Orbit style guide forbids default exports in TypeScript."
+    },
+    {
+      "id": "f16",
+      "text": "Orbit pull requests need one approving review and a green CI run."
+    },
+    {
+      "id": "r01",
+      "text": "Orbit retry policy, rule 1 of 10: the queue worker retries a failed job with exponential backoff starting at 1 seconds and parks it in the dead-letter queue after 3 attempts."
+    },
+    {
+      "id": "r02",
+      "text": "Orbit retry policy, rule 2 of 10: the queue worker retries a failed job with exponential backoff starting at 2 seconds and parks it in the dead-letter queue after 4 attempts."
+    },
+    {
+      "id": "r03",
+      "text": "Orbit retry policy, rule 3 of 10: the queue worker retries a failed job with exponential backoff starting at 3 seconds and parks it in the dead-letter queue after 5 attempts."
+    },
+    {
+      "id": "r04",
+      "text": "Orbit retry policy, rule 4 of 10: the queue worker retries a failed job with exponential backoff starting at 4 seconds and parks it in the dead-letter queue after 6 attempts."
+    },
+    {
+      "id": "r05",
+      "text": "Orbit retry policy, rule 5 of 10: the queue worker retries a failed job with exponential backoff starting at 5 seconds and parks it in the dead-letter queue after 7 attempts."
+    },
+    {
+      "id": "r06",
+      "text": "Orbit retry policy, rule 6 of 10: the queue worker retries a failed job with exponential backoff starting at 6 seconds and parks it in the dead-letter queue after 8 attempts."
+    },
+    {
+      "id": "r07",
+      "text": "Orbit retry policy, rule 7 of 10: the queue worker retries a failed job with exponential backoff starting at 7 seconds and parks it in the dead-letter queue after 9 attempts."
+    },
+    {
+      "id": "r08",
+      "text": "Orbit retry policy, rule 8 of 10: the queue worker retries a failed job with exponential backoff starting at 8 seconds and parks it in the dead-letter queue after 10 attempts."
+    },
+    {
+      "id": "r09",
+      "text": "Orbit retry policy, rule 9 of 10: the queue worker retries a failed job with exponential backoff starting at 9 seconds and parks it in the dead-letter queue after 11 attempts."
+    },
+    {
+      "id": "r10",
+      "text": "Orbit retry policy, rule 10 of 10: the queue worker retries a failed job with exponential backoff starting at 10 seconds and parks it in the dead-letter queue after 12 attempts."
+    }
+  ],
+  "queries": [
+    {
+      "id": "q01",
+      "query": "lead for Orbit search",
+      "relevant": ["f03"]
+    },
+    {
+      "id": "q02",
+      "query": "search index rebuilds",
+      "relevant": ["f02"]
+    },
+    {
+      "id": "q03",
+      "query": "billing invoices generated",
+      "relevant": ["f04"]
+    },
+    {
+      "id": "q04",
+      "query": "billing disputes finance mailbox",
+      "relevant": ["f05"]
+    },
+    {
+      "id": "q05",
+      "query": "mobile app iOS Android minimum versions",
+      "relevant": ["f07"]
+    },
+    {
+      "id": "q06",
+      "query": "latency alert thresholds",
+      "relevant": ["f10"]
+    },
+    {
+      "id": "q07",
+      "query": "customer data region",
+      "relevant": ["f11"]
+    },
+    {
+      "id": "q08",
+      "query": "Terraform modules",
+      "relevant": ["f13"]
+    },
+    {
+      "id": "q09",
+      "query": "pull requests approving review",
+      "relevant": ["f16"]
+    },
+    {
+      "id": "q10",
+      "query": "backups encrypted",
+      "relevant": ["f12"]
+    },
+    {
+      "id": "q11",
+      "query": "search service Go Kubernetes",
+      "relevant": ["f01"]
+    },
+    {
+      "id": "q12",
+      "query": "dashboards Grafana Prometheus",
+      "relevant": ["f09"]
+    },
+    {
+      "id": "budget",
+      "kind": "budget",
+      "query": "retry policy exponential backoff queue",
+      "relevant": [
+        "r01",
+        "r02",
+        "r03",
+        "r04",
+        "r05",
+        "r06",
+        "r07",
+        "r08",
+        "r09",
+        "r10"
+      ]
+    }
+  ]
+}

@@ -330,6 +330,55 @@ These are exclusions, not gaps. Each one is a decision.
 - **No harness adapters.** Framework-specific memory providers are a
   separate follow-up; the four surfaces above are the whole contract.
 
+## Eval gate and fixtures
+
+`bun run eval:memory` is the adapter gate for this slice: an opt-in, local-only
+Evalite run (no CI, no network, no model download, no LLM judge) that drives
+`remember`/`recall` through the SDK against a temp index and passes only at
+100%. Matching and retrieval run lexical-only (BM25 + Jaccard), so every metric
+is byte-deterministic across runs.
+
+| Suite           | Metric                                                                                                                                                                                                                                | Gate                                                 |
+| :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :--------------------------------------------------- |
+| 1 upsert        | Decision behaviour per case (exact / paraphrase / clean)                                                                                                                                                                              | 1.0                                                  |
+| 2 supersession  | Current-state precision; stale + racing supersedes conflict                                                                                                                                                                           | 1.0                                                  |
+| 3 recall budget | Mean recall@5 (quality queries); cite validity; facts ≤ 8, tokens ≤ 512 on every recall, with the payload caps and `MEMORY_RECALL_MAX_*` pinned to those literals, and every budget query filling the 8-fact cap with facts left over | ≥ 0.8; 1.0; 1.0                                      |
+| 4 fence         | Receipted replays + `gno://` derived origins rejected                                                                                                                                                                                 | 1.0 (paraphrase leak-through reported, not asserted) |
+| 5 scopes        | Foreign-scope facts returned or reused on write; expected in-scope facts missing from a read                                                                                                                                          | 0; 0                                                 |
+| 6 agent day     | Every turn as scripted; end state equals the golden                                                                                                                                                                                   | 1.0                                                  |
+| 7 latency       | Recall p95 over 200 sequential calls                                                                                                                                                                                                  | ≤ 25 ms                                              |
+
+The values live in `MEMORY_GATE` at the top of `evals/memory.eval.ts` and are
+the contract: green there means the memory contracts are fit for harness
+adapters (fn-135). A sub-threshold result is a finding against the memory
+slice, filed as an fn-130 follow-up spec with the failing suite and row, never
+absorbed by lowering a threshold or editing a fixture to match.
+
+### Fixture format
+
+Fixtures live in `evals/fixtures/memory/` as plain JSON, one file per suite,
+and are pinned by sha256 in `manifest.json`; the loader refuses to run when a
+pin is stale or when the directory holds a `.json` that is not in the pin list
+(`MEMORY_FIXTURE_FILES` in `evals/helpers/memory-fixtures.ts`). Every file
+carries `suite` and `description`; the rest is:
+
+| File                    | Shape                                                                                                                                                                                                                                                                                                                                                        |
+| :---------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `upsert.json`           | `cases[]`: `id`, `class`, `seed[]` (stored first, private scope per case), `text`, optional `decision: "add"`, `expect` (`existing`/`candidates`/`added`), optional `likely`                                                                                                                                                                                 |
+| `supersession.json`     | `cases[]`: `id`, `chain[]` (each entry supersedes the previous), optional `staleSupersede` (against `chain[0]`, must conflict), optional `conflictWriters[]` (raced against the head), `query`                                                                                                                                                               |
+| `recall.json`           | `facts[]` (`id`, `text`) and `queries[]` (`id`, `query`, `relevant[]`, optional `kind: "budget"` for more relevant facts than the budget admits). At least one budget query is required, and its relevant facts must be sized so the 8-fact cap binds before the 512-token cap                                                                               |
+| `fence.json`            | `facts[]` and `cases[]` (`id`, `query`, `paraphrases[]`); every recalled span is replayed with its receipt and with a `gno://` `derivedFrom`                                                                                                                                                                                                                 |
+| `scopes.json`           | `facts[]` with `scopes[]`, `reads[]` (`query`, `scopes[]`, `expect: {includes}` with the in-scope fact ids that must come back; empty only for a pure negative read), `writes[]` (`text`, `scopes[]`, `expect`)                                                                                                                                              |
+| `agent-day.json`        | `scope` and `turns[]`: `remember` (`text`, optional `decision`, `label`, `expect`, optional `likely` label), `supersede` (`predecessor` label, `text`, `label`, `expect`), `recall` (`query`, optional `scopes[]`, `expect: {includes, excludes, empty}`), `replay` (`from` recall turn, `expect`). `expect` on a write is an outcome or a memory error code |
+| `agent-day.golden.json` | Path-free end state: `records[]` (`text`, `scopes`, `current`, `supersedes` as predecessor texts, sorted by text) and `recalls` (turn id → texts in rank order)                                                                                                                                                                                              |
+
+Queries are BM25 conjunctions, so every query term must occur in the target
+fact. A new scenario is one fixture edit away: add the case, run
+`bun run eval:memory:fixtures` to refresh the pins (add `--golden` when the
+agent day changed; review the golden diff before committing, it is the
+expectation), then `bun run eval:memory`. A golden mismatch prints a line diff
+to stderr.
+
 ## Binding defaults
 
 | Setting                         | Value                | Where                                                 |

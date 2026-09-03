@@ -1,0 +1,150 @@
+{
+  "suite": "agent-day",
+  "description": "A scripted agent day through the SDK: adds, recalls, a paraphrase proposal, supersessions, a stale supersede (contradiction), an exact-duplicate add, a receipted replay, and a cross-scope recall. Per-turn outcomes are checked against `expect`; the end state is compared against agent-day.golden.json.",
+  "scope": "eval:day",
+  "turns": [
+    {
+      "id": "t01",
+      "op": "remember",
+      "text": "Standup moved to 09:30 on Mondays.",
+      "decision": "add",
+      "label": "standup-v1",
+      "expect": "added"
+    },
+    {
+      "id": "t02",
+      "op": "remember",
+      "text": "Priya is the release captain for sprint 42.",
+      "decision": "add",
+      "label": "captain",
+      "expect": "added"
+    },
+    {
+      "id": "t03",
+      "op": "recall",
+      "query": "standup Mondays",
+      "expect": {
+        "includes": ["standup-v1"]
+      }
+    },
+    {
+      "id": "t04",
+      "op": "remember",
+      "text": "Standup moved to 09:30 Mondays.",
+      "expect": "candidates",
+      "likely": "standup-v1"
+    },
+    {
+      "id": "t05",
+      "op": "supersede",
+      "predecessor": "standup-v1",
+      "text": "Standup moved to 10:00 on Mondays.",
+      "label": "standup-v2",
+      "expect": "superseded"
+    },
+    {
+      "id": "t06",
+      "op": "recall",
+      "query": "standup Mondays",
+      "expect": {
+        "includes": ["standup-v2"],
+        "excludes": ["standup-v1"]
+      }
+    },
+    {
+      "id": "t07",
+      "op": "remember",
+      "text": "Priya is the release captain for sprint 42.",
+      "decision": "add",
+      "expect": "existing"
+    },
+    {
+      "id": "t08",
+      "op": "supersede",
+      "predecessor": "standup-v1",
+      "text": "Standup is at 11:00.",
+      "expect": "MEMORY_SUPERSEDE_CONFLICT"
+    },
+    {
+      "id": "t09",
+      "op": "recall",
+      "query": "release captain",
+      "expect": {
+        "includes": ["captain"]
+      }
+    },
+    {
+      "id": "t10",
+      "op": "replay",
+      "from": "t09",
+      "expect": "MEMORY_FENCED_REPLAY"
+    },
+    {
+      "id": "t11",
+      "op": "remember",
+      "text": "The sprint 42 demo is on Friday at 16:00.",
+      "decision": "add",
+      "label": "demo-v1",
+      "expect": "added"
+    },
+    {
+      "id": "t12",
+      "op": "remember",
+      "text": "The deploy freeze starts the day before the demo.",
+      "decision": "add",
+      "label": "freeze",
+      "expect": "added"
+    },
+    {
+      "id": "t13",
+      "op": "recall",
+      "query": "demo",
+      "expect": {
+        "includes": ["demo-v1"]
+      }
+    },
+    {
+      "id": "t14",
+      "op": "supersede",
+      "predecessor": "demo-v1",
+      "text": "The sprint 42 demo moved to Thursday at 16:00.",
+      "label": "demo-v2",
+      "expect": "superseded"
+    },
+    {
+      "id": "t15",
+      "op": "recall",
+      "query": "demo",
+      "scopes": ["eval:day:other"],
+      "expect": {
+        "empty": true
+      }
+    },
+    {
+      "id": "t16",
+      "op": "recall",
+      "query": "standup",
+      "expect": {
+        "includes": ["standup-v2"],
+        "excludes": ["standup-v1"]
+      }
+    },
+    {
+      "id": "t17",
+      "op": "recall",
+      "query": "sprint 42 demo",
+      "expect": {
+        "includes": ["demo-v2"],
+        "excludes": ["demo-v1"]
+      }
+    },
+    {
+      "id": "t18",
+      "op": "recall",
+      "query": "deploy freeze",
+      "expect": {
+        "includes": ["freeze"]
+      }
+    }
+  ]
+}

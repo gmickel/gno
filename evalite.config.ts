@@ -15,7 +15,10 @@ export default defineConfig({
   testTimeout: 120_000, // 2 min for embedding + rerank
   maxConcurrency: 5, // Conservative for LLM calls
 
-  // Quality gate (MVP: 70%)
+  // Quality gate (MVP: 70%). Evalite applies one threshold per run and has no
+  // per-file override; stricter gates (memory.eval.ts at 100) live in
+  // EVAL_THRESHOLDS in scripts/update-eval-scores.ts and as `--threshold` on
+  // their dedicated package scripts (`eval:memory`).
   scoreThreshold: 70,
 
   // Variance measurement (can override per-eval)

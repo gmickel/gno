@@ -44,17 +44,18 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
 
 `gno bench <fixture.json>` is the public, local fixture runner for your own corpora. The Evalite suites below remain internal release/development gates.
 
-| Eval                     | What it tests                                     | Status                       |
-| ------------------------ | ------------------------------------------------- | ---------------------------- |
-| **vsearch**              | Legacy BM25 ranking suite (Recall@K, nDCG@K)      | ✅ Passing                   |
-| **query**                | Query parsing and latency                         | ✅ Passing                   |
-| **hybrid**               | End-to-end hybrid benchmark + p50/p95             | ✅ Passing                   |
-| **retrieval-candidates** | Candidate gen-model benchmark (full hybrid path)  | ✅ Available for manual runs |
-| **agentic retrieval**    | Agent evidence, citations, stopping, Capsule gate | ✅ Deterministic opt-in      |
-| **expansion**            | Query expansion validity                          | ✅ Passing                   |
-| **thoroughness**         | Fast/balanced/thorough comparison                 | ✅ Passing                   |
-| **multilingual**         | Cross-language retrieval                          | ⚠️ Placeholder (see below)   |
-| **ask**                  | Answer generation quality                         | ⚠️ LLM-dependent (see below) |
+| Eval                     | What it tests                                                                                                       | Status                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| **vsearch**              | Legacy BM25 ranking suite (Recall@K, nDCG@K)                                                                        | ✅ Passing                           |
+| **query**                | Query parsing and latency                                                                                           | ✅ Passing                           |
+| **hybrid**               | End-to-end hybrid benchmark + p50/p95                                                                               | ✅ Passing                           |
+| **retrieval-candidates** | Candidate gen-model benchmark (full hybrid path)                                                                    | ✅ Available for manual runs         |
+| **agentic retrieval**    | Agent evidence, citations, stopping, Capsule gate                                                                   | ✅ Deterministic opt-in              |
+| **expansion**            | Query expansion validity                                                                                            | ✅ Passing                           |
+| **thoroughness**         | Fast/balanced/thorough comparison                                                                                   | ✅ Passing                           |
+| **multilingual**         | Cross-language retrieval                                                                                            | ⚠️ Placeholder (see below)           |
+| **ask**                  | Answer generation quality                                                                                           | ⚠️ LLM-dependent (see below)         |
+| **memory**               | Memory adapter gate (`bun run eval:memory`): upsert, supersession, recall budget, fence, scopes, agent day, latency | ✅ Deterministic gate, threshold 100 |
 
 ## Hybrid Blend Policy Notes
 
@@ -255,5 +256,5 @@ See `evalite.config.ts`:
 
 - `testTimeout`: 120s (for model downloads)
 - `maxConcurrency`: 5
-- `scoreThreshold`: 70%
+- `scoreThreshold`: 70% (global; per-eval overrides such as `memory.eval.ts` at 100 live in `EVAL_THRESHOLDS` in `scripts/update-eval-scores.ts` and are passed as `--threshold` by `bun run evals`)
 - `cache`: true (faster iteration)

@@ -1,6 +1,6 @@
 {
   "name": "@gmickel/gno",
-  "version": "1.42.0",
+  "version": "1.43.0",
   "description": "Local semantic search for your documents. Index Markdown, PDF, and Office files with hybrid BM25 + vector search.",
   "keywords": [
     "embeddings",
@@ -79,6 +79,8 @@
     "evals": "bun scripts/update-eval-scores.ts",
     "eval": "bun --bun evalite",
     "eval:hybrid": "bun --bun evalite evals/hybrid.eval.ts",
+    "eval:memory": "bun --bun evalite evals/memory.eval.ts --threshold 100",
+    "eval:memory:fixtures": "bun scripts/memory-eval-fixtures.ts",
     "eval:hybrid:baseline": "bun scripts/hybrid-benchmark.ts --write",
     "eval:hybrid:delta": "bun scripts/hybrid-benchmark.ts --delta",
     "bench:ast-chunking": "bun scripts/ast-chunking-benchmark.ts",

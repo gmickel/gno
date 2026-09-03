@@ -12,12 +12,13 @@
   "id": "fn-134-memory-eval-suite-as-the-adapter-gate",
   "impl_review_rounds": {},
   "next_task": 1,
+  "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-134-memory-eval-suite-as-the-adapter-gate.md",
-  "status": "open",
+  "status": "done",
   "title": "Memory eval suite as the adapter gate (dogfood-in-a-box)",
   "tracker": {
     "baseHashFlow": null,
@@ -30,5 +31,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-01T14:55:30.794556Z"
+  "updated_at": "2026-09-03T09:32:08.858990Z"
 }

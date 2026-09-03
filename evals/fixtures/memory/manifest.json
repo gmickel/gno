@@ -1,0 +1,12 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "upsert.json": "a40d52f2ca83f9dc91eaa8b1b89622a75dca0a5f05b251aaee090ebd2ab09cad",
+    "supersession.json": "658204a0ff568fc7243f0ce0c6ac9eb96060a1623fa2972ac461324ff7238868",
+    "recall.json": "e91eba8b4973193c8bad6d4911d86cb1767f5915eb5299b81c777cd0f30bc963",
+    "fence.json": "f9f8a2a44bbb5a682b6ff9c02a6e86109ec0a9ec8d99b230b4866a697140852c",
+    "scopes.json": "d8224ae3fddf22b9735d0d28b51f7afa3927627fdc5f5887452efda7fdc4c0aa",
+    "agent-day.json": "148ebc62d65f271e4fc406c80e9080031b2c28c252f5bd495d2fcd0e73618d1e",
+    "agent-day.golden.json": "0f2f5f5a6af2255b848dc8a21b660b094d7fa04731b05f0e237c9275bf1e90bc"
+  }
+}

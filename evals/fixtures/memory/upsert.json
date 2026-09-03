@@ -1,0 +1,81 @@
+{
+  "suite": "upsert",
+  "description": "Decision behaviour of remember(): exact duplicates return the existing record, paraphrases propose candidates and write nothing without a decision, clean facts are added. Each case seeds its own scope.",
+  "cases": [
+    {
+      "id": "exact-add",
+      "class": "exact",
+      "seed": ["The Orbit deploy window is Tuesday 14:00 UTC."],
+      "text": "The Orbit deploy window is Tuesday 14:00 UTC.",
+      "decision": "add",
+      "expect": "existing"
+    },
+    {
+      "id": "exact-whitespace",
+      "class": "exact",
+      "seed": ["Orbit staging uses Postgres 16."],
+      "text": "  Orbit   staging uses Postgres 16. ",
+      "decision": "add",
+      "expect": "existing"
+    },
+    {
+      "id": "exact-proposal",
+      "class": "exact",
+      "seed": ["Orbit secrets rotate every 90 days."],
+      "text": "Orbit secrets rotate every 90 days.",
+      "expect": "existing"
+    },
+    {
+      "id": "paraphrase-suffix",
+      "class": "paraphrase",
+      "seed": ["Mara owns the Orbit billing service."],
+      "text": "Mara owns the Orbit billing service now.",
+      "expect": "candidates",
+      "likely": true
+    },
+    {
+      "id": "paraphrase-reorder",
+      "class": "paraphrase",
+      "seed": ["Retries on the Orbit queue are capped at five."],
+      "text": "The Orbit queue caps retries at five.",
+      "expect": "candidates",
+      "likely": true
+    },
+    {
+      "id": "paraphrase-among-noise",
+      "class": "paraphrase",
+      "seed": [
+        "Orbit alerts page the on-call phone.",
+        "Orbit dashboards live in Grafana.",
+        "Orbit incident reviews are blameless."
+      ],
+      "text": "Orbit alerts page the on-call phone after hours.",
+      "expect": "candidates",
+      "likely": true
+    },
+    {
+      "id": "clean-add",
+      "class": "clean",
+      "seed": ["Orbit alerts page the on-call phone."],
+      "text": "The Orbit design review happens every Thursday.",
+      "decision": "add",
+      "expect": "added"
+    },
+    {
+      "id": "clean-empty-scope",
+      "class": "clean",
+      "seed": [],
+      "text": "Orbit invoices are numbered ORB-YYYY-NNNN.",
+      "decision": "add",
+      "expect": "added"
+    },
+    {
+      "id": "clean-proposal",
+      "class": "clean",
+      "seed": ["Orbit alerts page the on-call phone."],
+      "text": "Orbit's CDN is fronted by Fastly.",
+      "expect": "candidates",
+      "likely": false
+    }
+  ]
+}

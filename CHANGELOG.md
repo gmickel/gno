@@ -56,6 +56,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.43.0] - 2026-09-03
+
+### Added
+
+- Memory eval suite as the adapter gate (`bun run eval:memory`): seven
+  deterministic Evalite suites drive `remember`/`recall` through the SDK
+  against a temp index (upsert correctness, supersession current state
+  including the racing-supersede conflict, recall quality under the
+  8-fact/512-token budget with cite validity, context fence at eval scale,
+  scope isolation, a scripted agent day compared against a committed golden
+  end state with readable diffs, and a recall latency envelope). Fixtures under
+  `evals/fixtures/memory/` are content-hashed via `manifest.json`
+  (`bun run eval:memory:fixtures [--golden]` refreshes the pins); thresholds
+  live in `MEMORY_GATE` in `evals/memory.eval.ts` and the gate contract plus
+  fixture format are documented in `docs/MEMORY.md`. The gate pins the recall
+  budget as literals (8 facts / 512 tokens) and asserts both the recall
+  payload and `MEMORY_RECALL_MAX_*` against them, requires every scope read to
+  return its expected in-scope facts (`expect.includes`), requires the budget
+  query to fill the fact cap, refuses unpinned fixture files, and tears down
+  its temp index via an explicit `afterAll`.
+
+### Changed
+
 ## [1.42.0] - 2026-09-03
 
 ### Added
@@ -2513,7 +2536,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.42.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.43.0...HEAD
+[1.43.0]: https://github.com/gmickel/gno/compare/v1.42.0...v1.43.0
 [1.42.0]: https://github.com/gmickel/gno/compare/v1.41.0...v1.42.0
 [1.41.0]: https://github.com/gmickel/gno/compare/v1.40.0...v1.41.0
 [1.40.0]: https://github.com/gmickel/gno/compare/v1.39.2...v1.40.0

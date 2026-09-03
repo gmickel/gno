@@ -18,6 +18,22 @@ const LLM_EVALS = new Set(["ask.eval.ts"]);
 // Placeholder evals - run for tracking but don't gate releases
 const NON_GATING_EVALS = new Set(["multilingual.eval.ts"]);
 
+// Score threshold (0-100) applied when no per-eval entry exists; mirrors
+// scoreThreshold in evalite.config.ts.
+const DEFAULT_THRESHOLD = 70;
+
+// Per-eval thresholds. Evalite has no per-file threshold, so this is the only
+// place the aggregate run learns that an eval gates stricter than the global
+// default; the value is passed as `--threshold` when that file runs.
+// memory.eval.ts is the adapter gate (spec fn-134): it passes only at 100.
+const EVAL_THRESHOLDS: Record<string, number> = {
+  "memory.eval.ts": 100,
+};
+
+function thresholdFor(file: string): number {
+  return EVAL_THRESHOLDS[file] ?? DEFAULT_THRESHOLD;
+}
+
 // Evals that have level/preset breakdowns
 const LEVEL_EVALS: Record<string, { column: string; levels: string[] }> = {
   "thoroughness.eval.ts": {
@@ -39,6 +55,7 @@ interface LevelScore {
 interface EvalResult {
   file: string;
   score: number;
+  threshold: number;
   passed: boolean;
   evals: number;
   duration: string;
@@ -126,13 +143,17 @@ function parseLevelBreakdown(
  */
 async function runEval(file: string): Promise<EvalResult | null> {
   const filePath = join(EVALS_DIR, file);
+  const threshold = thresholdFor(file);
 
-  console.log(`Running ${file}...`);
+  console.log(`Running ${file} (threshold ${threshold}%)...`);
 
-  const proc = Bun.spawn(["bun", "--bun", "evalite", filePath], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const proc = Bun.spawn(
+    ["bun", "--bun", "evalite", filePath, "--threshold", String(threshold)],
+    {
+      stdout: "pipe",
+      stderr: "pipe",
+    }
+  );
 
   const rawOutput = await new Response(proc.stdout).text();
   const rawStderr = await new Response(proc.stderr).text();
@@ -157,6 +178,7 @@ async function runEval(file: string): Promise<EvalResult | null> {
   const result: EvalResult = {
     file,
     score: parseInt(scoreMatch[1] ?? "0", 10),
+    threshold,
     passed: !!passedMatch,
     evals: evalsMatch ? parseInt(evalsMatch[1] ?? "0", 10) : 0,
     duration: durationMatch ? `${durationMatch[1] ?? "?"}ms` : "?",
@@ -211,13 +233,13 @@ Last updated: ${timestamp}
 
 ## Results by File
 
-| Eval | Score | Status | Cases | Duration |
-|------|-------|--------|-------|----------|
+| Eval | Score | Threshold | Status | Cases | Duration |
+|------|-------|-----------|--------|-------|----------|
 `;
 
   for (const r of results.sort((a, b) => b.score - a.score)) {
     const status = r.passed ? "PASS" : "FAIL";
-    md += `| ${r.file.replace(".eval.ts", "")} | ${r.score}% | ${status} | ${r.evals} | ${r.duration} |\n`;
+    md += `| ${r.file.replace(".eval.ts", "")} | ${r.score}% | ${r.threshold}% | ${status} | ${r.evals} | ${r.duration} |\n`;
   }
 
   // Add level breakdowns if any
@@ -238,9 +260,12 @@ Last updated: ${timestamp}
     }
   }
 
+  const perEval = Object.entries(EVAL_THRESHOLDS)
+    .map(([file, value]) => `\`${file.replace(".eval.ts", "")}\` ${value}%`)
+    .join(", ");
   md += `## Thresholds
 
-- **Pass threshold**: 70%
+- **Pass threshold**: ${DEFAULT_THRESHOLD}% (per-eval overrides: ${perEval})
 - **LLM evals (ask)**: Skipped by default, run with \`--include-llm\`
 
 ## Running Evals

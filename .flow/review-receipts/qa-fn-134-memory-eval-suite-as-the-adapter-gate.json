@@ -1,0 +1,46 @@
+{
+  "branch": "fn-134-memory-eval-suite-as-the-adapter-gate",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "7eb0e8dd70a84b417e9dca9deb3436527e01d29b",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-7c0ebf5476cb9569f43dcd56e7a5b7a8fd970f3ad7607a03918a8dc6ee925348"
+  },
+  "head_sha": "7eb0e8dd70a84b417e9dca9deb3436527e01d29b",
+  "id": "fn-134-memory-eval-suite-as-the-adapter-gate",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 5,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      }
+    ],
+    "total": 5
+  },
+  "timestamp": "2026-09-03T06:56:54Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

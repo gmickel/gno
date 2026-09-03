@@ -17,7 +17,9 @@ evals/
 ├── fixtures/corpus/{de,en,fr,it}/  # Test docs
 ├── fixtures/queries.json           # Search test cases
 ├── fixtures/ask-cases.json         # Answer test cases
+├── fixtures/memory/                # Memory gate fixtures + manifest.json (sha256 pins)
 ├── helpers/setup-db.ts             # Temp DB setup
+├── helpers/memory-*.ts             # Memory gate harness, fixtures, suite runners
 ├── scorers/ir-metrics.ts           # Recall, nDCG
 ├── *.eval.ts                       # Eval definitions
 ├── scores.md                       # Auto-generated results
@@ -34,11 +36,12 @@ evals/
 | thoroughness | No           | ✅                 |
 | multilingual | No           | ⚠️ Placeholder     |
 | ask          | Yes          | ⚠️ Model-dependent |
+| memory       | No           | ✅ Gate (threshold 100) |
 
 ## Key Points
 
 - **Local only** - not in CI, part of release DoD
-- **70% threshold** - configurable in evalite.config.ts
+- **70% threshold** - configurable in evalite.config.ts; per-eval overrides (memory: 100) in `EVAL_THRESHOLDS` in `scripts/update-eval-scores.ts`
 - **LLM evals skipped by default** - use `--include-llm`
 - **scores.md auto-updated** - by `bun run evals`
 
