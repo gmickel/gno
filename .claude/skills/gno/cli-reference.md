@@ -190,6 +190,54 @@ Important behavior:
 - Capture syncs the file into FTS but does not imply embedding unless
   `embed.status` is `completed`.
 
+## Memory
+
+Fact-granular agent memory in a collection configured with
+`memoryManaged: true`. Use `gno capture` for documents; use `remember` for one
+fact that may later be superseded. Full contract: `docs/MEMORY.md`.
+
+### gno remember
+
+Store one fact, or propose candidates without writing.
+
+```bash
+gno remember "Prod deploys from main only" --scope project:gno            # candidates only, no write
+gno remember "Prod deploys from main only" --scope project:gno --add      # write a new fact
+gno remember "Prod deploys from release/*" --scope project:gno \
+  --supersede gno://memory/facts/... --predecessor-hash <hash> --json     # replace a fact
+gno remember "..." --scope family --scope shared --collection memory --add --source "standup 2026-09-03"
+```
+
+- `--scope` is required and repeatable (1-8); there is no implicit global
+  scope. `--collection` may be omitted only when exactly one memory-managed
+  collection exists.
+- No decision flag returns `outcome: "candidates"` (likely matches in scope)
+  and writes nothing. Decide with `--add`, or `--supersede <uri>` plus
+  `--predecessor-hash <hash>` taken from `gno recall`.
+- An exact duplicate returns `existing`; a lost supersede race exits 4
+  (`MEMORY_SUPERSEDE_CONFLICT`): recall again and decide again.
+- `--receipt <recall.json>` fences replays of recalled spans;
+  `--derived-from gno://...` is rejected. `--source <text>` stores evidence.
+- `--caller` / `--session` default from `$GNO_MEMORY_CALLER` /
+  `$GNO_MEMORY_SESSION`, then `cli:<user>` / `ppid:<pid>`.
+
+### gno recall
+
+Budgeted, cited recall of current facts (superseded ones excluded).
+
+```bash
+gno recall "deploy branch" --scope project:gno
+gno recall "kindergarten" --scope family --max-facts 3 --max-tokens 256 --json > receipt.json
+```
+
+- Same `--scope` / `--collection` / identity rules as `remember`.
+- Each fact carries its `gno://` URI, `contentHash`, scopes, identity, and
+  egress lineage; the result includes a content-free `receipt` to hand back
+  to `remember --receipt`.
+- Retrieval is hybrid when the embedding model is already cached, else
+  lexical with the reason; recall never downloads a model.
+- Nothing in scope prints the self-teaching line naming `gno remember`.
+
 ## Search Commands
 
 ### gno search
@@ -635,6 +683,15 @@ gno models path [--json]
 ```
 
 ## Maintenance
+
+### gno peek
+
+Cheap counts, backlog, recent files, and serve liveness. Same `peek@1.0`
+snapshot as MCP `gno_peek`. Do not compose `status` + `ls` + `changes`.
+
+```bash
+gno peek [--json]
+```
 
 ### gno status
 

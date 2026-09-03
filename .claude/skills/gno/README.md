@@ -42,6 +42,8 @@ gno skill install --target hermes       # Hermes
 gno skill install --target all          # All supported agents
 ```
 
+As of their current releases, `--target claude` also serves Grok Build and Cursor via automatic `.claude/skills` discovery, `--target codex` is also read by Cursor, and other skill-capable clients can copy the files listed by `gno skill paths`.
+
 Scope is configurable:
 
 ```bash

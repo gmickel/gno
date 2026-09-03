@@ -95,6 +95,13 @@ gno daemon --status --json
 
 ## Retrieval Order
 
+`gno mcp --tool-profile core` (or `gateway.toolProfile: core` for the resident
+gateway) advertises only `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`,
+`gno_context`, `gno_changes`, and `gno_recall`, plus `gno_capture` and
+`gno_remember` with `--enable-write`; their descriptions state when to call
+each and what comes back. Every other tool named below is available under the
+default `full` profile.
+
 For normal questions, start with `gno_query`, then read targeted snippets with
 `gno_get` or batch refs with `gno_multi_get`. Use `gno_context` for one bounded,
 exact evidence handoff. Use `gno_ask` only when a local closed-evidence answer
@@ -103,8 +110,9 @@ abstains unless every substantive claim is supported. This is a support
 classification against the retained Capsule, not a guarantee that the corpus
 is complete or its sources are true. Bounded graph expansion is on by default;
 set `graph: false` or `noGraph: true` only for an explicit BM25/vector-only path.
-Check `gno_status` first when freshness or
-embeddings may be stale. Use `gno_query_diagnose` when a known target document
+Check `gno_peek` first for counts, backlog, serve liveness, or recent files.
+Use `gno_status` for activation, onboarding, or heavy health (missing vectors,
+stale embeddings). Use `gno_query_diagnose` when a known target document
 should have appeared but did not.
 
 Use `gno_section` only when durable section identity matters (create/resolve a
@@ -159,6 +167,30 @@ rewriting, `create_with_suffix` to create the next available path, or legacy
 non-overwrite captures fail instead of replacing a late-arriving file. MCP
 capture syncs the file for FTS but does not auto-embed; run `gno_embed` or
 `gno_index` afterward when vector search should include it.
+
+## Memory
+
+`gno_recall` (read set) and `gno_remember` (write set, needs `--enable-write`)
+are the fact-granular memory contract over a collection configured with
+`memoryManaged: true`. Both require `collection` and explicit `scopes`
+(1-8, any-intersection visibility, no implicit global scope). Identity
+(`caller` / `session`) is mapped server-side from the MCP client name and
+transport session, never from tool arguments.
+
+- `gno_recall` with `query`, `collection`, `scopes`, optional `maxFacts` /
+  `maxTokens` returns current facts (superseded ones excluded), each with a
+  `gno://` cite, `contentHash`, and egress lineage, plus a content-free
+  `receipt`. Empty scope returns a `hint` naming `gno remember`.
+- `gno_remember` with `text`, `collection`, `scopes` and no `decision` returns
+  `outcome: "candidates"` and writes nothing. Pass `decision: "add"` for a
+  new fact or `decision: "supersede"` with `predecessorUri` +
+  `predecessorHash` from a recall. An exact duplicate returns `existing`; a
+  lost supersede race returns `MEMORY_SUPERSEDE_CONFLICT` (recall, decide
+  again).
+- Pass the recall `receipt` back on `gno_remember` so a recalled span cannot
+  be re-stored (`MEMORY_FENCED_REPLAY`); a `gno://` entry in `derivedFrom` is
+  rejected (`MEMORY_FENCED_DERIVED`). Optional `source` stores evidence.
+- Writes sync for FTS before returning and do not auto-embed.
 
 ## Uninstall
 
