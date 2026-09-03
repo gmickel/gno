@@ -44,3 +44,4 @@ stage: impl-review - skipped(config: REVIEW_MODE=none)
 - Commits: af2eb1d172d8403152359ca368ee93353f117cc2, f54e22c3993f8fd3067f2fd2c1fa04fa140c8b10
 - Tests: bun run lint:check, bun test test/mcp/protocol-2026.test.ts test/mcp/sessionless-guards.test.ts test/mcp/legacy-parity.test.ts test/mcp/http-transport.test.ts test/mcp/http-parity.test.ts, bun test
 - PRs:
+stage: plan-sync - skipped(config: planSync.enabled != true)
