@@ -121,7 +121,7 @@ treats a same-hash record as unchanged. Any content change reactivates it.
 | Key                | Default                                       | Notes                                                               |
 | :----------------- | :-------------------------------------------- | :------------------------------------------------------------------ |
 | `collection`       | `openclaw-memory`                             | GNO collection name (lowercased)                                    |
-| `root`             | OpenClaw workspace dir                        | Collection root                                                     |
+| `root`             | OpenClaw workspace dir                        | Collection root; `~`, relative, and trailing-slash forms normalize  |
 | `paths`            | `MEMORY.md`, `USER.md`, `memory/**/*.md`      | Workspace-relative globs, joined into one brace pattern             |
 | `exclude`          | `.git`, `node_modules`, `.openclaw`, `.state` | GNO exclude list                                                    |
 | `gnoPath`          | `gno`                                         | Binary name or absolute path                                        |

@@ -1,8 +1,14 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+// node:fs/promises + node:os + node:path: tmp dirs, symlinks, and expected
+// path forms for the root-normalization cases (no Bun equivalents).
+import { mkdtemp, rm, symlink } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 import { GnoMemoryBackend, type BackendLogger } from "../src/backend";
 import {
   DEFAULT_PATHS,
+  normalizeRoot,
   resolveConfig,
   toCollectionPattern,
 } from "../src/config";
@@ -27,6 +33,13 @@ import {
 } from "./fake-gno";
 
 const ROOT = "/sandbox/workspace";
+const tmpDirs: string[] = [];
+
+afterEach(async () => {
+  for (const dir of tmpDirs.splice(0)) {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 
 async function rejection(promise: Promise<unknown>): Promise<GnoCliError> {
   try {
@@ -225,6 +238,80 @@ describe("collection provisioning", () => {
     expect(error.message).toContain("Config file not found");
     expect(error.message).toContain("gno init");
     expect(calls.some((c) => c.args[1] === "add")).toBe(false);
+  });
+
+  test.each([
+    ["~/ws", join(homedir(), "ws")],
+    ["relative/ws", resolve("relative/ws")],
+    ["/sandbox/workspace/", ROOT],
+    ["/sandbox//workspace/./", ROOT],
+  ])(
+    "root %s normalizes to %s and matches GNO's stored absolute path",
+    async (configured, canonical) => {
+      expect(normalizeRoot(configured)).toBe(canonical);
+      // GNO reports the expanded absolute path; config/workspace carry the raw form.
+      const { backend, calls } = backendWith(
+        happyScript({
+          "collection list": ok(
+            collectionList([{ name: "openclaw-memory", path: canonical }])
+          ),
+        }),
+        { root: configured }
+      );
+      expect(await backend.ensureCollection(undefined)).toEqual({
+        root: canonical,
+        created: false,
+      });
+      expect(calls.some((c) => c.args[1] === "add")).toBe(false);
+      expect((await backend.status(undefined)).registered).toBe(true);
+      // The same raw form as OpenClaw's workspaceDir, with no config root.
+      const viaWorkspace = backendWith(
+        happyScript({
+          "collection list": ok(
+            collectionList([{ name: "openclaw-memory", path: canonical }])
+          ),
+        })
+      );
+      expect(
+        (await viaWorkspace.backend.ensureCollection(configured)).root
+      ).toBe(canonical);
+    }
+  );
+
+  test("a GNO-reported root in raw form compares equal after normalization", async () => {
+    const { backend } = backendWith(
+      happyScript({
+        "collection list": ok(
+          collectionList([{ name: "openclaw-memory", path: "~/ws/" }])
+        ),
+      }),
+      { root: join(homedir(), "ws") }
+    );
+    expect((await backend.ensureCollection(undefined)).created).toBe(false);
+    expect((await backend.status(undefined)).registered).toBe(true);
+  });
+
+  test("an existing root resolves through symlinks on both sides", async () => {
+    const base = await mkdtemp(join(tmpdir(), "gno-memory-root-"));
+    tmpDirs.push(base);
+    const real = join(base, "real");
+    const link = join(base, "link");
+    await Bun.write(join(real, ".keep"), "");
+    await symlink(real, link);
+    const canonical = normalizeRoot(real);
+    expect(normalizeRoot(`${link}/`)).toBe(canonical);
+    const { backend } = backendWith(
+      happyScript({
+        "collection list": ok(
+          collectionList([{ name: "openclaw-memory", path: link }])
+        ),
+      }),
+      { root: real }
+    );
+    expect(await backend.ensureCollection(undefined)).toEqual({
+      root: canonical,
+      created: false,
+    });
   });
 
   test("needs a root from config or the OpenClaw workspace", async () => {

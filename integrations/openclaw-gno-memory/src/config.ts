@@ -4,12 +4,18 @@
  * module only applies defaults and type-narrows.
  */
 
+// node:fs realpathSync / node:os homedir / node:path resolve: this module runs
+// inside OpenClaw's Node runtime, where Bun APIs are unavailable.
+import { realpathSync } from "node:fs";
+import { homedir } from "node:os";
+import { resolve } from "node:path";
+
 export type SearchMode = "keyword" | "hybrid";
 
 export interface GnoMemoryConfig {
   /** Collection name registered in GNO for the OpenClaw memory files. */
   collection: string;
-  /** Workspace root the collection is rooted at; falls back to OpenClaw's workspaceDir. */
+  /** Normalized workspace root the collection is rooted at; falls back to OpenClaw's workspaceDir. */
   root?: string;
   /** Workspace-relative globs that make up the memory corpus. */
   paths: string[];
@@ -60,13 +66,41 @@ function nonEmptyString(value: unknown): string | undefined {
     : undefined;
 }
 
+/**
+ * Canonical form of a collection root, matching what GNO stores for
+ * `collection add`: `~` expanded, absolute, no trailing slash, and the real
+ * path when the directory exists. Both the configured/workspace root and the
+ * path GNO reports go through here, so a `~/ws`, relative, or `ws/` root
+ * compares equal to its registered form.
+ */
+export function normalizeRoot(root: string): string {
+  const trimmed = root.trim();
+  const expanded =
+    trimmed === "~"
+      ? homedir()
+      : trimmed.startsWith("~/")
+        ? resolve(homedir(), trimmed.slice(2))
+        : resolve(trimmed);
+  try {
+    return realpathSync(expanded);
+  } catch {
+    return expanded;
+  }
+}
+
+function normalizeRootOrUndefined(
+  root: string | undefined
+): string | undefined {
+  return root === undefined ? undefined : normalizeRoot(root);
+}
+
 export function resolveConfig(raw: unknown): GnoMemoryConfig {
   const cfg =
     raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   return {
     collection:
       nonEmptyString(cfg.collection)?.toLowerCase() ?? "openclaw-memory",
-    root: nonEmptyString(cfg.root),
+    root: normalizeRootOrUndefined(nonEmptyString(cfg.root)),
     paths: stringList(cfg.paths, DEFAULT_PATHS),
     exclude: stringList(cfg.exclude, DEFAULT_EXCLUDE),
     gnoPath: nonEmptyString(cfg.gnoPath) ?? "gno",

@@ -4,7 +4,11 @@
  * surface. Never writes a memory file.
  */
 
-import { type GnoMemoryConfig, toCollectionPattern } from "./config";
+import {
+  type GnoMemoryConfig,
+  normalizeRoot,
+  toCollectionPattern,
+} from "./config";
 import { GnoCli, GnoCliError, type GnoRunner } from "./gno-cli";
 
 export interface BackendLogger {
@@ -191,15 +195,27 @@ export class GnoMemoryBackend {
     return this.stale;
   }
 
+  /** The normalized root: config `root` (already canonical) or OpenClaw's workspaceDir. */
   resolveRoot(workspaceDir?: string): string {
-    const root = this.config.root ?? workspaceDir;
-    if (!root) {
+    if (this.config.root) return this.config.root;
+    const trimmed = workspaceDir?.trim();
+    if (!trimmed) {
       throw new GnoCliError(
         "gno_command_failed",
         "no workspace root: set plugins.entries.gno-memory.config.root or run inside an OpenClaw workspace"
       );
     }
-    return root;
+    return normalizeRoot(trimmed);
+  }
+
+  /** The registered collection, with its path in the same canonical form as `resolveRoot`. */
+  private async findCollection(): Promise<CollectionRecord | undefined> {
+    const existing = (await this.listCollections()).find(
+      (c) => c.name === this.config.collection
+    );
+    return existing && existing.path !== ""
+      ? { ...existing, path: normalizeRoot(existing.path) }
+      : existing;
   }
 
   /**
@@ -213,9 +229,7 @@ export class GnoMemoryBackend {
     const root = this.resolveRoot(workspaceDir);
     if (this.registeredRoot === root) return { root, created: false };
     await this.cli.ensureVersion();
-    const existing = (await this.listCollections()).find(
-      (c) => c.name === this.config.collection
-    );
+    const existing = await this.findCollection();
     if (existing) {
       if (existing.path !== root) {
         throw new GnoCliError(
@@ -362,9 +376,7 @@ export class GnoMemoryBackend {
   async status(workspaceDir?: string): Promise<BackendStatus> {
     const gnoVersion = await this.cli.ensureVersion();
     const root = this.resolveRoot(workspaceDir);
-    const existing = (await this.listCollections()).find(
-      (c) => c.name === this.config.collection
-    );
+    const existing = await this.findCollection();
     return {
       gnoVersion,
       collection: this.config.collection,
