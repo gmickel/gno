@@ -185,6 +185,26 @@ const isOutcome = (value: unknown): value is FindingsRunOutcome =>
   value === "failed" ||
   value === "skipped_lease";
 
+const COUNT_KEYS = Object.keys(EMPTY_FINDINGS_COUNTS) as Array<
+  keyof FindingsRunCounts
+>;
+
+const isCount = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value) && value >= 0;
+
+/** Every count must be a finite non-negative number; anything else is corrupt. */
+function asRunCounts(value: unknown): FindingsRunCounts | null {
+  if (typeof value !== "object" || value === null) return null;
+  const candidate = value as Record<string, unknown>;
+  const counts = { ...EMPTY_FINDINGS_COUNTS };
+  for (const key of COUNT_KEYS) {
+    const count = candidate[key];
+    if (!isCount(count)) return null;
+    counts[key] = count;
+  }
+  return counts;
+}
+
 function asRunStateRecord(value: unknown): FindingsRunStateRecord | null {
   if (typeof value !== "object" || value === null) return null;
   const candidate = value as Record<string, unknown>;
@@ -197,6 +217,9 @@ function asRunStateRecord(value: unknown): FindingsRunStateRecord | null {
   ) {
     return null;
   }
+  const hasCounts = candidate.counts !== null && candidate.counts !== undefined;
+  const counts = hasCounts ? asRunCounts(candidate.counts) : null;
+  if (hasCounts && counts === null) return null;
   return {
     schemaVersion: FINDINGS_RUN_STATE_SCHEMA_VERSION,
     collection: candidate.collection,
@@ -211,10 +234,7 @@ function asRunStateRecord(value: unknown): FindingsRunStateRecord | null {
     nextDueAt: candidate.nextDueAt,
     durationMs:
       typeof candidate.durationMs === "number" ? candidate.durationMs : null,
-    counts:
-      typeof candidate.counts === "object" && candidate.counts !== null
-        ? { ...EMPTY_FINDINGS_COUNTS, ...(candidate.counts as object) }
-        : null,
+    counts,
     error: typeof candidate.error === "string" ? candidate.error : null,
   };
 }

@@ -132,6 +132,45 @@ describe("findings run state", () => {
     expect(await readFindingsRunStatus(path, now)).toBeNull();
   });
 
+  test.each([
+    ["a string", "3"],
+    ["a negative", -1],
+    ["NaN", Number.NaN],
+    ["Infinity", Number.POSITIVE_INFINITY],
+    ["null", null],
+    ["missing", undefined],
+  ])(
+    "corrupt counts (%s) read as null instead of a partial status",
+    async (_label, open) => {
+      const path = join(dir, "index-default.findings-run.json");
+      const counts: Record<string, unknown> = {
+        findings: 2,
+        written: 1,
+        reopened: 0,
+        resolved: 0,
+        deleted: 0,
+        open,
+      };
+      if (open === undefined) delete counts.open;
+      const record = {
+        ...createPendingFindingsRunState(schedule, now),
+        lastOutcome: "success",
+        counts,
+      };
+      await Bun.write(path, JSON.stringify(record));
+      expect(await readFindingsRunStatus(path, now)).toBeNull();
+    }
+  );
+
+  test("counts as a non-object read as null; null counts stay null", async () => {
+    const path = join(dir, "index-default.findings-run.json");
+    const base = createPendingFindingsRunState(schedule, now);
+    await Bun.write(path, JSON.stringify({ ...base, counts: "lots" }));
+    expect(await readFindingsRunStatus(path, now)).toBeNull();
+    await Bun.write(path, JSON.stringify({ ...base, counts: null }));
+    expect((await readFindingsRunStatus(path, now))?.counts).toBeNull();
+  });
+
   test("projects overdue once the due time slipped by a full cadence", () => {
     const record = {
       ...createPendingFindingsRunState(schedule, now),

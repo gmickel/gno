@@ -228,6 +228,33 @@ describe("runFindingsPass", () => {
     expect(released).toBe(true);
   });
 
+  test("an unwritable state file surfaces as failed with the write error, keeping the run's counts", async () => {
+    deps.writeState = async () => {
+      throw new Error("EACCES: permission denied");
+    };
+    const result = await runFindingsPass(deps, pending());
+    expect(result.outcome).toBe("failed");
+    expect(result.error).toBe("state write failed: EACCES: permission denied");
+    expect(result.record.lastOutcome).toBe("failed");
+    expect(result.record.error).toBe(result.error);
+    // The records were written; the counts stay truthful in memory.
+    expect(result.counts).toMatchObject({ findings: 1, written: 1, open: 1 });
+    expect(await readdir(join(dir, "findings"))).toHaveLength(1);
+    expect(await readFindingsRunStatus(deps.statePath)).toBeNull();
+  });
+
+  test("a state write failure after a failed run keeps both errors", async () => {
+    deps.runAudit = async () => {
+      throw new Error("boom");
+    };
+    deps.writeState = async () => {
+      throw new Error("ENOSPC");
+    };
+    const result = await runFindingsPass(deps, pending());
+    expect(result.outcome).toBe("failed");
+    expect(result.error).toBe("state write failed: ENOSPC (after: boom)");
+  });
+
   test("a clean run writes nothing", async () => {
     deps.runAudit = async () => auditResult([]);
     const result = await runFindingsPass(deps, pending());
@@ -245,6 +272,40 @@ describe("runFindingsPass", () => {
 });
 
 describe("FindingsScheduler", () => {
+  test("a failing state write reaches onResult as failed and the loop keeps running", async () => {
+    let writes = 0;
+    deps.writeState = async () => {
+      writes += 1;
+      if (writes > 1) throw new Error("EACCES: permission denied");
+    };
+    const results: Array<{ outcome: string; error: string | null }> = [];
+    const scheduler = new FindingsScheduler({
+      deps,
+      startBackgroundWork: () => true,
+      onResult: (result) =>
+        results.push({ outcome: result.outcome, error: result.error }),
+    });
+    await scheduler.start();
+    const first = await scheduler.triggerNow();
+    expect(first.outcome).toBe("failed");
+    expect(scheduler.state.lastOutcome).toBe("failed");
+    expect(scheduler.state.error).toBe(
+      "state write failed: EACCES: permission denied"
+    );
+    expect(results).toEqual([
+      {
+        outcome: "failed",
+        error: "state write failed: EACCES: permission denied",
+      },
+    ]);
+    // The loop survives: the next trigger still audits and reports.
+    const second = await scheduler.triggerNow();
+    expect(second.outcome).toBe("failed");
+    expect(auditCalls).toBe(2);
+    expect(results).toHaveLength(2);
+    scheduler.dispose();
+  });
+
   test("persists pending state on start, fires on cadence, coalesces triggers, stops on dispose", async () => {
     deps.schedule = { ...deps.schedule, cadence: "10s", cadenceMs: 25 };
     const results: string[] = [];

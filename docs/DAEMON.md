@@ -229,8 +229,11 @@ Observability (no debug logs needed): every attempt persists its outcome to
 cadence, so a stopped or starved daemon is distinguishable from a clean one.
 `gno doctor` reports the same state as the `findings-pass` check (`warn` on
 `skipped_lease` / `overdue` / no recorded run, `error` on `failed` or a
-misconfigured block). Starting the daemon with findings disabled removes a
-stale state file.
+misconfigured block). A state file that cannot be written (permissions, disk
+full) does not stop the loop: the attempt is logged as a failed pass with the
+write error, and a corrupt or hand-edited state file (for example a non-numeric
+count) reads as no recorded run rather than a partial status. Starting the
+daemon with findings disabled removes a stale state file.
 
 Saved Context Capsule reverification is explicitly **not** part of this pass.
 Its scheduler is journal-driven (it runs after sync settles, see above); calling

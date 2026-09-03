@@ -65,6 +65,8 @@ export interface FindingsPassDeps {
     holder?: string | null;
   }>;
   runAudit?: typeof runWorkspaceAudit;
+  /** Overridable for tests; defaults to the atomic state-file writer. */
+  writeState?: typeof writeFindingsRunState;
 }
 
 const defaultAcquireLease: NonNullable<
@@ -91,7 +93,8 @@ const settledRuleIds = (result: AuditRunResult): Set<string> => {
 };
 
 /**
- * One pass. Never throws: every failure lands in the persisted state.
+ * One pass. Never throws: every failure lands in the persisted state, and a
+ * failure to persist lands as `failed` in the returned record instead.
  */
 export async function runFindingsPass(
   deps: FindingsPassDeps,
@@ -121,7 +124,28 @@ export async function runFindingsPass(
       counts: result.outcome === "success" ? result.counts : previous.counts,
       error: result.error,
     };
-    await writeFindingsRunState(deps.statePath, record).catch(() => undefined);
+    try {
+      await (deps.writeState ?? writeFindingsRunState)(deps.statePath, record);
+    } catch (error) {
+      // An unwritable state file must not kill the daemon loop, but it must
+      // not vanish either: the in-memory record (next pass's `previous`, the
+      // daemon log via onResult) carries the failure until a write lands.
+      const message = error instanceof Error ? error.message : String(error);
+      const failed: FindingsRunStateRecord = {
+        ...record,
+        lastOutcome: "failed",
+        error: boundErrorText(
+          `state write failed: ${message}${record.error ? ` (after: ${record.error})` : ""}`
+        ),
+      };
+      return {
+        outcome: "failed",
+        counts: failed.counts ?? result.counts,
+        durationMs: result.durationMs,
+        error: failed.error,
+        record: failed,
+      };
+    }
     return { ...result, record };
   };
   const fail = (error: string): Promise<FindingsPassResult> =>
@@ -250,7 +274,11 @@ export class FindingsScheduler {
   /** Persist the pending state and arm the first tick. */
   async start(): Promise<void> {
     if (this.#disposed) return;
-    await writeFindingsRunState(this.#options.deps.statePath, this.#state);
+    const { deps } = this.#options;
+    await (deps.writeState ?? writeFindingsRunState)(
+      deps.statePath,
+      this.#state
+    );
     this.#arm();
   }
 
