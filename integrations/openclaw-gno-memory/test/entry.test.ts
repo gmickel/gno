@@ -155,9 +155,13 @@ describe("plugin entry", () => {
     expect(calls.at(-1)?.args).toContain("0.5");
     const callsBeforeBad = calls.length;
     for (const bad of ["abc", "", "1.5", "-0.1", "Infinity"]) {
-      await expect(
-        actions.search?.("teal heron", { json: true, minScore: bad })
-      ).rejects.toThrow(
+      let failure = "";
+      try {
+        await actions.search?.("teal heron", { json: true, minScore: bad });
+      } catch (error) {
+        failure = error instanceof Error ? error.message : String(error);
+      }
+      expect(failure).toBe(
         `gno-memory: --min-score must be a number between 0 and 1 (got ${JSON.stringify(bad)})`
       );
     }

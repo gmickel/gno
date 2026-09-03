@@ -44,11 +44,16 @@ function positiveInt(value: unknown): number | undefined {
 /** `--min-score` must be a finite number in [0, 1]; anything else is a usage error, not a NaN sent to gno. */
 function minScore(value: unknown): number | undefined {
   if (value === undefined) return undefined;
-  const text = String(value).trim();
+  const text =
+    typeof value === "string"
+      ? value.trim()
+      : typeof value === "number"
+        ? String(value)
+        : "";
   const parsed = text === "" ? Number.NaN : Number(text);
   if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) {
     throw new Error(
-      `--min-score must be a number between 0 and 1 (got ${JSON.stringify(String(value))})`
+      `--min-score must be a number between 0 and 1 (got ${JSON.stringify(text)})`
     );
   }
   return parsed;
