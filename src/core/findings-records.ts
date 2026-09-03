@@ -216,9 +216,17 @@ async function resolveRecordRoot(root: string): Promise<string> {
   return resolved;
 }
 
+/**
+ * Age of a resolved record. A missing or unparsable `resolvedAt` reads as
+ * "just now" (age 0): the record then ages out through the normal retention
+ * window instead of being deleted on the very next pass, and the retention
+ * comparator never sees NaN.
+ */
 const resolvedAge = (header: FindingsRecordHeader, now: Date): number => {
   const resolvedAt = header.resolvedAt ? Date.parse(header.resolvedAt) : NaN;
-  return Number.isFinite(resolvedAt) ? now.getTime() - resolvedAt : Infinity;
+  return Number.isFinite(resolvedAt)
+    ? Math.max(0, now.getTime() - resolvedAt)
+    : 0;
 };
 
 /**

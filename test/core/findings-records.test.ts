@@ -133,6 +133,27 @@ describe("findings records", () => {
     expect(await readdir(join(root, "sub"))).toHaveLength(1);
   });
 
+  test("a resolved record with an unparsable resolvedAt ages from now, not into immediate deletion", async () => {
+    const finding = brokenLink("gno://notes/a.md");
+    await apply([finding]);
+    await apply([], LATER);
+    const path = join(root, findingsRecordFilename(finding.id));
+    const content = await Bun.file(path).text();
+    await writeFile(
+      path,
+      content.replace(
+        `resolvedAt: "${LATER.toISOString()}"`,
+        'resolvedAt: "not-a-date"'
+      )
+    );
+    expect(await Bun.file(path).text()).toContain('resolvedAt: "not-a-date"');
+
+    // Next pass keeps it: an unparsable timestamp counts as "just now".
+    const kept = await apply([], new Date(LATER.getTime() + 86_400_000));
+    expect(kept.deleted).toBe(0);
+    expect(await readdir(root)).toEqual([findingsRecordFilename(finding.id)]);
+  });
+
   test("rejects a root that is not a directory", async () => {
     let threw = false;
     try {
