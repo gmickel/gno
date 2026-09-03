@@ -30,10 +30,10 @@ import {
   manifestDigest,
   verifyFixtureManifest,
 } from "./helpers/memory-fixtures";
+import { runAgentDay } from "./helpers/memory-suite-agent-day";
+import { runLatencySuite } from "./helpers/memory-suite-latency";
 import {
-  runAgentDay,
   runFenceSuite,
-  runLatencySuite,
   runRecallSuite,
   runScopeSuite,
   runSupersessionCase,

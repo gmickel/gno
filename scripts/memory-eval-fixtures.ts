@@ -23,7 +23,7 @@ import {
   writeFixtureManifest,
 } from "../evals/helpers/memory-fixtures";
 import { cleanupMemoryEvalClient } from "../evals/helpers/memory-harness";
-import { runAgentDay } from "../evals/helpers/memory-suites";
+import { runAgentDay } from "../evals/helpers/memory-suite-agent-day";
 
 const writeGolden = process.argv.includes("--golden");
 

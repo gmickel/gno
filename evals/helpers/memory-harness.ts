@@ -169,6 +169,24 @@ export async function tryRemember(
   }
 }
 
+/** remember() with decision supersede against a known predecessor record. */
+export function supersede(
+  client: GnoClient,
+  collection: string,
+  scopes: string[],
+  predecessor: MemoryFact,
+  text: string
+): Promise<RememberAttempt> {
+  return tryRemember(client, {
+    collection,
+    scopes,
+    text,
+    decision: "supersede",
+    predecessorUri: predecessor.uri,
+    predecessorHash: predecessor.contentHash,
+  });
+}
+
 export function recall(
   client: GnoClient,
   input: { query: string; collection: string; scopes: string[] }
