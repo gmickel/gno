@@ -277,20 +277,59 @@ export function verifyFixtureManifest(): Promise<MemoryFixtureManifest> {
           "Add them to MEMORY_FIXTURE_FILES (evals/helpers/memory-fixtures.ts) or remove them."
       );
     }
-    const committed = (await file.json()) as MemoryFixtureManifest;
+    const committed: unknown = await file.json();
     const actual = await buildFixtureManifest();
-    const drifted = MEMORY_FIXTURE_FILES.filter(
-      (name) => committed.files[name] !== actual.files[name]
-    );
-    if (drifted.length > 0) {
-      throw new Error(
-        `Memory fixtures drifted from manifest.json: ${drifted.join(", ")}. ` +
-          "Review the change, then refresh the pins with: bun run eval:memory:fixtures"
-      );
-    }
-    return committed;
+    return checkFixtureManifest(committed, actual);
   })();
   return verifiedManifest;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ * Validate a committed manifest's shape against what the writer emits, then
+ * compare its pins with the freshly hashed fixtures. Pure so the fail-closed
+ * cases are unit-testable without touching the fixture directory. Throws on
+ * an unexpected `algorithm`, a missing or non-string pin for any fixture in
+ * MEMORY_FIXTURE_FILES, or any hash drift.
+ */
+export function checkFixtureManifest(
+  committed: unknown,
+  actual: MemoryFixtureManifest
+): MemoryFixtureManifest {
+  const refresh = "refresh the pins with: bun run eval:memory:fixtures";
+  if (!isRecord(committed) || !isRecord(committed.files)) {
+    throw new Error(
+      `Memory fixture manifest is malformed (expected { algorithm, files }); ${refresh}`
+    );
+  }
+  if (committed.algorithm !== actual.algorithm) {
+    throw new Error(
+      `Memory fixture manifest algorithm is ${JSON.stringify(committed.algorithm)}, ` +
+        `expected ${JSON.stringify(actual.algorithm)}; ${refresh}`
+    );
+  }
+  const { files } = committed;
+  const unpinned = MEMORY_FIXTURE_FILES.filter((name) => {
+    const hash = files[name];
+    return typeof hash !== "string" || hash.length === 0;
+  });
+  if (unpinned.length > 0) {
+    throw new Error(
+      `Memory fixture manifest has no hash for: ${unpinned.join(", ")}; ${refresh}`
+    );
+  }
+  const drifted = MEMORY_FIXTURE_FILES.filter(
+    (name) => files[name] !== actual.files[name]
+  );
+  if (drifted.length > 0) {
+    throw new Error(
+      `Memory fixtures drifted from manifest.json: ${drifted.join(", ")}. ` +
+        `Review the change, then ${refresh}`
+    );
+  }
+  return committed as unknown as MemoryFixtureManifest;
 }
 
 export async function loadMemoryFixture<T>(

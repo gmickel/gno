@@ -31,29 +31,35 @@ if (writeGolden) {
   const fixture = (await Bun.file(
     fixturePath("agent-day.json")
   ).json()) as AgentDayFixture;
-  const day = await runAgentDay(fixture, null);
-  const failed = day.turns.filter((turn) => !turn.ok);
-  if (failed.length > 0) {
-    console.error(
-      `agent day has ${failed.length} turn(s) off script; fix the fixture before writing a golden:`
-    );
-    for (const turn of failed) {
+  // The temp eval client must be closed and removed even when the day throws.
+  let offScript = 0;
+  try {
+    const day = await runAgentDay(fixture, null);
+    const failed = day.turns.filter((turn) => !turn.ok);
+    offScript = failed.length;
+    if (failed.length > 0) {
       console.error(
-        `  ${turn.id} ${turn.op}: expected ${turn.expected}, got ${turn.outcome}`
+        `agent day has ${failed.length} turn(s) off script; fix the fixture before writing a golden:`
+      );
+      for (const turn of failed) {
+        console.error(
+          `  ${turn.id} ${turn.op}: expected ${turn.expected}, got ${turn.outcome}`
+        );
+      }
+    } else {
+      const golden: AgentDayGolden = day.actual;
+      const goldenPath = fixturePath("agent-day.golden.json");
+      await Bun.write(goldenPath, `${JSON.stringify(golden, null, 2)}\n`);
+      // Match the repo formatter so the pinned hash equals the committed bytes.
+      await Bun.$`bun x oxfmt ${goldenPath}`.quiet();
+      console.log(
+        `wrote agent-day.golden.json (${golden.records.length} records, ${Object.keys(golden.recalls).length} recalls)`
       );
     }
+  } finally {
     await cleanupMemoryEvalClient();
-    process.exit(1);
   }
-  const golden: AgentDayGolden = day.actual;
-  const goldenPath = fixturePath("agent-day.golden.json");
-  await Bun.write(goldenPath, `${JSON.stringify(golden, null, 2)}\n`);
-  // Match the repo formatter so the pinned hash equals the committed bytes.
-  await Bun.$`bun x oxfmt ${goldenPath}`.quiet();
-  console.log(
-    `wrote agent-day.golden.json (${golden.records.length} records, ${Object.keys(golden.recalls).length} recalls)`
-  );
-  await cleanupMemoryEvalClient();
+  if (offScript > 0) process.exit(1);
 }
 
 const manifest = await writeFixtureManifest();

@@ -20,6 +20,7 @@ import {
   MEMORY_RECALL_MAX_FACTS,
   MEMORY_RECALL_MAX_TOKENS,
 } from "../../src/core/memory";
+import { normalizeMemoryScopes } from "../../src/core/memory-record";
 import {
   countFactFiles,
   getMemoryEvalClient,
@@ -426,6 +427,8 @@ export interface ScopeSuiteOutcome {
     id: string;
     expected: string;
     outcome: string;
+    /** Scopes on the record the write returned (empty when it returned none). */
+    recordScopes: string[];
     scopesOk: boolean;
   }>;
   readLeaks: number;
@@ -433,6 +436,30 @@ export interface ScopeSuiteOutcome {
   readMisses: number;
   writeLeaks: number;
   leakage: number;
+}
+
+/**
+ * A write that added a record must have stamped exactly the normalized
+ * requested scopes: an extra scope leaks the fact into a scope the caller
+ * never named, a missing one hides it from a scope it was written to. A write
+ * that matched an existing record only proves that record is visible in a
+ * requested scope (dedup runs over `memoryScopesAny`), so its full scope set
+ * may legitimately be wider.
+ */
+function writeScopesOk(
+  outcome: string,
+  recordScopes: readonly string[],
+  requested: readonly string[]
+): boolean {
+  const wanted = new Set(normalizeMemoryScopes(requested));
+  if (outcome === "added") {
+    const actual = new Set(recordScopes);
+    return (
+      actual.size === wanted.size &&
+      [...actual].every((scope) => wanted.has(scope))
+    );
+  }
+  return recordScopes.some((scope) => wanted.has(scope));
 }
 
 export async function runScopeSuite(
@@ -476,13 +503,14 @@ export async function runScopeSuite(
       attempt.kind === "result" && attempt.outcome !== "candidates"
         ? attempt.result.record
         : null;
-    const wanted = new Set(write.scopes);
     writes.push({
       id: write.id,
       expected: write.expect,
       outcome: attempt.outcome,
+      recordScopes: record?.scopes ?? [],
       scopesOk:
-        record !== null && record.scopes.some((scope) => wanted.has(scope)),
+        record !== null &&
+        writeScopesOk(attempt.outcome, record.scopes, write.scopes),
     });
   }
   const readLeaks = reads.reduce((sum, read) => sum + read.leaked.length, 0);
