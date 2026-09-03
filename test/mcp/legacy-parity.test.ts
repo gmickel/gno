@@ -6,8 +6,10 @@
  * --enable-write set, and pins them two ways:
  *
  * 1. Byte-exact against test/fixtures/mcp/legacy-2025-11-25.json (the current
- *    SDK's wire). Regenerate deliberately with:
+ *    SDK's wire). A missing golden FAILS the test; it is never regenerated
+ *    silently. Regenerate (or create) deliberately with:
  *      GNO_UPDATE_MCP_GOLDEN=1 bun test test/mcp/legacy-parity.test.ts
+ *    and review the fixture diff before committing it.
  * 2. Against the frozen pre-migration capture
  *    test/fixtures/mcp/legacy-2025-11-25.sdk-v1.30.0.json, taken on
  *    @modelcontextprotocol/sdk 1.30.0 and never regenerated. The handshake
@@ -272,8 +274,12 @@ describe("MCP legacy 2025-11-25 wire parity", () => {
     const actual = await captureLegacyWire();
     const goldenFile = Bun.file(GOLDEN_PATH);
 
-    if (UPDATE_GOLDEN || !(await goldenFile.exists())) {
+    if (UPDATE_GOLDEN) {
       await Bun.write(GOLDEN_PATH, `${JSON.stringify(actual, null, 2)}\n`);
+    } else if (!(await goldenFile.exists())) {
+      throw new Error(
+        `Missing MCP legacy golden ${GOLDEN_PATH}; regenerate deliberately with GNO_UPDATE_MCP_GOLDEN=1`
+      );
     }
     const golden = (await Bun.file(GOLDEN_PATH).json()) as LegacyWireGolden;
 
