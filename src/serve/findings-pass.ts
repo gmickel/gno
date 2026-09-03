@@ -275,10 +275,21 @@ export class FindingsScheduler {
   async start(): Promise<void> {
     if (this.#disposed) return;
     const { deps } = this.#options;
-    await (deps.writeState ?? writeFindingsRunState)(
-      deps.statePath,
-      this.#state
-    );
+    try {
+      await (deps.writeState ?? writeFindingsRunState)(
+        deps.statePath,
+        this.#state
+      );
+    } catch (error) {
+      // An unwritable state file must not stop the loop: keep the pending
+      // record in memory with the write error attached and still arm the
+      // first tick; the next successful pass write carries a fresh record.
+      const message = error instanceof Error ? error.message : String(error);
+      this.#state = {
+        ...this.#state,
+        error: `state write failed: ${message}`,
+      };
+    }
     this.#arm();
   }
 

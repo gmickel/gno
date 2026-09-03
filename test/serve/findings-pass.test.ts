@@ -306,6 +306,30 @@ describe("FindingsScheduler", () => {
     scheduler.dispose();
   });
 
+  test("an unwritable state file at start does not stop the loop", async () => {
+    deps.schedule = { ...deps.schedule, cadence: "10s", cadenceMs: 25 };
+    deps.writeState = async () => {
+      throw new Error("EACCES: permission denied");
+    };
+    const results: string[] = [];
+    const scheduler = new FindingsScheduler({
+      deps,
+      startBackgroundWork: (operation) => {
+        void operation(new AbortController().signal);
+        return true;
+      },
+      onResult: (result) => results.push(result.outcome),
+    });
+    await scheduler.start();
+    expect(scheduler.state.error).toContain("state write failed: EACCES");
+    const deadline = Date.now() + 5_000;
+    while (results.length === 0 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    scheduler.dispose();
+  });
+
   test("persists pending state on start, fires on cadence, coalesces triggers, stops on dispose", async () => {
     deps.schedule = { ...deps.schedule, cadence: "10s", cadenceMs: 25 };
     const results: string[] = [];
