@@ -957,11 +957,58 @@ Options:
 - `--no-embed` - Skip embedding phase
 - `--models-pull` - Download models if missing
 - `--git-pull` - Run `git pull` in git repositories
-- `--json` - Emit `{ syncResult, embedSkipped, embedResult? }` on stdout;
+- `--json` - Emit the per-stage `index-receipt@1.0` on stdout:
+  `{ success, stages: { lexical, embed }, resumedFrom, syncResult, embedSkipped, embedResult? }`;
   logical-record receipts live at
   `syncResult.collections[].files[].recordImport`
 - `--lock-wait <duration>` - How long to wait for the write lease (default `120s`; `120`, `120s`, or `2m`)
 - `--no-wait` - Do not wait; exit 4 immediately on contention
+
+**Stage receipts**: `gno index` runs two separable stages, `lexical` (the
+`gno update` sync) and `embed`, and reports each with a state
+(`completed`, `failed`, `skipped`, `interrupted`) and counts. The run exits 0
+only when every attempted stage completed. An embed failure - model not
+available, endpoint down, chunks that still fail after the same-run retry -
+exits 2 and still prints the partial receipt (`success: false`, lexical
+counts intact, `stages.embed.error`), so a scripted `gno index` can no
+longer report success while the vectors never landed.
+
+**Recovery**: the lexical index is never invalidated by a failed or killed
+embed stage. Each stage keeps a lifecycle marker inside the index database;
+a process that dies mid-stage (`kill -9`, native crash, power loss) leaves
+its marker `running`, and the next `gno index` or `gno embed` reports it
+before continuing:
+
+```
+Resuming: previous run (pid 41822, started 2026-09-03T06:00:02.000Z) was interrupted during the embed stage; lexical index intact; embedding resumes from persisted progress without re-embedding completed chunks.
+```
+
+In JSON mode the same information is `resumedFrom`. Vectors are committed
+per batch, so the rerun only embeds the remaining backlog; unchanged files
+are skipped by the lexical stage as usual. `gno index --no-embed` followed by
+`gno embed` is the same two stages run as two processes and needs no
+special handling.
+
+**Combined-run crash (field report 2026-09-01)**: one combined `gno index`
+on Bun 1.3.14 / Linux x64 (CUDA build of node-llama-cpp 3.19.1) died
+mid-run; `gno index --no-embed` then `gno embed` completed cleanly on the
+same machine. The crash reproduced once in five combined runs (zero in four
+split runs) while verifying this contract, with a core dump: the process
+aborted with `pure virtual method called` on a native worker thread inside
+`llama_model::build_graph` during `llama_init_from_model` (embedding-context
+creation) while a second native worker was still inside
+`llama_model_load` (`load_vocab`). Two node-llama-cpp async workers were
+executing concurrently on one model at the point of the abort; GNO issues a
+single deduplicated model load and creates contexts sequentially only after
+that load resolves, so the overlap is inside the Bun Node-API async-work
+path or the addon, not in GNO's call order. It is not root-caused and no
+GNO-side guard can prevent it; the staged contract above is the guard:
+whatever kills the process, the lexical stage survives, the next run names
+the interrupted stage, and embedding resumes without rework (verified live
+on the crashing run: the rerun reported the interrupted embed stage and
+embedded all 800 chunks). If it recurs, keep the stderr tail and
+`coredumpctl info` output for the upstream report, and run the two stages
+as separate processes.
 
 **Concurrency**: One writer at a time on the shared index. `index`, `update`,
 `embed`, `cleanup`, `vec sync`, `vec rebuild`, `collection clear-embeddings`,

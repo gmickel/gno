@@ -98,6 +98,7 @@ async function loadAllSchemas(): Promise<void> {
     "agents-verify",
     "memory-remember",
     "memory-recall",
+    "index-receipt",
   ];
 
   for (const name of schemaFiles) {

@@ -1025,24 +1025,49 @@ gno index [collection] [--no-embed] [--models-pull] [--git-pull] [--json] [--yes
 
 **Behavior:**
 
-- Runs `update` then `embed` by default
-- With `--no-embed`, runs `update` only
+- Runs two separable stages: `lexical` (`update`) then `embed`
+- With `--no-embed`, runs the `lexical` stage only (embed stage `skipped`)
 - Waits by default for the shared write lease; `--no-wait` fails immediately with exit 4
 
-**JSON output:** Emits `{ syncResult, embedSkipped, embedResult? }`.
+**Staged, resumable contract:** each stage persists its own progress inside
+the index database (documents and chunks for `lexical`; vectors per batch for
+`embed`) plus a per-stage lifecycle marker (`schema_meta.index_stage_state`).
+A stage that fails never invalidates a completed earlier stage: the lexical
+index stays searchable when embedding fails or the process dies. A process
+killed mid-stage (SIGKILL, native crash, power loss) emits nothing; the next
+`gno index` or `gno embed` run reads the marker, reports the interrupted stage
+in its resume preamble (stderr in human mode, `resumedFrom` in JSON), and
+continues from persisted progress - unchanged files are skipped and already
+stored chunks are never re-embedded.
+
+**JSON output:** conforms to
+[`index-receipt@1.0`](./output-schemas/index-receipt.schema.json):
+`{ success, error?, stages: { lexical, embed }, resumedFrom, syncResult?, embedSkipped, embedResult? }`.
+Each stage reports `state` (`completed` | `failed` | `skipped` |
+`interrupted`) with counts (`filesProcessed`/`filesAdded`/`filesUpdated`/
+`filesErrored`/`filesSkipped`/`durationMs` for lexical;
+`embedded`/`errors`/`contentionErrors`/`durationMs` for embed), a `reason`
+when skipped, and an `error` when failed. The embed stage is `completed` only
+when every attempted chunk was stored: any `errors > 0` or a vector-sync error
+makes it `failed`. `resumedFrom` is `null` on a clean start or
+`{ stage, state: "interrupted", startedAt, pid, collection? }`.
 `syncResult.collections[].files[].recordImport`, when present, conforms to
 [`record-import@1.0`](./output-schemas/record-import.schema.json) with the same
 deterministic ordering, bounds, truncation disclosure, and partial-snapshot
 warnings as `gno update --json`. Human progress and diagnostics remain on
-stderr. On lease timeout, stdout is one object `{ success: false, error, contention }`
-and the process exits 4.
+stderr. A failed stage still emits the partial receipt on stdout (with
+`success: false` and `error`) before the non-zero exit. On lease timeout,
+stdout is one object `{ success: false, error, contention }` and the process
+exits 4.
 
 **Exit Codes:**
 
-- 0: Success
+- 0: Every attempted stage completed
 - 1: Invalid collection name or invalid `--lock-wait`
-- 2: DB or model failure
-- 4: Write lease busy (contention, not corruption)
+- 2: DB or model failure, or any stage `failed` (including chunk-level embed
+  failures; the partial receipt is still emitted)
+- 4: Write lease busy (contention, not corruption), or chunks deferred by
+  index contention after an otherwise completed embed stage
 
 **Examples:**
 

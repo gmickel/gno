@@ -1629,7 +1629,14 @@ function wireOnboardingCommands(program: Command): void {
 
       if (!result.success) {
         throwIfWriteLeaseBusy(result, opts.json);
-        throw new CliError("RUNTIME", result.error ?? "Index failed");
+        if (!result.stages) {
+          throw new CliError("RUNTIME", result.error ?? "Index failed");
+        }
+        // A stage failed after the run started: emit the partial per-stage
+        // receipt, then exit non-zero (fn-132 R4 - never exit 0 on a failed
+        // embed stage).
+        process.stdout.write(`${formatIndex(result, opts)}\n`);
+        throw new CliError("RUNTIME", result.error, { silent: true });
       }
       process.stdout.write(`${formatIndex(result, opts)}\n`);
       if ((result.embedResult?.contentionErrors ?? 0) > 0) {

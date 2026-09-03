@@ -30,6 +30,14 @@ import {
   MAX_EMBED_CHUNK_ATTEMPTS,
   type EmbedStoreBatchResult,
 } from "../../embed/retry";
+import {
+  findInterruptedStage,
+  formatInterruptedStage,
+  type InterruptedStage,
+  markIndexStageFinished,
+  markIndexStageRunning,
+  readIndexStageState,
+} from "../../embed/stage-state";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
@@ -75,9 +83,15 @@ export interface EmbedOptions extends CliWriteLeaseOptions {
   verbose?: boolean;
   /** Use cached models only (also used by the standalone setup worker). */
   offline?: boolean;
+  /**
+   * Resume preamble already handled by the caller (`gno index`). When set
+   * (including `null`), embed() neither re-detects an interrupted stage nor
+   * prints its own preamble; the value is echoed in the result.
+   */
+  resumedFrom?: InterruptedStage | null;
 }
 
-export type EmbedResult =
+export type EmbedResult = (
   | {
       success: true;
       embedded: number;
@@ -91,7 +105,22 @@ export type EmbedResult =
       suggestion?: string;
       syncError?: string;
     }
-  | { success: false; error: string; contention?: WriteLeaseContention };
+  | { success: false; error: string; contention?: WriteLeaseContention }
+) & {
+  /** Stage a previous run left `running` (fn-132 R4); null when none. */
+  resumedFrom?: InterruptedStage | null;
+};
+
+/**
+ * Stage outcome for the persisted marker and the `gno index` receipt: the
+ * embed stage completed only when every chunk it attempted was stored.
+ */
+export function embedStageOutcome(result: EmbedResult): "completed" | "failed" {
+  if (!result.success) {
+    return "failed";
+  }
+  return result.errors === 0 && !result.syncError ? "completed" : "failed";
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -458,214 +487,243 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
 
     // Get raw DB for vector ops (SqliteAdapter always implements SqliteDbProvider)
     const db = store.getRawDb();
-    let embedPort: EmbeddingPort | null = null;
-    let vectorIndex: VectorIndexPort | null = null;
 
-    try {
-      // Create stats port for backlog detection
-      const stats: VectorStatsPort = createVectorStatsPort(db);
+    // Resume preamble (fn-132 R4): a stage left `running` by a dead process.
+    // `gno index` detects it once for both stages and hands it in.
+    const resumedFrom =
+      options.resumedFrom === undefined
+        ? findInterruptedStage(readIndexStageState(db))
+        : options.resumedFrom;
+    if (options.resumedFrom === undefined && resumedFrom && !options.json) {
+      process.stderr.write(`${formatInterruptedStage(resumedFrom)}\n`);
+    }
 
-      let totalToEmbed = 0;
-      if (force) {
-        const forceCount = await getActiveChunkCount(db, options.collection);
-        if (!forceCount.ok) {
-          return { success: false, error: forceCount.error.message };
+    const runEmbedPass = async (): Promise<EmbedResult> => {
+      let embedPort: EmbeddingPort | null = null;
+      let vectorIndex: VectorIndexPort | null = null;
+      const runEmbedBody = async (): Promise<EmbedResult> => {
+        // Create stats port for backlog detection
+        const stats: VectorStatsPort = createVectorStatsPort(db);
+
+        let totalToEmbed = 0;
+        if (force) {
+          const forceCount = await getActiveChunkCount(db, options.collection);
+          if (!forceCount.ok) {
+            return { success: false, error: forceCount.error.message };
+          }
+          totalToEmbed = forceCount.value;
+
+          if (totalToEmbed === 0 || dryRun) {
+            const vecAvailable = await checkVecAvailable(db);
+            return {
+              success: true,
+              embedded: totalToEmbed,
+              errors: 0,
+              contentionErrors: 0,
+              duration: 0,
+              model: modelUri,
+              searchAvailable: vecAvailable,
+              errorSamples: [],
+            };
+          }
         }
-        totalToEmbed = forceCount.value;
 
-        if (totalToEmbed === 0 || dryRun) {
-          const vecAvailable = await checkVecAvailable(db);
-          return {
-            success: true,
-            embedded: totalToEmbed,
-            errors: 0,
-            contentionErrors: 0,
-            duration: 0,
-            model: modelUri,
-            searchAvailable: vecAvailable,
-            errorSamples: [],
-          };
+        // Create LLM adapter and embedding port with auto-download
+        let offline = options.offline;
+        if (offline === undefined) {
+          offline = getGlobals().offline;
         }
-      }
+        const policy = resolveDownloadPolicy(process.env, {
+          offline,
+        });
 
-      // Create LLM adapter and embedding port with auto-download
-      let offline = options.offline;
-      if (offline === undefined) {
-        offline = getGlobals().offline;
-      }
-      const policy = resolveDownloadPolicy(process.env, {
-        offline,
-      });
+        // Create progress renderer for model download (throttled to avoid spam)
+        const showDownloadProgress = !options.json && process.stderr.isTTY;
+        const downloadProgress = showDownloadProgress
+          ? createThrottledProgressRenderer(createProgressRenderer())
+          : undefined;
 
-      // Create progress renderer for model download (throttled to avoid spam)
-      const showDownloadProgress = !options.json && process.stderr.isTTY;
-      const downloadProgress = showDownloadProgress
-        ? createThrottledProgressRenderer(createProgressRenderer())
-        : undefined;
-
-      const llm = new LlmAdapter(config);
-      const recreateEmbedPort = async () => {
-        if (embedPort) {
-          await embedPort.dispose();
-        }
-        await llm.getManager().dispose(modelUri);
-        const recreated = await llm.createEmbeddingPort(modelUri, {
+        const llm = new LlmAdapter(config);
+        const recreateEmbedPort = async () => {
+          if (embedPort) {
+            await embedPort.dispose();
+          }
+          await llm.getManager().dispose(modelUri);
+          const recreated = await llm.createEmbeddingPort(modelUri, {
+            egressCollections: options.collection
+              ? [options.collection]
+              : "all",
+            policy,
+            onProgress: downloadProgress
+              ? (progress) => downloadProgress("embed", progress)
+              : undefined,
+          });
+          if (!recreated.ok) {
+            return { ok: false as const, error: recreated.error.message };
+          }
+          const initResult = await recreated.value.init();
+          if (!initResult.ok) {
+            await recreated.value.dispose();
+            return { ok: false as const, error: initResult.error.message };
+          }
+          return { ok: true as const, value: recreated.value };
+        };
+        const embedResult = await llm.createEmbeddingPort(modelUri, {
           egressCollections: options.collection ? [options.collection] : "all",
           policy,
           onProgress: downloadProgress
             ? (progress) => downloadProgress("embed", progress)
             : undefined,
         });
-        if (!recreated.ok) {
-          return { ok: false as const, error: recreated.error.message };
+        if (!embedResult.ok) {
+          return { success: false, error: embedResult.error.message };
         }
-        const initResult = await recreated.value.init();
-        if (!initResult.ok) {
-          await recreated.value.dispose();
-          return { ok: false as const, error: initResult.error.message };
+        embedPort = embedResult.value;
+
+        // Clear download progress line if shown
+        if (showDownloadProgress) {
+          process.stderr.write("\n");
         }
-        return { ok: true as const, value: recreated.value };
-      };
-      const embedResult = await llm.createEmbeddingPort(modelUri, {
-        egressCollections: options.collection ? [options.collection] : "all",
-        policy,
-        onProgress: downloadProgress
-          ? (progress) => downloadProgress("embed", progress)
-          : undefined,
-      });
-      if (!embedResult.ok) {
-        return { success: false, error: embedResult.error.message };
-      }
-      embedPort = embedResult.value;
 
-      // Clear download progress line if shown
-      if (showDownloadProgress) {
-        process.stderr.write("\n");
-      }
+        // Discover dimensions via probe embedding
+        const probeResult = await embedPort.embed("dimension probe");
+        if (!probeResult.ok) {
+          return { success: false, error: probeResult.error.message };
+        }
+        const dimensions = probeResult.value.length;
 
-      // Discover dimensions via probe embedding
-      const probeResult = await embedPort.embed("dimension probe");
-      if (!probeResult.ok) {
-        return { success: false, error: probeResult.error.message };
-      }
-      const dimensions = probeResult.value.length;
-
-      // Create vector index port
-      const vectorResult = await createVectorIndexPort(db, {
-        model: modelUri,
-        dimensions,
-      });
-      if (!vectorResult.ok) {
-        return { success: false, error: vectorResult.error.message };
-      }
-      vectorIndex = vectorResult.value;
-
-      if (!force) {
-        const embedFingerprint = getEmbeddingFingerprint({
-          modelUri,
+        // Create vector index port
+        const vectorResult = await createVectorIndexPort(db, {
+          model: modelUri,
           dimensions,
         });
-        const backlogResult = await stats.countBacklog(
-          modelUri,
-          embedFingerprint,
-          {
-            collection: options.collection,
+        if (!vectorResult.ok) {
+          return { success: false, error: vectorResult.error.message };
+        }
+        vectorIndex = vectorResult.value;
+
+        if (!force) {
+          const embedFingerprint = getEmbeddingFingerprint({
+            modelUri,
+            dimensions,
+          });
+          const backlogResult = await stats.countBacklog(
+            modelUri,
+            embedFingerprint,
+            {
+              collection: options.collection,
+            }
+          );
+
+          if (!backlogResult.ok) {
+            return { success: false, error: backlogResult.error.message };
           }
-        );
 
-        if (!backlogResult.ok) {
-          return { success: false, error: backlogResult.error.message };
+          totalToEmbed = backlogResult.value;
+
+          if (totalToEmbed === 0 || dryRun) {
+            return {
+              success: true,
+              embedded: totalToEmbed,
+              errors: 0,
+              contentionErrors: 0,
+              duration: 0,
+              model: modelUri,
+              searchAvailable: vectorIndex.searchAvailable,
+              errorSamples: [],
+            };
+          }
         }
 
-        totalToEmbed = backlogResult.value;
+        // Process batches
+        const result = await processBatches({
+          db,
+          stats,
+          embedPort,
+          vectorIndex,
+          modelUri,
+          collection: options.collection,
+          batchSize,
+          force,
+          showProgress: !options.json,
+          totalToEmbed,
+          verbose: options.verbose ?? false,
+          recreateEmbedPort,
+        });
 
-        if (totalToEmbed === 0 || dryRun) {
-          return {
-            success: true,
-            embedded: totalToEmbed,
-            errors: 0,
-            contentionErrors: 0,
-            duration: 0,
-            model: modelUri,
-            searchAvailable: vectorIndex.searchAvailable,
-            errorSamples: [],
-          };
+        if (!result.ok) {
+          return { success: false, error: result.error };
         }
-      }
 
-      // Process batches
-      const result = await processBatches({
-        db,
-        stats,
-        embedPort,
-        vectorIndex,
-        modelUri,
-        collection: options.collection,
-        batchSize,
-        force,
-        showProgress: !options.json,
-        totalToEmbed,
-        verbose: options.verbose ?? false,
-        recreateEmbedPort,
-      });
-
-      if (!result.ok) {
-        return { success: false, error: result.error };
-      }
-
-      // Sync vec index if any vec0 writes failed (matches embedBacklog behavior)
-      if (vectorIndex.vecDirty) {
-        const syncResult = await vectorIndex.syncVecIndex();
-        if (syncResult.ok) {
-          const { added, removed } = syncResult.value;
-          if (added > 0 || removed > 0) {
+        // Sync vec index if any vec0 writes failed (matches embedBacklog behavior)
+        if (vectorIndex.vecDirty) {
+          const syncResult = await vectorIndex.syncVecIndex();
+          if (syncResult.ok) {
+            const { added, removed } = syncResult.value;
+            if (added > 0 || removed > 0) {
+              if (!options.json) {
+                process.stdout.write(
+                  `\n[vec] Synced index: +${added} -${removed}\n`
+                );
+              }
+            }
+            vectorIndex.vecDirty = false;
+          } else {
             if (!options.json) {
               process.stdout.write(
-                `\n[vec] Synced index: +${added} -${removed}\n`
+                `\n[vec] Sync failed: ${syncResult.error.message}\n`
               );
             }
+            return {
+              success: true,
+              embedded: result.embedded,
+              errors: result.errors,
+              contentionErrors: result.contentionErrors,
+              duration: result.duration,
+              model: modelUri,
+              searchAvailable: vectorIndex.searchAvailable,
+              errorSamples: [
+                ...result.errorSamples,
+                syncResult.error.message,
+              ].slice(0, 5),
+              suggestion:
+                "Vector index sync failed after embedding. Rerun `gno embed` once more. If it repeats, run `gno vec sync`.",
+              syncError: syncResult.error.message,
+            };
           }
-          vectorIndex.vecDirty = false;
-        } else {
-          if (!options.json) {
-            process.stdout.write(
-              `\n[vec] Sync failed: ${syncResult.error.message}\n`
-            );
-          }
-          return {
-            success: true,
-            embedded: result.embedded,
-            errors: result.errors,
-            contentionErrors: result.contentionErrors,
-            duration: result.duration,
-            model: modelUri,
-            searchAvailable: vectorIndex.searchAvailable,
-            errorSamples: [
-              ...result.errorSamples,
-              syncResult.error.message,
-            ].slice(0, 5),
-            suggestion:
-              "Vector index sync failed after embedding. Rerun `gno embed` once more. If it repeats, run `gno vec sync`.",
-            syncError: syncResult.error.message,
-          };
         }
-      }
 
-      return {
-        success: true,
-        embedded: result.embedded,
-        errors: result.errors,
-        contentionErrors: result.contentionErrors,
-        duration: result.duration,
-        model: modelUri,
-        searchAvailable: vectorIndex.searchAvailable,
-        errorSamples: result.errorSamples,
-        suggestion: result.suggestion,
+        return {
+          success: true,
+          embedded: result.embedded,
+          errors: result.errors,
+          contentionErrors: result.contentionErrors,
+          duration: result.duration,
+          model: modelUri,
+          searchAvailable: vectorIndex.searchAvailable,
+          errorSamples: result.errorSamples,
+          suggestion: result.suggestion,
+        };
       };
-    } finally {
-      if (embedPort) {
-        await embedPort.dispose();
+
+      try {
+        return await runEmbedBody();
+      } finally {
+        // Assigned inside runEmbedBody; the cast defeats TS's null narrowing.
+        await (embedPort as EmbeddingPort | null)?.dispose();
       }
+    };
+
+    // Persisted stage marker: `running` until the pass reports, so a process
+    // that dies here is surfaced by the next run's resume preamble.
+    markIndexStageRunning(db, "embed", { collection: options.collection });
+    let outcome: "completed" | "failed" = "failed";
+    try {
+      const result = await runEmbedPass();
+      outcome = embedStageOutcome(result);
+      return { ...result, resumedFrom };
+    } finally {
+      markIndexStageFinished(db, "embed", outcome);
       await store.close();
     }
   });
