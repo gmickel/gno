@@ -82,6 +82,7 @@ CLI.
 | `/api/presets`                         | POST   | Switch preset                                               |
 | `/api/models/status`                   | GET    | Download status                                             |
 | `/api/models/pull`                     | POST   | Start model download                                        |
+| `/api/memory/recall`                   | POST   | Budgeted, cited recall of current facts with a receipt      |
 
 ### Write Operations
 
@@ -95,6 +96,7 @@ CLI.
 | `/api/capture`                | POST   | Capture note with provenance receipt   |
 | `/api/capture/clip/preview`   | POST   | Preview a paired browser clip          |
 | `/api/capture/clip`           | POST   | Commit a matching browser-clip preview |
+| `/api/memory/remember`        | POST   | Store or supersede one fact (memory)   |
 | `/api/docs`                   | POST   | Create new document                    |
 | `/api/docs/:id`               | PUT    | Update document                        |
 | `/api/docs/:id/refactor-plan` | POST   | Preview a reference-safe rename/move   |
@@ -2222,6 +2224,193 @@ For browser clips, `open_existing` succeeds only when the stored
 
 ---
 
+### Remember a Fact
+
+```http
+POST /api/memory/remember
+```
+
+Store one fact in a memory-managed collection (`memoryManaged: true` in the
+collection config), or ask for candidates first. This is the REST binding of
+`gno remember`; the request and response are the shared memory contract used
+by the CLI, MCP `gno_remember`, and `client.remember()`, and the response
+validates against `spec/output-schemas/memory-remember.schema.json`.
+
+Remember is fact-granular with supersession, not a second capture: use
+`/api/capture` for a genuinely new document.
+
+**Request Body**:
+
+```json
+{
+  "text": "Finn likes trains.",
+  "collection": "memory",
+  "scopes": ["project:gno"],
+  "caller": "codex",
+  "session": "session-1",
+  "decision": "add"
+}
+```
+
+| Field             | Required         | Description                                                                        |
+| :---------------- | :--------------- | :--------------------------------------------------------------------------------- |
+| `text`            | yes              | The fact (text only, at most 4096 bytes)                                           |
+| `collection`      | yes              | A memory-managed collection                                                        |
+| `scopes`          | yes              | 1..8 explicit scopes (trimmed, lowercased, deduplicated); no implicit global scope |
+| `caller`          | yes              | Client identity the receipt binds to                                               |
+| `session`         | yes              | Session identity the receipt binds to                                              |
+| `decision`        | no               | `add` or `supersede`; omitted returns candidates and writes nothing                |
+| `predecessorUri`  | with `supersede` | `gno://` virtual URI of the fact being superseded                                  |
+| `predecessorHash` | with `supersede` | `contentHash` of that predecessor as last recalled                                 |
+| `receipt`         | no               | A recall receipt; replaying one of its spans is rejected                           |
+| `derivedFrom`     | no               | Declared origins; any `gno://` origin is rejected                                  |
+| `source`          | no               | Free-form source evidence                                                          |
+
+**Response**: `201 Created` when a record was written (`outcome: "added"` or
+`"superseded"`), otherwise `200 OK` (`"existing"` for an exact duplicate,
+`"candidates"` when no decision was given). The write and its lexical sync
+complete under the shared write lease before the response, so a written fact
+is immediately recallable; `sync.status` is therefore `completed`.
+
+```json
+{
+  "outcome": "added",
+  "record": {
+    "uri": "gno://memory/project-gno/2026/09/mem-3f9c….md",
+    "docid": "#a1b2c3",
+    "recordId": "mem-3f9c…",
+    "text": "Finn likes trains.",
+    "scopes": ["project:gno"],
+    "caller": "codex",
+    "session": "session-1",
+    "createdAt": "2026-09-03T10:00:00.000Z",
+    "contentHash": "3f9c…",
+    "supersedes": []
+  },
+  "absPath": "/home/me/vault/memory/project-gno/2026/09/mem-3f9c….md",
+  "sync": { "status": "completed" },
+  "matching": {
+    "mode": "lexical",
+    "semanticUnavailable": "no embedding model available",
+    "threshold": 0.5
+  }
+}
+```
+
+A `candidates` response lists current same-scope facts with `similarity` and
+`match` (`exact`, `likely`, `weak`); the caller decides between `add` and
+`supersede`. `matching.mode` is `semantic` (cosine, threshold 0.83) when the
+resident embedding model is loaded and `lexical` (Jaccard, threshold 0.5)
+otherwise.
+
+---
+
+### Recall Facts
+
+```http
+POST /api/memory/recall
+```
+
+Budgeted, cited recall of current facts in the caller's explicit scopes.
+Superseded facts are excluded inside the retrieval query. This is the REST
+binding of `gno recall`; the response is the shared memory contract used by the
+CLI, MCP `gno_recall`, and `client.recall()`, and validates against
+`spec/output-schemas/memory-recall.schema.json`.
+
+**Request Body**:
+
+```json
+{
+  "query": "trains",
+  "collection": "memory",
+  "scopes": ["project:gno"],
+  "caller": "codex",
+  "session": "session-1",
+  "maxFacts": 8,
+  "maxTokens": 512
+}
+```
+
+`maxFacts` (default 8) and `maxTokens` (default 512) are optional positive
+integers; identity and scopes are required exactly as for remember.
+
+**Response** (200 OK):
+
+```json
+{
+  "facts": [
+    {
+      "uri": "gno://memory/project-gno/2026/09/mem-3f9c….md",
+      "docid": "#a1b2c3",
+      "recordId": "mem-3f9c…",
+      "text": "Finn likes trains.",
+      "scopes": ["project:gno"],
+      "caller": "codex",
+      "session": "session-1",
+      "createdAt": "2026-09-03T10:00:00.000Z",
+      "contentHash": "3f9c…",
+      "supersedes": [],
+      "score": 0.0164,
+      "spanHash": "3f9c…",
+      "egressLineage": {
+        "effectivePolicy": "local_only",
+        "digest": "…",
+        "sources": [
+          {
+            "collection": "memory",
+            "policy": "local_only",
+            "source": "config_default"
+          }
+        ]
+      }
+    }
+  ],
+  "receipt": {
+    "caller": "codex",
+    "session": "session-1",
+    "issuedAt": "2026-09-03T10:00:01.000Z",
+    "memoryIds": ["#a1b2c3"],
+    "spanHashes": ["3f9c…"],
+    "digest": "…"
+  },
+  "budget": { "maxFacts": 8, "maxTokens": 512, "usedTokens": 5, "omitted": 0 },
+  "retrieval": {
+    "mode": "lexical",
+    "semanticUnavailable": "no embedding model available"
+  },
+  "egressLineage": {
+    "effectivePolicy": "local_only",
+    "digest": "…",
+    "sources": []
+  }
+}
+```
+
+Every fact carries its `gno://` cite and `egressLineage`; the top-level
+`egressLineage` is the strictest policy across the returned facts and is absent
+when nothing was returned. The `receipt` is content-free (identity, memory ids,
+span hashes, digest): pass it back on `remember` so a recalled span cannot be
+re-stored as a new fact. A paraphrase that carries neither the receipt nor a
+`derivedFrom` origin cannot be fenced. An empty recall omits `egressLineage`
+and carries `hint`, the self-teaching line naming `gno remember`.
+
+**Memory errors**: both endpoints answer with the standard error envelope
+whose `code` is the stable memory code shared by every surface:
+
+| Code                                                                                                                                                                                                                                                                                                                            | HTTP Status |
+| :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------- |
+| `MEMORY_TEXT_REQUIRED`, `MEMORY_TEXT_TOO_LARGE`, `MEMORY_QUERY_REQUIRED`, `MEMORY_COLLECTION_REQUIRED`, `MEMORY_COLLECTION_UNMANAGED`, `MEMORY_SCOPES_REQUIRED`, `MEMORY_SCOPES_INVALID`, `MEMORY_IDENTITY_REQUIRED`, `MEMORY_DECISION_INVALID`, `MEMORY_PREDECESSOR_REQUIRED`, `MEMORY_FENCED_REPLAY`, `MEMORY_FENCED_DERIVED` | 400         |
+| `MEMORY_COLLECTION_NOT_FOUND`, `MEMORY_PREDECESSOR_NOT_FOUND`                                                                                                                                                                                                                                                                   | 404         |
+| `MEMORY_PREDECESSOR_HASH_MISMATCH`, `MEMORY_SUPERSEDE_CONFLICT`, `MEMORY_WRITE_LEASE_BUSY`                                                                                                                                                                                                                                      | 409         |
+| `MEMORY_SYNC_FAILED`, `MEMORY_QUERY_FAILED`                                                                                                                                                                                                                                                                                     | 500         |
+
+Both endpoints are loopback-only like the rest of the API and require the
+[CSRF](#csrf-protection) conditions for mutating requests. The memory service
+takes the shared write lease itself for `remember`; a concurrent supersede of
+the same predecessor returns `MEMORY_SUPERSEDE_CONFLICT`.
+
+---
+
 ### Create Document
 
 ```http
@@ -3401,17 +3590,18 @@ All errors follow a consistent format:
 }
 ```
 
-| Code             | HTTP Status | Description                                              |
-| :--------------- | :---------- | :------------------------------------------------------- |
-| `VALIDATION`     | 400         | Invalid request parameters                               |
-| `PATH_NOT_FOUND` | 400         | Specified path does not exist                            |
-| `HAS_REFERENCES` | 400         | Resource has dependencies (e.g., collection in contexts) |
-| `CSRF_VIOLATION` | 403         | Cross-origin request rejected                            |
-| `NOT_FOUND`      | 404         | Resource not found                                       |
-| `DUPLICATE`      | 409         | Resource already exists                                  |
-| `CONFLICT`       | 409         | Operation already in progress                            |
-| `UNAVAILABLE`    | 503         | Feature not available (model not loaded)                 |
-| `RUNTIME`        | 500         | Internal error                                           |
+| Code             | HTTP Status | Description                                                    |
+| :--------------- | :---------- | :------------------------------------------------------------- |
+| `VALIDATION`     | 400         | Invalid request parameters                                     |
+| `PATH_NOT_FOUND` | 400         | Specified path does not exist                                  |
+| `HAS_REFERENCES` | 400         | Resource has dependencies (e.g., collection in contexts)       |
+| `CSRF_VIOLATION` | 403         | Cross-origin request rejected                                  |
+| `NOT_FOUND`      | 404         | Resource not found                                             |
+| `DUPLICATE`      | 409         | Resource already exists                                        |
+| `CONFLICT`       | 409         | Operation already in progress                                  |
+| `UNAVAILABLE`    | 503         | Feature not available (model not loaded)                       |
+| `RUNTIME`        | 500         | Internal error                                                 |
+| `MEMORY_*`       | 400-500     | Memory contract codes, see [Remember a Fact](#remember-a-fact) |
 
 ---
 

@@ -43,6 +43,16 @@ import type {
   KnowledgeImpactResult,
   ListKnowledgeChangesInput,
 } from "../core/knowledge-delta";
+import type {
+  MemoryCandidate,
+  MemoryFact,
+  MemoryRecallReceipt,
+  RecalledFact,
+  RecallInput,
+  RecallResult,
+  RememberInput,
+  RememberResult,
+} from "../core/memory";
 import type { NoteCollisionPolicy } from "../core/note-creation";
 import type { NotePresetId } from "../core/note-presets";
 import type {
@@ -245,6 +255,13 @@ export interface GnoCaptureOptions extends Omit<CaptureInput, "overwrite"> {}
 
 export type GnoCaptureResult = CaptureReceipt;
 
+/** Shared memory contract (identical on CLI, MCP, REST, and SDK). */
+export type GnoRememberInput = RememberInput;
+export type GnoRememberResult = RememberResult;
+export type GnoRecallInput = RecallInput;
+export type GnoRecallResult = RecallResult;
+export type { MemoryCandidate, MemoryFact, MemoryRecallReceipt, RecalledFact };
+
 export interface GnoCreateFolderOptions {
   collection: string;
   name: string;
@@ -370,6 +387,17 @@ export interface GnoClient {
   embed(options?: GnoEmbedOptions): Promise<GnoEmbedResult>;
   index(options?: GnoIndexOptions): Promise<GnoIndexResult>;
   capture(options: GnoCaptureOptions): Promise<GnoCaptureResult>;
+  /**
+   * Store one fact in a memory-managed collection, or propose candidates when
+   * `decision` is omitted. Requires caller + session identity and explicit
+   * scopes. Errors carry the stable memory code in `details.code`.
+   */
+  remember(input: GnoRememberInput): Promise<GnoRememberResult>;
+  /**
+   * Budgeted, cited recall of current facts in the caller's explicit scopes.
+   * The result carries a content-free fencing receipt.
+   */
+  recall(input: GnoRecallInput): Promise<GnoRecallResult>;
   createNote(options: GnoCreateNoteOptions): Promise<GnoCreateNoteResult>;
   createFolder(options: GnoCreateFolderOptions): Promise<GnoCreateFolderResult>;
   previewRenameNote(

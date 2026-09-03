@@ -95,6 +95,8 @@ async function loadAllSchemas(): Promise<void> {
     "file-refactor-apply-result",
     "agents-mutation",
     "agents-verify",
+    "memory-remember",
+    "memory-recall",
   ];
 
   for (const name of schemaFiles) {

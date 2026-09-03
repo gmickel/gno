@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/memory-recall@1.0",
+  "title": "GNO Memory Recall Result",
+  "description": "Shared result of `recall` on every surface (CLI --json, MCP gno_recall, REST POST /api/memory/recall, SDK client.recall()). Derived from RecallResult in src/core/memory.ts. Every returned fact carries a gno:// cite and its egress lineage; the receipt is content-free and bound to caller + session.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["facts", "receipt", "budget", "retrieval"],
+  "properties": {
+    "facts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/recalledFact" }
+    },
+    "receipt": { "$ref": "#/$defs/receipt" },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxFacts", "maxTokens", "usedTokens", "omitted"],
+      "properties": {
+        "maxFacts": { "type": "integer", "minimum": 1 },
+        "maxTokens": { "type": "integer", "minimum": 1 },
+        "usedTokens": { "type": "integer", "minimum": 0 },
+        "omitted": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "retrieval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["hybrid", "lexical"] },
+        "semanticUnavailable": { "type": "string" }
+      }
+    },
+    "egressLineage": {
+      "$ref": "#/$defs/egressLineage",
+      "description": "Strictest source policy across every returned fact; absent when no fact was returned."
+    },
+    "hint": {
+      "type": "string",
+      "description": "Self-teaching line naming `gno remember`; present only when no fact was returned."
+    }
+  },
+  "$defs": {
+    "uri": {
+      "type": "string",
+      "pattern": "^gno://[^/]+/.+"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "recalledFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "docid",
+        "recordId",
+        "text",
+        "scopes",
+        "caller",
+        "session",
+        "createdAt",
+        "contentHash",
+        "supersedes",
+        "score",
+        "spanHash",
+        "egressLineage"
+      ],
+      "properties": {
+        "uri": { "$ref": "#/$defs/uri" },
+        "docid": { "type": "string", "minLength": 1 },
+        "recordId": { "type": "string", "pattern": "^mem-" },
+        "text": { "type": "string", "minLength": 1 },
+        "scopes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+        },
+        "caller": { "type": "string", "minLength": 1 },
+        "session": { "type": "string", "minLength": 1 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "contentHash": { "$ref": "#/$defs/sha256" },
+        "supersedes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/uri" }
+        },
+        "score": { "type": "number", "minimum": 0 },
+        "spanHash": {
+          "$ref": "#/$defs/sha256",
+          "description": "Hash of the returned span; replaying it to remember with this receipt is fenced."
+        },
+        "egressLineage": { "$ref": "#/$defs/egressLineage" }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caller",
+        "session",
+        "issuedAt",
+        "memoryIds",
+        "spanHashes",
+        "digest"
+      ],
+      "properties": {
+        "caller": { "type": "string", "minLength": 1 },
+        "session": { "type": "string", "minLength": 1 },
+        "issuedAt": { "type": "string", "format": "date-time" },
+        "memoryIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "spanHashes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sha256" }
+        },
+        "digest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "egressLineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effectivePolicy", "digest", "sources"],
+      "properties": {
+        "effectivePolicy": { "enum": ["local_only", "lan", "remote"] },
+        "digest": { "$ref": "#/$defs/sha256" },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["collection", "policy", "source"],
+            "properties": {
+              "collection": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+              },
+              "policy": { "enum": ["local_only", "lan", "remote"] },
+              "source": {
+                "enum": ["explicit", "config_default", "legacy_default"]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

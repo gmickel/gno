@@ -38,7 +38,11 @@ import type {
   GnoMoveNoteOptions,
   GnoMultiGetOptions,
   GnoQueryOptions,
+  GnoRecallInput,
+  GnoRecallResult,
   GnoRefactorNoteResult,
+  GnoRememberInput,
+  GnoRememberResult,
   GnoRenameNoteApplyOptions,
   GnoRenameNoteOptions,
   GnoSearchOptions,
@@ -113,6 +117,11 @@ import {
   listKnowledgeChanges,
   type KnowledgeDeltaServiceResult,
 } from "../core/knowledge-delta";
+import {
+  MemoryError,
+  type MemoryErrorCode,
+  MemoryService,
+} from "../core/memory";
 import { resolveNoteCreatePlan } from "../core/note-creation";
 import { resolveNotePreset } from "../core/note-presets";
 import {
@@ -144,6 +153,7 @@ import {
 } from "../core/sections";
 import { normalizeStructuredQueryInput } from "../core/structured-query";
 import { parseAndValidateTagFilter } from "../core/tags";
+import { writeLeasePath } from "../core/write-lease";
 import {
   defaultSyncService,
   type SyncResult,
@@ -293,6 +303,32 @@ async function resolveClientState(
       options.downloadPolicy ?? resolveDownloadPolicy(process.env, {}),
     indexName,
   };
+}
+
+const MEMORY_NOT_FOUND_CODES: ReadonlySet<MemoryErrorCode> = new Set([
+  "MEMORY_COLLECTION_NOT_FOUND",
+  "MEMORY_PREDECESSOR_NOT_FOUND",
+]);
+const MEMORY_RUNTIME_CODES: ReadonlySet<MemoryErrorCode> = new Set([
+  "MEMORY_PREDECESSOR_HASH_MISMATCH",
+  "MEMORY_SUPERSEDE_CONFLICT",
+  "MEMORY_WRITE_LEASE_BUSY",
+  "MEMORY_SYNC_FAILED",
+  "MEMORY_QUERY_FAILED",
+]);
+
+/** Map a core MemoryError onto the SDK error family; the memory code survives in `details.code`. */
+function toMemorySdkError(cause: unknown): unknown {
+  if (!(cause instanceof MemoryError)) return cause;
+  const code = MEMORY_NOT_FOUND_CODES.has(cause.code)
+    ? "NOT_FOUND"
+    : MEMORY_RUNTIME_CODES.has(cause.code)
+      ? "RUNTIME"
+      : "VALIDATION";
+  return sdkError(code, cause.message, {
+    cause,
+    details: { code: cause.code },
+  });
 }
 
 class GnoClientImpl implements GnoClient {
@@ -1579,6 +1615,54 @@ class GnoClientImpl implements GnoClient {
       openedExisting: false,
       createdWithSuffix: plan.createdWithSuffix,
     };
+  }
+
+  /**
+   * The memory service owns the shared write lease; the SDK never takes it.
+   * Embedding is best-effort: without a local model the service reports
+   * lexical-only matching/retrieval instead of failing.
+   */
+  private async withMemoryService<T>(
+    collection: string | undefined,
+    run: (service: MemoryService) => Promise<T>
+  ): Promise<T> {
+    this.assertOpen();
+    const ports = await this.createRuntimePorts({
+      embed: true,
+      collection: this.config.collections.some(
+        (candidate) => candidate.name === collection
+      )
+        ? collection
+        : undefined,
+    });
+    try {
+      return await run(
+        new MemoryService({
+          store: this.store,
+          config: this.config,
+          collections: this.config.collections,
+          lockPath: writeLeasePath(this.dbPath),
+          embedPort: ports.embedPort,
+          vectorIndex: ports.vectorIndex,
+        })
+      );
+    } catch (cause) {
+      throw toMemorySdkError(cause);
+    } finally {
+      await this.disposeRuntimePorts(ports);
+    }
+  }
+
+  async remember(input: GnoRememberInput): Promise<GnoRememberResult> {
+    return this.withMemoryService(input?.collection, (service) =>
+      service.remember(input)
+    );
+  }
+
+  async recall(input: GnoRecallInput): Promise<GnoRecallResult> {
+    return this.withMemoryService(input?.collection, (service) =>
+      service.recall(input)
+    );
   }
 
   async capture(options: GnoCaptureOptions): Promise<GnoCaptureResult> {

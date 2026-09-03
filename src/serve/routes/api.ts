@@ -38,6 +38,7 @@ import type { StartJobError } from "../jobs";
 import type { ResidentStatus } from "../status-model";
 import type { CollectionWatchService } from "../watch-service";
 
+import { getIndexDbPath } from "../../app/constants";
 import { buildVerifiedAsk } from "../../app/verified-ask";
 import { modelsPull } from "../../cli/commands/models/pull";
 import {
@@ -81,6 +82,13 @@ import {
   planDuplicateRefactor,
 } from "../../core/file-refactors";
 import {
+  MemoryError,
+  type MemoryErrorCode,
+  MemoryService,
+  type RecallInput,
+  type RememberInput,
+} from "../../core/memory";
+import {
   hasContentMutation,
   recordContentMutation,
   recordIndexMutation,
@@ -117,6 +125,7 @@ import {
   validateTag,
 } from "../../core/tags";
 import { validateRelPath } from "../../core/validation";
+import { writeLeasePath } from "../../core/write-lease";
 import {
   defaultSyncService,
   type SyncResult,
@@ -533,6 +542,12 @@ export interface CreateEditableCopyRequestBody {
   relPath?: string;
   uri?: string;
 }
+
+/** POST /api/memory/remember body: the shared core contract, verbatim. */
+export interface MemoryRememberRequestBody extends RememberInput {}
+
+/** POST /api/memory/recall body: the shared core contract, verbatim. */
+export interface MemoryRecallRequestBody extends RecallInput {}
 
 export interface PublishExportRequestBody {
   encryptionPassphrase?: string;
@@ -3673,6 +3688,156 @@ export async function handleCreateCapture(
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Memory (remember / recall)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const HTTP_CREATED = 201;
+const HTTP_NOT_FOUND = 404;
+const HTTP_CONFLICT = 409;
+const HTTP_INTERNAL = 500;
+
+/** HTTP status per stable memory error code; the code itself is the wire code. */
+const MEMORY_ERROR_STATUS: Readonly<Record<MemoryErrorCode, number>> = {
+  MEMORY_TEXT_REQUIRED: 400,
+  MEMORY_TEXT_TOO_LARGE: 400,
+  MEMORY_QUERY_REQUIRED: 400,
+  MEMORY_COLLECTION_REQUIRED: 400,
+  MEMORY_COLLECTION_NOT_FOUND: HTTP_NOT_FOUND,
+  MEMORY_COLLECTION_UNMANAGED: 400,
+  MEMORY_SCOPES_REQUIRED: 400,
+  MEMORY_SCOPES_INVALID: 400,
+  MEMORY_IDENTITY_REQUIRED: 400,
+  MEMORY_DECISION_INVALID: 400,
+  MEMORY_PREDECESSOR_REQUIRED: 400,
+  MEMORY_PREDECESSOR_NOT_FOUND: HTTP_NOT_FOUND,
+  MEMORY_PREDECESSOR_HASH_MISMATCH: HTTP_CONFLICT,
+  MEMORY_SUPERSEDE_CONFLICT: HTTP_CONFLICT,
+  MEMORY_FENCED_REPLAY: 400,
+  MEMORY_FENCED_DERIVED: 400,
+  MEMORY_WRITE_LEASE_BUSY: HTTP_CONFLICT,
+  MEMORY_SYNC_FAILED: HTTP_INTERNAL,
+  MEMORY_QUERY_FAILED: HTTP_INTERNAL,
+};
+
+export interface MemoryRouteDeps {
+  /** Shared `.mcp-write.lock` path; defaults to the resident index's lease. */
+  lockPath?: string;
+  lockWaitMs?: number;
+}
+
+function memoryErrorResponse(error: unknown, fallback: string): Response {
+  if (error instanceof MemoryError) {
+    return errorResponse(
+      error.code,
+      error.message,
+      MEMORY_ERROR_STATUS[error.code]
+    );
+  }
+  return errorResponse(
+    "RUNTIME",
+    `${fallback}: ${error instanceof Error ? error.message : String(error)}`,
+    HTTP_INTERNAL
+  );
+}
+
+async function readMemoryBody(
+  req: Request
+): Promise<
+  | { ok: true; body: Record<string, unknown> }
+  | { ok: false; response: Response }
+> {
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return {
+      ok: false,
+      response: errorResponse("VALIDATION", "Invalid JSON body"),
+    };
+  }
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return {
+      ok: false,
+      response: errorResponse(
+        "VALIDATION",
+        "Request body must be a JSON object"
+      ),
+    };
+  }
+  return { ok: true, body: body as Record<string, unknown> };
+}
+
+/**
+ * The service owns the shared write lease; this adapter never takes it.
+ * Semantic matching/retrieval is enabled only when the resident context has
+ * an embedding port (and a vector index for recall); otherwise the service
+ * reports lexical-only mode in the result.
+ */
+function createMemoryService(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  deps: MemoryRouteDeps
+): MemoryService {
+  const ctx = ctxHolder.current;
+  return new MemoryService({
+    store,
+    config: ctx.config,
+    collections: ctx.config.collections,
+    lockPath: deps.lockPath ?? writeLeasePath(getIndexDbPath(ctx.indexName)),
+    lockWaitMs: deps.lockWaitMs,
+    embedPort: ctx.embedPort,
+    vectorIndex: ctx.vectorIndex,
+  });
+}
+
+/**
+ * POST /api/memory/remember
+ * Store a fact (or propose candidates) in a memory-managed collection.
+ * Returns 201 when a record was written, 200 otherwise.
+ */
+export async function handleMemoryRemember(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  req: Request,
+  deps: MemoryRouteDeps = {}
+): Promise<Response> {
+  const parsed = await readMemoryBody(req);
+  if (!parsed.ok) return parsed.response;
+  try {
+    const result = await createMemoryService(ctxHolder, store, deps).remember(
+      parsed.body as unknown as MemoryRememberRequestBody
+    );
+    const wrote = result.outcome === "added" || result.outcome === "superseded";
+    if (wrote) ctxHolder.markContentMutation?.();
+    return jsonResponse(result, wrote ? HTTP_CREATED : 200);
+  } catch (error) {
+    return memoryErrorResponse(error, "Failed to remember");
+  }
+}
+
+/**
+ * POST /api/memory/recall
+ * Budgeted, cited recall of current facts in the caller's explicit scopes.
+ */
+export async function handleMemoryRecall(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  req: Request,
+  deps: MemoryRouteDeps = {}
+): Promise<Response> {
+  const parsed = await readMemoryBody(req);
+  if (!parsed.ok) return parsed.response;
+  try {
+    const result = await createMemoryService(ctxHolder, store, deps).recall(
+      parsed.body as unknown as MemoryRecallRequestBody
+    );
+    return jsonResponse(result);
+  } catch (error) {
+    return memoryErrorResponse(error, "Failed to recall");
+  }
+}
+
 /**
  * POST /api/docs
  * Create a new document in a collection.
@@ -5556,6 +5721,37 @@ export async function routeApi(
       watchService: null,
     };
     return handleCreateCapture(ctxHolder, store, req);
+  }
+
+  if (
+    (path === "/api/memory/remember" || path === "/api/memory/recall") &&
+    req.method === "POST"
+  ) {
+    const ctxHolder: ContextHolder = {
+      current: {
+        config,
+        store,
+        indexName: "default",
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        answerPort: null,
+        rerankPort: null,
+        capabilities: {
+          bm25: true,
+          vector: false,
+          hybrid: false,
+          answer: false,
+        },
+      },
+      config,
+      scheduler: null,
+      eventBus: null,
+      watchService: null,
+    };
+    return path === "/api/memory/remember"
+      ? handleMemoryRemember(ctxHolder, store, req)
+      : handleMemoryRecall(ctxHolder, store, req);
   }
 
   if (path === "/api/docs") {

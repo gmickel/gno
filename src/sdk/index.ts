@@ -58,6 +58,10 @@ export type {
   GnoMultiGetOptions,
   GnoMultiGetResult,
   GnoQueryOptions,
+  GnoRecallInput,
+  GnoRecallResult,
+  GnoRememberInput,
+  GnoRememberResult,
   GnoRenameNoteApplyOptions,
   GnoRenameNoteOptions,
   GnoProjectHintOptions,
@@ -76,7 +80,16 @@ export type {
   SectionTargetCreateSelector,
   SectionTargetResolveResult,
   SectionTargetV1,
+  MemoryCandidate,
+  MemoryFact,
+  MemoryRecallReceipt,
+  RecalledFact,
 } from "./types";
+export {
+  MemoryError,
+  type MemoryDecision,
+  type MemoryErrorCode,
+} from "../core/memory";
 export {
   ContextCapsuleContractError,
   type ContextCapsuleErrorCode,

@@ -474,6 +474,69 @@ create a distinct note.
 Use `client.createNote()` for lower-level raw note creation without provenance
 capture semantics.
 
+### Remember / Recall (memory)
+
+`client.remember()` and `client.recall()` are the SDK bindings of the shared
+memory contract (`gno remember`, `gno recall`, MCP `gno_remember` /
+`gno_recall`, `POST /api/memory/*`). Inputs and results are the core types
+re-exported as `GnoRememberInput` / `GnoRememberResult` and `GnoRecallInput` /
+`GnoRecallResult`; results validate against
+`spec/output-schemas/memory-remember.schema.json` and
+`memory-recall.schema.json`.
+
+```ts
+const added = await client.remember({
+  text: "Finn likes trains.",
+  collection: "memory", // memoryManaged: true in the collection config
+  scopes: ["project:gno"],
+  caller: "my-agent",
+  session: "session-1",
+  decision: "add",
+});
+
+const recalled = await client.recall({
+  query: "trains",
+  collection: "memory",
+  scopes: ["project:gno"],
+  caller: "my-agent",
+  session: "session-1",
+});
+for (const fact of recalled.facts) {
+  console.log(fact.uri, fact.text, fact.egressLineage.effectivePolicy);
+}
+
+// Supersede: pass the predecessor's URI and hash from the recalled fact.
+await client.remember({
+  text: "Finn likes trains and buses.",
+  collection: "memory",
+  scopes: ["project:gno"],
+  caller: "my-agent",
+  session: "session-1",
+  decision: "supersede",
+  predecessorUri: recalled.facts[0].uri,
+  predecessorHash: recalled.facts[0].contentHash,
+});
+```
+
+Every call requires `caller` + `session` identity and 1..8 explicit scopes;
+there is no implicit global scope. Omitting `decision` returns
+`outcome: "candidates"` and writes nothing; an exact duplicate returns
+`outcome: "existing"`. Written facts (`added` / `superseded`) are synced
+lexically before the promise resolves, so they are immediately recallable.
+Recall excludes superseded facts, applies the 8-fact / 512-token default
+budget, and returns a content-free `receipt`; pass it back as `receipt` on
+`remember` so a recalled span cannot be re-stored (a paraphrase without the
+receipt or a `derivedFrom` origin cannot be fenced). An empty recall carries
+`hint`.
+
+The service takes the shared write lease itself; do not wrap these calls in
+your own lease. Semantic matching and the vector recall leg are used when the
+embedding model is available locally, otherwise `matching.mode` /
+`retrieval.mode` report `lexical`. Errors are `GnoSdkError` (`VALIDATION`,
+`NOT_FOUND`, or `RUNTIME`) with the stable memory code in `details.code`
+(for example `MEMORY_SCOPES_REQUIRED`, `MEMORY_SUPERSEDE_CONFLICT`) and the
+core `MemoryError` as `cause`.
+
 ### Status
 
 ```ts
@@ -555,6 +618,7 @@ Current stable root import surface:
 - `ConfigSchema`
 - SDK/client/result types
 - Context Capsule result, verification, and error types
+- Memory contract types (`GnoRememberInput`, `GnoRememberResult`, `GnoRecallInput`, `GnoRecallResult`, `MemoryFact`, `MemoryRecallReceipt`) and `MemoryError`
 
 The package root is the SDK entrypoint. The CLI remains available through the `gno` binary.
 

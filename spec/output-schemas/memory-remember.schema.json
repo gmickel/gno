@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/memory-remember@1.0",
+  "title": "GNO Memory Remember Result",
+  "description": "Shared result of `remember` on every surface (CLI --json, MCP gno_remember, REST POST /api/memory/remember, SDK client.remember()). Derived from RememberResult in src/core/memory.ts. Exactly one outcome branch applies.",
+  "type": "object",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "record", "matching"],
+      "properties": {
+        "outcome": { "const": "existing" },
+        "record": { "$ref": "#/$defs/fact" },
+        "matching": { "$ref": "#/$defs/matching" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "candidates", "matching"],
+      "properties": {
+        "outcome": { "const": "candidates" },
+        "candidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/candidate" }
+        },
+        "matching": { "$ref": "#/$defs/matching" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "record", "absPath", "sync", "matching"],
+      "properties": {
+        "outcome": { "enum": ["added", "superseded"] },
+        "record": { "$ref": "#/$defs/fact" },
+        "absPath": {
+          "type": "string",
+          "description": "Absolute path of the fact file that was written."
+        },
+        "sync": { "$ref": "#/$defs/sync" },
+        "matching": { "$ref": "#/$defs/matching" }
+      }
+    }
+  ],
+  "$defs": {
+    "uri": {
+      "type": "string",
+      "description": "Stable gno:// virtual URI of the fact document.",
+      "pattern": "^gno://[^/]+/.+"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "scopes": {
+      "type": "array",
+      "description": "Normalized explicit scopes (1..8); there is no implicit global scope.",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+    },
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "docid",
+        "recordId",
+        "text",
+        "scopes",
+        "caller",
+        "session",
+        "createdAt",
+        "contentHash",
+        "supersedes"
+      ],
+      "properties": {
+        "uri": { "$ref": "#/$defs/uri" },
+        "docid": { "type": "string", "minLength": 1 },
+        "recordId": { "type": "string", "pattern": "^mem-" },
+        "text": { "type": "string", "minLength": 1 },
+        "scopes": { "$ref": "#/$defs/scopes" },
+        "caller": { "type": "string", "minLength": 1 },
+        "session": { "type": "string", "minLength": 1 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "contentHash": { "$ref": "#/$defs/sha256" },
+        "supersedes": {
+          "type": "array",
+          "description": "Predecessor gno:// virtual URIs (empty for an added fact).",
+          "items": { "$ref": "#/$defs/uri" }
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "docid",
+        "recordId",
+        "text",
+        "scopes",
+        "caller",
+        "session",
+        "createdAt",
+        "contentHash",
+        "supersedes",
+        "similarity",
+        "match"
+      ],
+      "properties": {
+        "uri": { "$ref": "#/$defs/uri" },
+        "docid": { "type": "string", "minLength": 1 },
+        "recordId": { "type": "string", "pattern": "^mem-" },
+        "text": { "type": "string", "minLength": 1 },
+        "scopes": { "$ref": "#/$defs/scopes" },
+        "caller": { "type": "string", "minLength": 1 },
+        "session": { "type": "string", "minLength": 1 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "contentHash": { "$ref": "#/$defs/sha256" },
+        "supersedes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/uri" }
+        },
+        "similarity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "match": { "enum": ["exact", "likely", "weak"] }
+      }
+    },
+    "matching": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "threshold"],
+      "properties": {
+        "mode": { "enum": ["semantic", "lexical"] },
+        "semanticUnavailable": {
+          "type": "string",
+          "description": "Present when semantic matching was unavailable and lexical was used."
+        },
+        "threshold": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "sync": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["completed", "failed"] },
+        "error": { "type": "string" }
+      }
+    }
+  }
+}

@@ -59,6 +59,8 @@ import {
   handleHealth,
   handleImportPreview,
   handleInstallConnector,
+  handleMemoryRecall,
+  handleMemoryRemember,
   handleMoveDoc,
   handleNotePresets,
   handleJob,
@@ -824,6 +826,30 @@ export async function startServer(
             }
             return withSecurityHeaders(
               await handleCreateCapture(ctxHolder, store, req),
+              isDev
+            );
+          },
+        },
+        "/api/memory/remember": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleMemoryRemember(ctxHolder, store, req),
+              isDev
+            );
+          },
+        },
+        "/api/memory/recall": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleMemoryRecall(ctxHolder, store, req)
+              ),
               isDev
             );
           },
