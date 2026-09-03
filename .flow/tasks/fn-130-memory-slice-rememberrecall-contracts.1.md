@@ -31,9 +31,19 @@ L0+L1 in one transport-neutral core module (pattern: src/core/capture.ts).
 - [ ] Recall results carry egressLineage; a local_only-sourced fact marks the recall payload accordingly (test)
 
 ## Done summary
-TBD
+Implemented the L0+L1 memory core: `src/core/memory-record.ts` (fact-file frontmatter contract, scope normalization, validator with diagnostic codes, Jaccard/cosine primitives), `src/core/memory.ts` (transport-neutral `MemoryService.remember()`/`recall()` - optional tri-state decision, exact-dup idempotency, supersede with predecessor hash + no-successor check under the shared write lease the service acquires itself, write + lexical sync before success, fencing receipt with replay/derivedFrom rejection, 8-fact/512-token budget via `selectContextEvidence`, gno:// cites carrying `egressLineage`), `src/core/memory-diagnostics.ts` (malformed-file scan projected through the `gno status` Memory section / JSON `memory` and the `provenance.memory-record` audit rule). Store: `CollectionSchema.memoryManaged`, migration 027 `doc_memory_scopes` (scopes projected by ingestion sync only for validator-passing records), `searchFts` in-query `memoryScopesAny` / `excludeSuperseded` (inside the candidate subquery, before LIMIT) and `anyTerm`, `setDocMemoryScopes` / `getDocMemoryScopes` / `listMemoryEligibleDocuments` (unbounded eligible set used as the vector leg's `allowedMirrorHashes`). Pipeline: `SearchOptions.memoryFilter` threaded through `searchBm25`. Docs: CONFIGURATION.md, CLI.md (status + audit), CHANGELOG, spec/db/schema.sql, status.schema.json.
 
+Tests (test/core/memory-record.test.ts, test/core/memory.test.ts): validator code table; scope normalization + any-intersection; every R4 refusal (unmanaged/unknown collection, no scopes, >8 scopes, missing identity, bad decision, supersede without predecessor) on remember and recall; candidates-without-write (R3); add + frontmatter contract + immediate retrievability + scope rows (R1); exact-dup idempotency; likely-match proposal; empty-recall hint; fence replay + derivedFrom (R6); supersede hash mismatch, relation edge projection, predecessor excluded (R2); live two-writer race -> one `superseded` + one `MEMORY_SUPERSEDE_CONFLICT`; pre-held lease fails fast with `MEMORY_WRITE_LEASE_BUSY` (no-nesting contract); store-level proofs that an out-of-scope fact never occupies a limit-1 window and a window full of superseded facts still yields the current fact; determinism contract on a fixed corpus, byte-identical across two runs in BOTH lexical (Jaccard 0.5, reports `semanticUnavailable`) and semantic (fake embed port, cosine 0.83) modes; malformed hand-edited file excluded from recall but visible to `searchBm25`, listed with codes by `buildMemoryStatus`, live `gno status` (terminal + JSON) and live `gno audit --category provenance`; recall facts + payload carry `egressLineage` (local_only source).
+
+Existing store tests pinned schema version 26 and were updated to 27 (deliberate: new migration). Baseline: none (spec lists no Quick commands). Verify: `bun run lint:check` green; full `bun test` green (4572 pass, 0 fail, 181s, exit 0); green receipt written for gate unittest (`.flow/tmp/green-receipts/48488e5d-unittest.json`).
+
+Follow-ups noted, not built: `docs/MEMORY.md` (task .5); surface adapters (.2/.3/.4) construct `MemoryService` with `lockPath = writeLeasePath(getIndexDbPath(indexName))` and must NOT wrap calls in their own write lock; recall's vector leg needs `embedPort` + `vectorIndex` deps from the adapter to leave lexical-only mode; `hybrid.ts` was not modified (recall composes the bm25 + vector legs with URI-keyed RRF).
+
+stage: impl-review - skipped(policy: parallel-wave - conductor owns the review after integration)
+
+stage: impl-review - skipped(policy: review backend none)
+stage: plan-sync - skipped(config: planSync.enabled != true)
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 48488e5d4a48e2d2763396b594393dc3c550f4e9
+- Tests: bun run lint:check, bun test, bun test test/core/memory.test.ts test/core/memory-record.test.ts, baseline: none (spec defines no Quick commands; workspace clean at base commit)
 - PRs:
