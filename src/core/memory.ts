@@ -422,20 +422,15 @@ export class MemoryService {
 
   /**
    * Candidate pool: BM25 top-16 (any-term) within the scope intersection,
-   * current facts only. Similarity by cosine when semantic is ready, else by
-   * normalized-token Jaccard. Ordered by similarity desc, ties by recordId.
+   * current facts only, materialized as records.
    */
-  async findCandidates(input: {
+  private async loadCandidatePool(input: {
     text: string;
     collection: string;
     scopes: string[];
-  }): Promise<{
-    candidates: MemoryCandidate[];
-    matching: MemoryMatchDiagnostics;
-  }> {
+  }): Promise<MemoryFact[]> {
     const { store } = this.deps;
-    const normalizedText = normalizeMemoryText(input.text);
-    const ftsResult = await store.searchFts(normalizedText, {
+    const ftsResult = await store.searchFts(normalizeMemoryText(input.text), {
       limit: MEMORY_CANDIDATE_POOL,
       collection: input.collection,
       memoryScopesAny: input.scopes,
@@ -460,6 +455,38 @@ export class MemoryService {
       });
       if (fact) facts.push(fact);
     }
+    return facts;
+  }
+
+  /**
+   * Exact-duplicate lookup (same normalized-text hash) in the candidate pool.
+   * Re-run under the write lease so two concurrent adds of the same text
+   * cannot both write.
+   */
+  private async findExactCurrent(input: {
+    text: string;
+    collection: string;
+    scopes: string[];
+    contentHash: string;
+  }): Promise<MemoryFact | null> {
+    const pool = await this.loadCandidatePool(input);
+    return pool.find((fact) => fact.contentHash === input.contentHash) ?? null;
+  }
+
+  /**
+   * Candidates with similarity: cosine when semantic is ready, else
+   * normalized-token Jaccard. Ordered by similarity desc, ties by recordId.
+   */
+  async findCandidates(input: {
+    text: string;
+    collection: string;
+    scopes: string[];
+  }): Promise<{
+    candidates: MemoryCandidate[];
+    matching: MemoryMatchDiagnostics;
+  }> {
+    const normalizedText = normalizeMemoryText(input.text);
+    const facts = await this.loadCandidatePool(input);
 
     const incomingHash = hashMemoryText(input.text);
     let matching: MemoryMatchDiagnostics = {
@@ -580,6 +607,18 @@ export class MemoryService {
                 rawInput.predecessorHash as string
               )
             );
+          } else {
+            // The pre-lease check raced with any concurrent writer; decide
+            // idempotency on the state visible under the lease.
+            const existing = await this.findExactCurrent({
+              text,
+              collection: collection.name,
+              scopes,
+              contentHash,
+            });
+            if (existing) {
+              return { outcome: "existing", record: existing, matching };
+            }
           }
           await mkdir(dirname(absPath), { recursive: true });
           await atomicCreate(

@@ -482,6 +482,39 @@ describe("MemoryService remember/recall contracts", () => {
   });
 });
 
+describe("concurrent identical adds", () => {
+  let harness: Harness;
+
+  beforeAll(async () => {
+    harness = await createHarness("memory-concurrent-add");
+  });
+
+  afterAll(async () => {
+    await harness.store.close();
+    await safeRm(harness.root);
+  });
+
+  test("two racing adds of the same text write exactly one file and agree on the record", async () => {
+    const text = "Finn's kindergarten starts at 08:30.";
+    const [left, right] = await Promise.all([
+      remember(harness, { text, decision: "add" }),
+      remember(harness, { text, decision: "add" }),
+    ]);
+    const outcomes = [left.outcome, right.outcome].sort();
+    expect(outcomes).toEqual(["added", "existing"]);
+    if (left.outcome === "candidates" || right.outcome === "candidates") return;
+    expect(left.record.recordId).toBe(right.record.recordId);
+    expect(left.record.uri).toBe(right.record.uri);
+
+    const files = await Array.fromAsync(
+      new Bun.Glob("**/*.md").scan(join(harness.root, "memory"))
+    );
+    expect(files).toHaveLength(1);
+    const docs = await harness.store.listDocuments("memory");
+    expect(docs.ok && docs.value.length).toBe(1);
+  });
+});
+
 describe("retrieval-level scope and supersession filtering", () => {
   let harness: Harness;
 
