@@ -38,3 +38,4 @@ stage: impl-review - skipped(config: REVIEW_MODE=none)
 - Commits: 9697c48f2f8fffc976996463aa2d3491b2a643bd
 - Tests: bun test test/mcp/tool-descriptions-core.test.ts test/mcp/tool-profile.test.ts test/mcp/legacy-parity.test.ts test/mcp/memory.test.ts test/mcp/protocol-2026.test.ts, bun run lint, bun test
 - PRs:
+stage: plan-sync - skipped(config: planSync.enabled != true)
