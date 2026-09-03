@@ -1,0 +1,46 @@
+{
+  "branch": "fn-142-mcp-installer-tool-profile-gno-mcp",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "305c90a3c0c66ca7ea7cf4dd0ae1291863eefa58",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-82c9c06de5231fbfe939d3427cf6ad866022dd5774f1745be54935ec70b1a54c"
+  },
+  "head_sha": "305c90a3c0c66ca7ea7cf4dd0ae1291863eefa58",
+  "id": "fn-142-mcp-installer-tool-profile-gno-mcp",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 5,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      }
+    ],
+    "total": 5
+  },
+  "timestamp": "2026-09-03T21:45:01Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
