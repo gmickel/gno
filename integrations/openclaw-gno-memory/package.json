@@ -1,0 +1,20 @@
+{
+  "name": "@gmickel/openclaw-gno-memory",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenClaw memory plugin backed by GNO retrieval (read-only over OpenClaw's own memory files)",
+  "license": "MIT",
+  "type": "module",
+  "peerDependencies": {
+    "openclaw": ">=2026.8.1"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.8.1",
+      "minGatewayVersion": "2026.8.1"
+    }
+  }
+}

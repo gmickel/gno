@@ -1,0 +1,54 @@
+{
+  "id": "gno-memory",
+  "name": "GNO Memory",
+  "description": "Memory search over OpenClaw memory files through GNO retrieval",
+  "kind": "memory",
+  "contracts": {
+    "tools": ["memory_search", "memory_get"]
+  },
+  "toolMetadata": {
+    "memory_get": {
+      "replaySafe": true
+    }
+  },
+  "cliCommands": [
+    {
+      "name": "gno-memory",
+      "description": "Search OpenClaw memory files through GNO",
+      "hasSubcommands": true
+    }
+  ],
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "collection": { "type": "string" },
+      "root": { "type": "string" },
+      "paths": { "type": "array", "items": { "type": "string" } },
+      "exclude": { "type": "array", "items": { "type": "string" } },
+      "gnoPath": { "type": "string" },
+      "gnoArgs": { "type": "array", "items": { "type": "string" } },
+      "timeoutMs": { "type": "integer", "minimum": 1 },
+      "syncBeforeSearch": { "type": "boolean" },
+      "mode": { "type": "string", "enum": ["keyword", "hybrid"] },
+      "maxResults": { "type": "integer", "minimum": 1 }
+    }
+  },
+  "uiHints": {
+    "collection": {
+      "label": "GNO collection",
+      "placeholder": "openclaw-memory"
+    },
+    "root": {
+      "label": "Workspace root",
+      "help": "Defaults to the OpenClaw workspace directory."
+    },
+    "syncBeforeSearch": {
+      "label": "Sync before search",
+      "help": "Run gno index before every search. Turn off when a gno daemon watches the workspace."
+    }
+  }
+}

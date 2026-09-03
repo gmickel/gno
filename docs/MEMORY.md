@@ -393,6 +393,50 @@ Install commands, config reference, and the unit suite
 (`bun test integrations/hermes-gno-memory`, faked `gno` subprocess) are in
 [integrations/hermes-gno-memory/README.md](../integrations/hermes-gno-memory/README.md).
 
+### OpenClaw plugin
+
+`integrations/openclaw-gno-memory/` ships an external
+[OpenClaw](https://openclaw.ai) memory plugin (verified against OpenClaw
+2026.8.1, which retired `memory.backend` and the QMD backend: external memory
+is now a `kind: "memory"` plugin selected through `plugins.slots.memory`).
+OpenClaw keeps writing its own memory files; the plugin only retrieves.
+
+| OpenClaw surface                   | GNO call                                                                    |
+| :--------------------------------- | :-------------------------------------------------------------------------- |
+| `memory_search` tool               | `gno search` scoped to the memory collection (`gno query --fast` in hybrid) |
+| `memory_get` tool                  | `gno get` by `gno://` URI or workspace-relative path                        |
+| `openclaw gno-memory <subcommand>` | `search`, `get`, `status`, `sync` on the same backend                       |
+| Init service                       | `gno collection add` for the workspace memory paths, then `gno index`       |
+
+- **Corpus provisioning.** Init registers the OpenClaw workspace as a GNO
+  collection with the pattern `{MEMORY.md,USER.md,memory/**/*.md}`, so only
+  memory files enter the index; runtime state, transcripts, and other
+  workspace files never match. A same-name collection rooted elsewhere is an
+  error, never a silent re-point.
+- **Sync-before-search.** Every search runs `gno index <collection> --no-embed`
+  first, so a file OpenClaw wrote a moment ago is retrievable, a deleted file
+  drops out, and a renamed file moves to its new URI. Set
+  `syncBeforeSearch: false` when a `gno daemon` already watches the workspace.
+- **Observability.** Every sync outcome is logged; a failed sync marks the
+  index stale, the tool response carries `stale: true` plus a warning the
+  model relays, and `openclaw gno-memory status` shows `STALE: <reason>` until
+  a sync succeeds.
+- **Failure modes.** GNO missing, below the `1.41.0` pin, a subprocess timeout,
+  or malformed output return `disabled: true` with the error kind; the CLI
+  exits 1 with the same message.
+- **Why GNO here.** One index across every harness and format (memory files
+  are searched next to PDFs, mail, and code), `gno://` citations with content
+  hashes, the evidence layer (`context build`, `ask --verify`, traces), and
+  scoped recall. OpenClaw's built-in memory already runs local GGUF
+  embeddings, so "no API key" is not the difference.
+- **Known gap (GNO core).** A memory file deleted and later restored at the
+  same path with identical content stays inactive: incremental sync treats a
+  same-hash record as unchanged. Any content change reactivates it.
+
+Install commands, the config reference, and the unit suite
+(`bun test integrations/openclaw-gno-memory`, faked `gno` subprocess) are in
+[integrations/openclaw-gno-memory/README.md](../integrations/openclaw-gno-memory/README.md).
+
 ## Eval gate and fixtures
 
 `bun run eval:memory` is the adapter gate for this slice: an opt-in, local-only

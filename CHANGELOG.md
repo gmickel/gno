@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `gno` skill gains three memory recipes (`memory-file-decision`,
   `memory-supersede-fact`, `memory-scoped-recall`), and `docs/MEMORY.md`
   documents the ladder integration.
+- OpenClaw memory plugin (fn-135): `integrations/openclaw-gno-memory/` ships
+  a `kind: "memory"` plugin for OpenClaw 2026.8.1 (selected via
+  `plugins.slots.memory`) that serves `memory_search` / `memory_get` and an
+  `openclaw gno-memory` CLI through GNO retrieval over OpenClaw's own memory
+  files: the workspace memory paths are registered as a GNO collection, the
+  index syncs before every search, sync failures surface as a stale-index
+  warning, and GNO missing / below 1.41.0 / timeouts / malformed output
+  degrade to a clear `disabled` response. Read-only: the plugin never writes
+  a memory file.
 
 ### Changed
 
