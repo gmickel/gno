@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import * as fsPromises from "node:fs/promises";
 import { mkdir, mkdtemp, readdir, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -131,6 +132,31 @@ describe("findings records", () => {
     const names = (await readdir(root)).sort();
     expect(names).toEqual(["README.md", "finding-notmine.md", "sub"]);
     expect(await readdir(join(root, "sub"))).toHaveLength(1);
+  });
+
+  test("retention treats a record removed by hand between listing and deletion as already deleted", async () => {
+    const finding = brokenLink("gno://notes/a.md");
+    await apply([finding]);
+    await apply([], LATER);
+    const path = join(root, findingsRecordFilename(finding.id));
+    const realUnlink = fsPromises.unlink;
+    // Simulate the race: the record vanishes after listing, right before the
+    // retention pass removes it.
+    const unlinkSpy = spyOn(fsPromises, "unlink").mockImplementation(
+      async (target) => {
+        if (target === path) await realUnlink(path).catch(() => undefined);
+        return realUnlink(target);
+      }
+    );
+    try {
+      const muchLater = new Date(LATER.getTime() + 31 * 86_400_000);
+      const result = await apply([], muchLater);
+      expect(unlinkSpy).toHaveBeenCalledWith(path);
+      expect(result).toMatchObject({ deleted: 1, open: 0 });
+      expect(await readdir(root)).toEqual([]);
+    } finally {
+      unlinkSpy.mockRestore();
+    }
   });
 
   test("a resolved record with an unparsable resolvedAt ages from now, not into immediate deletion", async () => {

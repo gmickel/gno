@@ -18,6 +18,7 @@ import { basename, join } from "node:path";
 import type { AuditFinding } from "./audit-contract";
 
 import { parseFrontmatter } from "../ingestion/frontmatter";
+import { removePathRequired } from "./file-ops";
 
 /** Resolved records older than this are deleted on the next pass. */
 export const FINDINGS_RESOLVED_RETENTION_DAYS = 30;
@@ -307,8 +308,10 @@ export async function applyFindingsRecords(
       !currentIds.has(header.findingId) &&
       resolvedAge(header, input.now) > RETENTION_MS
   );
+  // A record removed by hand between listing and retention is already gone:
+  // ENOENT counts as deleted instead of failing the whole pass.
   for (const header of expired) {
-    await unlink(header.path);
+    await removePathRequired(header.path);
     existing.delete(header.findingId);
     result.deleted += 1;
   }
@@ -321,7 +324,7 @@ export async function applyFindingsRecords(
       )
       .slice(0, existing.size - FINDINGS_MAX_RECORDS);
     for (const header of surplus) {
-      await unlink(header.path);
+      await removePathRequired(header.path);
       existing.delete(header.findingId);
       result.deleted += 1;
     }

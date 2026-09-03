@@ -103,4 +103,49 @@ describe("followChanges cursor advance under a collection filter", () => {
     expect(calls[1]?.cursor).toBe(cursorAt(7));
     expect(result).toEqual({ status: "stopped", cursor: cursorAt(7) });
   });
+
+  // `maxCursor` decodes each side on its own: a malformed side yields the
+  // other, and only when both are malformed does the resume cursor win.
+  test.each([
+    [
+      "a malformed head keeps the resume cursor",
+      cursorAt(7),
+      "not-a-cursor",
+      cursorAt(7),
+    ],
+    [
+      "a malformed resume cursor adopts the head",
+      "not-a-cursor",
+      cursorAt(10),
+      cursorAt(10),
+    ],
+    [
+      "two malformed cursors keep the resume cursor",
+      "left-garbage",
+      "right-garbage",
+      "left-garbage",
+    ],
+  ])("%s", async (_label, resume, head, expected) => {
+    const { store, calls } = fakeStore([
+      () => ({ changes: [], latestCursor: head, truncated: false }),
+    ]);
+    const controller = new AbortController();
+    const run = followChanges(
+      store,
+      {
+        cursor: resume,
+        collection: "other",
+        signal: controller.signal,
+        pollIntervalMs: 5,
+      },
+      () => undefined
+    );
+    while (calls.length < 2) {
+      await Bun.sleep(2);
+    }
+    controller.abort();
+    const result = await run;
+    expect(calls[1]?.cursor).toBe(expected);
+    expect(result).toEqual({ status: "stopped", cursor: expected });
+  });
 });

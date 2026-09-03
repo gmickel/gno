@@ -8,7 +8,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -144,8 +144,13 @@ const sync = async (): Promise<void> => {
   if (!result.success) throw new Error(result.error);
 };
 
+/** Create a fixture file (never overwrites; 0600 like the other CLI fixtures). */
+const createDoc = (relPath: string, body: string): Promise<void> =>
+  writeFile(join(docsDir, relPath), body, { flag: "wx", mode: 0o600 });
+
+/** Create or overwrite a fixture inside the mkdtemp-owned docs dir, then reindex. */
 const edit = async (relPath: string, body: string): Promise<void> => {
-  await writeFile(join(docsDir, relPath), body);
+  await writeFile(join(docsDir, relPath), body, { mode: 0o600 });
   await sync();
 };
 
@@ -167,7 +172,7 @@ const sleep = (ms: number): Promise<void> =>
   new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
 
 beforeAll(async () => {
-  testDir = join(tmpdir(), `gno-changes-follow-${process.pid}-${Date.now()}`);
+  testDir = await mkdtemp(join(tmpdir(), "gno-changes-follow-"));
   docsDir = join(testDir, "docs");
   await mkdir(docsDir, { recursive: true });
   env = {
@@ -183,7 +188,7 @@ beforeAll(async () => {
   process.env.GNO_DATA_DIR = env.GNO_DATA_DIR;
   process.env.GNO_CACHE_DIR = env.GNO_CACHE_DIR;
   followSchema = await loadSchema("changes-follow-event");
-  await writeFile(join(docsDir, "seed.md"), "# Seed\nbefore the stream");
+  await createDoc("seed.md", "# Seed\nbefore the stream");
   const init = await runOnce(["init", docsDir, "--name", "docs"]);
   expect(init.code).toBe(0);
   await sync();
@@ -239,7 +244,7 @@ describe.skipIf(IS_WIN)("gno changes --follow --jsonl stream", () => {
         "--cursor",
         start,
       ]);
-      await writeFile(join(docsDir, "a.md"), "# A\none");
+      await createDoc("a.md", "# A\none");
       await edit("b.md", "# B\ntwo");
       await edit("a.md", "# A\none, edited");
       const delivered = (await first.waitForLines(3)).filter(isEvent);

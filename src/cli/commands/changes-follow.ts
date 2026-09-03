@@ -76,15 +76,25 @@ const sleep = (ms: number, signal: AbortSignal): Promise<void> =>
     signal.addEventListener("abort", onAbort, { once: true });
   });
 
-/** Later of two opaque cursors; a malformed side yields the other. */
-const maxCursor = (left: string, right: string): string => {
+/** Sequence behind an opaque cursor, or `null` when it does not decode. */
+const cursorSequence = (cursor: string): number | null => {
   try {
-    const leftSequence = decodeDocumentChangeCursor(left);
-    const rightSequence = decodeDocumentChangeCursor(right);
-    return encodeDocumentChangeCursor(Math.max(leftSequence, rightSequence));
+    return decodeDocumentChangeCursor(cursor);
   } catch {
-    return left;
+    return null;
   }
+};
+
+/**
+ * Later of two opaque cursors. Each side is decoded on its own: a malformed
+ * side yields the other, and when both are malformed `left` wins.
+ */
+const maxCursor = (left: string, right: string): string => {
+  const leftSequence = cursorSequence(left);
+  const rightSequence = cursorSequence(right);
+  if (leftSequence === null) return rightSequence === null ? left : right;
+  if (rightSequence === null) return left;
+  return encodeDocumentChangeCursor(Math.max(leftSequence, rightSequence));
 };
 
 /**
