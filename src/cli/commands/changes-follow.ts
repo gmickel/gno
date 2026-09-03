@@ -14,7 +14,10 @@
 import type { KnowledgeChange } from "../../core/knowledge-delta";
 import type { StorePort } from "../../store/types";
 
-import { decodeDocumentChangeCursor } from "../../core/change-journal";
+import {
+  decodeDocumentChangeCursor,
+  encodeDocumentChangeCursor,
+} from "../../core/change-journal";
 import { projectKnowledgeChange } from "../../core/knowledge-delta";
 
 /** Poll cadence between empty journal reads; pages drain back-to-back. */
@@ -73,6 +76,17 @@ const sleep = (ms: number, signal: AbortSignal): Promise<void> =>
     signal.addEventListener("abort", onAbort, { once: true });
   });
 
+/** Later of two opaque cursors; a malformed side yields the other. */
+const maxCursor = (left: string, right: string): string => {
+  try {
+    const leftSequence = decodeDocumentChangeCursor(left);
+    const rightSequence = decodeDocumentChangeCursor(right);
+    return encodeDocumentChangeCursor(Math.max(leftSequence, rightSequence));
+  } catch {
+    return left;
+  }
+};
+
 /**
  * Stream journal events to `emit` until the signal aborts, the cursor
  * expires, or the store fails. Each event line is emitted after the cursor
@@ -117,8 +131,12 @@ export async function followChanges(
       emit({ error: "cursor_expired", earliestCursor, latestCursor });
       return { status: "expired", earliestCursor, latestCursor };
     }
+    let drained = true;
     for (const row of page.value.changes) {
-      if (signal.aborted) break;
+      if (signal.aborted) {
+        drained = false;
+        break;
+      }
       const event = projectKnowledgeChange(row);
       // The change id encodes the sequence that produced it, which is exactly
       // the journal position after applying the event.
@@ -126,6 +144,13 @@ export async function followChanges(
       emit({ event, postCursor: cursor });
     }
     if (page.value.truncated) continue;
+    // An untruncated page was scanned to the journal head even when a
+    // collection filter emitted nothing from it: advance to that high-water
+    // mark so the next poll does not rescan the same tail. Emitted events keep
+    // their own postCursor; this only moves the internal resume point.
+    if (drained) {
+      cursor = maxCursor(cursor, page.value.latestCursor);
+    }
     await sleep(pollIntervalMs, signal);
   }
   return { status: "stopped", cursor };
