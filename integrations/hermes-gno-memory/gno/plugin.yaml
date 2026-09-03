@@ -1,0 +1,5 @@
+name: gno
+version: 0.1.0
+description: "GNO memory: scoped recall prefetch and explicit remember (add/supersede) through the gno CLI; no ambient capture."
+pip_dependencies: []
+requires_env: []

@@ -330,6 +330,40 @@ These are exclusions, not gaps. Each one is a decision.
 - **No harness adapters.** Framework-specific memory providers are a
   separate follow-up; the four surfaces above are the whole contract.
 
+## Adapters
+
+### Hermes provider
+
+`integrations/hermes-gno-memory/` ships an external
+[Hermes Agent](https://github.com/NousResearch/hermes-agent) memory provider
+(verified against Hermes v0.20.5). It maps Hermes's provider slots onto the
+contract above without adding a write path:
+
+| Hermes slot              | GNO call                                                                     |
+| :----------------------- | :--------------------------------------------------------------------------- |
+| `prefetch` (every turn)  | `gno recall --json` with the turn's message and the configured scopes        |
+| `gno_remember` tool      | `gno remember --json`; `decision` = `propose` (no write), `add`, `supersede` |
+| `sync_turn` (every turn) | none: Hermes's after-turn persistence never writes to GNO                    |
+
+- Scopes come from the provider config (`$HERMES_HOME/gno/config.json`)
+  only; the tool has no scope parameter.
+- `caller` is the configured id (default `hermes`); `session` is the Hermes
+  session id, rebound on `/resume`, `/branch`, and `/new`.
+- The provider pins GNO `1.41.0` (`gno --version` is checked at startup). Below
+  the pin, or when `gno` is missing, times out, or returns malformed JSON, it
+  logs the reason, reports memory unavailable in the system prompt, and the
+  session continues without memory.
+- Recalled facts are injected as `- <text> [gno://uri] (contentHash ...)` so a
+  later `supersede` can name its predecessor.
+- Embed the memory collection (`gno embed <collection>`, or a running
+  watcher). Lexical-only recall matches every query term, so question-shaped
+  turns miss facts the vector leg finds; the provider warns once while recall
+  reports `mode: lexical`.
+
+Install commands, config reference, and the unit suite
+(`bun test integrations/hermes-gno-memory`, faked `gno` subprocess) are in
+[integrations/hermes-gno-memory/README.md](../integrations/hermes-gno-memory/README.md).
+
 ## Eval gate and fixtures
 
 `bun run eval:memory` is the adapter gate for this slice: an opt-in, local-only
