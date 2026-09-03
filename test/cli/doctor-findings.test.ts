@@ -55,7 +55,7 @@ const enabled = { enabled: true, cadence: "1h", collection: "findings" };
 describe("doctor findings pass check", () => {
   test("disabled is ok; misconfigured is error", async () => {
     expect(await checkFindingsPass(config())).toMatchObject({
-      name: "Findings pass",
+      name: "findings-pass",
       status: "ok",
     });
     const bad = await checkFindingsPass(

@@ -573,7 +573,7 @@ export async function checkFindingsPass(
   config: Config,
   indexName?: string
 ): Promise<DoctorCheck> {
-  const name = "Findings pass";
+  const name = "findings-pass";
   const resolution = resolveFindingsSchedule(config);
   if (!resolution.ok) {
     return {

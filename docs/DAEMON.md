@@ -227,7 +227,7 @@ Observability (no debug logs needed): every attempt persists its outcome to
 (`findings`, `written`, `reopened`, `resolved`, `deleted`, `open`) and `error`.
 `overdue` is derived at read time once `nextDueAt` has slipped by a full
 cadence, so a stopped or starved daemon is distinguishable from a clean one.
-`gno doctor` reports the same state as the `Findings pass` check (`warn` on
+`gno doctor` reports the same state as the `findings-pass` check (`warn` on
 `skipped_lease` / `overdue` / no recorded run, `error` on `failed` or a
 misconfigured block). Starting the daemon with findings disabled removes a
 stale state file.
