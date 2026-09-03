@@ -20,14 +20,15 @@ import type { RecallInput, RememberInput } from "../../../src/core/memory";
 import type { GnoClient } from "../../../src/sdk";
 import type { ContextHolder } from "../../../src/serve/routes/api";
 
+import { ENV_DATA_DIR } from "../../../src/app/constants";
 import { createDefaultConfig } from "../../../src/config/defaults";
 import { MemoryError, MemoryService } from "../../../src/core/memory";
 import { createGnoClient, GnoSdkError } from "../../../src/sdk";
 import {
   handleMemoryRecall,
   handleMemoryRemember,
-  routeApi,
 } from "../../../src/serve/routes/api";
+import { startServer } from "../../../src/serve/server";
 import { SqliteAdapter } from "../../../src/store/sqlite/adapter";
 import { safeRm } from "../../helpers/cleanup";
 import { assertValid, loadSchema } from "./validator";
@@ -470,29 +471,107 @@ describe("memory cross-surface contract (core / REST / SDK)", () => {
     expect(listRes.status).toBe(400);
   });
 
-  test("fallback router wires both memory routes", async () => {
-    for (const path of ["/api/memory/remember", "/api/memory/recall"]) {
-      const req = new Request(`http://localhost${path}`, {
-        method: "POST",
-        body: JSON.stringify({
-          ...IDENTITY,
-          collection: COLLECTION,
-          scopes: [],
-          text: "x",
-          query: "x",
-        }),
-      });
-      const res = await routeApi(
-        rest.store,
-        rest.ctxHolder.config,
-        req,
-        new URL(req.url)
+  test("production server routes gate memory on CSRF origin, then reach the service", async () => {
+    const port = 3999;
+    type RouteTable = Record<
+      string,
+      { POST?: (req: Request) => Response | Promise<Response> }
+    >;
+    let routes: RouteTable | undefined;
+    // The same runtime shape startServer reads plus the resident-read
+    // hooks the recall route goes through (handleResidentRead).
+    const runtime = {
+      config: rest.ctxHolder.config,
+      store: rest.store,
+      ctxHolder: rest.ctxHolder,
+      actualConfigPath: join(rest.root, "index.yml"),
+      dispose: async () => undefined,
+      admitRequest: () => ({
+        signal: new AbortController().signal,
+        finish: () => undefined,
+        authorizationEpoch: "epoch-1",
+        isAuthorizationEpochCurrent: () => true,
+      }),
+      readerGate: { acquire: async () => () => undefined },
+      withModelLease: <T>(operation: () => Promise<T>) => operation(),
+    };
+    const body = {
+      ...IDENTITY,
+      collection: COLLECTION,
+      scopes: [],
+      text: "x",
+      query: "x",
+    };
+    const post = async (
+      path: string,
+      headers: Record<string, string>
+    ): Promise<{ status: number; code: string }> => {
+      const route = routes?.[path]?.POST;
+      if (!route) throw new Error(`${path} not mounted by the server`);
+      const res = await route(
+        new Request(`http://127.0.0.1:${port}${path}`, {
+          method: "POST",
+          headers: { "content-type": "application/json", ...headers },
+          body: JSON.stringify(body),
+        })
       );
-      if (!res) throw new Error(`${path} not routed`);
-      expect(res.status).toBe(400);
-      expect(((await res.json()) as { error: SurfaceError }).error.code).toBe(
-        "MEMORY_SCOPES_REQUIRED"
+      const json = (await res.json()) as { error: SurfaceError };
+      return { status: res.status, code: json.error.code };
+    };
+
+    // Keep the route's default lease path inside the fixture root.
+    const previousDataDir = process.env[ENV_DATA_DIR];
+    process.env[ENV_DATA_DIR] = join(rest.root, "data");
+    try {
+      const result = await startServer(
+        { port },
+        {
+          startBackgroundRuntime: (async () => ({
+            success: true as const,
+            runtime,
+          })) as never,
+          createMcpHttpGateway: (async () => ({
+            route: async () => new Response("ok"),
+            close: async () => undefined,
+            security: {},
+            transport: {},
+          })) as never,
+          createClipperRouteGateway: (() => ({ routes: {} })) as never,
+          serve: ((options: { routes: RouteTable }) => {
+            routes = options.routes;
+            return { port, stop: async () => undefined } as never;
+          }) as never,
+          waitForShutdown: async () => {
+            for (const path of ["/api/memory/remember", "/api/memory/recall"]) {
+              // Cross-origin browser request from a foreign origin: refused
+              // before the handler runs.
+              expect(
+                await post(path, { Origin: "http://evil.example" })
+              ).toEqual({
+                status: 403,
+                code: "CSRF_VIOLATION",
+              });
+              // Loopback origin on the bound port, and no Origin at all
+              // (curl / same-origin): both reach the service, whose own
+              // validation answers with the stable memory code.
+              const allowed: Array<Record<string, string>> = [
+                { Origin: `http://127.0.0.1:${port}` },
+                {},
+              ];
+              for (const headers of allowed) {
+                expect(await post(path, headers)).toEqual({
+                  status: 400,
+                  code: "MEMORY_SCOPES_REQUIRED",
+                });
+              }
+            }
+          },
+        }
       );
+      expect(result).toEqual({ success: true });
+    } finally {
+      if (previousDataDir === undefined) delete process.env[ENV_DATA_DIR];
+      else process.env[ENV_DATA_DIR] = previousDataDir;
     }
   });
 

@@ -5724,37 +5724,6 @@ export async function routeApi(
     return handleCreateCapture(ctxHolder, store, req);
   }
 
-  if (
-    (path === "/api/memory/remember" || path === "/api/memory/recall") &&
-    req.method === "POST"
-  ) {
-    const ctxHolder: ContextHolder = {
-      current: {
-        config,
-        store,
-        indexName: "default",
-        vectorIndex: null,
-        embedPort: null,
-        expandPort: null,
-        answerPort: null,
-        rerankPort: null,
-        capabilities: {
-          bm25: true,
-          vector: false,
-          hybrid: false,
-          answer: false,
-        },
-      },
-      config,
-      scheduler: null,
-      eventBus: null,
-      watchService: null,
-    };
-    return path === "/api/memory/remember"
-      ? handleMemoryRemember(ctxHolder, store, req)
-      : handleMemoryRecall(ctxHolder, store, req);
-  }
-
   if (path === "/api/docs") {
     return handleDocs(store, url);
   }
