@@ -31,3 +31,4 @@ stage: impl-review - skipped(config: REVIEW_MODE=none)
 - Commits: d93671f9887ee492a463494316ff11f60d09f947
 - Tests: bun run lint:check (baseline, green; 1 pre-existing warning in test/cli/query-text.test.ts), GATE_SKIPPED:unittest:green-receipt c6b64bfd - baseline reused from prior post-gate pass (BASELINE_HANDOFF green at c6b64bfd), bun run lint (post-edit, green), bun test test/cli/agents.test.ts test/cli/skill.test.ts (56 pass, 0 fail), bun test (4718 pass, 2 skip, 0 fail, suite_rc=0; green receipt d93671f9-unittest), live: gno agents install (v2 block) -> bump to v3 -> gno agents verify (outdated, v2, hashOk) -> gno agents update (action=update, backup written) -> gno agents verify (ok, v3, hashOk) in a temp HOME; outside-marker content byte-identical
 - PRs:
+stage: plan-sync - skipped(config: planSync.enabled != true)
