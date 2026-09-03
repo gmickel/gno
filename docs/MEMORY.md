@@ -275,7 +275,11 @@ security boundary.
   so an MCP `gno_remember` and a CLI `gno remember` serialise on one lease. A
   caller that cannot obtain it within the wait window gets
   `MEMORY_WRITE_LEASE_BUSY`.
-- A fact is "current" only after write plus lexical sync succeed. Vector
+- A fact is "current" only after write plus lexical sync succeed. A supersede
+  additionally requires the `supersedes` edge to be projected before it
+  returns `superseded`; if the projection fails the write reports
+  `MEMORY_SUPERSEDE_PROJECTION_FAILED`, the predecessor still reads as
+  current, and `gno update` retries the projection. Vector
   embeddings for new facts arrive with the next `gno embed`; recall's lexical
   leg finds the fact before that.
 - Synced vaults (iCloud, Syncthing, git) replicate the files. The index on
@@ -299,6 +303,7 @@ security boundary.
 | `MEMORY_FENCED_REPLAY`, `MEMORY_FENCED_DERIVED`             | Context fence (see above)                           | 1        | 400  |
 | `MEMORY_WRITE_LEASE_BUSY`                                   | Shared write lease not obtained in time             | 4        | 409  |
 | `MEMORY_SYNC_FAILED`, `MEMORY_QUERY_FAILED`                 | Index sync or retrieval query failed                | 2        | 500  |
+| `MEMORY_SUPERSEDE_PROJECTION_FAILED`                        | Successor written but its edge did not project      | 2        | 500  |
 
 MCP returns the code in `structuredContent.error` (plus `WRITE_DISABLED`
 when the server runs without `--enable-write`); the SDK throws `GnoSdkError`

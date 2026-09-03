@@ -515,6 +515,74 @@ describe("concurrent identical adds", () => {
   });
 });
 
+describe("supersede edge projection", () => {
+  let harness: Harness;
+
+  beforeAll(async () => {
+    harness = await createHarness("memory-supersede-projection");
+  });
+
+  afterAll(async () => {
+    await harness.store.close();
+    await safeRm(harness.root);
+  });
+
+  test("a supersede whose edge fails to project is reported, not claimed", async () => {
+    const added = await remember(harness, {
+      text: "Ivan starts kindergarten in August.",
+      decision: "add",
+    });
+    expect(added.outcome).toBe("added");
+    if (added.outcome !== "added") return;
+
+    // Same store, but typed-edge projection (frontmatter relations) fails.
+    const failingStore = new Proxy(harness.store, {
+      get(target, property, receiver) {
+        if (property === "setDocEdges") {
+          return async (docId: number, edges: unknown[], edgeSource: string) =>
+            edgeSource === "frontmatter-relation"
+              ? {
+                  ok: false,
+                  error: { code: "STORE_ERROR", message: "injected failure" },
+                }
+              : target.setDocEdges(docId, edges as never, edgeSource as never);
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+    const failing = new MemoryService({
+      store: failingStore,
+      config: harness.config,
+      collections: harness.collections,
+      lockPath: harness.lockPath,
+      lockWaitMs: 5_000,
+    });
+    const error = await expectMemoryError(
+      failing.remember({
+        ...IDENTITY,
+        collection: "memory",
+        scopes: SCOPE,
+        text: "Ivan starts kindergarten in September.",
+        decision: "supersede",
+        predecessorUri: added.record.uri,
+        predecessorHash: added.record.contentHash,
+      }),
+      "MEMORY_SUPERSEDE_PROJECTION_FAILED"
+    );
+    expect(error.message).toContain("injected failure");
+
+    // Nothing claims the predecessor was replaced: it still reads as current.
+    const recall = await harness.service.recall({
+      ...IDENTITY,
+      query: "kindergarten",
+      collection: "memory",
+      scopes: SCOPE,
+    });
+    expect(recall.facts.map((fact) => fact.uri)).toContain(added.record.uri);
+  });
+});
+
 describe("retrieval-level scope and supersession filtering", () => {
   let harness: Harness;
 

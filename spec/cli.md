@@ -1687,7 +1687,8 @@ gno remember <text> --scope <scope> [--scope <scope>...] [--collection <name>] [
 predecessor, and fence errors; `BUSY` (4) when another writer holds the lease
 (`MEMORY_WRITE_LEASE_BUSY`) or already superseded the predecessor
 (`MEMORY_SUPERSEDE_CONFLICT`); `RUNTIME` (2) when the file was written but
-lexical sync failed. The JSON envelope carries the core code in
+lexical sync failed (`MEMORY_SYNC_FAILED`) or the successor's `supersedes`
+edge did not project (`MEMORY_SUPERSEDE_PROJECTION_FAILED`). The JSON envelope carries the core code in
 `details.memoryCode`.
 
 **Examples:**

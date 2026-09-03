@@ -92,6 +92,7 @@ export type MemoryErrorCode =
   | "MEMORY_PREDECESSOR_NOT_FOUND"
   | "MEMORY_PREDECESSOR_HASH_MISMATCH"
   | "MEMORY_SUPERSEDE_CONFLICT"
+  | "MEMORY_SUPERSEDE_PROJECTION_FAILED"
   | "MEMORY_FENCED_REPLAY"
   | "MEMORY_FENCED_DERIVED"
   | "MEMORY_WRITE_LEASE_BUSY"
@@ -238,7 +239,8 @@ export interface MemoryServiceDeps {
   lockWaitMs?: number;
   embedPort?: EmbeddingPort | null;
   vectorIndex?: VectorIndexPort | null;
-  syncService?: Pick<typeof defaultSyncService, "syncFiles">;
+  /** Must surface typed-edge projection errors (`syncPaths`, not `syncFiles`). */
+  syncService?: Pick<typeof defaultSyncService, "syncPaths">;
   now?: () => Date;
 }
 
@@ -625,9 +627,10 @@ export class MemoryService {
             absPath,
             serializeMemoryRecord({ frontmatter, supersedes, text })
           );
-          const syncResults = await (
+          // syncPaths (not syncFiles) so typed-edge projection errors surface.
+          const syncResult = await (
             this.deps.syncService ?? defaultSyncService
-          ).syncFiles(
+          ).syncPaths(
             collection,
             store,
             [relPath],
@@ -636,15 +639,15 @@ export class MemoryService {
               config
             )
           );
-          const syncResult = syncResults[0];
+          const fileResult = syncResult.files?.[0];
           const doc = await store.getDocument(collection.name, relPath);
           const sync: MemorySyncState =
-            syncResult?.status === "error" || !doc.ok || doc.value === null
+            fileResult?.status === "error" || !doc.ok || doc.value === null
               ? {
                   status: "failed",
                   error:
-                    syncResult?.errorMessage ??
-                    syncResult?.errorCode ??
+                    fileResult?.errorMessage ??
+                    fileResult?.errorCode ??
                     "memory record was written but is not retrievable yet",
                 }
               : { status: "completed" };
@@ -654,9 +657,31 @@ export class MemoryService {
               `Memory record written to ${absPath} but lexical sync failed: ${sync.error}. Run gno update to retry indexing.`
             );
           }
+          const written = (doc as { value: DocumentRow }).value;
+          const projectionErrors = syncResult.errors
+            .map((error) => `${error.relPath}: ${error.message}`)
+            .join("; ");
+          if (decision === "supersede") {
+            // The write is only a supersession once the edge is projected;
+            // until then the predecessor still reads as current.
+            const projected =
+              projectionErrors.length === 0 &&
+              (await this.supersedesEdgeProjected(written.id, supersedes));
+            if (!projected) {
+              throw new MemoryError(
+                "MEMORY_SUPERSEDE_PROJECTION_FAILED",
+                `Successor written to ${absPath} but its supersedes edge did not project${projectionErrors ? ` (${projectionErrors})` : ""}; the predecessor still reads as current. Run gno update to retry the projection.`
+              );
+            }
+          } else if (projectionErrors.length > 0) {
+            throw new MemoryError(
+              "MEMORY_SYNC_FAILED",
+              `Memory record written to ${absPath} but typed-edge projection failed: ${projectionErrors}. Run gno update to retry indexing.`
+            );
+          }
           const record: MemoryFact = {
-            uri: (doc as { value: DocumentRow }).value.uri,
-            docid: (doc as { value: DocumentRow }).value.docid,
+            uri: written.uri,
+            docid: written.docid,
             recordId: frontmatter.recordId,
             text,
             scopes,
@@ -689,6 +714,19 @@ export class MemoryService {
       throw error;
     }
     return leased;
+  }
+
+  /** Under the lease, after sync: every predecessor URI has a projected edge. */
+  private async supersedesEdgeProjected(
+    successorDocId: number,
+    predecessorUris: readonly string[]
+  ): Promise<boolean> {
+    const edges = await this.deps.store.getEdgesForDoc(successorDocId, {
+      edgeType: MEMORY_SUPERSEDES_EDGE,
+    });
+    if (!edges.ok) return false;
+    const targets = new Set(edges.value.map((edge) => edge.targetUri));
+    return predecessorUris.every((uri) => targets.has(uri));
   }
 
   /** Under the lease: predecessor exists, hash matches, no successor yet. */
