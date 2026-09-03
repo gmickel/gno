@@ -71,7 +71,7 @@ built from the same server factory. A `server/discover` POST without an envelope
 legacy and is refused by the session path like any other session-less non-initialize POST.
 
 Modern requests are validated before dispatch and rejected - never silently stripped - with a
-`400` JSON-RPC error body:
+JSON-RPC error body (`400` unless noted):
 
 | Condition                                                                                                           | Code                                                                                          |
 | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -82,12 +82,29 @@ Modern requests are validated before dispatch and rejected - never silently stri
 | malformed envelope value (`protocolVersion`, `clientInfo`, `clientCapabilities`)                                    | `-32602` `Invalid _meta envelope`                                                             |
 | `Mcp-Session-Id` on a modern request                                                                                | `-32600` (sessions are 2025-era only; the request can never bind to or read a session)        |
 | JSON-RPC batch containing modern requests                                                                           | `-32600`                                                                                      |
+| `subscriptions/listen` (long-lived change stream)                                                                   | `404` `-32601` `Method not found` with `data.method`, request id echoed                       |
 
 Custom `_meta` keys on a modern request reach tool handlers unchanged (`ctx.mcpReq._meta`);
 the reserved `io.modelcontextprotocol/*` envelope keys are lifted to `ctx.mcpReq.envelope`.
 Modern responses carry `resultType`, `_meta["io.modelcontextprotocol/serverInfo"]`, and the
-cache fields (`ttlMs: 0`, `cacheScope: "private"`) on cacheable results. `subscriptions/listen`
-change streams are not wired to GNO change events in this release.
+cache fields (`ttlMs: 0`, `cacheScope: "private"`) on cacheable results.
+
+`subscriptions/listen` is rejected on the modern leg (`404`, `-32601`) before the SDK
+handler is reached. GNO wires no change event source to subscription streams yet, and the
+SDK's listen router would otherwise hold an SSE stream open for the life of the connection
+(15 s keep-alives, no server-side lifetime), pinning one `maxConcurrentRequests` slot and one
+runtime admission handle with nothing to reap them. The rejection releases both like any
+other pre-dispatch refusal and leaves `invalidateAuthenticatedSessions` (2025-era sessions
+only) unaffected. Wiring GNO change events to subscription streams is fn-132's territory; the
+rejection lifts when that lands.
+
+Per-caller identity on the sessionless leg: a modern request has no `Mcp-Session-Id`, so the
+transport derives an opaque per-caller label (`http:<16 hex>`, a hash of the server instance
+id and the authenticated security identity) and exposes it to tools as
+`ctx.getRequestIdentity()`. `gno_recall` / `gno_remember` use it as the memory `session`
+when no transport session exists, so two distinct authenticated callers never share one
+memory identity; the raw bearer digest never reaches a stored record. Unauthenticated
+loopback callers share the `loopback` security identity and therefore one label.
 
 **Guard parity.** Both legs share one enforcement path in `src/mcp/http-transport.ts`:
 capacity and runtime admission, the write gate (`--enable-write`), per-request egress

@@ -35,11 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     Unsupported revisions (`-32022`), missing or mismatched
     `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name` headers (`-32020`),
     malformed `_meta` envelopes (`-32602`), and a session ID on a modern
-    request (`-32600`) are rejected with `400`.
-  - Runtime: the MCP server and client run on the
-    `@modelcontextprotocol/server` and `@modelcontextprotocol/client` 2.0.0
-    packages, the split successor of `@modelcontextprotocol/sdk` 1.30.0
-    (SDK-owned wire deltas listed under Changed).
+    request (`-32600`) are rejected with `400`. `subscriptions/listen` is
+    rejected on the sessionless leg (`404`, `-32601`) until GNO change
+    events are wired to subscription streams, so a modern client can never
+    pin a concurrency slot or admission handle with an endless stream; a
+    modern caller's memory identity (`gno_recall` / `gno_remember` session)
+    is derived per authenticated caller instead of being shared
+    server-wide.
 
 ### Changed
 
