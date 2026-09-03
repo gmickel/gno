@@ -292,6 +292,7 @@ security boundary.
 | :---------------------------------------------------------- | :-------------------------------------------------- | :------- | :--- |
 | `MEMORY_TEXT_REQUIRED`, `MEMORY_TEXT_TOO_LARGE`             | Empty fact, or over 4096 bytes (use `gno capture`)  | 1        | 400  |
 | `MEMORY_QUERY_REQUIRED`                                     | Empty recall query                                  | 1        | 400  |
+| `MEMORY_BUDGET_INVALID`                                     | `maxFacts` / `maxTokens` not a positive integer     | 1        | 400  |
 | `MEMORY_COLLECTION_REQUIRED`, `MEMORY_COLLECTION_UNMANAGED` | No collection, or one without `memoryManaged: true` | 1        | 400  |
 | `MEMORY_COLLECTION_NOT_FOUND`                               | Unknown collection name                             | 1        | 404  |
 | `MEMORY_SCOPES_REQUIRED`, `MEMORY_SCOPES_INVALID`           | No scopes, more than 8, or a malformed scope        | 1        | 400  |

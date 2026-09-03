@@ -131,7 +131,9 @@ function parsePositiveInt(flag: string, raw: unknown): number | undefined {
   if (raw === undefined || raw === null || raw === "") return undefined;
   const value = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isSafeInteger(value) || value < 1) {
-    throw new CliError("VALIDATION", `${flag} must be a positive integer.`);
+    throw new CliError("VALIDATION", `${flag} must be a positive integer.`, {
+      details: { memoryCode: "MEMORY_BUDGET_INVALID" },
+    });
   }
   return value;
 }
@@ -229,6 +231,7 @@ const MEMORY_ERROR_TO_CLI: Record<MemoryErrorCode, CliErrorCode> = {
   MEMORY_TEXT_REQUIRED: "VALIDATION",
   MEMORY_TEXT_TOO_LARGE: "VALIDATION",
   MEMORY_QUERY_REQUIRED: "VALIDATION",
+  MEMORY_BUDGET_INVALID: "VALIDATION",
   MEMORY_COLLECTION_REQUIRED: "VALIDATION",
   MEMORY_COLLECTION_NOT_FOUND: "VALIDATION",
   MEMORY_COLLECTION_UNMANAGED: "VALIDATION",

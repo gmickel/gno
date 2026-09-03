@@ -169,10 +169,14 @@ describe("gno remember / gno recall", () => {
       ...SCOPE,
       ...IDENTITY,
       "--max-facts",
-      "0"
+      "0",
+      "--json"
     );
     expect(badBudget.code).toBe(1);
-    expect(badBudget.stderr).toContain("--max-facts");
+    expect(errorEnvelope(badBudget.stderr).message).toContain("--max-facts");
+    expect(errorEnvelope(badBudget.stderr).details?.memoryCode).toBe(
+      "MEMORY_BUDGET_INVALID"
+    );
   });
 
   test("empty recall prints the self-teaching line verbatim", async () => {

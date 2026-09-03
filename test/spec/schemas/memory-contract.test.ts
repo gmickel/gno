@@ -411,6 +411,13 @@ describe("memory cross-surface contract (core / REST / SDK)", () => {
       400,
     ],
     [
+      "zero budget",
+      "recall",
+      { query: "x", maxFacts: 0 },
+      "MEMORY_BUDGET_INVALID",
+      400,
+    ],
+    [
       "unmanaged collection",
       "remember",
       { text: "x", collection: "notes", decision: "add" as const },

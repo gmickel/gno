@@ -224,7 +224,7 @@ export async function recallFacts(
     maxTokens < 1
   ) {
     throw new MemoryError(
-      "MEMORY_QUERY_REQUIRED",
+      "MEMORY_BUDGET_INVALID",
       "maxFacts and maxTokens must be positive integers."
     );
   }

@@ -1737,7 +1737,9 @@ numbered facts with URI, text, scopes, hash, and identity, then `Budget:`,
 `Retrieval:`, and `Receipt:` lines. Quiet prints one URI per line.
 
 **Exit codes:** `VALIDATION` (1) for scope, collection, identity, and budget
-errors; `RUNTIME` (2) on retrieval failure.
+errors (a bad `--max-facts` / `--max-tokens` carries
+`details.memoryCode: MEMORY_BUDGET_INVALID` in the JSON envelope);
+`RUNTIME` (2) on retrieval failure.
 
 **Examples:**
 

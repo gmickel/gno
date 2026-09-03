@@ -184,6 +184,25 @@ describe("MemoryService remember/recall contracts", () => {
     expect(error.message.length).toBeGreaterThan(10);
   });
 
+  test.each([
+    ["maxFacts", { maxFacts: 0 }],
+    ["maxTokens", { maxTokens: 0 }],
+  ])(
+    "recall rejects a non-positive %s with MEMORY_BUDGET_INVALID",
+    async (_label, budget) => {
+      await expectMemoryError(
+        harness.service.recall({
+          ...IDENTITY,
+          query: "trains",
+          collection: "memory",
+          scopes: SCOPE,
+          ...budget,
+        }),
+        "MEMORY_BUDGET_INVALID"
+      );
+    }
+  );
+
   test("recall rejects unmanaged collections, missing scopes, missing identity", async () => {
     await expectMemoryError(
       harness.service.recall({
