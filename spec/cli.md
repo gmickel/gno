@@ -2399,10 +2399,20 @@ gno doctor [--json|--md]
           }
         ]
       }
+    },
+    {
+      "name": "findings-pass",
+      "status": "ok",
+      "message": "disabled (opt-in via findings.enabled)"
     }
   ]
 }
 ```
+
+The `findings-pass` check reports the daemon's scheduled findings pass from
+its persisted run state: `ok` when disabled or the last run succeeded, `warn`
+on `skipped_lease` / `overdue` / no recorded run, `error` on `failed` or a
+misconfigured `findings` block (see [Daemon Mode](../docs/DAEMON.md#scheduled-findings-pass)).
 
 The `embedding-fingerprint` check is additive doctor-only diagnostics. It uses
 the active embed model and stored vector dimensions to report the current
@@ -3915,6 +3925,13 @@ is blocked.
   watcher behavior.
 - Runs an initial sync by default
 - Triggers embedding after initial sync completes
+- With `findings.enabled`, runs the scheduled findings pass on its cadence:
+  a read-only audit of every collection except the findings one, written as
+  deterministic Markdown records into `findings.collection`. The audit runs
+  without the write lease; only the record write takes it (no wait; a busy
+  lease is recorded as `skipped_lease`). Every attempt persists to
+  `{data}/index-<name>.findings-run.json`, surfaced by `--status` (`findings`)
+  and the `findings-pass` doctor check. See [Daemon Mode](../docs/DAEMON.md#scheduled-findings-pass)
 - Runs in the foreground until `SIGINT` / `SIGTERM`
 - Starts a headless `/mcp` Streamable HTTP listener; it does not serve the Web UI
 - Exposes the same safe REST lifecycle snapshot at `/api/resident/status`;
