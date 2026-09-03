@@ -19,8 +19,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deterministic Markdown records into an existing collection (report-only,
   identity-upserted, resolved on fix, bounded retention, lease-aware skip,
   silent when clean). Last-run state is persisted and shown by
-  `gno daemon --status` (`findings` line / JSON object) and the `Findings pass`
-  check in `gno doctor`. Saved Capsule reverification stays journal-driven.
+  `gno daemon --status` (`findings` line / JSON object) and the `findings-pass`
+  check in `gno doctor`. The audit runs without the write lease; only the
+  record write takes it, so a long audit never blocks capture or CLI writers.
+  Saved Capsule reverification stays journal-driven.
+- Staged, resumable `gno index`: the run is two separable stages, `lexical`
+  (sync) then `embed`, each with a persisted lifecycle marker
+  (`schema_meta.index_stage_state`). A process killed mid-embed (SIGKILL,
+  crash, power loss) keeps the lexical index searchable; the next `gno index`
+  or `gno embed` reports the interrupted stage in a resume preamble (stderr, or
+  `resumedFrom` in JSON) and continues from persisted per-batch progress
+  without re-embedding stored chunks. `gno index --json` now emits the
+  `index-receipt@1.0` receipt (`stages.lexical` / `stages.embed` with state and
+  counts, `resumedFrom`, `embedSkipped`, `embedResult`). `gno index --no-embed`
+  settles a stale embed marker it surfaced so later runs stop repeating it.
 - Capture parity: MCP `gno_capture` and REST `POST /api/capture` now complete
   the write and its lexical sync under the shared write lease before returning,
   so a captured note is searchable in the same agent turn. REST answers `201`
@@ -31,6 +43,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The browser-clip route keeps its `202` job contract.
 
 ### Changed
+
+- `gno index` exit codes: a failed embed stage now exits 2 with the
+  per-stage receipt (`success: false`, `stages.embed.state: "failed"`) instead
+  of exiting 0 on a partial run; the completed lexical stage is kept.
+- REST `POST /api/capture` is synchronous: it returns `201` (`200` for
+  `opened_existing`) once the note is written and lexically indexed, replacing
+  the `202` + sync-job contract (the browser-clip route keeps `202`).
+- `gno changes --follow` with `--collection` advances its resume point past
+  pages that matched nothing, so an idle filter no longer rescans the journal
+  tail on every poll; emitted events keep their `postCursor` contract.
 
 ### Fixed
 
