@@ -256,5 +256,5 @@ See `evalite.config.ts`:
 
 - `testTimeout`: 120s (for model downloads)
 - `maxConcurrency`: 5
-- `scoreThreshold`: 70%
+- `scoreThreshold`: 70% (global; per-eval overrides such as `memory.eval.ts` at 100 live in `EVAL_THRESHOLDS` in `scripts/update-eval-scores.ts` and are passed as `--threshold` by `bun run evals`)
 - `cache`: true (faster iteration)

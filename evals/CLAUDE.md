@@ -41,7 +41,7 @@ evals/
 ## Key Points
 
 - **Local only** - not in CI, part of release DoD
-- **70% threshold** - configurable in evalite.config.ts
+- **70% threshold** - configurable in evalite.config.ts; per-eval overrides (memory: 100) in `EVAL_THRESHOLDS` in `scripts/update-eval-scores.ts`
 - **LLM evals skipped by default** - use `--include-llm`
 - **scores.md auto-updated** - by `bun run evals`
 
