@@ -1,6 +1,7 @@
 import type { CollectionSyncResult } from "../../ingestion";
 import type { HttpGatewayOverrides } from "../../mcp/http-security";
 import type { BackgroundRuntimeResult } from "../../serve/background-runtime";
+import type { FindingsPassResult } from "../../serve/findings-pass";
 import type { ResidentRuntime } from "../../serve/resident-runtime";
 
 import {
@@ -42,6 +43,29 @@ type DaemonDeps = {
   serve?: typeof Bun.serve;
   logger?: DaemonLogger;
 };
+
+/** Silent when clean: only failures, and non-empty writes when not quiet, reach the log. */
+export function logFindingsPassResult(
+  result: FindingsPassResult,
+  logger: DaemonLogger,
+  options: { quiet?: boolean; verbose?: boolean }
+): void {
+  if (result.outcome === "failed") {
+    logger.error(`findings pass failed: ${result.error ?? "unknown error"}`);
+    return;
+  }
+  if (result.outcome === "skipped_lease") {
+    if (options.verbose) logger.log(`findings pass skipped: ${result.error}`);
+    return;
+  }
+  const { counts } = result;
+  const changed =
+    counts.written + counts.reopened + counts.resolved + counts.deleted;
+  if (changed === 0 || options.quiet) return;
+  logger.log(
+    `findings pass: ${counts.written} new, ${counts.reopened} reopened, ${counts.resolved} resolved, ${counts.deleted} expired (${counts.open} open)`
+  );
+}
 
 function formatCollectionSyncSummary(result: CollectionSyncResult): string {
   return `${result.collection}: ${result.filesAdded} added, ${result.filesUpdated} updated, ${result.filesUnchanged} unchanged, ${result.filesErrored} errors`;
@@ -146,6 +170,11 @@ export async function daemon(
     index: options.index,
     requireCollections: true,
     offline: options.offline,
+    onFindingsResult: (result) =>
+      logFindingsPassResult(result, logger, {
+        quiet: options.quiet,
+        verbose: options.verbose,
+      }),
     watchCallbacks: {
       onSyncStart: ({ collection, relPaths }) => {
         if (!options.quiet) {
@@ -229,6 +258,12 @@ export async function daemon(
         for (const failed of watchState.failedCollections) {
           logger.error(`watch failed: ${failed.collection}: ${failed.reason}`);
         }
+      }
+      const findings = (runtime as Partial<ResidentRuntime>).findingsScheduler;
+      if (findings) {
+        logger.log(
+          `findings pass: every ${findings.state.cadence} into "${findings.state.collection}" (report-only)`
+        );
       }
     }
 

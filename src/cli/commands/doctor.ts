@@ -21,6 +21,11 @@ import {
   loadConfig,
 } from "../../config";
 import { isConnectorActivationComplete } from "../../core/activation-connector-health";
+import {
+  findingsRunStatePathForIndex,
+  readFindingsRunStatus,
+  resolveFindingsSchedule,
+} from "../../core/findings-run-state";
 import { getCodeChunkingStatus } from "../../ingestion/chunker";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
@@ -560,6 +565,69 @@ async function checkSqliteExtensions(): Promise<DoctorCheck[]> {
   return checks;
 }
 
+/**
+ * Report the daemon's scheduled findings pass from its persisted state so a
+ * misconfigured, starved, or failing scheduler is visible without the daemon.
+ */
+export async function checkFindingsPass(
+  config: Config,
+  indexName?: string
+): Promise<DoctorCheck> {
+  const name = "findings-pass";
+  const resolution = resolveFindingsSchedule(config);
+  if (!resolution.ok) {
+    return {
+      name,
+      status: "error",
+      message: "misconfigured",
+      details: [resolution.error],
+    };
+  }
+  if (!resolution.enabled) {
+    return {
+      name,
+      status: "ok",
+      message: "disabled (opt-in via findings.enabled)",
+    };
+  }
+  const status = await readFindingsRunStatus(
+    findingsRunStatePathForIndex(indexName)
+  );
+  const schedule = `every ${resolution.schedule.cadence} into "${resolution.schedule.collection.name}"`;
+  if (!status) {
+    return {
+      name,
+      status: "warn",
+      message: `enabled (${schedule}) but no run state recorded`,
+      details: ["Start gno daemon; the pass only runs inside the daemon."],
+    };
+  }
+  const details = [
+    `last run: ${status.lastRunAt ?? "never"}`,
+    `last success: ${status.lastSuccessAt ?? "never"}`,
+    `next due: ${status.nextDueAt}`,
+  ];
+  if (status.counts) {
+    details.push(
+      `counts: ${status.counts.open} open, ${status.counts.written} new, ${status.counts.resolved} resolved`
+    );
+  }
+  if (status.error) details.push(`error: ${status.error}`);
+  const statusOf: Record<typeof status.state, DoctorCheckStatus> = {
+    pending: "ok",
+    success: "ok",
+    skipped_lease: "warn",
+    overdue: "warn",
+    failed: "error",
+  };
+  return {
+    name,
+    status: statusOf[status.state],
+    message: `${status.state} (${schedule})`,
+    details,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Implementation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -602,6 +670,9 @@ export async function doctor(
 
   // Embedding fingerprint freshness
   checks.push(await checkEmbeddingFingerprints(config, options.indexName));
+
+  // Scheduled findings pass (daemon-only, opt-in)
+  checks.push(await checkFindingsPass(config, options.indexName));
 
   const activation = await buildDoctorActivation(config, options);
   checks.push(checkRetrievalActivation(activation));

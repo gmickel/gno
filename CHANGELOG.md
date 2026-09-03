@@ -41,6 +41,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.44.0] - 2026-09-03
+
+### Added
+
+- `gno changes --follow --jsonl [--cursor <cursor>]` streams change-journal
+  events as they land, one `{event, postCursor}` line each; resume with the
+  persisted `postCursor` for gap-free at-least-once delivery, tail by default,
+  one terminal `cursor_expired` line (exit 2) when the cursor falls out of
+  retention, SIGINT exits 0. Contract in `changes-follow-event.schema.json`.
+- Daemon scheduled findings pass (opt-in `findings: { enabled, cadence, collection }`):
+  `gno daemon` runs the read-only audit on a cadence and writes findings as
+  deterministic Markdown records into an existing collection (report-only,
+  identity-upserted, resolved on fix, bounded retention, lease-aware skip,
+  silent when clean). Last-run state is persisted and shown by
+  `gno daemon --status` (`findings` line / JSON object) and the `findings-pass`
+  check in `gno doctor`. The audit runs without the write lease; only the
+  record write takes it, so a long audit never blocks capture or CLI writers.
+  Saved Capsule reverification stays journal-driven.
+- Staged, resumable `gno index`: the run is two separable stages, `lexical`
+  (sync) then `embed`, each with a persisted lifecycle marker
+  (`schema_meta.index_stage_state`). A process killed mid-embed (SIGKILL,
+  crash, power loss) keeps the lexical index searchable; the next `gno index`
+  or `gno embed` reports the interrupted stage in a resume preamble (stderr, or
+  `resumedFrom` in JSON) and continues from persisted per-batch progress
+  without re-embedding stored chunks. `gno index --json` now emits the
+  `index-receipt@1.0` receipt (`stages.lexical` / `stages.embed` with state and
+  counts, `resumedFrom`, `embedSkipped`, `embedResult`). `gno index --no-embed`
+  settles a stale embed marker it surfaced so later runs stop repeating it.
+- Capture parity: MCP `gno_capture` and REST `POST /api/capture` now complete
+  the write and its lexical sync under the shared write lease before returning,
+  so a captured note is searchable in the same agent turn. REST answers `201`
+  (`200` for `opened_existing`) instead of `202` + sync job; a written file
+  whose sync fails is `CAPTURE_SYNC_FAILED` (MCP tool error / HTTP 500 with the
+  write receipt in `details`), a busy lease is `LOCKED` (HTTP 409) after the
+  120s wait, and `open_existing` syncs an unindexed disk file before success.
+  The browser-clip route keeps its `202` job contract.
+
+### Changed
+
+- `gno index` exit codes: a failed embed stage now exits 2 with the
+  per-stage receipt (`success: false`, `stages.embed.state: "failed"`) instead
+  of exiting 0 on a partial run; the completed lexical stage is kept.
+- REST `POST /api/capture` is synchronous: it returns `201` (`200` for
+  `opened_existing`) once the note is written and lexically indexed, replacing
+  the `202` + sync-job contract (the browser-clip route keeps `202`).
+- `gno changes --follow` with `--collection` advances its resume point past
+  pages that matched nothing, so an idle filter no longer rescans the journal
+  tail on every poll; emitted events keep their `postCursor` contract.
+
+### Fixed
+
 ## [1.43.0] - 2026-09-03
 
 ### Added
@@ -2521,7 +2572,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.43.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.44.0...HEAD
+[1.44.0]: https://github.com/gmickel/gno/compare/v1.43.0...v1.44.0
 [1.43.0]: https://github.com/gmickel/gno/compare/v1.42.0...v1.43.0
 [1.42.0]: https://github.com/gmickel/gno/compare/v1.41.0...v1.42.0
 [1.41.0]: https://github.com/gmickel/gno/compare/v1.40.0...v1.41.0

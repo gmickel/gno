@@ -20,6 +20,11 @@ import {
 } from "../app/constants";
 import { INDEX_NAME_REQUIREMENTS, isValidIndexName } from "../app/index-name";
 import { resolveDepthPolicy } from "../core/depth-policy";
+import {
+  findingsRunStatePathForIndex,
+  formatFindingsRunStatusLine,
+  readFindingsRunStatus,
+} from "../core/findings-run-state";
 import { parseAndValidateTagFilter } from "../core/tags";
 import {
   formatWriteLeaseBusyJson,
@@ -1630,7 +1635,14 @@ function wireOnboardingCommands(program: Command): void {
 
       if (!result.success) {
         throwIfWriteLeaseBusy(result, opts.json);
-        throw new CliError("RUNTIME", result.error ?? "Index failed");
+        if (!result.stages) {
+          throw new CliError("RUNTIME", result.error ?? "Index failed");
+        }
+        // A stage failed after the run started: emit the partial per-stage
+        // receipt, then exit non-zero (fn-132 R4 - never exit 0 on a failed
+        // embed stage).
+        process.stdout.write(`${formatIndex(result, opts)}\n`);
+        throw new CliError("RUNTIME", result.error, { silent: true });
       }
       process.stdout.write(`${formatIndex(result, opts)}\n`);
       if ((result.embedResult?.contentionErrors ?? 0) > 0) {
@@ -4094,25 +4106,89 @@ function wireGraphCommand(program: Command): void {
     );
 }
 
+/**
+ * `gno changes --follow --jsonl`: the follow flags form one mode that
+ * excludes the one-shot listing flags. The cursor-expiry record is the
+ * stdout envelope, so its non-zero exit is silent on stderr.
+ */
+async function runChangesFollow(
+  cmdOpts: Record<string, unknown>,
+  format: string,
+  globals: GlobalOptions
+): Promise<void> {
+  if (!cmdOpts.follow || !cmdOpts.jsonl) {
+    throw new CliError(
+      "VALIDATION",
+      "--follow and --jsonl must be used together (--cursor requires both)"
+    );
+  }
+  if (format === "json" || cmdOpts.since !== undefined) {
+    throw new CliError(
+      "VALIDATION",
+      "--follow cannot be combined with --json or --since; use --cursor to resume"
+    );
+  }
+  if (cmdOpts.limit !== undefined) {
+    throw new CliError(
+      "VALIDATION",
+      "--follow cannot be combined with --limit"
+    );
+  }
+  const { changesFollow } = await import("./commands/changes");
+  const result = await changesFollow(
+    {
+      cursor: cmdOpts.cursor as string | undefined,
+      collection: cmdOpts.collection as string | undefined,
+    },
+    { configPath: globals.config, indexName: globals.index }
+  );
+  if (result.status === "error") {
+    throw new CliError(
+      result.isValidation ? "VALIDATION" : "RUNTIME",
+      result.error
+    );
+  }
+  if (result.status === "expired") {
+    throw new CliError(
+      "RUNTIME",
+      `Follow cursor expired; earliest retained cursor is ${result.earliestCursor}`,
+      { silent: true }
+    );
+  }
+}
+
 function wireKnowledgeDeltaCommands(program: Command): void {
   program
     .command("changes")
     .description("List retained metadata-only document changes")
     .option("--since <time-or-cursor>", "ISO-8601 time or opaque cursor")
     .option("-c, --collection <name>", "filter by collection")
-    .option("-n, --limit <num>", "maximum changes", "100")
+    .option("-n, --limit <num>", "maximum changes (default 100)")
     .option("--json", "JSON output")
+    .option(
+      "--follow",
+      "stream new changes as they land (requires --jsonl; SIGINT exits 0)"
+    )
+    .option("--jsonl", "one JSON object per line (only with --follow)")
+    .option(
+      "--cursor <cursor>",
+      "resume a --follow stream from a persisted postCursor"
+    )
     .action(async (cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.changes, format);
       const deltaFormat = format === "json" ? "json" : "terminal";
       const globals = getGlobals();
+      if (cmdOpts.follow || cmdOpts.jsonl || cmdOpts.cursor !== undefined) {
+        await runChangesFollow(cmdOpts, format, globals);
+        return;
+      }
       const { changes, formatChanges } = await import("./commands/changes");
       const result = await changes(
         {
           since: cmdOpts.since as string | undefined,
           collection: cmdOpts.collection as string | undefined,
-          limit: parsePositiveInt("limit", cmdOpts.limit),
+          limit: parsePositiveInt("limit", cmdOpts.limit ?? "100"),
         },
         { configPath: globals.config, indexName: globals.index }
       );
@@ -4345,6 +4421,7 @@ async function handleDaemonAction(
     await runDaemonStatus({
       paths,
       json,
+      indexName: globals.index,
       statusProcess,
       inspectForeignLive,
     });
@@ -4412,6 +4489,7 @@ async function handleDaemonAction(
 interface DaemonStatusDeps {
   paths: { pidFile: string; logFile: string };
   json: boolean;
+  indexName?: string;
   statusProcess: typeof import("./detach.js").statusProcess;
   inspectForeignLive: typeof import("./detach.js").inspectForeignLive;
 }
@@ -4426,9 +4504,16 @@ async function runDaemonStatus(deps: DaemonStatusDeps): Promise<void> {
     kind: "daemon",
     pidFile: deps.paths.pidFile,
   });
+  // Persisted by the daemon after every scheduled findings attempt; absent
+  // (null) when the pass is not configured. Read from disk, never live.
+  const findings = await readFindingsRunStatus(
+    findingsRunStatePathForIndex(deps.indexName)
+  );
 
   if (deps.json) {
-    process.stdout.write(`${JSON.stringify(status, null, 2)}\n`);
+    process.stdout.write(
+      `${JSON.stringify({ ...status, findings }, null, 2)}\n`
+    );
     // In JSON mode, foreign-live metadata flows into the NOT_RUNNING
     // envelope's `details` payload below so stderr stays a single JSON
     // object that machine clients can parse deterministically.
@@ -4456,6 +4541,11 @@ async function runDaemonStatus(deps: DaemonStatusDeps): Promise<void> {
       process.stdout.write(" (missing)\n");
     } else {
       process.stdout.write(` (${status.log_size_bytes} bytes)\n`);
+    }
+    if (findings) {
+      process.stdout.write(
+        `  findings ${formatFindingsRunStatusLine(findings)}\n`
+      );
     }
 
     if (foreign) {

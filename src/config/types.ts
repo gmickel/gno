@@ -472,6 +472,51 @@ export const HttpGatewayConfigSchema = z.object({
 
 export type HttpGatewayConfig = z.infer<typeof HttpGatewayConfigSchema>;
 
+// ────────────────────────────────────────────────────────────────────────────
+// Scheduled findings pass (daemon-only, opt-in, report-only)
+// ────────────────────────────────────────────────────────────────────────────
+
+/** `<integer><unit>` with unit s|m|h|d, e.g. `30m`, `6h`, `1d`. */
+export const FINDINGS_CADENCE_PATTERN =
+  /^(?<value>[1-9]\d{0,5})(?<unit>[smhd])$/;
+export const DEFAULT_FINDINGS_CADENCE = "6h";
+export const MIN_FINDINGS_CADENCE_MS = 10_000;
+export const MAX_FINDINGS_CADENCE_MS = 30 * 24 * 60 * 60 * 1000;
+
+const CADENCE_UNIT_MS: Record<string, number> = {
+  s: 1_000,
+  m: 60_000,
+  h: 3_600_000,
+  d: 86_400_000,
+};
+
+/** Parse a findings cadence into milliseconds; null when malformed or out of range. */
+export function parseFindingsCadenceMs(raw: string): number | null {
+  const match = FINDINGS_CADENCE_PATTERN.exec(raw.trim());
+  const value = match?.groups?.value;
+  const unit = match?.groups?.unit;
+  if (!value || !unit) return null;
+  const ms = Number(value) * (CADENCE_UNIT_MS[unit] ?? 0);
+  if (ms < MIN_FINDINGS_CADENCE_MS || ms > MAX_FINDINGS_CADENCE_MS) return null;
+  return ms;
+}
+
+export const FindingsConfigSchema = z.object({
+  /** Off by default; the daemon never audits on cadence unless asked. */
+  enabled: z.boolean().default(false),
+  /** Run interval (`10s`..`30d`). Evaluated only when enabled. */
+  cadence: z
+    .string()
+    .refine((value) => parseFindingsCadenceMs(value) !== null, {
+      message: "cadence must be <n>s|m|h|d between 10s and 30d (e.g. 6h)",
+    })
+    .default(DEFAULT_FINDINGS_CADENCE),
+  /** Name of an already-configured collection that receives findings records. */
+  collection: z.string().regex(COLLECTION_NAME_REGEX).optional(),
+});
+
+export type FindingsConfig = z.infer<typeof FindingsConfigSchema>;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Content Type Schema
 // ─────────────────────────────────────────────────────────────────────────────
@@ -555,6 +600,9 @@ export const ConfigSchema = z.object({
 
   /** Resident Streamable HTTP MCP gateway configuration */
   gateway: HttpGatewayConfigSchema.optional(),
+
+  /** Daemon-only scheduled read-only audit writing findings records. Absent means off. */
+  findings: FindingsConfigSchema.optional(),
 
   /** Private local retrieval trace recording. Absent means recording off. */
   retrievalTraces: RetrievalTraceConfigSchema.optional(),

@@ -656,9 +656,10 @@ describe("document lifecycle API", () => {
     ctxHolder.markContentMutation = () => {
       contentGeneration += 1;
     };
+    let synced: DocumentRow | null = null;
     const store = {
       listDocuments: async () => ({ ok: true as const, value: [] }),
-      getDocument: async () => ({ ok: true as const, value: null }),
+      getDocument: async () => ({ ok: true as const, value: synced }),
     };
     const req = new Request("http://localhost/api/capture", {
       method: "POST",
@@ -673,30 +674,41 @@ describe("document lifecycle API", () => {
     });
 
     const res = await handleCreateCapture(ctxHolder, store as never, req, {
-      syncCollection: async () => ({
-        collection: "notes",
-        filesProcessed: 1,
-        filesAdded: 1,
-        filesUpdated: 0,
-        filesUnchanged: 0,
-        filesErrored: 0,
-        filesSkipped: 0,
-        filesMarkedInactive: 0,
-        durationMs: 1,
-        errors: [],
-      }),
+      lockPath: join(tmpDir, ".lock"),
+      syncPaths: async (_collection, _store, relPaths) => {
+        const relPath = relPaths[0] ?? "";
+        synced = createDoc(tmpDir, {
+          relPath,
+          uri: `gno://notes/${relPath}`,
+        });
+        return {
+          collection: "notes",
+          filesProcessed: 1,
+          filesAdded: 1,
+          filesUpdated: 0,
+          filesUnchanged: 0,
+          filesErrored: 0,
+          filesSkipped: 0,
+          filesMarkedInactive: 0,
+          durationMs: 1,
+          files: [{ relPath, status: "added", docid: "#abc123" }],
+          errors: [],
+        };
+      },
     });
-    expect(res.status).toBe(202);
+    expect(res.status).toBe(201);
     const body = (await res.json()) as {
       relPath: string;
+      docid: string;
       source: { kind: string; url: string };
       sync: { status: string; jobId?: string };
       embed: { status: string };
     };
     expect(body.relPath).toStartWith("inbox/");
+    expect(body.docid).toBe("#abc123");
     expect(body.source.kind).toBe("web");
     expect(body.source.url).toBe("https://example.com/api");
-    expect(body.sync.status).toBe("pending");
+    expect(body.sync).toEqual({ status: "completed" });
     expect(body.embed.status).toBe("not_requested");
 
     const content = await Bun.file(join(tmpDir, body.relPath)).text();

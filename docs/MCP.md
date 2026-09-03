@@ -1424,9 +1424,15 @@ or legacy `overwrite: true` to replace the target path and return
 `collisionPolicyResult: "overwritten"`. Capture content must be text, and
 non-overwrite captures fail instead of replacing a late-arriving file.
 
-MCP capture runs under the server write lock and syncs the written file into FTS
-before returning `sync.status: "completed"`. It does not auto-embed; run
-`gno_embed` or `gno_index` when vector search should include the new note.
+MCP capture runs under the shared write lease and syncs the written file into
+FTS before returning: a successful result always carries
+`sync.status: "completed"` and the note is an immediate `gno_search` hit in the
+same agent turn. If the file was written but sync failed, the tool returns the
+error `CAPTURE_SYNC_FAILED` (naming the written path) instead of a success;
+`open_existing` on an unindexed disk file syncs it first. The lease wait is the
+v1.38 contention window (120s), after which the tool returns `LOCKED` without
+writing. Capture does not auto-embed; run `gno_embed` or `gno_index` when
+vector search should include the new note.
 
 ### gno_recall
 

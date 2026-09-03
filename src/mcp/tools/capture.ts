@@ -15,16 +15,21 @@ import type { ToolContext } from "../server";
 
 import {
   buildCaptureReceipt,
+  CaptureSyncError,
+  ensureCapturedFileIndexed,
   listCaptureDiskRelPaths,
   planCapture,
+  syncCapturedFile,
   type CaptureInput as SharedCaptureInput,
   type CaptureReceipt,
+  type SyncCapturedFileResult,
 } from "../../core/capture";
 import { writeCapturePlanFile } from "../../core/capture-write";
 import { MCP_ERRORS } from "../../core/errors";
 import { withWriteLock } from "../../core/file-lock";
+import { recordContentMutation } from "../../core/mutation-generations";
 import { normalizeCollectionName } from "../../core/validation";
-import { defaultSyncService, withContentTypeRules } from "../../ingestion";
+import { DEFAULT_LOCK_WAIT_MS } from "../../core/write-lease";
 import { runTool, type ToolResult } from "./index";
 
 interface CaptureInput extends Omit<
@@ -102,6 +107,14 @@ function buildSharedInput(
   };
 }
 
+/** Surface a sync failure as an MCP tool error the `CODE: message` way. */
+function rethrowCaptureError(error: unknown): never {
+  if (error instanceof CaptureSyncError) {
+    throw new Error(`${error.code}: ${error.message}`);
+  }
+  throw error;
+}
+
 export function handleCapture(
   args: CaptureInput,
   ctx: ToolContext
@@ -114,154 +127,96 @@ export function handleCapture(
         throw new Error("Write tools disabled. Start MCP with --enable-write.");
       }
 
-      return await withWriteLock(ctx.writeLockPath, async () => {
-        const collectionName = normalizeCollectionName(args.collection);
-        const collection = ctx.collections.find(
-          (c) => c.name.toLowerCase() === collectionName
+      const collectionName = normalizeCollectionName(args.collection);
+      const collection = ctx.collections.find(
+        (c) => c.name.toLowerCase() === collectionName
+      );
+      if (!collection) {
+        throw new Error(
+          `${MCP_ERRORS.NOT_FOUND.code}: Collection not found: ${args.collection}`
         );
-        if (!collection) {
-          throw new Error(
-            `${MCP_ERRORS.NOT_FOUND.code}: Collection not found: ${args.collection}`
-          );
-        }
+      }
 
-        const existingDocs = await ctx.store.listDocuments(collectionName);
-        if (!existingDocs.ok) {
-          throw new Error(existingDocs.error.message);
-        }
-
-        let plan;
-        try {
-          plan = planCapture({
-            input: buildSharedInput(args, collection.name),
-            existingRelPaths: existingDocs.value.map((doc) => doc.relPath),
-            diskRelPaths: await listCaptureDiskRelPaths(collection.path),
-          });
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : String(error);
-          throw new Error(`${MCP_ERRORS.INVALID_INPUT.code}: ${message}`);
-        }
-
-        assertNotSensitive(plan.relPath);
-
-        const absPath = join(collection.path, plan.relPath);
-        const existingFile = Bun.file(absPath);
-        const exists = await existingFile.exists();
-
-        if (plan.openedExisting) {
-          const docResult = await ctx.store.getDocument(
-            collectionName,
-            plan.relPath
-          );
-          const existingDoc = docResult.ok ? docResult.value : undefined;
-          return buildCaptureReceipt({
-            plan,
-            absPath,
-            docid: existingDoc?.docid ?? "",
-            sync: {
-              status: existingDoc ? "completed" : "skipped",
-              reason: existingDoc
-                ? "Existing capture already indexed."
-                : "Existing capture opened from disk but is not indexed yet.",
-            },
-            serverInstanceId: ctx.serverInstanceId,
-          }) as McpCaptureResult;
-        }
-
-        await mkdir(dirname(absPath), { recursive: true });
-        await writeCapturePlanFile(plan, absPath);
-
-        const results = await defaultSyncService.syncFiles(
-          collection,
-          ctx.store,
-          [plan.relPath],
-          withContentTypeRules(
-            { runUpdateCmd: false, gitPull: false },
-            ctx.config
-          )
-        );
-        const syncResult = results[0];
-        if (!syncResult) {
-          return buildCaptureReceipt({
-            plan,
-            absPath,
-            docid: "",
-            sync: {
-              status: "failed",
-              error: "RUNTIME: Sync result missing",
-            },
-            overwritten: exists && args.overwrite === true,
-            serverInstanceId: ctx.serverInstanceId,
-          }) as McpCaptureResult;
-        }
-        if (syncResult.status === "error") {
-          return buildCaptureReceipt({
-            plan,
-            absPath,
-            docid: "",
-            sync: {
-              status: "failed",
-              error: `INGEST_ERROR: ${syncResult.errorCode ?? "ERROR"} - ${
-                syncResult.errorMessage ?? "Unknown error"
-              }`,
-            },
-            overwritten: exists && args.overwrite === true,
-            serverInstanceId: ctx.serverInstanceId,
-          }) as McpCaptureResult;
-        }
-        if (syncResult.status === "added" || syncResult.status === "updated") {
-          ctx.markContentMutation?.();
-        }
-
-        let docid = syncResult.docid;
-        let documentId: number | undefined;
-        const docResult = await ctx.store.getDocument(
-          collectionName,
-          plan.relPath
-        );
-        if (docResult.ok && docResult.value) {
-          docid = docid ?? docResult.value.docid;
-          documentId = docResult.value.id;
-        }
-        if (!docid) {
-          return buildCaptureReceipt({
-            plan,
-            absPath,
-            docid: "",
-            sync: {
-              status: "failed",
-              error: "RUNTIME: Document missing after sync",
-            },
-            overwritten: exists && args.overwrite === true,
-            serverInstanceId: ctx.serverInstanceId,
-          }) as McpCaptureResult;
-        }
-
-        const isMarkdown =
-          plan.relPath.endsWith(".md") || plan.relPath.endsWith(".markdown");
-        if (!isMarkdown && plan.tags.length > 0 && documentId) {
-          const tagResult = await ctx.store.setDocTags(
-            documentId,
-            plan.tags,
-            "user"
-          );
-          if (!tagResult.ok) {
-            console.error(
-              `[MCP] Warning: Document created but tags not stored: ${tagResult.error.message}`
-            );
+      // Write + lexical sync complete under the shared write lease: the tool
+      // succeeds only once the capture is retrievable (v1.38 contention
+      // contract: wait for the lease, LOCKED when it stays busy).
+      return await withWriteLock(
+        ctx.writeLockPath,
+        async () => {
+          const existingDocs = await ctx.store.listDocuments(collectionName);
+          if (!existingDocs.ok) {
+            throw new Error(existingDocs.error.message);
           }
-        }
 
-        return buildCaptureReceipt({
-          plan,
-          absPath,
-          docid,
-          sync: { status: "completed" },
-          overwritten: exists && args.overwrite === true,
-          serverInstanceId: ctx.serverInstanceId,
-        }) as McpCaptureResult;
-      });
+          let plan;
+          try {
+            plan = planCapture({
+              input: buildSharedInput(args, collection.name),
+              existingRelPaths: existingDocs.value.map((doc) => doc.relPath),
+              diskRelPaths: await listCaptureDiskRelPaths(collection.path),
+            });
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            throw new Error(`${MCP_ERRORS.INVALID_INPUT.code}: ${message}`);
+          }
+
+          assertNotSensitive(plan.relPath);
+
+          const absPath = join(collection.path, plan.relPath);
+          const syncInput = {
+            collection,
+            store: ctx.store,
+            relPath: plan.relPath,
+            absPath,
+            config: ctx.config,
+          };
+
+          let synced: SyncCapturedFileResult;
+          let overwritten = false;
+          try {
+            if (plan.openedExisting) {
+              synced = await ensureCapturedFileIndexed(syncInput);
+            } else {
+              overwritten =
+                (await Bun.file(absPath).exists()) && args.overwrite === true;
+              await mkdir(dirname(absPath), { recursive: true });
+              await writeCapturePlanFile(plan, absPath);
+              synced = await syncCapturedFile(syncInput);
+            }
+          } catch (error) {
+            rethrowCaptureError(error);
+          }
+          if (synced.result) {
+            recordContentMutation(synced.result, ctx.markContentMutation);
+          }
+
+          const isMarkdown =
+            plan.relPath.endsWith(".md") || plan.relPath.endsWith(".markdown");
+          if (!isMarkdown && !plan.openedExisting && plan.tags.length > 0) {
+            const tagResult = await ctx.store.setDocTags(
+              synced.documentId,
+              plan.tags,
+              "user"
+            );
+            if (!tagResult.ok) {
+              console.error(
+                `[MCP] Warning: Document created but tags not stored: ${tagResult.error.message}`
+              );
+            }
+          }
+
+          return buildCaptureReceipt({
+            plan,
+            absPath,
+            docid: synced.docid,
+            sync: synced.sync,
+            overwritten,
+            serverInstanceId: ctx.serverInstanceId,
+          }) as McpCaptureResult;
+        },
+        DEFAULT_LOCK_WAIT_MS
+      );
     },
     formatCaptureResult
   );

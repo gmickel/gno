@@ -127,6 +127,9 @@ gno daemon --stop
 gno daemon --detach --pid-file /tmp/gd.pid --log-file /tmp/gd.log
 ```
 
+When the scheduled findings pass is enabled, `--status` also prints a
+`findings` line (see [Scheduled Findings Pass](#scheduled-findings-pass)).
+
 ### Exit Codes
 
 - `0` — `--detach` succeeded, `--stop` completed, or `--status` found a live process
@@ -167,6 +170,74 @@ Refusing to signal pid 12345; terminate it manually and delete /path/to/daemon.p
 
 `--status --json` reports `running:false` and emits a `NOT_RUNNING` envelope on
 stderr with `details.foreign_live = { pid, recorded_version, current_version }`.
+
+## Scheduled Findings Pass
+
+Opt-in. The daemon can run the read-only knowledge-integrity audit
+(`gno audit`, all categories) on a fixed cadence and write each finding as an
+ordinary Markdown record into a collection you configure. Records are
+queryable through normal retrieval (`gno search ... --collection findings`,
+`--tag finding`), inherit that collection's egress policy, and are deleted
+like any other file. The pass is report-only: it never repairs a link, edits
+a source, or touches config.
+
+```yaml
+# index.yml
+findings:
+  enabled: true # default false
+  cadence: 6h # <n>s|m|h|d, 10s..30d (default 6h)
+  collection: findings # must already exist in `collections`
+```
+
+Setup and contract:
+
+- The findings collection is created by you (`gno collection add ~/notes/findings --name findings`).
+  Enabling with `collection` unset, naming a collection that does not exist, or an
+  invalid cadence fails `gno daemon` startup with a clear message; the daemon never
+  creates collections or writes outside the configured collection path.
+- The findings collection itself is excluded from the audit scope, so records never
+  audit each other.
+- Record identity is the audit finding id: a hash of the check (rule), the target
+  URI/location, and the evidence fingerprint. File name `finding-<id24>.md`,
+  full id in frontmatter. A repeat run with the same finding is a byte-identical
+  no-op; a finding that disappears is flipped to `status: resolved` (with
+  `resolvedAt`) on the next complete run, and reopened if it returns. Absence is
+  only trusted when the report is complete, untruncated, and the record's rule
+  actually ran.
+- Retention is bounded: resolved records older than 30 days are deleted, and the
+  collection never holds more than 2000 records (oldest resolved go first).
+  Only files whose frontmatter marks them as daemon-written records are ever
+  rewritten or deleted.
+- The audit itself runs without the write lease, so a long audit never blocks
+  capture or CLI writers. Only the record write takes the shared
+  `.mcp-write.lock` lease, with no wait. If a writer (`gno index`, `gno embed`,
+  an MCP write job) holds it at that moment, the write is skipped and the run
+  is recorded as `skipped_lease`; it does not queue behind long embeds.
+- Silent when clean: a run with nothing new writes no files and logs nothing.
+  New, reopened, resolved, or expired records produce one log line; a failed run
+  logs an error; a lease skip logs only with `--verbose`.
+- Cadence is a floor: a pass still running when the next tick fires defers the
+  tick until it finishes.
+
+Observability (no debug logs needed): every attempt persists its outcome to
+`{data}/index-<name>.findings-run.json`. `gno daemon --status` prints a
+`findings` line and `--status --json` carries a `findings` object with
+`state` (`pending` | `success` | `failed` | `skipped_lease` | `overdue`),
+`lastRunAt`, `lastSuccessAt`, `nextDueAt`, `durationMs`, `counts`
+(`findings`, `written`, `reopened`, `resolved`, `deleted`, `open`) and `error`.
+`overdue` is derived at read time once `nextDueAt` has slipped by a full
+cadence, so a stopped or starved daemon is distinguishable from a clean one.
+`gno doctor` reports the same state as the `findings-pass` check (`warn` on
+`skipped_lease` / `overdue` / no recorded run, `error` on `failed` or a
+misconfigured block). A state file that cannot be written (permissions, disk
+full) does not stop the loop: the attempt is logged as a failed pass with the
+write error, and a corrupt or hand-edited state file (for example a non-numeric
+count) reads as no recorded run rather than a partial status. Starting the
+daemon with findings disabled removes a stale state file.
+
+Saved Context Capsule reverification is explicitly **not** part of this pass.
+Its scheduler is journal-driven (it runs after sync settles, see above); calling
+it on a cadence would be a no-op between changes, so it stays as-is.
 
 ## When To Use `daemon` vs `serve`
 

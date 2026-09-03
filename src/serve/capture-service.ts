@@ -20,15 +20,23 @@ import type { DocumentEventBus } from "./doc-events";
 import type { EmbedScheduler } from "./embed-scheduler";
 import type { CollectionWatchService } from "./watch-service";
 
+import { getIndexDbPath } from "../app/constants";
 import {
   buildCaptureReceipt,
+  CaptureSyncError,
+  type CaptureSyncPaths,
+  ensureCapturedFileIndexed,
   extractCaptureSourceFromFrontmatter,
   hashCaptureContent,
   listCaptureDiskRelPaths,
   planCapture,
+  syncCapturedFile,
 } from "../core/capture";
 import { writeCapturePlanFile } from "../core/capture-write";
+import { MCP_ERRORS } from "../core/errors";
+import { withWriteLock } from "../core/file-lock";
 import { recordContentMutation } from "../core/mutation-generations";
+import { DEFAULT_LOCK_WAIT_MS, writeLeasePath } from "../core/write-lease";
 import {
   type CollectionSyncResult,
   defaultSyncService,
@@ -40,12 +48,86 @@ import { startJob } from "./jobs";
 
 export interface ResidentCaptureContext {
   config: Config;
+  /** Resident server context; only the index name is read (lease path). */
+  current?: { indexName?: string };
   scheduler: EmbedScheduler | null;
   eventBus: DocumentEventBus | null;
   watchService: CollectionWatchService | null;
   jobManager?: JobManager;
   markContentMutation?: () => void;
 }
+
+export interface ResidentCaptureDependencies {
+  /**
+   * `await-sync` (the `/api/capture` contract): write + lexical sync complete
+   * under the shared write lease before the response, `201` on create.
+   * `job` (browser clipper): write, then `202` with a sync job to poll.
+   */
+  mode?: "await-sync" | "job";
+  syncPaths?: CaptureSyncPaths;
+  syncCollection?: typeof defaultSyncService.syncCollection;
+  /** Shared `.mcp-write.lock` path; defaults to the resident index's lease. */
+  lockPath?: string;
+  lockWaitMs?: number;
+}
+
+export interface ResidentCaptureErrorShape {
+  code: string;
+  message: string;
+  status: number;
+  details?: Record<string, unknown>;
+}
+
+const HTTP_OK = 200;
+const HTTP_CREATED = 201;
+const HTTP_ACCEPTED = 202;
+const HTTP_CONFLICT = 409;
+const HTTP_INTERNAL = 500;
+
+/**
+ * Map a capture execution failure to its wire shape: lease busy is `LOCKED`
+ * (409, the MCP write-lock code), a written-but-unsynced capture is
+ * `CAPTURE_SYNC_FAILED` (500) carrying the write half of the receipt, and
+ * anything else is `RUNTIME` (500).
+ */
+export const classifyResidentCaptureError = (
+  error: unknown,
+  planned?: Extract<ResidentCapturePlanResult, { ok: true }>
+): ResidentCaptureErrorShape => {
+  const message = error instanceof Error ? error.message : String(error);
+  if (error instanceof CaptureSyncError) {
+    return {
+      code: error.code,
+      message,
+      status: HTTP_INTERNAL,
+      details: {
+        absPath: error.absPath,
+        relPath: error.relPath,
+        ...(planned
+          ? {
+              uri: `gno://${planned.collection.name}/${planned.plan.relPath}`,
+              contentHash: planned.plan.contentHash,
+            }
+          : {}),
+      },
+    };
+  }
+  if (message.startsWith(`${MCP_ERRORS.LOCKED.code}:`)) {
+    return { code: MCP_ERRORS.LOCKED.code, message, status: HTTP_CONFLICT };
+  }
+  return {
+    code: "RUNTIME",
+    message: `Failed to capture document: ${message}`,
+    status: HTTP_INTERNAL,
+  };
+};
+
+const resolveCaptureLockPath = (
+  context: ResidentCaptureContext,
+  dependencies: ResidentCaptureDependencies
+): string =>
+  dependencies.lockPath ??
+  writeLeasePath(getIndexDbPath(context.current?.indexName));
 
 export type ResidentCapturePlanResult =
   | {
@@ -172,57 +254,36 @@ const syncResidentCollection = async (
   return result;
 };
 
-export const executeResidentCapturePlan = async (
+const emitCaptureCreated = (
+  context: ResidentCaptureContext,
+  collection: Collection,
+  relPath: string
+): void => {
+  context.scheduler?.notifySyncComplete([relPath]);
+  context.eventBus?.emit({
+    type: "document-changed",
+    uri: `gno://${collection.name}/${relPath}`,
+    collection: collection.name,
+    relPath,
+    origin: "create",
+    changedAt: new Date().toISOString(),
+  });
+};
+
+/**
+ * Write the planned capture, then start the legacy sync job (browser
+ * clipper contract: `202` + `sync.status: "pending"`).
+ */
+const executeCaptureAsJob = async (
   context: ResidentCaptureContext,
   store: SqliteAdapter,
   planned: Extract<ResidentCapturePlanResult, { ok: true }>,
-  dependencies: {
-    syncCollection?: typeof defaultSyncService.syncCollection;
-  } = {}
+  dependencies: ResidentCaptureDependencies
 ): Promise<{ body: unknown; status: number }> => {
   const { collection, fullPath, plan } = planned;
-  if (plan.provenanceConflict) {
-    return {
-      body: buildCaptureReceipt({
-        plan,
-        absPath: fullPath,
-        sync: {
-          status: "skipped",
-          reason:
-            "Existing capture has absent or different browser provenance.",
-        },
-      }),
-      status: 409,
-    };
-  }
-  if (plan.openedExisting) {
-    const existingDocument = await store.getDocument(
-      collection.name,
-      plan.relPath
-    );
-    if (!existingDocument.ok) {
-      throw new Error(existingDocument.error.message);
-    }
-    return {
-      body: buildCaptureReceipt({
-        plan,
-        absPath: fullPath,
-        docid: existingDocument.value?.docid,
-        sync: existingDocument.value
-          ? { status: "completed" }
-          : {
-              status: "skipped",
-              reason: "Existing file is not indexed yet.",
-            },
-      }),
-      status: 200,
-    };
-  }
-
   await mkdir(dirname(fullPath), { recursive: true });
   context.watchService?.suppress(fullPath);
   await writeCapturePlanFile(plan, fullPath);
-  const gnoUri = `gno://${collection.name}/${plan.relPath}`;
   const syncCollection =
     dependencies.syncCollection ??
     defaultSyncService.syncCollection.bind(defaultSyncService);
@@ -235,15 +296,7 @@ export const executeResidentCapturePlan = async (
         store,
         syncCollection
       );
-      context.scheduler?.notifySyncComplete([plan.relPath]);
-      context.eventBus?.emit({
-        type: "document-changed",
-        uri: gnoUri,
-        collection: collection.name,
-        relPath: plan.relPath,
-        origin: "create",
-        changedAt: new Date().toISOString(),
-      });
+      emitCaptureCreated(context, collection, plan.relPath);
       return {
         collections: [result],
         totalDurationMs: result.durationMs,
@@ -274,8 +327,129 @@ export const executeResidentCapturePlan = async (
             error: jobResult.error,
           },
     }),
-    status: 202,
+    status: HTTP_ACCEPTED,
   };
+};
+
+/**
+ * Write + lexical sync under the shared write lease; the response is sent
+ * only once the capture is retrievable. Throws `CaptureSyncError` when the
+ * file landed but sync failed, and the `LOCKED` error when the lease stays
+ * busy past `lockWaitMs`.
+ */
+const executeCaptureAwaitingSync = async (
+  context: ResidentCaptureContext,
+  store: SqliteAdapter,
+  planned: Extract<ResidentCapturePlanResult, { ok: true }>,
+  dependencies: ResidentCaptureDependencies
+): Promise<{ body: unknown; status: number }> => {
+  const { collection, fullPath, plan } = planned;
+  return withWriteLock(
+    resolveCaptureLockPath(context, dependencies),
+    async () => {
+      await mkdir(dirname(fullPath), { recursive: true });
+      context.watchService?.suppress(fullPath);
+      await writeCapturePlanFile(plan, fullPath);
+      const synced = await syncCapturedFile({
+        collection,
+        store,
+        relPath: plan.relPath,
+        absPath: fullPath,
+        config: context.config,
+        syncPaths: dependencies.syncPaths,
+      });
+      if (synced.result) {
+        recordContentMutation(synced.result, context.markContentMutation);
+      }
+      emitCaptureCreated(context, collection, plan.relPath);
+      return {
+        body: buildCaptureReceipt({
+          plan,
+          absPath: fullPath,
+          docid: synced.docid,
+          sync: synced.sync,
+        }),
+        status: HTTP_CREATED,
+      };
+    },
+    dependencies.lockWaitMs ?? DEFAULT_LOCK_WAIT_MS
+  );
+};
+
+/**
+ * `open_existing`: an indexed file needs no lease; a disk-only file is synced
+ * under the lease so opening it is also a retrievable success.
+ */
+const openExistingCapture = async (
+  context: ResidentCaptureContext,
+  store: SqliteAdapter,
+  planned: Extract<ResidentCapturePlanResult, { ok: true }>,
+  dependencies: ResidentCaptureDependencies
+): Promise<{ body: unknown; status: number }> => {
+  const { collection, fullPath, plan } = planned;
+  const syncInput = {
+    collection,
+    store,
+    relPath: plan.relPath,
+    absPath: fullPath,
+    config: context.config,
+    syncPaths: dependencies.syncPaths,
+  };
+  const existingDocument = await store.getDocument(
+    collection.name,
+    plan.relPath
+  );
+  if (!existingDocument.ok) {
+    throw new Error(existingDocument.error.message);
+  }
+  const synced = existingDocument.value
+    ? await ensureCapturedFileIndexed(syncInput)
+    : await withWriteLock(
+        resolveCaptureLockPath(context, dependencies),
+        () => ensureCapturedFileIndexed(syncInput),
+        dependencies.lockWaitMs ?? DEFAULT_LOCK_WAIT_MS
+      );
+  if (synced.result) {
+    recordContentMutation(synced.result, context.markContentMutation);
+  }
+  return {
+    body: buildCaptureReceipt({
+      plan,
+      absPath: fullPath,
+      docid: synced.docid,
+      sync: synced.sync,
+    }),
+    status: HTTP_OK,
+  };
+};
+
+export const executeResidentCapturePlan = async (
+  context: ResidentCaptureContext,
+  store: SqliteAdapter,
+  planned: Extract<ResidentCapturePlanResult, { ok: true }>,
+  dependencies: ResidentCaptureDependencies = {}
+): Promise<{ body: unknown; status: number }> => {
+  const { fullPath, plan } = planned;
+  if (plan.provenanceConflict) {
+    return {
+      body: buildCaptureReceipt({
+        plan,
+        absPath: fullPath,
+        sync: {
+          status: "skipped",
+          reason:
+            "Existing capture has absent or different browser provenance.",
+        },
+      }),
+      status: HTTP_CONFLICT,
+    };
+  }
+  if (plan.openedExisting) {
+    return openExistingCapture(context, store, planned, dependencies);
+  }
+  return (dependencies.mode ?? "job") === "job"
+    ? executeCaptureAsJob(context, store, planned, dependencies)
+    : executeCaptureAwaitingSync(context, store, planned, dependencies);
 };
 
 export const browserClipIdempotencyPlan = (

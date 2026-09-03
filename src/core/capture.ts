@@ -994,3 +994,13 @@ export function buildLegacyEditableCopySource(input: {
 export function serializeCaptureReceipt(receipt: CaptureReceipt): string {
   return JSON.stringify(receipt, null, 2);
 }
+
+export {
+  CAPTURE_SYNC_FAILED_CODE,
+  type CaptureSyncPaths,
+  CaptureSyncError,
+  ensureCapturedFileIndexed,
+  type SyncCapturedFileInput,
+  type SyncCapturedFileResult,
+  syncCapturedFile,
+} from "./capture-sync";

@@ -1025,24 +1025,51 @@ gno index [collection] [--no-embed] [--models-pull] [--git-pull] [--json] [--yes
 
 **Behavior:**
 
-- Runs `update` then `embed` by default
-- With `--no-embed`, runs `update` only
+- Runs two separable stages: `lexical` (`update`) then `embed`
+- With `--no-embed`, runs the `lexical` stage only (embed stage `skipped`)
 - Waits by default for the shared write lease; `--no-wait` fails immediately with exit 4
 
-**JSON output:** Emits `{ syncResult, embedSkipped, embedResult? }`.
+**Staged, resumable contract:** each stage persists its own progress inside
+the index database (documents and chunks for `lexical`; vectors per batch for
+`embed`) plus a per-stage lifecycle marker (`schema_meta.index_stage_state`).
+A stage that fails never invalidates a completed earlier stage: the lexical
+index stays searchable when embedding fails or the process dies. A process
+killed mid-stage (SIGKILL, native crash, power loss) emits nothing; the next
+`gno index` or `gno embed` run reads the marker, reports the interrupted stage
+in its resume preamble (stderr in human mode, `resumedFrom` in JSON), and
+continues from persisted progress - unchanged files are skipped and already
+stored chunks are never re-embedded. A `gno index --no-embed` run that
+surfaces an interrupted embed stage settles that marker (the embed progress
+itself stays on disk), so later runs do not repeat the preamble.
+
+**JSON output:** conforms to
+[`index-receipt@1.0`](./output-schemas/index-receipt.schema.json):
+`{ success, error?, stages: { lexical, embed }, resumedFrom, syncResult?, embedSkipped, embedResult? }`.
+Each stage reports `state` (`completed` | `failed` | `skipped` |
+`interrupted`) with counts (`filesProcessed`/`filesAdded`/`filesUpdated`/
+`filesErrored`/`filesSkipped`/`durationMs` for lexical;
+`embedded`/`errors`/`contentionErrors`/`durationMs` for embed), a `reason`
+when skipped, and an `error` when failed. The embed stage is `completed` only
+when every attempted chunk was stored: any `errors > 0` or a vector-sync error
+makes it `failed`. `resumedFrom` is `null` on a clean start or
+`{ stage, state: "interrupted", startedAt, pid, collection? }`.
 `syncResult.collections[].files[].recordImport`, when present, conforms to
 [`record-import@1.0`](./output-schemas/record-import.schema.json) with the same
 deterministic ordering, bounds, truncation disclosure, and partial-snapshot
 warnings as `gno update --json`. Human progress and diagnostics remain on
-stderr. On lease timeout, stdout is one object `{ success: false, error, contention }`
-and the process exits 4.
+stderr. A failed stage still emits the partial receipt on stdout (with
+`success: false` and `error`) before the non-zero exit. On lease timeout,
+stdout is one object `{ success: false, error, contention }` and the process
+exits 4.
 
 **Exit Codes:**
 
-- 0: Success
+- 0: Every attempted stage completed
 - 1: Invalid collection name or invalid `--lock-wait`
-- 2: DB or model failure
-- 4: Write lease busy (contention, not corruption)
+- 2: DB or model failure, or any stage `failed` (including chunk-level embed
+  failures; the partial receipt is still emitted)
+- 4: Write lease busy (contention, not corruption), or chunks deferred by
+  index contention after an otherwise completed embed stage
 
 **Examples:**
 
@@ -2372,10 +2399,20 @@ gno doctor [--json|--md]
           }
         ]
       }
+    },
+    {
+      "name": "findings-pass",
+      "status": "ok",
+      "message": "disabled (opt-in via findings.enabled)"
     }
   ]
 }
 ```
+
+The `findings-pass` check reports the daemon's scheduled findings pass from
+its persisted run state: `ok` when disabled or the last run succeeded, `warn`
+on `skipped_lease` / `overdue` / no recorded run, `error` on `failed` or a
+misconfigured `findings` block (see [Daemon Mode](../docs/DAEMON.md#scheduled-findings-pass)).
 
 The `embedding-fingerprint` check is additive doctor-only diagnostics. It uses
 the active embed model and stored vector dimensions to report the current
@@ -3595,6 +3632,7 @@ List retained, metadata-only document lifecycle changes.
 
 ```bash
 gno changes [--since <ISO-8601|cursor>] [--collection <name>] [--limit <n>] [--json]
+gno changes --follow --jsonl [--cursor <cursor>] [--collection <name>]
 ```
 
 - `--since` accepts an ISO-8601 time or an opaque cursor returned by an earlier
@@ -3604,6 +3642,42 @@ gno changes [--since <ISO-8601|cursor>] [--collection <name>] [--limit <n>] [--j
   old/new identity and hash snapshots, normalized structural deltas, pagination,
   cursor-expiry, and retention-truncation disclosure.
 - The journal never returns source bodies.
+
+**Follow mode (`--follow --jsonl`)** streams journal events as they land and is
+the durable automation input for consumers that resume across restarts.
+
+- `--follow` and `--jsonl` are one mode and must be given together; `--cursor`
+  requires both. The mode excludes `--since`, `--limit`, and `--json` (exit 1).
+  `--collection` filters the stream.
+- Wire contract: one JSON object per stdout line, validated by
+  `changes-follow-event.schema.json`. An event line is
+  `{"event": <change>, "postCursor": "<cursor>"}` where `event` is one
+  `changes.schema.json` change and `postCursor` is the journal cursor after
+  that event was applied. Lines are emitted in journal order.
+- Checkpoint rule: a consumer persists `postCursor` after it has durably
+  handled the line and restarts with `--cursor <postCursor>`; nothing at or
+  before that cursor is replayed. Delivery is at-least-once: a line the
+  consumer received but did not checkpoint is redelivered on resume, so
+  handlers must be idempotent by `event.id` (each event id is unique and
+  equals its own `postCursor`).
+- Start position: without `--cursor` the stream starts at the journal's
+  current `latestCursor` (tail semantics, no backfill). `--cursor` must be an
+  opaque cursor from an earlier response (exit 1 when malformed or ahead of
+  the journal).
+- Quiet periods emit nothing. There is no keepalive line in v1; consumers
+  detect liveness from the process, not the stream.
+- Cursor expiry: when the resume cursor falls below the retention floor the
+  stream writes exactly one terminal line,
+  `{"error": "cursor_expired", "earliestCursor": "<cursor>", "latestCursor": "<cursor>"}`,
+  then exits 2 with nothing on stderr. `earliestCursor` is the journal's
+  documented resume floor (`gno changes --json` reports the same value);
+  `latestCursor` is the current tail. The consumer chooses whether to backfill
+  from `earliestCursor` or resume from `latestCursor` and accept the gap;
+  resuming from `latestCursor` skips every retained event.
+- Signals: SIGINT or SIGTERM ends the stream after the line in progress and
+  exits 0. No partial line is ever written.
+- The reader never takes the write lease; `gno index`, `gno update`, capture,
+  and the daemon are never blocked by a follower.
 
 ### gno diff
 
@@ -3851,6 +3925,13 @@ is blocked.
   watcher behavior.
 - Runs an initial sync by default
 - Triggers embedding after initial sync completes
+- With `findings.enabled`, runs the scheduled findings pass on its cadence:
+  a read-only audit of every collection except the findings one, written as
+  deterministic Markdown records into `findings.collection`. The audit runs
+  without the write lease; only the record write takes it (no wait; a busy
+  lease is recorded as `skipped_lease`). Every attempt persists to
+  `{data}/index-<name>.findings-run.json`, surfaced by `--status` (`findings`)
+  and the `findings-pass` doctor check. See [Daemon Mode](../docs/DAEMON.md#scheduled-findings-pass)
 - Runs in the foreground until `SIGINT` / `SIGTERM`
 - Starts a headless `/mcp` Streamable HTTP listener; it does not serve the Web UI
 - Exposes the same safe REST lifecycle snapshot at `/api/resident/status`;

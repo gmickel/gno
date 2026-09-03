@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/index-receipt@1.0",
+  "title": "GNO Index Receipt",
+  "description": "Per-stage receipt emitted by `gno index --json`. The lexical (sync) and embed stages are separable and resumable; the run succeeds only when every attempted stage completed. A run interrupted by a killed process emits nothing - the next run reports the interrupted stage under `resumedFrom`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["success", "stages", "resumedFrom", "embedSkipped"],
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "description": "True only when every attempted stage completed."
+    },
+    "error": {
+      "type": "string",
+      "description": "Present when success is false: the failed stage's error."
+    },
+    "stages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lexical", "embed"],
+      "properties": {
+        "lexical": { "$ref": "#/definitions/lexicalStage" },
+        "embed": { "$ref": "#/definitions/embedStage" }
+      }
+    },
+    "resumedFrom": {
+      "oneOf": [
+        { "$ref": "#/definitions/interruptedStage" },
+        { "type": "null" }
+      ],
+      "description": "Stage a previous run left running (process died mid-stage); null when this run started clean."
+    },
+    "syncResult": {
+      "type": "object",
+      "description": "Complete deterministic sync result (same shape as `gno update --json`); absent when the lexical stage failed before producing one."
+    },
+    "embedSkipped": {
+      "type": "boolean",
+      "description": "True when `--no-embed` was passed."
+    },
+    "embedResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["embedded", "errors", "contentionErrors", "duration"],
+      "description": "Embedding outcome when the embed stage ran to a result (present for completed and for partially failed passes; absent when the stage failed before embedding).",
+      "properties": {
+        "embedded": { "type": "integer", "minimum": 0 },
+        "errors": { "type": "integer", "minimum": 0 },
+        "contentionErrors": { "type": "integer", "minimum": 0 },
+        "duration": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Seconds."
+        }
+      }
+    }
+  },
+  "definitions": {
+    "stageState": {
+      "type": "string",
+      "enum": ["completed", "failed", "skipped", "interrupted"]
+    },
+    "lexicalStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "filesProcessed",
+        "filesAdded",
+        "filesUpdated",
+        "filesErrored",
+        "filesSkipped",
+        "durationMs"
+      ],
+      "properties": {
+        "state": { "$ref": "#/definitions/stageState" },
+        "filesProcessed": { "type": "integer", "minimum": 0 },
+        "filesAdded": { "type": "integer", "minimum": 0 },
+        "filesUpdated": { "type": "integer", "minimum": 0 },
+        "filesErrored": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Per-file errors are counted, not fatal; the stage still completes."
+        },
+        "filesSkipped": { "type": "integer", "minimum": 0 },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "error": { "type": "string" }
+      }
+    },
+    "embedStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "embedded",
+        "errors",
+        "contentionErrors",
+        "durationMs"
+      ],
+      "properties": {
+        "state": { "$ref": "#/definitions/stageState" },
+        "embedded": { "type": "integer", "minimum": 0 },
+        "errors": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Chunks that failed to embed after same-run retries; any non-zero value makes the stage `failed`."
+        },
+        "contentionErrors": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Chunks deferred by SQLITE_BUSY/LOCKED - not embedding failures."
+        },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "reason": {
+          "type": "string",
+          "description": "Why the stage was skipped (`--no-embed`, `lexical stage failed`)."
+        },
+        "error": { "type": "string" }
+      }
+    },
+    "interruptedStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "state", "startedAt", "pid"],
+      "properties": {
+        "stage": { "type": "string", "enum": ["lexical", "embed"] },
+        "state": { "const": "interrupted" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "pid": { "type": "integer", "minimum": 1 },
+        "collection": { "type": "string" }
+      }
+    }
+  }
+}

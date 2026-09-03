@@ -449,7 +449,7 @@
     "plan": 0
   },
   "spec_path": ".flow/specs/fn-132-wired-loop-capture-parity-changes.md",
-  "status": "open",
+  "status": "done",
   "title": "Wired loop: capture parity, changes --follow, findings pass, staged resumable indexing",
   "tracker": {
     "baseHashFlow": null,
@@ -462,5 +462,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-01T14:55:30.238514Z"
+  "updated_at": "2026-09-03T11:07:30.283554Z"
 }

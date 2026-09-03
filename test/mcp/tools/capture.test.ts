@@ -20,8 +20,8 @@ import { safeRm } from "../../helpers/cleanup";
 describe("gno_capture MCP", () => {
   let tmpDir: string;
   let store: SqliteAdapter;
-  const originalSyncFiles =
-    defaultSyncService.syncFiles.bind(defaultSyncService);
+  const originalSyncPaths =
+    defaultSyncService.syncPaths.bind(defaultSyncService);
 
   beforeEach(async () => {
     tmpDir = await mkdtemp(join(tmpdir(), "gno-mcp-capture-"));
@@ -41,7 +41,7 @@ describe("gno_capture MCP", () => {
   });
 
   afterEach(async () => {
-    defaultSyncService.syncFiles = originalSyncFiles;
+    defaultSyncService.syncPaths = originalSyncPaths;
     await store.close();
     await safeRm(tmpDir);
   });
@@ -264,15 +264,27 @@ describe("gno_capture MCP", () => {
     ).toBe(false);
   });
 
-  test("returns failed sync receipt after a successful write", async () => {
-    defaultSyncService.syncFiles = (async () => [
-      {
-        status: "error",
-        path: "sync-failed.md",
-        errorCode: "PARSE_ERROR",
-        errorMessage: "bad markdown",
-      },
-    ]) as unknown as typeof defaultSyncService.syncFiles;
+  test("fails the tool when the file is written but sync fails", async () => {
+    defaultSyncService.syncPaths = (async () => ({
+      collection: "notes",
+      filesProcessed: 1,
+      filesAdded: 0,
+      filesUpdated: 0,
+      filesUnchanged: 0,
+      filesErrored: 1,
+      filesSkipped: 0,
+      filesMarkedInactive: 0,
+      durationMs: 1,
+      files: [
+        {
+          relPath: "sync-failed.md",
+          status: "error",
+          errorCode: "PARSE_ERROR",
+          errorMessage: "bad markdown",
+        },
+      ],
+      errors: [],
+    })) as unknown as typeof defaultSyncService.syncPaths;
 
     const result = await handleCapture(
       {
@@ -283,16 +295,48 @@ describe("gno_capture MCP", () => {
       toolContext(true)
     );
 
-    expect(result.isError).toBeUndefined();
-    expect(result.structuredContent?.sync).toEqual({
-      status: "failed",
-      error: "INGEST_ERROR: PARSE_ERROR - bad markdown",
-    });
-    expect(result.structuredContent?.docid).toBe("");
-    expect(result.structuredContent?.relPath).toBe("sync-failed.md");
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent?.error).toBe("CAPTURE_SYNC_FAILED");
+    expect(result.content[0]?.text).toContain(
+      `Capture written to ${join(tmpDir, "sync-failed.md")} but lexical sync failed: PARSE_ERROR - bad markdown`
+    );
     expect(await Bun.file(join(tmpDir, "sync-failed.md")).text()).toContain(
       "Written before sync fails"
     );
+  });
+
+  test("open_existing syncs a disk-only file before returning", async () => {
+    await Bun.write(
+      join(tmpDir, "on-disk.md"),
+      "# On disk\n\nunindexed body\n"
+    );
+    const before = await store.getDocument("notes", "on-disk.md");
+    expect(before.ok && before.value).toBeNull();
+
+    const result = await handleCapture(
+      {
+        collection: "notes",
+        content: "ignored",
+        path: "on-disk.md",
+        collisionPolicy: "open_existing",
+      },
+      toolContext(true)
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.structuredContent?.openedExisting).toBe(true);
+    expect(result.structuredContent?.sync).toMatchObject({
+      status: "completed",
+    });
+    expect(result.structuredContent?.docid).toBeString();
+    const after = await store.getDocument("notes", "on-disk.md");
+    expect(after.ok && after.value?.docid).toBe(
+      result.structuredContent?.docid as string
+    );
+    const hit = await store.searchFts("unindexed", { limit: 5 });
+    expect(
+      hit.ok && hit.value.some((row) => row.relPath === "on-disk.md")
+    ).toBe(true);
   });
 
   test("rejects content beyond the shared byte limit", async () => {

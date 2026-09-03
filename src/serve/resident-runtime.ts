@@ -35,6 +35,11 @@ import { SavedCapsuleReverificationScheduler } from "../core/capsule-reverificat
 import { collectionEgressPolicyEpoch } from "../core/collection-egress-policy-service";
 import { authorizeCurrentEgress } from "../core/egress-authorization";
 import { acquireWriteLock } from "../core/file-lock";
+import {
+  deleteFindingsRunState,
+  findingsRunStatePath,
+  resolveFindingsSchedule,
+} from "../core/findings-run-state";
 import { JobManager } from "../core/job-manager";
 import { recordContentMutation } from "../core/mutation-generations";
 import { defaultSyncService, withContentTypeRules } from "../ingestion";
@@ -50,6 +55,7 @@ import {
   type ServerContext,
 } from "./context";
 import { createEmbedScheduler } from "./embed-scheduler";
+import { FindingsScheduler, type FindingsPassResult } from "./findings-pass";
 import { AdmissionController, ReaderGate } from "./resident-admission";
 import { ResidentBackgroundWork } from "./resident-background-work";
 import { buildResidentStatusSnapshot } from "./resident-status";
@@ -68,6 +74,8 @@ export interface ResidentRuntimeOptions {
   offline?: boolean;
   eventBus?: DocumentEventBus | null;
   watchCallbacks?: CollectionWatchCallbacks;
+  /** Daemon mode only: observes every scheduled findings-pass attempt. */
+  onFindingsResult?: (result: FindingsPassResult) => void;
   readerLimit?: number;
   readerQueueLimit?: number;
   shutdownDeadlineMs?: number;
@@ -100,6 +108,8 @@ export interface ResidentRuntime {
   readonly readerGate: ReaderGate;
   readonly jobManager: JobManager;
   readonly capsuleReverificationScheduler: SavedCapsuleReverificationScheduler;
+  /** Present only when daemon mode runs with `findings.enabled`. */
+  readonly findingsScheduler: FindingsScheduler | null;
   readonly modelManager: ModelManager;
   readonly mcpContext: ToolContext;
   readonly generations: ResidentGeneration;
@@ -192,6 +202,15 @@ export async function startResidentRuntime(
       success: false,
       error: "No collections configured. Run: gno collection add <path>",
     };
+  }
+
+  const mode: ResidentMode = options.mode ?? "serve";
+  const findingsResolution =
+    mode === "daemon"
+      ? resolveFindingsSchedule(initialConfig)
+      : ({ ok: true, enabled: false } as const);
+  if (!findingsResolution.ok) {
+    return { success: false, error: findingsResolution.error };
   }
 
   await (deps.ensureDirectories ?? ensureDirectories)();
@@ -334,6 +353,27 @@ export async function startResidentRuntime(
   const backgroundWork = new ResidentBackgroundWork(
     () => !disposed && admission.accepting
   );
+  const findingsStatePath = findingsRunStatePath(dbPath);
+  let findingsScheduler: FindingsScheduler | null = null;
+  if (findingsResolution.enabled) {
+    findingsScheduler = new FindingsScheduler({
+      deps: {
+        store,
+        getConfig: () => ctxHolder.config,
+        schedule: findingsResolution.schedule,
+        dbPath,
+        indexName: canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME),
+        statePath: findingsStatePath,
+      },
+      startBackgroundWork: (operation) => backgroundWork.start(operation),
+      onResult: options.onFindingsResult,
+    });
+    await findingsScheduler.start();
+  } else if (mode === "daemon") {
+    // Findings are off: a state file from an earlier configuration would
+    // otherwise keep reporting a schedule that no longer exists.
+    await deleteFindingsRunState(findingsStatePath);
+  }
   capsuleReverificationScheduler = new SavedCapsuleReverificationScheduler({
     deps: {
       store,
@@ -414,6 +454,7 @@ export async function startResidentRuntime(
     readerGate,
     jobManager,
     capsuleReverificationScheduler,
+    findingsScheduler,
     modelManager,
     mcpContext,
     generations,
@@ -540,6 +581,7 @@ export async function startResidentRuntime(
         options.shutdownAbortSettleMs ?? DEFAULT_SHUTDOWN_DEADLINE_MS
       );
       if (deadlineReached) shutdownState = "deadline";
+      findingsScheduler?.dispose();
       await backgroundWork.cancelAndDrain();
       await capsuleReverificationScheduler.dispose();
       await jobManager.shutdown().catch(() => undefined);

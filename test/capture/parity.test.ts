@@ -165,9 +165,10 @@ async function runApiSurface(): Promise<{
   const res = await handleCreateCapture(
     ctxHolder as never,
     store as never,
-    req
+    req,
+    { lockPath: join(root, ".lock") }
   );
-  expect(res.status).toBe(202);
+  expect(res.status).toBe(201);
   const receipt = (await res.json()) as CaptureReceipt;
   return {
     receipt,
@@ -331,7 +332,7 @@ describe("capture surface parity", () => {
       expect(stable[0]?.contentHash).toBe(stable[2]?.contentHash);
       expect(stable[0]?.contentHash).toBe(stable[3]?.contentHash);
       expect(cli.receipt.sync.status).toBe("completed");
-      expect(api.receipt.sync.status).toBe("pending");
+      expect(api.receipt.sync.status).toBe("completed");
       expect(mcp.receipt.sync.status).toBe("completed");
       expect(sdk.receipt.sync.status).toBe("completed");
 

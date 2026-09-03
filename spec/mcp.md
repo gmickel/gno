@@ -1537,6 +1537,17 @@ Create a new document in a collection (write-enabled).
 - For non-Markdown files, tags are stored as user-source in the database
 - Receipts distinguish write result from sync and embedding state; capture does
   not imply embedding unless `embed.status` is `completed`
+- Success is retrievability: the write and its lexical sync complete under the
+  shared write lease before the tool returns, so a successful result always
+  carries `sync.status: "completed"` and the note is an immediate `gno_search`
+  hit. A written file whose sync fails is a tool error `CAPTURE_SYNC_FAILED`
+  (message names the written path; run `gno update` to retry), never a success
+  with `sync.status: "failed"`
+- `open_existing` on a file that is on disk but not indexed yet syncs it before
+  returning `collisionPolicyResult: "opened_existing"`
+- The lease wait follows the v1.38 contention contract: the tool waits up to
+  120s for a concurrent CLI/MCP/REST writer, then returns `LOCKED` without
+  writing
 - Writes run under the MCP write lock and are only registered when the server
   starts with `--enable-write` or `GNO_MCP_ENABLE_WRITE=1`
 
@@ -2742,6 +2753,7 @@ Resource errors use standard MCP error responses.
 - `PATH_NOT_FOUND` — Path does not exist
 - `JOB_CONFLICT` — Another job is already running
 - `LOCKED` — Another MCP process holds the write lock
+- `CAPTURE_SYNC_FAILED` — `gno_capture` wrote the file but lexical sync failed
 - `WRITE_DISABLED` — Write tool dispatched while writes are disabled
 - `MEMORY_*` — Memory contract errors from `gno_recall` / `gno_remember`;
   the stable code set is `MemoryErrorCode` in `src/core/memory.ts` and each

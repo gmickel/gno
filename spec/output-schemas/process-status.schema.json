@@ -71,6 +71,82 @@
       "type": ["integer", "null"],
       "minimum": 0,
       "description": "Current size of the log-file in bytes, or null when the file does not exist"
+    },
+    "findings": {
+      "description": "Daemon only: persisted last-run state of the scheduled findings pass, or null when findings.enabled is false / never configured. Read from the data-dir state file, so it survives daemon restarts.",
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "state",
+            "collection",
+            "cadence",
+            "lastOutcome",
+            "lastRunAt",
+            "lastSuccessAt",
+            "nextDueAt",
+            "durationMs",
+            "counts",
+            "error"
+          ],
+          "properties": {
+            "schemaVersion": { "const": "1.0" },
+            "state": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "success",
+                "failed",
+                "skipped_lease",
+                "overdue"
+              ],
+              "description": "lastOutcome, or overdue once nextDueAt has slipped by a full cadence"
+            },
+            "collection": { "type": "string" },
+            "cadence": { "type": "string" },
+            "lastOutcome": {
+              "type": "string",
+              "enum": ["pending", "success", "failed", "skipped_lease"]
+            },
+            "lastRunAt": { "type": ["string", "null"], "format": "date-time" },
+            "lastSuccessAt": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            },
+            "nextDueAt": { "type": "string", "format": "date-time" },
+            "durationMs": { "type": ["integer", "null"], "minimum": 0 },
+            "counts": {
+              "anyOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "findings",
+                    "written",
+                    "reopened",
+                    "resolved",
+                    "deleted",
+                    "open"
+                  ],
+                  "properties": {
+                    "findings": { "type": "integer", "minimum": 0 },
+                    "written": { "type": "integer", "minimum": 0 },
+                    "reopened": { "type": "integer", "minimum": 0 },
+                    "resolved": { "type": "integer", "minimum": 0 },
+                    "deleted": { "type": "integer", "minimum": 0 },
+                    "open": { "type": "integer", "minimum": 0 }
+                  }
+                }
+              ]
+            },
+            "error": { "type": ["string", "null"] }
+          }
+        }
+      ]
     }
   },
   "allOf": [

@@ -101,6 +101,12 @@ gateway:
 # Private local retrieval receipts are absent/off by default.
 retrievalTraces:
   enabled: false
+
+# Daemon-only scheduled findings pass (report-only audit -> records). Off by default.
+# findings:
+#   enabled: true
+#   cadence: 6h
+#   collection: findings
 ```
 
 Project-profile apply also maintains optional `projectProfileBindings` entries
@@ -273,9 +279,11 @@ credentials, target URLs, or sensitive absolute paths.
 
 ### Knowledge-integrity audit policy
 
-Knowledge-integrity audits are intentionally run-scoped in v1. There is no
-configuration key, persisted baseline, suppression list, schedule, or automatic
-repair. Supply an age review threshold only when wanted:
+Knowledge-integrity audits are run-scoped: there is no persisted baseline,
+suppression list, or automatic repair. The only schedule is the daemon's opt-in
+[scheduled findings pass](#scheduled-findings-pass) below, which runs the same
+read-only audit and writes findings as records. Supply an age review threshold
+only when wanted:
 
 ```bash
 gno audit freshness --max-age-days 90
@@ -288,6 +296,35 @@ The equivalent MCP fields are `maxAgeDays`, `orphanRoots`, and
 `gno audit` reads the effective collection definitions from this config but
 does not change them. Do not confuse its content-bearing local findings with
 the content-free egress policy receipts above.
+
+## Scheduled findings pass
+
+`gno daemon` can run the read-only audit on a cadence and write each finding as
+a Markdown record into a collection you already configured. Off by default;
+`gno serve` and the CLI ignore the block.
+
+```yaml
+findings:
+  enabled: true # default false
+  cadence: 6h # <n>s|m|h|d between 10s and 30d (default 6h)
+  collection: findings # name of an existing entry in `collections`
+```
+
+| Field        | Required when enabled | Notes                                                                                           |
+| ------------ | --------------------- | ----------------------------------------------------------------------------------------------- |
+| `enabled`    | -                     | `false` by default. The daemon never audits on cadence unless this is `true`.                   |
+| `cadence`    | no                    | Run interval, validated at config parse. Cadence is a floor; an overrunning pass defers a tick. |
+| `collection` | yes                   | Must name an existing collection. The daemon never creates it or writes anywhere else.          |
+
+Startup fails closed with a clear message when `enabled` is `true` and
+`collection` is unset or unknown, or when `cadence` is out of range. Records
+are `finding-<id>.md` files with `type: finding` frontmatter and `finding` /
+`audit` / category / severity tags; identity is the audit finding id (check +
+target + evidence), so repeat runs upsert, vanished findings resolve, and
+resolved records expire after 30 days (2000-record ceiling). Last-run state is
+persisted next to the index database and surfaced by `gno daemon --status`
+and `gno doctor`. Saved Context Capsule reverification is not part of this
+schedule. Full contract: [Daemon Mode](DAEMON.md#scheduled-findings-pass).
 
 ## Resident HTTP MCP Gateway
 

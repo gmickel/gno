@@ -67,6 +67,7 @@ async function loadAllSchemas(): Promise<void> {
     "graph",
     "graph-query",
     "changes",
+    "changes-follow-event",
     "document-diff",
     "impact",
     "query-diagnose-v1",
@@ -97,6 +98,7 @@ async function loadAllSchemas(): Promise<void> {
     "agents-verify",
     "memory-remember",
     "memory-recall",
+    "index-receipt",
   ];
 
   for (const name of schemaFiles) {

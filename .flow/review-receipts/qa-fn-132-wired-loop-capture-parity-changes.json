@@ -1,0 +1,50 @@
+{
+  "branch": "fn-132-wired-loop-capture-parity-changes",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "97ff9c71a25d554d452c360b039f10e658451c0b",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-d50e21cee7be6849088ff369ad23c05f40a36759ddb657b4b730d87e4d108622"
+  },
+  "head_sha": "97ff9c71a25d554d452c360b039f10e658451c0b",
+  "id": "fn-132-wired-loop-capture-parity-changes",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "timestamp": "2026-09-03T06:07:46Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
