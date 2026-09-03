@@ -79,6 +79,8 @@
     "evals": "bun scripts/update-eval-scores.ts",
     "eval": "bun --bun evalite",
     "eval:hybrid": "bun --bun evalite evals/hybrid.eval.ts",
+    "eval:memory": "bun --bun evalite evals/memory.eval.ts --threshold 100",
+    "eval:memory:fixtures": "bun scripts/memory-eval-fixtures.ts",
     "eval:hybrid:baseline": "bun scripts/hybrid-benchmark.ts --write",
     "eval:hybrid:delta": "bun scripts/hybrid-benchmark.ts --delta",
     "bench:ast-chunking": "bun scripts/ast-chunking-benchmark.ts",

@@ -72,6 +72,7 @@ standard release workflow because generation-backed suites are machine-intensive
 ```bash
 bun run eval          # Run full eval suite (~5s)
 bun run eval:hybrid   # Run hybrid benchmark suite only
+bun run eval:memory   # Memory adapter gate (fn-134): threshold 100, ~2s, offline
 bun run eval:watch    # Watch mode for development
 ```
 
@@ -86,6 +87,20 @@ bun run eval:watch    # Watch mode for development
 | `multilingual.eval.ts` | Cross-language retrieval (placeholder)         | 70%       |
 | `thoroughness.eval.ts` | Fast/balanced/thorough comparison (stats only) | 70%       |
 | `ask.eval.ts`          | Answer quality by preset                       | 70%       |
+| `memory.eval.ts`       | Memory adapter gate: upsert, supersession, recall budget, fence, scopes, agent day, latency | 100% (gate) |
+
+**Memory gate contract** (`bun run eval:memory`, spec fn-134): seven
+deterministic suites drive the fn-130 remember/recall contracts through the
+SDK against a temp index, offline and lexical-only, with every fixture
+content-hashed in `evals/fixtures/memory/manifest.json`. Thresholds live in
+`MEMORY_GATE` at the top of `evals/memory.eval.ts` (exact metrics at 1.0/0,
+recall@5 >= 0.8, recall p95 <= 25ms) and the run passes only at 100%. Green at
+those thresholds is the go signal for the harness adapters (fn-135). A
+sub-threshold result is a finding against the memory slice: file it as an
+fn-130 follow-up spec (`flowctl spec create`) with the failing suite and the
+evalite row; never lower a threshold or edit a fixture to make it pass. The
+fixture format and the golden refresh (`bun run eval:memory:fixtures
+[--golden]`) are documented in `docs/MEMORY.md` ("Eval gate and fixtures").
 
 **Fixtures** (in `evals/fixtures/`):
 

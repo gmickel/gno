@@ -1,0 +1,41 @@
+{
+  "suite": "supersession",
+  "description": "Supersession chains: only the head of each chain is current. A stale supersede (predecessor already superseded) must conflict; two writers racing to supersede one predecessor yield exactly one successor and one conflict.",
+  "cases": [
+    {
+      "id": "chain-3",
+      "chain": [
+        "The Orbit API rate limit is 100 requests per minute.",
+        "The Orbit API rate limit is 250 requests per minute.",
+        "The Orbit API rate limit is 500 requests per minute."
+      ],
+      "query": "Orbit API rate limit requests per minute"
+    },
+    {
+      "id": "chain-2",
+      "chain": [
+        "Orbit nightly builds run at 02:00.",
+        "Orbit nightly builds run at 03:30."
+      ],
+      "query": "Orbit nightly builds"
+    },
+    {
+      "id": "stale-predecessor",
+      "chain": [
+        "Orbit logs are retained for 30 days.",
+        "Orbit logs are retained for 90 days."
+      ],
+      "staleSupersede": "Orbit logs are retained for 180 days.",
+      "query": "Orbit logs retained days"
+    },
+    {
+      "id": "racing-writers",
+      "chain": ["Orbit's primary region is eu-west-1."],
+      "conflictWriters": [
+        "Orbit's primary region is eu-central-1 (writer A).",
+        "Orbit's primary region is eu-north-1 (writer B)."
+      ],
+      "query": "Orbit primary region"
+    }
+  ]
+}

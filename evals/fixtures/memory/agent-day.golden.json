@@ -1,0 +1,53 @@
+{
+  "records": [
+    {
+      "text": "Priya is the release captain for sprint 42.",
+      "scopes": ["eval:day"],
+      "current": true,
+      "supersedes": []
+    },
+    {
+      "text": "Standup moved to 09:30 on Mondays.",
+      "scopes": ["eval:day"],
+      "current": false,
+      "supersedes": []
+    },
+    {
+      "text": "Standup moved to 10:00 on Mondays.",
+      "scopes": ["eval:day"],
+      "current": true,
+      "supersedes": ["Standup moved to 09:30 on Mondays."]
+    },
+    {
+      "text": "The deploy freeze starts the day before the demo.",
+      "scopes": ["eval:day"],
+      "current": true,
+      "supersedes": []
+    },
+    {
+      "text": "The sprint 42 demo is on Friday at 16:00.",
+      "scopes": ["eval:day"],
+      "current": false,
+      "supersedes": []
+    },
+    {
+      "text": "The sprint 42 demo moved to Thursday at 16:00.",
+      "scopes": ["eval:day"],
+      "current": true,
+      "supersedes": ["The sprint 42 demo is on Friday at 16:00."]
+    }
+  ],
+  "recalls": {
+    "t03": ["Standup moved to 09:30 on Mondays."],
+    "t06": ["Standup moved to 10:00 on Mondays."],
+    "t09": ["Priya is the release captain for sprint 42."],
+    "t13": [
+      "The sprint 42 demo is on Friday at 16:00.",
+      "The deploy freeze starts the day before the demo."
+    ],
+    "t15": [],
+    "t16": ["Standup moved to 10:00 on Mondays."],
+    "t17": ["The sprint 42 demo moved to Thursday at 16:00."],
+    "t18": ["The deploy freeze starts the day before the demo."]
+  }
+}

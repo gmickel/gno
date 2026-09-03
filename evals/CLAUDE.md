@@ -17,7 +17,9 @@ evals/
 ├── fixtures/corpus/{de,en,fr,it}/  # Test docs
 ├── fixtures/queries.json           # Search test cases
 ├── fixtures/ask-cases.json         # Answer test cases
+├── fixtures/memory/                # Memory gate fixtures + manifest.json (sha256 pins)
 ├── helpers/setup-db.ts             # Temp DB setup
+├── helpers/memory-*.ts             # Memory gate harness, fixtures, suite runners
 ├── scorers/ir-metrics.ts           # Recall, nDCG
 ├── *.eval.ts                       # Eval definitions
 ├── scores.md                       # Auto-generated results
@@ -34,6 +36,7 @@ evals/
 | thoroughness | No           | ✅                 |
 | multilingual | No           | ⚠️ Placeholder     |
 | ask          | Yes          | ⚠️ Model-dependent |
+| memory       | No           | ✅ Gate (threshold 100) |
 
 ## Key Points
 

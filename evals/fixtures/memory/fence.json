@@ -1,0 +1,61 @@
+{
+  "suite": "fence",
+  "description": "Context fence at eval scale: recall, then try to remember every recalled span with the receipt attached (must be rejected) and with a gno:// derivedFrom origin (must be rejected). Paraphrases of recalled spans carry neither marker; how many of them get through is reported, not asserted.",
+  "facts": [
+    {
+      "id": "s01",
+      "text": "Orbit's staging database is reset every Sunday night."
+    },
+    { "id": "s02", "text": "The Orbit SSO provider is Okta." },
+    { "id": "s03", "text": "Orbit feature flags are managed in LaunchDarkly." },
+    {
+      "id": "s04",
+      "text": "Orbit error budgets are reviewed at the monthly ops meeting."
+    },
+    {
+      "id": "s05",
+      "text": "Orbit's public status page is hosted on Statuspage."
+    },
+    {
+      "id": "s06",
+      "text": "Orbit support tickets escalate to engineering after 48 hours."
+    }
+  ],
+  "cases": [
+    {
+      "id": "staging-reset",
+      "query": "staging database reset",
+      "paraphrases": [
+        "Orbit staging database resets Sunday nights.",
+        "Every Sunday night the Orbit staging database is reset."
+      ]
+    },
+    {
+      "id": "sso",
+      "query": "SSO provider",
+      "paraphrases": ["Okta is the SSO provider for Orbit."]
+    },
+    {
+      "id": "flags",
+      "query": "feature flags",
+      "paraphrases": ["LaunchDarkly manages the Orbit feature flags."]
+    },
+    {
+      "id": "error-budget",
+      "query": "error budgets reviewed",
+      "paraphrases": ["The monthly ops meeting reviews Orbit error budgets."]
+    },
+    {
+      "id": "status-page",
+      "query": "public status page",
+      "paraphrases": ["Orbit hosts its public status page on Statuspage."]
+    },
+    {
+      "id": "escalation",
+      "query": "support tickets escalate",
+      "paraphrases": [
+        "After 48 hours Orbit support tickets escalate to engineering."
+      ]
+    }
+  ]
+}
