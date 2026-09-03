@@ -1,0 +1,58 @@
+{
+  "branch": "fn-130-memory-slice-rememberrecall-contracts",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "5d20d599dcd59d16e77a5b1cea3a54769b112fc2",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-0fed40b8a8ad7eb94ce825f9d85e4db4a81e54fcdb6bb7cc41423ae15301f6dd"
+  },
+  "head_sha": "5d20d599dcd59d16e77a5b1cea3a54769b112fc2",
+  "id": "fn-130-memory-slice-rememberrecall-contracts",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 8,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R8"
+      }
+    ],
+    "total": 8
+  },
+  "timestamp": "2026-09-03T01:12:06Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
