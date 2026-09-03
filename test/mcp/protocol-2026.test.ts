@@ -21,6 +21,10 @@ import { z } from "zod";
 import type { HttpMcpTransportRuntime } from "../../src/mcp/http-transport";
 
 import { createMcpServerSurface } from "../../src/mcp/context";
+import {
+  isModernMcpRequest,
+  MCP_SUPPORTED_PROTOCOL_REVISIONS,
+} from "../../src/mcp/http-modern";
 import { HttpMcpTransport } from "../../src/mcp/http-transport";
 import {
   createLegacyParityToolContext,
@@ -503,5 +507,61 @@ describe("MCP 2026-07-28 negotiation over Streamable HTTP", () => {
       name: "meta-echo",
       version: "1",
     });
+  });
+});
+
+describe("MCP-Protocol-Version header classification is an explicit revision set", () => {
+  const legacyBody = {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "tools/list",
+    params: {},
+  };
+  const withHeader = (value: string): Request =>
+    post(legacyBody, {
+      accept: "application/json, text/event-stream",
+      "content-type": "application/json",
+      "mcp-protocol-version": value,
+    });
+
+  test("GNO speaks exactly the two documented revisions", () => {
+    expect([...MCP_SUPPORTED_PROTOCOL_REVISIONS].sort()).toEqual([
+      LEGACY_PARITY_PROTOCOL_VERSION,
+      MODERN_PROTOCOL_VERSION,
+    ]);
+  });
+
+  test("only the modern member classifies as modern; sorting-adjacent labels do not", async () => {
+    expect(
+      await isModernMcpRequest(withHeader(MODERN_PROTOCOL_VERSION), legacyBody)
+    ).toBe(true);
+    for (const label of [
+      "abc",
+      "zzzz",
+      "2027-01-01",
+      "2026-07-280",
+      LEGACY_PARITY_PROTOCOL_VERSION,
+    ]) {
+      expect(await isModernMcpRequest(withHeader(label), legacyBody)).toBe(
+        false
+      );
+    }
+  });
+
+  test("a non-date label like `abc` is rejected on the wire, never served", async () => {
+    const transport = new HttpMcpTransport(createRuntime(), {
+      createServer: (context) =>
+        createMcpServerSurface(context, LEGACY_PARITY_SERVER_IDENTITY),
+    });
+    openTransports.push(transport);
+    const response = await transport.handleRequest(withHeader("abc"));
+    expect(response.status).toBe(400);
+    const payload = (await response.json()) as JsonRpcError & {
+      result?: unknown;
+    };
+    expect(payload.result).toBeUndefined();
+    expect(payload.error.code).toBe(-32_000);
+    expect(response.headers.get("mcp-session-id")).toBeNull();
+    expect(transport.activeSessions).toBe(0);
   });
 });

@@ -26,6 +26,7 @@ import {
   isModernMcpRequest,
   type ModernMcpHandler,
   rejectMalformedModernRequest,
+  rejectUnsupportedModernStream,
 } from "./http-modern";
 import { HttpMcpSessionStore } from "./http-session";
 import { MCP_WRITE_TOOL_NAMES } from "./tools/index";
@@ -305,7 +306,9 @@ export class HttpMcpTransport {
 
       const legacy = !(await isModernMcpRequest(request, parsedBody));
       if (!legacy) {
-        const rejection = rejectMalformedModernRequest(request);
+        const rejection =
+          rejectMalformedModernRequest(request) ??
+          rejectUnsupportedModernStream(parsedBody);
         if (rejection) {
           finish();
           return rejection;

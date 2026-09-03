@@ -6,7 +6,9 @@
  * egress, concurrency admission, authorization-epoch invalidation, identity
  * isolation, and transport metrics. A raw SDK handler that skipped any of
  * these would be a security regression, so each guard is observed on a real
- * 2026-enveloped request.
+ * 2026-enveloped request. The long-lived `subscriptions/listen` stream the
+ * SDK router would serve is refused before dispatch, so it can never pin a
+ * capacity slot or an admission handle.
  */
 
 import { McpServer } from "@modelcontextprotocol/server";
@@ -32,6 +34,7 @@ import { modernHeaders, modernRequest } from "../helpers/mcp-wire";
 
 const MCP_URL = "http://127.0.0.1:3210/mcp";
 const LEGACY_PROTOCOL_VERSION = "2025-11-25";
+const METHOD_NOT_FOUND = -32_601;
 const LOCAL_ONLY_COLLECTION = {
   name: "notes",
   path: "/tmp/gno-sessionless/notes",
@@ -156,6 +159,18 @@ function modernCall(
     headers: { ...modernHeaders("tools/call", name), ...extraHeaders },
     body: JSON.stringify(
       modernRequest(id, "tools/call", { name, arguments: args })
+    ),
+  });
+}
+
+function modernListen(id: number): Request {
+  return new Request(MCP_URL, {
+    method: "POST",
+    headers: modernHeaders("subscriptions/listen"),
+    body: JSON.stringify(
+      modernRequest(id, "subscriptions/listen", {
+        subscriptions: [{ method: "notifications/resources/list_changed" }],
+      })
     ),
   });
 }
@@ -446,6 +461,74 @@ describe("2026-07-28 sessionless path guard parity", () => {
     );
     expect(stillAlive.status).toBe(200);
     await stillAlive.text();
+  });
+
+  test("subscriptions/listen: refused before dispatch, releasing the slot and admission handle", async () => {
+    const runtime = createRuntime();
+    const transport = new HttpMcpTransport(runtime, {
+      createServer: createEchoServer(),
+      maxConcurrentRequests: 1,
+      maxQueuedRequests: 0,
+    });
+    openTransports.push(transport);
+
+    const refused = await transport.handleRequest(modernListen(7));
+    expect(refused.status).toBe(404);
+    expect(refused.headers.get("content-type")).toContain("application/json");
+    const payload = (await refused.json()) as {
+      id: unknown;
+      error: { code: number; message: string; data?: unknown };
+    };
+    expect(payload.id).toBe(7);
+    expect(payload.error.code).toBe(METHOD_NOT_FOUND);
+    expect(payload.error.message).toContain("subscriptions/listen");
+    expect(payload.error.data).toEqual({ method: "subscriptions/listen" });
+
+    // Nothing outlives the answer: the only slot and the admission handle are
+    // both free again, so the next request is admitted rather than 429'd.
+    expect(runtime.admitted).toBe(0);
+    expect(transport.getStatus()).toMatchObject({
+      activeRequests: 0,
+      activeSessions: 0,
+      queuedRequests: 0,
+    });
+    const next = await transport.handleRequest(
+      modernCall(8, "gno_get", { ref: "gno://notes/a.md" })
+    );
+    expect(next.status).toBe(200);
+    expect(await next.text()).toContain("read gno://notes/a.md");
+    expect(runtime.admitted).toBe(0);
+  });
+
+  test("subscriptions/listen: invalidateAuthenticatedSessions still closes exactly the sessions", async () => {
+    const transport = new HttpMcpTransport(createRuntime(), {
+      createServer: createEchoServer(),
+    });
+    openTransports.push(transport);
+    const initialized = await transport.handleRequest(legacyInitialize(1), {
+      identity: "principal-a",
+    });
+    expect(initialized.status).toBe(200);
+    const sessionId = initialized.headers.get("mcp-session-id")!;
+    await initialized.text();
+    expect(transport.activeSessions).toBe(1);
+
+    const refused = await transport.handleRequest(modernListen(2), {
+      identity: "principal-b",
+    });
+    expect(refused.status).toBe(404);
+    await refused.text();
+    // The refused stream neither created nor touched a session.
+    expect(transport.activeSessions).toBe(1);
+
+    await transport.invalidateAuthenticatedSessions();
+    expect(transport.activeSessions).toBe(0);
+    expect(transport.activeRequests).toBe(0);
+    const gone = await transport.handleRequest(legacyToolsList(3, sessionId), {
+      identity: "principal-a",
+    });
+    expect(gone.status).toBe(404);
+    await gone.text();
   });
 
   test("transport metrics: modern requests count as active requests, never as sessions", async () => {
