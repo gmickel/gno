@@ -9,8 +9,8 @@
  * @module evals/helpers/memory-harness
  */
 
-// node:fs/promises for mkdir/mkdtemp/readdir/rm (filesystem structure ops)
-import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+// node:fs/promises for mkdir/mkdtemp/readdir (filesystem structure ops)
+import { mkdir, mkdtemp, readdir } from "node:fs/promises";
 // node:os provides the temporary root
 import { tmpdir } from "node:os";
 // node:path has no Bun path utilities
@@ -32,6 +32,7 @@ import {
   validateMemoryRecord,
 } from "../../src/core/memory-record";
 import { createGnoClient } from "../../src/sdk/client";
+import { safeRm } from "../../test/helpers/cleanup";
 
 /** Every suite writes to its own memory-managed collection. */
 export const MEMORY_EVAL_COLLECTIONS = [
@@ -54,27 +55,6 @@ export const MEMORY_EVAL_IDENTITY = {
 export interface MemoryEvalContext {
   client: GnoClient;
   root: string;
-}
-
-const RETRYABLE_CODES = new Set(["EBUSY", "EPERM", "ENOTEMPTY", "EACCES"]);
-
-async function safeRm(path: string, retries = 8): Promise<void> {
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      await rm(path, { recursive: true, force: true });
-      return;
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code ?? "";
-      if (code === "ENOENT") return;
-      if (RETRYABLE_CODES.has(code) && attempt < retries - 1) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, 100 * (attempt + 1))
-        );
-        continue;
-      }
-      return;
-    }
-  }
 }
 
 async function setupMemoryEvalClient(): Promise<MemoryEvalContext> {
@@ -108,31 +88,27 @@ async function setupMemoryEvalClient(): Promise<MemoryEvalContext> {
 
 let sharedContext: Promise<MemoryEvalContext> | null = null;
 
-/** Shared per-run client (promise-cached so concurrent suites share one). */
+/**
+ * Shared per-run client (promise-cached so concurrent suites share one).
+ * Nothing tears it down implicitly: the eval file's `afterAll` and the
+ * fixture script call `cleanupMemoryEvalClient()` explicitly, because vitest
+ * workers (which evalite runs in) never fire `beforeExit`.
+ */
 export function getMemoryEvalClient(): Promise<MemoryEvalContext> {
   if (!sharedContext) {
     sharedContext = setupMemoryEvalClient();
-    registerCleanup();
   }
   return sharedContext;
 }
 
+/** Close the shared client and remove its temp root (idempotent). */
 export async function cleanupMemoryEvalClient(): Promise<void> {
   if (!sharedContext) return;
-  const ctx = await sharedContext;
+  const pending = sharedContext;
   sharedContext = null;
+  const ctx = await pending;
   await ctx.client.close();
   await safeRm(ctx.root);
-}
-
-let cleanupRegistered = false;
-
-function registerCleanup(): void {
-  if (cleanupRegistered) return;
-  cleanupRegistered = true;
-  process.on("beforeExit", () => {
-    void cleanupMemoryEvalClient();
-  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

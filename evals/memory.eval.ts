@@ -14,6 +14,9 @@
  */
 
 import { evalite } from "evalite";
+// evalite runs eval files inside vitest workers; file-level afterAll is the
+// only hook that reliably fires once every suite in this file has finished.
+import { afterAll } from "vitest";
 
 import type {
   AgentDayFixture,
@@ -30,6 +33,7 @@ import {
   manifestDigest,
   verifyFixtureManifest,
 } from "./helpers/memory-fixtures";
+import { cleanupMemoryEvalClient } from "./helpers/memory-harness";
 import { runAgentDay } from "./helpers/memory-suite-agent-day";
 import { runLatencySuite } from "./helpers/memory-suite-latency";
 import {
@@ -68,6 +72,10 @@ export const MEMORY_GATE = {
 } as const;
 
 const pass = (ok: boolean) => ({ score: ok ? 1 : 0 });
+
+// Close the shared temp index and delete /tmp/gno-memory-eval-* once the
+// last suite in this file has run (process `beforeExit` never fires here).
+afterAll(cleanupMemoryEvalClient);
 
 evalite("Memory 1: upsert correctness", {
   data: async () => {
