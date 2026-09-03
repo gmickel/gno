@@ -42,3 +42,4 @@ stage: impl-review - skipped(config: REVIEW_MODE=none)
 - Commits: 182ca76bcfb3d4dd468f45111b06cf801dc396b6
 - Tests: GATE_SKIPPED:unittest:green-receipt d93671f9 - baseline reused from prior post-gate pass, bun run lint:check, bun run eval:memory (Score 100%, Threshold 100% passed, 19 evals; /tmp/fn-135.3-e2e/eval-memory-gate.log), bun test integrations/openclaw-gno-memory (23 pass, faked gno subprocess), bun test (4741 pass / 2 skip / 0 fail; receipt 182ca76b-unittest), ~/work/sandbox/openclaw-dogfood/verify-gno-memory.sh (PASS; transcript /tmp/fn-135.3-e2e/14-verify-script-transcript.txt, evidence /tmp/fn-135.3-e2e/verify-run/)
 - PRs:
+stage: plan-sync - skipped(config: planSync.enabled != true)
