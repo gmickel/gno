@@ -3,6 +3,7 @@ import {
   mkdir,
   mkdtemp,
   readdir,
+  realpath,
   stat,
   unlink,
   writeFile,
@@ -145,7 +146,8 @@ describe("findings records", () => {
     const finding = brokenLink("gno://notes/a.md");
     await apply([finding]);
     await apply([], LATER);
-    const path = join(root, findingsRecordFilename(finding.id));
+    // Records resolve through realpath (macOS tmpdir is a /private symlink).
+    const path = await realpath(join(root, findingsRecordFilename(finding.id)));
     const removed: string[] = [];
     // Simulate the race: the record vanishes after listing, right before the
     // retention pass removes it (the default remover must tolerate ENOENT).

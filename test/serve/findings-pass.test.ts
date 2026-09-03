@@ -260,7 +260,12 @@ describe("FindingsScheduler", () => {
     expect((await readFindingsRunStatus(deps.statePath))?.state).toBe(
       "pending"
     );
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    // Bounded poll instead of a fixed sleep: a 25ms cadence on a slow CI
+    // runner (macOS) can miss an 80ms window without anything being wrong.
+    const deadline = Date.now() + 5_000;
+    while (results.length === 0 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
     expect(results.length).toBeGreaterThanOrEqual(1);
     expect(results[0]).toBe("success");
     expect(scheduler.state.lastOutcome).toBe("success");
