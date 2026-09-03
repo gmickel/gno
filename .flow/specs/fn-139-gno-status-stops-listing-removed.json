@@ -1,0 +1,24 @@
+{
+  "branch_name": "fn-139-gno-status-stops-listing-removed",
+  "created_at": "2026-09-03T12:09:19.356582Z",
+  "depends_on_epics": [],
+  "id": "fn-139-gno-status-stops-listing-removed",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-139-gno-status-stops-listing-removed.md",
+  "status": "open",
+  "title": "gno status stops listing removed collections with only inactive rows",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-03T12:09:19.358684Z"
+}

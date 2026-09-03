@@ -1,0 +1,24 @@
+{
+  "branch_name": "fn-138-sync-reactivates-a-restored-document",
+  "created_at": "2026-09-03T12:09:19.080057Z",
+  "depends_on_epics": [],
+  "id": "fn-138-sync-reactivates-a-restored-document",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-138-sync-reactivates-a-restored-document.md",
+  "status": "open",
+  "title": "Sync reactivates a restored document with unchanged content",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-03T12:09:19.082049Z"
+}
