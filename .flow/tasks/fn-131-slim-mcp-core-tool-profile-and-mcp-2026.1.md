@@ -44,3 +44,4 @@ stage: impl-review - skipped(config: REVIEW_MODE=none)
 - Commits: a1efaca6b2d95cd27280bb05cf09a4b9bf33e249
 - Tests: bun run lint:check, bun test (4650 pass / 0 fail, 544 files), bun test test/mcp/tool-profile.test.ts test/mcp/tool-profile-gateway.test.ts test/cli/smoke.test.ts test/mcp/legacy-parity.test.ts, live: real MCP client listings over stdio (gno mcp) and Streamable HTTP (gno daemon incl. --detach child) in core/full with and without --enable-write
 - PRs:
+stage: plan-sync - skipped(config: planSync.enabled != true)
