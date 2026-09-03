@@ -1668,6 +1668,12 @@ gno remember <text> --scope <scope> [--scope <scope>...] [--collection <name>] [
 - Paraphrases that carry neither a receipt nor a lineage declaration cannot
   be fenced.
 
+**Evidence:**
+
+- `--source <text>` records free-text evidence for the fact. It is written to
+  the fact frontmatter (`memory.source`) and echoed as `record.source` /
+  `source` on every fact in remember and recall results.
+
 **Output:**
 
 - `--json` prints the shared `RememberResult` (`outcome` of `existing` |

@@ -152,6 +152,8 @@ export interface MemoryFact {
   createdAt: string;
   contentHash: string;
   supersedes: string[];
+  /** Free-text evidence recorded with the fact, when one was given. */
+  source?: string;
 }
 
 export type MemoryCandidateMatch = "exact" | "likely" | "weak";
@@ -391,6 +393,7 @@ async function readFact(
     createdAt: frontmatter.createdAt,
     contentHash: frontmatter.contentHash,
     supersedes,
+    ...(frontmatter.source ? { source: frontmatter.source } : {}),
   };
 }
 
@@ -545,6 +548,7 @@ export class MemoryService {
     }
 
     const createdAt = this.now().toISOString();
+    const source = rawInput.source?.trim() || undefined;
     const frontmatter: MemoryRecordFrontmatter = {
       recordId: buildMemoryRecordId({
         contentHash,
@@ -557,6 +561,7 @@ export class MemoryService {
       session: identity.session,
       createdAt,
       contentHash,
+      ...(source ? { source } : {}),
     };
     const relPath = buildMemoryRecordRelPath(frontmatter);
     const absPath = join(collection.path, relPath);
@@ -621,6 +626,7 @@ export class MemoryService {
             createdAt,
             contentHash,
             supersedes,
+            ...(source ? { source } : {}),
           };
           return {
             outcome: decision === "supersede" ? "superseded" : "added",

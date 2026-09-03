@@ -51,7 +51,7 @@ describe("memory-remember schema", () => {
       "added",
       {
         outcome: "added",
-        record: fact,
+        record: { ...fact, source: "Said in standup 2026-09-03" },
         absPath: "/tmp/memory/mem-abc.md",
         sync: { status: "completed" },
         matching: {
@@ -126,6 +126,14 @@ describe("memory-remember schema", () => {
       },
     ],
     [
+      "record with empty source evidence",
+      {
+        outcome: "existing",
+        record: { ...fact, source: "" },
+        matching: { mode: "lexical", threshold: 0.5 },
+      },
+    ],
+    [
       "candidate without match class",
       {
         outcome: "candidates",
@@ -147,6 +155,7 @@ describe("memory-recall schema", () => {
 
   const recalled = {
     ...fact,
+    source: "Said in standup 2026-09-03",
     score: 0.016,
     spanHash: SHA,
     egressLineage: lineage,

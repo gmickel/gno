@@ -83,6 +83,11 @@
         "session": { "type": "string", "minLength": 1 },
         "createdAt": { "type": "string", "format": "date-time" },
         "contentHash": { "$ref": "#/$defs/sha256" },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Free-text evidence recorded with the fact, when one was given."
+        },
         "supersedes": {
           "type": "array",
           "items": { "$ref": "#/$defs/uri" }

@@ -439,6 +439,47 @@ describe("MemoryService remember/recall contracts", () => {
       await held!.release();
     }
   });
+
+  test("source evidence round-trips remember -> fact file -> recall", async () => {
+    const source = "Said at dinner on 2026-09-01";
+    const result = await remember(harness, {
+      text: "Ivan's swimming lesson is on Tuesdays.",
+      decision: "add",
+      source: `  ${source}  `,
+    });
+    expect(result.outcome).toBe("added");
+    if (result.outcome !== "added") return;
+    expect(result.record.source).toBe(source);
+    const content = await Bun.file(result.absPath).text();
+    expect(content).toContain(`  source: "${source}"`);
+
+    const recall = await harness.service.recall({
+      ...IDENTITY,
+      query: "swimming lesson",
+      collection: "memory",
+      scopes: SCOPE,
+    });
+    expect(recall.facts.map((fact) => fact.source)).toEqual([source]);
+
+    // The idempotent duplicate echoes the persisted evidence, not the input.
+    const duplicate = await remember(harness, {
+      text: "Ivan's swimming lesson is on Tuesdays.",
+      decision: "add",
+    });
+    expect(duplicate.outcome).toBe("existing");
+    if (duplicate.outcome !== "existing") return;
+    expect(duplicate.record.source).toBe(source);
+
+    // A fact stored without evidence carries no `source` key at all.
+    const bare = await remember(harness, {
+      text: "Ivan's judo class is on Fridays.",
+      decision: "add",
+    });
+    expect(bare.outcome).toBe("added");
+    if (bare.outcome !== "added") return;
+    expect("source" in bare.record).toBe(false);
+    expect(await Bun.file(bare.absPath).text()).not.toContain("source:");
+  });
 });
 
 describe("retrieval-level scope and supersession filtering", () => {

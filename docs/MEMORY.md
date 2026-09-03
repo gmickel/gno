@@ -84,6 +84,7 @@ memory:
   session: "s1"
   createdAt: "2026-09-03T10:14:52.118Z"
   contentHash: "3f9c…"
+  source: "Decided in the 2026-09-02 release sync"
 relations:
   supersedes:
     - "gno://memory/facts/2026-09-01/mem-5b1d….md"
@@ -95,6 +96,8 @@ Deploys go out from the main branch only.
 - `contentHash` is the SHA-256 of the normalized text (NFC, whitespace
   collapsed, trimmed). It is also the span hash that appears in recall
   receipts.
+- `source` is the optional free-text evidence given at write time (`--source`,
+  `source`); it is stored verbatim and echoed on the record in every result.
 - `relations.supersedes` is the existing typed-edge mechanism; ingestion
   projects it into `doc_edges` like any other relation. There is no separate
   memory store.

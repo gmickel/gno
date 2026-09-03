@@ -49,6 +49,8 @@ export interface MemoryRecordFrontmatter {
   session: string;
   createdAt: string;
   contentHash: string;
+  /** Free-text evidence for the fact (where it came from), when given. */
+  source?: string;
 }
 
 export interface ParsedMemoryRecord {
@@ -202,6 +204,9 @@ export function serializeMemoryRecord(input: {
     `  createdAt: ${yamlString(frontmatter.createdAt)}`,
     `  contentHash: ${yamlString(frontmatter.contentHash)}`,
   ];
+  if (frontmatter.source) {
+    lines.push(`  source: ${yamlString(frontmatter.source)}`);
+  }
   if (input.supersedes.length > 0) {
     lines.push("relations:", `  ${MEMORY_SUPERSEDES_EDGE}:`);
     for (const uri of input.supersedes) {
@@ -387,6 +392,8 @@ export function validateMemoryRecord(content: string): MemoryRecordValidation {
   }
 
   const supersedes = readSupersedes(parsed.relations, diagnostics);
+  // Optional evidence: kept only when it is a non-empty string.
+  const source = nonEmptyString(memory.source) ? memory.source.trim() : null;
 
   if (diagnostics.length > 0) {
     return { ok: false, diagnostics };
@@ -401,6 +408,7 @@ export function validateMemoryRecord(content: string): MemoryRecordValidation {
         session: (memory.session as string).trim(),
         createdAt: new Date(createdAt as string).toISOString(),
         contentHash: contentHash as string,
+        ...(source ? { source } : {}),
       },
       supersedes,
       text,

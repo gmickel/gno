@@ -616,6 +616,8 @@ gno remember "..." --scope family --scope shared --collection memory --add
 - `--receipt <path>` (a saved `gno recall --json` output) fences replays of
   recalled spans; `--derived-from gno://...` declares GNO-derived origin and is
   rejected. Paraphrases without either cannot be fenced.
+- `--source <text>` records free-text evidence with the fact; it is stored in
+  the fact frontmatter and returned as `source` on the record in every result.
 - `--caller` / `--session` default to `$GNO_MEMORY_CALLER` / `$GNO_MEMORY_SESSION`,
   then `cli:<user>` / `ppid:<parent pid>`.
 - Success means the file exists and lexical sync completed: the fact is
