@@ -4,7 +4,7 @@
  * @module src/mcp/tools
  */
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 
 import { z } from "zod";
 
@@ -18,6 +18,11 @@ import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
 import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
 import { RETRIEVAL_TRACE_METADATA } from "../../core/retrieval-trace-session";
 import { normalizeTag } from "../../core/tags";
+import { profileToolDescription } from "../tool-descriptions-core";
+import {
+  createProfileToolRegistrar,
+  DEFAULT_MCP_TOOL_PROFILE,
+} from "../tool-profile";
 import { handleAddCollection } from "./add-collection";
 import { askInputSchema, handleAsk } from "./ask";
 import { AUDIT_MCP_ANNOTATIONS, auditInputSchema, handleAudit } from "./audit";
@@ -1027,16 +1032,22 @@ function parseErrorMessage(message: string): { [x: string]: unknown } {
 
 export function registerTools(server: McpServer, ctx: ToolContext): void {
   // Tool IDs use underscores (MCP pattern: ^[a-zA-Z0-9_-]{1,64}$)
-  server.registerTool(
+  const profile = ctx.toolProfile ?? DEFAULT_MCP_TOOL_PROFILE;
+  const registerTool = createProfileToolRegistrar(server, profile);
+  // The core profile serves micro-instruction variants; full keeps the
+  // original strings verbatim (legacy golden + tool-profile byte-compat).
+  const describe = (name: string, fullDescription: string) =>
+    profileToolDescription(profile, name, fullDescription);
+  registerTool(
     "gno_context",
     {
-      description: MCP_TOOL_DESCRIPTIONS.context,
+      description: describe("gno_context", MCP_TOOL_DESCRIPTIONS.context),
       inputSchema: contextBuildSurfaceSchema,
     },
     (args) => handleContext(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_context_verify",
     {
       description: MCP_TOOL_DESCRIPTIONS.contextVerify,
@@ -1045,63 +1056,78 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleContextVerify(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_ask",
-    MCP_TOOL_DESCRIPTIONS.ask,
-    askInputSchema.shape,
+    {
+      description: MCP_TOOL_DESCRIPTIONS.ask,
+      // The advertised 2025-11-25 schema is the non-strict shape (SDK v1
+      // registered `.shape`); the handler still parses with the strict schema.
+      inputSchema: z.object(askInputSchema.shape),
+    },
     (args) => handleAsk(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_recall",
     {
-      description: MCP_TOOL_DESCRIPTIONS.recall,
+      description: describe("gno_recall", MCP_TOOL_DESCRIPTIONS.recall),
       inputSchema: recallInputSchema,
       annotations: RECALL_MCP_ANNOTATIONS,
     },
-    (args, extra) =>
+    (args, request) =>
       handleRecall(args, ctx, {
         clientName: server.server.getClientVersion()?.name,
-        sessionId: extra.sessionId,
+        sessionId: request.sessionId,
+        requestIdentity: ctx.getRequestIdentity?.(),
       })
   );
 
-  server.tool(
+  registerTool(
     "gno_search",
-    MCP_TOOL_DESCRIPTIONS.search,
-    searchInputSchema.shape,
+    {
+      description: describe("gno_search", MCP_TOOL_DESCRIPTIONS.search),
+      inputSchema: searchInputSchema,
+    },
     (args) => handleSearch(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_vsearch",
-    MCP_TOOL_DESCRIPTIONS.vsearch,
-    vsearchInputSchema.shape,
+    {
+      description: MCP_TOOL_DESCRIPTIONS.vsearch,
+      inputSchema: vsearchInputSchema,
+    },
     (args) => handleVsearch(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_query",
-    MCP_TOOL_DESCRIPTIONS.query,
-    queryInputSchema.shape,
+    {
+      description: describe("gno_query", MCP_TOOL_DESCRIPTIONS.query),
+      inputSchema: queryInputSchema,
+    },
     (args) => handleQuery(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_query_diagnose",
-    MCP_TOOL_DESCRIPTIONS.queryDiagnose,
-    queryDiagnoseInputSchema.shape,
+    {
+      description: MCP_TOOL_DESCRIPTIONS.queryDiagnose,
+      inputSchema: queryDiagnoseInputSchema,
+    },
     (args) => handleQueryDiagnose(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_get",
-    MCP_TOOL_DESCRIPTIONS.get,
-    getInputSchema.shape,
+    {
+      description: describe("gno_get", MCP_TOOL_DESCRIPTIONS.get),
+      inputSchema: getInputSchema,
+    },
     (args) => handleGet(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_section",
     {
       description: MCP_TOOL_DESCRIPTIONS.section,
@@ -1112,14 +1138,16 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleSection(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_multi_get",
-    MCP_TOOL_DESCRIPTIONS.multiGet,
-    multiGetInputSchema.shape,
+    {
+      description: describe("gno_multi_get", MCP_TOOL_DESCRIPTIONS.multiGet),
+      inputSchema: multiGetInputSchema,
+    },
     (args) => handleMultiGet(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_peek",
     {
       description: MCP_TOOL_DESCRIPTIONS.peek,
@@ -1129,24 +1157,26 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handlePeek(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_status",
-    MCP_TOOL_DESCRIPTIONS.status,
-    statusInputSchema.shape,
+    {
+      description: MCP_TOOL_DESCRIPTIONS.status,
+      inputSchema: statusInputSchema,
+    },
     (args) => handleStatus(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_audit",
     {
       description: MCP_TOOL_DESCRIPTIONS.audit,
       inputSchema: auditInputSchema,
       annotations: AUDIT_MCP_ANNOTATIONS,
     },
-    (args, extra) => handleAudit(args, ctx, extra.signal)
+    (args, request) => handleAudit(args, ctx, request.mcpReq.signal)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_egress_policy_get",
     {
       description:
@@ -1156,7 +1186,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleEgressPolicyGet(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_egress_check",
     {
       description:
@@ -1166,7 +1196,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleEgressCheck(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_egress_audit_list",
     {
       description:
@@ -1176,7 +1206,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleEgressAuditList(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_egress_audit_show",
     {
       description: "Inspect one content-free local egress decision receipt.",
@@ -1185,7 +1215,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleEgressAuditShow(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_egress_audit_status",
     {
       description: "Show local egress audit retention and storage status.",
@@ -1194,99 +1224,140 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleEgressAuditStatus(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_changes",
-    "List retained metadata-only document changes with opaque cursor pagination and retention disclosure.",
-    changesInputSchema.shape,
+    {
+      description: describe(
+        "gno_changes",
+        "List retained metadata-only document changes with opaque cursor pagination and retention disclosure."
+      ),
+      inputSchema: changesInputSchema,
+    },
     (args) => handleChanges(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_diff",
-    "Inspect one retained metadata-only structural document change. Source bodies are never returned.",
-    diffInputSchema.shape,
+    {
+      description:
+        "Inspect one retained metadata-only structural document change. Source bodies are never returned.",
+      inputSchema: diffInputSchema,
+    },
     (args) => handleDiff(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_impact",
-    "Find bounded inbound typed, wiki, and Markdown dependencies with deterministic evidence paths.",
-    impactInputSchema.shape,
+    {
+      description:
+        "Find bounded inbound typed, wiki, and Markdown dependencies with deterministic evidence paths.",
+      inputSchema: impactInputSchema,
+    },
     (args) => handleImpact(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_trace_list",
-    "List bounded metadata-only summaries of private local retrieval traces. Raw replay queries are omitted from history.",
-    traceListInputSchema.shape,
+    {
+      description:
+        "List bounded metadata-only summaries of private local retrieval traces. Raw replay queries are omitted from history.",
+      inputSchema: traceListInputSchema,
+    },
     (args) => handleTraceList(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_trace_show",
-    "Inspect one bounded local retrieval trace. Replay-mode content is returned only for the explicitly requested trace.",
-    traceShowInputSchema.shape,
+    {
+      description:
+        "Inspect one bounded local retrieval trace. Replay-mode content is returned only for the explicitly requested trace.",
+      inputSchema: traceShowInputSchema,
+    },
     (args) => handleTraceShow(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_list_tags",
-    "List all tags with document counts. Use prefix to filter hierarchical tags (e.g. 'project/').",
-    listTagsInputSchema.shape,
+    {
+      description:
+        "List all tags with document counts. Use prefix to filter hierarchical tags (e.g. 'project/').",
+      inputSchema: listTagsInputSchema,
+    },
     (args) => handleListTags(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_links",
-    "Get outgoing wiki ([[links]]) and markdown links from one document. Use after gno_query when you need immediate local expansion from a known source document; use gno_graph_neighbors for bidirectional graph navigation.",
-    linksInputSchema.shape,
+    {
+      description:
+        "Get outgoing wiki ([[links]]) and markdown links from one document. Use after gno_query when you need immediate local expansion from a known source document; use gno_graph_neighbors for bidirectional graph navigation.",
+      inputSchema: linksInputSchema,
+    },
     (args) => handleLinks(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_backlinks",
-    "Find all documents that link TO a given document. Use after gno_query/gno_get to discover incoming references around a known target; use gno_graph_path for 'how are X and Y connected?' questions.",
-    backlinksInputSchema.shape,
+    {
+      description:
+        "Find all documents that link TO a given document. Use after gno_query/gno_get to discover incoming references around a known target; use gno_graph_path for 'how are X and Y connected?' questions.",
+      inputSchema: backlinksInputSchema,
+    },
     (args) => handleBacklinks(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_similar",
-    "Find semantically similar documents using vector embeddings. Use for local expansion when wording differs; use gno_query as the default retrieval entry point and gno_graph_neighbors/path for explicit relationship questions.",
-    similarInputSchema.shape,
+    {
+      description:
+        "Find semantically similar documents using vector embeddings. Use for local expansion when wording differs; use gno_query as the default retrieval entry point and gno_graph_neighbors/path for explicit relationship questions.",
+      inputSchema: similarInputSchema,
+    },
     (args) => handleSimilar(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_graph",
-    "Get graph report/stats plus nodes/edges for corpus navigation. Use for unfamiliar corpus structure, hubs/isolates/unresolved links, or custom graph analysis; do not replace normal retrieval with this. Start with gno_query for content questions, then graph tools for relationship context, then gno_get for targeted reads.",
-    graphInputSchema.shape,
+    {
+      description:
+        "Get graph report/stats plus nodes/edges for corpus navigation. Use for unfamiliar corpus structure, hubs/isolates/unresolved links, or custom graph analysis; do not replace normal retrieval with this. Start with gno_query for content questions, then graph tools for relationship context, then gno_get for targeted reads.",
+      inputSchema: graphInputSchema,
+    },
     (args) => handleGraph(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_graph_query",
-    "Run bounded traversal over typed doc_edges from one root document. Use for explicit relationship questions like 'what does Alice work_at within 2 hops?' or to inspect typed graph hints; returns schemaVersion, root, nodes, edges, caps, and truncation.",
-    graphQueryInputSchema.shape,
+    {
+      description:
+        "Run bounded traversal over typed doc_edges from one root document. Use for explicit relationship questions like 'what does Alice work_at within 2 hops?' or to inspect typed graph hints; returns schemaVersion, root, nodes, edges, caps, and truncation.",
+      inputSchema: graphQueryInputSchema,
+    },
     (args) => handleGraphQuery(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_graph_neighbors",
-    "Find graph neighbors around a document/node. Use for relationship questions, missed obvious related docs, or unfamiliar corpus navigation after gno_query identifies a seed; returns incoming/outgoing wiki, markdown, and optional similarity edges. Follow with gno_get for targeted reads.",
-    graphNeighborsInputSchema.shape,
+    {
+      description:
+        "Find graph neighbors around a document/node. Use for relationship questions, missed obvious related docs, or unfamiliar corpus navigation after gno_query identifies a seed; returns incoming/outgoing wiki, markdown, and optional similarity edges. Follow with gno_get for targeted reads.",
+      inputSchema: graphNeighborsInputSchema,
+    },
     (args) => handleGraphNeighbors(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_graph_path",
-    "Find the shortest relationship path between two documents/nodes. Use for prompts like 'how are X and Y connected?' or to explain corpus relationships. Use gno_query for finding candidate refs first, then gno_get on path nodes for evidence.",
-    graphPathInputSchema.shape,
+    {
+      description:
+        "Find the shortest relationship path between two documents/nodes. Use for prompts like 'how are X and Y connected?' or to explain corpus relationships. Use gno_query for finding candidate refs first, then gno_get on path nodes for evidence.",
+      inputSchema: graphPathInputSchema,
+    },
     (args) => handleGraphPath(args, ctx)
   );
 
   if (ctx.enableWrite) {
-    server.registerTool(
+    registerTool(
       "gno_egress_policy_set",
       {
         description:
@@ -1296,7 +1367,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleEgressPolicySet(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_egress_audit_delete",
       {
         description:
@@ -1306,7 +1377,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleEgressAuditDelete(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_egress_audit_purge",
       {
         description:
@@ -1316,105 +1387,142 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleEgressAuditPurge(args, ctx)
     );
 
-    server.tool(
+    registerTool(
       "gno_trace_label",
-      "Append an explicit relevant, irrelevant, or missing_expected judgment to a local retrieval trace.",
-      traceLabelInputSchema.shape,
+      {
+        description:
+          "Append an explicit relevant, irrelevant, or missing_expected judgment to a local retrieval trace.",
+        inputSchema: traceLabelInputSchema,
+      },
       (args) => handleTraceLabel(args, ctx)
     );
 
-    server.tool(
+    registerTool(
       "gno_trace_export",
-      "Build a deterministic local agentic receipt from one or more immutable terminal retrieval traces.",
-      traceExportInputSchema.shape,
+      {
+        description:
+          "Build a deterministic local agentic receipt from one or more immutable terminal retrieval traces.",
+        inputSchema: traceExportInputSchema,
+      },
       (args) => handleTraceExport(args, ctx)
     );
 
-    server.tool(
+    registerTool(
       "gno_trace_delete",
-      "Delete one private local retrieval trace and all owned receipt records.",
-      traceDeleteInputSchema.shape,
+      {
+        description:
+          "Delete one private local retrieval trace and all owned receipt records.",
+        inputSchema: traceDeleteInputSchema,
+      },
       (args) => handleTraceDelete(args, ctx)
     );
 
-    server.tool(
+    registerTool(
       "gno_trace_purge",
-      "Purge every private local retrieval trace receipt. Requires confirm=true.",
-      tracePurgeInputSchema.shape,
+      {
+        description:
+          "Purge every private local retrieval trace receipt. Requires confirm=true.",
+        inputSchema: tracePurgeInputSchema,
+      },
       (args) => handleTracePurge(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_remember",
       {
-        description: MCP_TOOL_DESCRIPTIONS.remember,
+        description: describe("gno_remember", MCP_TOOL_DESCRIPTIONS.remember),
         inputSchema: rememberInputSchema,
         annotations: REMEMBER_MCP_ANNOTATIONS,
       },
-      (args, extra) =>
+      (args, request) =>
         handleRemember(args, ctx, {
           clientName: server.server.getClientVersion()?.name,
-          sessionId: extra.sessionId,
+          sessionId: request.sessionId,
+          requestIdentity: ctx.getRequestIdentity?.(),
         })
     );
 
-    server.tool(
+    registerTool(
       "gno_capture",
-      "Create a new document in a collection. Writes to disk. Does NOT auto-embed; run gno_index after to make it searchable via vector search.",
-      captureInputSchema.shape,
+      {
+        description: describe(
+          "gno_capture",
+          "Create a new document in a collection. Writes to disk. Does NOT auto-embed; run gno_index after to make it searchable via vector search."
+        ),
+        inputSchema: captureInputSchema,
+      },
       (args) => handleCapture(args, ctx)
     );
 
-    server.tool(
+    registerTool(
       "gno_add_collection",
-      "Add a directory as a new collection and start indexing. Returns a job ID for tracking.",
-      addCollectionInputSchema.shape,
+      {
+        description:
+          "Add a directory as a new collection and start indexing. Returns a job ID for tracking.",
+        inputSchema: addCollectionInputSchema,
+      },
       (args) => handleAddCollection(args, ctx)
     );
 
-    server.tool(
+    registerTool(
       "gno_sync",
-      "Sync files from disk into the index (FTS only, no embeddings). Does NOT auto-embed; run gno_embed after if vector search needed.",
-      syncInputSchema.shape,
+      {
+        description:
+          "Sync files from disk into the index (FTS only, no embeddings). Does NOT auto-embed; run gno_embed after if vector search needed.",
+        inputSchema: syncInputSchema,
+      },
       (args) => handleSync(args, ctx)
     );
 
-    server.tool(
+    registerTool(
       "gno_embed",
-      "Generate vector embeddings for all unembedded chunks, optionally scoped to one collection. Async: returns a job ID. Poll with gno_job_status.",
-      embedInputSchema.shape,
+      {
+        description:
+          "Generate vector embeddings for all unembedded chunks, optionally scoped to one collection. Async: returns a job ID. Poll with gno_job_status.",
+        inputSchema: embedInputSchema,
+      },
       (args) => handleEmbed(args, ctx)
     );
 
-    server.tool(
+    registerTool(
       "gno_index",
-      "Full index: sync files from disk + generate embeddings. Async: returns a job ID. Poll with gno_job_status.",
-      indexInputSchema.shape,
+      {
+        description:
+          "Full index: sync files from disk + generate embeddings. Async: returns a job ID. Poll with gno_job_status.",
+        inputSchema: indexInputSchema,
+      },
       (args) => handleIndex(args, ctx)
     );
 
-    server.tool(
+    registerTool(
       "gno_remove_collection",
-      "Remove a collection from config and delete its indexed data.",
-      removeCollectionInputSchema.shape,
+      {
+        description:
+          "Remove a collection from config and delete its indexed data.",
+        inputSchema: removeCollectionInputSchema,
+      },
       (args) => handleRemoveCollection(args, ctx)
     );
 
-    server.tool(
+    registerTool(
       "gno_clear_collection_embeddings",
-      "Remove stale or all embeddings for one collection.",
-      clearCollectionEmbeddingsInputSchema.shape,
+      {
+        description: "Remove stale or all embeddings for one collection.",
+        inputSchema: clearCollectionEmbeddingsInputSchema,
+      },
       (args) => handleClearCollectionEmbeddings(args, ctx)
     );
 
-    server.tool(
+    registerTool(
       "gno_create_folder",
-      "Create a folder inside an existing collection.",
-      createFolderInputSchema.shape,
+      {
+        description: "Create a folder inside an existing collection.",
+        inputSchema: createFolderInputSchema,
+      },
       (args) => handleCreateFolder(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_rename_note",
       {
         description:
@@ -1425,7 +1533,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleRenameNote(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_move_note",
       {
         description:
@@ -1436,25 +1544,34 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleMoveNote(args, ctx)
     );
 
-    server.tool(
+    registerTool(
       "gno_duplicate_note",
-      "Duplicate an editable note into the current or another folder.",
-      duplicateNoteInputSchema.shape,
+      {
+        description:
+          "Duplicate an editable note into the current or another folder.",
+        inputSchema: duplicateNoteInputSchema,
+      },
       (args) => handleDuplicateNote(args, ctx)
     );
   }
 
-  server.tool(
+  registerTool(
     "gno_job_status",
-    "Check status of an async job (embed, index). Returns progress percentage and completion state.",
-    jobStatusInputSchema.shape,
+    {
+      description:
+        "Check status of an async job (embed, index). Returns progress percentage and completion state.",
+      inputSchema: jobStatusInputSchema,
+    },
     (args) => handleJobStatus(args, ctx)
   );
 
-  server.tool(
+  registerTool(
     "gno_list_jobs",
-    "List active and recently completed async jobs with their status and progress.",
-    listJobsInputSchema.shape,
+    {
+      description:
+        "List active and recently completed async jobs with their status and progress.",
+      inputSchema: listJobsInputSchema,
+    },
     (args) => handleListJobs(args, ctx)
   );
 }

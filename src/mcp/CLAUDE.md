@@ -6,7 +6,13 @@ GNO's Model Context Protocol server for AI agent integration.
 
 ```
 src/mcp/
-├── server.ts          # MCP server setup, stdio transport
+├── server.ts          # MCP server setup (`gno mcp`)
+├── stdio-serving.ts   # Dual-era stdio entry (2025 initialize / 2026 discover)
+├── http-transport.ts  # Resident /mcp gateway: shared guards, era branch
+├── http-session.ts    # 2025-era stateful sessions
+├── http-modern.ts     # 2026-07-28 sessionless leg + modern request checks
+├── tool-profile.ts    # core|full profile allowlists + registrar
+├── tool-descriptions-core.ts # core-profile description micro-instructions
 ├── tools/             # Tool implementations
 │   ├── index.ts       # Tool registry
 │   ├── search.ts      # gno_search (BM25)

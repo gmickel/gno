@@ -1,7 +1,9 @@
 /** Shared process, HTTP-client, and schema helpers for packed resident smoke. */
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import {
+  Client,
+  StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
 
 import { assertValid, loadSchema } from "../test/spec/schemas/validator";
 

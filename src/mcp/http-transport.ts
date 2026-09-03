@@ -1,6 +1,9 @@
 /** Web Standard Streamable HTTP request routing for the resident MCP runtime. */
 
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
+import {
+  isInitializeRequest,
+  type McpServer,
+} from "@modelcontextprotocol/server";
 
 import type { DestinationClassification } from "../core/destination-classifier";
 import type { ResidentRequestHandle } from "../serve/resident-runtime";
@@ -11,11 +14,20 @@ import type {
   PendingHttpMcpSession,
 } from "./http-session";
 
+import { MCP_SERVER_NAME, VERSION } from "../app/constants";
 import { EgressDeniedError } from "../core/egress-enforcement";
+import { createMcpServerSurface, type ToolContext } from "./context";
 import {
   enforceHttpMcpEgress,
   httpMcpEgressDeniedResponse,
 } from "./http-egress";
+import {
+  createModernMcpHandler,
+  isModernMcpRequest,
+  type ModernMcpHandler,
+  rejectMalformedModernRequest,
+  rejectUnsupportedModernStream,
+} from "./http-modern";
 import { HttpMcpSessionStore } from "./http-session";
 import { MCP_WRITE_TOOL_NAMES } from "./tools/index";
 
@@ -23,6 +35,7 @@ const DEFAULT_MAX_CONCURRENT_REQUESTS = 64;
 const DEFAULT_MAX_QUEUED_REQUESTS = 0;
 const MCP_HTTP_METHODS = new Set(["DELETE", "GET", "POST"]);
 const MCP_SESSION_HEADER = "mcp-session-id";
+const REQUEST_IDENTITY_DIGEST_LENGTH = 16;
 const POLICY_CHANGED_SSE = new TextEncoder().encode(
   'event: message\ndata: {"jsonrpc":"2.0","error":{"code":-32000,"message":"EGRESS_POLICY_CHANGED: Collection policy changed; retry"},"id":null}\n\n'
 );
@@ -164,6 +177,25 @@ function wrapStreamingResponse(
   return new Response(body, response);
 }
 
+/**
+ * Opaque per-caller label for memory provenance and other per-session state.
+ *
+ * The security identity is a bearer digest or `loopback`; hashing it with the
+ * server instance id yields a label that is stable for one caller within one
+ * server lifetime, differs between callers, and never reveals the digest in a
+ * stored record.
+ */
+function deriveRequestIdentity(
+  serverInstanceId: string,
+  securityIdentity: string
+): string {
+  const digest = new Bun.CryptoHasher("sha256")
+    .update(`${serverInstanceId}\u0000${securityIdentity}`)
+    .digest("hex")
+    .slice(0, REQUEST_IDENTITY_DIGEST_LENGTH);
+  return `http:${digest}`;
+}
+
 const policyChangedResponse = (): Response =>
   jsonRpcError(
     409,
@@ -171,10 +203,22 @@ const policyChangedResponse = (): Response =>
     "EGRESS_POLICY_CHANGED: Collection policy changed; retry"
   );
 
-/** Stateful session gateway used by the production `/mcp` route. */
+const defaultCreateServer = (context: ToolContext): McpServer =>
+  createMcpServerSurface(context, { name: MCP_SERVER_NAME, version: VERSION });
+
+/**
+ * Dual-era gateway used by the production `/mcp` route.
+ *
+ * 2025-era traffic (initialize handshake, `Mcp-Session-Id`) is served by the
+ * stateful session store; 2026-07-28 traffic (per-request `_meta` envelope)
+ * is served sessionless. Every guard below the method check - capacity,
+ * admission, write gate, egress, authorization epoch, metrics - runs before
+ * the era branch, so both legs share one enforcement path.
+ */
 export class HttpMcpTransport {
   readonly #runtime: HttpMcpTransportRuntime;
   readonly #sessions: HttpMcpSessionStore;
+  readonly #modern: ModernMcpHandler;
   readonly #maxConcurrentRequests: number;
   readonly #maxQueuedRequests: number;
   readonly #enableWrite: boolean;
@@ -187,7 +231,12 @@ export class HttpMcpTransport {
     options: HttpMcpTransportOptions = {}
   ) {
     this.#runtime = runtime;
-    this.#sessions = new HttpMcpSessionStore(runtime, options);
+    const createServer = options.createServer ?? defaultCreateServer;
+    this.#sessions = new HttpMcpSessionStore(runtime, {
+      ...options,
+      createServer,
+    });
+    this.#modern = createModernMcpHandler(runtime.mcpContext, createServer);
     this.#maxConcurrentRequests = Math.max(
       1,
       Math.floor(
@@ -275,7 +324,16 @@ export class HttpMcpTransport {
         }
       }
 
-      if (sessionId) {
+      const legacy = !(await isModernMcpRequest(request, parsedBody));
+      if (!legacy) {
+        const rejection =
+          rejectMalformedModernRequest(request) ??
+          rejectUnsupportedModernStream(parsedBody);
+        if (rejection) {
+          finish();
+          return rejection;
+        }
+      } else if (sessionId) {
         session = this.#sessions.get(sessionId);
         if (!session) {
           finish();
@@ -329,7 +387,8 @@ export class HttpMcpTransport {
       }
 
       const transport = session?.transport ?? pending?.transport;
-      if (!transport) throw new Error("MCP transport was not created");
+      if (legacy && !transport)
+        throw new Error("MCP transport was not created");
       const requestBody = parsedBody;
       if (!this.#enableWrite && containsUnauthorizedWrite(requestBody)) {
         await pending?.discard();
@@ -357,10 +416,14 @@ export class HttpMcpTransport {
         throw error;
       }
       const handle = () =>
-        transport.handleRequest(
-          request,
-          requestBody === undefined ? undefined : { parsedBody: requestBody }
-        );
+        transport
+          ? transport.handleRequest(
+              request,
+              requestBody === undefined
+                ? undefined
+                : { parsedBody: requestBody }
+            )
+          : this.#modern.fetch(request, requestBody);
       const destinationZone =
         context.peerClassification?.zone ??
         (context.identity === "loopback" ? "loopback" : "remote");
@@ -374,7 +437,13 @@ export class HttpMcpTransport {
               },
               authorizationEpoch,
             },
-            handle
+            handle,
+            {
+              requestIdentity: deriveRequestIdentity(
+                this.#runtime.mcpContext.serverInstanceId,
+                context.identity
+              ),
+            }
           )
         : await handle();
 
@@ -410,10 +479,10 @@ export class HttpMcpTransport {
     return this.#sessions.reapIdleSessions(now);
   }
 
-  close(): Promise<void> {
+  async close(): Promise<void> {
     this.#closed = true;
     for (const resolve of this.#capacityWaiters.splice(0)) resolve(false);
-    return this.#sessions.closeAll();
+    await Promise.all([this.#sessions.closeAll(), this.#modern.close()]);
   }
 
   invalidateAuthenticatedSessions(): Promise<void> {

@@ -1,8 +1,9 @@
 /** Isolated stateful MCP server/transport ownership for HTTP sessions. */
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import {
+  type McpServer,
+  WebStandardStreamableHTTPServerTransport,
+} from "@modelcontextprotocol/server";
 
 import type { ToolContext } from "./context";
 

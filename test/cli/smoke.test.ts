@@ -148,6 +148,20 @@ describe("CLI smoke tests", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain("Start MCP server");
       expect(stdout).toContain("--enable-write");
+      expect(stdout).toContain("--tool-profile <profile>");
+    });
+
+    test("mcp serve rejects an unknown --tool-profile before starting", async () => {
+      const { code, stderr } = await cli(
+        "mcp",
+        "serve",
+        "--tool-profile",
+        "slim",
+        "--json"
+      );
+      expect(code).toBe(1);
+      expect(stderr).toContain("VALIDATION");
+      expect(stderr).toContain("Must be one of: core, full");
     });
 
     test("--help includes daemon command", async () => {
@@ -165,6 +179,20 @@ describe("CLI smoke tests", () => {
         expect(stdout).toContain("--mcp-allowed-host <host>");
         expect(stdout).toContain("--mcp-allowed-origin <origin>");
         expect(stdout).toContain("--mcp-enable-write");
+        expect(stdout).toContain("--mcp-tool-profile <profile>");
+      }
+    });
+
+    test("serve and daemon reject an unknown --mcp-tool-profile", async () => {
+      for (const command of ["serve", "daemon"]) {
+        const { code, stderr } = await cli(
+          command,
+          "--mcp-tool-profile",
+          "slim"
+        );
+        expect(code).toBe(1);
+        expect(stderr).toContain('Invalid tool profile: "slim"');
+        expect(stderr).toContain("Must be one of: core, full");
       }
     });
   });

@@ -1,8 +1,8 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { Client } from "@modelcontextprotocol/client";
 import {
   getDefaultEnvironment,
   StdioClientTransport,
-} from "@modelcontextprotocol/sdk/client/stdio.js";
+} from "@modelcontextprotocol/client/stdio";
 import { Database } from "bun:sqlite";
 // node:fs/promises: directory creation, rename, and cleanup have no Bun equivalents.
 import { mkdir, rename, rm } from "node:fs/promises";
@@ -342,7 +342,6 @@ export const startRealGnoMcpConnection: GnoMcpConnectionFactory = async (
     async callTool(name, arguments_, callSignal) {
       return (await client.callTool(
         { name, arguments: arguments_ },
-        undefined,
         { signal: callSignal, timeout: 120_000 }
       )) as GnoMcpCallResult;
     },

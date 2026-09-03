@@ -56,6 +56,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.42.0] - 2026-09-03
+
+### Added
+
+- Slim MCP core tool profile and MCP 2026-07-28 dual-speak.
+  - Tool profiles: `gno mcp --tool-profile core` advertises the 7-tool
+    playbook read set (`gno_query`, `gno_search`, `gno_get`,
+    `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall`) plus
+    exactly `gno_capture` and `gno_remember` with `--enable-write`; the
+    resident gateway takes `gateway.toolProfile` or
+    `gno serve|daemon --mcp-tool-profile`. The profile is read at listener
+    start (restart to change). `full` stays the default and is
+    byte-identical to the previous surface; flipping the default to `core`
+    is a separate follow-up that waits on dogfood evidence.
+  - Core descriptions: under `core`, each of the nine tools carries a short
+    micro-instruction (when to call it, what it runs, what comes back, with
+    the bounds to respect) from a separate variants table
+    (`src/mcp/tool-descriptions-core.ts`); `full` keeps the original
+    description strings verbatim. The descriptions follow the skill
+    playbook's retrieval order.
+  - Protocol: `gno mcp` (stdio) and the resident `/mcp` endpoint serve the
+    2026-07-28 revision next to 2025-11-25 in both profiles. A modern client
+    negotiates natively via `server/discover` and, over HTTP, is served
+    sessionless per request; 2025 clients are unchanged (handshake bytes
+    pinned by the legacy parity golden). The sessionless path runs through
+    the same authentication, write-gate, egress, admission,
+    authorization-epoch, and identity guards as the session path.
+    Unsupported revisions (`-32022`), missing or mismatched
+    `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name` headers (`-32020`),
+    malformed `_meta` envelopes (`-32602`), and a session ID on a modern
+    request (`-32600`) are rejected with `400`. `subscriptions/listen` is
+    rejected on the sessionless leg (`404`, `-32601`) until GNO change
+    events are wired to subscription streams, so a modern client can never
+    pin a concurrency slot or admission handle with an endless stream; a
+    modern caller's memory identity (`gno_recall` / `gno_remember` session)
+    is derived per authenticated caller instead of being shared
+    server-wide.
+
+### Changed
+
+- MCP server and client now run on the `@modelcontextprotocol/server` and
+  `@modelcontextprotocol/client` 2.0.0 packages (the split successor of
+  `@modelcontextprotocol/sdk` 1.30.0). The 2025-11-25 handshake is
+  byte-identical over stdio and Streamable HTTP; `tools/list` is identical
+  except for SDK-owned deltas: tool schemas now carry the JSON Schema 2020-12
+  `$schema` stamp (was draft-07), the experimental `execution.taskSupport`
+  member is gone, and `gno_rename_note` / `gno_move_note` advertise their real
+  `oneOf` input schema instead of the empty placeholder SDK v1 emitted for
+  discriminated unions. Calling an unknown tool now answers a JSON-RPC
+  `-32602` error instead of an `isError` result. A frozen pre-migration
+  capture and a parity test pin this.
+
 ## [1.41.0] - 2026-09-03
 
 ### Added
@@ -2461,7 +2513,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.41.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v1.42.0...HEAD
+[1.42.0]: https://github.com/gmickel/gno/compare/v1.41.0...v1.42.0
 [1.41.0]: https://github.com/gmickel/gno/compare/v1.40.0...v1.41.0
 [1.40.0]: https://github.com/gmickel/gno/compare/v1.39.2...v1.40.0
 [1.39.2]: https://github.com/gmickel/gno/compare/v1.39.1...v1.39.2

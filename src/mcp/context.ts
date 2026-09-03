@@ -1,6 +1,6 @@
 /** Shared MCP surface and request-scoped runtime context. */
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 // node:async_hooks provides async-local request context; Bun has no separate native equivalent.
 import { AsyncLocalStorage } from "node:async_hooks";
 
@@ -15,6 +15,7 @@ import type { ModelLease } from "../llm/nodeLlamaCpp/lifecycle";
 import type { ResidentStatus } from "../serve/status-model";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { StoreResult } from "../store/types";
+import type { McpToolProfile } from "./tool-profile";
 
 import { MCP_SERVER_NAME, VERSION } from "../app/constants";
 import { createStandaloneResidentStatus } from "../serve/resident-status";
@@ -57,6 +58,17 @@ export interface ToolContextSnapshot {
     caller: EgressCallerContext;
     authorizationEpoch?: { value: string };
   };
+  /**
+   * Opaque per-caller identity the HTTP boundary derived for this request.
+   * Set on both Streamable HTTP legs; the 2026-07-28 sessionless leg has no
+   * session id, so this is what keeps two modern callers apart.
+   */
+  requestIdentity?: string;
+}
+
+export interface RequestScope {
+  egress: NonNullable<ToolContextSnapshot["egress"]>;
+  requestIdentity?: string;
 }
 
 export interface ToolContext {
@@ -70,6 +82,8 @@ export interface ToolContext {
   serverInstanceId: string;
   writeLockPath: string;
   enableWrite: boolean;
+  /** Advertised tool set; `full` when absent. Narrows, never widens, the write gate. */
+  toolProfile?: McpToolProfile;
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
   acquireModelLease?: () => ModelLease;
@@ -87,9 +101,12 @@ export interface ToolContext {
   advanceRequestAuthorizationEpoch?: (epoch: string) => void;
   getRequestAuthorizationEpoch?: () => string | undefined;
   getEgressContext?: () => ToolContextSnapshot["egress"];
+  /** Per-caller identity of the current request; absent on stdio. */
+  getRequestIdentity?: () => string | undefined;
   runWithEgressContext?<T>(
     egress: NonNullable<ToolContextSnapshot["egress"]>,
-    operation: () => Promise<T>
+    operation: () => Promise<T>,
+    scope?: Omit<RequestScope, "egress">
   ): Promise<T>;
   runWithSnapshot?<T>(operation: () => Promise<T>): Promise<T>;
 }
@@ -105,6 +122,7 @@ export interface CreateToolContextOptions {
   serverInstanceId: string;
   writeLockPath: string;
   enableWrite: boolean;
+  toolProfile?: McpToolProfile;
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
   acquireModelLease?: () => ModelLease;
@@ -153,6 +171,7 @@ export function createToolContext(
     serverInstanceId: options.serverInstanceId,
     writeLockPath: options.writeLockPath,
     enableWrite: options.enableWrite,
+    toolProfile: options.toolProfile,
     isShuttingDown: options.isShuttingDown,
     getResidentStatus:
       options.getResidentStatus ??
@@ -169,23 +188,32 @@ export function createToolContext(
     getRequestAuthorizationEpoch: () =>
       requestSnapshot.getStore()?.egress?.authorizationEpoch?.value,
     getEgressContext: () => requestSnapshot.getStore()?.egress,
+    getRequestIdentity: () => requestSnapshot.getStore()?.requestIdentity,
     runWithEgressContext<T>(
       egress: NonNullable<ToolContextSnapshot["egress"]>,
-      operation: () => Promise<T>
+      operation: () => Promise<T>,
+      scope?: Omit<RequestScope, "egress">
     ): Promise<T> {
-      const config = options.getConfig();
-      return requestSnapshot.run(
-        { config, collections: config.collections, egress },
-        operation
-      );
-    },
-    runWithSnapshot<T>(operation: () => Promise<T>): Promise<T> {
       const config = options.getConfig();
       return requestSnapshot.run(
         {
           config,
           collections: config.collections,
-          egress: requestSnapshot.getStore()?.egress,
+          egress,
+          requestIdentity: scope?.requestIdentity,
+        },
+        operation
+      );
+    },
+    runWithSnapshot<T>(operation: () => Promise<T>): Promise<T> {
+      const config = options.getConfig();
+      const current = requestSnapshot.getStore();
+      return requestSnapshot.run(
+        {
+          config,
+          collections: config.collections,
+          egress: current?.egress,
+          requestIdentity: current?.requestIdentity,
         },
         operation
       );
@@ -201,10 +229,12 @@ export function createMcpServerSurface(
     version: VERSION,
   }
 ): McpServer {
+  // `listChanged: true` is the advertised 2025-11-25 contract pinned by
+  // test/fixtures/mcp/legacy-2025-11-25.json (SDK v1 always advertised it).
   const server = new McpServer(identity, {
     capabilities: {
-      tools: { listChanged: false },
-      resources: { subscribe: false, listChanged: false },
+      tools: { listChanged: true },
+      resources: { subscribe: false, listChanged: true },
     },
   });
   registerTools(server, context);

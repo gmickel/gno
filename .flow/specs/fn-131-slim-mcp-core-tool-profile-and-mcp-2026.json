@@ -151,7 +151,7 @@
     "plan": 0
   },
   "spec_path": ".flow/specs/fn-131-slim-mcp-core-tool-profile-and-mcp-2026.md",
-  "status": "open",
+  "status": "done",
   "title": "Slim MCP core tool profile and MCP 2026-07-28 dual-speak",
   "tracker": {
     "baseHashFlow": null,
@@ -164,5 +164,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-01T14:55:29.962760Z"
+  "updated_at": "2026-09-03T05:10:51.710552Z"
 }

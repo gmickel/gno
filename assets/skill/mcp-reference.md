@@ -95,6 +95,13 @@ gno daemon --status --json
 
 ## Retrieval Order
 
+`gno mcp --tool-profile core` (or `gateway.toolProfile: core` for the resident
+gateway) advertises only `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`,
+`gno_context`, `gno_changes`, and `gno_recall`, plus `gno_capture` and
+`gno_remember` with `--enable-write`; their descriptions state when to call
+each and what comes back. Every other tool named below is available under the
+default `full` profile.
+
 For normal questions, start with `gno_query`, then read targeted snippets with
 `gno_get` or batch refs with `gno_multi_get`. Use `gno_context` for one bounded,
 exact evidence handoff. Use `gno_ask` only when a local closed-evidence answer

@@ -9,8 +9,7 @@
  * A receipt issued by one surface fences the other, and nothing is written.
  */
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 // node:fs/promises for temp fixtures (no Bun equivalent for mkdtemp/mkdir)
 import { mkdir, mkdtemp } from "node:fs/promises";

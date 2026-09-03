@@ -253,7 +253,65 @@ GNO_MCP_ENABLE_WRITE=1 gno mcp
 Without this flag, the 34 read-only retrieval, verified-synthesis, memory
 recall, trace, graph, egress, status, and job-inspection tools are available.
 Enabling writes adds 19 mutation tools (including `gno_remember`), for 53
-total.
+total. Those counts describe the default `full` profile; see
+[Tool Profiles](#tool-profiles) for the slim `core` surface.
+
+### Tool Profiles
+
+Every advertised tool definition is context an agent pays for each session.
+The `core` profile advertises only the tools the
+[playbook](#agent-retrieval-playbook) routes to; `full` (the default) keeps
+today's whole surface, byte-for-byte.
+
+| Profile          | Read tools                                                                                            | With `--enable-write` adds    |
+| ---------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `full` (default) | all 34                                                                                                | all 19 write tools            |
+| `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | `gno_capture`, `gno_remember` |
+
+Write tools stay behind `--enable-write` in both profiles; a profile never
+widens the write gate. `gno_job_status` is not in `core` because neither core
+write is asynchronous. Both profiles speak both protocol revisions
+(2025-11-25 and 2026-07-28) on stdio and the resident HTTP endpoint; see
+[Resident HTTP Transport](#resident-http-transport) for how a client's
+revision is negotiated.
+
+The two profiles also describe their tools differently. `full` serves the
+original description strings unchanged. `core` serves each of its nine tools a
+short micro-instruction that says when to call it, what it runs, and what
+comes back, with the bounds the caller has to respect (line anchors for
+`gno_get`, `maxBytes` for `gno_multi_get`, the 8-fact / 512-token `gno_recall`
+budget, the separate embedding step after `gno_capture`). The descriptions
+match the retrieval order in the [playbook](#agent-retrieval-playbook):
+`gno_query` first, `gno_search` for exact words, `gno_get` /
+`gno_multi_get` to read, `gno_context` for one bounded evidence handoff,
+`gno_changes` for what changed, `gno_recall` / `gno_remember` for facts. Input
+schemas are identical across profiles.
+
+```bash
+# stdio
+gno mcp --tool-profile core
+gno mcp --tool-profile core --enable-write
+
+# resident gateway (serve or daemon)
+gno daemon --mcp-tool-profile core
+```
+
+```yaml
+# ~/.config/gno/index.yml - resident gateway default
+gateway:
+  toolProfile: core
+```
+
+Precedence is CLI flag, then `gateway.toolProfile`, then `full`. The profile
+is read when the listener starts; restart `gno mcp`, `gno serve`, or
+`gno daemon` to change it. Tools outside the active profile are unknown to the
+server (JSON-RPC `-32602`), not hidden.
+
+The default stays `full` for now: `core` is opt-in, and flipping the default
+is a separate follow-up that waits on dogfood evidence (agents running on
+`core` across real sessions with the playbook's routing holding). That
+follow-up ships with its own release note and a `gno mcp install` profile
+flag.
 
 ### Collection Root Validation
 
@@ -271,8 +329,18 @@ MCP clients prompt for tool approval. Review parameters before confirming write 
 ### Resident HTTP Transport
 
 `gno serve` and `gno daemon` expose the same tools and resources at `/mcp`
-using stateful MCP 2025-11-25 Streamable HTTP. Stdio remains supported for
-clients configured with `gno mcp`.
+over Streamable HTTP. Stdio remains supported for clients configured with
+`gno mcp`. Both transports speak two protocol revisions from one tool
+registry: MCP 2025-11-25 clients (the `initialize` handshake, stateful
+sessions over HTTP) keep working unchanged, and MCP 2026-07-28 clients
+negotiate natively (`server/discover`, per-request `_meta` envelope,
+sessionless HTTP - no `Mcp-Session-Id`). Modern requests must carry the
+`MCP-Protocol-Version` and `Mcp-Method` headers (`Mcp-Name` on `tools/call`
+and resource reads); unsupported revisions, missing or mismatched headers, and
+malformed envelopes are rejected with a `400` JSON-RPC error rather than
+served. Both transports are served by `@modelcontextprotocol/server` 2.x;
+advertised tool schemas carry the JSON Schema 2020-12 `$schema` stamp. The
+exact routing and error table is in `spec/mcp.md` (Protocol Revisions).
 
 Local defaults are intentionally narrow: literal `127.0.0.1`, exact Host and
 present Origin checks for the selected port, and read-only tools. The boundary

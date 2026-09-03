@@ -1,10 +1,10 @@
 /** Read-only, privacy-bounded connector activation verification. */
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { Client } from "@modelcontextprotocol/client";
 import {
   getDefaultEnvironment,
   StdioClientTransport,
-} from "@modelcontextprotocol/sdk/client/stdio.js";
+} from "@modelcontextprotocol/client/stdio";
 
 import type {
   ActivationStageReceipt,
@@ -252,7 +252,6 @@ async function executeMcpProof(input: McpProofInput): Promise<McpProofResult> {
     phase = "status";
     const status = await client.callTool(
       { name: "gno_status", arguments: {} },
-      undefined,
       requestOptions
     );
     if (
@@ -272,7 +271,6 @@ async function executeMcpProof(input: McpProofInput): Promise<McpProofResult> {
           limit: 8,
         },
       },
-      undefined,
       requestOptions
     );
     const searchFailed =

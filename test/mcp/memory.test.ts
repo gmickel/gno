@@ -2,12 +2,12 @@
  * MCP gno_recall / gno_remember tests (fn-130.3).
  *
  * Live in-memory MCP client against the real tool surface: registration
- * gating, remember → recall → fence loop, R4 refusals, identity mapping, and
- * the no-adapter-lease contract.
+ * gating, remember → recall → fence loop, R4 refusals, identity mapping, the
+ * no-adapter-lease contract, and per-caller identity on the 2026-07-28
+ * sessionless HTTP leg.
  */
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 // node:fs/promises for temp fixtures (no Bun equivalent for mkdtemp/mkdir)
 import { mkdir, mkdtemp } from "node:fs/promises";
@@ -21,15 +21,25 @@ import type { RecallResult, RememberResult } from "../../src/core/memory";
 import type { ToolContext } from "../../src/mcp/server";
 
 import { createDefaultConfig } from "../../src/config/defaults";
+import { classifyDestination } from "../../src/core/destination-classifier";
 import { acquireWriteLock } from "../../src/core/file-lock";
 import { MEMORY_EMPTY_RECALL_HINT } from "../../src/core/memory";
-import { createMcpServerSurface } from "../../src/mcp/context";
+import {
+  createMcpServerSurface,
+  createToolContext,
+} from "../../src/mcp/context";
 import { MCP_HTTP_EGRESS_TOOLS } from "../../src/mcp/http-egress";
+import { HttpMcpTransport } from "../../src/mcp/http-transport";
 import { MCP_WRITE_TOOL_NAMES } from "../../src/mcp/tools/index";
 import { handleRecall } from "../../src/mcp/tools/memory-recall";
 import { handleRemember } from "../../src/mcp/tools/memory-remember";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
+import {
+  MODERN_WIRE_CLIENT_INFO,
+  modernHeaders,
+  modernRequest,
+} from "../helpers/mcp-wire";
 
 const CLIENT_NAME = "memory-live-client";
 const SERVER_INSTANCE_ID = "memory-test-server";
@@ -369,5 +379,131 @@ describe("memory tools never acquire ctx.writeLockPath themselves", () => {
     ]);
     expect(payload.receipt.caller).toBe("mcp");
     expect(payload.receipt.session).toBe("http-session-1");
+  });
+});
+
+describe("2026-07-28 sessionless leg: memory identity is per caller", () => {
+  const MCP_URL = "http://127.0.0.1:3210/mcp";
+  const loopbackPeer = classifyDestination({
+    kind: "network",
+    hostname: "127.0.0.1",
+  });
+
+  function sessionlessTransport(): HttpMcpTransport {
+    const context = createToolContext({
+      store,
+      getConfig: () => config,
+      actualConfigPath: join(root, "config.yml"),
+      indexName: "default",
+      toolMutex: { acquire: async () => () => {} },
+      jobManager: {} as ToolContext["jobManager"],
+      serverInstanceId: SERVER_INSTANCE_ID,
+      writeLockPath: lockPath,
+      enableWrite: true,
+      isShuttingDown: () => false,
+    });
+    return new HttpMcpTransport(
+      {
+        mcpContext: context,
+        isShuttingDown: false,
+        admitRequest: () => ({
+          id: crypto.randomUUID(),
+          signal: new AbortController().signal,
+          finish: () => undefined,
+        }),
+        openSession: () => () => undefined,
+      },
+      {
+        enableWrite: true,
+        createServer: (ctx) =>
+          createMcpServerSurface(ctx, { name: "memory-http", version: "1" }),
+      }
+    );
+  }
+
+  async function call<T>(
+    transport: HttpMcpTransport,
+    identity: string,
+    id: number,
+    name: string,
+    args: Record<string, unknown>
+  ): Promise<T> {
+    const response = await transport.handleRequest(
+      new Request(MCP_URL, {
+        method: "POST",
+        headers: modernHeaders("tools/call", name),
+        body: JSON.stringify(
+          modernRequest(id, "tools/call", { name, arguments: args })
+        ),
+      }),
+      { authenticated: true, identity, peerClassification: loopbackPeer }
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("mcp-session-id")).toBeNull();
+    const envelope = (await response.json()) as {
+      result: { isError?: boolean; structuredContent: T };
+    };
+    expect(envelope.result.isError).not.toBe(true);
+    return envelope.result.structuredContent;
+  }
+
+  test("two modern callers get distinct sessions; one caller is stable; nobody gets the server id", async () => {
+    const transport = sessionlessTransport();
+    try {
+      const remembered = await call<RememberResult>(
+        transport,
+        "principal-a",
+        1,
+        "gno_remember",
+        {
+          text: "Finn prefers the blue cup.",
+          collection: "memory",
+          scopes: ["project:sessionless"],
+          decision: "add",
+        }
+      );
+      expect(remembered.outcome).toBe("added");
+      const recallArgs = {
+        query: "cup",
+        collection: "memory",
+        scopes: ["project:sessionless"],
+      };
+      const first = await call<RecallResult>(
+        transport,
+        "principal-a",
+        2,
+        "gno_recall",
+        recallArgs
+      );
+      const again = await call<RecallResult>(
+        transport,
+        "principal-a",
+        3,
+        "gno_recall",
+        recallArgs
+      );
+      const other = await call<RecallResult>(
+        transport,
+        "principal-b",
+        4,
+        "gno_recall",
+        recallArgs
+      );
+
+      expect(first.facts.map((fact) => fact.text)).toEqual([
+        "Finn prefers the blue cup.",
+      ]);
+      expect(first.receipt.caller).toBe(MODERN_WIRE_CLIENT_INFO.name);
+      expect(first.receipt.session).toMatch(/^http:[0-9a-f]{16}$/);
+      expect(first.receipt.session).toBe(again.receipt.session);
+      expect(other.receipt.session).toMatch(/^http:[0-9a-f]{16}$/);
+      expect(other.receipt.session).not.toBe(first.receipt.session);
+      for (const session of [first.receipt.session, other.receipt.session]) {
+        expect(session).not.toBe(SERVER_INSTANCE_ID);
+        expect(session).not.toContain("principal");
+      }
+    } finally {
+      await transport.close();
+    }
   });
 });

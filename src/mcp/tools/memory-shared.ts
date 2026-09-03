@@ -27,8 +27,10 @@ const DEFAULT_MCP_CALLER = "mcp";
 export interface McpMemorySessionInfo {
   /** `clientInfo.name` from the MCP initialize handshake. */
   clientName?: string;
-  /** Transport session id (Streamable HTTP); absent on stdio. */
+  /** Transport session id (2025-era Streamable HTTP); absent on stdio and on the 2026-07-28 sessionless leg. */
   sessionId?: string;
+  /** Opaque per-caller identity the HTTP boundary derived (`ctx.getRequestIdentity`); absent on stdio. */
+  requestIdentity?: string;
 }
 
 export const memoryScopesInputSchema = z
@@ -43,15 +45,19 @@ export const memoryScopesInputSchema = z
  * Map the MCP server session to the core identity contract.
  *
  * caller = MCP client implementation name; session = transport session id
- * when the transport has one (Streamable HTTP), else the per-process server
- * instance id (stdio: one process is one session).
+ * when the transport has one (2025-era Streamable HTTP), else the per-caller
+ * identity the HTTP boundary derived (2026-07-28 sessionless leg), else the
+ * per-process server instance id (stdio: one process is one session).
  */
 export function resolveMcpMemoryIdentity(
   ctx: ToolContext,
   info: McpMemorySessionInfo
 ): MemoryIdentity {
   const caller = info.clientName?.trim() || DEFAULT_MCP_CALLER;
-  const session = info.sessionId?.trim() || ctx.serverInstanceId;
+  const session =
+    info.sessionId?.trim() ||
+    info.requestIdentity?.trim() ||
+    ctx.serverInstanceId;
   return { caller, session };
 }
 

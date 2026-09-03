@@ -1,9 +1,13 @@
 # GNO MCP Specification
 
 **Version:** 1.0.0
-**Last Updated:** 2026-04-24
-**Protocol:** Model Context Protocol (MCP) 2025-11-25
+**Last Updated:** 2026-09-03
+**Protocol:** Model Context Protocol (MCP) 2025-11-25 and 2026-07-28 (dual-era; see
+[Protocol Revisions](#protocol-revisions))
 **Transport:** JSON-RPC 2.0 over stdio or resident Streamable HTTP
+**SDK:** `@modelcontextprotocol/server` 2.x (tool `inputSchema` /
+`outputSchema` carry the JSON Schema 2020-12 `$schema` stamp; an unknown tool
+name answers JSON-RPC `-32602`)
 
 This document specifies the MCP server interface for GNO.
 
@@ -34,6 +38,83 @@ This document specifies the MCP server interface for GNO.
 
 ---
 
+## Protocol Revisions
+
+GNO serves two protocol eras from one tool registry, on both transports:
+
+| Era    | Revisions                                                           | Opening                                               | HTTP state                                                   |
+| ------ | ------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
+| legacy | `2025-11-25` (and the earlier revisions the SDK negotiates down to) | `initialize` handshake                                | stateful: `Mcp-Session-Id`, GET stream, DELETE               |
+| modern | `2026-07-28`                                                        | `server/discover` probe, per-request `_meta` envelope | sessionless: one SDK instance per request, no session header |
+
+Nothing changes for a 2025 client: the `initialize` result, `notifications/initialized`
+acknowledgement, and `tools/list` bytes are pinned by `test/mcp/legacy-parity.test.ts`
+against a committed golden. A legacy `initialize` never yields a 2026 negotiation - an
+`initialize` naming `protocolVersion: "2026-07-28"` is a 2025-era opening by definition and
+negotiates down to `2025-11-25`.
+
+**stdio.** `gno mcp` serves through the SDK's connection-pinned entry (`serveStdio`,
+wrapped by `src/mcp/stdio-serving.ts`). The first message pins the era for the whole
+connection: `server/discover` with a valid envelope answers
+`{ supportedVersions: ["2026-07-28"], capabilities, _meta["io.modelcontextprotocol/serverInfo"] }`
+and every later result carries the `serverInfo` stamp; a claim-less `initialize` pins the
+legacy era and the connection behaves exactly as before. On a modern-pinned connection a
+later legacy `initialize` answers `-32022 Unsupported protocol version` with
+`data.supported = ["2026-07-28"]`.
+
+**Streamable HTTP.** `/mcp` classifies each request with the SDK's own predicate
+(`isLegacyRequest`) and routes it: legacy traffic (no envelope claim, or any GET/DELETE) to
+the stateful session store; a request that claims the modern era (a
+`params._meta["io.modelcontextprotocol/protocolVersion"]` key, or an `MCP-Protocol-Version`
+header naming a modern revision) to a strict (`legacy: "reject"`) sessionless handler
+built from the same server factory. A `server/discover` POST without an envelope classifies
+legacy and is refused by the session path like any other session-less non-initialize POST.
+
+Modern requests are validated before dispatch and rejected - never silently stripped - with a
+JSON-RPC error body (`400` unless noted):
+
+| Condition                                                                                                           | Code                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| envelope or header names a revision other than `2026-07-28`                                                         | `-32022` `Unsupported protocol version: <requested>` with `data.supported` / `data.requested` |
+| envelope present but `MCP-Protocol-Version` header absent                                                           | `-32020` (GNO-owned: the header is required on every modern request)                          |
+| `MCP-Protocol-Version`, `Mcp-Method`, or `Mcp-Name` disagrees with the body, or a required routing header is absent | `-32020` `HeaderMismatch` with `data.mismatch`                                                |
+| `MCP-Protocol-Version: 2026-07-28` header without an envelope                                                       | `-32602` (missing `_meta`)                                                                    |
+| malformed envelope value (`protocolVersion`, `clientInfo`, `clientCapabilities`)                                    | `-32602` `Invalid _meta envelope`                                                             |
+| `Mcp-Session-Id` on a modern request                                                                                | `-32600` (sessions are 2025-era only; the request can never bind to or read a session)        |
+| JSON-RPC batch containing modern requests                                                                           | `-32600`                                                                                      |
+| `subscriptions/listen` (long-lived change stream)                                                                   | `404` `-32601` `Method not found` with `data.method`, request id echoed                       |
+
+Custom `_meta` keys on a modern request reach tool handlers unchanged (`ctx.mcpReq._meta`);
+the reserved `io.modelcontextprotocol/*` envelope keys are lifted to `ctx.mcpReq.envelope`.
+Modern responses carry `resultType`, `_meta["io.modelcontextprotocol/serverInfo"]`, and the
+cache fields (`ttlMs: 0`, `cacheScope: "private"`) on cacheable results.
+
+`subscriptions/listen` is rejected on the modern leg (`404`, `-32601`) before the SDK
+handler is reached. GNO wires no change event source to subscription streams yet, and the
+SDK's listen router would otherwise hold an SSE stream open for the life of the connection
+(15 s keep-alives, no server-side lifetime), pinning one `maxConcurrentRequests` slot and one
+runtime admission handle with nothing to reap them. The rejection releases both like any
+other pre-dispatch refusal and leaves `invalidateAuthenticatedSessions` (2025-era sessions
+only) unaffected. Wiring GNO change events to subscription streams is fn-132's territory; the
+rejection lifts when that lands.
+
+Per-caller identity on the sessionless leg: a modern request has no `Mcp-Session-Id`, so the
+transport derives an opaque per-caller label (`http:<16 hex>`, a hash of the server instance
+id and the authenticated security identity) and exposes it to tools as
+`ctx.getRequestIdentity()`. `gno_recall` / `gno_remember` use it as the memory `session`
+when no transport session exists, so two distinct authenticated callers never share one
+memory identity; the raw bearer digest never reaches a stored record. Unauthenticated
+loopback callers share the `loopback` security identity and therefore one label.
+
+**Guard parity.** Both legs share one enforcement path in `src/mcp/http-transport.ts`:
+capacity and runtime admission, the write gate (`--enable-write`), per-request egress
+evaluation against the actual peer zone, authorization-epoch invalidation, identity checks,
+and transport metrics all run before the era branch; the bearer/Host/Origin/body-size
+boundary (`src/mcp/http-security.ts`) runs before the transport on every request. A modern
+request cannot create a session, and one that names a session ID is rejected before the
+session store is consulted. `test/mcp/sessionless-guards.test.ts` holds one test per guard;
+`test/mcp/protocol-2026.test.ts` holds the wire assertions for both transports.
+
 ## Security Model
 
 ### Write Tool Gating
@@ -46,7 +127,75 @@ gno mcp --enable-write
 GNO_MCP_ENABLE_WRITE=1 gno mcp
 ```
 
-When disabled, write tools are not registered and cannot be invoked.
+When disabled, write tools are not registered and cannot be invoked. The
+write gate is independent of the tool profile below: a profile only ever
+narrows the set the gate exposes.
+
+### Tool Profiles
+
+A profile decides which tools the server advertises. Both transports honor it;
+the resident gateway applies one profile to every connected client.
+
+| Profile          | Without `--enable-write`                                                                              | With `--enable-write`                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `full` (default) | Every read tool below (34)                                                                            | Every read tool plus every write tool (53)              |
+| `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | The 7 read tools plus `gno_capture`, `gno_remember` (9) |
+
+Both lists are exact: `core` advertises nothing else, and `full` is byte-for-byte
+today's registry (names, order, descriptions, annotations, schemas). Both
+profiles negotiate the same protocol revisions (2025-11-25 and 2026-07-28; see
+[Protocol Revisions](#protocol-revisions)) on both transports.
+
+Descriptions differ by profile. `full` serves the original strings verbatim
+(`MCP_TOOL_DESCRIPTIONS` in `src/mcp/tools/index.ts`, pinned by the legacy
+golden). `core` serves a micro-instruction per tool from a separate table
+(`MCP_CORE_TOOL_DESCRIPTIONS` in `src/mcp/tool-descriptions-core.ts`): each
+description opens with when to call the tool, names the mechanism it runs, and
+ends with what comes back and any bound the caller must respect (line anchors
+for `gno_get`, `maxBytes` for `gno_multi_get`, the 8-fact / 512-token recall
+budget, the separate embedding step after `gno_capture`). Descriptions are the
+zero-install discovery surface, so they follow the copy rules the skill and
+site use: mechanism first, honest bounds, active voice, no promotional
+vocabulary, no negated framings. The variants table names exactly the nine core
+tools; the set of tools whose description differs between the profiles is the
+core set and nothing else (`test/mcp/tool-descriptions-core.test.ts`). Input
+schemas and annotations are identical across profiles.
+
+Core read membership was decided against the Agent Retrieval Playbook: the
+default hybrid path (`gno_query`), the exact-term path (`gno_search`), the two
+read primitives every result hands off to (`gno_get`, `gno_multi_get`), the
+bounded evidence handoff (`gno_context`), the metadata-only change feed
+(`gno_changes`), and memory recall (`gno_recall`). Diagnostics, vector-only
+search, graph, sections, traces, egress, status, and job tools stay in `full`.
+
+Core write membership is an exact allowlist: `gno_capture` (new documents) and
+`gno_remember` (durable facts). `gno_job_status` is deliberately absent from
+both core sets because neither exposed write is asynchronous: `gno_capture`
+writes the file and returns, and `gno_remember` returns once the fact is
+lexically searchable; neither starts a `JobManager` job, so the core profile
+never hands out a job ID to poll. If a future core write becomes async,
+`gno_job_status` joins the write allowlist in the same change.
+
+Selection and precedence (highest first):
+
+1. CLI flag: `gno mcp --tool-profile core|full` (stdio); `gno serve --mcp-tool-profile core|full` or `gno daemon --mcp-tool-profile core|full` (resident gateway). An unknown value fails with `VALIDATION` before any listener starts.
+2. Config: `gateway.toolProfile: core|full` under the root `gateway` key (resident gateway only; stdio has no config key).
+3. Default: `full`.
+
+The profile is read once when the listener starts (stdio process start, or
+`serve`/`daemon` gateway start); it is not hot-reloaded from config, so
+changing it requires restarting the server. `--detach` re-executes the same
+argv, so the flag carries over to the detached child. Calling a tool outside
+the active profile answers JSON-RPC `-32602` exactly like an unregistered
+tool.
+
+Default-profile decision (deferred): the default stays `full`. `core` ships as
+opt-in so existing clients, installers, and skills see an unchanged surface,
+and the flip to `core` is a separate follow-up that needs dogfood evidence
+(agents running on `core` across real sessions, with the playbook's routing
+holding and no tool outside the core set requested in ordinary retrieval). That
+follow-up carries its own release note and a `gno mcp install` profile flag;
+nothing in this change pre-empts it.
 
 ### Collection Root Validation
 
@@ -72,9 +221,10 @@ lease that stays busy past the wait window returns `MEMORY_WRITE_LEASE_BUSY`.
 
 `gno serve` and `gno daemon` mount the same stateful MCP surface at `/mcp`.
 The default listener is the literal IPv4 loopback address `127.0.0.1`. Each
-HTTP session owns one SDK server and transport while sharing the resident
-store, jobs, and model lifecycle. POST, GET, and DELETE follow MCP 2025-11-25;
-resumption is not advertised.
+2025-era HTTP session owns one SDK server and transport while sharing the
+resident store, jobs, and model lifecycle; POST, GET, and DELETE follow MCP
+2025-11-25 and resumption is not advertised. 2026-07-28 requests are served
+sessionless from the same factory (see [Protocol Revisions](#protocol-revisions)).
 
 The external boundary runs before JSON parsing or SDK dispatch on every HTTP
 method. It uses Bun `server.requestIP(request)` as the peer source and never

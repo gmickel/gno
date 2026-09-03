@@ -1,0 +1,50 @@
+{
+  "branch": "fn-131-slim-mcp-core-tool-profile-and-mcp-2026",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "1c09206441d53bd37ca1a84aadaf0df5d04bcd98",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-8272ba0b9151176d1cf8431ddd5aef1a1d744864c3df281463e378215144a1e6"
+  },
+  "head_sha": "1c09206441d53bd37ca1a84aadaf0df5d04bcd98",
+  "id": "fn-131-slim-mcp-core-tool-profile-and-mcp-2026",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "timestamp": "2026-09-03T04:33:47Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

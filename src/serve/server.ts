@@ -405,6 +405,7 @@ export async function startServer(
     allowedHosts: options.allowedHosts,
     allowedOrigins: options.allowedOrigins,
     enableWrite: options.enableWrite,
+    toolProfile: options.toolProfile,
   });
   if (!isHttpGatewayLoopbackBind(gatewayConfig.host)) {
     await runtime.dispose();
