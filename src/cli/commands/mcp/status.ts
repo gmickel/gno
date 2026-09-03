@@ -6,6 +6,7 @@
 
 import type { ConnectorWorkspaceEnvironment } from "../../../core/connector-environment";
 import type { McpConnectorVerificationTarget } from "../../../core/connector-verifier";
+import type { McpToolProfile } from "../../../mcp/tool-profile.js";
 import type { StandardMcpEntry } from "./config.js";
 
 import { normalizeConnectorWorkspaceEnvironment } from "../../../core/connector-environment";
@@ -29,6 +30,7 @@ import {
   type McpScope,
   type McpTarget,
   resolveMcpConfigPath,
+  readMcpToolProfileFromArgs,
 } from "./paths.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,6 +58,8 @@ export interface McpTargetStatus {
     args: string[];
     env?: ConnectorWorkspaceEnvironment;
   };
+  /** Tool profile the registration starts with; `full` when its args carry none. */
+  toolProfile?: McpToolProfile;
   error?: string;
 }
 
@@ -234,6 +238,7 @@ export async function checkMcpTargetStatus(
       configPath,
       configured: true,
       serverEntry,
+      toolProfile: readMcpToolProfileFromArgs(serverEntry.args),
     };
     configIdentityByStatus.set(status, configIdentity);
     return status;
@@ -341,6 +346,7 @@ export async function statusMcp(opts: StatusOptions = {}): Promise<void> {
     if (status.configured && status.serverEntry) {
       process.stdout.write(`    Command: ${status.serverEntry.command}\n`);
       process.stdout.write(`    Args: ${status.serverEntry.args.join(" ")}\n`);
+      process.stdout.write(`    Profile: ${status.toolProfile ?? "full"}\n`);
     }
 
     if (status.error) {

@@ -6,6 +6,10 @@
 
 import { DEFAULT_INDEX_NAME } from "../../../app/constants.js";
 import { getConfigPaths, toAbsolutePath } from "../../../config/paths.js";
+import {
+  type McpToolProfile,
+  parseMcpToolProfile,
+} from "../../../mcp/tool-profile.js";
 import { CliError } from "../../errors.js";
 import { getGlobals } from "../../program.js";
 import { resolveMcpConfigLocation } from "./config-discovery.js";
@@ -45,6 +49,8 @@ export interface InstallOptions {
   force?: boolean;
   dryRun?: boolean;
   enableWrite?: boolean;
+  /** Advertised tool set written into the registration (`core` or `full`). */
+  toolProfile?: McpToolProfile;
   /** Index identity persisted in the installed MCP command. */
   indexName?: string;
   /** Active GNO config persisted as a canonical absolute path. */
@@ -166,6 +172,18 @@ function safeGetGlobals(): { json: boolean; quiet: boolean } {
   }
 }
 
+/** Validate the requested profile before any config file is read or written. */
+function parseInstallToolProfile(value: unknown): McpToolProfile | undefined {
+  try {
+    return parseMcpToolProfile(value);
+  } catch (error) {
+    throw new CliError(
+      "VALIDATION",
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+}
+
 /**
  * Install gno MCP server.
  */
@@ -175,6 +193,7 @@ export async function installMcp(opts: InstallOptions = {}): Promise<void> {
   const force = opts.force ?? false;
   const dryRun = opts.dryRun ?? false;
   const enableWrite = opts.enableWrite ?? false;
+  const toolProfile = parseInstallToolProfile(opts.toolProfile);
   const indexName = opts.indexName ?? DEFAULT_INDEX_NAME;
   const paths = getConfigPaths();
   const configPath = toAbsolutePath(
@@ -196,6 +215,7 @@ export async function installMcp(opts: InstallOptions = {}): Promise<void> {
   // Build server entry (uses process.execPath, always succeeds)
   const serverEntry = buildMcpServerEntry({
     enableWrite,
+    toolProfile,
     indexName,
     configPath,
     dataDir: toAbsolutePath(paths.dataDir, opts.cwd),

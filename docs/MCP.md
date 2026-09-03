@@ -310,9 +310,11 @@ server (JSON-RPC `-32602`), not hidden.
 
 The default stays `full` for now: `core` is opt-in, and flipping the default
 is a separate follow-up that waits on dogfood evidence (agents running on
-`core` across real sessions with the playbook's routing holding). That
-follow-up ships with its own release note and a `gno mcp install` profile
-flag.
+`core` across real sessions with the playbook's routing holding). Pick the
+profile once per harness at install time with
+`gno mcp install --tool-profile core`; the generated stdio registration then
+starts `gno mcp --tool-profile core` (plus `--enable-write` when requested),
+and `gno mcp status` reports the profile each registration carries.
 
 ### Collection Root Validation
 
@@ -467,7 +469,16 @@ gno mcp install --target lmstudio         # LM Studio
 gno mcp install --target librechat --scope project # LibreChat
 gno mcp install --target claude-code      # Claude Code CLI
 gno mcp install --target codex            # OpenAI Codex CLI
+
+# Slim core profile (7 read tools; add --enable-write for capture and remember)
+gno mcp install --target claude-code --tool-profile core
+gno mcp install --target cursor --tool-profile core --enable-write --force
 ```
+
+`--tool-profile` accepts `core` or `full`. Omit it and the registration is
+unchanged from earlier releases (no flag written, `full` at runtime). Rerun
+with `--force` to switch an existing registration; nothing migrates on its
+own.
 
 Every install pins the workspace that was active when the command ran. The
 generated entry uses the absolute Bun executable, `run`, the current installed

@@ -2234,9 +2234,14 @@ function wireMcpCommand(program: Command): void {
       "--enable-write",
       "Enable write operations in installed MCP configuration"
     )
+    .option(
+      "--tool-profile <profile>",
+      "advertised tool set the registration starts with: core (7 read tools + capture/remember with --enable-write) or full (default)"
+    )
     .option("--json", "JSON output")
     .action(async (cmdOpts: Record<string, unknown>) => {
       const target = cmdOpts.target as string;
+      const toolProfile = parseToolProfileOption(cmdOpts.toolProfile);
       const requestedScope = cmdOpts.scope;
 
       // Import MCP_TARGETS for validation
@@ -2278,6 +2283,7 @@ function wireMcpCommand(program: Command): void {
         force: Boolean(cmdOpts.force),
         dryRun: Boolean(cmdOpts.dryRun),
         enableWrite: Boolean(cmdOpts.enableWrite),
+        toolProfile,
         indexName: globals.index,
         configPath: globals.config,
         // Pass undefined if not set, so global --json can take effect

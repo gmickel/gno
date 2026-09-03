@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `gno mcp install --tool-profile <core|full>`: the generated stdio
+  registration starts `gno mcp --tool-profile <profile>` (alongside
+  `--enable-write` when requested) for every installer target, scope, and the
+  `--dry-run`, `--force`, and `--json` paths. Omitting the flag writes the same
+  registration as before (`full` at runtime). Invalid values fail with the
+  runtime flag's validation message before any file is touched. `gno mcp
+status` now reports the profile each registration carries.
+
 ### Changed
 
 ### Fixed

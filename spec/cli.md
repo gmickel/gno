@@ -2466,17 +2466,19 @@ Install gno as an MCP server in client configurations.
 **Synopsis:**
 
 ```bash
-gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--json]
+gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--enable-write] [--tool-profile <core|full>] [--json]
 ```
 
 **Options:**
 
-| Option      | Type    | Default        | Description                                               |
-| ----------- | ------- | -------------- | --------------------------------------------------------- |
-| `--target`  | string  | claude-desktop | Target client (see table below)                           |
-| `--scope`   | string  | target default | Scope: `user` or `project`; LibreChat defaults to project |
-| `--force`   | boolean | false          | Overwrite existing gno configuration                      |
-| `--dry-run` | boolean | false          | Show what would be done without changes                   |
+| Option           | Type    | Default        | Description                                                                                                                                                 |
+| ---------------- | ------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--target`       | string  | claude-desktop | Target client (see table below)                                                                                                                             |
+| `--scope`        | string  | target default | Scope: `user` or `project`; LibreChat defaults to project                                                                                                   |
+| `--force`        | boolean | false          | Overwrite existing gno configuration                                                                                                                        |
+| `--dry-run`      | boolean | false          | Show what would be done without changes                                                                                                                     |
+| `--enable-write` | boolean | false          | Start the registered server with write tools enabled                                                                                                        |
+| `--tool-profile` | string  | full           | Advertised tool set written into the registration: `core` (7 read tools, plus capture and remember with `--enable-write`) or `full`; omitted writes no flag |
 
 **Targets:**
 

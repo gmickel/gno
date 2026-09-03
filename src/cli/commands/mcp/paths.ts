@@ -13,6 +13,11 @@ import type { ConnectorWorkspaceEnvironment } from "../../../core/connector-envi
 import { resolveDirs } from "../../../app/constants";
 import { assertValidIndexName } from "../../../app/index-name";
 import { getCurrentGnoEntrypoint } from "../../../core/runtime-entrypoint";
+import {
+  DEFAULT_MCP_TOOL_PROFILE,
+  type McpToolProfile,
+  isMcpToolProfile,
+} from "../../../mcp/tool-profile.js";
 import { getTargetDisplayName } from "./target-display.js";
 
 export { getTargetDisplayName } from "./target-display.js";
@@ -70,6 +75,8 @@ export interface McpServerEntry {
 
 interface McpServerEntryOptions {
   enableWrite?: boolean;
+  /** Advertised MCP tool set the registration starts with; omitted = `full`. */
+  toolProfile?: McpToolProfile;
   indexName?: string;
   configPath?: string;
   dataDir?: string;
@@ -485,7 +492,25 @@ function appendMcpArguments(
     args.push("--config", resolve(options.configPath));
   }
   args.push("mcp");
+  if (options.toolProfile !== undefined) {
+    args.push("--tool-profile", options.toolProfile);
+  }
   if (options.enableWrite) {
     args.push("--enable-write");
   }
+}
+
+/**
+ * The tool profile a registration starts with, read back from its args.
+ * A registration written before the flag existed carries none and runs `full`.
+ */
+export function readMcpToolProfileFromArgs(
+  args: ReadonlyArray<string>
+): McpToolProfile {
+  const index = args.indexOf("--tool-profile");
+  if (index === -1) {
+    return DEFAULT_MCP_TOOL_PROFILE;
+  }
+  const value = args[index + 1];
+  return isMcpToolProfile(value) ? value : DEFAULT_MCP_TOOL_PROFILE;
 }
