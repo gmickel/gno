@@ -24,6 +24,7 @@ import { createDefaultConfig } from "../../src/config/defaults";
 import { acquireWriteLock } from "../../src/core/file-lock";
 import { MEMORY_EMPTY_RECALL_HINT } from "../../src/core/memory";
 import { createMcpServerSurface } from "../../src/mcp/context";
+import { MCP_HTTP_EGRESS_TOOLS } from "../../src/mcp/http-egress";
 import { MCP_WRITE_TOOL_NAMES } from "../../src/mcp/tools/index";
 import { handleRecall } from "../../src/mcp/tools/memory-recall";
 import { handleRemember } from "../../src/mcp/tools/memory-remember";
@@ -131,6 +132,11 @@ describe("gno_recall / gno_remember registration", () => {
   test("gno_remember is a write tool; gno_recall is not", () => {
     expect(MCP_WRITE_TOOL_NAMES.has("gno_remember")).toBe(true);
     expect(MCP_WRITE_TOOL_NAMES.has("gno_recall")).toBe(false);
+  });
+
+  test("both tools carry the source egress content class (fact text leaves the store)", () => {
+    expect(MCP_HTTP_EGRESS_TOOLS.gno_recall).toBe("source");
+    expect(MCP_HTTP_EGRESS_TOOLS.gno_remember).toBe("source");
   });
 
   test("live listing: gno_recall without the write flag, gno_remember only with it", async () => {

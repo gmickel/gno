@@ -51,6 +51,8 @@ export const MCP_HTTP_EGRESS_TOOLS = {
   gno_multi_get: "source",
   gno_query: "snippet",
   gno_query_diagnose: "metadata",
+  gno_recall: "source",
+  gno_remember: "source",
   gno_remove_collection: "metadata",
   gno_rename_note: "metadata",
   gno_search: "snippet",
