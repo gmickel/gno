@@ -125,10 +125,24 @@ the resident gateway applies one profile to every connected client.
 | `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | The 7 read tools plus `gno_capture`, `gno_remember` (9) |
 
 Both lists are exact: `core` advertises nothing else, and `full` is byte-for-byte
-today's registry (names, order, descriptions, annotations, schemas). Descriptions
-are shared between the profiles for now; core-specific micro-instruction
-descriptions are a separate change, and `full` keeps the original strings
-verbatim regardless.
+today's registry (names, order, descriptions, annotations, schemas). Both
+profiles negotiate the same protocol revisions (2025-11-25 and 2026-07-28; see
+[Protocol Revisions](#protocol-revisions)) on both transports.
+
+Descriptions differ by profile. `full` serves the original strings verbatim
+(`MCP_TOOL_DESCRIPTIONS` in `src/mcp/tools/index.ts`, pinned by the legacy
+golden). `core` serves a micro-instruction per tool from a separate table
+(`MCP_CORE_TOOL_DESCRIPTIONS` in `src/mcp/tool-descriptions-core.ts`): each
+description opens with when to call the tool, names the mechanism it runs, and
+ends with what comes back and any bound the caller must respect (line anchors
+for `gno_get`, `maxBytes` for `gno_multi_get`, the 8-fact / 512-token recall
+budget, the separate embedding step after `gno_capture`). Descriptions are the
+zero-install discovery surface, so they follow the copy rules the skill and
+site use: mechanism first, honest bounds, active voice, no promotional
+vocabulary, no negated framings. The variants table names exactly the nine core
+tools; the set of tools whose description differs between the profiles is the
+core set and nothing else (`test/mcp/tool-descriptions-core.test.ts`). Input
+schemas and annotations are identical across profiles.
 
 Core read membership was decided against the Agent Retrieval Playbook: the
 default hybrid path (`gno_query`), the exact-term path (`gno_search`), the two
@@ -156,8 +170,15 @@ The profile is read once when the listener starts (stdio process start, or
 changing it requires restarting the server. `--detach` re-executes the same
 argv, so the flag carries over to the detached child. Calling a tool outside
 the active profile answers JSON-RPC `-32602` exactly like an unregistered
-tool. Flipping the default to `core` is an explicit follow-up decision that
-waits on dogfood evidence.
+tool.
+
+Default-profile decision (deferred): the default stays `full`. `core` ships as
+opt-in so existing clients, installers, and skills see an unchanged surface,
+and the flip to `core` is a separate follow-up that needs dogfood evidence
+(agents running on `core` across real sessions, with the playbook's routing
+holding and no tool outside the core set requested in ordinary retrieval). That
+follow-up carries its own release note and a `gno mcp install` profile flag;
+nothing in this change pre-empts it.
 
 ### Collection Root Validation
 

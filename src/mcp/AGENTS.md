@@ -11,6 +11,8 @@ src/mcp/
 ├── http-transport.ts  # Resident /mcp gateway: shared guards, era branch
 ├── http-session.ts    # 2025-era stateful sessions
 ├── http-modern.ts     # 2026-07-28 sessionless leg + modern request checks
+├── tool-profile.ts    # core|full profile allowlists + registrar
+├── tool-descriptions-core.ts # core-profile description micro-instructions
 ├── tools/             # Tool implementations
 │   ├── index.ts       # Tool registry
 │   ├── search.ts      # gno_search (BM25)

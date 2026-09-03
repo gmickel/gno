@@ -18,6 +18,7 @@ import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
 import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
 import { RETRIEVAL_TRACE_METADATA } from "../../core/retrieval-trace-session";
 import { normalizeTag } from "../../core/tags";
+import { profileToolDescription } from "../tool-descriptions-core";
 import {
   createProfileToolRegistrar,
   DEFAULT_MCP_TOOL_PROFILE,
@@ -1031,14 +1032,16 @@ function parseErrorMessage(message: string): { [x: string]: unknown } {
 
 export function registerTools(server: McpServer, ctx: ToolContext): void {
   // Tool IDs use underscores (MCP pattern: ^[a-zA-Z0-9_-]{1,64}$)
-  const registerTool = createProfileToolRegistrar(
-    server,
-    ctx.toolProfile ?? DEFAULT_MCP_TOOL_PROFILE
-  );
+  const profile = ctx.toolProfile ?? DEFAULT_MCP_TOOL_PROFILE;
+  const registerTool = createProfileToolRegistrar(server, profile);
+  // The core profile serves micro-instruction variants; full keeps the
+  // original strings verbatim (legacy golden + tool-profile byte-compat).
+  const describe = (name: string, fullDescription: string) =>
+    profileToolDescription(profile, name, fullDescription);
   registerTool(
     "gno_context",
     {
-      description: MCP_TOOL_DESCRIPTIONS.context,
+      description: describe("gno_context", MCP_TOOL_DESCRIPTIONS.context),
       inputSchema: contextBuildSurfaceSchema,
     },
     (args) => handleContext(args, ctx)
@@ -1067,7 +1070,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   registerTool(
     "gno_recall",
     {
-      description: MCP_TOOL_DESCRIPTIONS.recall,
+      description: describe("gno_recall", MCP_TOOL_DESCRIPTIONS.recall),
       inputSchema: recallInputSchema,
       annotations: RECALL_MCP_ANNOTATIONS,
     },
@@ -1081,7 +1084,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   registerTool(
     "gno_search",
     {
-      description: MCP_TOOL_DESCRIPTIONS.search,
+      description: describe("gno_search", MCP_TOOL_DESCRIPTIONS.search),
       inputSchema: searchInputSchema,
     },
     (args) => handleSearch(args, ctx)
@@ -1099,7 +1102,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   registerTool(
     "gno_query",
     {
-      description: MCP_TOOL_DESCRIPTIONS.query,
+      description: describe("gno_query", MCP_TOOL_DESCRIPTIONS.query),
       inputSchema: queryInputSchema,
     },
     (args) => handleQuery(args, ctx)
@@ -1117,7 +1120,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   registerTool(
     "gno_get",
     {
-      description: MCP_TOOL_DESCRIPTIONS.get,
+      description: describe("gno_get", MCP_TOOL_DESCRIPTIONS.get),
       inputSchema: getInputSchema,
     },
     (args) => handleGet(args, ctx)
@@ -1137,7 +1140,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   registerTool(
     "gno_multi_get",
     {
-      description: MCP_TOOL_DESCRIPTIONS.multiGet,
+      description: describe("gno_multi_get", MCP_TOOL_DESCRIPTIONS.multiGet),
       inputSchema: multiGetInputSchema,
     },
     (args) => handleMultiGet(args, ctx)
@@ -1223,8 +1226,10 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   registerTool(
     "gno_changes",
     {
-      description:
-        "List retained metadata-only document changes with opaque cursor pagination and retention disclosure.",
+      description: describe(
+        "gno_changes",
+        "List retained metadata-only document changes with opaque cursor pagination and retention disclosure."
+      ),
       inputSchema: changesInputSchema,
     },
     (args) => handleChanges(args, ctx)
@@ -1424,7 +1429,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     registerTool(
       "gno_remember",
       {
-        description: MCP_TOOL_DESCRIPTIONS.remember,
+        description: describe("gno_remember", MCP_TOOL_DESCRIPTIONS.remember),
         inputSchema: rememberInputSchema,
         annotations: REMEMBER_MCP_ANNOTATIONS,
       },
@@ -1438,8 +1443,10 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     registerTool(
       "gno_capture",
       {
-        description:
-          "Create a new document in a collection. Writes to disk. Does NOT auto-embed; run gno_index after to make it searchable via vector search.",
+        description: describe(
+          "gno_capture",
+          "Create a new document in a collection. Writes to disk. Does NOT auto-embed; run gno_index after to make it searchable via vector search."
+        ),
         inputSchema: captureInputSchema,
       },
       (args) => handleCapture(args, ctx)

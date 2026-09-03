@@ -270,7 +270,22 @@ today's whole surface, byte-for-byte.
 
 Write tools stay behind `--enable-write` in both profiles; a profile never
 widens the write gate. `gno_job_status` is not in `core` because neither core
-write is asynchronous.
+write is asynchronous. Both profiles speak both protocol revisions
+(2025-11-25 and 2026-07-28) on stdio and the resident HTTP endpoint; see
+[Resident HTTP Transport](#resident-http-transport) for how a client's
+revision is negotiated.
+
+The two profiles also describe their tools differently. `full` serves the
+original description strings unchanged. `core` serves each of its nine tools a
+short micro-instruction that says when to call it, what it runs, and what
+comes back, with the bounds the caller has to respect (line anchors for
+`gno_get`, `maxBytes` for `gno_multi_get`, the 8-fact / 512-token `gno_recall`
+budget, the separate embedding step after `gno_capture`). The descriptions
+match the retrieval order in the [playbook](#agent-retrieval-playbook):
+`gno_query` first, `gno_search` for exact words, `gno_get` /
+`gno_multi_get` to read, `gno_context` for one bounded evidence handoff,
+`gno_changes` for what changed, `gno_recall` / `gno_remember` for facts. Input
+schemas are identical across profiles.
 
 ```bash
 # stdio
@@ -290,8 +305,13 @@ gateway:
 Precedence is CLI flag, then `gateway.toolProfile`, then `full`. The profile
 is read when the listener starts; restart `gno mcp`, `gno serve`, or
 `gno daemon` to change it. Tools outside the active profile are unknown to the
-server (JSON-RPC `-32602`), not hidden. Flipping the default to `core` is a
-deliberate follow-up once dogfooding confirms the set.
+server (JSON-RPC `-32602`), not hidden.
+
+The default stays `full` for now: `core` is opt-in, and flipping the default
+is a separate follow-up that waits on dogfood evidence (agents running on
+`core` across real sessions with the playbook's routing holding). That
+follow-up ships with its own release note and a `gno mcp install` profile
+flag.
 
 ### Collection Root Validation
 

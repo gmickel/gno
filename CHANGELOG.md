@@ -9,23 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- MCP tool profiles. `gno mcp --tool-profile core` advertises the 7-tool
-  playbook read set (`gno_query`, `gno_search`, `gno_get`, `gno_multi_get`,
-  `gno_context`, `gno_changes`, `gno_recall`) plus exactly `gno_capture` and
-  `gno_remember` with `--enable-write`; the resident gateway takes
-  `gateway.toolProfile` or `gno serve|daemon --mcp-tool-profile`. `full`
-  stays the default and is byte-identical to the previous surface. The
-  profile is read at listener start (restart to change).
-- MCP 2026-07-28 dual-speak. `gno mcp` (stdio) and the resident `/mcp`
-  endpoint now serve the 2026-07-28 revision next to 2025-11-25: a modern
-  client negotiates natively via `server/discover` and, over HTTP, is served
-  sessionless per request; 2025 clients are unchanged (handshake bytes pinned
-  by the legacy parity golden). The sessionless path runs through the same
-  authentication, write-gate, egress, admission, authorization-epoch, and
-  identity guards as the session path. Unsupported revisions (`-32022`),
-  missing or mismatched `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name`
-  headers (`-32020`), malformed `_meta` envelopes (`-32602`), and a session
-  ID on a modern request (`-32600`) are rejected with `400`.
+- Slim MCP core tool profile and MCP 2026-07-28 dual-speak.
+  - Tool profiles: `gno mcp --tool-profile core` advertises the 7-tool
+    playbook read set (`gno_query`, `gno_search`, `gno_get`,
+    `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall`) plus
+    exactly `gno_capture` and `gno_remember` with `--enable-write`; the
+    resident gateway takes `gateway.toolProfile` or
+    `gno serve|daemon --mcp-tool-profile`. The profile is read at listener
+    start (restart to change). `full` stays the default and is
+    byte-identical to the previous surface; flipping the default to `core`
+    is a separate follow-up that waits on dogfood evidence.
+  - Core descriptions: under `core`, each of the nine tools carries a short
+    micro-instruction (when to call it, what it runs, what comes back, with
+    the bounds to respect) from a separate variants table
+    (`src/mcp/tool-descriptions-core.ts`); `full` keeps the original
+    description strings verbatim. The descriptions follow the skill
+    playbook's retrieval order.
+  - Protocol: `gno mcp` (stdio) and the resident `/mcp` endpoint serve the
+    2026-07-28 revision next to 2025-11-25 in both profiles. A modern client
+    negotiates natively via `server/discover` and, over HTTP, is served
+    sessionless per request; 2025 clients are unchanged (handshake bytes
+    pinned by the legacy parity golden). The sessionless path runs through
+    the same authentication, write-gate, egress, admission,
+    authorization-epoch, and identity guards as the session path.
+    Unsupported revisions (`-32022`), missing or mismatched
+    `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name` headers (`-32020`),
+    malformed `_meta` envelopes (`-32602`), and a session ID on a modern
+    request (`-32600`) are rejected with `400`.
+  - Runtime: the MCP server and client run on the
+    `@modelcontextprotocol/server` and `@modelcontextprotocol/client` 2.0.0
+    packages, the split successor of `@modelcontextprotocol/sdk` 1.30.0
+    (SDK-owned wire deltas listed under Changed).
 
 ### Changed
 
