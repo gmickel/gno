@@ -2175,12 +2175,27 @@ indexed documents and disk-only files. Capture content must be text, and capture
 writes use exclusive create semantics so a late-arriving file fails instead of
 being replaced.
 
-**Response** (202 Accepted):
+**Response** (`201 Created`, or `200 OK` for `opened_existing`):
 
-The response is the shared capture receipt. `sync.status` is usually `pending`
-with a `jobId` because the REST API syncs asynchronously; poll
-`/api/jobs/:id` for completion. `embed.status` is `not_requested` unless a
-separate embed job completes.
+The response is the shared capture receipt, and it is synchronous: the write
+and its lexical sync complete under the shared write lease (`.mcp-write.lock`,
+the same lease the CLI and MCP writers use) before the response, so a captured
+note is searchable the moment `201` arrives and `sync.status` is `completed`.
+`open_existing` on a file that is on disk but not indexed yet syncs it first
+and still returns `200` with `sync.status: "completed"`. The receipt keeps the
+write half (`created`, `contentHash`, `absPath`) separate from `sync`; embed
+state stays separate and `embed.status` is `not_requested` unless a separate
+embed job completes.
+
+Capture never reports success with a failed sync:
+
+| Status | Code                  | Meaning                                                                                                                                                                        |
+| :----- | :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `409`  | `LOCKED`              | The write lease stayed busy for the whole wait window (120s, the v1.38 `--lock-wait` default); nothing was written. Retry once the concurrent writer finishes.                 |
+| `500`  | `CAPTURE_SYNC_FAILED` | The file was written but lexical sync failed; `error.details` carries the write receipt half (`absPath`, `relPath`, `uri`, `contentHash`). Run `gno update` to retry indexing. |
+
+The browser-clip route (`/api/capture/clip`) keeps its own `202` + sync-job
+contract described under [Browser Clipper](#browser-clipper).
 
 Receipts produced by the browser-clip flow may also include normalized
 `source.canonicalUrl`, `source.site`, `source.publishedAt`, and a closed
@@ -2216,7 +2231,7 @@ For browser clips, `open_existing` succeeds only when the stored
     "capturedAt": "2026-06-04T12:34:56.000Z"
   },
   "tags": ["inbox", "research"],
-  "sync": { "status": "pending", "jobId": "..." },
+  "sync": { "status": "completed" },
   "embed": { "status": "not_requested" },
   "collisionPolicyResult": "created"
 }
@@ -3590,18 +3605,20 @@ All errors follow a consistent format:
 }
 ```
 
-| Code             | HTTP Status | Description                                                    |
-| :--------------- | :---------- | :------------------------------------------------------------- |
-| `VALIDATION`     | 400         | Invalid request parameters                                     |
-| `PATH_NOT_FOUND` | 400         | Specified path does not exist                                  |
-| `HAS_REFERENCES` | 400         | Resource has dependencies (e.g., collection in contexts)       |
-| `CSRF_VIOLATION` | 403         | Cross-origin request rejected                                  |
-| `NOT_FOUND`      | 404         | Resource not found                                             |
-| `DUPLICATE`      | 409         | Resource already exists                                        |
-| `CONFLICT`       | 409         | Operation already in progress                                  |
-| `UNAVAILABLE`    | 503         | Feature not available (model not loaded)                       |
-| `RUNTIME`        | 500         | Internal error                                                 |
-| `MEMORY_*`       | 400-500     | Memory contract codes, see [Remember a Fact](#remember-a-fact) |
+| Code                  | HTTP Status | Description                                                                  |
+| :-------------------- | :---------- | :--------------------------------------------------------------------------- |
+| `VALIDATION`          | 400         | Invalid request parameters                                                   |
+| `PATH_NOT_FOUND`      | 400         | Specified path does not exist                                                |
+| `HAS_REFERENCES`      | 400         | Resource has dependencies (e.g., collection in contexts)                     |
+| `CSRF_VIOLATION`      | 403         | Cross-origin request rejected                                                |
+| `NOT_FOUND`           | 404         | Resource not found                                                           |
+| `DUPLICATE`           | 409         | Resource already exists                                                      |
+| `CONFLICT`            | 409         | Operation already in progress                                                |
+| `UNAVAILABLE`         | 503         | Feature not available (model not loaded)                                     |
+| `LOCKED`              | 409         | Shared write lease busy past the wait window ([Capture Note](#capture-note)) |
+| `RUNTIME`             | 500         | Internal error                                                               |
+| `CAPTURE_SYNC_FAILED` | 500         | Capture written but not lexically synced ([Capture Note](#capture-note))     |
+| `MEMORY_*`            | 400-500     | Memory contract codes, see [Remember a Fact](#remember-a-fact)               |
 
 ---
 

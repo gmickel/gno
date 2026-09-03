@@ -157,8 +157,10 @@ import {
 import { exportPublishArtifact } from "../../publish/export-service";
 import { buildBrowseTree, normalizeBrowsePath } from "../browse-tree";
 import {
+  classifyResidentCaptureError,
   executeResidentCapturePlan,
   planResidentCapture,
+  type ResidentCaptureDependencies,
 } from "../capture-service";
 import { parseClosedJson } from "../closed-json";
 import { applyConfigChange, applyConfigChangeTyped } from "../config-sync";
@@ -3629,9 +3631,7 @@ export async function handleCreateCapture(
   ctxHolder: ContextHolder,
   store: SqliteAdapter,
   req: Request,
-  deps?: {
-    syncCollection?: typeof defaultSyncService.syncCollection;
-  }
+  deps: Omit<ResidentCaptureDependencies, "mode" | "syncCollection"> = {}
 ): Promise<Response> {
   let body: CreateCaptureRequestBody;
   try {
@@ -3669,21 +3669,21 @@ export async function handleCreateCapture(
   if (!planned.ok) {
     return errorResponse(planned.code, planned.message, planned.status);
   }
+  // Write + lexical sync complete under the shared write lease before the
+  // response: 201 only once the capture is retrievable (fn-132 R1).
   try {
-    const result = await executeResidentCapturePlan(
-      ctxHolder,
-      store,
-      planned,
-      deps
-    );
+    const result = await executeResidentCapturePlan(ctxHolder, store, planned, {
+      ...deps,
+      mode: "await-sync",
+    });
     return jsonResponse(result.body, result.status);
   } catch (error) {
+    const shape = classifyResidentCaptureError(error, planned);
     return errorResponse(
-      "RUNTIME",
-      `Failed to capture document: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-      500
+      shape.code,
+      shape.message,
+      shape.status,
+      shape.details
     );
   }
 }

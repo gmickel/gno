@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   silent when clean). Last-run state is persisted and shown by
   `gno daemon --status` (`findings` line / JSON object) and the `Findings pass`
   check in `gno doctor`. Saved Capsule reverification stays journal-driven.
+- Capture parity: MCP `gno_capture` and REST `POST /api/capture` now complete
+  the write and its lexical sync under the shared write lease before returning,
+  so a captured note is searchable in the same agent turn. REST answers `201`
+  (`200` for `opened_existing`) instead of `202` + sync job; a written file
+  whose sync fails is `CAPTURE_SYNC_FAILED` (MCP tool error / HTTP 500 with the
+  write receipt in `details`), a busy lease is `LOCKED` (HTTP 409) after the
+  120s wait, and `open_existing` syncs an unindexed disk file before success.
+  The browser-clip route keeps its `202` job contract.
 
 ### Changed
 
