@@ -1075,18 +1075,21 @@ export class SyncService {
           tagCount: extractedTags.length,
         });
 
-        // 13b. Index managed-memory scopes. Only a record that passes the
-        // memory validator gets scope rows; a malformed file clears them and
-        // therefore drops out of managed recall while staying searchable.
-        const memoryScopes = extractMemoryScopes(artifact.markdown);
-        const scopesResult = await store.setDocMemoryScopes(
-          docId,
-          memoryScopes
-        );
-        mustOk(scopesResult, "setDocMemoryScopes", {
-          docId,
-          scopeCount: memoryScopes.length,
-        });
+        // 13b. Index managed-memory scopes, memory-managed collections only.
+        // A record that passes the memory validator gets scope rows; a
+        // malformed file clears them and therefore drops out of managed
+        // recall while staying searchable.
+        if (collection.memoryManaged === true) {
+          const memoryScopes = extractMemoryScopes(artifact.markdown);
+          const scopesResult = await store.setDocMemoryScopes(
+            docId,
+            memoryScopes
+          );
+          mustOk(scopesResult, "setDocMemoryScopes", {
+            docId,
+            scopeCount: memoryScopes.length,
+          });
+        }
 
         // 14. Extract and store links (wiki and markdown links)
         const excludedRanges = getExcludedRanges(artifact.markdown);
