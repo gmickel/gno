@@ -742,14 +742,14 @@ Install GNO as MCP server in client configurations.
 gno mcp install [options]
 ```
 
-| Option         | Default        | Description               |
-| -------------- | -------------- | ------------------------- |
-| `-t, --target` | claude-desktop | Target client (see below) |
-| `-s, --scope`  | target default | Scope: `user`, `project`  |
-| `-f, --force`  | false          | Overwrite existing config |
-| `--dry-run`    | false          | Preview changes           |
-| `--enable-write` | false        | Registered server starts with write tools enabled |
-| `--tool-profile` | full         | Advertised tool set the registration starts with: `core` (7 read tools, plus `gno_capture` and `gno_remember` with `--enable-write`) or `full`; omitted writes no flag |
+| Option           | Default        | Description                                                                                                                                                            |
+| ---------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-t, --target`   | claude-desktop | Target client (see below)                                                                                                                                              |
+| `-s, --scope`    | target default | Scope: `user`, `project`                                                                                                                                               |
+| `-f, --force`    | false          | Overwrite existing config                                                                                                                                              |
+| `--dry-run`      | false          | Preview changes                                                                                                                                                        |
+| `--enable-write` | false          | Registered server starts with write tools enabled                                                                                                                      |
+| `--tool-profile` | full           | Advertised tool set the registration starts with: `core` (7 read tools, plus `gno_capture` and `gno_remember` with `--enable-write`) or `full`; omitted writes no flag |
 
 Targets: `claude-desktop`, `claude-code`, `codex`, `cursor`, `zed`,
 `windsurf`, `opencode`, `amp`, `lmstudio`, and `librechat`. Project scope is
