@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import { URI_PREFIX } from "../app/constants";
 import { JsonlFieldMappingSchema } from "../converters/adapters/jsonl/config";
+import { MCP_TOOL_PROFILES } from "../mcp/tool-profile";
 import { RetrievalTraceConfigSchema } from "./retrieval-traces";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -464,6 +465,8 @@ export const HttpGatewayConfigSchema = z.object({
   allowedOrigins: z.array(z.string().min(1)).optional(),
   /** Separate mutation authorization; authentication alone never enables it. */
   enableWrite: z.boolean().optional(),
+  /** Advertised MCP tool set (`core` | `full`); read at listener start. */
+  toolProfile: z.enum(MCP_TOOL_PROFILES).optional(),
   limits: HttpGatewayLimitsSchema.optional(),
 });
 

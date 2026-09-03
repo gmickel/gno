@@ -9,6 +9,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 // node:path for join/dirname (no Bun path utils)
 import { dirname, join } from "node:path";
 
+import type { McpToolProfile } from "./tool-profile";
+
 import {
   DEFAULT_INDEX_NAME,
   MCP_SERVER_NAME,
@@ -37,6 +39,8 @@ export interface McpServerOptions {
   configPath?: string;
   verbose?: boolean;
   enableWrite?: boolean;
+  /** Advertised tool set; defaults to `full`. */
+  toolProfile?: McpToolProfile;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -128,6 +132,7 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     serverInstanceId,
     writeLockPath,
     enableWrite,
+    toolProfile: options.toolProfile,
     isShuttingDown: () => shuttingDown,
   });
   const server = createMcpServerSurface(ctx, {
@@ -197,7 +202,9 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
 
   await server.connect(transport);
 
-  console.error(`[MCP] ${MCP_SERVER_NAME} v${VERSION} ready on stdio`);
+  console.error(
+    `[MCP] ${MCP_SERVER_NAME} v${VERSION} ready on stdio (tool profile: ${options.toolProfile ?? "full"})`
+  );
 
   // Block forever until shutdown signal or stdin closes
   // This prevents the CLI from exiting after startMcpServer() returns

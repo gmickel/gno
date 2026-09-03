@@ -15,6 +15,7 @@ import type { ModelLease } from "../llm/nodeLlamaCpp/lifecycle";
 import type { ResidentStatus } from "../serve/status-model";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { StoreResult } from "../store/types";
+import type { McpToolProfile } from "./tool-profile";
 
 import { MCP_SERVER_NAME, VERSION } from "../app/constants";
 import { createStandaloneResidentStatus } from "../serve/resident-status";
@@ -70,6 +71,8 @@ export interface ToolContext {
   serverInstanceId: string;
   writeLockPath: string;
   enableWrite: boolean;
+  /** Advertised tool set; `full` when absent. Narrows, never widens, the write gate. */
+  toolProfile?: McpToolProfile;
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
   acquireModelLease?: () => ModelLease;
@@ -105,6 +108,7 @@ export interface CreateToolContextOptions {
   serverInstanceId: string;
   writeLockPath: string;
   enableWrite: boolean;
+  toolProfile?: McpToolProfile;
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
   acquireModelLease?: () => ModelLease;
@@ -153,6 +157,7 @@ export function createToolContext(
     serverInstanceId: options.serverInstanceId,
     writeLockPath: options.writeLockPath,
     enableWrite: options.enableWrite,
+    toolProfile: options.toolProfile,
     isShuttingDown: options.isShuttingDown,
     getResidentStatus:
       options.getResidentStatus ??

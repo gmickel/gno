@@ -1901,6 +1901,9 @@ Options:
 - `--host`, `--mcp-token-file`, repeatable `--mcp-allowed-host` /
   `--mcp-allowed-origin`, and `--mcp-enable-write` - see
   [Resident HTTP MCP security](MCP.md#resident-http-transport)
+- `--mcp-tool-profile <core|full>` - advertised MCP tool set; overrides
+  `gateway.toolProfile`, default `full`, read at listener start - see
+  [Tool Profiles](MCP.md#tool-profiles)
 - `--detach` / `--status` / `--stop` / `--pid-file <path>` / `--log-file <path>` - see [shared management contract](#long-running-processes) above
 
 **Behavior:**
@@ -1966,6 +1969,9 @@ Options:
 - `--host`, `--mcp-token-file`, repeatable `--mcp-allowed-host` /
   `--mcp-allowed-origin`, and `--mcp-enable-write` - see
   [Resident HTTP MCP security](MCP.md#resident-http-transport)
+- `--mcp-tool-profile <core|full>` - advertised MCP tool set; overrides
+  `gateway.toolProfile`, default `full`, read at listener start - see
+  [Tool Profiles](MCP.md#tool-profiles)
 - `--detach` / `--status` / `--stop` / `--pid-file <path>` / `--log-file <path>` - see [shared management contract](#long-running-processes) above
 
 **Features:**
@@ -2057,7 +2063,16 @@ Start MCP server for AI assistant integration.
 
 ```bash
 gno mcp
+gno mcp --enable-write
+gno mcp --tool-profile core
 ```
+
+Options:
+
+- `--enable-write` - Register the write tools (see [Write Tool Gating](MCP.md#write-tool-gating))
+- `--tool-profile <core|full>` - Advertised tool set (default `full`); `core` is the 7-tool
+  playbook set plus `gno_capture`/`gno_remember` with `--enable-write` - see
+  [Tool Profiles](MCP.md#tool-profiles)
 
 See [MCP Integration](MCP.md) for setup details.
 

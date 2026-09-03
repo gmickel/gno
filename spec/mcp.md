@@ -1,7 +1,7 @@
 # GNO MCP Specification
 
 **Version:** 1.0.0
-**Last Updated:** 2026-04-24
+**Last Updated:** 2026-09-03
 **Protocol:** Model Context Protocol (MCP) 2025-11-25
 **Transport:** JSON-RPC 2.0 over stdio or resident Streamable HTTP
 **SDK:** `@modelcontextprotocol/server` 2.x (tool `inputSchema` /
@@ -49,7 +49,54 @@ gno mcp --enable-write
 GNO_MCP_ENABLE_WRITE=1 gno mcp
 ```
 
-When disabled, write tools are not registered and cannot be invoked.
+When disabled, write tools are not registered and cannot be invoked. The
+write gate is independent of the tool profile below: a profile only ever
+narrows the set the gate exposes.
+
+### Tool Profiles
+
+A profile decides which tools the server advertises. Both transports honor it;
+the resident gateway applies one profile to every connected client.
+
+| Profile          | Without `--enable-write`                                                                              | With `--enable-write`                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `full` (default) | Every read tool below (34)                                                                            | Every read tool plus every write tool (53)              |
+| `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | The 7 read tools plus `gno_capture`, `gno_remember` (9) |
+
+Both lists are exact: `core` advertises nothing else, and `full` is byte-for-byte
+today's registry (names, order, descriptions, annotations, schemas). Descriptions
+are shared between the profiles for now; core-specific micro-instruction
+descriptions are a separate change, and `full` keeps the original strings
+verbatim regardless.
+
+Core read membership was decided against the Agent Retrieval Playbook: the
+default hybrid path (`gno_query`), the exact-term path (`gno_search`), the two
+read primitives every result hands off to (`gno_get`, `gno_multi_get`), the
+bounded evidence handoff (`gno_context`), the metadata-only change feed
+(`gno_changes`), and memory recall (`gno_recall`). Diagnostics, vector-only
+search, graph, sections, traces, egress, status, and job tools stay in `full`.
+
+Core write membership is an exact allowlist: `gno_capture` (new documents) and
+`gno_remember` (durable facts). `gno_job_status` is deliberately absent from
+both core sets because neither exposed write is asynchronous: `gno_capture`
+writes the file and returns, and `gno_remember` returns once the fact is
+lexically searchable; neither starts a `JobManager` job, so the core profile
+never hands out a job ID to poll. If a future core write becomes async,
+`gno_job_status` joins the write allowlist in the same change.
+
+Selection and precedence (highest first):
+
+1. CLI flag: `gno mcp --tool-profile core|full` (stdio); `gno serve --mcp-tool-profile core|full` or `gno daemon --mcp-tool-profile core|full` (resident gateway). An unknown value fails with `VALIDATION` before any listener starts.
+2. Config: `gateway.toolProfile: core|full` under the root `gateway` key (resident gateway only; stdio has no config key).
+3. Default: `full`.
+
+The profile is read once when the listener starts (stdio process start, or
+`serve`/`daemon` gateway start); it is not hot-reloaded from config, so
+changing it requires restarting the server. `--detach` re-executes the same
+argv, so the flag carries over to the detached child. Calling a tool outside
+the active profile answers JSON-RPC `-32602` exactly like an unregistered
+tool. Flipping the default to `core` is an explicit follow-up decision that
+waits on dogfood evidence.
 
 ### Collection Root Validation
 

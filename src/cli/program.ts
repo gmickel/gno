@@ -29,6 +29,7 @@ import {
   withCliWriteLease,
   type WriteLeaseBusyFailure,
 } from "../core/write-lease";
+import { type McpToolProfile, parseMcpToolProfile } from "../mcp/tool-profile";
 import { setColorsEnabled } from "./colors";
 import {
   applyGlobalOptions,
@@ -2188,12 +2189,17 @@ function wireMcpCommand(program: Command): void {
       "--enable-write",
       "Enable write operations (capture, add-collection, sync, remove-collection)"
     )
+    .option(
+      "--tool-profile <profile>",
+      "advertised tool set: core (7 read tools + capture/remember with --enable-write) or full (default)"
+    )
     .action(async (cmdOpts: Record<string, unknown>) => {
       const { mcpCommand } = await import("./commands/mcp.js");
       const globalOpts = program.opts();
       const globals = parseGlobalOptions(globalOpts);
       await mcpCommand(globals, {
         enableWrite: cmdOpts.enableWrite === true ? true : undefined,
+        toolProfile: parseToolProfileOption(cmdOpts.toolProfile),
       });
     });
 
@@ -4206,7 +4212,23 @@ function addGatewayOptions(
     .option(
       "--mcp-enable-write",
       "authorize HTTP MCP mutation tools (independent of authentication)"
+    )
+    .option(
+      "--mcp-tool-profile <profile>",
+      "advertised MCP tool set: core or full (overrides gateway.toolProfile; default full)"
     );
+}
+
+/** Validate a `--tool-profile` / `--mcp-tool-profile` value; undefined when absent. */
+function parseToolProfileOption(value: unknown): McpToolProfile | undefined {
+  try {
+    return parseMcpToolProfile(value);
+  } catch (error) {
+    throw new CliError(
+      "VALIDATION",
+      error instanceof Error ? error.message : String(error)
+    );
+  }
 }
 
 function wireDaemonCommand(program: Command): void {
@@ -4287,6 +4309,8 @@ async function handleDaemonAction(
   cmd: Command
 ): Promise<void> {
   const globals = getGlobals();
+  // Validate before any side effect (pid files, detach, runtime boot).
+  const toolProfile = parseToolProfileOption(cmdOpts.mcpToolProfile);
 
   const {
     resolveProcessPaths,
@@ -4378,6 +4402,7 @@ async function handleDaemonAction(
     allowedHosts: cmdOpts.mcpAllowedHost as string[] | undefined,
     allowedOrigins: cmdOpts.mcpAllowedOrigin as string[] | undefined,
     enableWrite: cmdOpts.mcpEnableWrite === true ? true : undefined,
+    toolProfile,
   });
   if (!result.success) {
     throw new CliError("RUNTIME", result.error);
@@ -4623,6 +4648,8 @@ async function handleServeAction(
   cmd: Command
 ): Promise<void> {
   const globals = getGlobals();
+  // Validate before any side effect (NODE_ENV, pid files, detach, runtime boot).
+  const toolProfile = parseToolProfileOption(cmdOpts.mcpToolProfile);
   // NB: do NOT parse --port here. The status/stop branches don't need it
   // and rejecting `gno serve --status --port nope` on irrelevant input
   // would break management commands. parsePositiveInt is called inside
@@ -4723,6 +4750,7 @@ async function handleServeAction(
     allowedHosts: cmdOpts.mcpAllowedHost as string[] | undefined,
     allowedOrigins: cmdOpts.mcpAllowedOrigin as string[] | undefined,
     enableWrite: cmdOpts.mcpEnableWrite === true ? true : undefined,
+    toolProfile,
   });
 
   if (!result.success) {

@@ -4,6 +4,7 @@
  * @module src/cli/commands/mcp
  */
 
+import type { McpToolProfile } from "../../mcp/tool-profile";
 import type { GlobalOptions } from "../context";
 
 /**
@@ -12,7 +13,7 @@ import type { GlobalOptions } from "../context";
  */
 export async function mcpCommand(
   options: GlobalOptions,
-  commandOptions: { enableWrite?: boolean } = {}
+  commandOptions: { enableWrite?: boolean; toolProfile?: McpToolProfile } = {}
 ): Promise<void> {
   const { startMcpServer } = await import("../../mcp/server.js");
   await startMcpServer({
@@ -20,5 +21,6 @@ export async function mcpCommand(
     configPath: options.config,
     verbose: options.verbose,
     enableWrite: commandOptions.enableWrite,
+    toolProfile: commandOptions.toolProfile,
   });
 }

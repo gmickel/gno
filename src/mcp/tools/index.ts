@@ -18,6 +18,10 @@ import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
 import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
 import { RETRIEVAL_TRACE_METADATA } from "../../core/retrieval-trace-session";
 import { normalizeTag } from "../../core/tags";
+import {
+  createProfileToolRegistrar,
+  DEFAULT_MCP_TOOL_PROFILE,
+} from "../tool-profile";
 import { handleAddCollection } from "./add-collection";
 import { askInputSchema, handleAsk } from "./ask";
 import { AUDIT_MCP_ANNOTATIONS, auditInputSchema, handleAudit } from "./audit";
@@ -1027,7 +1031,11 @@ function parseErrorMessage(message: string): { [x: string]: unknown } {
 
 export function registerTools(server: McpServer, ctx: ToolContext): void {
   // Tool IDs use underscores (MCP pattern: ^[a-zA-Z0-9_-]{1,64}$)
-  server.registerTool(
+  const registerTool = createProfileToolRegistrar(
+    server,
+    ctx.toolProfile ?? DEFAULT_MCP_TOOL_PROFILE
+  );
+  registerTool(
     "gno_context",
     {
       description: MCP_TOOL_DESCRIPTIONS.context,
@@ -1036,7 +1044,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleContext(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_context_verify",
     {
       description: MCP_TOOL_DESCRIPTIONS.contextVerify,
@@ -1045,7 +1053,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleContextVerify(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_ask",
     {
       description: MCP_TOOL_DESCRIPTIONS.ask,
@@ -1056,7 +1064,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleAsk(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_recall",
     {
       description: MCP_TOOL_DESCRIPTIONS.recall,
@@ -1070,7 +1078,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       })
   );
 
-  server.registerTool(
+  registerTool(
     "gno_search",
     {
       description: MCP_TOOL_DESCRIPTIONS.search,
@@ -1079,7 +1087,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleSearch(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_vsearch",
     {
       description: MCP_TOOL_DESCRIPTIONS.vsearch,
@@ -1088,7 +1096,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleVsearch(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_query",
     {
       description: MCP_TOOL_DESCRIPTIONS.query,
@@ -1097,7 +1105,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleQuery(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_query_diagnose",
     {
       description: MCP_TOOL_DESCRIPTIONS.queryDiagnose,
@@ -1106,7 +1114,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleQueryDiagnose(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_get",
     {
       description: MCP_TOOL_DESCRIPTIONS.get,
@@ -1115,7 +1123,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleGet(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_section",
     {
       description: MCP_TOOL_DESCRIPTIONS.section,
@@ -1126,7 +1134,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleSection(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_multi_get",
     {
       description: MCP_TOOL_DESCRIPTIONS.multiGet,
@@ -1135,7 +1143,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleMultiGet(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_peek",
     {
       description: MCP_TOOL_DESCRIPTIONS.peek,
@@ -1145,7 +1153,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handlePeek(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_status",
     {
       description: MCP_TOOL_DESCRIPTIONS.status,
@@ -1154,7 +1162,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleStatus(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_audit",
     {
       description: MCP_TOOL_DESCRIPTIONS.audit,
@@ -1164,7 +1172,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args, request) => handleAudit(args, ctx, request.mcpReq.signal)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_egress_policy_get",
     {
       description:
@@ -1174,7 +1182,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleEgressPolicyGet(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_egress_check",
     {
       description:
@@ -1184,7 +1192,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleEgressCheck(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_egress_audit_list",
     {
       description:
@@ -1194,7 +1202,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleEgressAuditList(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_egress_audit_show",
     {
       description: "Inspect one content-free local egress decision receipt.",
@@ -1203,7 +1211,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleEgressAuditShow(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_egress_audit_status",
     {
       description: "Show local egress audit retention and storage status.",
@@ -1212,7 +1220,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleEgressAuditStatus(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_changes",
     {
       description:
@@ -1222,7 +1230,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleChanges(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_diff",
     {
       description:
@@ -1232,7 +1240,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleDiff(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_impact",
     {
       description:
@@ -1242,7 +1250,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleImpact(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_trace_list",
     {
       description:
@@ -1252,7 +1260,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleTraceList(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_trace_show",
     {
       description:
@@ -1262,7 +1270,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleTraceShow(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_list_tags",
     {
       description:
@@ -1272,7 +1280,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleListTags(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_links",
     {
       description:
@@ -1282,7 +1290,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleLinks(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_backlinks",
     {
       description:
@@ -1292,7 +1300,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleBacklinks(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_similar",
     {
       description:
@@ -1302,7 +1310,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleSimilar(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_graph",
     {
       description:
@@ -1312,7 +1320,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleGraph(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_graph_query",
     {
       description:
@@ -1322,7 +1330,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleGraphQuery(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_graph_neighbors",
     {
       description:
@@ -1332,7 +1340,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleGraphNeighbors(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_graph_path",
     {
       description:
@@ -1343,7 +1351,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   );
 
   if (ctx.enableWrite) {
-    server.registerTool(
+    registerTool(
       "gno_egress_policy_set",
       {
         description:
@@ -1353,7 +1361,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleEgressPolicySet(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_egress_audit_delete",
       {
         description:
@@ -1363,7 +1371,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleEgressAuditDelete(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_egress_audit_purge",
       {
         description:
@@ -1373,7 +1381,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleEgressAuditPurge(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_trace_label",
       {
         description:
@@ -1383,7 +1391,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleTraceLabel(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_trace_export",
       {
         description:
@@ -1393,7 +1401,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleTraceExport(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_trace_delete",
       {
         description:
@@ -1403,7 +1411,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleTraceDelete(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_trace_purge",
       {
         description:
@@ -1413,7 +1421,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleTracePurge(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_remember",
       {
         description: MCP_TOOL_DESCRIPTIONS.remember,
@@ -1427,7 +1435,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         })
     );
 
-    server.registerTool(
+    registerTool(
       "gno_capture",
       {
         description:
@@ -1437,7 +1445,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleCapture(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_add_collection",
       {
         description:
@@ -1447,7 +1455,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleAddCollection(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_sync",
       {
         description:
@@ -1457,7 +1465,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleSync(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_embed",
       {
         description:
@@ -1467,7 +1475,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleEmbed(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_index",
       {
         description:
@@ -1477,7 +1485,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleIndex(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_remove_collection",
       {
         description:
@@ -1487,7 +1495,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleRemoveCollection(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_clear_collection_embeddings",
       {
         description: "Remove stale or all embeddings for one collection.",
@@ -1496,7 +1504,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleClearCollectionEmbeddings(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_create_folder",
       {
         description: "Create a folder inside an existing collection.",
@@ -1505,7 +1513,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleCreateFolder(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_rename_note",
       {
         description:
@@ -1516,7 +1524,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleRenameNote(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_move_note",
       {
         description:
@@ -1527,7 +1535,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       (args) => handleMoveNote(args, ctx)
     );
 
-    server.registerTool(
+    registerTool(
       "gno_duplicate_note",
       {
         description:
@@ -1538,7 +1546,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     );
   }
 
-  server.registerTool(
+  registerTool(
     "gno_job_status",
     {
       description:
@@ -1548,7 +1556,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleJobStatus(args, ctx)
   );
 
-  server.registerTool(
+  registerTool(
     "gno_list_jobs",
     {
       description:

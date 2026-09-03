@@ -30,6 +30,7 @@ export async function createMcpHttpGateway(
   config: ResolvedHttpGatewayConfig
 ): Promise<McpHttpGateway> {
   runtime.mcpContext.enableWrite = config.enableWrite;
+  runtime.mcpContext.toolProfile = config.toolProfile;
   const transport = new HttpMcpTransport(runtime, {
     enableWrite: config.enableWrite,
     idleTimeoutMs: config.limits.sessionIdleTimeoutMs,

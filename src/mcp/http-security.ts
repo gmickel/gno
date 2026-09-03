@@ -11,6 +11,7 @@ import {
   classifyBindDestination,
   classifyDestination,
 } from "../core/destination-classifier";
+import { DEFAULT_MCP_TOOL_PROFILE, type McpToolProfile } from "./tool-profile";
 
 export const DEFAULT_HTTP_GATEWAY_HOST = "127.0.0.1";
 export const DEFAULT_HTTP_GATEWAY_PORT = 3000;
@@ -39,6 +40,7 @@ export interface ResolvedHttpGatewayConfig {
   allowedHosts: readonly string[];
   allowedOrigins: readonly string[];
   enableWrite: boolean;
+  toolProfile: McpToolProfile;
   limits: {
     maxBodyBytes: number;
     maxRequestsPerMinute: number;
@@ -56,6 +58,7 @@ export interface HttpGatewayOverrides {
   allowedHosts?: string[];
   allowedOrigins?: string[];
   enableWrite?: boolean;
+  toolProfile?: McpToolProfile;
 }
 
 export interface AuthorizedHttpMcpRequest {
@@ -178,6 +181,8 @@ export function resolveHttpGatewayConfig(
       config?.allowedOrigins ??
       defaultAllowedOrigins(host, port),
     enableWrite: overrides.enableWrite ?? config?.enableWrite ?? false,
+    toolProfile:
+      overrides.toolProfile ?? config?.toolProfile ?? DEFAULT_MCP_TOOL_PROFILE,
     limits: {
       maxBodyBytes:
         config?.limits?.maxBodyBytes ?? DEFAULT_HTTP_MCP_MAX_BODY_BYTES,

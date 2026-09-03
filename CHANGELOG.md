@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- MCP tool profiles. `gno mcp --tool-profile core` advertises the 7-tool
+  playbook read set (`gno_query`, `gno_search`, `gno_get`, `gno_multi_get`,
+  `gno_context`, `gno_changes`, `gno_recall`) plus exactly `gno_capture` and
+  `gno_remember` with `--enable-write`; the resident gateway takes
+  `gateway.toolProfile` or `gno serve|daemon --mcp-tool-profile`. `full`
+  stays the default and is byte-identical to the previous surface. The
+  profile is read at listener start (restart to change).
+
 ### Changed
 
 - MCP server and client now run on the `@modelcontextprotocol/server` and

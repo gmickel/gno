@@ -96,6 +96,7 @@ editorUriTemplate: "vscode://file/{path}:{line}:{col}"
 gateway:
   host: 127.0.0.1
   enableWrite: false
+  toolProfile: full
 
 # Private local retrieval receipts are absent/off by default.
 retrievalTraces:
@@ -303,6 +304,7 @@ gateway:
   allowedOrigins:
     - https://trusted-client.example
   enableWrite: false
+  toolProfile: full
   limits:
     maxBodyBytes: 1048576
     maxRequestsPerMinute: 120
@@ -320,6 +322,10 @@ An explicitly configured missing token file is generated with a random 256-bit
 token and mode `0600` on POSIX. Authentication and mutation authorization are
 separate: `enableWrite` must be true before HTTP write tools are registered or
 dispatched. CLI gateway flags override config values for one invocation.
+`toolProfile` (`core` | `full`, default `full`) picks the advertised MCP tool
+set for every gateway client; `--mcp-tool-profile` overrides it, and the value
+is read once at listener start, so changing it means restarting `gno serve` or
+`gno daemon`. See [Tool Profiles](MCP.md#tool-profiles).
 
 Upgrading from a stdio-only setup requires no client-config migration:
 `gno mcp` remains supported. Start `gno serve` or `gno daemon` only for clients

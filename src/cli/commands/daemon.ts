@@ -178,6 +178,7 @@ export async function daemon(
     allowedHosts: options.allowedHosts,
     allowedOrigins: options.allowedOrigins,
     enableWrite: options.enableWrite,
+    toolProfile: options.toolProfile,
   });
   let gateway: Awaited<ReturnType<typeof createMcpHttpGateway>> | undefined;
   let server: ReturnType<typeof Bun.serve> | undefined;

@@ -253,7 +253,45 @@ GNO_MCP_ENABLE_WRITE=1 gno mcp
 Without this flag, the 34 read-only retrieval, verified-synthesis, memory
 recall, trace, graph, egress, status, and job-inspection tools are available.
 Enabling writes adds 19 mutation tools (including `gno_remember`), for 53
-total.
+total. Those counts describe the default `full` profile; see
+[Tool Profiles](#tool-profiles) for the slim `core` surface.
+
+### Tool Profiles
+
+Every advertised tool definition is context an agent pays for each session.
+The `core` profile advertises only the tools the
+[playbook](#agent-retrieval-playbook) routes to; `full` (the default) keeps
+today's whole surface, byte-for-byte.
+
+| Profile          | Read tools                                                                                            | With `--enable-write` adds    |
+| ---------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `full` (default) | all 34                                                                                                | all 19 write tools            |
+| `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | `gno_capture`, `gno_remember` |
+
+Write tools stay behind `--enable-write` in both profiles; a profile never
+widens the write gate. `gno_job_status` is not in `core` because neither core
+write is asynchronous.
+
+```bash
+# stdio
+gno mcp --tool-profile core
+gno mcp --tool-profile core --enable-write
+
+# resident gateway (serve or daemon)
+gno daemon --mcp-tool-profile core
+```
+
+```yaml
+# ~/.config/gno/index.yml - resident gateway default
+gateway:
+  toolProfile: core
+```
+
+Precedence is CLI flag, then `gateway.toolProfile`, then `full`. The profile
+is read when the listener starts; restart `gno mcp`, `gno serve`, or
+`gno daemon` to change it. Tools outside the active profile are unknown to the
+server (JSON-RPC `-32602`), not hidden. Flipping the default to `core` is a
+deliberate follow-up once dogfooding confirms the set.
 
 ### Collection Root Validation
 
