@@ -110,7 +110,12 @@ Every sync outcome is logged (`gno-memory: index sync ok ... (added, updated,
 removed)` or `gno-memory: index sync failed (<kind>): ...`). A failed sync
 marks the index stale: the tool response carries `stale: true` and a
 `warning`, the model is told to relay it, and `openclaw gno-memory status`
-shows `STALE: <reason>` until a sync succeeds.
+shows `STALE: <reason>` until a sync succeeds. With sync-before-search on,
+that is the next search. With `syncBeforeSearch: false` nothing else runs
+`gno index`, so the flag ages out instead: once it is five minutes old the
+next search re-probes with one `gno index` run, clears the flag on success,
+or refreshes the reason and restarts the five-minute clock on failure. An
+explicit `openclaw gno-memory sync` re-probes immediately.
 
 Known gap (GNO core, not the plugin): a file deleted and later restored at the
 same path with byte-identical content stays inactive, because incremental sync

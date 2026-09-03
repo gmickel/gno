@@ -5,7 +5,11 @@ import { mkdtemp, rm, symlink } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { GnoMemoryBackend, type BackendLogger } from "../src/backend";
+import {
+  type BackendLogger,
+  GnoMemoryBackend,
+  STALE_RETRY_MS,
+} from "../src/backend";
 import {
   DEFAULT_PATHS,
   normalizeRoot,
@@ -409,6 +413,53 @@ describe("search", () => {
     ).toBe(true);
     await backend.sync(ROOT);
     expect(backend.staleState).toBeNull();
+  });
+
+  test("in watch mode a stale flag ages out: the next search after STALE_RETRY_MS re-probes", async () => {
+    let clock = Date.parse("2026-09-03T10:00:00.000Z");
+    const indexOutcomes = [timedOut, timedOut, ok(INDEX_OK)];
+    const log = logger();
+    const fake = fakeGno(
+      happyScript({ index: () => indexOutcomes.shift() ?? ok(INDEX_OK) })
+    );
+    const backend = new GnoMemoryBackend(
+      resolveConfig({ syncBeforeSearch: false }),
+      log,
+      fake.runner,
+      () => clock
+    );
+    const indexCalls = () => fake.calls.filter((c) => c.args[0] === "index");
+    expect(await backend.sync(ROOT)).toBe(false);
+    expect(backend.staleState?.at).toBe("2026-09-03T10:00:00.000Z");
+
+    // Not yet due: the flag rides on the search, no re-probe.
+    clock += STALE_RETRY_MS - 1;
+    let outcome = await backend.search("q", { workspaceDir: ROOT });
+    expect(outcome.synced).toBe(false);
+    expect(outcome.stale?.at).toBe("2026-09-03T10:00:00.000Z");
+    expect(indexCalls()).toHaveLength(1);
+
+    // Due: a failed re-probe keeps the flag, refreshes `at`, restarts the clock.
+    clock += 1;
+    outcome = await backend.search("q", { workspaceDir: ROOT });
+    expect(outcome.synced).toBe(false);
+    expect(outcome.stale?.at).toBe("2026-09-03T10:05:00.000Z");
+    expect(indexCalls()).toHaveLength(2);
+    outcome = await backend.search("q", { workspaceDir: ROOT });
+    expect(indexCalls()).toHaveLength(2);
+
+    // Due again: a successful re-probe clears the flag.
+    clock += STALE_RETRY_MS;
+    outcome = await backend.search("q", { workspaceDir: ROOT });
+    expect(outcome.synced).toBe(true);
+    expect(outcome.stale).toBeNull();
+    expect(outcome.warning).toBeUndefined();
+    expect(indexCalls()).toHaveLength(3);
+    expect((await backend.status(ROOT)).lastSyncAt).toBe(
+      "2026-09-03T10:10:00.000Z"
+    );
+    outcome = await backend.search("q", { workspaceDir: ROOT });
+    expect(indexCalls()).toHaveLength(3);
   });
 });
 

@@ -79,6 +79,12 @@ interface CollectionRecord {
 }
 
 const HASH_PREFIX_LENGTH = 12;
+/**
+ * With `syncBeforeSearch: false` nothing clears a stale flag on its own, so a
+ * search re-probes the index (one `gno index` run) once the flag is this old.
+ * A success clears it; a failure refreshes the reason and restarts the clock.
+ */
+export const STALE_RETRY_MS = 5 * 60_000;
 const URI_COLLECTION_PREFIX = /^gno:\/\/[^/]+\//;
 const LEADING_DOT_SLASH = /^\.?\//;
 
@@ -172,6 +178,7 @@ export class GnoMemoryBackend {
   readonly config: GnoMemoryConfig;
   readonly cli: GnoCli;
   private readonly logger: BackendLogger;
+  private readonly now: () => number;
   private stale: StaleState | null = null;
   private lastSyncAt: string | null = null;
   private registeredRoot: string | null = null;
@@ -179,10 +186,12 @@ export class GnoMemoryBackend {
   constructor(
     config: GnoMemoryConfig,
     logger: BackendLogger,
-    runner?: GnoRunner
+    runner?: GnoRunner,
+    now: () => number = Date.now
   ) {
     this.config = config;
     this.logger = logger;
+    this.now = now;
     this.cli = new GnoCli({
       binary: config.gnoPath,
       timeoutMs: config.timeoutMs,
@@ -284,7 +293,7 @@ export class GnoMemoryBackend {
         "10s",
       ]);
       const summary = asRecord(payload.syncResult);
-      this.lastSyncAt = new Date().toISOString();
+      this.lastSyncAt = new Date(this.now()).toISOString();
       this.stale = null;
       this.logger.info(
         `gno-memory: index sync ok for "${this.config.collection}" (added ${numberOr(summary?.totalFilesAdded, 0)}, updated ${numberOr(summary?.totalFilesUpdated, 0)}, removed ${numberOr(summary?.totalFilesRemoved, 0)})`
@@ -295,7 +304,7 @@ export class GnoMemoryBackend {
       this.stale = {
         reason: err.message,
         kind: err.kind,
-        at: new Date().toISOString(),
+        at: new Date(this.now()).toISOString(),
       };
       this.logger.warn(
         `gno-memory: index sync failed (${err.kind}): ${err.message}; serving possibly stale results`
@@ -309,9 +318,10 @@ export class GnoMemoryBackend {
     options: SearchOptions = {}
   ): Promise<SearchOutcome> {
     await this.ensureCollection(options.workspaceDir);
-    const synced = this.config.syncBeforeSearch
-      ? await this.sync(options.workspaceDir)
-      : false;
+    const synced =
+      this.config.syncBeforeSearch || this.staleDueForRetry()
+        ? await this.sync(options.workspaceDir)
+        : false;
     const limit = String(options.maxResults ?? this.config.maxResults);
     const args =
       this.config.mode === "hybrid"
@@ -351,6 +361,15 @@ export class GnoMemoryBackend {
       outcome.warning = `memory index may be stale: ${this.stale.reason}`;
     }
     return outcome;
+  }
+
+  /** In watch mode, a stale flag older than STALE_RETRY_MS is re-probed on the next search. */
+  private staleDueForRetry(): boolean {
+    if (!this.stale) return false;
+    const flaggedAt = Date.parse(this.stale.at);
+    return (
+      !Number.isFinite(flaggedAt) || this.now() - flaggedAt >= STALE_RETRY_MS
+    );
   }
 
   /** Exact excerpt via `gno get`; `ref` is a gno:// URI or a workspace-relative path. */
