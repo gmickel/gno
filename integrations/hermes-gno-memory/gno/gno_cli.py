@@ -205,6 +205,7 @@ class GnoCli:
         collection: str,
         caller: str,
         session: str,
+        receipt_path: str = "",
     ) -> Dict[str, Any]:
         args: List[str] = ["remember", request.text]
         args.extend(_scope_args(scopes))
@@ -223,6 +224,10 @@ class GnoCli:
             )
         if request.source:
             args.extend(["--source", request.source])
+        if receipt_path:
+            # The latest recall receipt: lets GNO fence a recalled span that
+            # comes back as a "new" fact (MEMORY_FENCED_REPLAY).
+            args.extend(["--receipt", receipt_path])
         args.extend(_identity_args(caller, session))
         args.append("--json")
         return self.run_json(args)

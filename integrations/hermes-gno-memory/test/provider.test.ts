@@ -111,12 +111,33 @@ async function drive(
   return JSON.parse(stdout) as Result[];
 }
 
-async function calls(fx: Fixture): Promise<string[][]> {
+async function logLines(fx: Fixture): Promise<unknown[]> {
   const raw = await readFile(fx.log, "utf8").catch(() => "");
   return raw
     .split("\n")
     .filter((line) => line.trim())
-    .map((line) => JSON.parse(line) as string[]);
+    .map((line) => JSON.parse(line) as unknown);
+}
+
+/** Every gno argv the fake saw (the receipt sidecar lines are objects, not argv). */
+async function calls(fx: Fixture): Promise<string[][]> {
+  return (await logLines(fx)).filter((line): line is string[] =>
+    Array.isArray(line)
+  );
+}
+
+interface ReceiptSeen {
+  receipt: Record<string, unknown>;
+  path: string;
+  mode: string;
+}
+
+/** What `gno remember --receipt` found in the receipt file while it ran. */
+async function receiptsSeen(fx: Fixture): Promise<ReceiptSeen[]> {
+  return (await logLines(fx)).filter(
+    (line): line is ReceiptSeen =>
+      !Array.isArray(line) && typeof line === "object" && line !== null
+  );
 }
 
 function flag(argv: string[], name: string): string | undefined {
@@ -224,6 +245,59 @@ describe.skipIf(!PYTHON)("hermes gno memory provider", () => {
       FACT_HASH
     );
     expect(supersedeCall).not.toContain("--add");
+    // No recall happened this session, so there is no receipt to present.
+    expect(addCall).not.toContain("--receipt");
+    expect(supersedeCall).not.toContain("--receipt");
+    expect(await receiptsSeen(fx)).toEqual([]);
+  });
+
+  test("remember forwards the session's latest recall receipt via --receipt in a private temp file", async () => {
+    const fx = await fixture();
+    const [, pre, added] = await drive(fx, [
+      { op: "initialize" },
+      { op: "prefetch", query: "deploy branch" },
+      {
+        op: "tool",
+        args: { text: "Deploys go out from main.", decision: "add" },
+      },
+    ]);
+    expect(pre?.count).toBe(1);
+    expect(added?.result.outcome).toBe("added");
+
+    const [, , addCall] = await calls(fx);
+    const receiptPath = flag(addCall as string[], "--receipt");
+    expect(receiptPath).toMatch(/hermes-gno-receipt-.*\.json$/);
+    const [seen] = await receiptsSeen(fx);
+    expect(seen?.path).toBe(receiptPath);
+    expect(seen?.mode).toBe("0o600");
+    expect(seen?.receipt).toMatchObject({
+      caller: "hermes:ivan",
+      session: "sess-initial",
+      digest: "c".repeat(64),
+      spanHashes: [FACT_HASH],
+    });
+    // The temp file lives only for the remember call.
+    expect(await Bun.file(receiptPath as string).exists()).toBe(false);
+  });
+
+  test("an empty recall still yields a receipt; a session switch drops it", async () => {
+    const fx = await fixture();
+    await drive(
+      fx,
+      [
+        { op: "initialize" },
+        { op: "prefetch", query: "anything" },
+        { op: "tool", args: { text: "x", decision: "add" } },
+        { op: "switch", session_id: "sess-2" },
+        { op: "tool", args: { text: "y", decision: "add" } },
+      ],
+      { FAKE_GNO_MODE: "empty" }
+    );
+    const [, , withReceipt, afterSwitch] = await calls(fx);
+    expect(flag(withReceipt as string[], "--receipt")).toBeDefined();
+    expect(afterSwitch).not.toContain("--receipt");
+    const [seen] = await receiptsSeen(fx);
+    expect(seen?.receipt).toMatchObject({ spanHashes: [], memoryIds: [] });
   });
 
   test("remember without a decision proposes only: no --add/--supersede, candidates returned", async () => {

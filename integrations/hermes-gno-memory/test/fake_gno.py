@@ -3,7 +3,9 @@
 
 Behaviour is selected by ``FAKE_GNO_MODE``; every invocation appends its argv
 as one JSON line to ``FAKE_GNO_LOG`` so tests can assert the exact flag
-mapping and, for the ambient-store negative, the absence of any write.
+mapping and, for the ambient-store negative, the absence of any write. A
+``remember --receipt`` call also appends one JSON object line describing the
+receipt file it was handed.
 """
 
 from __future__ import annotations
@@ -84,6 +86,19 @@ def recall(argv):
 
 
 def remember(argv):
+    if "--receipt" in argv:
+        # Prove the receipt file was readable, well-formed, and private
+        # while the command ran; the provider removes it afterwards.
+        path = flag(argv, "--receipt")
+        with open(path, encoding="utf-8") as fh:
+            presented = json.load(fh)
+        log(
+            {
+                "receipt": presented.get("receipt"),
+                "path": path,
+                "mode": oct(os.stat(path).st_mode & 0o777),
+            }
+        )
     record = dict(FACT, text=argv[1], caller=flag(argv, "--caller"), session=flag(argv, "--session"))
     written = {"absPath": "/tmp/fake.md", "sync": {"status": "completed"}, "matching": MATCHING}
     if "--add" in argv:

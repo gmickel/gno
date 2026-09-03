@@ -4,12 +4,12 @@ An external [Hermes Agent](https://github.com/NousResearch/hermes-agent) memory
 provider that puts GNO's `remember` / `recall` contracts into the slots Hermes
 calls:
 
-| Hermes slot                         | What the provider does                                                              |
-| :---------------------------------- | :---------------------------------------------------------------------------------- |
-| `prefetch` (before every turn)      | `gno recall --json` with the turn's message and the scopes from the provider config |
-| `gno_remember` tool (model-invoked) | `gno remember --json` with `decision` = `propose` (no write), `add`, or `supersede` |
-| `sync_turn` (after every turn)      | **Nothing.** No GNO writes ever happen without an explicit `gno_remember` call      |
-| `system_prompt_block`               | One short block telling the model recall is automatic and storing is deliberate     |
+| Hermes slot                         | What the provider does                                                                                                                          |
+| :---------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prefetch` (before every turn)      | `gno recall --json` with the turn's message and the scopes from the provider config                                                             |
+| `gno_remember` tool (model-invoked) | `gno remember --json` with `decision` = `propose` (no write), `add`, or `supersede`; presents the session's latest recall receipt (`--receipt`) |
+| `sync_turn` (after every turn)      | **Nothing.** No GNO writes ever happen without an explicit `gno_remember` call                                                                  |
+| `system_prompt_block`               | One short block telling the model recall is automatic and storing is deliberate                                                                 |
 
 Identity: `caller` comes from the provider config; `session` is the Hermes
 session id (rebound on `/resume`, `/branch`, `/new`). Scopes come from the
@@ -103,6 +103,14 @@ provider logs a one-time warning while recall reports `mode: lexical`.
 Writes are refused in non-primary agent contexts (`cron`, `subagent`,
 `flush`), matching the other Hermes providers.
 
+Every `gno_remember` call after a recall in the same session presents that
+recall's receipt (`gno remember --receipt <file>`): the provider keeps the
+latest `recall --json` receipt per session, writes it to a `0600` temp file
+for the duration of the call, and removes it afterwards. GNO uses it to
+reject a recalled span replayed as a "new" fact (`MEMORY_FENCED_REPLAY`);
+recalled spans are context, not new facts. A session switch drops the
+receipt, and a remember before any recall carries none.
+
 ## Verify
 
 ```bash
@@ -115,8 +123,9 @@ hermes sessions export --format jsonl --session-id <id> - | grep -c '<memory-con
 
 ## Tests
 
-Deterministic unit suite with a faked `gno` subprocess (flag mapping, timeout,
-malformed JSON, below-minimum version, missing binary, default-no-write):
+Deterministic unit suite with a faked `gno` subprocess (flag mapping, receipt
+forwarding, timeout, malformed JSON, below-minimum version, missing binary,
+default-no-write):
 
 ```bash
 bun test integrations/hermes-gno-memory

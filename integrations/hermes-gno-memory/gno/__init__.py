@@ -5,7 +5,9 @@ Wires GNO's fn-130 memory contracts into the Hermes memory-provider slots:
 * ``prefetch``            -> ``gno recall --json`` with the turn's query and the
                              scopes declared in the provider config
 * ``gno_remember`` tool   -> ``gno remember --json`` (add / supersede), invoked
-                             deliberately by the model
+                             deliberately by the model; carries the session's
+                             latest recall receipt (``--receipt``) so GNO can
+                             fence a recalled span replayed as a new fact
 * ``sync_turn``           -> NO GNO writes. Hermes calls it after every turn;
                              storing there would be ambient capture, which the
                              memory contract forbids.
@@ -23,6 +25,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -195,6 +198,7 @@ class GnoMemoryProvider(MemoryProvider):
         self._disabled_reason = ""
         self._write_enabled = True
         self._last_recall_count = 0
+        self._last_receipt: Optional[Dict[str, Any]] = None
         self._lexical_warned = False
 
     @property
@@ -226,6 +230,7 @@ class GnoMemoryProvider(MemoryProvider):
         self._session_id = session_id or ""
         self._write_enabled = kwargs.get("agent_context", "primary") not in _WRITE_DISABLED_CONTEXTS
         self._last_recall_count = 0
+        self._last_receipt = None
         self._disabled_reason = ""
         self._cli = GnoCli(
             resolve_gno_binary(self._config["gno_path"]),
@@ -244,6 +249,8 @@ class GnoMemoryProvider(MemoryProvider):
     def on_session_switch(self, new_session_id: str, **kwargs: Any) -> None:
         self._session_id = new_session_id or self._session_id
         self._last_recall_count = 0
+        # Receipts are bound to the session that issued them.
+        self._last_receipt = None
 
     def shutdown(self) -> None:
         self._cli = None
@@ -292,6 +299,9 @@ class GnoMemoryProvider(MemoryProvider):
             logger.warning("GNO memory prefetch skipped: %s", exc.message)
             return ""
         self._warn_once_if_lexical_only(result)
+        receipt = result.get("receipt")
+        if isinstance(receipt, dict):
+            self._last_receipt = receipt
         facts = result.get("facts")
         if not isinstance(facts, list) or not facts:
             return ""
@@ -351,6 +361,7 @@ class GnoMemoryProvider(MemoryProvider):
             request = _parse_remember_args(args or {})
         except ValueError as exc:
             return _tool_error(str(exc))
+        receipt_path = _write_receipt_file(self._last_receipt)
         try:
             result = self._cli.remember(
                 request,
@@ -358,10 +369,13 @@ class GnoMemoryProvider(MemoryProvider):
                 collection=self._config["collection"],
                 caller=self._config["caller"],
                 session=self._session_id,
+                receipt_path=receipt_path,
             )
         except GnoCliError as exc:
             logger.warning("GNO memory remember failed: %s", exc.message)
             return json.dumps(exc.to_dict())
+        finally:
+            _remove_receipt_file(receipt_path)
         return json.dumps(_summarize_remember(result))
 
     # -- Setup ------------------------------------------------------------------
@@ -415,6 +429,34 @@ class GnoMemoryProvider(MemoryProvider):
 
 def _tool_error(message: str) -> str:
     return json.dumps({"error": message})
+
+
+def _write_receipt_file(receipt: Optional[Dict[str, Any]]) -> str:
+    """Persist the latest recall receipt for ``gno remember --receipt``.
+
+    ``mkstemp`` creates the file 0600; it lives only for the duration of the
+    remember call. Returns "" when no recall has happened this session.
+    """
+    if not receipt:
+        return ""
+    fd, path = tempfile.mkstemp(prefix="hermes-gno-receipt-", suffix=".json")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump({"receipt": receipt}, fh)
+    except OSError:
+        _remove_receipt_file(path)
+        logger.warning("GNO memory: could not write the recall receipt; storing without fence", exc_info=True)
+        return ""
+    return path
+
+
+def _remove_receipt_file(path: str) -> None:
+    if not path:
+        return
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
 
 
 def _parse_remember_args(args: Dict[str, Any]) -> RememberRequest:

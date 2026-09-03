@@ -372,6 +372,7 @@ contract above without adding a write path:
 | :----------------------- | :--------------------------------------------------------------------------- |
 | `prefetch` (every turn)  | `gno recall --json` with the turn's message and the configured scopes        |
 | `gno_remember` tool      | `gno remember --json`; `decision` = `propose` (no write), `add`, `supersede` |
+| (after a recall)         | `--receipt <0600 temp file>` with the session's latest recall receipt        |
 | `sync_turn` (every turn) | none: Hermes's after-turn persistence never writes to GNO                    |
 
 - Scopes come from the provider config (`$HERMES_HOME/gno/config.json`)
@@ -384,6 +385,9 @@ contract above without adding a write path:
   session continues without memory.
 - Recalled facts are injected as `- <text> [gno://uri] (contentHash ...)` so a
   later `supersede` can name its predecessor.
+- The latest recall receipt travels back on every `gno_remember` in the same
+  session, so a recalled span replayed as a new fact is fenced
+  (`MEMORY_FENCED_REPLAY`). A session switch drops it.
 - Embed the memory collection (`gno embed <collection>`, or a running
   watcher). Lexical-only recall matches every query term, so question-shaped
   turns miss facts the vector leg finds; the provider warns once while recall
