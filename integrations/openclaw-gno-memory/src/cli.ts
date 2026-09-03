@@ -41,6 +41,19 @@ function positiveInt(value: unknown): number | undefined {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
+/** `--min-score` must be a finite number in [0, 1]; anything else is a usage error, not a NaN sent to gno. */
+function minScore(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  const text = String(value).trim();
+  const parsed = text === "" ? Number.NaN : Number(text);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) {
+    throw new Error(
+      `--min-score must be a number between 0 and 1 (got ${JSON.stringify(String(value))})`
+    );
+  }
+  return parsed;
+}
+
 function describeError(error: unknown): string {
   if (error instanceof GnoCliError) return `${error.kind}: ${error.message}`;
   return error instanceof Error ? error.message : String(error);
@@ -83,10 +96,7 @@ export function registerGnoMemoryCli(
         const outcome = await backend.search(String(query), {
           workspaceDir: ctx.workspaceDir,
           maxResults: positiveInt(options.maxResults),
-          minScore:
-            options.minScore === undefined
-              ? undefined
-              : Number(options.minScore),
+          minScore: minScore(options.minScore),
         });
         return options.json ? outcome : formatSearchText(outcome);
       }, Boolean(options.json));

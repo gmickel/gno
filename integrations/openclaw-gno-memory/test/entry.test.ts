@@ -128,7 +128,7 @@ describe("plugin entry", () => {
         return command;
       },
     };
-    const { backend, log } = backendWith(happyScript());
+    const { backend, log, calls } = backendWith(happyScript());
     const out: string[] = [];
     registerGnoMemoryCli({ program: command, workspaceDir: ROOT }, backend, {
       write: (text) => {
@@ -150,11 +150,23 @@ describe("plugin entry", () => {
       synced: true,
       results: [{ uri: SEARCH_HIT.uri }],
     });
+    await actions.search?.("teal heron", { json: true, minScore: "0.5" });
+    expect(calls.at(-1)?.args).toContain("--min-score");
+    expect(calls.at(-1)?.args).toContain("0.5");
+    const callsBeforeBad = calls.length;
+    for (const bad of ["abc", "", "1.5", "-0.1", "Infinity"]) {
+      await expect(
+        actions.search?.("teal heron", { json: true, minScore: bad })
+      ).rejects.toThrow(
+        `gno-memory: --min-score must be a number between 0 and 1 (got ${JSON.stringify(bad)})`
+      );
+    }
+    expect(calls).toHaveLength(callsBeforeBad);
     await actions.status?.({});
-    expect(out[1]).toContain(
+    expect(out.at(-1)).toContain(
       "collection openclaw-memory -> /sandbox/workspace"
     );
-    expect(out[1]).toContain("registered");
+    expect(out.at(-1)).toContain("registered");
     expect(log.lines.length).toBeGreaterThan(0);
   });
 });
