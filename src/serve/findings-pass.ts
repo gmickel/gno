@@ -5,6 +5,9 @@
  * touches records it owns under the findings collection root, and every
  * attempt persists its outcome so a starved or failing scheduler is visible
  * through `gno daemon --status` and `gno doctor` without debug logs.
+ *
+ * The audit runs without the shared write lease; only the record write takes
+ * it, so a long audit never blocks capture or CLI writers.
  */
 
 import type { Config } from "../config/types";
@@ -129,18 +132,11 @@ export async function runFindingsPass(
       error: boundErrorText(error),
     });
 
-  const lease = await (deps.acquireLease ?? defaultAcquireLease)(deps.dbPath);
-  if (!lease.ok) {
-    return persist({
-      outcome: "skipped_lease",
-      counts: previous.counts ?? EMPTY_FINDINGS_COUNTS,
-      durationMs: now().getTime() - startedAt.getTime(),
-      error: lease.holder
-        ? boundErrorText(`lease held by ${lease.holder}`)
-        : "lease held",
-    });
-  }
-
+  // The audit is read-only: run it without the write lease so MCP/REST
+  // capture and CLI writers are never blocked behind a long audit. Only the
+  // findings-record write below needs the lease.
+  let audit: AuditRunResult;
+  let allowResolve: boolean;
   try {
     const config = deps.getConfig();
     const findingsCollection = deps.schedule.collection.name;
@@ -155,7 +151,7 @@ export async function runFindingsPass(
         error: null,
       });
     }
-    const audit = await (deps.runAudit ?? runWorkspaceAudit)({
+    audit = await (deps.runAudit ?? runWorkspaceAudit)({
       store: deps.store,
       config,
       collections: config.collections,
@@ -170,9 +166,27 @@ export async function runFindingsPass(
     if (audit.report.status === "failed") {
       return fail("audit reported status failed");
     }
-    const allowResolve =
+    allowResolve =
       audit.report.status === "complete" &&
       !audit.report.counts.findings.truncated;
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : String(error));
+  }
+
+  // Write phase: take the shared lease only for as long as the records are
+  // being applied. A busy lease at this point still lands as skipped_lease.
+  const lease = await (deps.acquireLease ?? defaultAcquireLease)(deps.dbPath);
+  if (!lease.ok) {
+    return persist({
+      outcome: "skipped_lease",
+      counts: previous.counts ?? EMPTY_FINDINGS_COUNTS,
+      durationMs: now().getTime() - startedAt.getTime(),
+      error: lease.holder
+        ? boundErrorText(`lease held by ${lease.holder}`)
+        : "lease held",
+    });
+  }
+  try {
     const applied = await applyFindingsRecords({
       root: deps.schedule.collection.path,
       findings: audit.report.findings,

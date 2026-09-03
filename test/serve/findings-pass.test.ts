@@ -132,7 +132,7 @@ describe("runFindingsPass", () => {
     expect(await readdir(join(dir, "findings"))).toHaveLength(1);
   });
 
-  test("skips without auditing when a writer holds the lease, and records the holder", async () => {
+  test("a busy lease at write time lands as skipped_lease after the audit, writing nothing", async () => {
     deps.acquireLease = async () => ({
       ok: false,
       holder: "gno index (pid 7)",
@@ -140,21 +140,50 @@ describe("runFindingsPass", () => {
     const result = await runFindingsPass(deps, pending());
     expect(result.outcome).toBe("skipped_lease");
     expect(result.error).toBe("lease held by gno index (pid 7)");
-    expect(auditCalls).toBe(0);
+    expect(auditCalls).toBe(1);
     expect(await readdir(join(dir, "findings"))).toEqual([]);
     expect((await readFindingsRunStatus(deps.statePath))?.state).toBe(
       "skipped_lease"
     );
   });
 
-  test("a throwing audit lands as failed state, keeps prior counts, releases the lease", async () => {
-    let released = false;
-    deps.acquireLease = async () => ({
-      ok: true,
-      release: async () => {
-        released = true;
-      },
+  test("the audit runs without the write lease; the lease is taken only for the record write", async () => {
+    const events: string[] = [];
+    let finishAudit!: () => void;
+    const auditGate = new Promise<void>((resolve) => {
+      finishAudit = resolve;
     });
+    deps.acquireLease = async () => {
+      events.push("lease");
+      return {
+        ok: true,
+        release: async () => {
+          events.push("release");
+        },
+      };
+    };
+    deps.runAudit = async () => {
+      events.push("audit:start");
+      await auditGate;
+      events.push("audit:end");
+      return auditResult([finding]);
+    };
+    const run = runFindingsPass(deps, pending());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // A writer (capture, gno index) is free while the audit is in flight.
+    expect(events).toEqual(["audit:start"]);
+    finishAudit();
+    const result = await run;
+    expect(result.outcome).toBe("success");
+    expect(events).toEqual(["audit:start", "audit:end", "lease", "release"]);
+  });
+
+  test("a throwing audit lands as failed state, keeps prior counts, never takes the lease", async () => {
+    let leaseCalls = 0;
+    deps.acquireLease = async () => {
+      leaseCalls += 1;
+      return { ok: true, release: async () => undefined };
+    };
     const previous = {
       ...pending(),
       counts: {
@@ -172,7 +201,7 @@ describe("runFindingsPass", () => {
     const result = await runFindingsPass(deps, previous);
     expect(result.outcome).toBe("failed");
     expect(result.error).toBe("boom");
-    expect(released).toBe(true);
+    expect(leaseCalls).toBe(0);
     const persisted = await readFindingsRunStatus(deps.statePath);
     expect(persisted).toMatchObject({
       state: "failed",
@@ -180,6 +209,23 @@ describe("runFindingsPass", () => {
       counts: { open: 3 },
     });
     expect(persisted?.lastSuccessAt).toBeNull();
+  });
+
+  test("a failing record write lands as failed state and releases the lease", async () => {
+    let released = false;
+    deps.acquireLease = async () => ({
+      ok: true,
+      release: async () => {
+        released = true;
+      },
+    });
+    // Make the findings root a file so the record write cannot succeed.
+    await safeRm(join(dir, "findings"));
+    await Bun.write(join(dir, "findings"), "not a directory");
+    const result = await runFindingsPass(deps, pending());
+    expect(result.outcome).toBe("failed");
+    expect(result.error).not.toBeNull();
+    expect(released).toBe(true);
   });
 
   test("a clean run writes nothing", async () => {

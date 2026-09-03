@@ -208,9 +208,11 @@ Setup and contract:
   collection never holds more than 2000 records (oldest resolved go first).
   Only files whose frontmatter marks them as daemon-written records are ever
   rewritten or deleted.
-- Each run takes the shared `.mcp-write.lock` lease with no wait. If a writer
-  (`gno index`, `gno embed`, an MCP write job) holds it, the run is skipped and
-  recorded as `skipped_lease`; it does not queue behind long embeds.
+- The audit itself runs without the write lease, so a long audit never blocks
+  capture or CLI writers. Only the record write takes the shared
+  `.mcp-write.lock` lease, with no wait. If a writer (`gno index`, `gno embed`,
+  an MCP write job) holds it at that moment, the write is skipped and the run
+  is recorded as `skipped_lease`; it does not queue behind long embeds.
 - Silent when clean: a run with nothing new writes no files and logs nothing.
   New, reopened, resolved, or expired records produce one log line; a failed run
   logs an error; a lease skip logs only with `--verbose`.
