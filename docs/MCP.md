@@ -309,10 +309,18 @@ MCP clients prompt for tool approval. Review parameters before confirming write 
 ### Resident HTTP Transport
 
 `gno serve` and `gno daemon` expose the same tools and resources at `/mcp`
-using stateful MCP 2025-11-25 Streamable HTTP. Stdio remains supported for
-clients configured with `gno mcp`. Both transports are served by
-`@modelcontextprotocol/server` 2.x; advertised tool schemas carry the JSON
-Schema 2020-12 `$schema` stamp.
+over Streamable HTTP. Stdio remains supported for clients configured with
+`gno mcp`. Both transports speak two protocol revisions from one tool
+registry: MCP 2025-11-25 clients (the `initialize` handshake, stateful
+sessions over HTTP) keep working unchanged, and MCP 2026-07-28 clients
+negotiate natively (`server/discover`, per-request `_meta` envelope,
+sessionless HTTP - no `Mcp-Session-Id`). Modern requests must carry the
+`MCP-Protocol-Version` and `Mcp-Method` headers (`Mcp-Name` on `tools/call`
+and resource reads); unsupported revisions, missing or mismatched headers, and
+malformed envelopes are rejected with a `400` JSON-RPC error rather than
+served. Both transports are served by `@modelcontextprotocol/server` 2.x;
+advertised tool schemas carry the JSON Schema 2020-12 `$schema` stamp. The
+exact routing and error table is in `spec/mcp.md` (Protocol Revisions).
 
 Local defaults are intentionally narrow: literal `127.0.0.1`, exact Host and
 present Origin checks for the selected port, and read-only tools. The boundary

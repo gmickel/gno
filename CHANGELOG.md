@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `gateway.toolProfile` or `gno serve|daemon --mcp-tool-profile`. `full`
   stays the default and is byte-identical to the previous surface. The
   profile is read at listener start (restart to change).
+- MCP 2026-07-28 dual-speak. `gno mcp` (stdio) and the resident `/mcp`
+  endpoint now serve the 2026-07-28 revision next to 2025-11-25: a modern
+  client negotiates natively via `server/discover` and, over HTTP, is served
+  sessionless per request; 2025 clients are unchanged (handshake bytes pinned
+  by the legacy parity golden). The sessionless path runs through the same
+  authentication, write-gate, egress, admission, authorization-epoch, and
+  identity guards as the session path. Unsupported revisions (`-32022`),
+  missing or mismatched `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name`
+  headers (`-32020`), malformed `_meta` envelopes (`-32602`), and a session
+  ID on a modern request (`-32600`) are rejected with `400`.
 
 ### Changed
 

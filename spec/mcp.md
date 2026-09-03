@@ -2,7 +2,8 @@
 
 **Version:** 1.0.0
 **Last Updated:** 2026-09-03
-**Protocol:** Model Context Protocol (MCP) 2025-11-25
+**Protocol:** Model Context Protocol (MCP) 2025-11-25 and 2026-07-28 (dual-era; see
+[Protocol Revisions](#protocol-revisions))
 **Transport:** JSON-RPC 2.0 over stdio or resident Streamable HTTP
 **SDK:** `@modelcontextprotocol/server` 2.x (tool `inputSchema` /
 `outputSchema` carry the JSON Schema 2020-12 `$schema` stamp; an unknown tool
@@ -36,6 +37,66 @@ This document specifies the MCP server interface for GNO.
 ```
 
 ---
+
+## Protocol Revisions
+
+GNO serves two protocol eras from one tool registry, on both transports:
+
+| Era    | Revisions                                                           | Opening                                               | HTTP state                                                   |
+| ------ | ------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
+| legacy | `2025-11-25` (and the earlier revisions the SDK negotiates down to) | `initialize` handshake                                | stateful: `Mcp-Session-Id`, GET stream, DELETE               |
+| modern | `2026-07-28`                                                        | `server/discover` probe, per-request `_meta` envelope | sessionless: one SDK instance per request, no session header |
+
+Nothing changes for a 2025 client: the `initialize` result, `notifications/initialized`
+acknowledgement, and `tools/list` bytes are pinned by `test/mcp/legacy-parity.test.ts`
+against a committed golden. A legacy `initialize` never yields a 2026 negotiation - an
+`initialize` naming `protocolVersion: "2026-07-28"` is a 2025-era opening by definition and
+negotiates down to `2025-11-25`.
+
+**stdio.** `gno mcp` serves through the SDK's connection-pinned entry (`serveStdio`,
+wrapped by `src/mcp/stdio-serving.ts`). The first message pins the era for the whole
+connection: `server/discover` with a valid envelope answers
+`{ supportedVersions: ["2026-07-28"], capabilities, _meta["io.modelcontextprotocol/serverInfo"] }`
+and every later result carries the `serverInfo` stamp; a claim-less `initialize` pins the
+legacy era and the connection behaves exactly as before. On a modern-pinned connection a
+later legacy `initialize` answers `-32022 Unsupported protocol version` with
+`data.supported = ["2026-07-28"]`.
+
+**Streamable HTTP.** `/mcp` classifies each request with the SDK's own predicate
+(`isLegacyRequest`) and routes it: legacy traffic (no envelope claim, or any GET/DELETE) to
+the stateful session store; a request that claims the modern era (a
+`params._meta["io.modelcontextprotocol/protocolVersion"]` key, or an `MCP-Protocol-Version`
+header naming a modern revision) to a strict (`legacy: "reject"`) sessionless handler
+built from the same server factory. A `server/discover` POST without an envelope classifies
+legacy and is refused by the session path like any other session-less non-initialize POST.
+
+Modern requests are validated before dispatch and rejected - never silently stripped - with a
+`400` JSON-RPC error body:
+
+| Condition                                                                                                           | Code                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| envelope or header names a revision other than `2026-07-28`                                                         | `-32022` `Unsupported protocol version: <requested>` with `data.supported` / `data.requested` |
+| envelope present but `MCP-Protocol-Version` header absent                                                           | `-32020` (GNO-owned: the header is required on every modern request)                          |
+| `MCP-Protocol-Version`, `Mcp-Method`, or `Mcp-Name` disagrees with the body, or a required routing header is absent | `-32020` `HeaderMismatch` with `data.mismatch`                                                |
+| `MCP-Protocol-Version: 2026-07-28` header without an envelope                                                       | `-32602` (missing `_meta`)                                                                    |
+| malformed envelope value (`protocolVersion`, `clientInfo`, `clientCapabilities`)                                    | `-32602` `Invalid _meta envelope`                                                             |
+| `Mcp-Session-Id` on a modern request                                                                                | `-32600` (sessions are 2025-era only; the request can never bind to or read a session)        |
+| JSON-RPC batch containing modern requests                                                                           | `-32600`                                                                                      |
+
+Custom `_meta` keys on a modern request reach tool handlers unchanged (`ctx.mcpReq._meta`);
+the reserved `io.modelcontextprotocol/*` envelope keys are lifted to `ctx.mcpReq.envelope`.
+Modern responses carry `resultType`, `_meta["io.modelcontextprotocol/serverInfo"]`, and the
+cache fields (`ttlMs: 0`, `cacheScope: "private"`) on cacheable results. `subscriptions/listen`
+change streams are not wired to GNO change events in this release.
+
+**Guard parity.** Both legs share one enforcement path in `src/mcp/http-transport.ts`:
+capacity and runtime admission, the write gate (`--enable-write`), per-request egress
+evaluation against the actual peer zone, authorization-epoch invalidation, identity checks,
+and transport metrics all run before the era branch; the bearer/Host/Origin/body-size
+boundary (`src/mcp/http-security.ts`) runs before the transport on every request. A modern
+request cannot create a session, and one that names a session ID is rejected before the
+session store is consulted. `test/mcp/sessionless-guards.test.ts` holds one test per guard;
+`test/mcp/protocol-2026.test.ts` holds the wire assertions for both transports.
 
 ## Security Model
 
@@ -122,9 +183,10 @@ lease that stays busy past the wait window returns `MEMORY_WRITE_LEASE_BUSY`.
 
 `gno serve` and `gno daemon` mount the same stateful MCP surface at `/mcp`.
 The default listener is the literal IPv4 loopback address `127.0.0.1`. Each
-HTTP session owns one SDK server and transport while sharing the resident
-store, jobs, and model lifecycle. POST, GET, and DELETE follow MCP 2025-11-25;
-resumption is not advertised.
+2025-era HTTP session owns one SDK server and transport while sharing the
+resident store, jobs, and model lifecycle; POST, GET, and DELETE follow MCP
+2025-11-25 and resumption is not advertised. 2026-07-28 requests are served
+sessionless from the same factory (see [Protocol Revisions](#protocol-revisions)).
 
 The external boundary runs before JSON parsing or SDK dispatch on every HTTP
 method. It uses Bun `server.requestIP(request)` as the peer source and never

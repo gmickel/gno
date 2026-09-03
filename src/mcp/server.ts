@@ -5,7 +5,6 @@
  * @module src/mcp/server
  */
 
-import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 // node:path for join/dirname (no Bun path utils)
 import { dirname, join } from "node:path";
 
@@ -21,12 +20,8 @@ import { canonicalizeIndexName } from "../app/index-name";
 import { JobManager } from "../core/job-manager";
 import { envIsSet } from "../llm/policy";
 import { MCP_ACTIVATION_VERIFICATION_ENV } from "./activation-verification-mode";
-import {
-  createMcpServerSurface,
-  createToolContext,
-  Mutex,
-  type ToolContext,
-} from "./context";
+import { createToolContext, Mutex, type ToolContext } from "./context";
+import { serveMcpStdio } from "./stdio-serving";
 
 export type { ToolContext } from "./context";
 
@@ -135,10 +130,8 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     toolProfile: options.toolProfile,
     isShuttingDown: () => shuttingDown,
   });
-  const server = createMcpServerSurface(ctx, {
-    name: MCP_SERVER_NAME,
-    version: VERSION,
-  });
+  const serverIdentity = { name: MCP_SERVER_NAME, version: VERSION };
+  let stdioHandle: { close(): Promise<void> } | undefined;
 
   if (options.verbose) {
     console.error(
@@ -167,7 +160,7 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
 
     // 3. Close MCP server/transport (flush buffers, clean disconnect)
     try {
-      await server.close();
+      await stdioHandle?.close();
     } catch {
       // Best-effort - server may already be closed
     }
@@ -196,11 +189,14 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
   console.debug = (...args: unknown[]) => console.error("[debug]", ...args);
   console.warn = (...args: unknown[]) => console.error("[warn]", ...args);
 
-  // Connect transport
-  const transport = new StdioServerTransport();
+  // Connect transport (dual-era: 2025-11-25 initialize or 2026-07-28 discover)
   protocolMode = true; // Enable stdout for JSON-RPC
 
-  await server.connect(transport);
+  stdioHandle = serveMcpStdio(ctx, serverIdentity, {
+    onerror: (error) => {
+      if (options.verbose) console.error("[MCP] stdio:", error.message);
+    },
+  });
 
   console.error(
     `[MCP] ${MCP_SERVER_NAME} v${VERSION} ready on stdio (tool profile: ${options.toolProfile ?? "full"})`
