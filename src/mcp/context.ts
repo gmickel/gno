@@ -1,6 +1,6 @@
 /** Shared MCP surface and request-scoped runtime context. */
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 // node:async_hooks provides async-local request context; Bun has no separate native equivalent.
 import { AsyncLocalStorage } from "node:async_hooks";
 
@@ -201,10 +201,12 @@ export function createMcpServerSurface(
     version: VERSION,
   }
 ): McpServer {
+  // `listChanged: true` is the advertised 2025-11-25 contract pinned by
+  // test/fixtures/mcp/legacy-2025-11-25.json (SDK v1 always advertised it).
   const server = new McpServer(identity, {
     capabilities: {
-      tools: { listChanged: false },
-      resources: { subscribe: false, listChanged: false },
+      tools: { listChanged: true },
+      resources: { subscribe: false, listChanged: true },
     },
   });
   registerTools(server, context);

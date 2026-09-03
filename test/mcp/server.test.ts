@@ -3,9 +3,8 @@
  * Validates server lifecycle and basic protocol compliance.
  */
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
+import { McpServer } from "@modelcontextprotocol/server";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { MCP_SERVER_NAME, VERSION } from "../../src/app/constants";
@@ -36,9 +35,16 @@ describe("MCP Server", () => {
 
     // Register a test tool using zod schema
     const { z } = await import("zod");
-    server.tool("test.echo", "Echo test", { message: z.string() }, (args) => ({
-      content: [{ type: "text", text: `Echo: ${args.message}` }],
-    }));
+    server.registerTool(
+      "test.echo",
+      {
+        description: "Echo test",
+        inputSchema: z.object({ message: z.string() }),
+      },
+      (args) => ({
+        content: [{ type: "text", text: `Echo: ${args.message}` }],
+      })
+    );
 
     await server.connect(serverTransport);
 
@@ -85,12 +91,16 @@ describe("MCP Server", () => {
     });
   });
 
-  test("tools/call with unknown tool returns error", async () => {
-    const result = await client.callTool({
-      name: "nonexistent.tool",
-      arguments: {},
-    });
-    // Unknown tool should return isError or throw - MCP SDK behavior varies
-    expect(result.isError).toBe(true);
+  test("tools/call with unknown tool rejects with InvalidParams", async () => {
+    // SDK v2 answers an unknown tool with a JSON-RPC -32602 error instead of
+    // a CallToolResult carrying isError (v1 behavior).
+    const rejection = await client
+      .callTool({ name: "nonexistent.tool", arguments: {} })
+      .then(
+        () => undefined,
+        (error: unknown) => error
+      );
+    expect(rejection).toBeInstanceOf(Error);
+    expect((rejection as { code?: unknown }).code).toBe(-32_602);
   });
 });

@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 // node:fs/promises only supplies temporary-directory structure operations.
 import { mkdtemp } from "node:fs/promises";

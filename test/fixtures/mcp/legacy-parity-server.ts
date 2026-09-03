@@ -6,7 +6,7 @@
  * ones a 2025-11-25 stdio client would see.
  */
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 
 import { createMcpServerSurface } from "../../../src/mcp/context";
 import {

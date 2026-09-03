@@ -158,9 +158,15 @@ describe("connector activation verifier", () => {
     const fixtureDir = join(testDir, "fixture");
     await mkdir(fixtureDir, { recursive: true });
     const scriptPath = join(fixtureDir, "gno");
-    const sdkRoot = join(
-      process.cwd(),
-      "node_modules/@modelcontextprotocol/sdk/dist/esm"
+    // The fixture lives outside the repo tree, so bare specifiers cannot
+    // resolve from its directory; hand it the repo's resolved module paths.
+    const serverModule = Bun.resolveSync(
+      "@modelcontextprotocol/server",
+      process.cwd()
+    );
+    const stdioModule = Bun.resolveSync(
+      "@modelcontextprotocol/server/stdio",
+      process.cwd()
     );
     const hasSearch = mode !== "missing-tools";
     const hasStatus = mode !== "missing-tools";
@@ -186,20 +192,20 @@ describe("connector activation verifier", () => {
       })
     );
     const script = `
-import { McpServer } from ${JSON.stringify(`${sdkRoot}/server/mcp.js`)};
-import { StdioServerTransport } from ${JSON.stringify(`${sdkRoot}/server/stdio.js`)};
+import { McpServer } from ${JSON.stringify(serverModule)};
+import { StdioServerTransport } from ${JSON.stringify(stdioModule)};
 import { z } from ${JSON.stringify(join(process.cwd(), "node_modules/zod/index.js"))};
 const config = await Bun.file(new URL("./config.json", import.meta.url)).json();
 const server = new McpServer({ name: "fixture", version: "1.0.0" });
 if (config.hasStatus) {
   if (config.statusTimeout) {
-    server.tool("gno_status", {}, async () => await new Promise(() => {}));
+    server.registerTool("gno_status", { inputSchema: z.object({}) }, async () => await new Promise(() => {}));
   } else {
-    server.tool("gno_status", {}, async () => ({ isError: config.statusFails || (config.expectedEnvironment && (process.env.GNO_DATA_DIR !== config.expectedEnvironment.dataDir || process.env.GNO_CACHE_DIR !== config.expectedEnvironment.cacheDir)), content: [{ type: "text", text: "status" }], structuredContent: { indexName: config.reportedIndexName } }));
+    server.registerTool("gno_status", { inputSchema: z.object({}) }, async () => ({ isError: config.statusFails || (config.expectedEnvironment && (process.env.GNO_DATA_DIR !== config.expectedEnvironment.dataDir || process.env.GNO_CACHE_DIR !== config.expectedEnvironment.cacheDir)), content: [{ type: "text", text: "status" }], structuredContent: { indexName: config.reportedIndexName } }));
   }
 }
 if (config.hasSearch) {
-  server.tool("gno_search", { query: z.string(), collection: z.string(), limit: z.number() }, async () => ({ isError: config.searchFails, content: [{ type: "text", text: "discarded snippet" }], structuredContent: { results: [{ uri: config.resultUri, snippet: "discarded snippet", source: { sourceHash: "3273f6e7e0531d489eabc07eec21c67c510cf500a6b198752021f98f9b73c8b7" } }] } }));
+  server.registerTool("gno_search", { inputSchema: z.object({ query: z.string(), collection: z.string(), limit: z.number() }) }, async () => ({ isError: config.searchFails, content: [{ type: "text", text: "discarded snippet" }], structuredContent: { results: [{ uri: config.resultUri, snippet: "discarded snippet", source: { sourceHash: "3273f6e7e0531d489eabc07eec21c67c510cf500a6b198752021f98f9b73c8b7" } }] } }));
 }
 await server.connect(new StdioServerTransport());
 await new Promise((resolve) => process.stdin.once("end", resolve));

@@ -1,5 +1,5 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { Client } from "@modelcontextprotocol/client";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 
 import { AgenticHarnessError, AgenticProductError } from "../adapter";
 import { canonicalFingerprint } from "../canonical";
@@ -58,7 +58,6 @@ class RealQmdMcpConnection implements QmdMcpConnection {
     try {
       return (await this.client.callTool(
         { name, arguments: arguments_ },
-        undefined,
         { signal }
       )) as QmdMcpCallResult;
     } catch (cause) {

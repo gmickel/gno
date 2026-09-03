@@ -1,6 +1,6 @@
 /** Web Standard Streamable HTTP request routing for the resident MCP runtime. */
 
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
+import { isInitializeRequest } from "@modelcontextprotocol/server";
 
 import type { DestinationClassification } from "../core/destination-classifier";
 import type { ResidentRequestHandle } from "../serve/resident-runtime";

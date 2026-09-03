@@ -1,6 +1,8 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+  Client,
+  StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
+import { McpServer } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
 
@@ -179,7 +181,7 @@ describe("stateful Web Standard MCP transport", () => {
         const server = new McpServer({ name: "isolation", version: "1.0.0" });
         server.registerTool(
           "session-counter",
-          { inputSchema: {} },
+          { inputSchema: z.object({}) },
           async () => {
             sharedStoreCalls += 1;
             if (!modelWarm) {
@@ -347,11 +349,11 @@ describe("stateful Web Standard MCP transport", () => {
         const server = new McpServer({ name: "cancel", version: "1" });
         server.registerTool(
           "wait",
-          { inputSchema: { label: z.string() } },
-          async (_args, extra) => {
+          { inputSchema: z.object({ label: z.string() }) },
+          async (_args, ctx) => {
             startedResolve?.();
             await new Promise<void>((resolve) => {
-              extra.signal.addEventListener(
+              ctx.mcpReq.signal.addEventListener(
                 "abort",
                 () => {
                   cancelled = true;
@@ -373,7 +375,6 @@ describe("stateful Web Standard MCP transport", () => {
     const controller = new AbortController();
     const call = client.callTool(
       { name: "wait", arguments: { label: "one" } },
-      undefined,
       { signal: controller.signal }
     );
     await started;
@@ -677,20 +678,28 @@ describe("stateful Web Standard MCP transport", () => {
       enableWrite: true,
       createServer: (toolContext) => {
         const server = new McpServer({ name: "epoch-race", version: "1" });
-        server.registerTool("slow-content", { inputSchema: {} }, async () => {
-          markSlowStarted?.();
-          await slowRelease;
-          return { content: [{ type: "text", text: "stale-secret" }] };
-        });
-        server.registerTool("rotate-policy", { inputSchema: {} }, async () => {
-          epoch = "egress-epoch-v1:two";
-          toolContext.advanceRequestAuthorizationEpoch?.(epoch);
-          await transport.invalidateAuthenticatedSessions();
-          return {
-            content: [{ type: "text", text: "revision:2" }],
-            structuredContent: { revision: 2 },
-          };
-        });
+        server.registerTool(
+          "slow-content",
+          { inputSchema: z.object({}) },
+          async () => {
+            markSlowStarted?.();
+            await slowRelease;
+            return { content: [{ type: "text", text: "stale-secret" }] };
+          }
+        );
+        server.registerTool(
+          "rotate-policy",
+          { inputSchema: z.object({}) },
+          async () => {
+            epoch = "egress-epoch-v1:two";
+            toolContext.advanceRequestAuthorizationEpoch?.(epoch);
+            await transport.invalidateAuthenticatedSessions();
+            return {
+              content: [{ type: "text", text: "revision:2" }],
+              structuredContent: { revision: 2 },
+            };
+          }
+        );
         return server;
       },
     });

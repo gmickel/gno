@@ -272,7 +272,9 @@ MCP clients prompt for tool approval. Review parameters before confirming write 
 
 `gno serve` and `gno daemon` expose the same tools and resources at `/mcp`
 using stateful MCP 2025-11-25 Streamable HTTP. Stdio remains supported for
-clients configured with `gno mcp`.
+clients configured with `gno mcp`. Both transports are served by
+`@modelcontextprotocol/server` 2.x; advertised tool schemas carry the JSON
+Schema 2020-12 `$schema` stamp.
 
 Local defaults are intentionally narrow: literal `127.0.0.1`, exact Host and
 present Origin checks for the selected port, and read-only tools. The boundary

@@ -1,7 +1,7 @@
 /** Packed-install proof for the resident HTTP MCP and lifecycle boundary. */
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { Client } from "@modelcontextprotocol/client";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 // node:fs/promises: POSIX permission changes have no Bun-native equivalent.
 import { chmod } from "node:fs/promises";
 // node:path: portable temporary-path construction has no Bun-native equivalent.

@@ -4,10 +4,7 @@
  * @module src/mcp/resources
  */
 
-import {
-  type McpServer,
-  ResourceTemplate,
-} from "@modelcontextprotocol/sdk/server/mcp.js";
+import { type McpServer, ResourceTemplate } from "@modelcontextprotocol/server";
 import { join as pathJoin } from "node:path";
 
 import type { DocumentRow, TagCount } from "../../store/types";
@@ -116,7 +113,7 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
   });
 
   // Register the template-based resource handler
-  server.resource("gno-document", template, {}, (uri, _variables) =>
+  server.registerResource("gno-document", template, {}, (uri, _variables) =>
     withSnapshot(async () => {
       // Check shutdown before acquiring mutex
       if (ctx.isShuttingDown()) {
@@ -232,7 +229,7 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
     }
   );
 
-  server.resource(
+  server.registerResource(
     "gno-tags",
     tagsTemplate,
     { mimeType: "application/json" },

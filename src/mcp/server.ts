@@ -5,7 +5,7 @@
  * @module src/mcp/server
  */
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 // node:path for join/dirname (no Bun path utils)
 import { dirname, join } from "node:path";
 

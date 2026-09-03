@@ -4,6 +4,9 @@
 **Last Updated:** 2026-04-24
 **Protocol:** Model Context Protocol (MCP) 2025-11-25
 **Transport:** JSON-RPC 2.0 over stdio or resident Streamable HTTP
+**SDK:** `@modelcontextprotocol/server` 2.x (tool `inputSchema` /
+`outputSchema` carry the JSON Schema 2020-12 `$schema` stamp; an unknown tool
+name answers JSON-RPC `-32602`)
 
 This document specifies the MCP server interface for GNO.
 

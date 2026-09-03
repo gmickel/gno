@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- MCP server and client now run on the `@modelcontextprotocol/server` and
+  `@modelcontextprotocol/client` 2.0.0 packages (the split successor of
+  `@modelcontextprotocol/sdk` 1.30.0). The 2025-11-25 handshake is
+  byte-identical over stdio and Streamable HTTP; `tools/list` is identical
+  except for SDK-owned deltas: tool schemas now carry the JSON Schema 2020-12
+  `$schema` stamp (was draft-07), the experimental `execution.taskSupport`
+  member is gone, and `gno_rename_note` / `gno_move_note` advertise their real
+  `oneOf` input schema instead of the empty placeholder SDK v1 emitted for
+  discriminated unions. Calling an unknown tool now answers a JSON-RPC
+  `-32602` error instead of an `isError` result. A frozen pre-migration
+  capture and a parity test pin this.
+
 ### Fixed
 
 ## [1.41.0] - 2026-09-03
