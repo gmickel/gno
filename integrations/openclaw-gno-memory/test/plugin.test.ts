@@ -21,6 +21,7 @@ import {
   GnoCliError,
   MIN_GNO_VERSION,
   versionAtLeast,
+  execFileRunner,
 } from "../src/gno-cli";
 import { createMemoryGetTool, createMemorySearchTool } from "../src/tools";
 import {
@@ -534,5 +535,24 @@ describe("tools", () => {
       path: "memory/2026-09-01.md",
     });
     expect(result.content[0]?.text).toContain("Seeded this workspace");
+  });
+});
+
+describe("execFileRunner spawn failures", () => {
+  test("a non-executable binary reports the spawn error, not exit null", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "gno-memory-runner-"));
+    try {
+      const binary = join(dir, "not-executable");
+      await Bun.write(binary, "#!/bin/sh\necho hi\n");
+      const result = await execFileRunner(binary, ["--version"], {
+        timeoutMs: 5000,
+      });
+      expect(result.code).toBe(1);
+      expect(result.notFound).toBe(false);
+      expect(result.timedOut).toBe(false);
+      expect(result.stderr).toMatch(/EACCES|spawn/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -39,7 +39,8 @@ const SEARCH_PARAMETERS = {
   properties: {
     query: {
       type: "string",
-      description: "Search text; keyword mode matches every term",
+      description:
+        "Search text. In keyword mode every term must match; in hybrid mode terms also match semantically, so plain natural-language phrasing works",
     },
     maxResults: { type: "integer", minimum: 1 },
     minScore: { type: "number" },

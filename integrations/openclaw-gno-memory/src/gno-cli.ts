@@ -66,15 +66,25 @@ export const execFileRunner: GnoRunner = (binary, args, options) =>
         const failure = error as
           | (NodeJS.ErrnoException & { killed?: boolean; code?: unknown })
           | null;
+        // A spawn failure (EACCES, ENOTDIR, ...) carries no exit code and no
+        // stderr; surface its message and a non-zero code so the reported
+        // reason is actionable instead of "exit null".
+        const spawnFailed =
+          failure !== null &&
+          typeof failure.code !== "number" &&
+          !failure.killed;
+        const stderrText = String(stderr ?? "");
         resolve({
           code:
             typeof failure?.code === "number"
               ? failure.code
-              : failure
-                ? null
-                : 0,
+              : spawnFailed
+                ? 1
+                : failure
+                  ? null
+                  : 0,
           stdout: String(stdout ?? ""),
-          stderr: String(stderr ?? ""),
+          stderr: stderrText || (spawnFailed ? failure.message : ""),
           timedOut: Boolean(failure?.killed),
           notFound: failure?.code === "ENOENT",
         });
