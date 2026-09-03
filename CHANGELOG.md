@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `gno changes --follow --jsonl [--cursor <cursor>]` streams change-journal
+  events as they land, one `{event, postCursor}` line each; resume with the
+  persisted `postCursor` for gap-free at-least-once delivery, tail by default,
+  one terminal `cursor_expired` line (exit 2) when the cursor falls out of
+  retention, SIGINT exits 0. Contract in `changes-follow-event.schema.json`.
+
 ### Changed
 
 ### Fixed

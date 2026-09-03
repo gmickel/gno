@@ -4088,25 +4088,89 @@ function wireGraphCommand(program: Command): void {
     );
 }
 
+/**
+ * `gno changes --follow --jsonl`: the follow flags form one mode that
+ * excludes the one-shot listing flags. The cursor-expiry record is the
+ * stdout envelope, so its non-zero exit is silent on stderr.
+ */
+async function runChangesFollow(
+  cmdOpts: Record<string, unknown>,
+  format: string,
+  globals: GlobalOptions
+): Promise<void> {
+  if (!cmdOpts.follow || !cmdOpts.jsonl) {
+    throw new CliError(
+      "VALIDATION",
+      "--follow and --jsonl must be used together (--cursor requires both)"
+    );
+  }
+  if (format === "json" || cmdOpts.since !== undefined) {
+    throw new CliError(
+      "VALIDATION",
+      "--follow cannot be combined with --json or --since; use --cursor to resume"
+    );
+  }
+  if (cmdOpts.limit !== undefined) {
+    throw new CliError(
+      "VALIDATION",
+      "--follow cannot be combined with --limit"
+    );
+  }
+  const { changesFollow } = await import("./commands/changes");
+  const result = await changesFollow(
+    {
+      cursor: cmdOpts.cursor as string | undefined,
+      collection: cmdOpts.collection as string | undefined,
+    },
+    { configPath: globals.config, indexName: globals.index }
+  );
+  if (result.status === "error") {
+    throw new CliError(
+      result.isValidation ? "VALIDATION" : "RUNTIME",
+      result.error
+    );
+  }
+  if (result.status === "expired") {
+    throw new CliError(
+      "RUNTIME",
+      `Follow cursor expired; earliest retained cursor is ${result.earliestCursor}`,
+      { silent: true }
+    );
+  }
+}
+
 function wireKnowledgeDeltaCommands(program: Command): void {
   program
     .command("changes")
     .description("List retained metadata-only document changes")
     .option("--since <time-or-cursor>", "ISO-8601 time or opaque cursor")
     .option("-c, --collection <name>", "filter by collection")
-    .option("-n, --limit <num>", "maximum changes", "100")
+    .option("-n, --limit <num>", "maximum changes (default 100)")
     .option("--json", "JSON output")
+    .option(
+      "--follow",
+      "stream new changes as they land (requires --jsonl; SIGINT exits 0)"
+    )
+    .option("--jsonl", "one JSON object per line (only with --follow)")
+    .option(
+      "--cursor <cursor>",
+      "resume a --follow stream from a persisted postCursor"
+    )
     .action(async (cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
       assertFormatSupported(CMD.changes, format);
       const deltaFormat = format === "json" ? "json" : "terminal";
       const globals = getGlobals();
+      if (cmdOpts.follow || cmdOpts.jsonl || cmdOpts.cursor !== undefined) {
+        await runChangesFollow(cmdOpts, format, globals);
+        return;
+      }
       const { changes, formatChanges } = await import("./commands/changes");
       const result = await changes(
         {
           since: cmdOpts.since as string | undefined,
           collection: cmdOpts.collection as string | undefined,
-          limit: parsePositiveInt("limit", cmdOpts.limit),
+          limit: parsePositiveInt("limit", cmdOpts.limit ?? "100"),
         },
         { configPath: globals.config, indexName: globals.index }
       );

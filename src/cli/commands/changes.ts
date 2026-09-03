@@ -9,12 +9,14 @@ import type {
   ListKnowledgeChangesInput,
 } from "../../core/knowledge-delta";
 import type { StorePort } from "../../store/types";
+import type { ChangesFollowLine, FollowChangesResult } from "./changes-follow";
 
 import {
   analyzeKnowledgeImpact,
   getKnowledgeDiff,
   listKnowledgeChanges,
 } from "../../core/knowledge-delta";
+import { followChanges, validateFollowCursor } from "./changes-follow";
 import { initStore } from "./shared";
 
 export interface KnowledgeDeltaCliContext {
@@ -81,6 +83,67 @@ export const impact = (
   context: KnowledgeDeltaCliContext = {}
 ): Promise<KnowledgeDeltaServiceResult<KnowledgeImpactResult>> =>
   withStore(context, (store) => impactRead(store, ref, input));
+
+export interface ChangesFollowInput {
+  cursor?: string;
+  collection?: string;
+}
+
+/** Abort on SIGINT/SIGTERM so the stream ends cleanly after the current line. */
+const abortOnSignals = (): { signal: AbortSignal; dispose: () => void } => {
+  const controller = new AbortController();
+  const onSignal = (): void => controller.abort();
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
+  return {
+    signal: controller.signal,
+    dispose: (): void => {
+      process.off("SIGINT", onSignal);
+      process.off("SIGTERM", onSignal);
+    },
+  };
+};
+
+/**
+ * `gno changes --follow --jsonl`: stream journal events as JSON lines on
+ * stdout until a signal arrives or the resume cursor expires.
+ */
+export const changesFollow = async (
+  input: ChangesFollowInput,
+  context: KnowledgeDeltaCliContext = {},
+  emit: (line: ChangesFollowLine) => void = (line) => {
+    process.stdout.write(`${JSON.stringify(line)}\n`);
+  }
+): Promise<FollowChangesResult> => {
+  if (input.cursor !== undefined) {
+    const invalid = validateFollowCursor(input.cursor);
+    if (invalid) return { status: "error", error: invalid, isValidation: true };
+  }
+  const collection = input.collection?.trim();
+  if (input.collection !== undefined && !collection) {
+    return {
+      status: "error",
+      error: "collection cannot be empty",
+      isValidation: true,
+    };
+  }
+  const signals = abortOnSignals();
+  try {
+    const result = await withStore(context, async (store) => ({
+      success: true as const,
+      data: await followChanges(
+        store,
+        { cursor: input.cursor, collection, signal: signals.signal },
+        emit
+      ),
+    }));
+    return result.success
+      ? result.data
+      : { status: "error", error: result.error, isValidation: false };
+  } finally {
+    signals.dispose();
+  }
+};
 
 const json = (value: unknown): string => JSON.stringify(value, null, 2);
 

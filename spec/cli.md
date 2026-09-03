@@ -3595,6 +3595,7 @@ List retained, metadata-only document lifecycle changes.
 
 ```bash
 gno changes [--since <ISO-8601|cursor>] [--collection <name>] [--limit <n>] [--json]
+gno changes --follow --jsonl [--cursor <cursor>] [--collection <name>]
 ```
 
 - `--since` accepts an ISO-8601 time or an opaque cursor returned by an earlier
@@ -3604,6 +3605,42 @@ gno changes [--since <ISO-8601|cursor>] [--collection <name>] [--limit <n>] [--j
   old/new identity and hash snapshots, normalized structural deltas, pagination,
   cursor-expiry, and retention-truncation disclosure.
 - The journal never returns source bodies.
+
+**Follow mode (`--follow --jsonl`)** streams journal events as they land and is
+the durable automation input for consumers that resume across restarts.
+
+- `--follow` and `--jsonl` are one mode and must be given together; `--cursor`
+  requires both. The mode excludes `--since`, `--limit`, and `--json` (exit 1).
+  `--collection` filters the stream.
+- Wire contract: one JSON object per stdout line, validated by
+  `changes-follow-event.schema.json`. An event line is
+  `{"event": <change>, "postCursor": "<cursor>"}` where `event` is one
+  `changes.schema.json` change and `postCursor` is the journal cursor after
+  that event was applied. Lines are emitted in journal order.
+- Checkpoint rule: a consumer persists `postCursor` after it has durably
+  handled the line and restarts with `--cursor <postCursor>`; nothing at or
+  before that cursor is replayed. Delivery is at-least-once: a line the
+  consumer received but did not checkpoint is redelivered on resume, so
+  handlers must be idempotent by `event.id` (each event id is unique and
+  equals its own `postCursor`).
+- Start position: without `--cursor` the stream starts at the journal's
+  current `latestCursor` (tail semantics, no backfill). `--cursor` must be an
+  opaque cursor from an earlier response (exit 1 when malformed or ahead of
+  the journal).
+- Quiet periods emit nothing. There is no keepalive line in v1; consumers
+  detect liveness from the process, not the stream.
+- Cursor expiry: when the resume cursor falls below the retention floor the
+  stream writes exactly one terminal line,
+  `{"error": "cursor_expired", "earliestCursor": "<cursor>", "latestCursor": "<cursor>"}`,
+  then exits 2 with nothing on stderr. `earliestCursor` is the journal's
+  documented resume floor (`gno changes --json` reports the same value);
+  `latestCursor` is the current tail. The consumer chooses whether to backfill
+  from `earliestCursor` or resume from `latestCursor` and accept the gap;
+  resuming from `latestCursor` skips every retained event.
+- Signals: SIGINT or SIGTERM ends the stream after the line in progress and
+  exits 0. No partial line is ever written.
+- The reader never takes the write lease; `gno index`, `gno update`, capture,
+  and the daemon are never blocked by a follower.
 
 ### gno diff
 

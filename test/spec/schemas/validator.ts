@@ -67,6 +67,7 @@ async function loadAllSchemas(): Promise<void> {
     "graph",
     "graph-query",
     "changes",
+    "changes-follow-event",
     "document-diff",
     "impact",
     "query-diagnose-v1",

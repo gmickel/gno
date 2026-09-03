@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/changes-follow-event@1.0",
+  "title": "GNO Knowledge Changes Follow Line",
+  "description": "One stdout line of `gno changes --follow --jsonl`: either a journal event with the cursor after it was applied, or the single terminal cursor-expiry record.",
+  "oneOf": [
+    { "$ref": "#/definitions/eventLine" },
+    { "$ref": "#/definitions/expiredLine" }
+  ],
+  "definitions": {
+    "eventLine": {
+      "type": "object",
+      "required": ["event", "postCursor"],
+      "properties": {
+        "event": { "$ref": "gno://schemas/changes@1.0#/definitions/change" },
+        "postCursor": { "type": "string", "minLength": 1, "maxLength": 512 }
+      },
+      "additionalProperties": false
+    },
+    "expiredLine": {
+      "type": "object",
+      "required": ["error", "earliestCursor", "latestCursor"],
+      "properties": {
+        "error": { "type": "string", "const": "cursor_expired" },
+        "earliestCursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "latestCursor": { "type": "string", "minLength": 1, "maxLength": 512 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1660,12 +1660,28 @@ Similarity edges use `seq=0` embeddings only.
 
 ```bash
 gno changes --since 2026-07-20T00:00:00Z --json
+gno changes --follow --jsonl
+gno changes --follow --jsonl --cursor "$(cat ~/.gno-changes.cursor)"
 gno diff gno://notes/plan.md --json
 gno impact gno://notes/plan.md --max-depth 3 --max-edges 250 --json
 ```
 
 - `gno changes` lists retained metadata-only lifecycle entries. `--since`
   accepts an ISO-8601 time or an opaque cursor returned by an earlier response.
+- `gno changes --follow --jsonl` streams new journal events as they land, one
+  JSON object per line: `{"event": <change>, "postCursor": "<cursor>"}`.
+  `postCursor` is the cursor after that event; persist it once you have handled
+  the line and restart with `--cursor <postCursor>` to resume with no gap.
+  Delivery is at-least-once (a line you received but never checkpointed comes
+  again), so handle events idempotently by `event.id`. Without `--cursor` the
+  stream starts at the current tail and never backfills. Quiet periods print
+  nothing (no keepalive in v1). SIGINT/SIGTERM exit 0. If your cursor has
+  fallen out of retention the stream prints one
+  `{"error": "cursor_expired", "earliestCursor": ..., "latestCursor": ...}`
+  line and exits 2: backfill from `earliestCursor` or tail from
+  `latestCursor`, your call. `--follow` excludes `--since`, `--limit`, and
+  `--json`; `--collection` filters the stream. Contract:
+  `changes-follow-event.schema.json`.
 - `gno diff` returns the latest retained structural delta; `--change <id>`
   selects an exact opaque change ID. Source bodies are never retained, and
   missing prior structure is disclosed through `history` and
@@ -1678,7 +1694,8 @@ gno impact gno://notes/plan.md --max-depth 3 --max-edges 250 --json
   fabricated history and directs the caller to restart from the disclosed
   earliest cursor.
 - Machine-readable contracts: `changes.schema.json`,
-  `document-diff.schema.json`, and `impact.schema.json`.
+  `changes-follow-event.schema.json`, `document-diff.schema.json`, and
+  `impact.schema.json`.
 
 ## Admin Commands
 
