@@ -1,0 +1,46 @@
+{
+  "branch": "fn-135-memory-adapters-openclaw-backend-hermes",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "77f72eebe5a15ac41ad55f7c769ceea6fe4bf3a6",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-2e165c267a9736aa8d023b4f08f446c0cef59e4987ba58e55f5d6b25f33b438a"
+  },
+  "head_sha": "77f72eebe5a15ac41ad55f7c769ceea6fe4bf3a6",
+  "id": "fn-135-memory-adapters-openclaw-backend-hermes",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 5,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      }
+    ],
+    "total": 5
+  },
+  "timestamp": "2026-09-03T11:19:38Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
