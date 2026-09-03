@@ -88,6 +88,7 @@ Recipe rules:
 | **Models**   | `models list/use/pull/clear/path`                                                                          | Manage local AI models                                                   |
 | **Serve**    | `serve`, `daemon`                                                                                          | One resident Web/headless gateway and watcher                            |
 | **Publish**  | `publish export`                                                                                           | Export gno.sh publish artifacts                                          |
+| **Memory**   | `remember`, `recall`                                                                                       | Fact-granular agent memory with explicit scopes and supersession         |
 | **MCP**      | `mcp`, `mcp install/uninstall/status`                                                                      | AI assistant integration                                                 |
 | **Skill**    | `skill install/uninstall/show/paths`                                                                       | Install skill for AI agents                                              |
 | **Admin**    | `peek`, `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`                                        | Snapshot, maintenance, and diagnostics                                   |
@@ -551,6 +552,22 @@ receipt with `gno search` or `gno get`; use `gno index`/`gno embed` when semanti
 search must include the new note. Browser provenance fields are
 `extractionHash`, `finalBodyHash`, `clipIdentity`, and `previewDigest`—do not
 invent `sourceHash`.
+
+## Memory (remember/recall)
+
+Use `gno remember` / `gno recall` (MCP `gno_remember` / `gno_recall`) for one
+fact that may later change, not for documents (`gno capture`) or edits to
+existing notes. They work only on a collection with `memoryManaged: true`.
+
+- Explicit `--scope` is required on every call (repeatable, 1-8); there is no
+  implicit global scope.
+- `recall` returns current facts with `gno://` cites plus a content-free
+  receipt; pass it back as `remember --receipt` so recalled text is not
+  re-stored as a new fact.
+- `remember` without a decision returns candidates and writes nothing; decide
+  with `--add` or `--supersede <uri> --predecessor-hash <hash>` from recall.
+- Details, error codes, and the fence's paraphrase limit: `docs/MEMORY.md`,
+  [cli-reference.md](cli-reference.md), [mcp-reference.md](mcp-reference.md).
 
 ## Reference-Safe Rename and Move
 

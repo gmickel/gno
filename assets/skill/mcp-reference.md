@@ -161,6 +161,30 @@ non-overwrite captures fail instead of replacing a late-arriving file. MCP
 capture syncs the file for FTS but does not auto-embed; run `gno_embed` or
 `gno_index` afterward when vector search should include it.
 
+## Memory
+
+`gno_recall` (read set) and `gno_remember` (write set, needs `--enable-write`)
+are the fact-granular memory contract over a collection configured with
+`memoryManaged: true`. Both require `collection` and explicit `scopes`
+(1-8, any-intersection visibility, no implicit global scope). Identity
+(`caller` / `session`) is mapped server-side from the MCP client name and
+transport session, never from tool arguments.
+
+- `gno_recall` with `query`, `collection`, `scopes`, optional `maxFacts` /
+  `maxTokens` returns current facts (superseded ones excluded), each with a
+  `gno://` cite, `contentHash`, and egress lineage, plus a content-free
+  `receipt`. Empty scope returns a `hint` naming `gno remember`.
+- `gno_remember` with `text`, `collection`, `scopes` and no `decision` returns
+  `outcome: "candidates"` and writes nothing. Pass `decision: "add"` for a
+  new fact or `decision: "supersede"` with `predecessorUri` +
+  `predecessorHash` from a recall. An exact duplicate returns `existing`; a
+  lost supersede race returns `MEMORY_SUPERSEDE_CONFLICT` (recall, decide
+  again).
+- Pass the recall `receipt` back on `gno_remember` so a recalled span cannot
+  be re-stored (`MEMORY_FENCED_REPLAY`); a `gno://` entry in `derivedFrom` is
+  rejected (`MEMORY_FENCED_DERIVED`). Optional `source` stores evidence.
+- Writes sync for FTS before returning and do not auto-embed.
+
 ## Uninstall
 
 ```bash
