@@ -1,0 +1,46 @@
+{
+  "branch": "fn-133-site-and-docs-memory-positioning-agents",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "f2e493350599847a3a0fd86c25c060e8cf8bc014",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-e0204b5f447931c85d7d9c5697cbf0e5ce1603b66500657669a7f640dfceb904"
+  },
+  "head_sha": "f2e493350599847a3a0fd86c25c060e8cf8bc014",
+  "id": "fn-133-site-and-docs-memory-positioning-agents",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 5,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      }
+    ],
+    "total": 5
+  },
+  "timestamp": "2026-09-03T13:03:53Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
