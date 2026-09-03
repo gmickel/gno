@@ -21,7 +21,7 @@ import {
   memoryScopesInputSchema,
   resolveMcpMemoryIdentity,
   rethrowMemoryError,
-} from "./memory-recall";
+} from "./memory-shared";
 
 export const REMEMBER_MCP_ANNOTATIONS = {
   readOnlyHint: false,

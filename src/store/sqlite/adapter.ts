@@ -327,6 +327,13 @@ type FtsQueryBuildResult =
   | { ok: false; error: string };
 
 /**
+ * SQL fragment excluding documents superseded by an active document via the
+ * typed `supersedes` edge. `docIdExpr` names the candidate document id column.
+ */
+const SUPERSEDED_EXCLUSION_SQL = (docIdExpr: string): string =>
+  `AND NOT EXISTS (SELECT 1 FROM doc_edges se JOIN documents sd ON sd.id = se.src_doc_id AND sd.active = 1 WHERE se.dst_doc_id = ${docIdExpr} AND se.edge_type = 'supersedes')`;
+
+/**
  * Narrow lexical grammar for BM25/FTS queries.
  *
  * Supported:
@@ -335,13 +342,6 @@ type FtsQueryBuildResult =
  * - negation with at least one positive term
  * - hyphenated compounds handled intentionally
  */
-/**
- * SQL fragment excluding documents superseded by an active document via the
- * typed `supersedes` edge. `docIdExpr` names the candidate document id column.
- */
-const SUPERSEDED_EXCLUSION_SQL = (docIdExpr: string): string =>
-  `AND NOT EXISTS (SELECT 1 FROM doc_edges se JOIN documents sd ON sd.id = se.src_doc_id AND sd.active = 1 WHERE se.dst_doc_id = ${docIdExpr} AND se.edge_type = 'supersedes')`;
-
 function buildFts5Query(
   query: string,
   options: { anyTerm?: boolean } = {}

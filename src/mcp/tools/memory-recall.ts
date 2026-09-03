@@ -3,8 +3,7 @@
  *
  * Thin adapter over the core `MemoryService`. Identity is mapped from the
  * server session (MCP client name + transport session), never from tool
- * arguments. The service owns the shared write lease; this module never
- * touches `ctx.writeLockPath` beyond naming the lease file for the service.
+ * arguments; see `memory-shared` for the mapping and service construction.
  *
  * @module src/mcp/tools/memory-recall
  */
@@ -16,16 +15,16 @@ import type { ToolContext } from "../server";
 import {
   MEMORY_RECALL_MAX_FACTS,
   MEMORY_RECALL_MAX_TOKENS,
-  MemoryError,
-  MemoryService,
-  type MemoryIdentity,
   type RecallResult,
 } from "../../core/memory";
-import { MEMORY_MAX_SCOPES } from "../../core/memory-record";
 import { runTool, type ToolResult } from "./index";
-
-/** Caller name when the MCP client sent no implementation name. */
-const DEFAULT_MCP_CALLER = "mcp";
+import {
+  createMcpMemoryService,
+  type McpMemorySessionInfo,
+  memoryScopesInputSchema,
+  resolveMcpMemoryIdentity,
+  rethrowMemoryError,
+} from "./memory-shared";
 
 export const RECALL_MCP_ANNOTATIONS = {
   readOnlyHint: true,
@@ -33,22 +32,6 @@ export const RECALL_MCP_ANNOTATIONS = {
   idempotentHint: true,
   openWorldHint: false,
 } as const;
-
-/** Server-side identity inputs resolved at dispatch time by the registry. */
-export interface McpMemorySessionInfo {
-  /** `clientInfo.name` from the MCP initialize handshake. */
-  clientName?: string;
-  /** Transport session id (Streamable HTTP); absent on stdio. */
-  sessionId?: string;
-}
-
-export const memoryScopesInputSchema = z
-  .array(z.string().trim().min(1))
-  .min(1, "At least one explicit scope is required")
-  .max(MEMORY_MAX_SCOPES)
-  .describe(
-    `Explicit scopes (1-${MEMORY_MAX_SCOPES}, e.g. "project:gno"). Visibility is any-intersection; there is no implicit global scope`
-  );
 
 export const recallInputSchema = z.object({
   query: z
@@ -79,46 +62,6 @@ export const recallInputSchema = z.object({
 });
 
 export type RecallToolInput = z.infer<typeof recallInputSchema>;
-
-/**
- * Map the MCP server session to the core identity contract.
- *
- * caller = MCP client implementation name; session = transport session id
- * when the transport has one (Streamable HTTP), else the per-process server
- * instance id (stdio: one process is one session).
- */
-export function resolveMcpMemoryIdentity(
-  ctx: ToolContext,
-  info: McpMemorySessionInfo
-): MemoryIdentity {
-  const caller = info.clientName?.trim() || DEFAULT_MCP_CALLER;
-  const session = info.sessionId?.trim() || ctx.serverInstanceId;
-  return { caller, session };
-}
-
-/**
- * Construct the core service for one MCP call.
- *
- * The lease path names the same `.mcp-write.lock` file the rest of the MCP
- * write surface uses, so a memory write and a capture serialise on one lease.
- * Acquisition happens inside the service only.
- */
-export function createMcpMemoryService(ctx: ToolContext): MemoryService {
-  return new MemoryService({
-    store: ctx.store,
-    config: ctx.config,
-    collections: ctx.collections,
-    lockPath: ctx.writeLockPath,
-  });
-}
-
-/** Re-throw a core memory error in the `CODE: message` shape runTool parses. */
-export function rethrowMemoryError(error: unknown): never {
-  if (error instanceof MemoryError) {
-    throw new Error(`${error.code}: ${error.message}`);
-  }
-  throw error;
-}
 
 export function formatRecallResult(result: RecallResult): string {
   const lines: string[] = [];

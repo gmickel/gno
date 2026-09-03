@@ -341,4 +341,4 @@ These are exclusions, not gaps. Each one is a decision.
 | Lexical likely-match threshold  | Jaccard 0.5          | `MEMORY_LEXICAL_LIKELY_THRESHOLD`                     |
 | Recall budget                   | 8 facts / 512 tokens | `MEMORY_RECALL_MAX_FACTS`, `MEMORY_RECALL_MAX_TOKENS` |
 
-Constants live in `src/core/memory.ts` and `src/core/memory-record.ts`.
+Constants live in `src/core/memory-types.ts` (re-exported from `src/core/memory.ts`) and `src/core/memory-record.ts`.
