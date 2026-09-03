@@ -354,6 +354,7 @@ export function createProgram(): Command {
   wireSearchCommands(program);
   wireOnboardingCommands(program);
   wireCaptureCommand(program);
+  wireMemoryCommands(program);
   wireManagementCommands(program);
   wireTraceCommands(program);
   wirePublishCommand(program);
@@ -1886,6 +1887,132 @@ function wireCaptureCommand(program: Command): void {
         await writeOutput(output, format);
       }
     );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Memory Commands (remember, recall)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function wireMemoryCommands(program: Command): void {
+  program
+    .command("remember <text>")
+    .description("Store a fact in a memory-managed collection")
+    .option("-c, --collection <name>", "memory-managed target collection")
+    .option(
+      "--scope <scope>",
+      "explicit scope (repeatable, required; no implicit global scope)",
+      collectRepeatableValue,
+      []
+    )
+    .option("--decision <decision>", "add or supersede (omit for candidates)")
+    .option("--add", "shorthand for --decision add")
+    .option(
+      "--supersede <uri>",
+      "shorthand for --decision supersede --predecessor <uri>"
+    )
+    .option("--predecessor <uri>", "predecessor gno:// URI for supersede")
+    .option(
+      "--predecessor-hash <hash>",
+      "predecessor contentHash from recall (required for supersede)"
+    )
+    .option(
+      "--receipt <path>",
+      "recall receipt JSON to fence against (recall --json output)"
+    )
+    .option(
+      "--derived-from <uri>",
+      "declared origin of the fact (repeatable; gno:// origins are fenced)",
+      collectRepeatableValue,
+      []
+    )
+    .option("--source <text>", "free-form source evidence")
+    .option(
+      "--caller <id>",
+      "caller identity (default: $GNO_MEMORY_CALLER or cli:<user>)"
+    )
+    .option(
+      "--session <id>",
+      "session identity (default: $GNO_MEMORY_SESSION or ppid:<pid>)"
+    )
+    .option("--json", "JSON output")
+    .action(async (text: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      const globals = getGlobals();
+      const { formatRememberResult, remember } =
+        await import("./commands/memory");
+      const result = await remember({
+        configPath: globals.config,
+        indexName: globals.index,
+        text,
+        collection: cmdOpts.collection as string | undefined,
+        scopes: cmdOpts.scope as string[],
+        decision: cmdOpts.decision as string | undefined,
+        add: Boolean(cmdOpts.add),
+        supersede: cmdOpts.supersede as string | undefined,
+        predecessor: cmdOpts.predecessor as string | undefined,
+        predecessorHash: cmdOpts.predecessorHash as string | undefined,
+        receipt: cmdOpts.receipt as string | undefined,
+        derivedFrom: cmdOpts.derivedFrom as string[],
+        source: cmdOpts.source as string | undefined,
+        caller: cmdOpts.caller as string | undefined,
+        session: cmdOpts.session as string | undefined,
+      });
+      await writeOutput(
+        formatRememberResult(result, {
+          json: format === "json",
+          quiet: globals.quiet,
+        }),
+        format
+      );
+    });
+
+  program
+    .command("recall <query>")
+    .description("Recall current facts from a memory-managed collection")
+    .option("-c, --collection <name>", "memory-managed collection")
+    .option(
+      "--scope <scope>",
+      "explicit scope (repeatable, required; no implicit global scope)",
+      collectRepeatableValue,
+      []
+    )
+    .option("--max-facts <n>", "budget override: max facts (default 8)")
+    .option(
+      "--max-tokens <n>",
+      "budget override: max payload tokens (default 512)"
+    )
+    .option(
+      "--caller <id>",
+      "caller identity (default: $GNO_MEMORY_CALLER or cli:<user>)"
+    )
+    .option(
+      "--session <id>",
+      "session identity (default: $GNO_MEMORY_SESSION or ppid:<pid>)"
+    )
+    .option("--json", "JSON output")
+    .action(async (query: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      const globals = getGlobals();
+      const { formatRecallResult, recall } = await import("./commands/memory");
+      const result = await recall({
+        configPath: globals.config,
+        indexName: globals.index,
+        query,
+        collection: cmdOpts.collection as string | undefined,
+        scopes: cmdOpts.scope as string[],
+        maxFacts: cmdOpts.maxFacts as number | undefined,
+        maxTokens: cmdOpts.maxTokens as number | undefined,
+        caller: cmdOpts.caller as string | undefined,
+        session: cmdOpts.session as string | undefined,
+      });
+      await writeOutput(
+        formatRecallResult(result, {
+          json: format === "json",
+          quiet: globals.quiet,
+        }),
+        format
+      );
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

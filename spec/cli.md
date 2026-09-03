@@ -9,13 +9,13 @@ This document specifies the command-line interface for GNO, a local knowledge in
 
 ### Exit Codes
 
-| Code | Name        | Description                                                   |
-| ---- | ----------- | ------------------------------------------------------------- |
-| 0    | SUCCESS     | Command completed successfully                                |
-| 1    | VALIDATION  | Validation or usage error (bad args, missing required params) |
-| 2    | RUNTIME     | Runtime failure (IO, DB, conversion, model, network)          |
-| 3    | NOT_RUNNING | `--status`/`--stop` found no live matching process            |
-| 4    | BUSY        | Write-lease contention on `index` / `update` / `embed`        |
+| Code | Name        | Description                                                                                |
+| ---- | ----------- | ------------------------------------------------------------------------------------------ |
+| 0    | SUCCESS     | Command completed successfully                                                             |
+| 1    | VALIDATION  | Validation or usage error (bad args, missing required params)                              |
+| 2    | RUNTIME     | Runtime failure (IO, DB, conversion, model, network)                                       |
+| 3    | NOT_RUNNING | `--status`/`--stop` found no live matching process                                         |
+| 4    | BUSY        | Write-lease contention on `index` / `update` / `embed`; a lost `remember --supersede` race |
 
 ### Global Flags
 
@@ -84,6 +84,8 @@ equivalent files fail closed as ambiguous.
 | bench              | yes    | no      | no    | no   | no    | terminal |
 | ask                | yes    | no      | no    | yes  | no    | terminal |
 | capture            | yes    | no      | no    | no   | no    | terminal |
+| remember           | yes    | no      | no    | no   | no    | terminal |
+| recall             | yes    | no      | no    | no   | no    | terminal |
 | get                | yes    | no      | no    | yes  | no    | terminal |
 | multi-get          | yes    | yes     | no    | yes  | no    | terminal |
 | ls                 | yes    | yes     | no    | yes  | no    | terminal |
@@ -1609,6 +1611,132 @@ gno capture "thought to remember"
 gno capture --stdin --collection notes --preset source-summary --tags inbox,gno
 gno capture --file ./clip.md --source-url https://example.com --source-kind web --json
 gno capture "meeting note" --quiet
+```
+
+---
+
+### gno remember
+
+Store one fact in a memory-managed collection. Thin adapter over the core
+memory service (`src/core/memory.ts`): the CLI never touches the store or the
+write lease directly.
+
+**Synopsis:**
+
+```bash
+gno remember <text> --scope <scope> [--scope <scope>...] [--collection <name>] [--decision add|supersede | --add | --supersede <uri>] [--predecessor <uri>] [--predecessor-hash <hash>] [--receipt <path>] [--derived-from <uri>...] [--source <text>] [--caller <id>] [--session <id>] [--json]
+```
+
+**Scope and collection (fail-closed):**
+
+- `--scope` is required and repeatable (1..8 scopes, normalized: trim,
+  lowercase, NFC, dedupe). A missing scope exits `VALIDATION` with a message
+  naming `--scope`. There is no implicit global scope.
+- `--collection` names a collection with `memoryManaged: true`. It may be
+  omitted only when exactly one memory-managed collection is configured. A
+  collection without the flag exits `VALIDATION` (`MEMORY_COLLECTION_UNMANAGED`).
+
+**Identity:**
+
+- `--caller` defaults to `$GNO_MEMORY_CALLER`, then `cli:<os user>`.
+- `--session` defaults to `$GNO_MEMORY_SESSION`, then `ppid:<parent pid>`.
+- Both are recorded in the fact frontmatter and bound into recall receipts.
+
+**Decision:**
+
+- No decision flag: candidate proposal only. Same-scope current facts are
+  matched (BM25 pool of 16; cosine >= 0.83 when an embedding model is cached,
+  else token Jaccard >= 0.5); nothing is written, `outcome: "candidates"`.
+- `--decision add` / `--add`: write a new fact file. An exact duplicate
+  (same content hash) returns the existing record idempotently
+  (`outcome: "existing"`).
+- `--decision supersede --predecessor <uri>` / `--supersede <uri>`: requires
+  `--predecessor-hash <hash>` (the predecessor's `contentHash` from recall).
+  Under the shared write lease the service verifies the predecessor exists,
+  is current, matches the hash, and has no successor; the successor carries
+  `supersedes: [<uri>]`. `--add` and `--supersede` are mutually exclusive.
+- A write returns success only after the file exists and lexical sync
+  completed; the fact is retrievable before the command exits.
+
+**Context fencing:**
+
+- `--receipt <path>` presents a recall receipt (the `recall --json` output or
+  its `receipt` object). Text whose normalized hash matches a receipted span
+  is rejected (`MEMORY_FENCED_REPLAY`).
+- `--derived-from <uri>` declares origins; any `gno://` origin is rejected
+  (`MEMORY_FENCED_DERIVED`).
+- Paraphrases that carry neither a receipt nor a lineage declaration cannot
+  be fenced.
+
+**Output:**
+
+- `--json` prints the shared `RememberResult` (`outcome` of `existing` |
+  `candidates` | `added` | `superseded`, with `record` / `candidates`,
+  `absPath`, `sync`, and `matching`). `--json` wins over global `--quiet`;
+  quiet prints the record URI (or one candidate URI per line).
+- Terminal output states the outcome, URI, record id, content hash, scopes,
+  `Supersedes:` when present, sync state, and the matching mode.
+
+**Exit codes:** `VALIDATION` (1) for flag, scope, collection, identity,
+predecessor, and fence errors; `BUSY` (4) when another writer holds the lease
+(`MEMORY_WRITE_LEASE_BUSY`) or already superseded the predecessor
+(`MEMORY_SUPERSEDE_CONFLICT`); `RUNTIME` (2) when the file was written but
+lexical sync failed. The JSON envelope carries the core code in
+`details.memoryCode`.
+
+**Examples:**
+
+```bash
+gno remember "Finn's kindergarten starts at 08:30" --scope family --add
+gno remember "Prod deploys from main only" --scope project:gno --scope ops
+gno remember "Prod deploys from release/*" --scope project:gno --supersede gno://memory/facts/2026/... --predecessor-hash <hash> --json
+```
+
+---
+
+### gno recall
+
+Recall current facts from a memory-managed collection under a budget.
+
+**Synopsis:**
+
+```bash
+gno recall <query> --scope <scope> [--scope <scope>...] [--collection <name>] [--max-facts <n>] [--max-tokens <n>] [--caller <id>] [--session <id>] [--json]
+```
+
+**Behavior:**
+
+- `--scope`, `--collection`, `--caller`, and `--session` follow the
+  `gno remember` rules (fail-closed scope, memory-managed collection only).
+- Retrieval is BM25 plus a vector leg when the configured embedding model is
+  cached and vectors exist (`retrieval.mode` = `hybrid`, else `lexical` with
+  `retrieval.semanticUnavailable` explaining why). Query expansion, graph
+  expansion, and reranking are disabled. Scope and supersession filtering run
+  inside the retrieval query; superseded facts are never returned.
+- Budget: at most `--max-facts` facts (default 8) under `--max-tokens`
+  (default 512). Both must be positive integers. Recall never downloads a
+  model.
+- Every fact carries `uri` (`gno://`), `text`, `scopes`, `caller`,
+  `session`, `createdAt`, `contentHash`, `spanHash`, `supersedes`, `score`,
+  and `egressLineage`; the response carries a content-free `receipt`
+  (`caller`, `session`, `issuedAt`, `memoryIds`, `spanHashes`, `digest`) plus
+  `budget` and `retrieval`. Derived output inherits the strictest source
+  egress policy (`egressLineage`).
+- Empty recall prints the self-teaching line naming `gno remember`
+  (`hint` in JSON) and exits 0.
+
+**Output:** `--json` prints the shared `RecallResult`. Terminal output lists
+numbered facts with URI, text, scopes, hash, and identity, then `Budget:`,
+`Retrieval:`, and `Receipt:` lines. Quiet prints one URI per line.
+
+**Exit codes:** `VALIDATION` (1) for scope, collection, identity, and budget
+errors; `RUNTIME` (2) on retrieval failure.
+
+**Examples:**
+
+```bash
+gno recall "deploy branch" --scope project:gno
+gno recall "kindergarten" --scope family --max-facts 3 --json > receipt.json
 ```
 
 ---
@@ -3851,6 +3979,8 @@ Write-lease contention on `index` / `update` / `embed` does not use the generic 
 | `NO_COLOR`                 | Disable colored output (standard)                                                                                          |
 | `PAGER`                    | Pager for long output (default: less -R on Unix, built-in on Windows)                                                      |
 | `GNO_SKILLS_HOME_OVERRIDE` | Override home dir for skill user scope (testing)                                                                           |
+| `GNO_MEMORY_CALLER`        | Default `--caller` identity for `gno remember` / `gno recall`                                                              |
+| `GNO_MEMORY_SESSION`       | Default `--session` identity for `gno remember` / `gno recall`                                                             |
 | `CLAUDE_SKILLS_DIR`        | Override Claude skills directory                                                                                           |
 | `CODEX_SKILLS_DIR`         | Override Codex skills directory                                                                                            |
 | `CLAUDE_CONFIG_DIR`        | Claude Code config dir; `gno agents` resolves Claude's instruction file under it (suppressed by an explicit home override) |
