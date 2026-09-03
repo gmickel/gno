@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   persisted `postCursor` for gap-free at-least-once delivery, tail by default,
   one terminal `cursor_expired` line (exit 2) when the cursor falls out of
   retention, SIGINT exits 0. Contract in `changes-follow-event.schema.json`.
+- Daemon scheduled findings pass (opt-in `findings: { enabled, cadence, collection }`):
+  `gno daemon` runs the read-only audit on a cadence and writes findings as
+  deterministic Markdown records into an existing collection (report-only,
+  identity-upserted, resolved on fix, bounded retention, lease-aware skip,
+  silent when clean). Last-run state is persisted and shown by
+  `gno daemon --status` (`findings` line / JSON object) and the `Findings pass`
+  check in `gno doctor`. Saved Capsule reverification stays journal-driven.
 
 ### Changed
 

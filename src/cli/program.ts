@@ -20,6 +20,11 @@ import {
 } from "../app/constants";
 import { INDEX_NAME_REQUIREMENTS, isValidIndexName } from "../app/index-name";
 import { resolveDepthPolicy } from "../core/depth-policy";
+import {
+  findingsRunStatePathForIndex,
+  formatFindingsRunStatusLine,
+  readFindingsRunStatus,
+} from "../core/findings-run-state";
 import { parseAndValidateTagFilter } from "../core/tags";
 import {
   formatWriteLeaseBusyJson,
@@ -4392,6 +4397,7 @@ async function handleDaemonAction(
     await runDaemonStatus({
       paths,
       json,
+      indexName: globals.index,
       statusProcess,
       inspectForeignLive,
     });
@@ -4458,6 +4464,7 @@ async function handleDaemonAction(
 interface DaemonStatusDeps {
   paths: { pidFile: string; logFile: string };
   json: boolean;
+  indexName?: string;
   statusProcess: typeof import("./detach.js").statusProcess;
   inspectForeignLive: typeof import("./detach.js").inspectForeignLive;
 }
@@ -4472,9 +4479,16 @@ async function runDaemonStatus(deps: DaemonStatusDeps): Promise<void> {
     kind: "daemon",
     pidFile: deps.paths.pidFile,
   });
+  // Persisted by the daemon after every scheduled findings attempt; absent
+  // (null) when the pass is not configured. Read from disk, never live.
+  const findings = await readFindingsRunStatus(
+    findingsRunStatePathForIndex(deps.indexName)
+  );
 
   if (deps.json) {
-    process.stdout.write(`${JSON.stringify(status, null, 2)}\n`);
+    process.stdout.write(
+      `${JSON.stringify({ ...status, findings }, null, 2)}\n`
+    );
     // In JSON mode, foreign-live metadata flows into the NOT_RUNNING
     // envelope's `details` payload below so stderr stays a single JSON
     // object that machine clients can parse deterministically.
@@ -4502,6 +4516,11 @@ async function runDaemonStatus(deps: DaemonStatusDeps): Promise<void> {
       process.stdout.write(" (missing)\n");
     } else {
       process.stdout.write(` (${status.log_size_bytes} bytes)\n`);
+    }
+    if (findings) {
+      process.stdout.write(
+        `  findings ${formatFindingsRunStatusLine(findings)}\n`
+      );
     }
 
     if (foreign) {

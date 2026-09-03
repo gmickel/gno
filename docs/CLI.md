@@ -1983,6 +1983,13 @@ Options:
 - Hosts `GET /api/resident/status` alongside `/mcp`; full `GET /api/status`
   remains loopback-only because it includes local index and configuration
   details
+- With `findings.enabled: true` in config, runs the read-only audit on
+  `findings.cadence` and writes findings records into `findings.collection`
+  (report-only, lease-aware, silent when clean). Startup fails when the
+  collection is unset or unknown. `--status` prints a `findings` line and
+  `--status --json` adds a `findings` object (`state`, timestamps, counts,
+  `error`; `null` when the pass is not configured). See
+  [Daemon Mode](DAEMON.md#scheduled-findings-pass).
 
 **Notes:**
 
