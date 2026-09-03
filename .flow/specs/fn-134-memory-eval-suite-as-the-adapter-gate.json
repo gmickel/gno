@@ -12,6 +12,7 @@
   "id": "fn-134-memory-eval-suite-as-the-adapter-gate",
   "impl_review_rounds": {},
   "next_task": 1,
+  "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
@@ -30,5 +31,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-01T14:55:30.794556Z"
+  "updated_at": "2026-09-03T06:11:19.348785Z"
 }
