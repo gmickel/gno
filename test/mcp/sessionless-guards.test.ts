@@ -28,11 +28,7 @@ import {
 } from "../../src/mcp/http-security";
 import { HttpMcpTransport } from "../../src/mcp/http-transport";
 import { createStandaloneResidentStatus } from "../../src/serve/resident-status";
-import {
-  modernEnvelope,
-  modernHeaders,
-  modernRequest,
-} from "../helpers/mcp-wire";
+import { modernHeaders, modernRequest } from "../helpers/mcp-wire";
 
 const MCP_URL = "http://127.0.0.1:3210/mcp";
 const LEGACY_PROTOCOL_VERSION = "2025-11-25";

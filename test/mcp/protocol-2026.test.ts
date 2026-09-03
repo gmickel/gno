@@ -207,7 +207,10 @@ describe("MCP 2026-07-28 negotiation over Streamable HTTP", () => {
     const http = new StreamableHTTPClientTransport(new URL(MCP_URL), {
       fetch: (input, init) => {
         const request = new Request(input, init);
-        wire.push({ request, body: init?.body ? String(init.body) : "" });
+        wire.push({
+          request,
+          body: typeof init?.body === "string" ? init.body : "",
+        });
         return transport.handleRequest(request);
       },
     });
