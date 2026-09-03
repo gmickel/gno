@@ -987,7 +987,9 @@ In JSON mode the same information is `resumedFrom`. Vectors are committed
 per batch, so the rerun only embeds the remaining backlog; unchanged files
 are skipped by the lexical stage as usual. `gno index --no-embed` followed by
 `gno embed` is the same two stages run as two processes and needs no
-special handling.
+special handling. `gno index --no-embed` after a killed embed run reports the
+interrupted embed stage once and settles the marker; `gno embed` still resumes
+from the persisted vectors.
 
 **Combined-run crash (field report 2026-09-01)**: one combined `gno index`
 on Bun 1.3.14 / Linux x64 (CUDA build of node-llama-cpp 3.19.1) died

@@ -1038,7 +1038,9 @@ killed mid-stage (SIGKILL, native crash, power loss) emits nothing; the next
 `gno index` or `gno embed` run reads the marker, reports the interrupted stage
 in its resume preamble (stderr in human mode, `resumedFrom` in JSON), and
 continues from persisted progress - unchanged files are skipped and already
-stored chunks are never re-embedded.
+stored chunks are never re-embedded. A `gno index --no-embed` run that
+surfaces an interrupted embed stage settles that marker (the embed progress
+itself stays on disk), so later runs do not repeat the preamble.
 
 **JSON output:** conforms to
 [`index-receipt@1.0`](./output-schemas/index-receipt.schema.json):

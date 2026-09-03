@@ -17,6 +17,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { markIndexStageRunning } from "../../src/embed/stage-state";
 import { safeRm } from "../helpers/cleanup";
 import { assertValid, loadSchema } from "../spec/schemas/validator";
 
@@ -224,6 +225,33 @@ describe("gno index staged resume", () => {
       state: "completed",
       embedded: 0,
     });
+  }, 120_000);
+
+  test("index --no-embed settles a stale embed marker so later runs stop reporting the interruption", async () => {
+    const { home, env } = await writeHome(server.port);
+    homes.push(home);
+
+    const initial = await runGno(env, "index", "--no-embed", "--json");
+    expect(initial.code).toBe(0);
+
+    // A killed embed run leaves `embed: running` behind.
+    const db = new Database(join(home, "data", "index-default.sqlite"));
+    try {
+      markIndexStageRunning(db, "embed");
+    } finally {
+      db.close();
+    }
+
+    // The first lexical-only run surfaces it once...
+    const first = await runGno(env, "index", "--no-embed");
+    expect(first.code).toBe(0);
+    expect(first.stderr).toContain("interrupted during the embed stage");
+
+    // ...and settles it: the next run starts clean.
+    const second = await runGno(env, "index", "--no-embed", "--json");
+    expect(second.code).toBe(0);
+    expect(second.stderr).not.toContain("interrupted");
+    expect(JSON.parse(second.stdout).resumedFrom).toBeNull();
   }, 120_000);
 
   test("embed stage failure exits non-zero with a per-stage receipt (lexical completed, embed failed)", async () => {

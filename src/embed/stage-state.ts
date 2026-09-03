@@ -147,6 +147,22 @@ export function markIndexStageFinished(
 }
 
 /**
+ * Drop a stage's marker. Used when a run deliberately does not attempt a
+ * stage (`gno index --no-embed`) after surfacing a stale `running` marker for
+ * it, so later runs do not keep reporting an interruption that has already
+ * been acknowledged. Stage data is untouched: embed progress is persisted
+ * per batch and resumes from the data, not from this marker.
+ */
+export function clearIndexStage(db: Database, stage: IndexStageName): void {
+  const state = readIndexStageState(db);
+  if (!state[stage]) {
+    return;
+  }
+  delete state[stage];
+  writeIndexStageState(db, state);
+}
+
+/**
  * Detect the stage a previous run left `running`. Under the write lease only
  * one writer runs at a time, so a `running` marker at run start always
  * belongs to a process that died mid-stage. Later stages win when both are

@@ -8,6 +8,7 @@ import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 
 import {
+  clearIndexStage,
   findInterruptedStage,
   formatInterruptedStage,
   INDEX_STAGE_STATE_KEY,
@@ -81,6 +82,24 @@ describe("index stage state", () => {
       collection: "notes",
     });
     expect(state.lexical?.state).toBe("completed");
+  });
+
+  test("clearing a stage drops its marker and leaves the other stage alone", () => {
+    const db = openMetaDb();
+    markIndexStageRunning(db, "lexical");
+    markIndexStageFinished(db, "lexical", "completed");
+    markIndexStageRunning(db, "embed");
+    expect(findInterruptedStage(readIndexStageState(db))?.stage).toBe("embed");
+
+    clearIndexStage(db, "embed");
+    const state = readIndexStageState(db);
+    expect(state.embed).toBeUndefined();
+    expect(state.lexical?.state).toBe("completed");
+    expect(findInterruptedStage(state)).toBeNull();
+
+    // Clearing an absent stage is a no-op.
+    clearIndexStage(db, "embed");
+    expect(readIndexStageState(db)).toEqual(state);
   });
 
   test("embed wins over lexical when both markers are running", () => {

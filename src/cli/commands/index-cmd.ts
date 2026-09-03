@@ -13,6 +13,7 @@ import {
   withCliWriteLease,
 } from "../../core/write-lease";
 import {
+  clearIndexStage,
   findInterruptedStage,
   formatInterruptedStage,
   type IndexStageState,
@@ -227,6 +228,12 @@ export async function index(options: IndexOptions = {}): Promise<IndexResult> {
       const lexical = lexicalReceipt(syncResult);
 
       if (embedSkipped) {
+        // A stale `embed: running` marker (killed embed run) was surfaced in
+        // this run's preamble; settle it so the next run does not repeat it
+        // or mask a real lexical interruption. Embed progress stays on disk.
+        if (resumedFrom?.stage === "embed") {
+          clearIndexStage(db, "embed");
+        }
         return {
           success: true,
           syncResult,
