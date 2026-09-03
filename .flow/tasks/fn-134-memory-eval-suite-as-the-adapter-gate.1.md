@@ -19,3 +19,4 @@ stage: impl-review - skipped(config: REVIEW_MODE=none)
 - Commits: 5c0fd4a25cbb65c9c206fdec250501edf786b6af
 - Tests: baseline: none (spec defines no Quick commands); bun run lint:check green pre-edit, bun run eval:memory (run 1, rc=0, Score 100%, Threshold 100%), bun run eval:memory (run 2, rc=0, normalized output sha256 identical to run 1: 5a7d2776…), bun run eval:memory with edited fixture + stale manifest -> rc=1 (drift refused), bun run eval:memory with edited golden + refreshed manifest -> rc=1 (Score 97%, golden DIFF), bun run lint:check (rc=0; 1 pre-existing warning in test/cli/query-text.test.ts, inherited), bun test (suite_rc=0: 4693 pass, 2 skip, 0 fail, 547 files), bun scripts/docs-verify.ts rc=1 inherited: README/website version pins and skill parity, untouched by this task
 - PRs:
+stage: plan-sync - skipped(config: planSync.enabled != true)
