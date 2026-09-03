@@ -64,6 +64,16 @@ import {
 } from "./links";
 import { handleListJobs } from "./list-jobs";
 import { handleListTags } from "./list-tags";
+import {
+  handleRecall,
+  RECALL_MCP_ANNOTATIONS,
+  recallInputSchema,
+} from "./memory-recall";
+import {
+  handleRemember,
+  REMEMBER_MCP_ANNOTATIONS,
+  rememberInputSchema,
+} from "./memory-remember";
 import { handleMultiGet } from "./multi-get";
 import { handlePeek, PEEK_MCP_ANNOTATIONS } from "./peek";
 import { handleQuery, handleQueryDiagnose } from "./query";
@@ -140,11 +150,16 @@ export const MCP_TOOL_DESCRIPTIONS = {
   contextVerify:
     "Verify a saved Context Capsule without rebuilding or mutating it. Reports unchanged, stale, missing, reranked, and fingerprint drift states against the active index.",
   ask: "Generate one answer from a deterministic Context Capsule, verify every substantive claim against exact retained spans, and abstain unless support coverage is complete. Read-only; returns the Capsule, freshness receipt, claim verdicts, gaps, and evidence IDs.",
+  recall:
+    "Recall current facts from a memory-managed collection for explicit scopes. Call before answering about the user's preferences, decisions, people, or prior work, and before gno_remember to find the predecessor of a changed fact. Returns at most 8 facts within 512 tokens by default, each with text, scopes, provenance, gno:// cite, and content hash, plus a content-free receipt; superseded facts are excluded. Pass the receipt to gno_remember when a stored fact derives from this recall. An empty result names the command that stores the first fact.",
+  remember:
+    "Store one fact in a memory-managed collection under explicit scopes. Call when the user states a durable preference, decision, or fact worth recalling later; use gno_capture for documents and file edits for existing notes. Without decision it returns likely matches and writes nothing; decision=add writes a new fact; decision=supersede replaces predecessorUri after a hash check, one successor per fact. Exact duplicates return the existing record. Text that replays a recall receipt span or declares a gno:// origin is rejected. The fact is lexically searchable when the call returns.",
 } as const;
 
 /** Tool names whose execution mutates disk, config, or index state. */
 export const MCP_WRITE_TOOL_NAMES = new Set([
   "gno_capture",
+  "gno_remember",
   "gno_add_collection",
   "gno_sync",
   "gno_embed",
@@ -1037,6 +1052,20 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     (args) => handleAsk(args, ctx)
   );
 
+  server.registerTool(
+    "gno_recall",
+    {
+      description: MCP_TOOL_DESCRIPTIONS.recall,
+      inputSchema: recallInputSchema,
+      annotations: RECALL_MCP_ANNOTATIONS,
+    },
+    (args, extra) =>
+      handleRecall(args, ctx, {
+        clientName: server.server.getClientVersion()?.name,
+        sessionId: extra.sessionId,
+      })
+  );
+
   server.tool(
     "gno_search",
     MCP_TOOL_DESCRIPTIONS.search,
@@ -1313,6 +1342,20 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       "Purge every private local retrieval trace receipt. Requires confirm=true.",
       tracePurgeInputSchema.shape,
       (args) => handleTracePurge(args, ctx)
+    );
+
+    server.registerTool(
+      "gno_remember",
+      {
+        description: MCP_TOOL_DESCRIPTIONS.remember,
+        inputSchema: rememberInputSchema,
+        annotations: REMEMBER_MCP_ANNOTATIONS,
+      },
+      (args, extra) =>
+        handleRemember(args, ctx, {
+          clientName: server.server.getClientVersion()?.name,
+          sessionId: extra.sessionId,
+        })
     );
 
     server.tool(

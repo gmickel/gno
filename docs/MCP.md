@@ -250,9 +250,10 @@ gno mcp --enable-write
 GNO_MCP_ENABLE_WRITE=1 gno mcp
 ```
 
-Without this flag, the 22 read-only retrieval, verified-synthesis, trace, graph, status, and
-job-inspection tools are available. Enabling writes adds 15 mutation tools, for
-37 total.
+Without this flag, the 34 read-only retrieval, verified-synthesis, memory
+recall, trace, graph, egress, status, and job-inspection tools are available.
+Enabling writes adds 19 mutation tools (including `gno_remember`), for 53
+total.
 
 ### Collection Root Validation
 
@@ -1358,6 +1359,63 @@ non-overwrite captures fail instead of replacing a late-arriving file.
 MCP capture runs under the server write lock and syncs the written file into FTS
 before returning `sync.status: "completed"`. It does not auto-embed; run
 `gno_embed` or `gno_index` when vector search should include the new note.
+
+### gno_recall
+
+Budgeted, cited recall of current facts from a memory-managed collection
+(available without `--enable-write`). Call it before answering about the user's
+preferences, decisions, people, or prior work, and before `gno_remember` when
+a fact may replace an earlier one.
+
+```yaml
+query: "commute preference"
+collection: "memory" # must have memoryManaged: true in the config
+scopes: ["project:gno"] # 1-8 explicit scopes; no implicit global scope
+maxFacts: 8 # Optional (default 8)
+maxTokens: 512 # Optional (default 512)
+```
+
+The response carries only current facts (superseded records are excluded),
+each with its `gno://` cite, scopes, provenance, and content hash, plus a
+content-free receipt (`caller`, `session`, memory ids, span hashes, digest).
+Identity is mapped from the MCP session: `caller` is the client name from the
+`initialize` handshake, `session` is the HTTP session id or the stdio server
+instance id. An empty result includes a `hint` naming the command that stores
+the first fact. The MCP adapter runs the lexical leg; `retrieval.mode`
+reports it.
+
+### gno_remember
+
+Store one fact with supersession semantics (requires `--enable-write`).
+Remember is fact-granular: use `gno_capture` for documents and edit files
+directly for existing notes.
+
+```yaml
+text: "Finn prefers trams over buses."
+collection: "memory"
+scopes: ["project:gno"]
+decision: "add" # Optional: omit for candidates only | add | supersede
+predecessorUri: "gno://memory/facts/2026-09-03/mem-abc.md" # supersede only
+predecessorHash: "sha256:..." # supersede only, from gno_recall
+receipt: {} # Optional: the gno_recall receipt the fact derives from
+derivedFrom: ["https://example.com/source"] # Optional origins
+source: "Said in standup 2026-09-03" # Optional evidence
+```
+
+Outcomes: `existing` (exact duplicate, nothing written), `candidates` (likely
+matches returned, nothing written; decide with `decision`), `added`, or
+`superseded`. `supersede` checks the predecessor's hash and that it has no
+successor yet; a concurrent second supersede returns
+`MEMORY_SUPERSEDE_CONFLICT`. The fact is lexically searchable when the call
+returns (`sync.status: "completed"`).
+
+Context fencing: text that replays a span hash from the presented `receipt`
+returns `MEMORY_FENCED_REPLAY`, and a `gno://` entry in `derivedFrom` returns
+`MEMORY_FENCED_DERIVED`. A paraphrase without lineage cannot be fenced.
+
+The core memory service holds the shared `.mcp-write.lock` lease for the write
+and lexical sync; the MCP adapter takes no lock of its own, so an MCP remember
+and a CLI writer serialise on one lease.
 
 ### gno_rename_note / gno_move_note
 

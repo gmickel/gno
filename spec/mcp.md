@@ -63,6 +63,11 @@ All write tools acquire an OS-backed advisory lock at `.mcp-write.lock` under th
 If another process holds the lock, tools return `LOCKED`.
 For async jobs, the lock is held for the full job duration.
 
+`gno_remember` is the one write tool whose adapter takes no lock of its own:
+the core memory service acquires the same `.mcp-write.lock` lease for every
+memory write, so an MCP remember and a CLI writer serialise on one lease. A
+lease that stays busy past the wait window returns `MEMORY_WRITE_LEASE_BUSY`.
+
 ### Resident Streamable HTTP boundary
 
 `gno serve` and `gno daemon` mount the same stateful MCP surface at `/mcp`.
@@ -1173,6 +1178,84 @@ returned.
 
 ---
 
+### gno_recall
+
+Budgeted, cited, current-state recall from a memory-managed collection
+(read set; registered without `--enable-write`).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "What you need to know, phrased as the fact would be stated"
+    },
+    "collection": {
+      "type": "string",
+      "description": "Memory-managed collection to recall from"
+    },
+    "scopes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "maxItems": 8,
+      "description": "Explicit scopes; visibility is any-intersection, no implicit global scope"
+    },
+    "maxFacts": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64,
+      "description": "Fact budget (default 8)"
+    },
+    "maxTokens": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8192,
+      "description": "Payload token budget (default 512)"
+    }
+  },
+  "required": ["query", "collection", "scopes"]
+}
+```
+
+**Response (`structuredContent`):** the shared `RecallResult` contract from
+`src/core/memory.ts` (one schema across CLI, MCP, REST, SDK):
+
+- `facts[]` — current facts only (superseded records excluded), each with
+  `uri` (`gno://` cite), `docid`, `recordId`, `text`, `scopes`, `caller`,
+  `session`, `createdAt`, `contentHash`, `supersedes`, `score`, `spanHash`,
+  `egressLineage`
+- `receipt` — content-free fencing receipt: `caller`, `session`, `issuedAt`,
+  `memoryIds`, `spanHashes`, `digest`
+- `budget` — `maxFacts`, `maxTokens`, `usedTokens`, `omitted`
+- `retrieval` — `mode` (`lexical` | `hybrid`) and `semanticUnavailable` when
+  the vector leg did not run
+- `egressLineage` — strictest source policy across returned facts (absent when
+  empty)
+- `hint` — self-teaching line naming `gno remember`, present only when no fact
+  was returned
+
+**Identity:** `caller` is the MCP client implementation name from the
+`initialize` handshake (`mcp` when absent); `session` is the Streamable HTTP
+session id, or the per-process server instance id on stdio. Tool arguments
+never carry identity.
+
+**Notes:**
+
+- Scope filtering executes inside the retrieval query, before any limit
+- The MCP adapter runs the lexical leg; `retrieval.mode` reports `lexical`
+  and `retrieval.semanticUnavailable` states why
+- Annotations: `readOnlyHint: true`, `idempotentHint: true`
+
+**Errors:** `MEMORY_QUERY_REQUIRED`, `MEMORY_COLLECTION_REQUIRED`,
+`MEMORY_COLLECTION_NOT_FOUND`, `MEMORY_COLLECTION_UNMANAGED`,
+`MEMORY_SCOPES_REQUIRED`, `MEMORY_SCOPES_INVALID`, `MEMORY_QUERY_FAILED`.
+
+---
+
 ### gno_capture
 
 Create a new document in a collection (write-enabled).
@@ -1308,6 +1391,111 @@ Create a new document in a collection (write-enabled).
 
 **Output Schema:** `gno://schemas/mcp-capture-result@1.0`, compatible with the
 shared `gno://schemas/capture-receipt@1.0` contract.
+
+---
+
+### gno_remember
+
+Store one fact with supersession semantics in a memory-managed collection
+(write-enabled). Remember is fact-granular: `gno_capture` creates documents,
+file edits update existing notes, `gno_remember` upserts a fact.
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "text": {
+      "type": "string",
+      "description": "One fact, stated in full (single statement, not a document)"
+    },
+    "collection": {
+      "type": "string",
+      "description": "Memory-managed collection to write into"
+    },
+    "scopes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "maxItems": 8,
+      "description": "Explicit scopes; no implicit global scope"
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["add", "supersede"],
+      "description": "Omit to receive candidates without writing"
+    },
+    "predecessorUri": {
+      "type": "string",
+      "description": "gno:// URI of the fact being superseded (supersede only)"
+    },
+    "predecessorHash": {
+      "type": "string",
+      "description": "contentHash of the predecessor as returned by gno_recall (supersede only)"
+    },
+    "receipt": {
+      "type": "object",
+      "description": "Receipt from the gno_recall response the fact derives from",
+      "properties": {
+        "caller": { "type": "string" },
+        "session": { "type": "string" },
+        "issuedAt": { "type": "string" },
+        "memoryIds": { "type": "array", "items": { "type": "string" } },
+        "spanHashes": { "type": "array", "items": { "type": "string" } },
+        "digest": { "type": "string" }
+      }
+    },
+    "derivedFrom": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Declared origins; any gno:// origin is rejected"
+    },
+    "source": {
+      "type": "string",
+      "description": "Free-text evidence for the fact"
+    }
+  },
+  "required": ["text", "collection", "scopes"]
+}
+```
+
+**Response (`structuredContent`):** the shared `RememberResult` contract:
+
+- `outcome: "existing"` — exact duplicate in scope; `record` is the stored
+  fact, nothing written
+- `outcome: "candidates"` — likely matches and no `decision`; `candidates[]`
+  carry `similarity` and `match` (`exact` | `likely` | `weak`), nothing written
+- `outcome: "added" | "superseded"` — `record`, `absPath`, and
+  `sync.status` (`completed` before the call returns; the fact is lexically
+  searchable)
+- `matching` — `mode` (`semantic` | `lexical`), `threshold`, and
+  `semanticUnavailable` when lexical matching was used
+
+**Notes:**
+
+- `supersede` requires `predecessorUri` + `predecessorHash`; the predecessor
+  must be current in the same collection with a matching hash and no existing
+  successor, otherwise `MEMORY_PREDECESSOR_*` or `MEMORY_SUPERSEDE_CONFLICT`
+- Context fencing: text whose normalized hash matches a `spanHashes` entry on
+  the presented `receipt` returns `MEMORY_FENCED_REPLAY`; a `derivedFrom`
+  entry starting with `gno://` returns `MEMORY_FENCED_DERIVED`. A paraphrase
+  that carries neither is indistinguishable from an original fact and is not
+  fenced
+- The core service holds the shared write lease for the write and lexical
+  sync; the MCP adapter takes no lock of its own
+- Identity mapping is the same as `gno_recall`
+- Annotations: `readOnlyHint: false`, `destructiveHint: false`,
+  `idempotentHint: false`
+
+**Errors:** `WRITE_DISABLED`, `MEMORY_TEXT_REQUIRED`,
+`MEMORY_TEXT_TOO_LARGE`, `MEMORY_COLLECTION_REQUIRED`,
+`MEMORY_COLLECTION_NOT_FOUND`, `MEMORY_COLLECTION_UNMANAGED`,
+`MEMORY_SCOPES_REQUIRED`, `MEMORY_SCOPES_INVALID`,
+`MEMORY_DECISION_INVALID`, `MEMORY_PREDECESSOR_REQUIRED`,
+`MEMORY_PREDECESSOR_NOT_FOUND`, `MEMORY_PREDECESSOR_HASH_MISMATCH`,
+`MEMORY_SUPERSEDE_CONFLICT`, `MEMORY_FENCED_REPLAY`, `MEMORY_FENCED_DERIVED`,
+`MEMORY_WRITE_LEASE_BUSY`, `MEMORY_SYNC_FAILED`, `MEMORY_QUERY_FAILED`.
 
 ---
 
@@ -2402,6 +2590,10 @@ Resource errors use standard MCP error responses.
 - `PATH_NOT_FOUND` — Path does not exist
 - `JOB_CONFLICT` — Another job is already running
 - `LOCKED` — Another MCP process holds the write lock
+- `WRITE_DISABLED` — Write tool dispatched while writes are disabled
+- `MEMORY_*` — Memory contract errors from `gno_recall` / `gno_remember`;
+  the stable code set is `MemoryErrorCode` in `src/core/memory.ts` and each
+  tool section above lists the codes it returns
 
 ---
 
