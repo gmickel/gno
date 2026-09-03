@@ -35,6 +35,7 @@ const DEFAULT_MAX_CONCURRENT_REQUESTS = 64;
 const DEFAULT_MAX_QUEUED_REQUESTS = 0;
 const MCP_HTTP_METHODS = new Set(["DELETE", "GET", "POST"]);
 const MCP_SESSION_HEADER = "mcp-session-id";
+const REQUEST_IDENTITY_DIGEST_LENGTH = 16;
 const POLICY_CHANGED_SSE = new TextEncoder().encode(
   'event: message\ndata: {"jsonrpc":"2.0","error":{"code":-32000,"message":"EGRESS_POLICY_CHANGED: Collection policy changed; retry"},"id":null}\n\n'
 );
@@ -174,6 +175,25 @@ function wrapStreamingResponse(
     },
   });
   return new Response(body, response);
+}
+
+/**
+ * Opaque per-caller label for memory provenance and other per-session state.
+ *
+ * The security identity is a bearer digest or `loopback`; hashing it with the
+ * server instance id yields a label that is stable for one caller within one
+ * server lifetime, differs between callers, and never reveals the digest in a
+ * stored record.
+ */
+function deriveRequestIdentity(
+  serverInstanceId: string,
+  securityIdentity: string
+): string {
+  const digest = new Bun.CryptoHasher("sha256")
+    .update(`${serverInstanceId}\u0000${securityIdentity}`)
+    .digest("hex")
+    .slice(0, REQUEST_IDENTITY_DIGEST_LENGTH);
+  return `http:${digest}`;
 }
 
 const policyChangedResponse = (): Response =>
@@ -417,7 +437,13 @@ export class HttpMcpTransport {
               },
               authorizationEpoch,
             },
-            handle
+            handle,
+            {
+              requestIdentity: deriveRequestIdentity(
+                this.#runtime.mcpContext.serverInstanceId,
+                context.identity
+              ),
+            }
           )
         : await handle();
 

@@ -58,6 +58,17 @@ export interface ToolContextSnapshot {
     caller: EgressCallerContext;
     authorizationEpoch?: { value: string };
   };
+  /**
+   * Opaque per-caller identity the HTTP boundary derived for this request.
+   * Set on both Streamable HTTP legs; the 2026-07-28 sessionless leg has no
+   * session id, so this is what keeps two modern callers apart.
+   */
+  requestIdentity?: string;
+}
+
+export interface RequestScope {
+  egress: NonNullable<ToolContextSnapshot["egress"]>;
+  requestIdentity?: string;
 }
 
 export interface ToolContext {
@@ -90,9 +101,12 @@ export interface ToolContext {
   advanceRequestAuthorizationEpoch?: (epoch: string) => void;
   getRequestAuthorizationEpoch?: () => string | undefined;
   getEgressContext?: () => ToolContextSnapshot["egress"];
+  /** Per-caller identity of the current request; absent on stdio. */
+  getRequestIdentity?: () => string | undefined;
   runWithEgressContext?<T>(
     egress: NonNullable<ToolContextSnapshot["egress"]>,
-    operation: () => Promise<T>
+    operation: () => Promise<T>,
+    scope?: Omit<RequestScope, "egress">
   ): Promise<T>;
   runWithSnapshot?<T>(operation: () => Promise<T>): Promise<T>;
 }
@@ -174,23 +188,32 @@ export function createToolContext(
     getRequestAuthorizationEpoch: () =>
       requestSnapshot.getStore()?.egress?.authorizationEpoch?.value,
     getEgressContext: () => requestSnapshot.getStore()?.egress,
+    getRequestIdentity: () => requestSnapshot.getStore()?.requestIdentity,
     runWithEgressContext<T>(
       egress: NonNullable<ToolContextSnapshot["egress"]>,
-      operation: () => Promise<T>
+      operation: () => Promise<T>,
+      scope?: Omit<RequestScope, "egress">
     ): Promise<T> {
-      const config = options.getConfig();
-      return requestSnapshot.run(
-        { config, collections: config.collections, egress },
-        operation
-      );
-    },
-    runWithSnapshot<T>(operation: () => Promise<T>): Promise<T> {
       const config = options.getConfig();
       return requestSnapshot.run(
         {
           config,
           collections: config.collections,
-          egress: requestSnapshot.getStore()?.egress,
+          egress,
+          requestIdentity: scope?.requestIdentity,
+        },
+        operation
+      );
+    },
+    runWithSnapshot<T>(operation: () => Promise<T>): Promise<T> {
+      const config = options.getConfig();
+      const current = requestSnapshot.getStore();
+      return requestSnapshot.run(
+        {
+          config,
+          collections: config.collections,
+          egress: current?.egress,
+          requestIdentity: current?.requestIdentity,
         },
         operation
       );

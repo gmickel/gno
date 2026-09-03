@@ -1078,6 +1078,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       handleRecall(args, ctx, {
         clientName: server.server.getClientVersion()?.name,
         sessionId: request.sessionId,
+        requestIdentity: ctx.getRequestIdentity?.(),
       })
   );
 
@@ -1437,6 +1438,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         handleRemember(args, ctx, {
           clientName: server.server.getClientVersion()?.name,
           sessionId: request.sessionId,
+          requestIdentity: ctx.getRequestIdentity?.(),
         })
     );
 
