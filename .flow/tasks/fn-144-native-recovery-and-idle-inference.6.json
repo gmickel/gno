@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-09-04T23:07:55.072269Z",
+  "depends_on": [
+    "fn-144-native-recovery-and-idle-inference.5"
+  ],
+  "id": "fn-144-native-recovery-and-idle-inference.6",
+  "priority": null,
+  "spec": "fn-144-native-recovery-and-idle-inference",
+  "spec_path": ".flow/tasks/fn-144-native-recovery-and-idle-inference.6.md",
+  "status": "todo",
+  "title": "Finalize idle policy documentation and driven QA",
+  "updated_at": "2026-09-04T23:07:55.072269Z"
+}

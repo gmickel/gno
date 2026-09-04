@@ -12,4 +12,5 @@ locks/
 pilot-runs/
 .cache/
 create-first/
+review-fanout/
 # End of auto-managed block. User patterns below this line are preserved.

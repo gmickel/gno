@@ -1,13 +1,21 @@
 {
   "branch_name": "fn-150-incremental-graph-reconciliation-with",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-09-04T22:26:23.014595Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [
     "fn-143-paired-retrieval-quality-and-resource"
   ],
   "id": "fn-150-incremental-graph-reconciliation-with",
+  "impl_review_rounds": {},
   "next_task": 1,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "ready": true,
   "spec_path": ".flow/specs/fn-150-incremental-graph-reconciliation-with.md",
   "status": "open",
   "title": "Incremental graph reconciliation with global parity",
@@ -22,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T22:26:26.542566Z"
+  "updated_at": "2026-09-04T23:08:34.629265Z"
 }

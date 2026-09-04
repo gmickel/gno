@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-09-04T23:07:55.072100Z",
+  "depends_on": [],
+  "id": "fn-144-native-recovery-and-idle-inference.1",
+  "priority": null,
+  "spec": "fn-144-native-recovery-and-idle-inference",
+  "spec_path": ".flow/tasks/fn-144-native-recovery-and-idle-inference.1.md",
+  "status": "todo",
+  "title": "Define native worker protocol and ownership failures",
+  "updated_at": "2026-09-04T23:07:55.072100Z"
+}

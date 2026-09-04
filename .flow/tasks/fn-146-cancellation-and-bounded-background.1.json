@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-09-04T23:07:56.185729Z",
+  "depends_on": [],
+  "id": "fn-146-cancellation-and-bounded-background.1",
+  "priority": null,
+  "spec": "fn-146-cancellation-and-bounded-background",
+  "spec_path": ".flow/tasks/fn-146-cancellation-and-bounded-background.1.md",
+  "status": "todo",
+  "title": "Define abort deadlines and native settlement contracts",
+  "updated_at": "2026-09-04T23:07:56.185729Z"
+}

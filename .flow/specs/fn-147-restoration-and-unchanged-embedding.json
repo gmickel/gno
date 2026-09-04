@@ -1,13 +1,21 @@
 {
   "branch_name": "fn-147-restoration-and-unchanged-embedding",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-09-04T22:26:22.060974Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [
     "fn-143-paired-retrieval-quality-and-resource"
   ],
   "id": "fn-147-restoration-and-unchanged-embedding",
+  "impl_review_rounds": {},
   "next_task": 1,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "ready": true,
   "spec_path": ".flow/specs/fn-147-restoration-and-unchanged-embedding.md",
   "status": "open",
   "title": "Restoration and unchanged embedding preservation",
@@ -22,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T22:26:25.666307Z"
+  "updated_at": "2026-09-04T23:08:33.815573Z"
 }

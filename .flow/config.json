@@ -15,6 +15,7 @@
     "cleanReviewCommentPattern": "(Didn'?t find any( major)? issues|No( major)? issues found).*Reviewed commit|\\*\\*Code Review\\*\\*.*\\*\\*Completed\\*\\*",
     "mergeVerdictCommand": "",
     "patienceMinutes": 30,
+    "patienceMinutesAfterReview": null,
     "release": true,
     "requestReviewers": "",
     "reviewSignal": "silence",
@@ -51,6 +52,7 @@
     "gateClasses": []
   },
   "pipeline": {
+    "chainStages": "off",
     "qa": "on"
   },
   "planSync": {

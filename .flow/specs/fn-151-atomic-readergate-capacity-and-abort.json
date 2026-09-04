@@ -14,6 +14,7 @@
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "ready": true,
   "spec_path": ".flow/specs/fn-151-atomic-readergate-capacity-and-abort.md",
   "status": "open",
   "title": "Atomic ReaderGate capacity and abort handoff",
@@ -28,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T22:26:23.610640Z"
+  "updated_at": "2026-09-04T23:08:34.895404Z"
 }

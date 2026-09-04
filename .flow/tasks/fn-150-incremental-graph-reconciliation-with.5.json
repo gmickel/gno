@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-09-04T23:07:58.422529Z",
+  "depends_on": [
+    "fn-150-incremental-graph-reconciliation-with.4"
+  ],
+  "id": "fn-150-incremental-graph-reconciliation-with.5",
+  "priority": null,
+  "spec": "fn-150-incremental-graph-reconciliation-with",
+  "spec_path": ".flow/tasks/fn-150-incremental-graph-reconciliation-with.5.md",
+  "status": "todo",
+  "title": "Drive graph consumers and verify scoped scaling",
+  "updated_at": "2026-09-04T23:07:58.422529Z"
+}

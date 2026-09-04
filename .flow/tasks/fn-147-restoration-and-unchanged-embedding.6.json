@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-09-04T23:07:56.727577Z",
+  "depends_on": [
+    "fn-147-restoration-and-unchanged-embedding.5"
+  ],
+  "id": "fn-147-restoration-and-unchanged-embedding.6",
+  "priority": null,
+  "spec": "fn-147-restoration-and-unchanged-embedding",
+  "spec_path": ".flow/tasks/fn-147-restoration-and-unchanged-embedding.6.md",
+  "status": "todo",
+  "title": "Prove migration and ingestion parity through public surfaces",
+  "updated_at": "2026-09-04T23:07:56.727577Z"
+}
