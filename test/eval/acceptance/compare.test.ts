@@ -288,3 +288,34 @@ test("ordered results and model calls cannot be reordered", () => {
     expect(compare(p).passed).toBe(false);
   }
 });
+
+test("distinct expansion and answer generation models coexist but duplicate role and id fail", () => {
+  const p = pair();
+  p.baseline.models.push(
+    {
+      role: "generation",
+      id: "expansion",
+      sha256: hash,
+      tokenizerSha256: hash,
+    },
+    {
+      role: "generation",
+      id: "answer",
+      sha256: "b".repeat(64),
+      tokenizerSha256: "b".repeat(64),
+    }
+  );
+  p.candidate.models = structuredClone(p.baseline.models);
+  p.a.manifestSha256 = acceptanceManifestFingerprint(p.baseline);
+  p.b.manifestSha256 = acceptanceManifestFingerprint(p.candidate);
+  expect(compare(p).passed).toBe(true);
+  p.baseline.models.push({
+    role: "generation",
+    id: "answer",
+    sha256: hash,
+    tokenizerSha256: hash,
+  });
+  expect(() => freezeAcceptanceManifest(p.baseline)).toThrow(
+    "Duplicate identity"
+  );
+});

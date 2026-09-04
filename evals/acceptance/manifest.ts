@@ -63,7 +63,10 @@ export const acceptanceManifestSchema = z
   .superRefine((manifest, context) => {
     for (const [field, ids] of [
       ["fixtures", manifest.fixtures.map((item) => item.path)],
-      ["models", manifest.models.map((item) => item.role)],
+      [
+        "models",
+        manifest.models.map((item) => canonicalJson([item.role, item.id])),
+      ],
       ["cases", manifest.cases.map((item) => item.caseId)],
       ["intendedDeltas", manifest.intendedDeltas.map((item) => item.caseId)],
     ] as const) {
