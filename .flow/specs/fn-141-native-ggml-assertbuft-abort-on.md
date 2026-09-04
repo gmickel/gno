@@ -13,3 +13,9 @@ While recording the gno.sh Fig. 3 run on ivan (macOS, Metal, gno 1.45.1), the ex
 - R1: the recorded query runs to completion on ivan 3/3 times with expansion and rerank enabled.
 - R2: a regression note or test pins the configuration that avoids the assert.
 - R3: `docs/TROUBLESHOOTING.md` (or the closest existing page) documents the symptom and the fix.
+
+## Supersession record
+
+Superseded on 2026-09-05 by fn-144-native-recovery-and-idle-inference after the performance and retrieval audit. Original R1 and R2 map to successor R5. Original R3 maps to successor R7. Native failure containment maps to successor R6.
+
+This record closes the overlapping scope as superseded, not implemented or fixed. The original evidence and criteria above remain preserved. The successor must demonstrate their acceptance before claiming the defect resolved.

@@ -1,0 +1,26 @@
+{
+  "branch_name": "fn-145-token-sized-reranker-contexts-with",
+  "created_at": "2026-09-04T22:26:21.425722Z",
+  "depends_on_epics": [
+    "fn-143-paired-retrieval-quality-and-resource"
+  ],
+  "id": "fn-145-token-sized-reranker-contexts-with",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-145-token-sized-reranker-contexts-with.md",
+  "status": "open",
+  "title": "Token-sized reranker contexts with score parity",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-04T22:26:24.814600Z"
+}

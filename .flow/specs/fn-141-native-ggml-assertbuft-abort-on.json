@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-141-native-ggml-assertbuft-abort-on.md",
-  "status": "open",
+  "status": "done",
   "title": "Native GGML_ASSERT(buft) abort on expanded+reranked gno query (macOS Metal)",
   "tracker": {
     "baseHashFlow": null,
@@ -20,5 +20,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-03T15:25:09.152843Z"
+  "updated_at": "2026-09-04T22:26:46.611380Z"
 }
