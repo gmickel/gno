@@ -613,6 +613,9 @@ When syncing or adding collections, a progress indicator shows:
 - Files processed
 - Elapsed time
 
+Leaving the progress view stops its status polling; indexing continues on the
+server. Returning to an active job resumes status updates.
+
 ### Search Modes
 
 ![GNO Search](../assets/screenshots/webui-search.jpg)

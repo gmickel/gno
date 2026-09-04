@@ -1,5 +1,5 @@
 {
-  "branch_name": "fn-148-eligible-candidates-before-retrieval",
+  "branch_name": "fn-143-152-retrieval-resource-major",
   "completion_review_status": "unknown",
   "completion_reviewed_at": null,
   "created_at": "2026-09-04T22:26:22.367261Z",
@@ -30,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T23:08:34.087166Z"
+  "updated_at": "2026-09-04T23:40:08.619017Z"
 }

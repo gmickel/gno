@@ -1,5 +1,5 @@
 {
-  "branch_name": "fn-152-stop-indexing-polling-after-component",
+  "branch_name": "fn-143-152-retrieval-resource-major",
   "completion_review_status": "unknown",
   "completion_reviewed_at": null,
   "created_at": "2026-09-04T22:26:23.919976Z",
@@ -29,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T23:08:35.158809Z"
+  "updated_at": "2026-09-04T23:40:09.700650Z"
 }

@@ -90,6 +90,10 @@ generation counters, and graceful shutdown. Serve adds Web UI and the full
 loopback REST API; daemon stays headless. Both mount the same stateful MCP
 surface at `/mcp` and safe lifecycle status endpoints.
 
+Reader admission transfers a released slot directly to the next queued reader.
+A canceled waiter returns or transfers its reserved slot exactly once, keeping
+active work within the configured capacity without stranding waiting requests.
+
 Stdio MCP and direct CLI commands remain truthful standalone processes. They
 reuse the same pure MCP tool/resource definitions but do not claim attachment
 to the resident listener. Every HTTP MCP session owns independent SDK

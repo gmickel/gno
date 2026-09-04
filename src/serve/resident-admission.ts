@@ -63,20 +63,31 @@ export class ReaderGate {
         signal?.addEventListener("abort", entry.onAbort, { once: true });
         this.#queue.push(entry);
       });
+      // Release reserved capacity if cancellation won the handoff race.
+      if (signal?.aborted) {
+        this.#releaseSlot();
+        throw new Error("Resident request aborted");
+      }
+    } else {
+      this.#active += 1;
     }
-    if (signal?.aborted) throw new Error("Resident request aborted");
-    this.#active += 1;
     let released = false;
     return () => {
       if (released) return;
       released = true;
-      this.#active -= 1;
-      const next = this.#queue.shift();
-      if (next) {
-        next.signal?.removeEventListener("abort", next.onAbort!);
-        next.resolve();
-      }
+      this.#releaseSlot();
     };
+  }
+
+  #releaseSlot(): void {
+    const next = this.#queue.shift();
+    if (next) {
+      // Transfer ownership synchronously, before any fresh acquire can run.
+      next.signal?.removeEventListener("abort", next.onAbort!);
+      next.resolve();
+    } else {
+      this.#active -= 1;
+    }
   }
 }
 

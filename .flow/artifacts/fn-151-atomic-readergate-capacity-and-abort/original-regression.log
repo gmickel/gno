@@ -1,0 +1,39 @@
+bun test v1.3.14 (0d9b296a)
+
+../../../../tmp/fn151-original-regression.test.ts:
+10 |     );
+11 |     const queued = gate.acquire();
+12 |     holders[0]!();
+13 |     const fresh = gate.acquire();
+14 |     expect(gate.active).toBe(limit);
+15 |     expect(gate.queued).toBe(1);
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/tmp/fn151-original-regression.test.ts:15:25)
+(fail) handoff reserves capacity before fresh acquisition at limit 1 [0.93ms]
+10 |     );
+11 |     const queued = gate.acquire();
+12 |     holders[0]!();
+13 |     const fresh = gate.acquire();
+14 |     expect(gate.active).toBe(limit);
+15 |     expect(gate.queued).toBe(1);
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/tmp/fn151-original-regression.test.ts:15:25)
+(fail) handoff reserves capacity before fresh acquisition at limit 3 [0.09ms]
+(fail) abort at handoff preserves the next live waiter's slot [5000.07ms]
+  ^ this test timed out after 5000ms.
+
+ 0 pass
+ 3 filtered out
+ 3 fail
+ 5 expect() calls
+Ran 3 tests across 1 file. [5.22s]

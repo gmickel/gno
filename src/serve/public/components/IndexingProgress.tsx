@@ -15,7 +15,7 @@ import {
   Loader2Icon,
   TimerIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { apiFetch } from "../hooks/use-api";
 import { cn } from "../lib/utils";
@@ -103,77 +103,63 @@ export function IndexingProgress({
   const [status, setStatus] = useState<JobStatus | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const elapsedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
-    null
-  );
-  const completedRef = useRef(false);
-
-  // Poll job status
-  const poll = useCallback(async () => {
-    const { data, error: err } = await apiFetch<JobStatus>(
-      `/api/jobs/${encodeURIComponent(jobId)}`
-    );
-
-    if (err) {
-      setFetchError(err);
-      return;
-    }
-
-    if (!data) {
-      setFetchError("No response from server");
-      return;
-    }
-
-    setStatus(data);
-    setFetchError(null);
-
-    // Handle terminal states
-    if (data.status === "completed") {
-      if (!completedRef.current && data.result) {
-        completedRef.current = true;
-        onComplete?.(data.result);
-      }
-    } else if (data.status === "failed") {
-      if (!completedRef.current) {
-        completedRef.current = true;
-        onError?.(data.error ?? "Unknown error");
-      }
-    } else if (data.status === "running") {
-      // Continue polling
-      pollTimeoutRef.current = setTimeout(() => {
-        void poll();
-      }, 1000);
-    }
-  }, [jobId, onComplete, onError]);
-
-  // Start polling on mount
   useEffect(() => {
-    completedRef.current = false;
-    void poll();
-
-    // Track elapsed time
+    // Each effect owns its requests and timers, including across quick restarts.
+    const controller = new AbortController();
+    let pollTimeout: ReturnType<typeof setTimeout> | undefined;
     const startTime = Date.now();
-    elapsedIntervalRef.current = setInterval(() => {
+    const elapsedInterval = setInterval(() => {
       setElapsed(Date.now() - startTime);
     }, 1000);
 
-    return () => {
-      if (pollTimeoutRef.current) {
-        clearTimeout(pollTimeoutRef.current);
+    setStatus(null);
+    setFetchError(null);
+    setElapsed(0);
+
+    const poll = async () => {
+      if (controller.signal.aborted) {
+        return;
       }
-      if (elapsedIntervalRef.current) {
-        clearInterval(elapsedIntervalRef.current);
+      const { data, error: err } = await apiFetch<JobStatus>(
+        `/api/jobs/${encodeURIComponent(jobId)}`,
+        { signal: controller.signal }
+      );
+
+      // Abort may race with response parsing; never publish or reschedule it.
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (err || !data) {
+        setFetchError(err ?? "No response from server");
+        clearInterval(elapsedInterval);
+        return;
+      }
+
+      setStatus(data);
+      setFetchError(null);
+
+      if (data.status === "running") {
+        pollTimeout = setTimeout(() => {
+          void poll();
+        }, 1000);
+        return;
+      }
+
+      clearInterval(elapsedInterval);
+      if (data.status === "completed" && data.result) {
+        onComplete?.(data.result);
+      } else if (data.status === "failed") {
+        onError?.(data.error ?? "Unknown error");
       }
     };
-  }, [poll]);
+    void poll();
 
-  // Stop elapsed timer when complete
-  useEffect(() => {
-    if (status?.status !== "running" && elapsedIntervalRef.current) {
-      clearInterval(elapsedIntervalRef.current);
-    }
-  }, [status?.status]);
+    return () => {
+      controller.abort();
+      clearTimeout(pollTimeout);
+      clearInterval(elapsedInterval);
+    };
+  }, [jobId, onComplete, onError]);
 
   // Loading/error before first status
   if (!status && !fetchError) {

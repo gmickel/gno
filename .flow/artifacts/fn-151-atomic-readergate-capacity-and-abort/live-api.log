@@ -1,0 +1,78 @@
+GNO server running at http://127.0.0.1:33137
+Press Ctrl+C to stop
+{
+  "surface": "startServer real Bun listener + real resident runtime + synthetic SQLite + lexical-only context",
+  "port": 33137,
+  "concurrentRequests": 24,
+  "statuses": [
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200
+  ],
+  "queuedDisconnect": true,
+  "activeDisconnect": true,
+  "unchangedSuccessfulOutput": {
+    "results": [
+      {
+        "docid": "#syntheti",
+        "score": 1,
+        "uri": "gno://synthetic/probe.md",
+        "title": "Synthetic handoff",
+        "snippet": "# Synthetic handoff\n\n<mark>Cobalt</mark> reader concurrency verification.",
+        "source": {
+          "relPath": "probe.md",
+          "mime": "text/markdown",
+          "ext": ".md",
+          "modifiedAt": "2026-09-05T00:00:00.000Z",
+          "sizeBytes": 60,
+          "sourceHash": "synthetic",
+          "absPath": "/tmp/fn151-live-ot79Ss/source/probe.md"
+        },
+        "conversion": {
+          "mirrorHash": "synthetic"
+        },
+        "egressLineage": {
+          "effectivePolicy": "local_only",
+          "digest": "b136a661c8d2eeb33062a0a335b90934608f2af6bbc80ac3a4c36044131080c1",
+          "sources": [
+            {
+              "collection": "synthetic",
+              "policy": "local_only",
+              "source": "config_default"
+            }
+          ]
+        }
+      }
+    ],
+    "meta": {
+      "query": "cobalt",
+      "mode": "bm25",
+      "totalResults": 1,
+      "queryLanguage": "und"
+    }
+  },
+  "maxActive": 1,
+  "finalActive": 0,
+  "finalQueued": 0
+}

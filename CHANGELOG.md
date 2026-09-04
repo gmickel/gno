@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Resident reader admission preserves its capacity during queued handoff and
+  cancellation, preventing excess concurrent readers and stranded requests.
+- Leaving the indexing progress view stops polling, including when an earlier
+  status response arrives after navigation. Returning starts one polling loop.
+
 ## [1.46.0] - 2026-09-03
 
 ### Added
