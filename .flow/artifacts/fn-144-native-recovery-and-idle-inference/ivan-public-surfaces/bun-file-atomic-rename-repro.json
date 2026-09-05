@@ -1,0 +1,18 @@
+{
+  "bun": "1.3.14",
+  "root": "/home/gordon/.cache/agent-tmp/gno-fn144-childcapture/bun-file-repro-TrmmfU",
+  "firstBytes": 19,
+  "secondBytes": 49,
+  "cachedSize": 19,
+  "staleText": "[{\"event\":\"birth\"},",
+  "staleError": "SyntaxError: Failed to parse JSON",
+  "fresh": [
+    {
+      "event": "birth"
+    },
+    {
+      "event": "exit",
+      "exitCode": 0
+    }
+  ]
+}
