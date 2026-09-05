@@ -1,0 +1,35 @@
+{
+  "branch_name": "fn-156-reader-reading-time-total-views-and",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
+  "created_at": "2026-09-05T12:40:06.061443Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [
+    "fn-153-publishing-permissions-public"
+  ],
+  "id": "fn-156-reader-reading-time-total-views-and",
+  "impl_review_rounds": {},
+  "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "ready": true,
+  "spec_path": ".flow/specs/fn-156-reader-reading-time-total-views-and.md",
+  "status": "open",
+  "title": "Reader reading time, total views, and Markdown copy",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-05T12:40:17.760397Z"
+}
