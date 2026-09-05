@@ -1,0 +1,13 @@
+{
+  "seed": true,
+  "skipUpdate": true,
+  "embedOptions": {
+    "collection": "rerank-en-1000-start"
+  },
+  "role": "candidate",
+  "sourceRoot": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3/packed/package",
+  "configPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3/warm30/config.json",
+  "dbPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3/warm30/candidate/data/index-default.sqlite",
+  "cacheDir": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3/warm30/candidate/cache",
+  "outputPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3/observations/candidate-warm30-seed/result.json"
+}
