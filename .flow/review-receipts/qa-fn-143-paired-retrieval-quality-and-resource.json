@@ -16,11 +16,11 @@
         "confidence": 100,
         "firstSeenReceiptId": "review-f261c5ee2ca4d49d9aa0b6b8e4535e768ad0070a062c131f7627ad6a7276daee",
         "id": "finding-62e5a4ad68389ea31607a857108053ea",
-        "lastSeenReceiptId": "review-71555bd07ebffb514893cfb73c03b902db4f057c56ec2c16c7ec22137b0b3b63",
+        "lastSeenReceiptId": "review-d231e676c6628ac1fead91c1667cafeaf2c6b77703a2609f47702508135d4659",
         "ordinal": 1,
         "rIds": [],
         "severity": "P1",
-        "status": "open",
+        "status": "not_fixed",
         "title": "Native baseline reliability remains incomplete"
       },
       {
@@ -29,11 +29,11 @@
         "confidence": 100,
         "firstSeenReceiptId": "review-f261c5ee2ca4d49d9aa0b6b8e4535e768ad0070a062c131f7627ad6a7276daee",
         "id": "finding-d686511d068b4e153bb9a8478e8b7384",
-        "lastSeenReceiptId": "review-71555bd07ebffb514893cfb73c03b902db4f057c56ec2c16c7ec22137b0b3b63",
+        "lastSeenReceiptId": "review-d231e676c6628ac1fead91c1667cafeaf2c6b77703a2609f47702508135d4659",
         "ordinal": 2,
         "rIds": [],
         "severity": "P1",
-        "status": "open",
+        "status": "not_fixed",
         "title": "Expanded native acceptance remains unmet"
       },
       {
@@ -42,11 +42,11 @@
         "confidence": 100,
         "firstSeenReceiptId": "review-71555bd07ebffb514893cfb73c03b902db4f057c56ec2c16c7ec22137b0b3b63",
         "id": "finding-265a2e74a55fe8214146fb1b1883482a",
-        "lastSeenReceiptId": "review-71555bd07ebffb514893cfb73c03b902db4f057c56ec2c16c7ec22137b0b3b63",
+        "lastSeenReceiptId": "review-d231e676c6628ac1fead91c1667cafeaf2c6b77703a2609f47702508135d4659",
         "ordinal": 3,
         "rIds": [],
         "severity": "P1",
-        "status": "open",
+        "status": "withdrawn",
         "title": "Native baseline reliability remains incomplete"
       },
       {
@@ -55,19 +55,19 @@
         "confidence": 100,
         "firstSeenReceiptId": "review-71555bd07ebffb514893cfb73c03b902db4f057c56ec2c16c7ec22137b0b3b63",
         "id": "finding-3b100f7f3cb77b255d7dd4d07b884aab",
-        "lastSeenReceiptId": "review-71555bd07ebffb514893cfb73c03b902db4f057c56ec2c16c7ec22137b0b3b63",
+        "lastSeenReceiptId": "review-d231e676c6628ac1fead91c1667cafeaf2c6b77703a2609f47702508135d4659",
         "ordinal": 4,
         "rIds": [],
         "severity": "P1",
-        "status": "open",
+        "status": "withdrawn",
         "title": "Expanded native acceptance remains unmet"
       }
     ],
     "reviewKind": "qa",
-    "round": 2,
+    "round": 3,
     "schemaVersion": 1,
-    "sourceReceiptId": "review-71555bd07ebffb514893cfb73c03b902db4f057c56ec2c16c7ec22137b0b3b63",
-    "supersedesReceiptId": "review-f261c5ee2ca4d49d9aa0b6b8e4535e768ad0070a062c131f7627ad6a7276daee"
+    "sourceReceiptId": "review-d231e676c6628ac1fead91c1667cafeaf2c6b77703a2609f47702508135d4659",
+    "supersedesReceiptId": "review-71555bd07ebffb514893cfb73c03b902db4f057c56ec2c16c7ec22137b0b3b63"
   },
   "head_sha": "7da899ae36a0db7f4540c5f0e670c82b89106341",
   "id": "fn-143-paired-retrieval-quality-and-resource",
