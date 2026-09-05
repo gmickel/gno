@@ -1,0 +1,118 @@
+{
+  "stratum": "final-runtime-native-allocation-cuda-v1",
+  "passed": true,
+  "arms": {
+    "sized": {
+      "contextSize": 768,
+      "nativeBytes": {
+        "cpuRam": 4995104,
+        "gpuVram": 401594496
+      },
+      "modelBytes": {
+        "cpuRam": 165015872,
+        "gpuVram": 633207296
+      },
+      "aggregate": {
+        "gpuVram": 1034801792,
+        "cpuRam": 170010976
+      },
+      "contextCreationMs": 181.55771499999992,
+      "scoreMs": [
+        364.526619,
+        110.54563800000005
+      ],
+      "wholeCallMs": [
+        1884.792517,
+        118.53557300000011
+      ],
+      "wholeProcessMs": 2553.6270739976317,
+      "peakRssMiB": 1355.42578125,
+      "peakGpuMiB": 1436,
+      "childPid": 1006199,
+      "parentPid": 1006159,
+      "allOwnedAbsent": true,
+      "nativeMappedFiles": {
+        "/home/gordon/work/gno/node_modules/@node-llama-cpp/linux-x64-cuda/bins/linux-x64-cuda/llama-addon.node": "70e62254f49e75c723bc44332324533204d29d64f8a73062be125c1765452102",
+        "/usr/lib/libcuda.so.610.57.04": "9c7e7e514b6d4bbacba137b883cfd96cf39ceb6861a1d037619c6dded998139b"
+      },
+      "resolvedSettings": {
+        "batchSize": 512,
+        "currentThreads": 6,
+        "idealThreads": 6,
+        "flashAttention": "auto",
+        "kvCacheKeyType": 1,
+        "kvCacheValueType": 1
+      },
+      "slowerThanOtherArm": true
+    },
+    "auto": {
+      "contextSize": 40960,
+      "nativeBytes": {
+        "cpuRam": 46151712,
+        "gpuVram": 5052291200
+      },
+      "modelBytes": {
+        "cpuRam": 165015872,
+        "gpuVram": 633207296
+      },
+      "aggregate": {
+        "gpuVram": 5685498496,
+        "cpuRam": 211167584
+      },
+      "contextCreationMs": 165.79827699999987,
+      "scoreMs": [
+        313.63749299999995,
+        103.13848100000018
+      ],
+      "wholeCallMs": [
+        1723.612204,
+        107.04585700000007
+      ],
+      "wholeProcessMs": 2234.916903078556,
+      "peakRssMiB": 1345.76953125,
+      "peakGpuMiB": 5870,
+      "childPid": 1007343,
+      "parentPid": 1007309,
+      "allOwnedAbsent": true,
+      "nativeMappedFiles": {
+        "/home/gordon/work/gno/node_modules/@node-llama-cpp/linux-x64-cuda/bins/linux-x64-cuda/llama-addon.node": "70e62254f49e75c723bc44332324533204d29d64f8a73062be125c1765452102",
+        "/usr/lib/libcuda.so.610.57.04": "9c7e7e514b6d4bbacba137b883cfd96cf39ceb6861a1d037619c6dded998139b"
+      },
+      "resolvedSettings": {
+        "batchSize": 512,
+        "currentThreads": 6,
+        "idealThreads": 6,
+        "flashAttention": "auto",
+        "kvCacheKeyType": 1,
+        "kvCacheValueType": 1
+      },
+      "slowerThanOtherArm": false
+    }
+  },
+  "parity": {
+    "fullPreparedInputs": true,
+    "fullNativeFormattedTokens": true,
+    "unroundedNativeScores": true,
+    "publicScoresRanksIndices": true,
+    "coldWarmWithinArm": true,
+    "modelNativeAllocationEqual": true,
+    "resolvedOtherSettingsEqual": true,
+    "onlyContextSizeOverrideRemoved": true,
+    "aggregateMatchesDirectNativeCounter": true,
+    "nativeCountersStableAfterColdWarm": true,
+    "disposedReturnsToModelOnly": true,
+    "mutatedScoreRejected": true,
+    "truncatedTokenStreamRejected": true
+  },
+  "allocationSavedBytes": {
+    "cpuRam": 41156608,
+    "gpuVram": 4650696704
+  },
+  "limitations": [
+    "One ordered pair sized then auto; not throughput/p99 or unbiased performance estimate",
+    "Whole calls include observation overhead and warm filesystem/cuda caches; no cache reset",
+    "Native-reported context+compute buffers exclude model/runtime/driver extras",
+    "No Metal extrapolation; oldpressure failures untouched",
+    "Freshfinalruntime sizingpolicy control; not unchanged270c product baseline"
+  ]
+}
