@@ -11,10 +11,6 @@ import type { ModelManager } from "./lifecycle";
 
 import { inferenceFailedError } from "../errors";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-
 // LlamaModel type from node-llama-cpp
 type LlamaModel = Awaited<
   ReturnType<
@@ -40,10 +36,6 @@ interface TokenizingModel {
 }
 
 type EmbeddingInput = Parameters<LlamaEmbeddingContext["getEmbeddingFor"]>[0];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
 
 // Aim for a small pool so CPU-only runs can exploit parallel contexts without
 // multiplying RAM usage too aggressively. Additional contexts fall back
@@ -146,10 +138,6 @@ export function resolveEmbeddingContextPoolSize(options: {
 
   return adaptivePoolSize;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Implementation
-// ─────────────────────────────────────────────────────────────────────────────
 
 export class NodeLlamaCppEmbedding implements EmbeddingPort {
   private workers: EmbeddingWorker[] = [];
@@ -284,9 +272,37 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     return this.dims;
   }
 
+  /** Child-only effective tokenizer policy; never infer this from parent config. */
+  getContextIdentity(): {
+    contextSize: number;
+    truncationPolicy: string;
+    contextCount: number;
+    threadsPerContext: number;
+  } {
+    if (!this.llamaModel || !this.workers.length)
+      throw new Error("Embedding context not initialized");
+    const trainSize = this.llamaModel.trainContextSize;
+    const limit =
+      typeof trainSize === "number" &&
+      Number.isFinite(trainSize) &&
+      trainSize > 0
+        ? Math.min(Math.floor(trainSize), this.embeddingContextSize)
+        : this.embeddingContextSize;
+    return {
+      contextSize: this.embeddingContextSize,
+      truncationPolicy: `truncate-tail-tokens-v1:limit=${Math.max(1, limit - 4)}`,
+      contextCount: this.workers.length,
+      threadsPerContext: this.threadsPerContext,
+    };
+  }
+
   async dispose(): Promise<void> {
     this.lifecycleVersion += 1;
     this.contextsPromise = null;
+    this.llamaModel = null;
+    this.dims = null;
+    this.warnedSingleTruncation = false;
+    this.warnedBatchTruncation = false;
     const workers = this.workers;
     this.workers = [];
 
@@ -298,10 +314,6 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       }
     }
   }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // Private
-  // ───────────────────────────────────────────────────────────────────────────
 
   private async runOnWorker<T>(
     task: (worker: EmbeddingWorker) => Promise<T>
@@ -337,7 +349,10 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     return bestWorker;
   }
 
-  private getContexts(): Promise<LlmResult<LlamaEmbeddingContext[]>> {
+  private async getContexts(): Promise<LlmResult<LlamaEmbeddingContext[]>> {
+    if (this.workers.some((worker) => worker.context.disposed)) {
+      await this.dispose();
+    }
     if (this.workers.length > 0) {
       return Promise.resolve({
         ok: true,
@@ -360,6 +375,8 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     });
   }
 
+  private threadsPerContext = 0;
+
   private resolveThreadsPerContext(llama: Llama, poolSize: number): number {
     if (llama.gpu !== false) {
       return 0;
@@ -374,6 +391,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   }
 
   private async createContexts(): Promise<LlmResult<LlamaEmbeddingContext[]>> {
+    const lifecycleVersion = this.lifecycleVersion;
     const model = await this.manager.loadModel(
       this.modelPath,
       this.modelUri,
@@ -386,9 +404,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
 
     try {
       const llamaModel = model.value.model as LlamaModel;
-      this.llamaModel = llamaModel as TokenizingModel;
       const llama = await this.manager.getLlama();
-      const lifecycleVersion = this.lifecycleVersion;
       this.embeddingContextSize =
         resolveEmbeddingContextSizeOverride() ?? DEFAULT_EMBEDDING_CONTEXT_SIZE;
       const targetPoolSize = this.resolveTargetPoolSize(llama);
@@ -396,6 +412,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
         llama,
         targetPoolSize
       );
+      this.threadsPerContext = threadsPerContext;
       const contextOptions =
         llama.gpu === false
           ? {
@@ -440,6 +457,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       }
 
       this.workers = contexts.map((context) => ({ context, pending: 0 }));
+      this.llamaModel = llamaModel as TokenizingModel;
 
       const size = llamaModel.embeddingVectorSize;
       if (this.dims === null && typeof size === "number" && size > 0) {

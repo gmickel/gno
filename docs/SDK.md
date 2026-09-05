@@ -10,6 +10,20 @@ Import GNO directly into another Bun or TypeScript app and reuse the same local 
 
 No CLI subprocesses. No local server required.
 
+Native GGUF inference runs in an owned persistent Bun child; indexing, policy,
+model selection and downloads stay in the SDK process. Embedding, generation
+and reranking share that child within each LLM adapter. Warm calls reuse it;
+after native inactivity it retires and the next call loads models again.
+HTTP inference keeps its existing direct adapter path.
+
+Always call `client.close()` when finished. Adapter owners call
+`LlmAdapter.dispose()` to terminate their native child. An abnormal native exit
+or invalid response becomes a structured inference failure; GNO does not replay
+the failed operation automatically. A later explicit call can acquire a fresh
+child. Native ports expose verified embedding identity after initialization
+when available; HTTP and custom ports may omit it. Identity becomes unavailable
+after retirement until initialization refreshes it.
+
 ## Project hints
 
 `search`, `vsearch`, `query`, `ask`, and context compilation accept optional

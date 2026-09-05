@@ -86,9 +86,16 @@ const error = z.strictObject({
   cause: z.json().optional(),
   suggestion: z.string().optional(),
 });
+export const EmbeddingIdentitySchema = z.strictObject({
+  contextSize: id,
+  truncationPolicy: z.string().min(1),
+  modelFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+  runtimeFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+});
 const metadata = z.strictObject({
   dimensions: id.optional(),
   structuredOutput: z.enum(["json_schema", "none"]),
+  embeddingIdentity: EmbeddingIdentitySchema.optional(),
 });
 const score = z.strictObject({
   index: z.number().int().nonnegative(),

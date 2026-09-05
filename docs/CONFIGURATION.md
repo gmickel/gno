@@ -1003,6 +1003,22 @@ models:
   warmModelTtl: 300000 # Keep-warm duration (ms)
 ```
 
+Native embedding, generation and reranking share one child per LLM adapter.
+`warmModelTtl` is the native inactivity grace (five minutes by default).
+Active inference, pending responses and request leases prevent idle retirement;
+metadata-only access does not refresh native activity. Retirement exits the
+child to reclaim its native process allocations. The next inference reloads
+models, adding cold-start latency; the amount depends on the model and hardware.
+Command/SDK disposal terminates the owned child. Explicit model disposal retires
+the shared child, so other native roles reload lazily too. HTTP inference is
+unaffected by this child lifecycle.
+
+Native worker startup or inference failure returns a structured error without
+automatically replaying the operation. The npm package and desktop source
+runtime include the worker entrypoint. A standalone `bun build --compile`
+executable without that source runtime cannot launch native inference and fails
+explicitly instead of recursively launching itself.
+
 ## FTS Tokenizer
 
 Set at `gno init`, cannot be changed without rebuilding.

@@ -9,6 +9,11 @@ import { NodeLlamaCppEmbedding } from "../nodeLlamaCpp/embedding";
 import { NodeLlamaCppGeneration } from "../nodeLlamaCpp/generation";
 import { ModelManager } from "../nodeLlamaCpp/lifecycle";
 import { NodeLlamaCppRerank } from "../nodeLlamaCpp/rerank";
+import {
+  fileIdentity,
+  fingerprintModel,
+  fingerprintRuntime,
+} from "./embedding-identity";
 import { NativeWorkerError } from "./errors";
 import { splitEmbeddingRequest } from "./protocol";
 import { wireError } from "./runtime-config";
@@ -19,6 +24,10 @@ type Port = NodeLlamaCppEmbedding | NodeLlamaCppGeneration | NodeLlamaCppRerank;
 export class NativeDispatcher {
   private readonly manager: ModelManager;
   private readonly ports = new Map<string, Port>();
+  private readonly files = new Map<
+    string,
+    { identity: string; fingerprint?: string }
+  >();
   // The process owns expiry. Disable independent model timers while it is alive.
   private readonly lease;
 
@@ -42,7 +51,14 @@ export class NativeDispatcher {
       throw new NativeWorkerError("protocol");
     }
     const existing = this.ports.get(model.id);
+    const identity = await fileIdentity(model.path);
+    if (existing && this.files.get(model.id)?.identity !== identity)
+      throw new NativeWorkerError("stale_generation");
     if (existing) return existing;
+    const fingerprint =
+      model.type === "embed" ? await fingerprintModel(model.path) : undefined;
+    if (identity !== (await fileIdentity(model.path)))
+      throw new NativeWorkerError("stale_generation");
     const Constructor =
       model.type === "embed"
         ? NodeLlamaCppEmbedding
@@ -51,6 +67,7 @@ export class NativeDispatcher {
           : NodeLlamaCppGeneration;
     const port = new Constructor(this.manager, model.modelUri, model.path);
     this.ports.set(model.id, port);
+    this.files.set(model.id, { identity, fingerprint });
     return port;
   }
 
@@ -96,9 +113,30 @@ export class NativeDispatcher {
         if (port instanceof NodeLlamaCppEmbedding) {
           const result = await port.init();
           if (!result.ok) return result;
+          const file = this.files.get(model.id);
+          if (
+            !file?.fingerprint ||
+            file.identity !== (await fileIdentity(model.path))
+          )
+            throw new NativeWorkerError("stale_generation");
+          const settings = port.getContextIdentity();
+          const llama = await this.manager.getLlama();
           return {
             ok: true,
-            value: { dimensions: port.dimensions(), structuredOutput: "none" },
+            value: {
+              dimensions: port.dimensions(),
+              structuredOutput: "none",
+              embeddingIdentity: {
+                contextSize: settings.contextSize,
+                truncationPolicy: settings.truncationPolicy,
+                modelFingerprint: file.fingerprint,
+                runtimeFingerprint: fingerprintRuntime({
+                  ...settings,
+                  gpu: llama.gpu,
+                  cpuMathCores: llama.cpuMathCores,
+                }),
+              },
+            },
           };
         }
         return {
@@ -143,6 +181,7 @@ export class NativeDispatcher {
       Array.from(this.ports.values(), (port) => port.dispose())
     );
     this.ports.clear();
+    this.files.clear();
     this.lease.release();
     await this.manager.disposeAll();
     if (results.some((result) => result.status === "rejected"))

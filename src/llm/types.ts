@@ -81,6 +81,14 @@ export interface RerankScore {
 // Port Interfaces
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface EmbeddingIdentity {
+  contextSize: number;
+  /** Versioned policy including the effective token limit. */
+  truncationPolicy: string;
+  modelFingerprint: string;
+  runtimeFingerprint: string;
+}
+
 export interface EmbeddingPort {
   readonly modelUri: string;
   /** Initialize the embedding context (loads model). Call before dimensions(). */
@@ -89,6 +97,8 @@ export interface EmbeddingPort {
   embedBatch(texts: string[]): Promise<LlmResult<number[][]>>;
   /** Returns embedding dimensions. Must call init() first. */
   dimensions(): number;
+  /** Verified native identity after init; absent for unverified/HTTP backends. */
+  getIdentity?(): EmbeddingIdentity | undefined;
   dispose(): Promise<void>;
 }
 

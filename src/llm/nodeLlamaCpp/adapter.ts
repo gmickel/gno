@@ -5,6 +5,9 @@
  * @module src/llm/nodeLlamaCpp/adapter
  */
 
+// Bun has no canonical-path API. Approval binds the real file identity.
+import { realpath } from "node:fs/promises";
+
 import type { Config } from "../../config/types";
 import type { DownloadPolicy } from "../policy";
 import type {
@@ -14,25 +17,26 @@ import type {
   ProgressCallback,
   RerankPort,
 } from "../types";
+import type { ModelType } from "../types";
+import type { ModelLease } from "./lifecycle";
 
 import { ModelCache } from "../cache";
 import { HttpEmbedding, isHttpModelUri } from "../httpEmbedding";
 import { HttpGeneration, isHttpGenUri } from "../httpGeneration";
 import { HttpRerank, isHttpRerankUri } from "../httpRerank";
+import { NativeWorkerClient } from "../native-worker/client";
+import { NativeWorkerError } from "../native-worker/errors";
+import {
+  NativeEmbeddingPort,
+  NativeGenerationPort,
+  NativeRerankPort,
+} from "../native-worker/ports";
 import {
   getActivePreset,
   getAnswerModelUri,
   getExpandModelUri,
   getModelConfig,
 } from "../registry";
-import { NodeLlamaCppEmbedding } from "./embedding";
-import { NodeLlamaCppGeneration } from "./generation";
-import {
-  getModelManager,
-  type ModelLease,
-  type ModelManager,
-} from "./lifecycle";
-import { NodeLlamaCppRerank } from "./rerank";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -64,14 +68,19 @@ const resolveEgressCollectionNames = (
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class LlmAdapter {
-  private readonly manager: ModelManager;
+  private readonly worker: NativeWorkerClient;
   private readonly cache: ModelCache;
   private readonly config: Config;
 
   constructor(config: Config, cacheDir?: string) {
     this.config = config;
     const modelConfig = getModelConfig(config);
-    this.manager = getModelManager(modelConfig);
+    this.worker = new NativeWorkerClient({
+      models: [],
+      loadTimeout: modelConfig.loadTimeout,
+      inferenceTimeout: modelConfig.inferenceTimeout,
+      warmModelTtl: modelConfig.warmModelTtl,
+    });
     this.cache = new ModelCache(cacheDir);
   }
 
@@ -116,9 +125,11 @@ export class LlmAdapter {
       return resolved;
     }
 
+    const approved = await this.approve(uri, resolved.value, "embed");
+    if (!approved.ok) return approved;
     return {
       ok: true,
-      value: new NodeLlamaCppEmbedding(this.manager, uri, resolved.value),
+      value: new NativeEmbeddingPort(this.worker, approved.value, uri),
     };
   }
 
@@ -157,9 +168,11 @@ export class LlmAdapter {
       return resolved;
     }
 
+    const approved = await this.approve(uri, resolved.value, "gen");
+    if (!approved.ok) return approved;
     return {
       ok: true,
-      value: new NodeLlamaCppGeneration(this.manager, uri, resolved.value),
+      value: new NativeGenerationPort(this.worker, approved.value, uri),
     };
   }
 
@@ -195,9 +208,11 @@ export class LlmAdapter {
       return resolved;
     }
 
+    const approved = await this.approve(uri, resolved.value, "gen");
+    if (!approved.ok) return approved;
     return {
       ok: true,
-      value: new NodeLlamaCppGeneration(this.manager, uri, resolved.value),
+      value: new NativeGenerationPort(this.worker, approved.value, uri),
     };
   }
 
@@ -237,10 +252,37 @@ export class LlmAdapter {
       return resolved;
     }
 
+    const approved = await this.approve(uri, resolved.value, "rerank");
+    if (!approved.ok) return approved;
     return {
       ok: true,
-      value: new NodeLlamaCppRerank(this.manager, uri, resolved.value),
+      value: new NativeRerankPort(this.worker, approved.value, uri),
     };
+  }
+
+  private async approve(
+    uri: string,
+    path: string,
+    type: ModelType
+  ): Promise<LlmResult<string>> {
+    try {
+      const id = `${type}:${uri}`;
+      await this.worker.registerModel({
+        id,
+        modelUri: uri,
+        path: await realpath(path),
+        type,
+      });
+      return { ok: true, value: id };
+    } catch (cause) {
+      return {
+        ok: false,
+        error: (cause instanceof NativeWorkerError
+          ? cause
+          : new NativeWorkerError("protocol")
+        ).detail,
+      };
+    }
   }
 
   /**
@@ -251,22 +293,28 @@ export class LlmAdapter {
   }
 
   /**
-   * Get the model manager instance.
+   * Native-free lifetime facade. Explicit model disposal retires the child.
    */
-  getManager(): ModelManager {
-    return this.manager;
+  getManager(): {
+    dispose(uri: string): Promise<void>;
+    acquireLease(): ModelLease;
+  } {
+    return {
+      dispose: (uri) => this.worker.disposeModel(uri),
+      acquireLease: () => this.worker.acquireLease(),
+    };
   }
 
   /** Acquire an idempotent request lease without transferring manager ownership. */
   acquireModelLease(): ModelLease {
-    return this.manager.acquireLease();
+    return this.worker.acquireLease();
   }
 
   /**
    * Dispose all resources.
    */
   async dispose(): Promise<void> {
-    await this.manager.disposeAll();
+    await this.worker.dispose();
   }
 }
 

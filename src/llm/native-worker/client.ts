@@ -53,6 +53,8 @@ export class NativeWorkerClient {
   private generation = 0;
   private requestId = 0;
   private closed = false;
+  private leases = 0;
+  private idleOwner?: Owner;
   private registration: Promise<void> = Promise.resolve();
   private readonly options: NativeWorkerClientOptions;
 
@@ -70,6 +72,46 @@ export class NativeWorkerClient {
   }
   get currentGeneration(): number {
     return this.generation;
+  }
+
+  acquireLease(): { release(): void } {
+    if (this.closed) throw new NativeWorkerError("exited");
+    this.leases++;
+    let released = false;
+    return {
+      release: () => {
+        if (released) return;
+        released = true;
+        this.leases--;
+        const owner = this.idleOwner;
+        if (
+          !this.leases &&
+          owner &&
+          this.owner === owner &&
+          !owner.pending.length &&
+          !owner.busy
+        )
+          void this.retire(owner);
+      },
+    };
+  }
+
+  async disposeModel(uri: string): Promise<void> {
+    const operation = this.registration.then(async () => {
+      const owner = this.owner;
+      if (
+        !owner ||
+        !this.options.models.some((entry) => entry.modelUri === uri)
+      )
+        return;
+      if (owner.pending.length || owner.busy)
+        await new Promise<void>((resolve) => owner.drain.add(resolve));
+      // The child lease intentionally keeps models alive: process retirement is
+      // the only complete native allocation release. Other roles reload lazily.
+      await this.retire(owner);
+    });
+    this.registration = operation.catch(() => {});
+    await operation;
   }
 
   /** Only the parent model-selection/policy layer may approve these descriptors. */
@@ -122,6 +164,7 @@ export class NativeWorkerClient {
         ok: false,
         error: wireError(new NativeWorkerError("exited").detail),
       };
+    if (input.op === "dispose" && !this.owner) return { ok: true, value: null };
     try {
       const owner = this.owner ?? this.start();
       const request = parseNativeRequest(
@@ -153,6 +196,10 @@ export class NativeWorkerClient {
   }
 
   private start(): Owner {
+    // A compiled executable cannot interpret an external TS entry: invoking it
+    // here would recursively launch the CLI. npm/desktop ship the source runtime.
+    if (import.meta.dir.includes("$bunfs"))
+      throw new NativeWorkerError("exited");
     const config: NativeRuntimeConfig = NativeRuntimeConfigSchema.parse({
       generation: ++this.generation,
       models: this.options.models,
@@ -209,7 +256,9 @@ export class NativeWorkerClient {
         return;
       }
       if (message === "idle") {
-        if (!owner.pending.length && !owner.busy) void this.retire(owner);
+        this.idleOwner = owner;
+        if (!this.leases && !owner.pending.length && !owner.busy)
+          void this.retire(owner);
         return;
       }
       if (!(message instanceof Uint8Array))
@@ -251,6 +300,7 @@ export class NativeWorkerClient {
   private sendNext(owner: Owner): void {
     const pending = owner.pending[0];
     if (!pending || owner.retiring || owner.busy) return;
+    this.idleOwner = undefined;
     owner.busy = true;
     clearTimeout(owner.timer);
     owner.timer = setTimeout(
