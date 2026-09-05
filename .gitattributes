@@ -6,3 +6,6 @@
 
 # PDF fixtures are binary even when their object streams are plain ASCII.
 *.pdf binary
+
+# Acceptance evidence is byte-hashed; preserve raw HTTP/log line endings.
+.flow/artifacts/** -text

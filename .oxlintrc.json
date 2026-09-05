@@ -3,6 +3,7 @@
   "ignorePatterns": [
     "node_modules/**",
     "dist/**",
+    ".flow/artifacts/**",
     "desktop/electrobun-spike/**",
     "tmp/**",
     "evals/**",
