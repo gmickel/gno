@@ -1,0 +1,236 @@
+{
+  "status": "scoped native verifiedAsk complete; strict historical comparison failed",
+  "candidateTarballSha256": "f42dfdddd6296e527f3c4bf01d21bb8a685a33996edcfd1c7624e60fe13320bd",
+  "productCommit": "d0604b0d7b0c888653390618ab498187bf71b397",
+  "helperCommit": "9244d715",
+  "coverage": "complete",
+  "reasons": [],
+  "semantic": {
+    "status": "completed",
+    "reason": "verified",
+    "schemaRequested": true,
+    "schemaEnforced": true,
+    "modelFingerprint": "df7b18d008b723c115c8606747ff8d8132f4a1ac47b43001d6598e12c566aeaf",
+    "configFingerprint": "a487c4b02c6b7d9b25e86920025befcccfb6544f9884ea9c61e42d62f5406f09",
+    "verifierFingerprint": "55cdf0d4299d1b309f019d4520c31d8c63fde9023bda9dcaae6c9d9288f0621d",
+    "candidateClaims": 1,
+    "verifiedClaims": 0,
+    "unresolvedClaims": 1,
+    "modelCalls": 1,
+    "durationMs": 2206.9885830000003
+  },
+  "answer": "I cannot provide this answer as verified from the supplied Context Capsule.",
+  "options": {
+    "collection": "probe",
+    "limit": 3,
+    "noExpand": true,
+    "noRerank": true,
+    "graph": false
+  },
+  "nativeInputs": {
+    "total": 4,
+    "generationCalls": 2,
+    "actualVerifierPromptObserved": true
+  },
+  "parentNative": {
+    "pid": 2508,
+    "bindingLoads": [],
+    "nativeModules": [],
+    "mappedModels": null,
+    "mappingSource": "unavailable-use-owned-GPU-and-platform-proof"
+  },
+  "rawReply": "notes/fn144.5-capture-ivan-ask/raw/protocol/session-J8msiz/2.reply.json.gz",
+  "comparison": {
+    "passed": false,
+    "comparedCases": 1,
+    "failures": [
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.modelInputs[3].input[0]",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.modelInputs[3].input[1].jsonSchema.properties.judgments.items.properties.claimId.enum[0]",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.modelInputs[3].input[1].jsonSchema.properties.unresolvedClaimIds.items.enum[0]",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.capsule.retrieval.indexSnapshot.before",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.capsule.retrieval.indexSnapshot.after",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.capsule.fingerprints.config",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.capsule.fingerprints.retrieval",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.capsule.capsuleId",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.freshness.capsuleId",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.freshness.currentFingerprints.config",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.freshness.currentFingerprints.retrieval",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.freshness.currentFingerprints.index",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.freshness.indexSnapshot.before",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.freshness.indexSnapshot.after",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.claims.capsuleId",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.claims.claims[0].claimId",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.semantic.configFingerprint",
+        "reason": "Unexplained deterministic difference"
+      },
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.semantic.verifierFingerprint",
+        "reason": "Unexplained deterministic difference"
+      }
+    ],
+    "generatedAnswerChanges": []
+  },
+  "comparatorSha256": "773c5dd7f284bfdcb353d7827dceae336b31fee57b7e30aea0f0ce8e9724313b",
+  "comparatorIdentity": "Byte-identical to frozen1f7e785d comparator; no normalization changes",
+  "warningSeconds": 0.0,
+  "wallSeconds": 11.3221574164927,
+  "peakOwnedGroupMiB": 2985.984375,
+  "governorSha256": "24713377c597313ddd1b0e68e4cd64ad7b50ee8bcce9b40173bb36f9feeba90f",
+  "resourcesErrors": [],
+  "cleanup": {
+    "checkedPids": [
+      2506,
+      2508,
+      2522,
+      2523,
+      2530,
+      2537,
+      2544,
+      2558,
+      2639,
+      2645,
+      2653,
+      2662,
+      2668,
+      2675,
+      2683,
+      2698,
+      2799,
+      2806,
+      2813
+    ],
+    "psExit": 1,
+    "psStdout": "",
+    "psStderr": "",
+    "pressure": "kern.memorystatus_vm_pressure_level: 1\n"
+  },
+  "rawArchiveSha256": "d67da4a46c11ed0e8103298554bcad18ef4a31e1b4284ab5a8f089bca5e16777",
+  "curation": {
+    "includedFiles": [
+      "setup.json",
+      "manifest.json",
+      "config.json",
+      "fixtures.json",
+      "corpus-pins.json",
+      "product-files.json",
+      "helper-files.json",
+      "prepare.py",
+      "first.ts",
+      "watchdog.py",
+      "original-init.json",
+      "original-manifest.json",
+      "evidence/verified-ask.stderr",
+      "evidence/result.json",
+      "evidence/verified-ask.stdout",
+      "evidence/resources.json",
+      "evidence/verified-ask.receipt.json",
+      "evidence/cleanup.json",
+      "protocol/session-J8msiz/stderr.log",
+      "protocol/session-J8msiz/parent-capture.json",
+      "protocol/session-J8msiz/4.reply.json.gz",
+      "protocol/session-J8msiz/harness.json",
+      "protocol/session-J8msiz/3.reply.json.gz",
+      "protocol/session-J8msiz/stdout.log",
+      "protocol/session-J8msiz/2.reply.json.gz",
+      "protocol/session-J8msiz/readiness.json",
+      "protocol/session-J8msiz/requests.json",
+      "protocol/session-J8msiz/1.reply.json.gz",
+      "protocol/session-J8msiz/children.json",
+      "protocol/session-J8msiz/bootstrap.json",
+      "protocol/session-J8msiz/native-Dx6nNh/2522-1.json",
+      "protocol/session-J8msiz/native-Dx6nNh/2522-6.json",
+      "protocol/session-J8msiz/native-Dx6nNh/2522-5.json",
+      "protocol/session-J8msiz/native-Dx6nNh/2522-4.json",
+      "protocol/session-J8msiz/native-Dx6nNh/2522-3.json",
+      "protocol/session-J8msiz/native-Dx6nNh/2522-2.json",
+      "protocol/session-J8msiz/native-Dx6nNh/bootstrap.json"
+    ],
+    "excludedDisposableFiles": [
+      "protocol/session-J8msiz/cache/bun/@t@/7a87559fbb4087c4.pile",
+      "protocol/session-J8msiz/cache/bun/@t@/9e8758c8517cedac.pile",
+      "protocol/session-J8msiz/cache/bun/@t@/8111b123ffc15d51.pile",
+      "protocol/session-J8msiz/cache/bun/@t@/ae7304b5448338c7.pile",
+      "protocol/session-J8msiz/cache/bun/@t@/5a4a1d3fb0f9cb3a.pile",
+      "protocol/session-J8msiz/cache/bun/@t@/cf86f20c120ce818.pile",
+      "protocol/session-J8msiz/cache/bun/@t@/91f1e5a9fb66c76c.pile",
+      "protocol/session-J8msiz/cache/bun/@t@/851cb60a3259f7e1.pile",
+      "protocol/session-J8msiz/tmp/bun/@t@/7a87559fbb4087c4.pile",
+      "protocol/session-J8msiz/tmp/bun/@t@/29c6a8125ab3f718.pile",
+      "protocol/session-J8msiz/tmp/bun/@t@/b87698c43918d4d2.pile",
+      "protocol/session-J8msiz/tmp/bun/@t@/8118a7e70dc83dbb.pile",
+      "protocol/session-J8msiz/tmp/bun/@t@/7f3921ba02fe9373.pile",
+      "protocol/session-J8msiz/tmp/bun/@t@/cf86f20c120ce818.pile",
+      "protocol/session-J8msiz/tmp/bun/@t@/91f1e5a9fb66c76c.pile",
+      "protocol/session-J8msiz/tmp/bun/@t@/0012e8e5e9e525dc.pile"
+    ],
+    "source": "notes/fn144.5-capture-ivan-ask",
+    "originalArchiveRetainedInNotes": true
+  }
+}

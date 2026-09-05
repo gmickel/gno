@@ -1,0 +1,2354 @@
+{
+  "samples": [
+    {
+      "elapsedMs": 2587.838209,
+      "rssBytes": 266141696,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 174718976
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 91422720,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 2689.075959,
+      "rssBytes": 327630848,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 174915584
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 152715264,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 2791.573209,
+      "rssBytes": 341311488,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 174915584
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 166395904,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 2893.25175,
+      "rssBytes": 343293952,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 174915584
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 168378368,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 2993.675625,
+      "rssBytes": 343949312,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 174915584
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 169033728,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3095.953292,
+      "rssBytes": 343998464,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 174915584
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 169082880,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3197.940417,
+      "rssBytes": 344440832,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 174915584
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 169525248,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3300.488542,
+      "rssBytes": 393576448,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 174915584
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 218660864,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3403.835459,
+      "rssBytes": 511492096,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 174915584
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 336576512,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3515.2822499999997,
+      "rssBytes": 712736768,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 174915584
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 537821184,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3608.474084,
+      "rssBytes": 781828096,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 174915584
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 606912512,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3708.753584,
+      "rssBytes": 1383694336,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 174915584
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 1208778752,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3832.164167,
+      "rssBytes": 1570684928,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 167165952
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 1403518976,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3914.3085419999998,
+      "rssBytes": 1571291136,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 169836544
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 1401454592,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4014.395417,
+      "rssBytes": 1604763648,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 181583872
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 1423179776,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4116.498417000001,
+      "rssBytes": 1581907968,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 181583872
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 1400324096,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4218.859,
+      "rssBytes": 1581924352,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 181600256
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 1400324096,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4320.082209,
+      "rssBytes": 1581924352,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 181600256
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 1400324096,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4422.2425,
+      "rssBytes": 1576239104,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 181600256
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 1394638848,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4534.288542,
+      "rssBytes": 1592557568,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 179814400
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 1412743168,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4632.119500000001,
+      "rssBytes": 1569701888,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 140640256
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 1429061632,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4726.789167000001,
+      "rssBytes": 1502101504,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 101842944
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 1400258560,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4829.113,
+      "rssBytes": 2620801024,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 101842944
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2518958080,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4930.970209,
+      "rssBytes": 2621095936,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 101842944
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2519252992,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5034.576417,
+      "rssBytes": 2846736384,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 95551488
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2751184896,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5135.2155840000005,
+      "rssBytes": 2796371968,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2703048704,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5238.21525,
+      "rssBytes": 2793734144,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2700410880,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5339.752834000001,
+      "rssBytes": 2793734144,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2700410880,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5443.663417000001,
+      "rssBytes": 2792521728,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2699198464,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5544.030959000001,
+      "rssBytes": 2792521728,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2699198464,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5644.712667000001,
+      "rssBytes": 2793209856,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2699886592,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5750.035042,
+      "rssBytes": 2793324544,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2700001280,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5855.1720000000005,
+      "rssBytes": 2789408768,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2696085504,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5953.519584000001,
+      "rssBytes": 2789457920,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2696134656,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6057.002917000001,
+      "rssBytes": 2789572608,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2696249344,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6157.976334000001,
+      "rssBytes": 2788687872,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2695364608,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6260.753000000001,
+      "rssBytes": 2788687872,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2695364608,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6364.418375,
+      "rssBytes": 2786066432,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2692743168,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6463.086459,
+      "rssBytes": 2783444992,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690121728,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6563.805875,
+      "rssBytes": 2783444992,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690121728,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6668.145292,
+      "rssBytes": 2783444992,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690121728,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6767.418917000001,
+      "rssBytes": 2783510528,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690187264,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6871.3360840000005,
+      "rssBytes": 2783543296,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690220032,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6972.030667,
+      "rssBytes": 2783543296,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690220032,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7074.450125,
+      "rssBytes": 2783559680,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690236416,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7175.889375000001,
+      "rssBytes": 2783559680,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690236416,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7278.557959000001,
+      "rssBytes": 2783559680,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690236416,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7380.542625,
+      "rssBytes": 2783559680,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690236416,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7481.404625,
+      "rssBytes": 2783559680,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690236416,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7582.982334,
+      "rssBytes": 2783576064,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690252800,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7685.51925,
+      "rssBytes": 2783592448,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690269184,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7787.342917000001,
+      "rssBytes": 2783592448,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690269184,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7892.743209,
+      "rssBytes": 2783608832,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690285568,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7991.5665420000005,
+      "rssBytes": 2783608832,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690285568,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8094.335834,
+      "rssBytes": 2783625216,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690301952,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8195.634209,
+      "rssBytes": 2783625216,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690301952,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8298.76225,
+      "rssBytes": 2783625216,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690301952,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8400.059459,
+      "rssBytes": 2783625216,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690301952,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8503.504459,
+      "rssBytes": 2783625216,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690301952,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8604.443625,
+      "rssBytes": 2783625216,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690301952,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8706.920917,
+      "rssBytes": 2783625216,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 93323264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2690301952,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8807.985708999999,
+      "rssBytes": 2603597824,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99467264
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2504130560,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8909.302042,
+      "rssBytes": 2829615104,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99696640
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2729918464,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9014.05825,
+      "rssBytes": 3020587008,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99713024
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2920873984,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9115.488041999999,
+      "rssBytes": 3020587008,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99713024
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2920873984,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9215.405999999999,
+      "rssBytes": 3020587008,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99713024
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2920873984,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9319.273417,
+      "rssBytes": 3020587008,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99713024
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2920873984,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9418.074542,
+      "rssBytes": 3020587008,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99713024
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2920873984,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9522.580958999999,
+      "rssBytes": 3021619200,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99713024
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2921906176,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9621.893291999999,
+      "rssBytes": 3021619200,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99713024
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2921906176,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9726.303584,
+      "rssBytes": 3021619200,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99713024
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2921906176,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9824.586167,
+      "rssBytes": 3021619200,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99713024
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2921906176,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9929.265542,
+      "rssBytes": 3021619200,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99713024
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2921906176,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10030.686209,
+      "rssBytes": 3035234304,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 99713024
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2935521280,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10135.306125,
+      "rssBytes": 3035594752,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 100007936
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2935586816,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10234.947667,
+      "rssBytes": 3035627520,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 100007936
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2935619584,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10339.552625,
+      "rssBytes": 3035627520,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 100007936
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2935619584,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10448.676,
+      "rssBytes": 3023503360,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 100007936
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2923495424,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10542.374167,
+      "rssBytes": 3023585280,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 100007936
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2923577344,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10644.696249999999,
+      "rssBytes": 3023650816,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 100007936
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2923642880,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10746.662124999999,
+      "rssBytes": 3023699968,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 100007936
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2923692032,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10849.154166999999,
+      "rssBytes": 3023781888,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 100007936
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2923773952,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10951.076374999999,
+      "rssBytes": 3023847424,
+      "gpuBytes": null,
+      "pids": [
+        2508,
+        2522
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 2508,
+          "rssBytes": 100007936
+        },
+        {
+          "pid": 2522,
+          "rssBytes": 2923839488,
+          "nativeIdentity": {
+            "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+            "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+            "parentPid": 2508,
+            "pid": 2522,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "nativeChildren": [
+    {
+      "identity": {
+        "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+        "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+        "parentPid": 2508,
+        "pid": 2522,
+        "generation": 1,
+        "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+      },
+      "event": "birth"
+    },
+    {
+      "identity": {
+        "runId": "b6ea2122-868c-4059-9d33-77d3c1250178",
+        "token": "8e664aba-10a5-4df4-adff-e64bb2778ae1",
+        "parentPid": 2508,
+        "pid": 2522,
+        "generation": 1,
+        "entry": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package/src/llm/native-worker/entry.ts"
+      },
+      "event": "exit",
+      "exitCode": 0
+    }
+  ]
+}

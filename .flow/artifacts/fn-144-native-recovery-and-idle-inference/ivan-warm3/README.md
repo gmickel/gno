@@ -1,0 +1,9 @@
+# Original Metal query: three warm calls complete
+
+Actual packed product d0604b0d, development helpers9244d715. One explicitly recorded cold primer timed out during expansion and remains incomplete. Exactly three subsequent original queries in the same SDK client completed with expansion, vectors, and reranking used. Actual child generation, embedding, and reranking inputs/outputs are retained; all three deterministic records and raw model input/output arrays compare exactly equal. Loaded child state was observed before each warm query; no hidden retries or cache-hit substitutions.
+
+The request stays `what retry budget did we decide and why`, options `{limit:5}`, slim-tuned four model pins, context2048, TTL300000. Effective balanced candidate/rerank depth is20, as reported by every actual response. The raw config does not explicitly set candidateLimit; references elsewhere to a40 configuration/default are not proof of40 actual candidates. No depth reduction was introduced for this run.
+
+The unchanged capacity governor applies a stricter total30 sampled warning seconds and120-second wall cap to the whole four-query session, with6144MiB owned-group RSS cap and critical4 stop. Whole run34.009753s; warning7.508538s; peak5701.671875MiB; maximum polling interval210.077ms. No resource/native errors. All observed owned PIDs absent after cleanup; pressure1. Parent dlopen/module observations empty; Metal mapping evidence unavailable explicitly. These observations do not establish normal-pressure resource gains or cold expansion success.
+
+`evidence.json` contains selected file hashes, full provenance, exact comparison booleans, and exclusions. `raw/` retains actual protocol/model/token/results evidence, manifests, drivers, governor and resource/cleanup receipts. Disposable Bun/isolated runtime cache files are excluded; the original full archive and its hash remain in notes/fn144.5-capture-ivan-warm3. No baseline record was changed.
