@@ -1,25 +1,29 @@
 {
   "branch": "fn-143-152-retrieval-resource-major",
   "evidence": [
-    ".flow/tmp/qa-fn-151-atomic-readergate-capacity-and-abort/live.log"
+    ".flow/artifacts/fn-151-atomic-readergate-capacity-and-abort/final-package-f64c41c9/summary.md",
+    ".flow/tmp/qa-fn-151-atomic-readergate-capacity-and-abort/final-live.log"
   ],
   "findings": {
     "backend": "interactive",
-    "headSha": "6c1b7e82441b1f7eb968b06c94488d3c5db071b0",
+    "headSha": "76743bd616cbe723b0adab87da9f380cad1513ad",
     "items": [],
     "reviewKind": "qa",
-    "round": 1,
+    "round": 2,
     "schemaVersion": 1,
-    "sourceReceiptId": "review-766641c5615398dcf5e57e9b9a62bc951788cc96827e4d6ab88d791505864fac"
+    "sourceReceiptId": "review-78dca594872eb3a20831297c8c67a58a6710bf6a832a0e183875d4d18b099761",
+    "supersedesReceiptId": "review-766641c5615398dcf5e57e9b9a62bc951788cc96827e4d6ab88d791505864fac"
   },
-  "head_sha": "6c1b7e82441b1f7eb968b06c94488d3c5db071b0",
+  "head_sha": "76743bd616cbe723b0adab87da9f380cad1513ad",
   "id": "fn-151-atomic-readergate-capacity-and-abort",
   "limitations": [
-    "Lexical-only injected server context and controlled work delay; no native model workload needed for reader admission."
+    "Tested f64 shipped bytes remain unchanged at head; four later fixture/test-only files are excluded from the npm package.",
+    "Native inference is not exercised by this isolated lexical/proxy scenario."
   ],
   "mode": "interactive",
   "model": "gpt-6-astra medium",
   "open_p0p1": [],
+  "package_sha256": "56587f10c9969a795d6aa527c29fe8a057720a97d9f9e5de335daa996e706655",
   "qa_outcome": "SHIP",
   "rid_coverage": {
     "covered": 3,
@@ -39,7 +43,8 @@
     ],
     "total": 3
   },
-  "timestamp": "2026-09-04T23:50:01Z",
+  "tested_source_sha": "f64c41c97e196e3bffdba23bc1c006bca7489b28",
+  "timestamp": "2026-09-05T07:32:15Z",
   "type": "qa_verdict",
   "verdict": "SHIP"
 }

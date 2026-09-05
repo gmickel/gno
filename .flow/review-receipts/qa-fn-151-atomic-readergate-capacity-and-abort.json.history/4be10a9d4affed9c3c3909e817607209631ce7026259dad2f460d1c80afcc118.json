@@ -1,0 +1,45 @@
+{
+  "branch": "fn-143-152-retrieval-resource-major",
+  "evidence": [
+    ".flow/tmp/qa-fn-151-atomic-readergate-capacity-and-abort/live.log"
+  ],
+  "findings": {
+    "backend": "interactive",
+    "headSha": "6c1b7e82441b1f7eb968b06c94488d3c5db071b0",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-766641c5615398dcf5e57e9b9a62bc951788cc96827e4d6ab88d791505864fac"
+  },
+  "head_sha": "6c1b7e82441b1f7eb968b06c94488d3c5db071b0",
+  "id": "fn-151-atomic-readergate-capacity-and-abort",
+  "limitations": [
+    "Lexical-only injected server context and controlled work delay; no native model workload needed for reader admission."
+  ],
+  "mode": "interactive",
+  "model": "gpt-6-astra medium",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-09-04T23:50:01Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

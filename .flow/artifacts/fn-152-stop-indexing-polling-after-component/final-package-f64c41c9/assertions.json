@@ -1,0 +1,89 @@
+{
+  "freeze": "f64c41c97e196e3bffdba23bc1c006bca7489b28",
+  "version": "2.0.0",
+  "snapshotSha256": "6fb55ab046765ac2ffc7cd8862ab25e865d9f567f4e00c8ee5828d3d09102322",
+  "snapshotSourceHash": "180edb2ba3d23f9360c200b4bea1560ecf9cdc0133518d6f2125d882e282da25",
+  "viewports": {
+    "desktop": {
+      "requestCounts": {
+        "qa-1": 1,
+        "qa-2": 3,
+        "qa-3": 1,
+        "qa-4": 1,
+        "qa-5": 3
+      },
+      "noRequestsAfterDeparture": true,
+      "pageErrors": 0,
+      "gapsMs": {
+        "qa-2": [
+          1004,
+          1009
+        ],
+        "qa-5": [
+          1006,
+          1010
+        ]
+      }
+    },
+    "mobile": {
+      "requestCounts": {
+        "qa-1": 1,
+        "qa-2": 3,
+        "qa-3": 1,
+        "qa-4": 1,
+        "qa-5": 1,
+        "qa-6": 3
+      },
+      "noRequestsAfterDeparture": true,
+      "pageErrors": 0,
+      "gapsMs": {
+        "qa-2": [
+          1002,
+          1003
+        ],
+        "qa-6": [
+          1003,
+          1002
+        ]
+      }
+    }
+  },
+  "servedSnapshotAssetsVerified": [
+    {
+      "path": "/chunk-01pdx7nn.js",
+      "sha256": "89fab515ee926ad8ede01aba897da280c1d32a08b0b159a15ebc603ca84fa852"
+    },
+    {
+      "path": "/chunk-5516tztf.js",
+      "sha256": "1ebac6b8646b91b407191d152cb03a210a2e6ec199004cbac55c3e2c57a21321"
+    },
+    {
+      "path": "/chunk-bq6jc93z.js",
+      "sha256": "678df9997339e1d8f680d501346578b26466b68f219ccdbe5af4a2dbb97138e6"
+    },
+    {
+      "path": "/chunk-eavmbktx.js",
+      "sha256": "d28c77df418b105eb8886ae013728c8363b910e6ab8b8561293f0a79cfe1ead2"
+    },
+    {
+      "path": "/chunk-gnmy2ask.js",
+      "sha256": "d1e9163a75e1d2cfbd1bbe2deb51af304ec5a17ddbf9940fd354530450fa9f81"
+    },
+    {
+      "path": "/chunk-p5mszna7.js",
+      "sha256": "0f8192cdf1cdc819e5eb0f41bb04e57e82b7b5773f755735de9cf01ea8557f95"
+    },
+    {
+      "path": "/chunk-qqpjj1hj.js",
+      "sha256": "d37b4ec4dedbc7f02d96ff8a8a65a125a5e6f9c12e6600406c3a3c52fa6094dd"
+    },
+    {
+      "path": "/chunk-r6e88sey.js",
+      "sha256": "a9a311431fe289941d241e218f4bd49275be8104ea56a4a9caf927de9e5645bd"
+    },
+    {
+      "path": "/chunk-xhv8cn2m.js",
+      "sha256": "b7c05e256145a710efacda9cacf2defe626680f6dca4793c255d4ea0a653d761"
+    }
+  ]
+}
