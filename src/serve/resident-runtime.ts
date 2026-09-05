@@ -43,8 +43,6 @@ import {
 import { JobManager } from "../core/job-manager";
 import { recordContentMutation } from "../core/mutation-generations";
 import { defaultSyncService, withContentTypeRules } from "../ingestion";
-import { getModelManager } from "../llm/nodeLlamaCpp/lifecycle";
-import { getModelConfig } from "../llm/registry";
 import { getActivePreset } from "../llm/registry";
 import { createToolContext, Mutex } from "../mcp/context";
 import { SqliteAdapter } from "../store/sqlite/adapter";
@@ -58,7 +56,10 @@ import { createEmbedScheduler } from "./embed-scheduler";
 import { FindingsScheduler, type FindingsPassResult } from "./findings-pass";
 import { AdmissionController, ReaderGate } from "./resident-admission";
 import { ResidentBackgroundWork } from "./resident-background-work";
-import { buildResidentStatusSnapshot } from "./resident-status";
+import {
+  createStandaloneResidentStatus,
+  buildResidentStatusSnapshot,
+} from "./resident-status";
 import { CollectionWatchService as DefaultCollectionWatchService } from "./watch-service";
 
 const DEFAULT_SHUTDOWN_DEADLINE_MS = 5_000;
@@ -110,7 +111,10 @@ export interface ResidentRuntime {
   readonly capsuleReverificationScheduler: SavedCapsuleReverificationScheduler;
   /** Present only when daemon mode runs with `findings.enabled`. */
   readonly findingsScheduler: FindingsScheduler | null;
-  readonly modelManager: ModelManager;
+  readonly modelManager: Pick<
+    ModelManager,
+    "acquireLease" | "getLifecycleStats" | "disposeAll"
+  >;
   readonly mcpContext: ToolContext;
   readonly generations: ResidentGeneration;
   readonly activeRequests: number;
@@ -274,9 +278,16 @@ export async function startResidentRuntime(
     eventBus: options.eventBus ?? null,
     watchService: null,
   };
-  const modelManager =
-    deps.modelManagerFactory?.(initialConfig) ??
-    getModelManager(getModelConfig(initialConfig));
+  const modelManager = deps.modelManagerFactory?.(initialConfig) ?? {
+    acquireLease: () =>
+      ctxHolder.current.llm?.acquireModelLease() ?? { release() {} },
+    getLifecycleStats: () =>
+      ctxHolder.current.llm?.getLifecycleStats() ??
+      createStandaloneResidentStatus("stdio").models,
+    disposeAll: async () => {
+      await ctxHolder.current.llm?.dispose();
+    },
+  };
   const generations: ResidentGeneration = { content: 0, index: 0 };
   ctxHolder.markContentMutation = () => {
     generations.content += 1;
@@ -405,7 +416,8 @@ export async function startResidentRuntime(
     writeLockPath,
     enableWrite: false,
     isShuttingDown: () => disposed || !admission.accepting,
-    acquireModelLease: () => modelManager.acquireLease(),
+    getModelAdapter: (config) =>
+      config === ctxHolder.current.config ? ctxHolder.current.llm : undefined,
     markContentMutation: () => {
       generations.content += 1;
     },
@@ -593,7 +605,10 @@ export async function startResidentRuntime(
       await Promise.allSettled([
         (deps.disposeServerContext ?? disposeServerContext)(ctxHolder.current),
       ]);
-      await Promise.allSettled([modelManager.disposeAll()]);
+      await Promise.allSettled([
+        modelManager.disposeAll(),
+        mcpContext.disposeModels?.(),
+      ]);
       await Promise.allSettled([store.close()]);
       await Promise.allSettled([ownerLock.release()]);
       admissionState = "closed";

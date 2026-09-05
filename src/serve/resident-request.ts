@@ -1,4 +1,4 @@
-/** Admission, bounded-reader, and model-lease boundary for resident REST reads. */
+/** Admission and bounded-reader boundary for resident REST reads. */
 
 import type { ResidentRuntime } from "./resident-runtime";
 
@@ -100,9 +100,7 @@ export async function handleResidentRead(
   try {
     releaseReader = await runtime.readerGate.acquire(admitted.signal);
     if (admitted.signal.aborted) return unavailableResponse();
-    const response = await runtime.withModelLease(() =>
-      Promise.resolve(operation(admitted.signal))
-    );
+    const response = await operation(admitted.signal);
     if (admitted.signal.aborted) return unavailableResponse();
     if (!isAuthorizationEpochCurrent()) {
       return policyChangedResponse();

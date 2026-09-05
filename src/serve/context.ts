@@ -15,6 +15,7 @@ import type {
   RerankPort,
 } from "../llm/types";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
+import type { VectorIndexPort } from "../store/vector";
 import type { DocumentEventBus } from "./doc-events";
 import type { EmbedScheduler } from "./embed-scheduler";
 import type { CollectionWatchService } from "./watch-service";
@@ -24,7 +25,7 @@ import { canonicalizeIndexName } from "../app/index-name";
 import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../llm/policy";
 import { getActivePreset } from "../llm/registry";
-import { createVectorIndexPort, type VectorIndexPort } from "../store/vector";
+import { createLazyVectorIndex } from "../store/vector/lazy";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Download State (in-memory, single user)
@@ -64,6 +65,7 @@ export function resetDownloadState(): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ServerContext {
+  llm?: LlmAdapter;
   store: SqliteAdapter;
   config: Config;
   /** Canonical identity of the already-open resident store. */
@@ -104,9 +106,9 @@ export async function createServerContext(
   let rerankPort: RerankPort | null = null;
   let vectorIndex: VectorIndexPort | null = null;
 
+  const llm = new LlmAdapter(config);
   try {
     const preset = getActivePreset(config);
-    const llm = new LlmAdapter(config);
 
     // Resolve download policy from env (serve has no CLI flags)
     const policy = resolveDownloadPolicy(process.env, {
@@ -134,20 +136,11 @@ export async function createServerContext(
     );
     if (embedResult.ok) {
       embedPort = embedResult.value;
-      const initResult = await embedPort.init();
-      if (initResult.ok) {
-        // Create vector index
-        const dimensions = embedPort.dimensions();
-        const db = store.getRawDb();
-        const vectorResult = await createVectorIndexPort(db, {
-          model: preset.embed,
-          dimensions,
-        });
-        if (vectorResult.ok) {
-          vectorIndex = vectorResult.value;
-          console.log("Vector search enabled");
-        }
-      }
+      vectorIndex = await createLazyVectorIndex(
+        store.getRawDb(),
+        preset.embed,
+        embedPort
+      );
     }
 
     // Try to create expansion port
@@ -201,6 +194,7 @@ export async function createServerContext(
   };
 
   return {
+    llm,
     store,
     config,
     indexName: canonicalizeIndexName(options.indexName ?? DEFAULT_INDEX_NAME),
@@ -221,6 +215,10 @@ export async function createServerContext(
  * Each port is disposed independently to prevent one failure from blocking others.
  */
 export async function disposeServerContext(ctx: ServerContext): Promise<void> {
+  if (ctx.llm) {
+    await ctx.llm.dispose();
+    return;
+  }
   const ports = [
     { name: "embed", port: ctx.embedPort },
     { name: "expand", port: ctx.expandPort },

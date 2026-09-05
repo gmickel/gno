@@ -17,6 +17,7 @@ import type {
   SearchResult,
   SearchResults,
 } from "../../pipeline/types";
+import type { VectorIndexPort } from "../../store/vector";
 import type { ToolContext } from "../server";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
@@ -42,10 +43,7 @@ import { resolveDownloadPolicy } from "../../llm/policy";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { diagnoseQueryTarget } from "../../pipeline/diagnose";
 import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
-import {
-  createVectorIndexPort,
-  type VectorIndexPort,
-} from "../../store/vector";
+import { createLazyVectorIndex } from "../../store/vector/lazy";
 import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
 interface QueryInput {
@@ -278,7 +276,7 @@ export function handleQuery(
         });
         if (!traceStart.ok) throw new Error(traceStart.error.message);
         traceSession = traceStart.value ?? undefined;
-        const llm = new LlmAdapter(ctx.config);
+        const llm = ctx.getModelAdapter?.() ?? new LlmAdapter(ctx.config);
         const egressCollections = args.collection
           ? [args.collection]
           : ("all" as const);
@@ -325,18 +323,11 @@ export function handleQuery(
 
         // Create vector index (optional)
         if (embedPort) {
-          const embedInitResult = await embedPort.init();
-          if (embedInitResult.ok) {
-            const dimensions = embedPort.dimensions();
-            const db = ctx.store.getRawDb();
-            const vectorResult = await createVectorIndexPort(db, {
-              model: embedUri,
-              dimensions,
-            });
-            if (vectorResult.ok) {
-              vectorIndex = vectorResult.value;
-            }
-          }
+          vectorIndex = await createLazyVectorIndex(
+            ctx.store.getRawDb(),
+            embedUri,
+            embedPort
+          );
         }
 
         const deps: HybridSearchDeps = {
@@ -428,7 +419,7 @@ export function handleQueryDiagnose(
           : undefined;
 
       const preset = getActivePreset(ctx.config);
-      const llm = new LlmAdapter(ctx.config);
+      const llm = ctx.getModelAdapter?.() ?? new LlmAdapter(ctx.config);
       const policy = resolveDownloadPolicy(process.env, {});
       const downloadProgress = createNonTtyProgressRenderer();
       const egressCollections = collection ? [collection] : ("all" as const);
@@ -501,18 +492,11 @@ export function handleQueryDiagnose(
         }
 
         if (embedPort) {
-          const embedInitResult = await embedPort.init();
-          if (embedInitResult.ok) {
-            const dimensions = embedPort.dimensions();
-            const db = ctx.store.getRawDb();
-            const vectorResult = await createVectorIndexPort(db, {
-              model: embedUri,
-              dimensions,
-            });
-            if (vectorResult.ok) {
-              vectorIndex = vectorResult.value;
-            }
-          }
+          vectorIndex = await createLazyVectorIndex(
+            ctx.store.getRawDb(),
+            embedUri,
+            embedPort
+          );
         }
 
         const deps: HybridSearchDeps = {

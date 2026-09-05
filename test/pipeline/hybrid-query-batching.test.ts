@@ -220,3 +220,42 @@ describe("hybrid vector query batching", () => {
     expect(embedBatch).toHaveBeenCalledTimes(0);
   });
 });
+
+test.each(["embedding", "search", "no-match"])(
+  "hybrid reports actual vector work for %s",
+  async (failure) => {
+    const embedPort = {
+      modelUri: "test:embed",
+      embed: async () =>
+        failure === "embedding"
+          ? { ok: false as const, error: { message: "reload failed" } }
+          : { ok: true as const, value: [1, 2, 3] },
+    } as unknown as EmbeddingPort;
+    const vectorIndex = {
+      searchAvailable: true,
+      searchNearest: async () =>
+        failure === "search"
+          ? { ok: false as const, error: { message: "index failed" } }
+          : { ok: true as const, value: [] },
+    } as unknown as VectorIndexPort;
+    const result = await searchHybrid(
+      {
+        store: createStore(),
+        config,
+        embedPort,
+        vectorIndex,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "orchid",
+      { noExpand: true }
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.results).toEqual([]);
+    expect(result.value.meta.vectorsUsed).toBe(failure === "no-match");
+    expect(result.value.meta.mode).toBe(
+      failure === "no-match" ? "hybrid" : "bm25_only"
+    );
+  }
+);

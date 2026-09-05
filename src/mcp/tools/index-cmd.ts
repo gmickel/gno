@@ -148,7 +148,7 @@ export function handleIndex(
               recordContentMutation(syncResult, ctx.markContentMutation);
 
               // Phase 2: Embed
-              const llm = new LlmAdapter(ctx.config);
+              const llm = ctx.getModelAdapter?.() ?? new LlmAdapter(ctx.config);
               const embedResult = await llm.createEmbeddingPort(modelUri, {
                 egressCollections: collections,
                 policy: { offline: true, allowDownload: false },

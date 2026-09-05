@@ -1,3 +1,4 @@
+import type { ModelLifecycleStats } from "../nodeLlamaCpp/lifecycle";
 import type { ApprovedModel, NativeRequest, NativeResponse } from "./protocol";
 import type { NativeRuntimeConfig } from "./runtime-config";
 
@@ -50,6 +51,7 @@ export interface NativeWorkerClientOptions {
 /** One process generation, one active operation and 64 waiting logical calls. */
 export class NativeWorkerClient {
   private owner?: Owner;
+  private lifecycle?: ModelLifecycleStats;
   private generation = 0;
   private requestId = 0;
   private closed = false;
@@ -72,6 +74,28 @@ export class NativeWorkerClient {
   }
   get currentGeneration(): number {
     return this.generation;
+  }
+
+  /** Last child-reported snapshot; reading it sends no IPC and cannot extend idle. */
+  getLifecycleStats(): ModelLifecycleStats {
+    const snapshot = this.lifecycle ?? {
+      activeLeases: 0,
+      leaseAcquisitions: 0,
+      leaseReleases: 0,
+      loadedModels: 0,
+      loadAttempts: 0,
+      loadSuccesses: 0,
+      loadFailures: 0,
+      inflightLoads: 0,
+    };
+    return this.owner && !this.owner.retiring
+      ? { ...snapshot }
+      : {
+          ...snapshot,
+          activeLeases: 0,
+          loadedModels: 0,
+          inflightLoads: 0,
+        };
   }
 
   acquireLease(): { release(): void } {
@@ -196,6 +220,7 @@ export class NativeWorkerClient {
   }
 
   private start(): Owner {
+    this.lifecycle = undefined;
     // A compiled executable cannot interpret an external TS entry: invoking it
     // here would recursively launch the CLI. npm/desktop ship the source runtime.
     if (import.meta.dir.includes("$bunfs"))
@@ -271,6 +296,7 @@ export class NativeWorkerClient {
         throw new NativeWorkerError("protocol");
       clearTimeout(owner.timer);
       owner.pending.shift();
+      if (response.lifecycle) this.lifecycle = response.lifecycle;
       pending.resolve(response.result);
       // Promise delivery has been queued before acknowledging settlement.
       queueMicrotask(() => {

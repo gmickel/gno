@@ -18,6 +18,7 @@ import type { StoreResult } from "../store/types";
 import type { McpToolProfile } from "./tool-profile";
 
 import { MCP_SERVER_NAME, VERSION } from "../app/constants";
+import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { createStandaloneResidentStatus } from "../serve/resident-status";
 import { registerResources } from "./resources/index";
 import { registerTools } from "./tools/index";
@@ -86,6 +87,8 @@ export interface ToolContext {
   toolProfile?: McpToolProfile;
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
+  getModelAdapter?: () => LlmAdapter;
+  disposeModels?: () => Promise<void>;
   acquireModelLease?: () => ModelLease;
   markContentMutation?: () => void;
   markIndexMutation?: () => void;
@@ -125,6 +128,8 @@ export interface CreateToolContextOptions {
   toolProfile?: McpToolProfile;
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
+  getModelAdapter?: (config: Config) => LlmAdapter | undefined;
+  disposeModels?: () => Promise<void>;
   acquireModelLease?: () => ModelLease;
   markContentMutation?: () => void;
   markIndexMutation?: () => void;
@@ -141,6 +146,7 @@ export interface CreateToolContextOptions {
 export function createToolContext(
   options: CreateToolContextOptions
 ): ToolContext {
+  const adapters = new Map<Config, LlmAdapter>();
   const requestSnapshot = new AsyncLocalStorage<ToolContextSnapshot>();
   const currentSnapshot = (): ToolContextSnapshot =>
     requestSnapshot.getStore() ??
@@ -176,6 +182,23 @@ export function createToolContext(
     getResidentStatus:
       options.getResidentStatus ??
       (() => createStandaloneResidentStatus("stdio")),
+    getModelAdapter: () => {
+      const config = currentSnapshot().config;
+      const shared = options.getModelAdapter?.(config);
+      if (shared) return shared;
+      let adapter = adapters.get(config);
+      if (!adapter) {
+        adapter = new LlmAdapter(config);
+        adapters.set(config, adapter);
+      }
+      return adapter;
+    },
+    disposeModels: async () => {
+      await Promise.allSettled(
+        [...adapters.values()].map((adapter) => adapter.dispose())
+      );
+      adapters.clear();
+    },
     acquireModelLease: options.acquireModelLease,
     markContentMutation: options.markContentMutation,
     markIndexMutation: options.markIndexMutation,

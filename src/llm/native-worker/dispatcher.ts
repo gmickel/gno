@@ -86,6 +86,7 @@ export class NativeDispatcher {
         generation: request.generation,
         requestId: request.requestId,
         op: request.op,
+        lifecycle: this.manager.getLifecycleStats(),
         result: result.ok
           ? result
           : { ok: false, error: wireError(result.error) },

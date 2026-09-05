@@ -37,7 +37,7 @@ import {
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
-import { createVectorIndexPort } from "../../store/vector";
+import { createLazyVectorIndex } from "../../store/vector/lazy";
 
 interface ContextToolResultData {
   structuredContent: Record<string, unknown>;
@@ -123,7 +123,7 @@ export const createMcpModelPorts = async (
   factoryOverride?: McpModelPortFactory,
   options: { generation?: boolean } = {}
 ): Promise<McpModelPorts> => {
-  const llm = new LlmAdapter(context.config);
+  const llm = context.getModelAdapter?.() ?? new LlmAdapter(context.config);
   const factory = factoryOverride ?? llm;
   const lease = factory.acquireModelLease?.();
   const policy = resolveDownloadPolicy(process.env, {});
@@ -152,15 +152,12 @@ export const createMcpModelPorts = async (
     if (embedResult.ok) {
       // Take ownership before init: init failures must not leak the port.
       ownedEmbedPort = embedResult.value;
-      const initialized = await ownedEmbedPort.init();
-      if (initialized.ok) {
-        embedPort = ownedEmbedPort;
-        const vectorResult = await createVectorIndexPort(
-          context.store.getRawDb(),
-          { model: embedUri, dimensions: ownedEmbedPort.dimensions() }
-        );
-        if (vectorResult.ok) vectorIndex = vectorResult.value;
-      }
+      embedPort = ownedEmbedPort;
+      vectorIndex = await createLazyVectorIndex(
+        context.store.getRawDb(),
+        embedUri,
+        ownedEmbedPort
+      );
     }
     const rerankResult = await factory.createRerankPort(
       resolveModelUri(context.config, "rerank", undefined, collection),

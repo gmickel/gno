@@ -3718,3 +3718,24 @@ None. The API runs locally with no rate limiting. Performance depends on your ha
 - [Web UI Guide](./WEB-UI.md): Visual interface documentation
 - [CLI Reference](./CLI.md): Command-line interface
 - [MCP Integration](./MCP.md): AI assistant integration
+
+### Native inference lifetime and idle recovery
+
+The resident service owns native inference in a child process. Cached models are
+registered at startup; validated stored vector dimensions let an existing index
+start without loading the embedding model. A new index discovers dimensions on
+its first vector operation. Capability flags describe available functionality,
+not whether a model is currently loaded.
+
+The child retires after five minutes of inference inactivity by default. Pending
+native operations prevent retirement; status, document and other metadata reads
+do not extend that deadline. The next model operation reloads lazily. Resident
+model counters are the latest child-reported lifecycle snapshot for its generation,
+not a live GPU-memory measurement; after child exit, loaded-model and active counts
+are zero. Polling the snapshot does not contact the child.
+
+Hybrid query fallback remains available when embedding or vector search fails.
+In that case `meta.vectorsUsed` is false unless at least one vector search actually
+succeeded, and a wholly lexical fallback reports `meta.mode: "bm25_only"`.
+A successful vector search with no matches can legitimately report
+`vectorsUsed: true`. Native reload failure is not evidence of a semantic no-match.

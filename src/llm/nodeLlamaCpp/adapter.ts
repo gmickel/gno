@@ -295,6 +295,10 @@ export class LlmAdapter {
   /**
    * Native-free lifetime facade. Explicit model disposal retires the child.
    */
+  getLifecycleStats() {
+    return this.worker.getLifecycleStats();
+  }
+
   getManager(): {
     dispose(uri: string): Promise<void>;
     acquireLease(): ModelLease;

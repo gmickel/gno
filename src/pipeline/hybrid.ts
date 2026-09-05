@@ -27,6 +27,7 @@ import { normalizeContentTypes } from "../config/content-types";
 import { projectRecordEvidenceMetadata } from "../core/record-metadata";
 import { embedTextsWithRecovery } from "../embed/batch";
 import { err, ok } from "../store/types";
+import { resolveVectorSearchIdentity } from "../store/vector/variant-search";
 import { createChunkLookup } from "./chunk-lookup";
 import {
   attachAuxiliaryScoreMetadata,
@@ -54,6 +55,7 @@ import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
 import { RequestHydration } from "./hydration";
 import { selectBestChunkForSteering } from "./intent";
+import { resolveFusionOwners } from "./owner-fusion";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import {
@@ -191,6 +193,7 @@ async function checkBm25Strength(
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface ChunkId {
+  documentIds?: number[];
   mirrorHash: string;
   seq: number;
   score?: number;
@@ -269,9 +272,9 @@ async function searchVectorChunks(
     allowedMirrorHashes?: string[];
     eligibility?: VectorSearchOptions["eligibility"];
   }
-): Promise<ChunkId[]> {
+): Promise<{ ok: true; chunks: ChunkId[] } | { ok: false; reason: string }> {
   if (!vectorIndex.searchAvailable) {
-    return [];
+    return { ok: false, reason: "vector_unavailable" };
   }
 
   // Embed query with contextual formatting
@@ -279,7 +282,7 @@ async function searchVectorChunks(
     formatQueryForEmbedding(query, embedPort.modelUri)
   );
   if (!embedResult.ok) {
-    return [];
+    return { ok: false, reason: "vector_embed_error" };
   }
 
   const queryEmbedding = new Float32Array(embedResult.value);
@@ -287,6 +290,7 @@ async function searchVectorChunks(
     queryEmbedding,
     options.limit,
     {
+      embeddingIdentity: resolveVectorSearchIdentity(embedPort),
       minScore: options.minScore,
       allowedMirrorHashes: options.allowedMirrorHashes,
       eligibility: options.eligibility,
@@ -294,14 +298,18 @@ async function searchVectorChunks(
   );
 
   if (!searchResult.ok) {
-    return [];
+    return { ok: false, reason: "vector_search_error" };
   }
 
-  return searchResult.value.map((r) => ({
-    mirrorHash: r.mirrorHash,
-    seq: r.seq,
-    score: r.distance,
-  }));
+  return {
+    ok: true,
+    chunks: searchResult.value.map((r) => ({
+      documentIds: r.documentIds,
+      mirrorHash: r.mirrorHash,
+      seq: r.seq,
+      score: r.distance,
+    })),
+  };
 }
 
 function toTraceCandidates(chunks: ChunkId[]): QueryDiagnoseTraceCandidate[] {
@@ -592,6 +600,7 @@ async function searchHybridWithHydration(
 
   // Vector search
   let vecCount = 0;
+  let vectorsUsed = false;
   const vectorAvailable =
     (vectorIndex?.searchAvailable && embedPort !== null) ?? false;
   if (!vectorAvailable) {
@@ -613,7 +622,7 @@ async function searchHybridWithHydration(
     ];
 
     if (vectorVariantQueries.length === 0) {
-      const vecChunks = await searchVectorChunks(
+      const vectorResult = await searchVectorChunks(
         vectorIndex,
         embedPort,
         query,
@@ -624,6 +633,9 @@ async function searchHybridWithHydration(
         }
       );
 
+      if (!vectorResult.ok) counters.fallbackEvents.push(vectorResult.reason);
+      else vectorsUsed = true;
+      const vecChunks = vectorResult.ok ? vectorResult.chunks : [];
       vecCount = vecChunks.length;
       vectorTraceChunks.push(...vecChunks);
       if (vecCount > 0) {
@@ -666,15 +678,20 @@ async function searchHybridWithHydration(
             new Float32Array(embedding),
             variant.limit,
             {
+              embeddingIdentity: resolveVectorSearchIdentity(embedPort),
               allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
               eligibility: vectorEligibility,
             }
           );
-          if (!searchResult.ok || searchResult.value.length === 0) {
+          if (!searchResult.ok) {
+            counters.fallbackEvents.push("vector_search_error");
             continue;
           }
+          vectorsUsed = true;
+          if (searchResult.value.length === 0) continue;
 
           const chunks = searchResult.value.map((item) => ({
+            documentIds: item.documentIds,
             mirrorHash: item.mirrorHash,
             seq: item.seq,
           }));
@@ -715,7 +732,10 @@ async function searchHybridWithHydration(
   const fusionStartedAt = performance.now();
   const candidateLimit =
     options.candidateLimit ?? pipelineConfig.rerankCandidates;
-  let fusedCandidates = rrfFuse(rankedInputs, pipelineConfig.rrf);
+  let fusedCandidates = rrfFuse(
+    await resolveFusionOwners(rankedInputs, store, hydration, query, options),
+    pipelineConfig.rrf
+  );
   diagnoseTrace?.stages.push({
     id: "fusion",
     status: "active",
@@ -749,7 +769,10 @@ async function searchHybridWithHydration(
   if (graphExpansion.candidates.length > 0) {
     const graphFusionStartedAt = performance.now();
     rankedInputs.push(toRankedInput("graph", graphExpansion.candidates));
-    fusedCandidates = rrfFuse(rankedInputs, pipelineConfig.rrf);
+    fusedCandidates = rrfFuse(
+      await resolveFusionOwners(rankedInputs, store, hydration, query, options),
+      pipelineConfig.rrf
+    );
     timings.fusionMs += performance.now() - graphFusionStartedAt;
   }
   diagnoseTrace?.stages.push({
@@ -815,9 +838,15 @@ async function searchHybridWithHydration(
       scoringDocumentsByHash.set(document.mirrorHash, documents);
     }
     adjustNormalizedFusionScore = (candidate, normalizedScore) => {
-      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}`;
+      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}:${candidate.documentId ?? ""}`;
       auxiliaryBaseScores.set(candidateKey, normalizedScore);
-      const documents = scoringDocumentsByHash.get(candidate.mirrorHash);
+      const documents = scoringDocumentsByHash
+        .get(candidate.mirrorHash)
+        ?.filter(
+          (doc) =>
+            candidate.documentId === undefined ||
+            candidate.documentId === doc.id
+        );
       if (!documents?.length) return normalizedScore;
       const projectedScores = documents.map(
         (document) =>
@@ -1046,7 +1075,12 @@ async function searchHybridWithHydration(
     }
 
     // Find document from pre-fetched map
-    const candidateDocs = docsByMirrorHash.get(candidate.mirrorHash) ?? [];
+    const candidateDocs = (
+      docsByMirrorHash.get(candidate.mirrorHash) ?? []
+    ).filter(
+      (doc) =>
+        candidate.documentId === undefined || candidate.documentId === doc.id
+    );
     if (candidateDocs.length === 0) {
       continue;
     }
@@ -1133,7 +1167,7 @@ async function searchHybridWithHydration(
       ) {
         continue;
       }
-      const docidKey = `${candidate.mirrorHash}:${candidate.seq}`;
+      const docidKey = `${candidate.mirrorHash}:${candidate.seq}:${candidate.documentId ?? ""}`;
       if (!docidMap.has(docidKey)) docidMap.set(docidKey, doc.docid);
       const collectionPath = collectionPaths.get(doc.collection);
       if (options.full && !auxiliaryRankingActive) {
@@ -1170,9 +1204,10 @@ async function searchHybridWithHydration(
         record: projectRecordEvidenceMetadata(doc),
       };
       const auxiliaryBaseScore =
-        auxiliaryBaseScores.get(`${candidate.mirrorHash}:${candidate.seq}`) ??
-        candidate.blendedScore;
-      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}`;
+        auxiliaryBaseScores.get(
+          `${candidate.mirrorHash}:${candidate.seq}:${candidate.documentId ?? ""}`
+        ) ?? candidate.blendedScore;
+      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}:${candidate.documentId ?? ""}`;
       const composedBeforeRerank =
         preRerankAdjustedCandidates.has(candidateKey);
       const scoringBaseScore =
@@ -1284,10 +1319,10 @@ async function searchHybridWithHydration(
     results: finalResults,
     meta: {
       query,
-      mode: vectorAvailable ? "hybrid" : "bm25_only",
+      mode: vectorsUsed ? "hybrid" : "bm25_only",
       expanded: expansion !== null,
       reranked: rerankResult.reranked,
-      vectorsUsed: vectorAvailable,
+      vectorsUsed,
       totalResults: finalResults.length,
       intent: options.intent,
       exclude: options.exclude,
@@ -1316,11 +1351,13 @@ async function searchHybridWithHydration(
   const capabilityOutcomes = [
     { capability: "lexical_search", status: "used" as const },
     vectorAvailable
-      ? fallbackCodes.includes("vector_embed_error")
+      ? !vectorsUsed
         ? {
             capability: "semantic_search",
             status: "failed" as const,
-            reasonCode: "vector_embed_error",
+            reasonCode: fallbackCodes.includes("vector_embed_error")
+              ? "vector_embed_error"
+              : "vector_search_error",
           }
         : { capability: "semantic_search", status: "used" as const }
       : {

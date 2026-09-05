@@ -102,9 +102,20 @@ const score = z.strictObject({
   score: finite,
   rank: id,
 });
+export const NativeLifecycleStatsSchema = z.strictObject({
+  activeLeases: z.number().int().nonnegative(),
+  leaseAcquisitions: z.number().int().nonnegative(),
+  leaseReleases: z.number().int().nonnegative(),
+  loadedModels: z.number().int().nonnegative(),
+  loadAttempts: z.number().int().nonnegative(),
+  loadSuccesses: z.number().int().nonnegative(),
+  loadFailures: z.number().int().nonnegative(),
+  inflightLoads: z.number().int().nonnegative(),
+});
 export const NativeResponseSchema = z.strictObject({
   ...envelope,
   op: z.enum(["init", "embed", "embedBatch", "rerank", "generate", "dispose"]),
+  lifecycle: NativeLifecycleStatsSchema.optional(),
   result: z.discriminatedUnion("ok", [
     z.strictObject({ ok: z.literal(false), error }),
     z.strictObject({

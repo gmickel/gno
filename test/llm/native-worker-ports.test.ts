@@ -76,7 +76,7 @@ process.on('message', async message => {
  case 'rerank': value = request.documents.map((text, index) => ({index, rank: index + 1, score: text.length / 7})); break;
  case 'dispose': value = null; break;
  }
- for (const frame of frameNativeMessage({version, generation, requestId, op: request.op, result: {ok:true, value}})) process.send(frame);
+ for (const frame of frameNativeMessage({version, generation, requestId, op: request.op, lifecycle: {activeLeases:1,leaseAcquisitions:1,leaseReleases:0,loadedModels:1,loadAttempts:1,loadSuccesses:1,loadFailures:0,inflightLoads:0}, result: {ok:true, value}})) process.send(frame);
 });
 process.send('ready');
 `
@@ -421,4 +421,21 @@ test("disposal while awaiting model load prevents late tokenizer/context publica
   expect(disposed).toBe(1);
   expect(() => port.dimensions()).toThrow("initialize dimensions");
   expect(() => port.getContextIdentity()).toThrow("not initialized");
+});
+
+test("cached lifecycle polling cannot postpone native child idle retirement", async () => {
+  const client = createClient();
+  const port = new NativeEmbeddingPort(client, "embed", "file:/embed.gguf");
+  expect((await port.embed("metadata-poll")).ok).toBe(true);
+  expect(client.getLifecycleStats().loadedModels).toBe(1);
+  const deadline = Date.now() + 2000;
+  while (client.processId !== undefined && Date.now() < deadline) {
+    client.getLifecycleStats();
+    await Bun.sleep(5);
+  }
+  expect(client.processId).toBeUndefined();
+  expect(client.getLifecycleStats().loadedModels).toBe(0);
+  expect(client.getLifecycleStats().loadSuccesses).toBe(1);
+  expect((await port.embed("metadata-poll")).ok).toBe(true);
+  expect(client.getLifecycleStats().loadedModels).toBe(1);
 });

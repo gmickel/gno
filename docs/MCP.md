@@ -1911,3 +1911,19 @@ GNO_VERBOSE=1 gno mcp
   acknowledgement. Stale and replayed confirmations fail closed.
 - `gno_egress_audit_list|show|status` inspect content-free local receipts;
   `gno_egress_audit_delete|purge` are write-enabled local cleanup controls.
+
+### Native worker lifetime
+
+Resident and stdio MCP reuse a context-owned native inference child across calls.
+Model selection and outbound HTTP policy remain bound to the request's configuration
+snapshot and collection scope. Metadata tools do not acquire model-use leases or
+refresh the inference idle deadline. Native work prevents idle retirement; the
+five-minute default idle grace ends by retiring the child, and the next model call
+reloads lazily. Shutdown disposes owned children after active work drains.
+
+Existing indexes can use validated stored vector dimensions without eagerly loading
+an embedding model. Capability availability is distinct from loaded-model state.
+For hybrid queries, embedding/index failures retain lexical fallback but cannot
+claim `vectorsUsed: true` unless a vector search succeeded. A real zero-match vector
+search remains a successful operation. Native worker failures are contained in the
+host and follow each tool's existing error or fallback contract.
