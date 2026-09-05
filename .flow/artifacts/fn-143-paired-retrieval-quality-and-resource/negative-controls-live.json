@@ -1,0 +1,134 @@
+{
+  "schemaVersion": "gno-acceptance-live-negative-controls-v1",
+  "command": "bun notes/fn143-native-tmp/negative-controls-live.ts",
+  "scriptSha256": "5158ccd1a5dbe0af2b3a312f8356ed56ed0a17fb98bc1d1414d1a6de16947325",
+  "scope": "CPU-only deep-copy mutations of complete synthetic CUDA SDK captures; no native calls",
+  "inputs": [
+    {
+      "path": "notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/baseline/manifest.json",
+      "sha256": "0a791b7ac46c943a1d3ade6bcb7f6d9798d4e7cc4ba7db452eb4261a4795d52a",
+      "bytes": 2462
+    },
+    {
+      "path": "notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/candidate/manifest.json",
+      "sha256": "d9b56b8a5c4d600c80efbb4626d05efcb98ce695fc3f33c65cfe3877cbafe5f2",
+      "bytes": 2464
+    },
+    {
+      "path": "notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/baseline/control-v2.json.gz",
+      "sha256": "d41869703b05967cfe2601002d6056a7a2ef0101a5cd25e45cd07b8bccefddd7",
+      "bytes": 12353
+    },
+    {
+      "path": "notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/candidate/control-v2.json.gz",
+      "sha256": "28b940bc87a2692780390f861b5594b2768d61c920d6efd1e2deb7119b43aad1",
+      "bytes": 12360
+    }
+  ],
+  "sourcesUnchanged": true,
+  "caseId": "rerank-en-1000-start",
+  "control": {
+    "passed": true,
+    "comparedCases": 1,
+    "failures": [],
+    "generatedAnswerChanges": []
+  },
+  "negatives": [
+    {
+      "name": "result-loss",
+      "change": "Remove the last ordered result",
+      "rejectedAtExpectedField": true,
+      "passed": false,
+      "comparedCases": 1,
+      "failures": [
+        {
+          "caseId": "rerank-en-1000-start",
+          "field": "deterministic.results.length",
+          "reason": "Unexplained deterministic difference"
+        }
+      ],
+      "generatedAnswerChanges": []
+    },
+    {
+      "name": "scope-leak",
+      "change": "Replace the first result URI with an out-of-scope synthetic collection",
+      "rejectedAtExpectedField": true,
+      "passed": false,
+      "comparedCases": 1,
+      "failures": [
+        {
+          "caseId": "rerank-en-1000-start",
+          "field": "deterministic.results[0].uri",
+          "reason": "Unexplained deterministic difference"
+        }
+      ],
+      "generatedAnswerChanges": []
+    },
+    {
+      "name": "false-vectors-success",
+      "change": "Keep vectorsUsed=true while marking independently observed vector stage unavailable",
+      "rejectedAtExpectedField": true,
+      "passed": false,
+      "comparedCases": 1,
+      "failures": [
+        {
+          "caseId": "rerank-en-1000-start",
+          "field": "deterministic.semanticState.vectorsUsed",
+          "reason": "candidate: Vector success contradicts observed vector stage"
+        },
+        {
+          "caseId": "rerank-en-1000-start",
+          "field": "deterministic.semanticState.vectorStatus",
+          "reason": "Unexplained deterministic difference"
+        }
+      ],
+      "generatedAnswerChanges": []
+    },
+    {
+      "name": "changed-actual-model-input",
+      "change": "Replace the first actual model-port input with an injected prompt string",
+      "rejectedAtExpectedField": true,
+      "passed": false,
+      "comparedCases": 1,
+      "failures": [
+        {
+          "caseId": "rerank-en-1000-start",
+          "field": "deterministic.modelInputs[0].input",
+          "reason": "Unexplained deterministic difference"
+        }
+      ],
+      "generatedAnswerChanges": []
+    },
+    {
+      "name": "score-drift",
+      "change": "Add 0.000001 to the first result score",
+      "rejectedAtExpectedField": true,
+      "passed": false,
+      "comparedCases": 1,
+      "failures": [
+        {
+          "caseId": "rerank-en-1000-start",
+          "field": "deterministic.results[0].score",
+          "reason": "Unexplained deterministic difference"
+        }
+      ],
+      "generatedAnswerChanges": []
+    },
+    {
+      "name": "citation-drift",
+      "change": "Hybrid control has no citations; inject its selected passage as an additional citation",
+      "rejectedAtExpectedField": true,
+      "passed": false,
+      "comparedCases": 1,
+      "failures": [
+        {
+          "caseId": "rerank-en-1000-start",
+          "field": "deterministic.citations.length",
+          "reason": "Unexplained deterministic difference"
+        }
+      ],
+      "generatedAnswerChanges": []
+    }
+  ],
+  "passed": true
+}

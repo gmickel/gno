@@ -1,0 +1,574 @@
+{
+  "cold-default": {
+    "status": "inconclusive",
+    "watchdog": {
+      "command": [
+        "/tmp/gno-native-tools-1314.KrONBb/bun-darwin-aarch64/bun",
+        "/tmp/gno-native-baseline-20260905.VQtXt5/source/scripts/retrieval-acceptance.ts",
+        "--config",
+        "/private/tmp/fn143-control-metal-01/lifecycle-qa/cold-default/run.json",
+        "--native"
+      ],
+      "pid": 80616,
+      "exit": 1,
+      "stopReason": null,
+      "wallSeconds": 35.68174008373171,
+      "finalPressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    "peakOwnedRssKiB": 1285376,
+    "comparisons": [
+      {
+        "state": "fresh-process",
+        "block": 0,
+        "result": {
+          "passed": true,
+          "comparedCases": 1,
+          "failures": [],
+          "generatedAnswerChanges": []
+        }
+      },
+      {
+        "state": "resident-model-cold",
+        "block": 0,
+        "result": {
+          "passed": true,
+          "comparedCases": 1,
+          "failures": [],
+          "generatedAnswerChanges": []
+        }
+      },
+      {
+        "state": "post-idle",
+        "block": 0,
+        "result": {
+          "passed": true,
+          "comparedCases": 1,
+          "failures": [],
+          "generatedAnswerChanges": []
+        }
+      }
+    ],
+    "samples": [
+      {
+        "state": "fresh-process",
+        "side": "candidate",
+        "caseId": "repeated",
+        "durationMs": 4532.29175,
+        "stages": {
+          "acquisitionMs": 3384.5110830000003,
+          "preparationMs": 4.5439589999996315,
+          "requestMs": 1143.2367080000004
+        },
+        "modelStateBefore": false,
+        "primerCaseId": null,
+        "idleMs": 0,
+        "beforeIdle": null,
+        "afterIdle": null,
+        "errors": [],
+        "overlap": null,
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      },
+      {
+        "state": "fresh-process",
+        "side": "baseline",
+        "caseId": "repeated",
+        "durationMs": 4431.212875,
+        "stages": {
+          "acquisitionMs": 3399.834,
+          "preparationMs": 3.9554580000003625,
+          "requestMs": 1027.423417
+        },
+        "modelStateBefore": false,
+        "primerCaseId": null,
+        "idleMs": 0,
+        "beforeIdle": null,
+        "afterIdle": null,
+        "errors": [],
+        "overlap": null,
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      },
+      {
+        "state": "resident-model-cold",
+        "side": "candidate",
+        "caseId": "repeated",
+        "durationMs": 1051.8472500000007,
+        "stages": {
+          "acquisitionMs": 3380.554875,
+          "preparationMs": 4.1272919999992155,
+          "requestMs": 1051.8472500000007
+        },
+        "modelStateBefore": false,
+        "primerCaseId": null,
+        "idleMs": 0,
+        "beforeIdle": null,
+        "afterIdle": null,
+        "errors": [],
+        "overlap": null,
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      },
+      {
+        "state": "resident-model-cold",
+        "side": "baseline",
+        "caseId": "repeated",
+        "durationMs": 1261.5896670000002,
+        "stages": {
+          "acquisitionMs": 3375.197042,
+          "preparationMs": 4.20770800000173,
+          "requestMs": 1261.5896670000002
+        },
+        "modelStateBefore": false,
+        "primerCaseId": null,
+        "idleMs": 0,
+        "beforeIdle": null,
+        "afterIdle": null,
+        "errors": [],
+        "overlap": null,
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      },
+      {
+        "state": "post-idle",
+        "side": "candidate",
+        "caseId": "repeated",
+        "durationMs": 112.6070839999993,
+        "stages": {
+          "acquisitionMs": 3423.093499999999,
+          "preparationMs": 3557.5831660000003,
+          "requestMs": 112.6070839999993
+        },
+        "modelStateBefore": true,
+        "primerCaseId": "repeated",
+        "idleMs": 2500,
+        "beforeIdle": {
+          "elapsedMs": 4460.827083,
+          "rssBytes": 959971328,
+          "gpuBytes": null,
+          "pids": [
+            80855
+          ],
+          "errors": []
+        },
+        "afterIdle": {
+          "elapsedMs": 6964.884249999999,
+          "rssBytes": 939327488,
+          "gpuBytes": null,
+          "pids": [
+            80855
+          ],
+          "errors": []
+        },
+        "errors": [],
+        "overlap": null,
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      },
+      {
+        "state": "post-idle",
+        "side": "baseline",
+        "caseId": "repeated",
+        "durationMs": 94.63541700000496,
+        "stages": {
+          "acquisitionMs": 3428.9452920000003,
+          "preparationMs": 3751.535415999999,
+          "requestMs": 94.63541700000496
+        },
+        "modelStateBefore": true,
+        "primerCaseId": "repeated",
+        "idleMs": 2500,
+        "beforeIdle": {
+          "elapsedMs": 4670.952334000001,
+          "rssBytes": 894812160,
+          "gpuBytes": null,
+          "pids": [
+            80972
+          ],
+          "errors": []
+        },
+        "afterIdle": {
+          "elapsedMs": 7173.998291999997,
+          "rssBytes": 894615552,
+          "gpuBytes": null,
+          "pids": [
+            80972
+          ],
+          "errors": []
+        },
+        "errors": [],
+        "overlap": null,
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      }
+    ]
+  },
+  "warm": {
+    "status": "inconclusive",
+    "watchdog": {
+      "command": [
+        "/tmp/gno-native-tools-1314.KrONBb/bun-darwin-aarch64/bun",
+        "/tmp/gno-native-baseline-20260905.VQtXt5/source/scripts/retrieval-acceptance.ts",
+        "--config",
+        "/private/tmp/fn143-control-metal-01/lifecycle-qa/warm/run.json",
+        "--native"
+      ],
+      "pid": 79245,
+      "exit": 1,
+      "stopReason": null,
+      "wallSeconds": 45.69660162460059,
+      "finalPressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    "peakOwnedRssKiB": 2387552,
+    "comparisons": [
+      {
+        "state": "warm",
+        "block": 0,
+        "result": {
+          "passed": true,
+          "comparedCases": 3,
+          "failures": [],
+          "generatedAnswerChanges": []
+        }
+      }
+    ],
+    "samples": [
+      {
+        "state": "warm",
+        "side": "candidate",
+        "caseId": "repeated",
+        "durationMs": 64.3402500000002,
+        "stages": {
+          "acquisitionMs": 3373.391417,
+          "preparationMs": 1031.9049999999997,
+          "requestMs": 64.3402500000002
+        },
+        "modelStateBefore": true,
+        "primerCaseId": "repeated",
+        "idleMs": 0,
+        "beforeIdle": null,
+        "afterIdle": null,
+        "errors": [],
+        "overlap": null,
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      },
+      {
+        "state": "warm",
+        "side": "candidate",
+        "caseId": "novel",
+        "durationMs": 69.55908299999828,
+        "stages": {
+          "acquisitionMs": 3392.0644159999993,
+          "preparationMs": 1121.1019590000014,
+          "requestMs": 69.55908299999828
+        },
+        "modelStateBefore": true,
+        "primerCaseId": "repeated",
+        "idleMs": 0,
+        "beforeIdle": null,
+        "afterIdle": null,
+        "errors": [],
+        "overlap": null,
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      },
+      {
+        "state": "warm",
+        "side": "candidate",
+        "caseId": "overlap",
+        "durationMs": 64.09679200000028,
+        "stages": {
+          "acquisitionMs": 3428.826333000001,
+          "preparationMs": 1368.427749999999,
+          "requestMs": 64.09679200000028
+        },
+        "modelStateBefore": true,
+        "primerCaseId": "overlap",
+        "idleMs": 0,
+        "beforeIdle": null,
+        "afterIdle": null,
+        "errors": [],
+        "overlap": {
+          "kind": "two-owned-sessions",
+          "caseId": "novel",
+          "processId": 79416,
+          "processIdentity": {
+            "pid": 79416,
+            "runId": "57144efe-d677-43b0-b039-040dcdf0f1c4",
+            "sourceRoot": "/private/tmp/gno-native-baseline-20260905.VQtXt5/source",
+            "startedAt": "2026-09-05T00:46:49.793Z",
+            "directory": "/private/tmp/fn143-control-metal-01/lifecycle-qa/warm/candidate/protocol/session-WbTpGx",
+            "preflightMs": 3315.7117909999997
+          },
+          "durationMs": 7527.855292,
+          "overlappingMs": 64.09679200000028
+        },
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      },
+      {
+        "state": "warm",
+        "side": "baseline",
+        "caseId": "repeated",
+        "durationMs": 62.634500000000116,
+        "stages": {
+          "acquisitionMs": 3176.2337079999998,
+          "preparationMs": 1088.304250000001,
+          "requestMs": 62.634500000000116
+        },
+        "modelStateBefore": true,
+        "primerCaseId": "repeated",
+        "idleMs": 0,
+        "beforeIdle": null,
+        "afterIdle": null,
+        "errors": [],
+        "overlap": null,
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      },
+      {
+        "state": "warm",
+        "side": "baseline",
+        "caseId": "novel",
+        "durationMs": 73.71745899999951,
+        "stages": {
+          "acquisitionMs": 3410.3682079999962,
+          "preparationMs": 1032.6031250000015,
+          "requestMs": 73.71745899999951
+        },
+        "modelStateBefore": true,
+        "primerCaseId": "repeated",
+        "idleMs": 0,
+        "beforeIdle": null,
+        "afterIdle": null,
+        "errors": [],
+        "overlap": null,
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      },
+      {
+        "state": "warm",
+        "side": "baseline",
+        "caseId": "overlap",
+        "durationMs": 67.04504099999758,
+        "stages": {
+          "acquisitionMs": 3461.7519580000007,
+          "preparationMs": 1204.716542000002,
+          "requestMs": 67.04504099999758
+        },
+        "modelStateBefore": true,
+        "primerCaseId": "overlap",
+        "idleMs": 0,
+        "beforeIdle": null,
+        "afterIdle": null,
+        "errors": [],
+        "overlap": {
+          "kind": "two-owned-sessions",
+          "caseId": "novel",
+          "processId": 79770,
+          "processIdentity": {
+            "pid": 79770,
+            "runId": "a47941f0-9035-4a6e-99a5-1d9ef0ee16d7",
+            "sourceRoot": "/private/tmp/gno-native-baseline-20260905.VQtXt5/source",
+            "startedAt": "2026-09-05T00:47:14.486Z",
+            "directory": "/private/tmp/fn143-control-metal-01/lifecycle-qa/warm/baseline/protocol/session-hscpUD",
+            "preflightMs": 3338.549917
+          },
+          "durationMs": 748.7530000000042,
+          "overlappingMs": 67.04504099999758
+        },
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      }
+    ]
+  },
+  "ttl1200": {
+    "status": "inconclusive",
+    "watchdog": {
+      "command": [
+        "/tmp/gno-native-tools-1314.KrONBb/bun-darwin-aarch64/bun",
+        "/tmp/gno-native-baseline-20260905.VQtXt5/source/scripts/retrieval-acceptance.ts",
+        "--config",
+        "/private/tmp/fn143-control-metal-01/lifecycle-qa/ttl1200/run.json",
+        "--native"
+      ],
+      "pid": 81364,
+      "exit": 1,
+      "stopReason": null,
+      "wallSeconds": 17.961014417000115,
+      "finalPressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    "peakOwnedRssKiB": 1424064,
+    "comparisons": [
+      {
+        "state": "post-idle",
+        "block": 0,
+        "result": {
+          "passed": true,
+          "comparedCases": 1,
+          "failures": [],
+          "generatedAnswerChanges": []
+        }
+      }
+    ],
+    "samples": [
+      {
+        "state": "post-idle",
+        "side": "candidate",
+        "caseId": "repeated",
+        "durationMs": 661.9934170000006,
+        "stages": {
+          "acquisitionMs": 3378.2267910000005,
+          "preparationMs": 3528.933499999999,
+          "requestMs": 661.9934170000006
+        },
+        "modelStateBefore": false,
+        "primerCaseId": "repeated",
+        "idleMs": 2500,
+        "beforeIdle": {
+          "elapsedMs": 4393.719666,
+          "rssBytes": 976404480,
+          "gpuBytes": null,
+          "pids": [
+            81375
+          ],
+          "errors": []
+        },
+        "afterIdle": {
+          "elapsedMs": 6896.3126250000005,
+          "rssBytes": 364756992,
+          "gpuBytes": null,
+          "pids": [
+            81375
+          ],
+          "errors": []
+        },
+        "errors": [],
+        "overlap": null,
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      },
+      {
+        "state": "post-idle",
+        "side": "baseline",
+        "caseId": "repeated",
+        "durationMs": 577.4933339999989,
+        "stages": {
+          "acquisitionMs": 3382.8757499999992,
+          "preparationMs": 3474.7180000000008,
+          "requestMs": 577.4933339999989
+        },
+        "modelStateBefore": false,
+        "primerCaseId": "repeated",
+        "idleMs": 2500,
+        "beforeIdle": {
+          "elapsedMs": 4335.188582999999,
+          "rssBytes": 900972544,
+          "gpuBytes": null,
+          "pids": [
+            81594
+          ],
+          "errors": []
+        },
+        "afterIdle": {
+          "elapsedMs": 6839.822875,
+          "rssBytes": 288899072,
+          "gpuBytes": null,
+          "pids": [
+            81594
+          ],
+          "errors": []
+        },
+        "errors": [],
+        "overlap": null,
+        "semanticState": {
+          "status": "ok",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": null,
+          "fallbacks": [],
+          "verification": null
+        }
+      }
+    ]
+  }
+}

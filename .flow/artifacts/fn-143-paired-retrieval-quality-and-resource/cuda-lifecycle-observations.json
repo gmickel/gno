@@ -1,0 +1,545 @@
+{
+  "scope": "supplemental same-source CUDA; no promotion",
+  "scenarios": [
+    {
+      "scenario": "cold",
+      "status": "incomplete",
+      "observations": 1,
+      "comparisons": [
+        {
+          "state": "fresh-process",
+          "passed": true,
+          "failures": []
+        },
+        {
+          "state": "resident-model-cold",
+          "passed": false,
+          "failures": [
+            {
+              "caseId": "cuda-state-cold",
+              "field": "record",
+              "reason": "Missing candidate case"
+            }
+          ]
+        }
+      ],
+      "samples": [
+        {
+          "side": "candidate",
+          "state": "fresh-process",
+          "caseId": "cuda-state-cold",
+          "durationMs": 5828.180738,
+          "modelStateBefore": false,
+          "beforeIdle": null,
+          "afterIdle": null,
+          "primerCaseId": null,
+          "overlap": null,
+          "errors": [],
+          "nativeEvidence": {
+            "pid": 3715405,
+            "runId": "a8732f3d-0403-4bf8-ac27-62358e740377",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:49:21.126Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/cold/candidate/protocol/session-YqR3za",
+            "preflightMs": 3441.499168
+          }
+        },
+        {
+          "side": "baseline",
+          "state": "fresh-process",
+          "caseId": "cuda-state-cold",
+          "durationMs": 5776.860140000001,
+          "modelStateBefore": false,
+          "beforeIdle": null,
+          "afterIdle": null,
+          "primerCaseId": null,
+          "overlap": null,
+          "errors": [],
+          "nativeEvidence": {
+            "pid": 3715727,
+            "runId": "fadd1423-80c4-49ac-933a-15c6b2f74413",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:49:27.135Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/cold/baseline/protocol/session-rA3XEh",
+            "preflightMs": 3364.766302
+          }
+        },
+        {
+          "side": "candidate",
+          "state": "resident-model-cold",
+          "caseId": "cuda-state-cold",
+          "durationMs": null,
+          "modelStateBefore": false,
+          "beforeIdle": null,
+          "afterIdle": null,
+          "primerCaseId": null,
+          "overlap": null,
+          "errors": [
+            "Error: Session process exited (134)",
+            "Error: Owned PID RSS sample unavailable"
+          ],
+          "nativeEvidence": {
+            "pid": 3715989,
+            "runId": "5e97f503-7796-4ca3-a172-2b2621cb25bf",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:49:33.100Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/cold/candidate/protocol/session-lUMdOP",
+            "preflightMs": 3362.555944
+          }
+        },
+        {
+          "side": "baseline",
+          "state": "resident-model-cold",
+          "caseId": "cuda-state-cold",
+          "durationMs": 2302.957042000002,
+          "modelStateBefore": false,
+          "beforeIdle": null,
+          "afterIdle": null,
+          "primerCaseId": null,
+          "overlap": null,
+          "errors": [],
+          "nativeEvidence": {
+            "pid": 3716654,
+            "runId": "1dab1c01-edd4-4688-970f-f136864004a2",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:49:47.680Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/cold/baseline/protocol/session-NkoSzW",
+            "preflightMs": 3351.9201949999997
+          }
+        }
+      ],
+      "watchdog": {
+        "command": [
+          "bun",
+          "/home/gordon/work/gno/scripts/retrieval-acceptance.ts",
+          "--config",
+          "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/cold/run.json",
+          "--native"
+        ],
+        "pid": 3715337,
+        "exit": 1,
+        "stopReason": null,
+        "wallSeconds": 35.28385422611609,
+        "finalPressure": null
+      },
+      "reportPath": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/cold/report.json"
+    },
+    {
+      "scenario": "post-idle-default",
+      "status": "inconclusive",
+      "observations": 1,
+      "comparisons": [
+        {
+          "state": "post-idle",
+          "passed": true,
+          "failures": []
+        }
+      ],
+      "samples": [
+        {
+          "side": "candidate",
+          "state": "post-idle",
+          "caseId": "cuda-state-post-idle-default",
+          "durationMs": 252.19630700000016,
+          "modelStateBefore": true,
+          "beforeIdle": {
+            "elapsedMs": 5747.119993,
+            "rssBytes": 1736355840,
+            "gpuBytes": 1715470336,
+            "pids": [
+              3717205
+            ],
+            "errors": []
+          },
+          "afterIdle": {
+            "elapsedMs": 8267.351524,
+            "rssBytes": 1644097536,
+            "gpuBytes": 1715470336,
+            "pids": [
+              3717205
+            ],
+            "errors": []
+          },
+          "primerCaseId": "cuda-state-post-idle-default",
+          "overlap": null,
+          "errors": [],
+          "nativeEvidence": {
+            "pid": 3717205,
+            "runId": "ea81c6e2-90b5-46d8-b42a-185f1bdef721",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:50:13.970Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/post-idle-default/candidate/protocol/session-x5XrOV",
+            "preflightMs": 3399.1429
+          }
+        },
+        {
+          "side": "baseline",
+          "state": "post-idle",
+          "caseId": "cuda-state-post-idle-default",
+          "durationMs": 249.67091900000014,
+          "modelStateBefore": true,
+          "beforeIdle": {
+            "elapsedMs": 5708.124651,
+            "rssBytes": 1761230848,
+            "gpuBytes": 1715470336,
+            "pids": [
+              3717635
+            ],
+            "errors": []
+          },
+          "afterIdle": {
+            "elapsedMs": 8229.194689,
+            "rssBytes": 1672802304,
+            "gpuBytes": 1715470336,
+            "pids": [
+              3717635
+            ],
+            "errors": []
+          },
+          "primerCaseId": "cuda-state-post-idle-default",
+          "overlap": null,
+          "errors": [],
+          "nativeEvidence": {
+            "pid": 3717635,
+            "runId": "c85bb372-0d0c-4bfa-819e-c4221869f1e7",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:50:22.722Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/post-idle-default/baseline/protocol/session-pbXcMd",
+            "preflightMs": 3352.890348
+          }
+        }
+      ],
+      "watchdog": {
+        "command": [
+          "bun",
+          "/home/gordon/work/gno/scripts/retrieval-acceptance.ts",
+          "--config",
+          "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/post-idle-default/run.json",
+          "--native"
+        ],
+        "pid": 3717170,
+        "exit": 1,
+        "stopReason": null,
+        "wallSeconds": 20.103540193056688,
+        "finalPressure": null
+      },
+      "reportPath": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/post-idle-default/report.json"
+    },
+    {
+      "scenario": "post-idle-expiry",
+      "status": "inconclusive",
+      "observations": 1,
+      "comparisons": [
+        {
+          "state": "post-idle",
+          "passed": true,
+          "failures": []
+        }
+      ],
+      "samples": [
+        {
+          "side": "candidate",
+          "state": "post-idle",
+          "caseId": "cuda-state-post-idle-expiry",
+          "durationMs": 1605.565471,
+          "modelStateBefore": false,
+          "beforeIdle": {
+            "elapsedMs": 5777.7627139999995,
+            "rssBytes": 1733394432,
+            "gpuBytes": 1715470336,
+            "pids": [
+              3718257
+            ],
+            "errors": []
+          },
+          "afterIdle": {
+            "elapsedMs": 8799.639841,
+            "rssBytes": 1341853696,
+            "gpuBytes": 448790528,
+            "pids": [
+              3718257
+            ],
+            "errors": []
+          },
+          "primerCaseId": "cuda-state-post-idle-expiry",
+          "overlap": null,
+          "errors": [],
+          "nativeEvidence": {
+            "pid": 3718257,
+            "runId": "d08f8ac6-30dd-4952-a90c-31322cb16c73",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:50:50.691Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/post-idle-expiry/candidate/protocol/session-86REqN",
+            "preflightMs": 3378.5276179999996
+          }
+        },
+        {
+          "side": "baseline",
+          "state": "post-idle",
+          "caseId": "cuda-state-post-idle-expiry",
+          "durationMs": 1679.9384309999987,
+          "modelStateBefore": false,
+          "beforeIdle": {
+            "elapsedMs": 5751.069220000001,
+            "rssBytes": 1853509632,
+            "gpuBytes": 1715470336,
+            "pids": [
+              3718933
+            ],
+            "errors": []
+          },
+          "afterIdle": {
+            "elapsedMs": 8772.172899000001,
+            "rssBytes": 1416896512,
+            "gpuBytes": 448790528,
+            "pids": [
+              3718933
+            ],
+            "errors": []
+          },
+          "primerCaseId": "cuda-state-post-idle-expiry",
+          "overlap": null,
+          "errors": [],
+          "nativeEvidence": {
+            "pid": 3718933,
+            "runId": "3e534e8d-239c-4840-b9c0-00cef23a8c75",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:51:01.361Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/post-idle-expiry/baseline/protocol/session-AFHmRR",
+            "preflightMs": 3349.806621
+          }
+        }
+      ],
+      "watchdog": {
+        "command": [
+          "bun",
+          "/home/gordon/work/gno/scripts/retrieval-acceptance.ts",
+          "--config",
+          "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/post-idle-expiry/run.json",
+          "--native"
+        ],
+        "pid": 3718208,
+        "exit": 1,
+        "stopReason": null,
+        "wallSeconds": 23.97757694707252,
+        "finalPressure": null
+      },
+      "reportPath": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/post-idle-expiry/report.json"
+    },
+    {
+      "scenario": "novel",
+      "status": "incomplete",
+      "observations": 1,
+      "comparisons": [
+        {
+          "state": "warm",
+          "passed": false,
+          "failures": [
+            {
+              "caseId": "cuda-state-novel-target",
+              "field": "record",
+              "reason": "Missing baseline case"
+            }
+          ]
+        }
+      ],
+      "samples": [
+        {
+          "side": "candidate",
+          "state": "warm",
+          "caseId": "cuda-state-novel-primer",
+          "durationMs": 267.5460059999996,
+          "modelStateBefore": true,
+          "beforeIdle": null,
+          "afterIdle": null,
+          "primerCaseId": "cuda-state-novel-primer",
+          "overlap": null,
+          "errors": [],
+          "nativeEvidence": {
+            "pid": 3722947,
+            "runId": "5ee1d343-c3f1-45ff-8fa5-2a1d89469e3a",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:51:31.961Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/novel/candidate/protocol/session-wFL3nd",
+            "preflightMs": 3410.303918
+          }
+        },
+        {
+          "side": "candidate",
+          "state": "warm",
+          "caseId": "cuda-state-novel-target",
+          "durationMs": 264.5118310000016,
+          "modelStateBefore": true,
+          "beforeIdle": null,
+          "afterIdle": null,
+          "primerCaseId": "cuda-state-novel-primer",
+          "overlap": null,
+          "errors": [],
+          "nativeEvidence": {
+            "pid": 3723211,
+            "runId": "084b7bf1-6c92-485b-bdc6-1b2bbf778fdd",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:51:38.273Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/novel/candidate/protocol/session-63ktNy",
+            "preflightMs": 3359.686475
+          }
+        },
+        {
+          "side": "baseline",
+          "state": "warm",
+          "caseId": "cuda-state-novel-primer",
+          "durationMs": 261.74179000000004,
+          "modelStateBefore": true,
+          "beforeIdle": null,
+          "afterIdle": null,
+          "primerCaseId": "cuda-state-novel-primer",
+          "overlap": null,
+          "errors": [],
+          "nativeEvidence": {
+            "pid": 3723484,
+            "runId": "8ac5cab7-7a6f-41db-a11c-0c570bb2fce0",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:51:44.517Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/novel/baseline/protocol/session-HbeERe",
+            "preflightMs": 3365.401194
+          }
+        },
+        {
+          "side": "baseline",
+          "state": "warm",
+          "caseId": "cuda-state-novel-target",
+          "durationMs": null,
+          "modelStateBefore": null,
+          "beforeIdle": null,
+          "afterIdle": null,
+          "primerCaseId": "cuda-state-novel-primer",
+          "overlap": null,
+          "errors": [
+            "Error: Session process exited (134)",
+            "Error: Owned PID RSS sample unavailable"
+          ],
+          "nativeEvidence": {
+            "pid": 3723777,
+            "runId": "9825b6e9-ce72-4a02-bc3b-2e7731a13421",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:51:50.774Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/novel/baseline/protocol/session-MsMV5x",
+            "preflightMs": 3349.1104530000002
+          }
+        }
+      ],
+      "watchdog": {
+        "command": [
+          "bun",
+          "/home/gordon/work/gno/scripts/retrieval-acceptance.ts",
+          "--config",
+          "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/novel/run.json",
+          "--native"
+        ],
+        "pid": 3722889,
+        "exit": 1,
+        "stopReason": null,
+        "wallSeconds": 39.67221396812238,
+        "finalPressure": null
+      },
+      "reportPath": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/novel/report.json"
+    },
+    {
+      "scenario": "overlap",
+      "status": "inconclusive",
+      "observations": 1,
+      "comparisons": [
+        {
+          "state": "fresh-process",
+          "passed": true,
+          "failures": []
+        }
+      ],
+      "samples": [
+        {
+          "side": "candidate",
+          "state": "fresh-process",
+          "caseId": "cuda-state-overlap",
+          "durationMs": 6127.674405000001,
+          "modelStateBefore": false,
+          "beforeIdle": null,
+          "afterIdle": null,
+          "primerCaseId": null,
+          "overlap": {
+            "kind": "two-owned-sessions",
+            "caseId": "cuda-state-overlap",
+            "processId": 3724797,
+            "processIdentity": {
+              "pid": 3724797,
+              "runId": "e727554f-381e-46e6-b9d0-7cede5927760",
+              "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+              "startedAt": "2026-09-05T00:52:20.667Z",
+              "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/overlap/candidate/protocol/session-WgnH4v",
+              "preflightMs": 3430.157361
+            },
+            "durationMs": 2541.9905640000006,
+            "overlappingMs": 2541.890972
+          },
+          "errors": [],
+          "nativeEvidence": {
+            "pid": 3724871,
+            "runId": "79d5d7d0-12c2-4142-bfd4-3b4a4eb85455",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:52:24.206Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/overlap/candidate/protocol/session-Dybqr0",
+            "preflightMs": 3438.321647
+          }
+        },
+        {
+          "side": "baseline",
+          "state": "fresh-process",
+          "caseId": "cuda-state-overlap",
+          "durationMs": 6194.261101999999,
+          "modelStateBefore": false,
+          "beforeIdle": null,
+          "afterIdle": null,
+          "primerCaseId": null,
+          "overlap": {
+            "kind": "two-owned-sessions",
+            "caseId": "cuda-state-overlap",
+            "processId": 3725230,
+            "processIdentity": {
+              "pid": 3725230,
+              "runId": "af35dfcc-46c1-4b4b-a58e-016ef92df4c2",
+              "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+              "startedAt": "2026-09-05T00:52:30.662Z",
+              "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/overlap/baseline/protocol/session-0ONHq2",
+              "preflightMs": 3378.726695
+            },
+            "durationMs": 2615.4833480000016,
+            "overlappingMs": 2615.437568000001
+          },
+          "errors": [],
+          "nativeEvidence": {
+            "pid": 3725337,
+            "runId": "20854b56-55b1-47ba-9667-4f7865dc12c6",
+            "sourceRoot": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/snapshot-source",
+            "startedAt": "2026-09-05T00:52:34.155Z",
+            "directory": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/overlap/baseline/protocol/session-mUSEeO",
+            "preflightMs": 3435.474329
+          }
+        }
+      ],
+      "watchdog": {
+        "command": [
+          "bun",
+          "/home/gordon/work/gno/scripts/retrieval-acceptance.ts",
+          "--config",
+          "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/overlap/run.json",
+          "--native"
+        ],
+        "pid": 3724761,
+        "exit": 1,
+        "stopReason": null,
+        "wallSeconds": 22.63007869105786,
+        "finalPressure": null
+      },
+      "reportPath": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/overlap/report.json"
+    }
+  ]
+}

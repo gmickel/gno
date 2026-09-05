@@ -1,0 +1,25 @@
+{
+  "coverage": [
+    "complete",
+    "complete"
+  ],
+  "unchanged": {
+    "passed": true,
+    "comparedCases": 1,
+    "failures": [],
+    "generatedAnswerChanges": []
+  },
+  "negative": {
+    "passed": false,
+    "comparedCases": 1,
+    "failures": [
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "field": "deterministic.semanticState.verification.capsule.evidence[0].text",
+        "reason": "Unexplained deterministic difference"
+      }
+    ],
+    "generatedAnswerChanges": []
+  },
+  "negativeDetected": true
+}
