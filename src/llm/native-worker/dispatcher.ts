@@ -26,7 +26,7 @@ export class NativeDispatcher {
   private readonly ports = new Map<string, Port>();
   private readonly files = new Map<
     string,
-    { identity: string; fingerprint?: string }
+    { path: string; identity: string; fingerprint?: string }
   >();
   // The process owns expiry. Disable independent model timers while it is alive.
   private readonly lease;
@@ -51,12 +51,17 @@ export class NativeDispatcher {
       throw new NativeWorkerError("protocol");
     }
     const existing = this.ports.get(model.id);
+    // ModelManager retains weights by URI after a port disposes its contexts.
+    // Keep provenance at that same lifetime, not at the shorter port lifetime.
+    const file = this.files.get(model.modelUri);
     const identity = await fileIdentity(model.path);
-    if (existing && this.files.get(model.id)?.identity !== identity)
+    if (file && (file.path !== model.path || file.identity !== identity))
       throw new NativeWorkerError("stale_generation");
     if (existing) return existing;
     const fingerprint =
-      model.type === "embed" ? await fingerprintModel(model.path) : undefined;
+      model.type === "embed"
+        ? (file?.fingerprint ?? (await fingerprintModel(model.path)))
+        : file?.fingerprint;
     if (identity !== (await fileIdentity(model.path)))
       throw new NativeWorkerError("stale_generation");
     const Constructor =
@@ -67,7 +72,7 @@ export class NativeDispatcher {
           : NodeLlamaCppGeneration;
     const port = new Constructor(this.manager, model.modelUri, model.path);
     this.ports.set(model.id, port);
-    this.files.set(model.id, { identity, fingerprint });
+    this.files.set(model.modelUri, { path: model.path, identity, fingerprint });
     return port;
   }
 
@@ -80,6 +85,15 @@ export class NativeDispatcher {
     if (!model) throw new NativeWorkerError("protocol");
     const before = this.manager.getLifecycleStats().loadAttempts;
     const result = await this.run(request, model);
+    // Lazy loads and inference may outlive a file mutation. Never publish their
+    // completion under provenance that no longer matches the approved artifact.
+    if (
+      request.op !== "dispose" &&
+      ((await realpath(model.path)) !== model.path ||
+        this.files.get(model.modelUri)?.identity !==
+          (await fileIdentity(model.path)))
+    )
+      throw new NativeWorkerError("stale_generation");
     return {
       response: {
         version: 1,
@@ -114,7 +128,7 @@ export class NativeDispatcher {
         if (port instanceof NodeLlamaCppEmbedding) {
           const result = await port.init();
           if (!result.ok) return result;
-          const file = this.files.get(model.id);
+          const file = this.files.get(model.modelUri);
           if (
             !file?.fingerprint ||
             file.identity !== (await fileIdentity(model.path))

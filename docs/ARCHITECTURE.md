@@ -118,6 +118,15 @@ and reloads its models. Resident model counters are the latest child-reported
 snapshot, not live memory readings. Retired generations expose zero active/loaded
 counts; their historical counters remain until the next generation.
 
+Embedding weight fingerprints are reused within the owning child generation
+while the model file's device, inode, size, modification time and change time
+remain identical. Disposing a port releases its contexts but retains this
+provenance with the ModelManager's cached weights, avoiding another full-file
+hash for the next query. File identity is checked around hashing, model loading
+and inference. A changed or replaced artifact invalidates the child rather than
+attaching a new fingerprint to retained old weights; a later independent request
+loads and fingerprints the artifact in a fresh generation.
+
 Resource accounting includes the parent, owned native child and any short-lived
 binding probes. Parent RSS alone omits native costs. Observe child exit and
 platform allocation evidence when measuring reclamation; a zero loaded-model
