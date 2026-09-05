@@ -17,7 +17,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-144-native-recovery-and-idle-inference.md",
-  "status": "open",
+  "status": "done",
   "title": "Native recovery and idle inference reclamation",
   "tracker": {
     "baseHashFlow": null,
@@ -30,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T23:40:07.525082Z"
+  "updated_at": "2026-09-05T04:24:13.302584Z"
 }

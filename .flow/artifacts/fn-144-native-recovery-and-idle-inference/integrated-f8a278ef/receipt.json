@@ -1,0 +1,21 @@
+{
+  "product": "f8a278ef",
+  "tests": {
+    "passed": 5150,
+    "skipped": 2,
+    "failed": 0,
+    "assertions": 41177,
+    "files": 603,
+    "seconds": 226.7
+  },
+  "lint": "pass",
+  "typecheck": "pass",
+  "docs": {
+    "passed": 15,
+    "failed": 0,
+    "skipped": 2
+  },
+  "package": "pass with TMPDIR=/home/gordon/.cache/agent-tmp; initial /tmp quota error -122 retained",
+  "sentinel": "7 files/380866604 bytes SHA256/stat/count unchanged",
+  "native": "separate pinned CUDA and Ivan artifacts; not inferred from CPU tests"
+}
