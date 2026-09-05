@@ -1,0 +1,356 @@
+{
+  "strict": {
+    "passed": true,
+    "comparedCases": 6,
+    "failures": [],
+    "generatedAnswerChanges": []
+  },
+  "pairs": [
+    {
+      "caseId": "short-before",
+      "coverage": [
+        "complete",
+        "complete"
+      ],
+      "reasons": [
+        [],
+        []
+      ],
+      "fullResultsEqual": true,
+      "deterministicRecordEqual": true,
+      "generatedAnswerEqual": true,
+      "modelInputsEqual": true,
+      "modelOutputsEqual": true
+    },
+    {
+      "caseId": "long-resize",
+      "coverage": [
+        "complete",
+        "complete"
+      ],
+      "reasons": [
+        [],
+        []
+      ],
+      "fullResultsEqual": true,
+      "deterministicRecordEqual": true,
+      "generatedAnswerEqual": true,
+      "modelInputsEqual": true,
+      "modelOutputsEqual": true
+    },
+    {
+      "caseId": "short-after",
+      "coverage": [
+        "complete",
+        "complete"
+      ],
+      "reasons": [
+        [],
+        []
+      ],
+      "fullResultsEqual": true,
+      "deterministicRecordEqual": true,
+      "generatedAnswerEqual": true,
+      "modelInputsEqual": true,
+      "modelOutputsEqual": true
+    },
+    {
+      "caseId": "verified-before",
+      "coverage": [
+        "complete",
+        "complete"
+      ],
+      "reasons": [
+        [],
+        []
+      ],
+      "fullResultsEqual": true,
+      "deterministicRecordEqual": true,
+      "generatedAnswerEqual": true,
+      "modelInputsEqual": true,
+      "modelOutputsEqual": true
+    },
+    {
+      "caseId": "short-after-idle",
+      "coverage": [
+        "complete",
+        "complete"
+      ],
+      "reasons": [
+        [],
+        []
+      ],
+      "fullResultsEqual": true,
+      "deterministicRecordEqual": true,
+      "generatedAnswerEqual": true,
+      "modelInputsEqual": true,
+      "modelOutputsEqual": true
+    },
+    {
+      "caseId": "verified-after-idle",
+      "coverage": [
+        "complete",
+        "complete"
+      ],
+      "reasons": [
+        [],
+        []
+      ],
+      "fullResultsEqual": true,
+      "deterministicRecordEqual": true,
+      "generatedAnswerEqual": true,
+      "modelInputsEqual": true,
+      "modelOutputsEqual": true
+    }
+  ],
+  "embeddings": [
+    {
+      "label": "paced-0",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-1",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-2",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-3",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-4",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-5",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-6",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-7",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-8",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-9",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-10",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-11",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-12",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-13",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-14",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-15",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-16",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-17",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-18",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-19",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-20",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-21",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-22",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-23",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-24",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-25",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-26",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-27",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-28",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "paced-29",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    },
+    {
+      "label": "retained-final",
+      "baselineOk": true,
+      "candidateOk": true,
+      "pairedEqual": true,
+      "baselineInitialEqual": true,
+      "candidateInitialEqual": true
+    }
+  ]
+}

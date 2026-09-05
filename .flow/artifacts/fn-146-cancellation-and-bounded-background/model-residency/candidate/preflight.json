@@ -1,0 +1,1234 @@
+{
+  "source": "/home/gordon/.cache/agent-tmp/gno-fn146-model-residency/candidate/distribution/package",
+  "init": {
+    "config": {
+      "version": "1.0",
+      "ftsTokenizer": "unicode61",
+      "busyTimeoutMs": 60000,
+      "collections": [
+        {
+          "name": "probe",
+          "path": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/ask29/corpus/probe",
+          "pattern": "**/*.md",
+          "include": [],
+          "exclude": []
+        }
+      ],
+      "contexts": [],
+      "contentTypes": [],
+      "models": {
+        "activePreset": "qa-pinned",
+        "presets": [
+          {
+            "id": "qa-pinned",
+            "name": "Cached slim-tuned equivalent",
+            "embed": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "rerank": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "expand": "file:/home/gordon/.cache/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+            "gen": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf"
+          }
+        ],
+        "loadTimeout": 60000,
+        "inferenceTimeout": 30000,
+        "expandContextSize": 2048,
+        "warmModelTtl": 1200
+      },
+      "retrievalTraces": {
+        "enabled": true,
+        "redactionMode": "metadata",
+        "retention": {
+          "maxAgeDays": 30,
+          "maxTraces": 1000,
+          "maxRecordsPerTrace": 10000,
+          "maxBytes": 16777216
+        }
+      },
+      "projectAffinity": {
+        "enabled": true,
+        "contribution": 0.03
+      }
+    },
+    "dbPath": "/home/gordon/.cache/agent-tmp/gno-fn146-model-residency/candidate/data/index-default.sqlite",
+    "cacheDir": "/home/gordon/.cache/agent-tmp/gno-fn146-model-residency/candidate/cache"
+  },
+  "opened": {
+    "applied": [
+      28,
+      29
+    ],
+    "currentVersion": 29,
+    "ftsTokenizer": "unicode61"
+  },
+  "attempts": {
+    "native": 0,
+    "spawn": 0,
+    "fetch": 0,
+    "dlopen": 0
+  },
+  "before": {
+    "collections": [
+      "probe"
+    ],
+    "egressLineage": {
+      "effectivePolicy": "local_only",
+      "digest": "6af4a5b8d5ca36edce297d0d096043cb8b4daa233906816f014e453bcdb767b6",
+      "sources": [
+        {
+          "collection": "probe",
+          "policy": "local_only",
+          "source": "config_default"
+        }
+      ]
+    },
+    "contexts": [],
+    "documents": [
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-0.md",
+        "sourceHash": "49ebb14eec86f441d3b373e31f9142c7cedd77aebd5dc42f62e43b22e0eb3ffe",
+        "mirrorHash": "49ebb14eec86f441d3b373e31f9142c7cedd77aebd5dc42f62e43b22e0eb3ffe"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-1.md",
+        "sourceHash": "672e9717783cd4f173ffe93f909195faf82347e2113bc4f6b6b05344e8d1df19",
+        "mirrorHash": "672e9717783cd4f173ffe93f909195faf82347e2113bc4f6b6b05344e8d1df19"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-10.md",
+        "sourceHash": "338cb57e856c8b05bb04e720b339067601588afa77d5720efac88d8094c41779",
+        "mirrorHash": "338cb57e856c8b05bb04e720b339067601588afa77d5720efac88d8094c41779"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-11.md",
+        "sourceHash": "5f5cd18ae5e1ed5de94bb68db8acebb540a2a4e373198d2e9e558380f4dceb1a",
+        "mirrorHash": "5f5cd18ae5e1ed5de94bb68db8acebb540a2a4e373198d2e9e558380f4dceb1a"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-12.md",
+        "sourceHash": "c9992e73022d5b5759ac83fd78f735d0ee9f7fe8227623c811bd34f4f92f6d6a",
+        "mirrorHash": "c9992e73022d5b5759ac83fd78f735d0ee9f7fe8227623c811bd34f4f92f6d6a"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-13.md",
+        "sourceHash": "ed9a5603c0439b08fcaf5f77880e60eab327e025836173179e6a4cb9cc5b21c5",
+        "mirrorHash": "ed9a5603c0439b08fcaf5f77880e60eab327e025836173179e6a4cb9cc5b21c5"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-14.md",
+        "sourceHash": "2ef784dfe2acce75468c0622418bfe73b9ff8aae79448cabf8d8b38a0d6682b4",
+        "mirrorHash": "2ef784dfe2acce75468c0622418bfe73b9ff8aae79448cabf8d8b38a0d6682b4"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-15.md",
+        "sourceHash": "fbc15ec7ff6b7fc686debd5fbecc20796587be8109de14b5ceacb30b583d67a9",
+        "mirrorHash": "fbc15ec7ff6b7fc686debd5fbecc20796587be8109de14b5ceacb30b583d67a9"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-16.md",
+        "sourceHash": "034412420ae894e36ca0970c3215b12a84a00512ccf396b1e826004a4e3ace8f",
+        "mirrorHash": "034412420ae894e36ca0970c3215b12a84a00512ccf396b1e826004a4e3ace8f"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-17.md",
+        "sourceHash": "9535b69edfe5198216618351a57920daa0e42b26c0f29eb5a50745057ff6f306",
+        "mirrorHash": "9535b69edfe5198216618351a57920daa0e42b26c0f29eb5a50745057ff6f306"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-18.md",
+        "sourceHash": "08b5b69281acd5ea153242664b91383d6ae7c7c5f12ec929f4378e1fb74440ce",
+        "mirrorHash": "08b5b69281acd5ea153242664b91383d6ae7c7c5f12ec929f4378e1fb74440ce"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-19.md",
+        "sourceHash": "a82e7ce489b76bd4fdd1f19c8cf0312984ce2d2cd639c4e9bfb18ac4cbe43d9a",
+        "mirrorHash": "a82e7ce489b76bd4fdd1f19c8cf0312984ce2d2cd639c4e9bfb18ac4cbe43d9a"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-2.md",
+        "sourceHash": "79cab4e378b9ff0e6d7d81b9636683c8592f0f080ab08b799866bfbbd27ee7e3",
+        "mirrorHash": "79cab4e378b9ff0e6d7d81b9636683c8592f0f080ab08b799866bfbbd27ee7e3"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-20.md",
+        "sourceHash": "1157d3144a7039fa17dc40bf6e73a06e970877bd02947b9294168c78f0a001d3",
+        "mirrorHash": "1157d3144a7039fa17dc40bf6e73a06e970877bd02947b9294168c78f0a001d3"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-21.md",
+        "sourceHash": "96ed624aff4259d13fd63ea1642a64c83802b948154aced8132b3fde32a7bb61",
+        "mirrorHash": "96ed624aff4259d13fd63ea1642a64c83802b948154aced8132b3fde32a7bb61"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-22.md",
+        "sourceHash": "847da1d770dad19ccb79a7a986c8877ac2f7b870b4f96ef5192f3297138e1c14",
+        "mirrorHash": "847da1d770dad19ccb79a7a986c8877ac2f7b870b4f96ef5192f3297138e1c14"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-23.md",
+        "sourceHash": "28f0cd378a4d7de93c3d55f21cd5796872ed14cf0f5d38c02c3f2457b63aacbf",
+        "mirrorHash": "28f0cd378a4d7de93c3d55f21cd5796872ed14cf0f5d38c02c3f2457b63aacbf"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-24.md",
+        "sourceHash": "06db77735e80ff4881c4dc622ffccd08e64b2c68311640db67b9f1fdc3e4ddff",
+        "mirrorHash": "06db77735e80ff4881c4dc622ffccd08e64b2c68311640db67b9f1fdc3e4ddff"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-25.md",
+        "sourceHash": "abccf0ca0272878fd6f85ebd7701c30c8253626ab8acb843b862c78cff569e3c",
+        "mirrorHash": "abccf0ca0272878fd6f85ebd7701c30c8253626ab8acb843b862c78cff569e3c"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-26.md",
+        "sourceHash": "d4b8c37351f6e368a5ee351a39f6a64ae05a3adb2569376ff66a2af98b4f6862",
+        "mirrorHash": "d4b8c37351f6e368a5ee351a39f6a64ae05a3adb2569376ff66a2af98b4f6862"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-27.md",
+        "sourceHash": "4196fce6eaac7fad0d47cc57d3a491386eb6c88337ab06f3ca9cbf844471e498",
+        "mirrorHash": "4196fce6eaac7fad0d47cc57d3a491386eb6c88337ab06f3ca9cbf844471e498"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-28.md",
+        "sourceHash": "1a30c713670f1baf184a9b100037225e95f176f46d1940c28297766abcba4818",
+        "mirrorHash": "1a30c713670f1baf184a9b100037225e95f176f46d1940c28297766abcba4818"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-29.md",
+        "sourceHash": "d3f62bc1b01179ab4284e3610966f7c08722da5c166e9393071edff547635b08",
+        "mirrorHash": "d3f62bc1b01179ab4284e3610966f7c08722da5c166e9393071edff547635b08"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-3.md",
+        "sourceHash": "bec0b484cc57ea9461dcb522d0eab254581c8078cff8db6e260b70f5c0ee1a28",
+        "mirrorHash": "bec0b484cc57ea9461dcb522d0eab254581c8078cff8db6e260b70f5c0ee1a28"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-4.md",
+        "sourceHash": "f96a3d739efa848e7bdfe5683574a57d789310af6381e10a75b6de14eeafd8a3",
+        "mirrorHash": "f96a3d739efa848e7bdfe5683574a57d789310af6381e10a75b6de14eeafd8a3"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-5.md",
+        "sourceHash": "8d68425b97979d8f43d727727d94b54f192107c9be14950f6e82473c810d4577",
+        "mirrorHash": "8d68425b97979d8f43d727727d94b54f192107c9be14950f6e82473c810d4577"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-6.md",
+        "sourceHash": "a912cbdfa0c3274f4bae0d81fc5c013477d33794c8086f1b46a1fac908f1eb0f",
+        "mirrorHash": "a912cbdfa0c3274f4bae0d81fc5c013477d33794c8086f1b46a1fac908f1eb0f"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-7.md",
+        "sourceHash": "9003ced8ac6aee413674d2223c65898b7aca1f0cc7f67a552afe6207459cce92",
+        "mirrorHash": "9003ced8ac6aee413674d2223c65898b7aca1f0cc7f67a552afe6207459cce92"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-8.md",
+        "sourceHash": "20c37daaa81828e6f421ee906102833a65366fd5f0f37264b442586179537710",
+        "mirrorHash": "20c37daaa81828e6f421ee906102833a65366fd5f0f37264b442586179537710"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-9.md",
+        "sourceHash": "661e81ef80e4b6050bc0313ce9e8168f21aa7087d9a6cc8949f3ca925158a77a",
+        "mirrorHash": "661e81ef80e4b6050bc0313ce9e8168f21aa7087d9a6cc8949f3ca925158a77a"
+      }
+    ],
+    "contextFingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "indexFingerprint": "3b5c3f40f7fc6a72d662898d5cef55ad6fb10adc0b8fb659ec7e73c49e30802b"
+  },
+  "afterStore": {
+    "collections": [
+      "probe"
+    ],
+    "egressLineage": {
+      "effectivePolicy": "local_only",
+      "digest": "6af4a5b8d5ca36edce297d0d096043cb8b4daa233906816f014e453bcdb767b6",
+      "sources": [
+        {
+          "collection": "probe",
+          "policy": "local_only",
+          "source": "config_default"
+        }
+      ]
+    },
+    "contexts": [],
+    "documents": [
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-0.md",
+        "sourceHash": "49ebb14eec86f441d3b373e31f9142c7cedd77aebd5dc42f62e43b22e0eb3ffe",
+        "mirrorHash": "49ebb14eec86f441d3b373e31f9142c7cedd77aebd5dc42f62e43b22e0eb3ffe"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-1.md",
+        "sourceHash": "672e9717783cd4f173ffe93f909195faf82347e2113bc4f6b6b05344e8d1df19",
+        "mirrorHash": "672e9717783cd4f173ffe93f909195faf82347e2113bc4f6b6b05344e8d1df19"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-10.md",
+        "sourceHash": "338cb57e856c8b05bb04e720b339067601588afa77d5720efac88d8094c41779",
+        "mirrorHash": "338cb57e856c8b05bb04e720b339067601588afa77d5720efac88d8094c41779"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-11.md",
+        "sourceHash": "5f5cd18ae5e1ed5de94bb68db8acebb540a2a4e373198d2e9e558380f4dceb1a",
+        "mirrorHash": "5f5cd18ae5e1ed5de94bb68db8acebb540a2a4e373198d2e9e558380f4dceb1a"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-12.md",
+        "sourceHash": "c9992e73022d5b5759ac83fd78f735d0ee9f7fe8227623c811bd34f4f92f6d6a",
+        "mirrorHash": "c9992e73022d5b5759ac83fd78f735d0ee9f7fe8227623c811bd34f4f92f6d6a"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-13.md",
+        "sourceHash": "ed9a5603c0439b08fcaf5f77880e60eab327e025836173179e6a4cb9cc5b21c5",
+        "mirrorHash": "ed9a5603c0439b08fcaf5f77880e60eab327e025836173179e6a4cb9cc5b21c5"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-14.md",
+        "sourceHash": "2ef784dfe2acce75468c0622418bfe73b9ff8aae79448cabf8d8b38a0d6682b4",
+        "mirrorHash": "2ef784dfe2acce75468c0622418bfe73b9ff8aae79448cabf8d8b38a0d6682b4"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-15.md",
+        "sourceHash": "fbc15ec7ff6b7fc686debd5fbecc20796587be8109de14b5ceacb30b583d67a9",
+        "mirrorHash": "fbc15ec7ff6b7fc686debd5fbecc20796587be8109de14b5ceacb30b583d67a9"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-16.md",
+        "sourceHash": "034412420ae894e36ca0970c3215b12a84a00512ccf396b1e826004a4e3ace8f",
+        "mirrorHash": "034412420ae894e36ca0970c3215b12a84a00512ccf396b1e826004a4e3ace8f"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-17.md",
+        "sourceHash": "9535b69edfe5198216618351a57920daa0e42b26c0f29eb5a50745057ff6f306",
+        "mirrorHash": "9535b69edfe5198216618351a57920daa0e42b26c0f29eb5a50745057ff6f306"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-18.md",
+        "sourceHash": "08b5b69281acd5ea153242664b91383d6ae7c7c5f12ec929f4378e1fb74440ce",
+        "mirrorHash": "08b5b69281acd5ea153242664b91383d6ae7c7c5f12ec929f4378e1fb74440ce"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-19.md",
+        "sourceHash": "a82e7ce489b76bd4fdd1f19c8cf0312984ce2d2cd639c4e9bfb18ac4cbe43d9a",
+        "mirrorHash": "a82e7ce489b76bd4fdd1f19c8cf0312984ce2d2cd639c4e9bfb18ac4cbe43d9a"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-2.md",
+        "sourceHash": "79cab4e378b9ff0e6d7d81b9636683c8592f0f080ab08b799866bfbbd27ee7e3",
+        "mirrorHash": "79cab4e378b9ff0e6d7d81b9636683c8592f0f080ab08b799866bfbbd27ee7e3"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-20.md",
+        "sourceHash": "1157d3144a7039fa17dc40bf6e73a06e970877bd02947b9294168c78f0a001d3",
+        "mirrorHash": "1157d3144a7039fa17dc40bf6e73a06e970877bd02947b9294168c78f0a001d3"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-21.md",
+        "sourceHash": "96ed624aff4259d13fd63ea1642a64c83802b948154aced8132b3fde32a7bb61",
+        "mirrorHash": "96ed624aff4259d13fd63ea1642a64c83802b948154aced8132b3fde32a7bb61"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-22.md",
+        "sourceHash": "847da1d770dad19ccb79a7a986c8877ac2f7b870b4f96ef5192f3297138e1c14",
+        "mirrorHash": "847da1d770dad19ccb79a7a986c8877ac2f7b870b4f96ef5192f3297138e1c14"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-23.md",
+        "sourceHash": "28f0cd378a4d7de93c3d55f21cd5796872ed14cf0f5d38c02c3f2457b63aacbf",
+        "mirrorHash": "28f0cd378a4d7de93c3d55f21cd5796872ed14cf0f5d38c02c3f2457b63aacbf"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-24.md",
+        "sourceHash": "06db77735e80ff4881c4dc622ffccd08e64b2c68311640db67b9f1fdc3e4ddff",
+        "mirrorHash": "06db77735e80ff4881c4dc622ffccd08e64b2c68311640db67b9f1fdc3e4ddff"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-25.md",
+        "sourceHash": "abccf0ca0272878fd6f85ebd7701c30c8253626ab8acb843b862c78cff569e3c",
+        "mirrorHash": "abccf0ca0272878fd6f85ebd7701c30c8253626ab8acb843b862c78cff569e3c"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-26.md",
+        "sourceHash": "d4b8c37351f6e368a5ee351a39f6a64ae05a3adb2569376ff66a2af98b4f6862",
+        "mirrorHash": "d4b8c37351f6e368a5ee351a39f6a64ae05a3adb2569376ff66a2af98b4f6862"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-27.md",
+        "sourceHash": "4196fce6eaac7fad0d47cc57d3a491386eb6c88337ab06f3ca9cbf844471e498",
+        "mirrorHash": "4196fce6eaac7fad0d47cc57d3a491386eb6c88337ab06f3ca9cbf844471e498"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-28.md",
+        "sourceHash": "1a30c713670f1baf184a9b100037225e95f176f46d1940c28297766abcba4818",
+        "mirrorHash": "1a30c713670f1baf184a9b100037225e95f176f46d1940c28297766abcba4818"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-29.md",
+        "sourceHash": "d3f62bc1b01179ab4284e3610966f7c08722da5c166e9393071edff547635b08",
+        "mirrorHash": "d3f62bc1b01179ab4284e3610966f7c08722da5c166e9393071edff547635b08"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-3.md",
+        "sourceHash": "bec0b484cc57ea9461dcb522d0eab254581c8078cff8db6e260b70f5c0ee1a28",
+        "mirrorHash": "bec0b484cc57ea9461dcb522d0eab254581c8078cff8db6e260b70f5c0ee1a28"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-4.md",
+        "sourceHash": "f96a3d739efa848e7bdfe5683574a57d789310af6381e10a75b6de14eeafd8a3",
+        "mirrorHash": "f96a3d739efa848e7bdfe5683574a57d789310af6381e10a75b6de14eeafd8a3"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-5.md",
+        "sourceHash": "8d68425b97979d8f43d727727d94b54f192107c9be14950f6e82473c810d4577",
+        "mirrorHash": "8d68425b97979d8f43d727727d94b54f192107c9be14950f6e82473c810d4577"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-6.md",
+        "sourceHash": "a912cbdfa0c3274f4bae0d81fc5c013477d33794c8086f1b46a1fac908f1eb0f",
+        "mirrorHash": "a912cbdfa0c3274f4bae0d81fc5c013477d33794c8086f1b46a1fac908f1eb0f"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-7.md",
+        "sourceHash": "9003ced8ac6aee413674d2223c65898b7aca1f0cc7f67a552afe6207459cce92",
+        "mirrorHash": "9003ced8ac6aee413674d2223c65898b7aca1f0cc7f67a552afe6207459cce92"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-8.md",
+        "sourceHash": "20c37daaa81828e6f421ee906102833a65366fd5f0f37264b442586179537710",
+        "mirrorHash": "20c37daaa81828e6f421ee906102833a65366fd5f0f37264b442586179537710"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-9.md",
+        "sourceHash": "661e81ef80e4b6050bc0313ce9e8168f21aa7087d9a6cc8949f3ca925158a77a",
+        "mirrorHash": "661e81ef80e4b6050bc0313ce9e8168f21aa7087d9a6cc8949f3ca925158a77a"
+      }
+    ],
+    "contextFingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "indexFingerprint": "86762c89d8d365f4ce58f5287436ddef3b6d4555dbf8a46390d602bb31694e67"
+  },
+  "afterSdk": {
+    "collections": [
+      "probe"
+    ],
+    "egressLineage": {
+      "effectivePolicy": "local_only",
+      "digest": "6af4a5b8d5ca36edce297d0d096043cb8b4daa233906816f014e453bcdb767b6",
+      "sources": [
+        {
+          "collection": "probe",
+          "policy": "local_only",
+          "source": "config_default"
+        }
+      ]
+    },
+    "contexts": [],
+    "documents": [
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-0.md",
+        "sourceHash": "49ebb14eec86f441d3b373e31f9142c7cedd77aebd5dc42f62e43b22e0eb3ffe",
+        "mirrorHash": "49ebb14eec86f441d3b373e31f9142c7cedd77aebd5dc42f62e43b22e0eb3ffe"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-1.md",
+        "sourceHash": "672e9717783cd4f173ffe93f909195faf82347e2113bc4f6b6b05344e8d1df19",
+        "mirrorHash": "672e9717783cd4f173ffe93f909195faf82347e2113bc4f6b6b05344e8d1df19"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-10.md",
+        "sourceHash": "338cb57e856c8b05bb04e720b339067601588afa77d5720efac88d8094c41779",
+        "mirrorHash": "338cb57e856c8b05bb04e720b339067601588afa77d5720efac88d8094c41779"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-11.md",
+        "sourceHash": "5f5cd18ae5e1ed5de94bb68db8acebb540a2a4e373198d2e9e558380f4dceb1a",
+        "mirrorHash": "5f5cd18ae5e1ed5de94bb68db8acebb540a2a4e373198d2e9e558380f4dceb1a"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-12.md",
+        "sourceHash": "c9992e73022d5b5759ac83fd78f735d0ee9f7fe8227623c811bd34f4f92f6d6a",
+        "mirrorHash": "c9992e73022d5b5759ac83fd78f735d0ee9f7fe8227623c811bd34f4f92f6d6a"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-13.md",
+        "sourceHash": "ed9a5603c0439b08fcaf5f77880e60eab327e025836173179e6a4cb9cc5b21c5",
+        "mirrorHash": "ed9a5603c0439b08fcaf5f77880e60eab327e025836173179e6a4cb9cc5b21c5"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-14.md",
+        "sourceHash": "2ef784dfe2acce75468c0622418bfe73b9ff8aae79448cabf8d8b38a0d6682b4",
+        "mirrorHash": "2ef784dfe2acce75468c0622418bfe73b9ff8aae79448cabf8d8b38a0d6682b4"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-15.md",
+        "sourceHash": "fbc15ec7ff6b7fc686debd5fbecc20796587be8109de14b5ceacb30b583d67a9",
+        "mirrorHash": "fbc15ec7ff6b7fc686debd5fbecc20796587be8109de14b5ceacb30b583d67a9"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-16.md",
+        "sourceHash": "034412420ae894e36ca0970c3215b12a84a00512ccf396b1e826004a4e3ace8f",
+        "mirrorHash": "034412420ae894e36ca0970c3215b12a84a00512ccf396b1e826004a4e3ace8f"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-17.md",
+        "sourceHash": "9535b69edfe5198216618351a57920daa0e42b26c0f29eb5a50745057ff6f306",
+        "mirrorHash": "9535b69edfe5198216618351a57920daa0e42b26c0f29eb5a50745057ff6f306"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-18.md",
+        "sourceHash": "08b5b69281acd5ea153242664b91383d6ae7c7c5f12ec929f4378e1fb74440ce",
+        "mirrorHash": "08b5b69281acd5ea153242664b91383d6ae7c7c5f12ec929f4378e1fb74440ce"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-19.md",
+        "sourceHash": "a82e7ce489b76bd4fdd1f19c8cf0312984ce2d2cd639c4e9bfb18ac4cbe43d9a",
+        "mirrorHash": "a82e7ce489b76bd4fdd1f19c8cf0312984ce2d2cd639c4e9bfb18ac4cbe43d9a"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-2.md",
+        "sourceHash": "79cab4e378b9ff0e6d7d81b9636683c8592f0f080ab08b799866bfbbd27ee7e3",
+        "mirrorHash": "79cab4e378b9ff0e6d7d81b9636683c8592f0f080ab08b799866bfbbd27ee7e3"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-20.md",
+        "sourceHash": "1157d3144a7039fa17dc40bf6e73a06e970877bd02947b9294168c78f0a001d3",
+        "mirrorHash": "1157d3144a7039fa17dc40bf6e73a06e970877bd02947b9294168c78f0a001d3"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-21.md",
+        "sourceHash": "96ed624aff4259d13fd63ea1642a64c83802b948154aced8132b3fde32a7bb61",
+        "mirrorHash": "96ed624aff4259d13fd63ea1642a64c83802b948154aced8132b3fde32a7bb61"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-22.md",
+        "sourceHash": "847da1d770dad19ccb79a7a986c8877ac2f7b870b4f96ef5192f3297138e1c14",
+        "mirrorHash": "847da1d770dad19ccb79a7a986c8877ac2f7b870b4f96ef5192f3297138e1c14"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-23.md",
+        "sourceHash": "28f0cd378a4d7de93c3d55f21cd5796872ed14cf0f5d38c02c3f2457b63aacbf",
+        "mirrorHash": "28f0cd378a4d7de93c3d55f21cd5796872ed14cf0f5d38c02c3f2457b63aacbf"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-24.md",
+        "sourceHash": "06db77735e80ff4881c4dc622ffccd08e64b2c68311640db67b9f1fdc3e4ddff",
+        "mirrorHash": "06db77735e80ff4881c4dc622ffccd08e64b2c68311640db67b9f1fdc3e4ddff"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-25.md",
+        "sourceHash": "abccf0ca0272878fd6f85ebd7701c30c8253626ab8acb843b862c78cff569e3c",
+        "mirrorHash": "abccf0ca0272878fd6f85ebd7701c30c8253626ab8acb843b862c78cff569e3c"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-26.md",
+        "sourceHash": "d4b8c37351f6e368a5ee351a39f6a64ae05a3adb2569376ff66a2af98b4f6862",
+        "mirrorHash": "d4b8c37351f6e368a5ee351a39f6a64ae05a3adb2569376ff66a2af98b4f6862"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-27.md",
+        "sourceHash": "4196fce6eaac7fad0d47cc57d3a491386eb6c88337ab06f3ca9cbf844471e498",
+        "mirrorHash": "4196fce6eaac7fad0d47cc57d3a491386eb6c88337ab06f3ca9cbf844471e498"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-28.md",
+        "sourceHash": "1a30c713670f1baf184a9b100037225e95f176f46d1940c28297766abcba4818",
+        "mirrorHash": "1a30c713670f1baf184a9b100037225e95f176f46d1940c28297766abcba4818"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-29.md",
+        "sourceHash": "d3f62bc1b01179ab4284e3610966f7c08722da5c166e9393071edff547635b08",
+        "mirrorHash": "d3f62bc1b01179ab4284e3610966f7c08722da5c166e9393071edff547635b08"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-3.md",
+        "sourceHash": "bec0b484cc57ea9461dcb522d0eab254581c8078cff8db6e260b70f5c0ee1a28",
+        "mirrorHash": "bec0b484cc57ea9461dcb522d0eab254581c8078cff8db6e260b70f5c0ee1a28"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-4.md",
+        "sourceHash": "f96a3d739efa848e7bdfe5683574a57d789310af6381e10a75b6de14eeafd8a3",
+        "mirrorHash": "f96a3d739efa848e7bdfe5683574a57d789310af6381e10a75b6de14eeafd8a3"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-5.md",
+        "sourceHash": "8d68425b97979d8f43d727727d94b54f192107c9be14950f6e82473c810d4577",
+        "mirrorHash": "8d68425b97979d8f43d727727d94b54f192107c9be14950f6e82473c810d4577"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-6.md",
+        "sourceHash": "a912cbdfa0c3274f4bae0d81fc5c013477d33794c8086f1b46a1fac908f1eb0f",
+        "mirrorHash": "a912cbdfa0c3274f4bae0d81fc5c013477d33794c8086f1b46a1fac908f1eb0f"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-7.md",
+        "sourceHash": "9003ced8ac6aee413674d2223c65898b7aca1f0cc7f67a552afe6207459cce92",
+        "mirrorHash": "9003ced8ac6aee413674d2223c65898b7aca1f0cc7f67a552afe6207459cce92"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-8.md",
+        "sourceHash": "20c37daaa81828e6f421ee906102833a65366fd5f0f37264b442586179537710",
+        "mirrorHash": "20c37daaa81828e6f421ee906102833a65366fd5f0f37264b442586179537710"
+      },
+      {
+        "collection": "probe",
+        "uri": "gno://probe/probe-9.md",
+        "sourceHash": "661e81ef80e4b6050bc0313ce9e8168f21aa7087d9a6cc8949f3ca925158a77a",
+        "mirrorHash": "661e81ef80e4b6050bc0313ce9e8168f21aa7087d9a6cc8949f3ca925158a77a"
+      }
+    ],
+    "contextFingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "indexFingerprint": "86762c89d8d365f4ce58f5287436ddef3b6d4555dbf8a46390d602bb31694e67"
+  },
+  "activation": {
+    "identity": {
+      "indexName": "default",
+      "schemaVersion": 29,
+      "ftsTokenizer": "unicode61",
+      "ftsStateHash": "bfc5d5dea46af24a3e3ec48731386cc04dc2c64488f8b54053b904ff52be00b8",
+      "activeDocumentCount": 30,
+      "ftsSynchronized": true
+    },
+    "documents": [
+      {
+        "id": 1,
+        "uri": "gno://probe/probe-0.md",
+        "sourceHash": "49ebb14eec86f441d3b373e31f9142c7cedd77aebd5dc42f62e43b22e0eb3ffe",
+        "mirrorHash": "49ebb14eec86f441d3b373e31f9142c7cedd77aebd5dc42f62e43b22e0eb3ffe",
+        "active": true
+      },
+      {
+        "id": 2,
+        "uri": "gno://probe/probe-1.md",
+        "sourceHash": "672e9717783cd4f173ffe93f909195faf82347e2113bc4f6b6b05344e8d1df19",
+        "mirrorHash": "672e9717783cd4f173ffe93f909195faf82347e2113bc4f6b6b05344e8d1df19",
+        "active": true
+      },
+      {
+        "id": 11,
+        "uri": "gno://probe/probe-10.md",
+        "sourceHash": "338cb57e856c8b05bb04e720b339067601588afa77d5720efac88d8094c41779",
+        "mirrorHash": "338cb57e856c8b05bb04e720b339067601588afa77d5720efac88d8094c41779",
+        "active": true
+      },
+      {
+        "id": 12,
+        "uri": "gno://probe/probe-11.md",
+        "sourceHash": "5f5cd18ae5e1ed5de94bb68db8acebb540a2a4e373198d2e9e558380f4dceb1a",
+        "mirrorHash": "5f5cd18ae5e1ed5de94bb68db8acebb540a2a4e373198d2e9e558380f4dceb1a",
+        "active": true
+      },
+      {
+        "id": 13,
+        "uri": "gno://probe/probe-12.md",
+        "sourceHash": "c9992e73022d5b5759ac83fd78f735d0ee9f7fe8227623c811bd34f4f92f6d6a",
+        "mirrorHash": "c9992e73022d5b5759ac83fd78f735d0ee9f7fe8227623c811bd34f4f92f6d6a",
+        "active": true
+      },
+      {
+        "id": 14,
+        "uri": "gno://probe/probe-13.md",
+        "sourceHash": "ed9a5603c0439b08fcaf5f77880e60eab327e025836173179e6a4cb9cc5b21c5",
+        "mirrorHash": "ed9a5603c0439b08fcaf5f77880e60eab327e025836173179e6a4cb9cc5b21c5",
+        "active": true
+      },
+      {
+        "id": 15,
+        "uri": "gno://probe/probe-14.md",
+        "sourceHash": "2ef784dfe2acce75468c0622418bfe73b9ff8aae79448cabf8d8b38a0d6682b4",
+        "mirrorHash": "2ef784dfe2acce75468c0622418bfe73b9ff8aae79448cabf8d8b38a0d6682b4",
+        "active": true
+      },
+      {
+        "id": 16,
+        "uri": "gno://probe/probe-15.md",
+        "sourceHash": "fbc15ec7ff6b7fc686debd5fbecc20796587be8109de14b5ceacb30b583d67a9",
+        "mirrorHash": "fbc15ec7ff6b7fc686debd5fbecc20796587be8109de14b5ceacb30b583d67a9",
+        "active": true
+      },
+      {
+        "id": 17,
+        "uri": "gno://probe/probe-16.md",
+        "sourceHash": "034412420ae894e36ca0970c3215b12a84a00512ccf396b1e826004a4e3ace8f",
+        "mirrorHash": "034412420ae894e36ca0970c3215b12a84a00512ccf396b1e826004a4e3ace8f",
+        "active": true
+      },
+      {
+        "id": 18,
+        "uri": "gno://probe/probe-17.md",
+        "sourceHash": "9535b69edfe5198216618351a57920daa0e42b26c0f29eb5a50745057ff6f306",
+        "mirrorHash": "9535b69edfe5198216618351a57920daa0e42b26c0f29eb5a50745057ff6f306",
+        "active": true
+      },
+      {
+        "id": 19,
+        "uri": "gno://probe/probe-18.md",
+        "sourceHash": "08b5b69281acd5ea153242664b91383d6ae7c7c5f12ec929f4378e1fb74440ce",
+        "mirrorHash": "08b5b69281acd5ea153242664b91383d6ae7c7c5f12ec929f4378e1fb74440ce",
+        "active": true
+      },
+      {
+        "id": 20,
+        "uri": "gno://probe/probe-19.md",
+        "sourceHash": "a82e7ce489b76bd4fdd1f19c8cf0312984ce2d2cd639c4e9bfb18ac4cbe43d9a",
+        "mirrorHash": "a82e7ce489b76bd4fdd1f19c8cf0312984ce2d2cd639c4e9bfb18ac4cbe43d9a",
+        "active": true
+      },
+      {
+        "id": 3,
+        "uri": "gno://probe/probe-2.md",
+        "sourceHash": "79cab4e378b9ff0e6d7d81b9636683c8592f0f080ab08b799866bfbbd27ee7e3",
+        "mirrorHash": "79cab4e378b9ff0e6d7d81b9636683c8592f0f080ab08b799866bfbbd27ee7e3",
+        "active": true
+      },
+      {
+        "id": 21,
+        "uri": "gno://probe/probe-20.md",
+        "sourceHash": "1157d3144a7039fa17dc40bf6e73a06e970877bd02947b9294168c78f0a001d3",
+        "mirrorHash": "1157d3144a7039fa17dc40bf6e73a06e970877bd02947b9294168c78f0a001d3",
+        "active": true
+      },
+      {
+        "id": 22,
+        "uri": "gno://probe/probe-21.md",
+        "sourceHash": "96ed624aff4259d13fd63ea1642a64c83802b948154aced8132b3fde32a7bb61",
+        "mirrorHash": "96ed624aff4259d13fd63ea1642a64c83802b948154aced8132b3fde32a7bb61",
+        "active": true
+      },
+      {
+        "id": 23,
+        "uri": "gno://probe/probe-22.md",
+        "sourceHash": "847da1d770dad19ccb79a7a986c8877ac2f7b870b4f96ef5192f3297138e1c14",
+        "mirrorHash": "847da1d770dad19ccb79a7a986c8877ac2f7b870b4f96ef5192f3297138e1c14",
+        "active": true
+      },
+      {
+        "id": 24,
+        "uri": "gno://probe/probe-23.md",
+        "sourceHash": "28f0cd378a4d7de93c3d55f21cd5796872ed14cf0f5d38c02c3f2457b63aacbf",
+        "mirrorHash": "28f0cd378a4d7de93c3d55f21cd5796872ed14cf0f5d38c02c3f2457b63aacbf",
+        "active": true
+      },
+      {
+        "id": 25,
+        "uri": "gno://probe/probe-24.md",
+        "sourceHash": "06db77735e80ff4881c4dc622ffccd08e64b2c68311640db67b9f1fdc3e4ddff",
+        "mirrorHash": "06db77735e80ff4881c4dc622ffccd08e64b2c68311640db67b9f1fdc3e4ddff",
+        "active": true
+      },
+      {
+        "id": 26,
+        "uri": "gno://probe/probe-25.md",
+        "sourceHash": "abccf0ca0272878fd6f85ebd7701c30c8253626ab8acb843b862c78cff569e3c",
+        "mirrorHash": "abccf0ca0272878fd6f85ebd7701c30c8253626ab8acb843b862c78cff569e3c",
+        "active": true
+      },
+      {
+        "id": 27,
+        "uri": "gno://probe/probe-26.md",
+        "sourceHash": "d4b8c37351f6e368a5ee351a39f6a64ae05a3adb2569376ff66a2af98b4f6862",
+        "mirrorHash": "d4b8c37351f6e368a5ee351a39f6a64ae05a3adb2569376ff66a2af98b4f6862",
+        "active": true
+      },
+      {
+        "id": 28,
+        "uri": "gno://probe/probe-27.md",
+        "sourceHash": "4196fce6eaac7fad0d47cc57d3a491386eb6c88337ab06f3ca9cbf844471e498",
+        "mirrorHash": "4196fce6eaac7fad0d47cc57d3a491386eb6c88337ab06f3ca9cbf844471e498",
+        "active": true
+      },
+      {
+        "id": 29,
+        "uri": "gno://probe/probe-28.md",
+        "sourceHash": "1a30c713670f1baf184a9b100037225e95f176f46d1940c28297766abcba4818",
+        "mirrorHash": "1a30c713670f1baf184a9b100037225e95f176f46d1940c28297766abcba4818",
+        "active": true
+      },
+      {
+        "id": 30,
+        "uri": "gno://probe/probe-29.md",
+        "sourceHash": "d3f62bc1b01179ab4284e3610966f7c08722da5c166e9393071edff547635b08",
+        "mirrorHash": "d3f62bc1b01179ab4284e3610966f7c08722da5c166e9393071edff547635b08",
+        "active": true
+      },
+      {
+        "id": 4,
+        "uri": "gno://probe/probe-3.md",
+        "sourceHash": "bec0b484cc57ea9461dcb522d0eab254581c8078cff8db6e260b70f5c0ee1a28",
+        "mirrorHash": "bec0b484cc57ea9461dcb522d0eab254581c8078cff8db6e260b70f5c0ee1a28",
+        "active": true
+      },
+      {
+        "id": 5,
+        "uri": "gno://probe/probe-4.md",
+        "sourceHash": "f96a3d739efa848e7bdfe5683574a57d789310af6381e10a75b6de14eeafd8a3",
+        "mirrorHash": "f96a3d739efa848e7bdfe5683574a57d789310af6381e10a75b6de14eeafd8a3",
+        "active": true
+      },
+      {
+        "id": 6,
+        "uri": "gno://probe/probe-5.md",
+        "sourceHash": "8d68425b97979d8f43d727727d94b54f192107c9be14950f6e82473c810d4577",
+        "mirrorHash": "8d68425b97979d8f43d727727d94b54f192107c9be14950f6e82473c810d4577",
+        "active": true
+      },
+      {
+        "id": 7,
+        "uri": "gno://probe/probe-6.md",
+        "sourceHash": "a912cbdfa0c3274f4bae0d81fc5c013477d33794c8086f1b46a1fac908f1eb0f",
+        "mirrorHash": "a912cbdfa0c3274f4bae0d81fc5c013477d33794c8086f1b46a1fac908f1eb0f",
+        "active": true
+      },
+      {
+        "id": 8,
+        "uri": "gno://probe/probe-7.md",
+        "sourceHash": "9003ced8ac6aee413674d2223c65898b7aca1f0cc7f67a552afe6207459cce92",
+        "mirrorHash": "9003ced8ac6aee413674d2223c65898b7aca1f0cc7f67a552afe6207459cce92",
+        "active": true
+      },
+      {
+        "id": 9,
+        "uri": "gno://probe/probe-8.md",
+        "sourceHash": "20c37daaa81828e6f421ee906102833a65366fd5f0f37264b442586179537710",
+        "mirrorHash": "20c37daaa81828e6f421ee906102833a65366fd5f0f37264b442586179537710",
+        "active": true
+      },
+      {
+        "id": 10,
+        "uri": "gno://probe/probe-9.md",
+        "sourceHash": "661e81ef80e4b6050bc0313ce9e8168f21aa7087d9a6cc8949f3ca925158a77a",
+        "mirrorHash": "661e81ef80e4b6050bc0313ce9e8168f21aa7087d9a6cc8949f3ca925158a77a",
+        "active": true
+      }
+    ]
+  },
+  "sdkActivation": {
+    "identity": {
+      "indexName": "default",
+      "schemaVersion": 29,
+      "ftsTokenizer": "unicode61",
+      "ftsStateHash": "bfc5d5dea46af24a3e3ec48731386cc04dc2c64488f8b54053b904ff52be00b8",
+      "activeDocumentCount": 30,
+      "ftsSynchronized": true
+    },
+    "documents": [
+      {
+        "id": 1,
+        "uri": "gno://probe/probe-0.md",
+        "sourceHash": "49ebb14eec86f441d3b373e31f9142c7cedd77aebd5dc42f62e43b22e0eb3ffe",
+        "mirrorHash": "49ebb14eec86f441d3b373e31f9142c7cedd77aebd5dc42f62e43b22e0eb3ffe",
+        "active": true
+      },
+      {
+        "id": 2,
+        "uri": "gno://probe/probe-1.md",
+        "sourceHash": "672e9717783cd4f173ffe93f909195faf82347e2113bc4f6b6b05344e8d1df19",
+        "mirrorHash": "672e9717783cd4f173ffe93f909195faf82347e2113bc4f6b6b05344e8d1df19",
+        "active": true
+      },
+      {
+        "id": 11,
+        "uri": "gno://probe/probe-10.md",
+        "sourceHash": "338cb57e856c8b05bb04e720b339067601588afa77d5720efac88d8094c41779",
+        "mirrorHash": "338cb57e856c8b05bb04e720b339067601588afa77d5720efac88d8094c41779",
+        "active": true
+      },
+      {
+        "id": 12,
+        "uri": "gno://probe/probe-11.md",
+        "sourceHash": "5f5cd18ae5e1ed5de94bb68db8acebb540a2a4e373198d2e9e558380f4dceb1a",
+        "mirrorHash": "5f5cd18ae5e1ed5de94bb68db8acebb540a2a4e373198d2e9e558380f4dceb1a",
+        "active": true
+      },
+      {
+        "id": 13,
+        "uri": "gno://probe/probe-12.md",
+        "sourceHash": "c9992e73022d5b5759ac83fd78f735d0ee9f7fe8227623c811bd34f4f92f6d6a",
+        "mirrorHash": "c9992e73022d5b5759ac83fd78f735d0ee9f7fe8227623c811bd34f4f92f6d6a",
+        "active": true
+      },
+      {
+        "id": 14,
+        "uri": "gno://probe/probe-13.md",
+        "sourceHash": "ed9a5603c0439b08fcaf5f77880e60eab327e025836173179e6a4cb9cc5b21c5",
+        "mirrorHash": "ed9a5603c0439b08fcaf5f77880e60eab327e025836173179e6a4cb9cc5b21c5",
+        "active": true
+      },
+      {
+        "id": 15,
+        "uri": "gno://probe/probe-14.md",
+        "sourceHash": "2ef784dfe2acce75468c0622418bfe73b9ff8aae79448cabf8d8b38a0d6682b4",
+        "mirrorHash": "2ef784dfe2acce75468c0622418bfe73b9ff8aae79448cabf8d8b38a0d6682b4",
+        "active": true
+      },
+      {
+        "id": 16,
+        "uri": "gno://probe/probe-15.md",
+        "sourceHash": "fbc15ec7ff6b7fc686debd5fbecc20796587be8109de14b5ceacb30b583d67a9",
+        "mirrorHash": "fbc15ec7ff6b7fc686debd5fbecc20796587be8109de14b5ceacb30b583d67a9",
+        "active": true
+      },
+      {
+        "id": 17,
+        "uri": "gno://probe/probe-16.md",
+        "sourceHash": "034412420ae894e36ca0970c3215b12a84a00512ccf396b1e826004a4e3ace8f",
+        "mirrorHash": "034412420ae894e36ca0970c3215b12a84a00512ccf396b1e826004a4e3ace8f",
+        "active": true
+      },
+      {
+        "id": 18,
+        "uri": "gno://probe/probe-17.md",
+        "sourceHash": "9535b69edfe5198216618351a57920daa0e42b26c0f29eb5a50745057ff6f306",
+        "mirrorHash": "9535b69edfe5198216618351a57920daa0e42b26c0f29eb5a50745057ff6f306",
+        "active": true
+      },
+      {
+        "id": 19,
+        "uri": "gno://probe/probe-18.md",
+        "sourceHash": "08b5b69281acd5ea153242664b91383d6ae7c7c5f12ec929f4378e1fb74440ce",
+        "mirrorHash": "08b5b69281acd5ea153242664b91383d6ae7c7c5f12ec929f4378e1fb74440ce",
+        "active": true
+      },
+      {
+        "id": 20,
+        "uri": "gno://probe/probe-19.md",
+        "sourceHash": "a82e7ce489b76bd4fdd1f19c8cf0312984ce2d2cd639c4e9bfb18ac4cbe43d9a",
+        "mirrorHash": "a82e7ce489b76bd4fdd1f19c8cf0312984ce2d2cd639c4e9bfb18ac4cbe43d9a",
+        "active": true
+      },
+      {
+        "id": 3,
+        "uri": "gno://probe/probe-2.md",
+        "sourceHash": "79cab4e378b9ff0e6d7d81b9636683c8592f0f080ab08b799866bfbbd27ee7e3",
+        "mirrorHash": "79cab4e378b9ff0e6d7d81b9636683c8592f0f080ab08b799866bfbbd27ee7e3",
+        "active": true
+      },
+      {
+        "id": 21,
+        "uri": "gno://probe/probe-20.md",
+        "sourceHash": "1157d3144a7039fa17dc40bf6e73a06e970877bd02947b9294168c78f0a001d3",
+        "mirrorHash": "1157d3144a7039fa17dc40bf6e73a06e970877bd02947b9294168c78f0a001d3",
+        "active": true
+      },
+      {
+        "id": 22,
+        "uri": "gno://probe/probe-21.md",
+        "sourceHash": "96ed624aff4259d13fd63ea1642a64c83802b948154aced8132b3fde32a7bb61",
+        "mirrorHash": "96ed624aff4259d13fd63ea1642a64c83802b948154aced8132b3fde32a7bb61",
+        "active": true
+      },
+      {
+        "id": 23,
+        "uri": "gno://probe/probe-22.md",
+        "sourceHash": "847da1d770dad19ccb79a7a986c8877ac2f7b870b4f96ef5192f3297138e1c14",
+        "mirrorHash": "847da1d770dad19ccb79a7a986c8877ac2f7b870b4f96ef5192f3297138e1c14",
+        "active": true
+      },
+      {
+        "id": 24,
+        "uri": "gno://probe/probe-23.md",
+        "sourceHash": "28f0cd378a4d7de93c3d55f21cd5796872ed14cf0f5d38c02c3f2457b63aacbf",
+        "mirrorHash": "28f0cd378a4d7de93c3d55f21cd5796872ed14cf0f5d38c02c3f2457b63aacbf",
+        "active": true
+      },
+      {
+        "id": 25,
+        "uri": "gno://probe/probe-24.md",
+        "sourceHash": "06db77735e80ff4881c4dc622ffccd08e64b2c68311640db67b9f1fdc3e4ddff",
+        "mirrorHash": "06db77735e80ff4881c4dc622ffccd08e64b2c68311640db67b9f1fdc3e4ddff",
+        "active": true
+      },
+      {
+        "id": 26,
+        "uri": "gno://probe/probe-25.md",
+        "sourceHash": "abccf0ca0272878fd6f85ebd7701c30c8253626ab8acb843b862c78cff569e3c",
+        "mirrorHash": "abccf0ca0272878fd6f85ebd7701c30c8253626ab8acb843b862c78cff569e3c",
+        "active": true
+      },
+      {
+        "id": 27,
+        "uri": "gno://probe/probe-26.md",
+        "sourceHash": "d4b8c37351f6e368a5ee351a39f6a64ae05a3adb2569376ff66a2af98b4f6862",
+        "mirrorHash": "d4b8c37351f6e368a5ee351a39f6a64ae05a3adb2569376ff66a2af98b4f6862",
+        "active": true
+      },
+      {
+        "id": 28,
+        "uri": "gno://probe/probe-27.md",
+        "sourceHash": "4196fce6eaac7fad0d47cc57d3a491386eb6c88337ab06f3ca9cbf844471e498",
+        "mirrorHash": "4196fce6eaac7fad0d47cc57d3a491386eb6c88337ab06f3ca9cbf844471e498",
+        "active": true
+      },
+      {
+        "id": 29,
+        "uri": "gno://probe/probe-28.md",
+        "sourceHash": "1a30c713670f1baf184a9b100037225e95f176f46d1940c28297766abcba4818",
+        "mirrorHash": "1a30c713670f1baf184a9b100037225e95f176f46d1940c28297766abcba4818",
+        "active": true
+      },
+      {
+        "id": 30,
+        "uri": "gno://probe/probe-29.md",
+        "sourceHash": "d3f62bc1b01179ab4284e3610966f7c08722da5c166e9393071edff547635b08",
+        "mirrorHash": "d3f62bc1b01179ab4284e3610966f7c08722da5c166e9393071edff547635b08",
+        "active": true
+      },
+      {
+        "id": 4,
+        "uri": "gno://probe/probe-3.md",
+        "sourceHash": "bec0b484cc57ea9461dcb522d0eab254581c8078cff8db6e260b70f5c0ee1a28",
+        "mirrorHash": "bec0b484cc57ea9461dcb522d0eab254581c8078cff8db6e260b70f5c0ee1a28",
+        "active": true
+      },
+      {
+        "id": 5,
+        "uri": "gno://probe/probe-4.md",
+        "sourceHash": "f96a3d739efa848e7bdfe5683574a57d789310af6381e10a75b6de14eeafd8a3",
+        "mirrorHash": "f96a3d739efa848e7bdfe5683574a57d789310af6381e10a75b6de14eeafd8a3",
+        "active": true
+      },
+      {
+        "id": 6,
+        "uri": "gno://probe/probe-5.md",
+        "sourceHash": "8d68425b97979d8f43d727727d94b54f192107c9be14950f6e82473c810d4577",
+        "mirrorHash": "8d68425b97979d8f43d727727d94b54f192107c9be14950f6e82473c810d4577",
+        "active": true
+      },
+      {
+        "id": 7,
+        "uri": "gno://probe/probe-6.md",
+        "sourceHash": "a912cbdfa0c3274f4bae0d81fc5c013477d33794c8086f1b46a1fac908f1eb0f",
+        "mirrorHash": "a912cbdfa0c3274f4bae0d81fc5c013477d33794c8086f1b46a1fac908f1eb0f",
+        "active": true
+      },
+      {
+        "id": 8,
+        "uri": "gno://probe/probe-7.md",
+        "sourceHash": "9003ced8ac6aee413674d2223c65898b7aca1f0cc7f67a552afe6207459cce92",
+        "mirrorHash": "9003ced8ac6aee413674d2223c65898b7aca1f0cc7f67a552afe6207459cce92",
+        "active": true
+      },
+      {
+        "id": 9,
+        "uri": "gno://probe/probe-8.md",
+        "sourceHash": "20c37daaa81828e6f421ee906102833a65366fd5f0f37264b442586179537710",
+        "mirrorHash": "20c37daaa81828e6f421ee906102833a65366fd5f0f37264b442586179537710",
+        "active": true
+      },
+      {
+        "id": 10,
+        "uri": "gno://probe/probe-9.md",
+        "sourceHash": "661e81ef80e4b6050bc0313ce9e8168f21aa7087d9a6cc8949f3ca925158a77a",
+        "mirrorHash": "661e81ef80e4b6050bc0313ce9e8168f21aa7087d9a6cc8949f3ca925158a77a",
+        "active": true
+      }
+    ]
+  },
+  "document": {
+    "id": 1,
+    "collection": "probe",
+    "relPath": "probe-0.md",
+    "sourceHash": "49ebb14eec86f441d3b373e31f9142c7cedd77aebd5dc42f62e43b22e0eb3ffe",
+    "sourceMime": "text/markdown",
+    "sourceExt": ".md",
+    "sourceSize": 1080,
+    "sourceMtime": "2026-09-01T00:00:00Z",
+    "sourceCtime": "2026-09-01T00:00:00Z",
+    "docid": "#49ebb14e",
+    "uri": "gno://probe/probe-0.md",
+    "title": "Synthetic benchmark 0",
+    "mirrorHash": "49ebb14eec86f441d3b373e31f9142c7cedd77aebd5dc42f62e43b22e0eb3ffe",
+    "converterId": null,
+    "converterVersion": null,
+    "languageHint": "en",
+    "contentType": null,
+    "contentTypeSource": null,
+    "categories": null,
+    "author": null,
+    "frontmatterDate": null,
+    "dateFields": null,
+    "recordKey": null,
+    "recordSourcePath": null,
+    "recordSourceLocator": null,
+    "recordMetadata": null,
+    "recordAnchors": null,
+    "recordAdapterFingerprint": null,
+    "indexedAt": "2026-09-05 00:35:02",
+    "active": true,
+    "ingestVersion": null,
+    "contentTypeRulesFingerprint": null,
+    "lastErrorCode": null,
+    "lastErrorMessage": null,
+    "lastErrorAt": null,
+    "createdAt": "2026-09-05 00:35:02",
+    "updatedAt": "2026-09-05 00:35:02"
+  },
+  "status": {
+    "version": "29",
+    "indexName": "default",
+    "configPath": "<inline-config>",
+    "dbPath": "/home/gordon/.cache/agent-tmp/gno-fn146-model-residency/candidate/data/index-default.sqlite",
+    "ftsTokenizer": "unicode61",
+    "collections": [
+      {
+        "name": "probe",
+        "path": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/ask29/corpus/probe",
+        "egressPolicy": "local_only",
+        "egressPolicySource": "config_default",
+        "totalDocuments": 30,
+        "activeDocuments": 30,
+        "errorDocuments": 0,
+        "chunkedDocuments": 30,
+        "totalChunks": 30,
+        "embeddedChunks": 30
+      }
+    ],
+    "totalDocuments": 30,
+    "activeDocuments": 30,
+    "totalChunks": 30,
+    "embeddingBacklog": 0,
+    "recentErrors": 0,
+    "lastUpdatedAt": "2026-09-05T00:35:02.000Z",
+    "healthy": true,
+    "contentTypeBoost": {
+      "rulesFingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "rules": []
+    }
+  },
+  "effectiveConfig": {
+    "version": "1.0",
+    "ftsTokenizer": "unicode61",
+    "busyTimeoutMs": 60000,
+    "collections": [
+      {
+        "name": "probe",
+        "path": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/ask29/corpus/probe",
+        "pattern": "**/*.md",
+        "include": [],
+        "exclude": []
+      }
+    ],
+    "contexts": [],
+    "contentTypes": [],
+    "models": {
+      "activePreset": "qa-pinned",
+      "presets": [
+        {
+          "id": "qa-pinned",
+          "name": "Cached slim-tuned equivalent",
+          "embed": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "rerank": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "expand": "file:/home/gordon/.cache/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+          "gen": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf"
+        }
+      ],
+      "loadTimeout": 60000,
+      "inferenceTimeout": 30000,
+      "expandContextSize": 2048,
+      "warmModelTtl": 1200
+    },
+    "retrievalTraces": {
+      "enabled": true,
+      "redactionMode": "metadata",
+      "retention": {
+        "maxAgeDays": 30,
+        "maxTraces": 1000,
+        "maxRecordsPerTrace": 10000,
+        "maxBytes": 16777216
+      }
+    },
+    "projectAffinity": {
+      "enabled": true,
+      "contribution": 0.03
+    }
+  },
+  "configFingerprint": "b59278085e417308c5d950779a05cd09241a36a09e1f4d6ea485c490c131025e"
+}

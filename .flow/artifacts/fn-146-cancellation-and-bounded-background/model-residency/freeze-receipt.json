@@ -1,0 +1,15 @@
+{
+  "commit": "44cf2a1dbd937d97594baf9387374b4b16f98c63",
+  "packageSha256": "0a2ace980c340b4f845677a3eadfa894cea3b14ea63017ac9b719a4c7e847b53",
+  "sourceArchiveSha256": "d63c4ef89c5c970a5cb6382e8a44e7dd450d1128b0163665868afc1b3f179f3b",
+  "shippedSourceFilesMatched": 751,
+  "mismatches": [],
+  "helperCommit": "8b45a54d9fab684fddb69175e8c836dad4b935b2",
+  "driverHashes": {
+    "phase-parent.ts": "ded108764c4ac35c5ae70f38a9b444e5cb16bcd0ff95b595ecc6f26a97ffec19",
+    "observer.ts": "364a328b1942706c5680925d5ac7a1460fe6325006d8f1889f1decd0dadf2576",
+    "phase-child.ts": "bc68cb30e46d9f57e4d39489954bf4eb9942aa3df15bea510a33aa8ba9f0f1d1",
+    "preflight-observer.ts": "1def14dc6140f7ac6651800ef1b98151b6882cb70c4bc3896f1fb53c5985d5bb",
+    "run.ts": "165b2d2eb0ba80d07224c57efcb78984d206644b8802a643394f1123469ac075"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "command": [
+    "bun",
+    "--no-env-file",
+    "/home/gordon/.cache/agent-tmp/gno-fn146-model-residency/run.ts",
+    "/home/gordon/.cache/agent-tmp/gno-fn146-model-residency/candidate/plan.json"
+  ],
+  "pid": 912931,
+  "exitCode": 0,
+  "stopReason": null,
+  "wallMs": 20753.093810053542,
+  "firstResponse": []
+}

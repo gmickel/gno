@@ -1,0 +1,4088 @@
+{
+  "baseline": {
+    "pacedRequests": [
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54
+    ],
+    "pacedSpanMs": 2890,
+    "pacedSnapshots": [
+      {
+        "pid": 910841,
+        "at": 1788589836254,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 25,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589836348,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 26,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589836446,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 27,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589836547,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 28,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589836645,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 29,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589836746,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 30,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589836845,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 31,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589836946,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 32,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589837046,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 33,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589837147,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 34,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589837245,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 35,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589837345,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 36,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589837445,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 37,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589837545,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 38,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589837645,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 39,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589837745,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 40,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589837844,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 41,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589837945,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 42,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589838045,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 43,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589838146,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 44,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589838245,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 45,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589838345,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 46,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589838445,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 47,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589838545,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 48,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589838649,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 49,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589838744,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 50,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589838845,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 51,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589838944,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 52,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589839045,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 53,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 910841,
+        "at": 1788589839144,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 54,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 1,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "modelId": 2,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 3,
+            "loaded": true
+          }
+        ],
+        "leases": null,
+        "retiring": null,
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      }
+    ],
+    "disposeCompletions": [
+      {
+        "pid": 910841,
+        "at": 1788589841392,
+        "kind": "dispose-end",
+        "modelId": 1,
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "ok": true
+      },
+      {
+        "pid": 910841,
+        "at": 1788589841412,
+        "kind": "dispose-end",
+        "modelId": 2,
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "ok": true
+      },
+      {
+        "pid": 910841,
+        "at": 1788589841451,
+        "kind": "dispose-end",
+        "modelId": 3,
+        "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "ok": true
+      }
+    ],
+    "loadReturns": [
+      {
+        "pid": 910841,
+        "at": 1788589828155,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 1
+      },
+      {
+        "pid": 910841,
+        "at": 1788589829650,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "type": "rerank",
+        "modelId": 2
+      },
+      {
+        "pid": 910841,
+        "at": 1788589830207,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 1
+      },
+      {
+        "pid": 910841,
+        "at": 1788589830462,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "type": "rerank",
+        "modelId": 2
+      },
+      {
+        "pid": 910841,
+        "at": 1788589831890,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 1
+      },
+      {
+        "pid": 910841,
+        "at": 1788589831924,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "type": "rerank",
+        "modelId": 2
+      },
+      {
+        "pid": 910841,
+        "at": 1788589832352,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 1
+      },
+      {
+        "pid": 910841,
+        "at": 1788589832391,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "type": "rerank",
+        "modelId": 2
+      },
+      {
+        "pid": 910841,
+        "at": 1788589834375,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "type": "gen",
+        "modelId": 3
+      },
+      {
+        "pid": 910841,
+        "at": 1788589835548,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "type": "gen",
+        "modelId": 3
+      },
+      {
+        "pid": 910841,
+        "at": 1788589836211,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 1
+      },
+      {
+        "pid": 910841,
+        "at": 1788589839191,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "type": "rerank",
+        "modelId": 2
+      },
+      {
+        "pid": 910841,
+        "at": 1788589839613,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 1
+      },
+      {
+        "pid": 910841,
+        "at": 1788589839648,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "type": "rerank",
+        "modelId": 2
+      },
+      {
+        "pid": 910841,
+        "at": 1788589840016,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "type": "gen",
+        "modelId": 3
+      },
+      {
+        "pid": 910841,
+        "at": 1788589840799,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "type": "gen",
+        "modelId": 3
+      },
+      {
+        "pid": 910841,
+        "at": 1788589841269,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 1
+      }
+    ],
+    "oneChildPid": [
+      910841
+    ],
+    "embeddingFileIdentityAndFingerprintStable": true,
+    "embeddingFileEntry": {
+      "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+      "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+    },
+    "asks": [
+      {
+        "caseId": "verified-before",
+        "semantic": {
+          "status": "completed",
+          "reason": "verified",
+          "schemaRequested": true,
+          "schemaEnforced": true,
+          "modelFingerprint": "dac5f172f2a016a998fd49a6520cb52a52d7dd66505bddd153f369d0cc27c2c9",
+          "configFingerprint": "b59278085e417308c5d950779a05cd09241a36a09e1f4d6ea485c490c131025e",
+          "verifierFingerprint": "6457df503e36c5418928821e6cd69948cbc9966016470c0aa6020406c0d33782",
+          "candidateClaims": 1,
+          "verifiedClaims": 0,
+          "unresolvedClaims": 1,
+          "modelCalls": 1
+        },
+        "answerStatus": null
+      },
+      {
+        "caseId": "verified-after-idle",
+        "semantic": {
+          "status": "completed",
+          "reason": "verified",
+          "schemaRequested": true,
+          "schemaEnforced": true,
+          "modelFingerprint": "dac5f172f2a016a998fd49a6520cb52a52d7dd66505bddd153f369d0cc27c2c9",
+          "configFingerprint": "b59278085e417308c5d950779a05cd09241a36a09e1f4d6ea485c490c131025e",
+          "verifierFingerprint": "6457df503e36c5418928821e6cd69948cbc9966016470c0aa6020406c0d33782",
+          "candidateClaims": 1,
+          "verifiedClaims": 0,
+          "unresolvedClaims": 1,
+          "modelCalls": 1
+        },
+        "answerStatus": null
+      }
+    ],
+    "contexts": {
+      "short-before": [
+        {
+          "modelId": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "method": "createRankingContext",
+          "arguments": [
+            {
+              "contextSize": 768,
+              "createSignal": {
+                "$operational": "AbortSignal",
+                "aborted": false,
+                "reason": {
+                  "$undefined": true
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "long-resize": [
+        {
+          "modelId": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "method": "createRankingContext",
+          "arguments": [
+            {
+              "contextSize": 3840,
+              "createSignal": {
+                "$operational": "AbortSignal",
+                "aborted": false,
+                "reason": {
+                  "$undefined": true
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "short-after": [
+        {
+          "modelId": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "method": "createRankingContext",
+          "arguments": [
+            {
+              "contextSize": 768,
+              "createSignal": {
+                "$operational": "AbortSignal",
+                "aborted": false,
+                "reason": {
+                  "$undefined": true
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "verified-before": [
+        {
+          "modelId": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "method": "createRankingContext",
+          "arguments": [
+            {
+              "contextSize": 768,
+              "createSignal": {
+                "$operational": "AbortSignal",
+                "aborted": false,
+                "reason": {
+                  "$undefined": true
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "short-after-idle": [
+        {
+          "modelId": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "method": "createRankingContext",
+          "arguments": [
+            {
+              "contextSize": 768,
+              "createSignal": {
+                "$operational": "AbortSignal",
+                "aborted": false,
+                "reason": {
+                  "$undefined": true
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "verified-after-idle": [
+        {
+          "modelId": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "method": "createRankingContext",
+          "arguments": [
+            {
+              "contextSize": 768,
+              "createSignal": {
+                "$operational": "AbortSignal",
+                "aborted": false,
+                "reason": {
+                  "$undefined": true
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "nativeReceiptCount": 68,
+    "driverErrors": []
+  },
+  "candidate": {
+    "pacedRequests": [
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54
+    ],
+    "pacedSpanMs": 2894,
+    "pacedSnapshots": [
+      {
+        "pid": 912975,
+        "at": 1788589862675,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 25,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 5,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589862771,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 26,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 5,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589862869,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 27,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 5,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589862969,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 28,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "modelId": 5,
+            "loaded": true
+          },
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589863070,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 29,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [
+          "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf"
+        ],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589863168,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 30,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589863268,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 31,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589863369,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 32,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589863468,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 33,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589863568,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 34,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589863668,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 35,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589863769,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 36,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589863868,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 37,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589863968,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 38,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589864068,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 39,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589864168,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 40,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589864267,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 41,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589864367,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 42,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589864469,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 43,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589864569,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 44,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589864669,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 45,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589864769,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 46,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589864869,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 47,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589864968,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 48,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589865068,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 49,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589865168,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 50,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589865269,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 51,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589865368,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 52,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589865468,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 53,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      },
+      {
+        "pid": 912975,
+        "at": 1788589865569,
+        "kind": "request-end",
+        "request": {
+          "version": 1,
+          "generation": 1,
+          "requestId": 54,
+          "modelId": "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "op": "embed",
+          "text": "Instruct: Retrieve relevant documents for the given query\nQuery: Who owns the meadow migration?"
+        },
+        "ok": true,
+        "models": [
+          {
+            "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "modelId": 6,
+            "loaded": true
+          }
+        ],
+        "leases": [],
+        "retiring": [],
+        "files": [
+          [
+            "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+              "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+              "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+              "identity": "57:7474127:639153184:1786801933983229846:1786801933983229846"
+            }
+          ],
+          [
+            "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            {
+              "path": "/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+              "identity": "57:7474154:1107409472:1786801987784043976:1786801987785043992"
+            }
+          ]
+        ],
+        "ports": [
+          "embed:file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+        ]
+      }
+    ],
+    "disposeCompletions": [
+      {
+        "pid": 912975,
+        "at": 1788589853865,
+        "kind": "dispose-end",
+        "modelId": 1,
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "ok": true
+      },
+      {
+        "pid": 912975,
+        "at": 1788589856605,
+        "kind": "dispose-end",
+        "modelId": 3,
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "ok": true
+      },
+      {
+        "pid": 912975,
+        "at": 1788589859446,
+        "kind": "dispose-end",
+        "modelId": 4,
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "ok": true
+      },
+      {
+        "pid": 912975,
+        "at": 1788589859752,
+        "kind": "dispose-end",
+        "modelId": 2,
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "ok": true
+      },
+      {
+        "pid": 912975,
+        "at": 1788589863072,
+        "kind": "dispose-end",
+        "modelId": 5,
+        "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "ok": true
+      },
+      {
+        "pid": 912975,
+        "at": 1788589868008,
+        "kind": "dispose-end",
+        "modelId": 6,
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "ok": true
+      },
+      {
+        "pid": 912975,
+        "at": 1788589868384,
+        "kind": "dispose-end",
+        "modelId": 7,
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "ok": true
+      },
+      {
+        "pid": 912975,
+        "at": 1788589870336,
+        "kind": "dispose-end",
+        "modelId": 8,
+        "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "ok": true
+      },
+      {
+        "pid": 912975,
+        "at": 1788589870353,
+        "kind": "dispose-end",
+        "modelId": 9,
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "ok": true
+      }
+    ],
+    "loadReturns": [
+      {
+        "pid": 912975,
+        "at": 1788589852390,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 1
+      },
+      {
+        "pid": 912975,
+        "at": 1788589853699,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "type": "rerank",
+        "modelId": 2
+      },
+      {
+        "pid": 912975,
+        "at": 1788589854925,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 3
+      },
+      {
+        "pid": 912975,
+        "at": 1788589855329,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "type": "rerank",
+        "modelId": 2
+      },
+      {
+        "pid": 912975,
+        "at": 1788589857447,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 4
+      },
+      {
+        "pid": 912975,
+        "at": 1788589857652,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "type": "rerank",
+        "modelId": 2
+      },
+      {
+        "pid": 912975,
+        "at": 1788589858106,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 4
+      },
+      {
+        "pid": 912975,
+        "at": 1788589858144,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "type": "rerank",
+        "modelId": 2
+      },
+      {
+        "pid": 912975,
+        "at": 1788589859993,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "type": "gen",
+        "modelId": 5
+      },
+      {
+        "pid": 912975,
+        "at": 1788589861244,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "type": "gen",
+        "modelId": 5
+      },
+      {
+        "pid": 912975,
+        "at": 1788589862484,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 6
+      },
+      {
+        "pid": 912975,
+        "at": 1788589866187,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "type": "rerank",
+        "modelId": 7
+      },
+      {
+        "pid": 912975,
+        "at": 1788589866756,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 6
+      },
+      {
+        "pid": 912975,
+        "at": 1788589866792,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "type": "rerank",
+        "modelId": 7
+      },
+      {
+        "pid": 912975,
+        "at": 1788589867824,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "type": "gen",
+        "modelId": 8
+      },
+      {
+        "pid": 912975,
+        "at": 1788589868966,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "type": "gen",
+        "modelId": 8
+      },
+      {
+        "pid": 912975,
+        "at": 1788589870111,
+        "kind": "load-return",
+        "uri": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "type": "embed",
+        "modelId": 9
+      }
+    ],
+    "oneChildPid": [
+      912975
+    ],
+    "embeddingFileIdentityAndFingerprintStable": true,
+    "embeddingFileEntry": {
+      "path": "/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "identity": "57:7473961:639150592:1786801288167647341:1786801288167647341",
+      "fingerprint": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+    },
+    "asks": [
+      {
+        "caseId": "verified-before",
+        "semantic": {
+          "status": "completed",
+          "reason": "verified",
+          "schemaRequested": true,
+          "schemaEnforced": true,
+          "modelFingerprint": "dac5f172f2a016a998fd49a6520cb52a52d7dd66505bddd153f369d0cc27c2c9",
+          "configFingerprint": "b59278085e417308c5d950779a05cd09241a36a09e1f4d6ea485c490c131025e",
+          "verifierFingerprint": "6457df503e36c5418928821e6cd69948cbc9966016470c0aa6020406c0d33782",
+          "candidateClaims": 1,
+          "verifiedClaims": 0,
+          "unresolvedClaims": 1,
+          "modelCalls": 1
+        },
+        "answerStatus": null
+      },
+      {
+        "caseId": "verified-after-idle",
+        "semantic": {
+          "status": "completed",
+          "reason": "verified",
+          "schemaRequested": true,
+          "schemaEnforced": true,
+          "modelFingerprint": "dac5f172f2a016a998fd49a6520cb52a52d7dd66505bddd153f369d0cc27c2c9",
+          "configFingerprint": "b59278085e417308c5d950779a05cd09241a36a09e1f4d6ea485c490c131025e",
+          "verifierFingerprint": "6457df503e36c5418928821e6cd69948cbc9966016470c0aa6020406c0d33782",
+          "candidateClaims": 1,
+          "verifiedClaims": 0,
+          "unresolvedClaims": 1,
+          "modelCalls": 1
+        },
+        "answerStatus": null
+      }
+    ],
+    "contexts": {
+      "short-before": [
+        {
+          "modelId": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "method": "createRankingContext",
+          "arguments": [
+            {
+              "contextSize": 768,
+              "createSignal": {
+                "$operational": "AbortSignal",
+                "aborted": false,
+                "reason": {
+                  "$undefined": true
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "long-resize": [
+        {
+          "modelId": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "method": "createRankingContext",
+          "arguments": [
+            {
+              "contextSize": 3840,
+              "createSignal": {
+                "$operational": "AbortSignal",
+                "aborted": false,
+                "reason": {
+                  "$undefined": true
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "short-after": [
+        {
+          "modelId": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "method": "createRankingContext",
+          "arguments": [
+            {
+              "contextSize": 768,
+              "createSignal": {
+                "$operational": "AbortSignal",
+                "aborted": false,
+                "reason": {
+                  "$undefined": true
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "verified-before": [
+        {
+          "modelId": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "method": "createRankingContext",
+          "arguments": [
+            {
+              "contextSize": 768,
+              "createSignal": {
+                "$operational": "AbortSignal",
+                "aborted": false,
+                "reason": {
+                  "$undefined": true
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "short-after-idle": [
+        {
+          "modelId": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "method": "createRankingContext",
+          "arguments": [
+            {
+              "contextSize": 768,
+              "createSignal": {
+                "$operational": "AbortSignal",
+                "aborted": false,
+                "reason": {
+                  "$undefined": true
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "verified-after-idle": [
+        {
+          "modelId": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "method": "createRankingContext",
+          "arguments": [
+            {
+              "contextSize": 768,
+              "createSignal": {
+                "$operational": "AbortSignal",
+                "aborted": false,
+                "reason": {
+                  "$undefined": true
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "nativeReceiptCount": 68,
+    "driverErrors": []
+  }
+}
