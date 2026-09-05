@@ -1,0 +1,21 @@
+{
+  "args": [
+    "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-98252a9c/package/src/index.ts",
+    "--config",
+    "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-98252a9c/cli/config/index.yml",
+    "query",
+    "what retry budget did we decide and why",
+    "-n",
+    "5",
+    "--explain",
+    "--json"
+  ],
+  "invocation": {
+    "surface": "cli"
+  },
+  "env": {
+    "GNO_CONFIG_DIR": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-98252a9c/cli/config",
+    "GNO_DATA_DIR": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-98252a9c/cli/data",
+    "GNO_CACHE_DIR": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-98252a9c/cli/cache"
+  }
+}

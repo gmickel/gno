@@ -110,7 +110,11 @@ afterAll(async () => {
   await sdkClient?.close();
   await activeStore?.close();
   await safeRm(tmpDir);
-  process.env.GNO_DATA_DIR = originalDataDir;
+  if (originalDataDir === undefined) {
+    delete process.env.GNO_DATA_DIR;
+  } else {
+    process.env.GNO_DATA_DIR = originalDataDir;
+  }
 });
 
 describe("indexed URI roundtrip", () => {

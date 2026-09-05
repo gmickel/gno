@@ -1,0 +1,8 @@
+{
+  "version": "gno-acceptance-fixtures-v1",
+  "hashes": {
+    "corpusSha256": "f3c7176d60e7eccab3dcc810daa0134cb3a674f4ce33cb6798d85dae97ba0d29",
+    "queriesSha256": "ecaa5245fe1c26eee09c3e1093f60d418fdc86b62b6371df2845298a05b62378",
+    "oracleSha256": "86e46c9b663ffd945b9a2f220bcea87803b63776c5e2d4577ebf08855261db27"
+  }
+}

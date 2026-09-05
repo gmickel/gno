@@ -1,0 +1,580 @@
+{
+  "sourceManifest": "/tmp/gno-native-baseline-20260905-gmyi58ts/fixtures-manifest.json",
+  "sourceManifestSha256": "5425c992b6c7a6328bd0eb1769770995927ed19a50e708cc06ad2688fa22b233",
+  "files": [
+    {
+      "path": "notes/decisions/adr-001-timeline-export.md",
+      "sha256": "92a9c1023747ecd5da298eff996b059d9d0f399c16041cb53760fd927ec8ba77"
+    },
+    {
+      "path": "notes/decisions/adr-002-webhook-signing.md",
+      "sha256": "7755a5483fb1a169f615a3498f57f122131753079000d41c84a50d330a654f5b"
+    },
+    {
+      "path": "notes/decisions/adr-003-handoff-checklist.md",
+      "sha256": "b08639f805f1e8d867942e3f59a9818b6a15aba7d262d2571724ed71bf2181cc"
+    },
+    {
+      "path": "notes/decisions/adr-004-escalation-policy.md",
+      "sha256": "39de146ff32235ca02a2b2e9b31dff84740bbb60990ef95005d1718823aa4f43"
+    },
+    {
+      "path": "notes/decisions/adr-005-rate-limits.md",
+      "sha256": "2d1030ac4439cd2d8c7f078b87c4ceec2ff25a52fefcfbf469b0e982a3514fdd"
+    },
+    {
+      "path": "notes/decisions/adr-006-rate-limits.md",
+      "sha256": "ecdca8768e3c176aada28d288838252413a6cbcda69f102a5b3a3c75102c29df"
+    },
+    {
+      "path": "notes/decisions/adr-007-migration-plan.md",
+      "sha256": "442dc91742f22ea40d864c3f0a46e172dba865e1d0f933f428bf203e85804e0b"
+    },
+    {
+      "path": "notes/decisions/adr-008-escalation-policy.md",
+      "sha256": "c809ebe2bcf24d095d7d76ba7f2bfd31e06bb89ed204f5d06de9d5b696dbf69a"
+    },
+    {
+      "path": "notes/decisions/adr-009-dedup-window.md",
+      "sha256": "f4c295891b0f972c740403778f4c847a0b567e0e8bca5540eb0fc8cf32ff7c26"
+    },
+    {
+      "path": "notes/decisions/adr-010-migration-plan.md",
+      "sha256": "9f514bef35aef207de80eda3a2e6f13f98bb352f3a692c34c0bc6f5235650613"
+    },
+    {
+      "path": "notes/decisions/adr-011-retry-budget.md",
+      "sha256": "4467ed579955a2f5a916a20e4c159faf1d3cdd39028a24e1d72cbed8449aa395"
+    },
+    {
+      "path": "notes/decisions/adr-012-retry-budget.md",
+      "sha256": "c11074decb61bdeb36250f03a866008a3ecb92eb2ee3a1afa89b5e77db28c24b"
+    },
+    {
+      "path": "notes/decisions/adr-013-search-index.md",
+      "sha256": "8d1ea146643029f1056b4e3c0b23a5a7a1d449e40f29bd99676dc63bea1ae997"
+    },
+    {
+      "path": "notes/decisions/adr-014-timeline-export.md",
+      "sha256": "a04e852aec9987e9101ee0c8147e757a4a9db41806b82d7912c97e3f16290e44"
+    },
+    {
+      "path": "notes/decisions/adr-015-capsule-format.md",
+      "sha256": "7e77a6aac741fa125fe256eb0578b92f888e5e03b90c4e9462cd075cdbe02f33"
+    },
+    {
+      "path": "notes/decisions/adr-016-capsule-format.md",
+      "sha256": "ba43ea14204e803956e3e6bac8ebd2303a0395cad42352250cfb7114c0f6b83a"
+    },
+    {
+      "path": "notes/decisions/adr-017-incident-severity.md",
+      "sha256": "01073634e55c99c9d699b59d83342f687eb4d6ccb373ed2e2ac7e8ecff0b9b46"
+    },
+    {
+      "path": "notes/decisions/adr-018-retry-budget.md",
+      "sha256": "f5a86388e18e216b43a81e010c65acd1d3d6e72072c3fec3296a0a99d337d2d2"
+    },
+    {
+      "path": "notes/decisions/adr-019-webhook-signing.md",
+      "sha256": "cb7a3aae024768b61ade1f5250c6604f70a357de9fca2b9f19b98bd117509ccc"
+    },
+    {
+      "path": "notes/decisions/adr-020-migration-plan.md",
+      "sha256": "968fdee4b29d420cfd95d7b9fdef923a17beafbd4ca69c5a367ac3548dd71743"
+    },
+    {
+      "path": "notes/decisions/adr-021-sqlite-schema.md",
+      "sha256": "341469b02bdbb3c1faaf8f25a5b7e66deb6d4861410e91d64994fc51f054a289"
+    },
+    {
+      "path": "notes/decisions/adr-022-slo-burn-rate.md",
+      "sha256": "4f4d60f06051934fcba44a351fd2fa21e3c19e41985d941b0ba8a7e765a00ca8"
+    },
+    {
+      "path": "notes/decisions/adr-023-runbook-versioning.md",
+      "sha256": "ad222db69c6e3c6732aa3496afb8496518cced9aa8ddc2b197bda36cd0f38caa"
+    },
+    {
+      "path": "notes/decisions/adr-024-retry-budget.md",
+      "sha256": "5d5eb137c5ae49925fd8789cd8eac73611f6c6cdf0ae195d3efad17b5a712c3c"
+    },
+    {
+      "path": "notes/decisions/adr-025-incident-severity.md",
+      "sha256": "02466d6a3c365066c9cf6511d6a681836ffd872853635aa8e7b8062a32691452"
+    },
+    {
+      "path": "notes/decisions/adr-026-webhook-signing.md",
+      "sha256": "2523a68dd27f875b336e63d1380f3248ecb9d56bc3a3ac1fa2537f46a23208f9"
+    },
+    {
+      "path": "notes/decisions/adr-027-quiet-hours.md",
+      "sha256": "982df6b5a460336b02b3839ab6dbfe692cd294d48f15accd1f268692af70cac0"
+    },
+    {
+      "path": "notes/decisions/adr-028-slo-burn-rate.md",
+      "sha256": "10efa8b94ddf4163396618bfc5818c2e1b8467a884a30500e636941b2f351db3"
+    },
+    {
+      "path": "notes/hubs/architecture.md",
+      "sha256": "264dd64cfc6d03ed63552d80a4d0e0e8ca809ad014e0ac45ec45e8e89642cd58"
+    },
+    {
+      "path": "notes/hubs/decisions-log.md",
+      "sha256": "46d18841c4cacfbd4bdf77d5283384e38d583b216fda9583ab8a80657321ffbf"
+    },
+    {
+      "path": "notes/hubs/glossary.md",
+      "sha256": "1c5cf1e298d3b9ecd7997fda03acbe01870009d62ef6a6a4926060b24e456ea6"
+    },
+    {
+      "path": "notes/hubs/harbor-overview.md",
+      "sha256": "dbb0ac4ef2d5f9ac4ac5f3c46a1a93f8aa0bea1e564b2804d762377481f88116"
+    },
+    {
+      "path": "notes/hubs/incident-playbooks.md",
+      "sha256": "3fd2e586478f417b93e5e9250cfb4c62154ded6919dced22ce9959a111bba8c4"
+    },
+    {
+      "path": "notes/hubs/roadmap-2026.md",
+      "sha256": "c82f9699b2bbebc9a4467e075721d116313bcdb6b2753970728d270fdca8d9d8"
+    },
+    {
+      "path": "notes/hubs/security-model.md",
+      "sha256": "50e1527524e60f436a5c699765479f82d2ef9cb84a9704f58e813ba089f48967"
+    },
+    {
+      "path": "notes/hubs/team.md",
+      "sha256": "158b6c12cda372ed799941d4e714320ccad0bbe57206e70e512b9b60b15feab6"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-01-03.md",
+      "sha256": "3a6517305f2a44e1662939ef24583769cfa8e0849780926e686de9d35b750059"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-01-10.md",
+      "sha256": "cb79e9b66376c7e662bf41ea79fbeb0333aefb41a50a1d50349739e02d937959"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-01-17.md",
+      "sha256": "35e30674dcded24141eff7ed8060b31db7219bd448daa280e7fbf59ea2f63d4c"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-01-24.md",
+      "sha256": "00dbd3e117027208a7af9900cc466bcac8920052999e779d8e5896987f3e7ced"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-02-03.md",
+      "sha256": "605748f269f8ffcc7f2879f068d8f99dc57128e860eb1073fefd7f7e1eb86324"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-02-10.md",
+      "sha256": "dcd4f3bb5a87e566dc7f35ba9a82aa7d9d9dfd3bff6d1eba0dc7fc3f4c1eb8b3"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-02-17.md",
+      "sha256": "cedd84370f32e5a6ae9a562e145ed66111df68af7920e4c75b566eb29e955039"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-02-24.md",
+      "sha256": "d2650454831b5366c446d0fd5eeb75c5ad5fb681f2144d77fcd53421487beeae"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-03-03.md",
+      "sha256": "e9a44ceca38f448aa01d58f8aff22eb35c2d5ffdf9c87abdf87e2e1c9fe21ff9"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-03-10.md",
+      "sha256": "1ab45b0b4ee4c6399a55b6573927a5634d889e8d97bce323b13b28abb86b0e79"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-03-17.md",
+      "sha256": "cbd5e12741485b6c4c85761585e89b1b230e290de267d15cb9d717e83d0cd919"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-03-24.md",
+      "sha256": "4c98888a16bf9511aa4e3e1a3ab6e1f08408d6241b3d27d23f3f4b763e0acf07"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-04-03.md",
+      "sha256": "6783e99e4a920707799b801c2734b4a7528592e834220547f9c8047062ff3f45"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-04-10.md",
+      "sha256": "1ec301503aa6640a35a0a8cb23b5aa912ae01670091e029959dc9ae3cc4953d6"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-04-17.md",
+      "sha256": "7e15a847d92f2377878a2b98df0f6f85e77f24daa02f02157cd4f8adfe196607"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-04-24.md",
+      "sha256": "b36d9175dad24b741fe5f922f447906bfb39b0b496cced4f270e256f638c5fde"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-05-03.md",
+      "sha256": "99ea3179343a3dc5fb7621e575556f08a8645027f0f8e1ed48afdb5f6ed764cb"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-05-10.md",
+      "sha256": "e31ada4afb2cc1f239102a7375c22c1a149d9eacaa90f52521be93d7eafa62cc"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-05-17.md",
+      "sha256": "5d296193a6d8f28907df25c2ca20c5db75a8eed23cf5e078f6bdb54816245a77"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-05-24.md",
+      "sha256": "78c8bbdaba4ebd3168a9541c02431754fc75b633c2e7bb86ed856ec0664df6fc"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-06-03.md",
+      "sha256": "09af6a1c4d5f2370a6e8245d5d58f5071b77689740d53076bf97d84ff401b591"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-06-10.md",
+      "sha256": "fd1ac776a4901d9121cfd8fc65ca16da387a2824137be19640b2cbd17c00bffe"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-06-17.md",
+      "sha256": "ae39e6e9d321e9012d8dea675a6b9f270f36f7efc0ac88c09755a64de7e8ca03"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-06-24.md",
+      "sha256": "6e33d9f95551f8651333f0cbfda6b3b76c112b68209bb825944f5a4fa0e06645"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-07-03.md",
+      "sha256": "28d2da9afb982ba329d608b912ea3d08d8b1e1c2904f4ef0d5e6610cca94c556"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-07-10.md",
+      "sha256": "b7b693ff99dd97ef844d1d90d79df2aea7113d1b62535931e995f13836dd6084"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-07-17.md",
+      "sha256": "92d0eb364768a39aa44522cd81ddc825f72258f9a48b454aa6b2e93f4f1b0130"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-07-24.md",
+      "sha256": "4e150e53106aa9e7d8dcd744df68c4874afda4038804236dc4b9d2bf9a2c1bbd"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-08-03.md",
+      "sha256": "be78ef4ed4034c5128175ccd90283b351648d20183f4ca668a9f8d342da12b21"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-08-10.md",
+      "sha256": "2c05688ef991291aefa079382ba20a5dcf7c1f7811a727eab842eb8b2acc4db2"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-08-17.md",
+      "sha256": "228fdaa244cef3ce355168b9ea0442135497fd47261ef6208d0217f9855d914a"
+    },
+    {
+      "path": "notes/meetings/meeting-2026-08-24.md",
+      "sha256": "48016214887d081b5936f61b89249b10e369f8cefcfa74cc8a42f584f4369970"
+    },
+    {
+      "path": "notes/misc/migration-plan.md",
+      "sha256": "93a3a8a9970bb3899c7ef323ef02b4b581a0a226d45986f50f715f929ab73ad2"
+    },
+    {
+      "path": "notes/misc/offline-mode.md",
+      "sha256": "23d3f03de805a759afdbc766094d79c4661449a9a1ecc6758d4a2f11e96a24b2"
+    },
+    {
+      "path": "notes/misc/vendor-evaluation.md",
+      "sha256": "13651fcae75991c56caf3a682ab779c3564478ab89109a98659bd6c84e5aa081"
+    },
+    {
+      "path": "notes/people/ines-okafor.md",
+      "sha256": "99dc1d2093357a35ddfb4cdb467638f604a06748b25c28af99f1a7fd18947c80"
+    },
+    {
+      "path": "notes/people/kenji-sato.md",
+      "sha256": "04d9a3622ed43e6b20053c1690c25106231ffc6c66b45be3680aa2cee52692fd"
+    },
+    {
+      "path": "notes/people/luca-moretti.md",
+      "sha256": "09b499edc9f5be732ab45fe9f5d2d1ec55c1dfca05b04bad7c3c2b21d98bde56"
+    },
+    {
+      "path": "notes/people/mara-lindqvist.md",
+      "sha256": "dff613261a69ddc6d9c24d7625e17409bd4e82eadd2d29fcebd588feb3cde578"
+    },
+    {
+      "path": "notes/people/priya-raman.md",
+      "sha256": "049a663f86cb0038fead85ae2a94749c0779e37fb683a4808687e03ba3c3bd8f"
+    },
+    {
+      "path": "notes/people/tobias-reuter.md",
+      "sha256": "5f4560e3b83613a16d14eadde9084b355e3f7909386d2fa8e14920f1d0b335ad"
+    },
+    {
+      "path": "notes/playbooks/playbook-cold-start-after-upgrade.md",
+      "sha256": "cf4d4d407030a093addb2d8017addf71089cc4433d2d30e8a7f4c1476fc80aac"
+    },
+    {
+      "path": "notes/playbooks/playbook-key-rotation.md",
+      "sha256": "85cce4ff7b74f071b568844455dbb6575617f6fcb4357293fd799eb750b0b36f"
+    },
+    {
+      "path": "notes/playbooks/playbook-paging-storm.md",
+      "sha256": "9922ab6db85b8771dad777bc7863482f149d477b62a24d8ee7c8752393ef487e"
+    },
+    {
+      "path": "notes/playbooks/playbook-stale-runbook.md",
+      "sha256": "3578149748b9c0e8b193b24333f37127b2e9160bff354dd6aa8a5431f1a0c864"
+    },
+    {
+      "path": "notes/playbooks/playbook-timeline-gap.md",
+      "sha256": "9d4f5d9dc6415ff91660a9d48d3b0ce0c41abf41e1689c330a506a00614a1be8"
+    },
+    {
+      "path": "notes/playbooks/playbook-vendor-outage.md",
+      "sha256": "387261bb43c06f91619cd9081465f49865e7b9a3ab7082ba225fa5dd2583e82e"
+    },
+    {
+      "path": "notes/scratch/conference-notes-2025.md",
+      "sha256": "6cd958f0e2a1df72522083f28e16ce8b81a7c570b831227e72ecd2a29f8b4a4c"
+    },
+    {
+      "path": "notes/scratch/laptop-setup.md",
+      "sha256": "5d91114a75364f7e99acc0330fd399ea487a5e8fc15bf8439a5e295f45a73e17"
+    },
+    {
+      "path": "notes/scratch/old-naming-brainstorm.md",
+      "sha256": "7c9f60025cab317354e499cbc551b7e4e535a03d39d2c9168cb9a8b7e8e5c1fe"
+    },
+    {
+      "path": "notes/scratch/reading-list.md",
+      "sha256": "e99257a125d07c35a396541c5b28b5ede8ec365ab2bf2763058ff8e24d7c7cb3"
+    },
+    {
+      "path": "notes/scratch/scratch-ideas.md",
+      "sha256": "544919a6097040eacf4b080270d72192b10a9203697878039625d66d67053321"
+    },
+    {
+      "path": "notes/specs/alert-router-spec.md",
+      "sha256": "ddbe978a197d7c4732af4714e9f2c2ed2b114ef1b350c8230e2dcef2f7964688"
+    },
+    {
+      "path": "notes/specs/evidence-vault-spec.md",
+      "sha256": "6722242ff395e4456343cdfcb0b66d2b8e31dc5a464a5918d0c49a577b2652f7"
+    },
+    {
+      "path": "notes/specs/on-call-scheduler-spec.md",
+      "sha256": "7070f5c603ef60e0958d7c9eb7ad9802a94e1ccb86e38f22f5e7094e05e2b3be"
+    },
+    {
+      "path": "notes/specs/paging-bridge-spec.md",
+      "sha256": "941ef79f8f472bae075b8535eb53ed9e8a56fb3571ead82cf12779d904488f28"
+    },
+    {
+      "path": "notes/specs/postmortem-builder-spec.md",
+      "sha256": "ecc0eab5829ea14633841c68d03a5543b27a40dc5cb4078c0c65839b0760036f"
+    },
+    {
+      "path": "notes/specs/runbook-engine-spec.md",
+      "sha256": "02a794ef87b783c8d2e528dc74567d7ab192e69612faa958d9b4d6b3d550c43a"
+    },
+    {
+      "path": "notes/specs/status-page-spec.md",
+      "sha256": "25b25575bca0284808a009cdec4d788fc19d28a498a9311e3eb7fd3f1a6368d4"
+    },
+    {
+      "path": "notes/specs/timeline-store-spec.md",
+      "sha256": "3ef043b0a0b07e8adbe7a24200557675b3c17b38780cf71ebb1f20d407c094f6"
+    },
+    {
+      "path": "office/offsite-agenda.docx",
+      "sha256": "ab1155c32ed39a6c6ccc5043f439bf6cf8d7620cce0ee692c602e1e9b8eac3ca"
+    },
+    {
+      "path": "office/onboarding.docx",
+      "sha256": "848a98c8723ab0d1d36e74babafc85fe98ec91cc7587982135228485c1f8401c"
+    },
+    {
+      "path": "office/q3-review.docx",
+      "sha256": "10063b06d093074ef8dac53639c5875ede459bf7a23c96523f90e36ac40926ca"
+    },
+    {
+      "path": "office/vendor-eval.xlsx",
+      "sha256": "5a9312620301d43d53acd5d8798b7c534978625a4ea92253e4b77d4068082e15"
+    },
+    {
+      "path": "office/vendor-soc2-summary.docx",
+      "sha256": "2ddfbb7cc4efbbeccf0823fa53038acbea3f97ba216d8710c4602eaf59d2fe91"
+    },
+    {
+      "path": "papers/append-only-evidence-logs.pdf",
+      "sha256": "5a679540dff31807ed3c757b3244b6d5cd8da2e56d5fc6750571ce9a53ab7021"
+    },
+    {
+      "path": "papers/bounded-retries-in-paging-systems.pdf",
+      "sha256": "b3b5ed32e751d8e893128786fdbd410321cff033afc0e496ca2bcbf726aab876"
+    },
+    {
+      "path": "papers/deduplication-windows-for-alert-streams.pdf",
+      "sha256": "1c5adfa52f31b48c26a965ce8ef29547033893928fc7a426f2c750aa66af64b5"
+    },
+    {
+      "path": "papers/local-first-sync-for-operational-tools.pdf",
+      "sha256": "f1d8e4df7794b13da71dd0a79787fb0ff20776e640c5810805e519d423081b01"
+    },
+    {
+      "path": "papers/postmortem-structure-and-learning.pdf",
+      "sha256": "f5947ef617dbe547903d329372c019dea48de3950d52443d1e28d14818d539b7"
+    },
+    {
+      "path": "papers/quiet-hours-and-escalation-fairness.pdf",
+      "sha256": "43df74ab206e3ae488976e7b8bd0c3942c2748a00e73cab9ba858ee14236ce3e"
+    },
+    {
+      "path": "papers/runbook-drift-detection.pdf",
+      "sha256": "8aeeff684c4231fb0b7ff18ccefced18f93c542d1533c3a5f84937a98bb70902"
+    },
+    {
+      "path": "papers/slo-burn-rate-alerting.pdf",
+      "sha256": "34659369f86a083037238f80bfe09a03d28bb227b81cd5e6714c1ecca6a4cf34"
+    },
+    {
+      "path": "papers/sqlite-as-an-operational-store.pdf",
+      "sha256": "1f1c886c1314845c94a148501f44b5321a854648621070e387f6c3ebe8f5a6dd"
+    },
+    {
+      "path": "papers/webhook-signing-schemes-compared.pdf",
+      "sha256": "f4c3014025ddbb9292192984c33d86acba1d1ee9c1fb5d76f697721496e9114a"
+    },
+    {
+      "path": "src/api/server.ts",
+      "sha256": "977331b4b0299ecd741b80d301b362d2622671f5b81c50656dde130fb47cdffb"
+    },
+    {
+      "path": "src/api/webhooks.ts",
+      "sha256": "77abd7ccf898f4432bc5e81f5e61fa11fed7bdf7f26d97035077af38255f1f8d"
+    },
+    {
+      "path": "src/cli/commands.ts",
+      "sha256": "889264bb32d818a488f8c3a1adb2ed882bcf3f63d26a2af26bbc993945f393f0"
+    },
+    {
+      "path": "src/cli/main.ts",
+      "sha256": "0d6f887be2b4b347398539bd58f5da636ea951ba4c9e2c1f8eb8140c8b8e35b2"
+    },
+    {
+      "path": "src/core/clock.ts",
+      "sha256": "2e45dc5580b44e83f8fe1547d69008bc0b74736f674369793936c284cd8a87c9"
+    },
+    {
+      "path": "src/core/config.ts",
+      "sha256": "69212090cc02741ea68f46117e54c2fee9dcecbad568be1a2e5065cdf5a72e5a"
+    },
+    {
+      "path": "src/core/log.ts",
+      "sha256": "80f724f89b4247f9dbbe6a735910168ec58fd91329e351066e9cc6e8fcc67cd1"
+    },
+    {
+      "path": "src/core/migrate.ts",
+      "sha256": "f5e2b98ed4c3298466510b660ccba79932d525883c3830ce14d14369f3fa2f7a"
+    },
+    {
+      "path": "src/core/rate-limit.ts",
+      "sha256": "682347473715da6e1f264322fa82aa1472e22dff81b591c6da5d92ec7ce6aa1d"
+    },
+    {
+      "path": "src/core/signing.ts",
+      "sha256": "a49f35a46de9a6c0a1ec85ce6df9cae454289289be744ebb28717938745d3ff3"
+    },
+    {
+      "path": "src/core/sqlite.ts",
+      "sha256": "1dcdf9ae195e130f6966d72f6b62a7a0a1de69d2a1396999db53d5b60bd287eb"
+    },
+    {
+      "path": "src/evidence/capsule.ts",
+      "sha256": "7bf235281bf26c98042bb47e4260db7cc898650b28278de6098d12fecb000445"
+    },
+    {
+      "path": "src/evidence/hash.ts",
+      "sha256": "ff4fa8c196dc77f290f4b045c612f6430c895f9dc95f44f167e24219de458582"
+    },
+    {
+      "path": "src/evidence/vault.ts",
+      "sha256": "c32207533e7023f3469412e7f9d999734901d6949d9faef9e87c88c14e3d0b07"
+    },
+    {
+      "path": "src/oncall/handoff.ts",
+      "sha256": "3f19c99a3817717c40e5e089da9e390ecd43b13194408bc5e40c6cde946780f1"
+    },
+    {
+      "path": "src/oncall/scheduler.ts",
+      "sha256": "81083e5eee685f0e8ce9ee52d7e5d3ea7340f2b6635cb83118ca63866833f32d"
+    },
+    {
+      "path": "src/paging/bridge.ts",
+      "sha256": "d4d52c9131cd9c0e3f007836a77826ca44ad1bee0d0856506f20f1e836c1a57c"
+    },
+    {
+      "path": "src/paging/quiet-hours.ts",
+      "sha256": "355f539cf758a8b999c32f0c1ce57206e21527cd3deffba2e4563103a6356228"
+    },
+    {
+      "path": "src/postmortem/builder.ts",
+      "sha256": "249e2b98b12ed9ec4e6c0241163dbbc260a7b63774d4bad1c1709cdf836b0acf"
+    },
+    {
+      "path": "src/postmortem/template.ts",
+      "sha256": "777edb82ce7e73883f17a6ee6be8ead3831b4babc72005bc6d539c3070f70b9b"
+    },
+    {
+      "path": "src/router/alert-router.ts",
+      "sha256": "0400a3b8503ef2fc0c2242fa1a703cdad0eacd1485a0e4f74fd263fa9cc053ea"
+    },
+    {
+      "path": "src/router/dedup.ts",
+      "sha256": "fe12a849749c7c39f067c866da1c8e054c8a09db65ae76ba305853bfd57761cc"
+    },
+    {
+      "path": "src/router/retry-budget.ts",
+      "sha256": "4feebe6ef454148acbdc9bd9a9759d20195b81df802d730163c24d4358ceed33"
+    },
+    {
+      "path": "src/runbook/engine.ts",
+      "sha256": "c81d2d60375cf56a2f7c8dbb303684714bf652a528f940aa7290ee668f24631d"
+    },
+    {
+      "path": "src/runbook/versioning.ts",
+      "sha256": "0c5a99268318458d4485580ec1785f737a72137303fe661537ed905f72181402"
+    },
+    {
+      "path": "src/search/bm25.ts",
+      "sha256": "ee507a56ae7991fcb35c519b69e1c78604a77bd0bf8955326f1a1e3384fd5755"
+    },
+    {
+      "path": "src/search/index.ts",
+      "sha256": "4e6bf91b2e7f036373635ad14775ddb9862f5a5e39b83438b7e22f99e7962f7a"
+    },
+    {
+      "path": "src/status/page.ts",
+      "sha256": "c589080384d03f297dfd546b543983c23e1f864c4e81d7a413590907c9397f89"
+    },
+    {
+      "path": "src/status/slo.ts",
+      "sha256": "57e3b6fc41e8ce03eba17109a6bcbbb0a384870213bce4ed6fc7f219e593e700"
+    },
+    {
+      "path": "src/timeline/exporter.ts",
+      "sha256": "a6ed4505f8c0c6069774d213989340fb29bdf519f2961e397c15f01b89065b06"
+    },
+    {
+      "path": "src/timeline/schema.ts",
+      "sha256": "df8de9f3c7e142fee252850223b74639e688a20374d401586a03d16dc01a0bec"
+    },
+    {
+      "path": "src/timeline/store.ts",
+      "sha256": "8afde4bff01ee8d7fce23d1d1053855edf1d7eafcd9d885bb339f21ebbc93cfd"
+    }
+  ],
+  "count": 143,
+  "scope": "143 original synthetic documents; no index copied across hosts"
+}

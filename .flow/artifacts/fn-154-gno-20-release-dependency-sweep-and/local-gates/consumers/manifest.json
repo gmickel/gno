@@ -1,0 +1,179 @@
+{
+  "gzip_mtime": 0,
+  "files": [
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/artifact.json",
+      "logical_path": "artifact.json",
+      "archive_path": "consumers/artifact.json.gz",
+      "raw_bytes": 170,
+      "raw_sha256": "83ca055796ef165a2c98cf0073b81fe33f3824fddc39a2aeefb0170f5315c4c6",
+      "gzip_bytes": 155,
+      "gzip_sha256": "0a28d943dad758ce1e1fe114a4d47af8b01f2652ab7f089477a707c1ae55624b"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/bun-audit.exit",
+      "logical_path": "bun-audit.exit",
+      "archive_path": "consumers/bun-audit.exit.gz",
+      "raw_bytes": 2,
+      "raw_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "gzip_bytes": 22,
+      "gzip_sha256": "cabc3a30b39528db601f65ca3ced008dd775595c901102d08ac8ae8976b29bcf"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/bun-audit.json",
+      "logical_path": "bun-audit.json",
+      "archive_path": "consumers/bun-audit.json.gz",
+      "raw_bytes": 3,
+      "raw_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "gzip_bytes": 23,
+      "gzip_sha256": "37a641f5b71f361a83c4bb5aae7e62bb31dff4340708786bd20df2313b0f1173"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/bun-audit.stderr",
+      "logical_path": "bun-audit.stderr",
+      "archive_path": "consumers/bun-audit.stderr.gz",
+      "raw_bytes": 0,
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzip_bytes": 20,
+      "gzip_sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/bun-install.exit",
+      "logical_path": "bun-install.exit",
+      "archive_path": "consumers/bun-install.exit.gz",
+      "raw_bytes": 2,
+      "raw_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "gzip_bytes": 22,
+      "gzip_sha256": "cabc3a30b39528db601f65ca3ced008dd775595c901102d08ac8ae8976b29bcf"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/bun-install.log",
+      "logical_path": "bun-install.log",
+      "archive_path": "consumers/bun-install.log.gz",
+      "raw_bytes": 326,
+      "raw_sha256": "4ab947bea7d1a11cb0c031633d6bd40f50fa703b87570e26f8e601952e32a7e7",
+      "gzip_bytes": 254,
+      "gzip_sha256": "7eda11ea380f04e547c809a04f31e0f2da32ca74c875f91a3ef4805802d4176c"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/bun-verify.exit",
+      "logical_path": "bun-verify.exit",
+      "archive_path": "consumers/bun-verify.exit.gz",
+      "raw_bytes": 2,
+      "raw_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "gzip_bytes": 22,
+      "gzip_sha256": "cabc3a30b39528db601f65ca3ced008dd775595c901102d08ac8ae8976b29bcf"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/bun-verify.json",
+      "logical_path": "bun-verify.json",
+      "archive_path": "consumers/bun-verify.json.gz",
+      "raw_bytes": 953,
+      "raw_sha256": "c81fdd1ba6427d6ae91c4c59d53a1a79431f7fa06c648774fb35a4b69ff839c4",
+      "gzip_bytes": 350,
+      "gzip_sha256": "e0b474867dcb4c3027f20cc3be28247bb627b1adc2d1bfdb6df66a8717e015b8"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/bun-verify.stderr",
+      "logical_path": "bun-verify.stderr",
+      "archive_path": "consumers/bun-verify.stderr.gz",
+      "raw_bytes": 0,
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzip_bytes": 20,
+      "gzip_sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/evidence.json",
+      "logical_path": "evidence.json",
+      "archive_path": "consumers/evidence.json.gz",
+      "raw_bytes": 4139,
+      "raw_sha256": "4c8ac110cf7a96a562826e1b31e0732883817786d05b02e58c52086a4a3089ed",
+      "gzip_bytes": 904,
+      "gzip_sha256": "19ac89f16d26dc99622cf4c81dcde1f6f497c0eb7b03fcb09c506fa4e67fef90"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/npm-audit.exit",
+      "logical_path": "npm-audit.exit",
+      "archive_path": "consumers/npm-audit.exit.gz",
+      "raw_bytes": 2,
+      "raw_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "gzip_bytes": 22,
+      "gzip_sha256": "cabc3a30b39528db601f65ca3ced008dd775595c901102d08ac8ae8976b29bcf"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/npm-audit.json",
+      "logical_path": "npm-audit.json",
+      "archive_path": "consumers/npm-audit.json.gz",
+      "raw_bytes": 364,
+      "raw_sha256": "fc123829bd74113796301f893447e753580f9deaee6a53a1241777b7bb1df44a",
+      "gzip_bytes": 188,
+      "gzip_sha256": "cf7bc0e195bb7fbca2eef7a4b65beda103ad7c56c57164cf2b2ffc400cbb851b"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/npm-audit.stderr",
+      "logical_path": "npm-audit.stderr",
+      "archive_path": "consumers/npm-audit.stderr.gz",
+      "raw_bytes": 0,
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzip_bytes": 20,
+      "gzip_sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/npm-install.exit",
+      "logical_path": "npm-install.exit",
+      "archive_path": "consumers/npm-install.exit.gz",
+      "raw_bytes": 2,
+      "raw_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "gzip_bytes": 22,
+      "gzip_sha256": "cabc3a30b39528db601f65ca3ced008dd775595c901102d08ac8ae8976b29bcf"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/npm-install.log",
+      "logical_path": "npm-install.log",
+      "archive_path": "consumers/npm-install.log.gz",
+      "raw_bytes": 149,
+      "raw_sha256": "82320f42de4576a2c2b99e20e4275ead7e4a3fc1abb3da92505308c472e6d31f",
+      "gzip_bytes": 140,
+      "gzip_sha256": "235904ea8644ea594d773d97c76f8d27b7f4daff52c46188980090565e2a2992"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/npm-verify.exit",
+      "logical_path": "npm-verify.exit",
+      "archive_path": "consumers/npm-verify.exit.gz",
+      "raw_bytes": 2,
+      "raw_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "gzip_bytes": 22,
+      "gzip_sha256": "cabc3a30b39528db601f65ca3ced008dd775595c901102d08ac8ae8976b29bcf"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/npm-verify.json",
+      "logical_path": "npm-verify.json",
+      "archive_path": "consumers/npm-verify.json.gz",
+      "raw_bytes": 953,
+      "raw_sha256": "8745c755f1c8684e7e44c2fe15b4ef10d8cfdeaed1a60556b864def72d7c8ed2",
+      "gzip_bytes": 350,
+      "gzip_sha256": "84de043cc5a93cc49f850b1565a0c0fdb1178f4877693f369164cb644534bb90"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/npm-verify.stderr",
+      "logical_path": "npm-verify.stderr",
+      "archive_path": "consumers/npm-verify.stderr.gz",
+      "raw_bytes": 0,
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzip_bytes": 20,
+      "gzip_sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/verify.ts",
+      "logical_path": "verify.ts",
+      "archive_path": "consumers/verify.ts.gz",
+      "raw_bytes": 2643,
+      "raw_sha256": "a668bdd731f95a01db9311c954729aff0fa9b859d1331b0ca6dde46dda4d12f7",
+      "gzip_bytes": 1152,
+      "gzip_sha256": "daf268fee9161964425992808318d6059ce73d315625f839442ab0e465c98bc4"
+    }
+  ],
+  "count": 19,
+  "raw_bytes": 9712,
+  "gzip_bytes": 3728
+}

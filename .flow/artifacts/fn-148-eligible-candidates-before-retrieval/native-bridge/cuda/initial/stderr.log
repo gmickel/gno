@@ -1,0 +1,14 @@
+73 |     return;
+74 |   }
+75 |   if (typeof value === "object") {
+76 |     for (const [key, item] of Object.entries(value)) {
+77 |       if (item === undefined) {
+78 |         throw new Error(`Canonical JSON rejects undefined at ${path}.${key}`);
+                       ^
+error: Canonical JSON rejects undefined at $[0].contentType
+      at assertJsonValue (/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/public-surfaces-f8a278ef/package/evals/agentic/canonical.ts:78:19)
+      at assertJsonValue (/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/public-surfaces-f8a278ef/package/evals/agentic/canonical.ts:115:48)
+      at canonicalJson (/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/public-surfaces-f8a278ef/package/evals/agentic/canonical.ts:182:3)
+      at canonicalFingerprint (/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/public-surfaces-f8a278ef/package/evals/agentic/canonical.ts:193:18)
+
+Bun v1.3.14 (Linux x64)

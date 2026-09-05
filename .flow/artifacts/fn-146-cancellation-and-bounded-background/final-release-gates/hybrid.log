@@ -1,0 +1,20 @@
+$ bun --bun evalite evals/hybrid.eval.ts
+
+ EVALITE running...
+
+ ⏳ evals/hybrid.eval.ts  (1 eval)
+ 86% evals/hybrid.eval.ts  (1 eval)
+
+      Score  86%
+  Threshold  70% (passed)
+ Eval Files  1
+      Evals  1
+   Duration  126ms
+
+╔═════════╤═════════╤═════════╤═════════╤═════════╤═════════╤═════════╤═══════╗
+║ Cases   │ Recall@ │ nDCG@10 │ MRR     │ Total   │ BM25    │ Assembl │ Score ║
+║         │ 5       │         │         │ p95     │ p95     │ y p95   │       ║
+╟─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼───────╢
+║ 33      │ 82%     │ 82%     │ 85%     │ 1.4ms   │ 0.0ms   │ 0.3ms   │ 86%   ║
+╚═════════╧═════════╧═════════╧═════════╧═════════╧═════════╧═════════╧═══════╝
+

@@ -85,15 +85,90 @@ rebuilds.
 
 `gno serve` and `gno daemon` are mutually exclusive modes of one resident core
 per data directory. That core owns store/writer coordination, bounded readers,
-the watcher and scheduler, jobs, model manager, session/request admission,
+the watcher and scheduler, jobs, native-worker ownership, session/request admission,
 generation counters, and graceful shutdown. Serve adds Web UI and the full
 loopback REST API; daemon stays headless. Both mount the same stateful MCP
 surface at `/mcp` and safe lifecycle status endpoints.
 
+Reader admission transfers a released slot directly to the next queued reader.
+A canceled waiter returns or transfers its reserved slot exactly once, keeping
+active work within the configured capacity without stranding waiting requests.
+
 Stdio MCP and direct CLI commands remain truthful standalone processes. They
 reuse the same pure MCP tool/resource definitions but do not claim attachment
 to the resident listener. Every HTTP MCP session owns independent SDK
-server/transport state while borrowing resident stores and model leases.
+server/transport state while borrowing resident stores. MCP requests reuse the
+adapter for their configuration snapshot, retaining their collection scope and
+egress policy. Model-use leases cover actual inference work; status and document
+reads do not acquire a broad model lease.
+
+Native GGUF inference runs in an owned Bun child. Its ModelManager, model contexts
+and backend allocations stay in that child; the parent retains policy, downloads,
+stores and transports. Serve and daemon defer model-file resolution, downloads
+and native initialization until inference is needed. Validated stored dimensions
+allow vector-index setup without loading an embedding model; an empty index
+discovers dimensions on its first vector operation. Capability flags describe
+configured functionality, not proof that a model is loaded or first use will
+succeed.
+
+Cancellation metadata uses a request-local `AsyncLocalStorage` scope (Bun has
+no separate async-context API), alongside explicit port `InferenceOptions`.
+Nested scopes combine signals and tighten deadlines; they cannot relax the
+parent caller's limit. This carries cancellation through Capsule/answer/verifier
+calls without adding operational fields to model inputs or public JSON schemas.
+REST uses the admitted request signal; MCP combines transport and protocol
+cancellation. Accepted asynchronous jobs detach from the accepting request and
+own a separate cancel signal.
+
+Caller delivery and native settlement are independent. Canceling queued work
+removes only its own entry. Canceling active work sends a validated control
+message while keeping its child slot occupied until a real completion or
+confirmed child exit. Generation cooperatively aborts evaluation; embedding and
+ranking may only stop between evaluations. Child model loading also awaits actual
+native settlement instead of acknowledging a timeout race. A stuck canceled
+operation gets five seconds to settle before its single-operation child is
+retired. Cleanup remains owned even when caller delivery has already ended.
+
+Background embedding uses internal turns of at most 32 pending chunks. A scheduler
+run or accepted job can span many turns: each checkpoint releases native/model
+ownership before yielding and the next page rechecks current work. No whole-pass
+model lease is held. Foreground native requests dispatch first; a pending
+background request receives service after at most eight foreground native
+inference completions. Metadata init/dispose neither earn foreground credit nor
+reset background service credit. Both classes share the existing 64 waiting-call limit. Cancellation
+delivery does not free active capacity or count as native completion. Failed
+background chunks remain pending for a later pass, while the cursor advances to
+allow later pages to progress. Background passes do not expand a failed batch
+into an inline adaptive recovery tail. New notifications retain the 30-second
+debounce and five-minute maximum wait; failures retry on the debounced schedule.
+
+Native model leases are specific to the model URI and protect loading, context
+creation, evaluation and cleanup until actual settlement. Embedding activity
+therefore does not retain idle generation/reranking weights. Individual model
+expiry invalidates native contexts; later inference rebinds cached ports to the
+newly loaded model. Metadata initialization can protect an active load without
+renewing already-loaded models' inactivity grace.
+
+The default native inactivity grace is five minutes. Active work, pending response
+delivery and model-use leases prevent retirement; metadata polling does not renew
+it. Retirement exits the child, and subsequent inference acquires a new generation
+and reloads its models. Resident model counters are the latest child-reported
+snapshot, not live memory readings. Retired generations expose zero active/loaded
+counts; their historical counters remain until the next generation.
+
+Embedding weight fingerprints are reused within the owning child generation
+while the model file's device, inode, size, modification time and change time
+remain identical. Disposing a port releases its contexts but retains this
+provenance even across individual model expiry, avoiding another full-file
+hash for the next query. File identity is checked around hashing, model loading
+and inference. A changed or replaced artifact invalidates the child rather than
+attaching a new fingerprint to retained old weights; a later independent request
+loads and fingerprints the artifact in a fresh generation.
+
+Resource accounting includes the parent, owned native child and any short-lived
+binding probes. Parent RSS alone omits native costs. Observe child exit and
+platform allocation evidence when measuring reclamation; a zero loaded-model
+counter does not measure bytes freed.
 
 ### Ingestion Pipeline
 
@@ -104,7 +179,7 @@ File on disk
     │
     ▼ Hash source content (SHA-256 → sourceHash)
     │
-    ├─[ sourceHash unchanged ]─► Skip (file not modified)
+    ├─[ sourceHash unchanged, active, complete ]─► Skip
     │
     ▼ Converter (MIME detection → Markdown)
     │
@@ -121,6 +196,25 @@ File on disk
     ▼ [Optional] Embed chunks with title context (llama.cpp → vectors)
     │   Format: "title: Doc Title | text: chunk content..."
 ```
+
+Identical source bytes do not suppress restoration of an inactive document.
+Activation and its existing `reactivate` journal entry commit together; failed
+persistence cannot publish a successful transition. Missing files stay inactive,
+and repeated unchanged syncs do not emit additional restoration history.
+
+Chunk persistence reconciles sequence ownership instead of deleting every row
+for a shared mirror. Unchanged chunk text retains its row and valid vectors;
+changed or removed sequences invalidate only their affected ownership. Metadata
+updates preserve the chunk's creation identity. Document title or mirror changes
+invalidate its bindings, while unchanged inactive bindings can survive a restore.
+
+Verified embedding entrypoints select partitions from the initialized runtime's
+actual identity before counting, dry runs, force processing or zero-backlog
+returns. Counts represent document/chunk owners; inference may deduplicate exact
+inputs. Explicit force replaces supplied vectors atomically with owner binding
+and vector-index materialization. Stored variants can repair lost materialization
+without inference. Completeness and durable activation are separate: losing an
+index table does not authorize fallback to legacy vectors after promotion.
 
 ### Search Pipeline
 
@@ -152,6 +246,21 @@ User query
     ▼ [Optional] Answer stage (adaptive source selection + citation hygiene)
 ```
 
+Plain lexical and vector retrieval batch-load only the exact selected chunk
+sequences (sequence zero for document-level BM25). Intent steering and
+document-wide exclusions retain whole-hash chunk reads. Missing sequences keep
+the existing lexical snippet fallback and vector omission behavior; full output
+still reads the canonical document content separately. Stores without targeted
+chunk support retain whole-hash batching. No cross-request cache is introduced.
+
+CLI and SDK Ask own one immutable hydration cache across retrieval, reranking,
+answer preparation, and verified Capsule materialization. Raw mirror/chunk reads
+are reused; model prompts and selected passages are still prepared and validated
+by each stage. The owner is released in `finally`, including failures. Capsule
+freshness verification reads the current store independently, preserving existing
+index/hash drift checks. This does not add filesystem rereads or a post-generation
+freshness check. Request snapshots are never reused by a later Ask.
+
 ### Retrieval V2 Controls
 
 - **Structured query modes**: callers can pass explicit `term`, `intent`, and `hyde` entries.
@@ -173,6 +282,18 @@ During sync, GNO projects wiki/markdown links into typed edges, parses
 matching `contentTypes[].graphHints` value as the projected edge type for plain
 links. Reads join active source and target documents so inactive renamed files
 do not surface stale edges.
+
+Sync retains unresolved frontmatter targets and prior document identities in a
+durable reference inventory; parsed links remain in `doc_links`. Scoped sync
+reprojects changed sources plus incoming sources matching old and new target
+identities, including sources in other collections. Relation lookup indexes
+preserve URI, path, title and ambiguity precedence. An unchanged sync with a
+complete projection skips global content reads and edge backfill.
+
+Missing or interrupted inventory, projection-version changes, and collection
+or graph-rule configuration changes select full reconciliation. Projection
+completion is recorded only after successful work; an identical source that
+reappears after deletion is restored through normal ingestion.
 
 Ingestion respects per-collection `sourceAvailability` (`any` default, or
 opt-in `local`). Local mode shares one guarded content-read boundary across
@@ -212,9 +333,10 @@ Watcher queues, snapshots, suppression history, and retry timing are capped;
 sustained churn has a hard flush deadline. Windows retains end-state
 correctness through full-collection escalation because native anchored handles
 are unavailable. Network, removable, and coarse-timestamp filesystems are not
-universally guaranteed. Changed sources and known backlinks are reprojected;
-periodic/full sync remains the exact fallback for previously unresolved
-frontmatter targets. Projection yields to the event loop in bounded intervals
+universally guaranteed. Changed sources and incoming references are reprojected,
+including previously unresolved frontmatter targets outside the watched
+collection. Full reconciliation remains the recovery path when reference
+inventory is incomplete. Projection yields to the event loop in bounded intervals
 so HTTP requests remain responsive during larger graph rebuilds.
 
 `gno graph query`, REST `/api/graph/query`, and MCP `gno_graph_query` all wrap
@@ -283,19 +405,56 @@ GNO uses content-addressed storage:
 - `sourceHash` = SHA-256 of original file content
 - `mirrorHash` = SHA-256 of canonical markdown
 
-Multiple source files with identical canonical content share the same chunks and vectors. This deduplicates storage and speeds up indexing.
+Identical canonical content shares chunk storage. Verified vectors share storage
+only when the complete formatted embedding input and model/runtime identity match;
+different title context can require separate variants. Providers without verified
+identity use the legacy ownership rules described below.
 
 ### LLM Models
 
-All models run locally via node-llama-cpp:
+Local GGUF models run through node-llama-cpp in the owned native child. HTTP
+models use their configured endpoint and collection egress policy. The default
+local models are:
 
-| Model  | Purpose                    | Default                              |
-| ------ | -------------------------- | ------------------------------------ |
-| Embed  | Generate vector embeddings | Qwen3-Embedding-0.6B-Q8              |
-| Rerank | Cross-encoder scoring      | Qwen3-Reranker-0.6B-Q8 (32K context) |
-| Gen    | Answer generation          | Qwen3-1.7B-Q4                        |
+| Model  | Purpose                    | Default                 |
+| ------ | -------------------------- | ----------------------- |
+| Embed  | Generate vector embeddings | Qwen3-Embedding-0.6B-Q8 |
+| Rerank | Cross-encoder scoring      | Qwen3-Reranker-0.6B-Q8  |
+| Gen    | Answer generation          | Qwen3-1.7B-Q4           |
 
-Models are GGUF-quantized for efficiency. First use triggers automatic download.
+Models are GGUF-quantized for efficiency. First inference resolves model files;
+downloads occur only when the configured policy permits them.
+
+Before native initialization, GNO installs a simulator lifetime guard based on
+node-llama-cpp PR 636. Version 3.20.0 includes the upstream race fix; GNO retains
+additional cleanup after failed model initialization and joined disposal calls. Active resource estimates retain their simulator model
+and backend until context disposal finishes. Installation verifies the exact
+3.20.0 package and simulator source; unexpected dependency changes fail explicitly.
+The guard changes only the in-memory simulator factory, including in npm installs.
+It does not rewrite dependency files, replace native binaries, change model inputs
+or disable predictive resource selection. This repair does not establish that
+every historical native crash has the same cause. A frozen 12-case CUDA
+embedding/restoration probe completed with exact incremental-versus-clean results;
+that scope does not establish generation, reranking, Metal crash resolution or a
+performance gain.
+
+The native rerank port retains one ranking context for its loaded model generation,
+formatter configuration and token-capacity bucket. Batches execute serially within
+the port; resizing both upward and downward happens after active scoring finishes.
+A model lease protects loading, context replacement and scoring from idle expiry.
+Expired model generations and failed contexts are never reused; port disposal drains
+accepted batches before releasing the retained context.
+
+Explicit rerank sizing is limited to node-llama-cpp 3.20.0, Qwen3 architecture,
+BPE vocabulary and the exact audited rerank template. GNO counts complete prepared
+query/document pairs, takes the largest pair, adds 256 tokens and rounds up to a
+256-token bucket. A complete pair beyond the known model limit fails explicitly.
+
+Other versions, architectures, vocabularies or templates use native automatic
+sizing. Unknown model limits and padded capacities beyond the known limit also
+use that path. GNO does not impose an unvalidated smaller context or add input
+clipping. Incomplete or invalid scores fail reranking and retain the existing
+fusion fallback. Allocation and latency effects depend on the workload and device.
 
 ### Search Modes
 
@@ -419,3 +578,43 @@ For implementation details, see:
 - [How Search Works](HOW-SEARCH-WORKS.md) - Deep dive into query expansion, HyDE, and RRF fusion
 - [spec/cli.md](../spec/cli.md) - CLI specification
 - [spec/mcp.md](../spec/mcp.md) - MCP specification
+
+### Exact-input vector ownership
+
+Vector partitions identify the exact formatted embedding input and actual
+model/runtime identity. Current document-owner eligibility and formatted-input
+validation precede the nearest-neighbor limit. Same-body Alpha/Beta titles retain
+separate vector ranks through hybrid fusion; public mirror hashes and URIs remain
+canonical. Identical-input owners can share vector storage without inheriting
+another owner's filters or title-specific evidence.
+
+Legacy retrieval remains authoritative during incomplete shadow backfill. Initial
+activation requires complete current coverage and an atomic mutation-epoch check.
+The activation marker remains authoritative after ordinary mutations: stale
+owners await embedding rather than falling back to unproven legacy vectors. A
+missing runtime identity, unactivated selected partition, or unavailable/corrupt
+variant index produces semantic failure and explicit hybrid fallback diagnostics.
+Losing an index table does not erase that durable authority.
+
+Providers without verified identity retain the legacy mirror-level representation
+before activation. Its selected title owner is the lowest active document ID.
+Document mutations compare that owner's prepared input per model and invalidate
+only affected legacy vectors when it changes. The final owner's disappearance
+retains vectors for an identical restore; ambiguous inactive title histories
+conservatively require recomputation. These checks and invalidation commit with
+the document mutation. They preserve legacy rename compatibility, but do not
+provide separate title-specific vectors for simultaneous differently titled
+owners; that requires verified exact-input variants.
+
+Embedding checkpoints revalidate the current input and selected runtime after
+inference and each contention wait. Legacy database-backed writes use an explicit
+checked-upsert port operation: lazy indexes forward the check into the actual
+SQLite transaction, which returns the committed row count. A custom index lacking
+that atomic operation fails closed for database-backed backlog work. Verified
+variants continue using their existing transactional owner checks. Interrupted
+passes retain completed checkpoints and leave unfinished inputs pending.
+
+Retrieval bulk-validates current eligible formatted inputs before distance ranking;
+it does not approximate filtered top-K through global overfetch. This adds CPU
+hashing proportional to eligible owner/chunk bindings. The ranking pass uses the
+same eligible-domain exact-distance approach as other filtered vector queries.

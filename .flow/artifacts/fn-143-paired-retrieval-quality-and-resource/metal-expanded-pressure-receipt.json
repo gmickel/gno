@@ -1,0 +1,131 @@
+{
+  "command": [
+    "/tmp/gno-native-tools-1314.KrONBb/bun-darwin-aarch64/bun",
+    "/tmp/gno-native-baseline-20260905.VQtXt5/launch.ts",
+    "/tmp/fn143-orchid-metal-01/pair.json",
+    "baseline",
+    "/tmp/gno-native-baseline-20260905.VQtXt5/one-shot.ts",
+    "--native",
+    "/tmp/fn143-orchid-metal-01/pair.json",
+    "baseline",
+    "expanded-semantic",
+    "requests-expanded-semantic.json"
+  ],
+  "pid": 82618,
+  "exit": -15,
+  "stopReason": "memory_pressure",
+  "wallSeconds": 5.804707415401936,
+  "samples": [
+    {
+      "elapsed": 0.018997957929968834,
+      "rssKiB": 2928,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 0.2955284994095564,
+      "rssKiB": 183568,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 0.574171332642436,
+      "rssKiB": 255552,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 0.8436595406383276,
+      "rssKiB": 605344,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 1.1214330829679966,
+      "rssKiB": 1505184,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 1.3986602071672678,
+      "rssKiB": 1546352,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 1.6758424993604422,
+      "rssKiB": 1546352,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 1.9466310823336244,
+      "rssKiB": 1546384,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 2.225535082630813,
+      "rssKiB": 1546432,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 2.493637915700674,
+      "rssKiB": 1546432,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 2.761207791045308,
+      "rssKiB": 1546432,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 3.048520124517381,
+      "rssKiB": 1352048,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 3.3220549151301384,
+      "rssKiB": 1039632,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 3.6035512909293175,
+      "rssKiB": 1142928,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 3.871402332559228,
+      "rssKiB": 1258192,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 4.156623790971935,
+      "rssKiB": 4786160,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 4.4274019580334425,
+      "rssKiB": 4365072,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 4.703854790888727,
+      "rssKiB": 4202048,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 4.982959790155292,
+      "rssKiB": 4055664,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 5.251255124807358,
+      "rssKiB": 3910352,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 5.52658037468791,
+      "rssKiB": 3726752,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 1\n"
+    },
+    {
+      "elapsed": 5.803135249763727,
+      "rssKiB": 3618944,
+      "pressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 2\n"
+    }
+  ],
+  "finalPressure": "vm.swapusage: total = 4096.00M  used = 3063.12M  free = 1032.88M  (encrypted)\nkern.memorystatus_vm_pressure_level: 2\n"
+}

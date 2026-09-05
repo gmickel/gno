@@ -1,0 +1,14 @@
+[explain] lang: queryLanguage=nl (detected)
+[explain] expansion: skipped (timeout)
+[explain] bm25: 0 candidates
+[explain] vector: 10 candidates
+[explain] graph: seeds=5, candidates=20/20, explicit=39, inferred=0, ambiguous=0, similarity=0
+[explain] fusion: RRF k=60, 27 unique candidates
+[explain] rerank: top 20 reranked
+[explain] timing: lang=0.52ms, expansion=5004.07ms, bm25=0.46ms, vector=2249.68ms, graph=13.29ms, fusion=2.24ms, rerank=3005.24ms, assembly=1.40ms, total=10277.13ms
+[explain] counters: expansionCache=0/0, rerankCache=0/0, fallbacks=none
+[explain] result 1: #f5a86388 score=1.00 (fusion=0.133, vec=0.02, rerank=1.00)
+[explain] result 2: #4467ed57 score=0.70 (fusion=0.071, vec=0.02, rerank=1.00)
+[explain] result 3: #4feebe6e score=0.70 (fusion=0.071, vec=0.02, rerank=1.00)
+[explain] result 4: #5d5eb137 score=0.63 (fusion=0.072, vec=0.02, rerank=1.00)
+[explain] result 5: #c11074de score=0.63 (fusion=0.072, vec=0.02, rerank=1.00)

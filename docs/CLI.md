@@ -243,6 +243,8 @@ printf '%s' "auth" | gno search --query-file - --json
 - hyphenated technical terms like `real-time`, `gpt-4`, and `DEC-0054` are handled intentionally
 - malformed lexical syntax returns a validation error instead of leaking raw SQLite FTS errors
 
+Keyword retrieval applies collection/path scope, caller allowlists, tags, modified-date bounds, category and author filters, managed-memory visibility, and whole-document exclusions before its ranked candidate limit. Higher-ranked ineligible documents cannot consume that window; fewer eligible matches still produce a short result. Existing BM25 weights, query syntax, recency/project-affinity reranking and minimum-score behavior are unchanged.
+
 **Recency intent sorting**: Queries containing `latest`, `newest`, or `recent` are ordered newest-first using frontmatter date when present, falling back to file modified time.
 
 Options:
@@ -869,15 +871,41 @@ gno embed --no-wait          # Exit 4 immediately if a writer holds the lease
 If you only want one collection to catch up after a model change, use the
 positional collection argument or `--collection`.
 
-If the active embedding model keeps the same URI but changes formatting/profile
-behavior, `stale` cleanup is not enough because the vectors are still tagged
-with the same model URI. In that case, use either:
+For a model that provides verified runtime identity, backlog and `--dry-run`
+counts refer to current document/chunk owners in that exact model partition.
+Two documents sharing canonical content can need different vectors when their
+titles produce different embedding inputs. `--force` processes all selected
+owners and replaces their matching vectors. Equal inputs within a batch share
+one inference; the reported owner count is not a model-call count.
+
+Both normal and dry-run commands may initialize the cached model to determine
+its actual dimensions, context and truncation policy. A dry run does not embed
+pending inputs. A normal run also repairs missing vector-index materialization
+from stored variants, even when no owner needs another embedding. Repeated
+unchanged runs reuse proven inputs. Providers without verified identity retain
+legacy compatibility only before variant authority has been activated; missing
+identity afterward is an error, not permission to reuse legacy vectors.
+
+Legacy providers store one vector per canonical chunk and model. A change to the
+selected title's formatted input invalidates the affected legacy vectors;
+ambiguous inactive title histories may require recomputation on restoration.
+Separate vectors for simultaneous differently titled owners require verified
+embedding identity.
+
+A deleted file restored with identical bytes becomes active on the next
+successful `gno update` or `gno index`. Activation and one `reactivate` change
+commit together. Repeated unchanged syncs do not add restoration events. Same-title duplicates
+and canonical-equivalent whitespace edits preserve unchanged embedding inputs;
+changed titles, text or model identity require matching coverage.
+
+To explicitly recompute selected embeddings even when the model URI and
+embedding identity are unchanged, use:
 
 ```bash
 gno embed --force
 ```
 
-or a per-collection reset:
+For a per-collection reset, clear its vectors and then regenerate coverage:
 
 ```bash
 gno collection clear-embeddings notes --all
@@ -1905,7 +1933,7 @@ Both `gno daemon` and `gno serve` ship with a symmetric set of management flags 
 | ------------------- | ------------------------------------------------------------------------------------------------- |
 | `--detach`          | Self-spawn a detached child; parent prints `pid` (+ url for serve) and exits 0. macOS/Linux only. |
 | `--status`          | Read pid-file, check liveness, print status. Pair with `--json` for machine output.               |
-| `--stop`            | SIGTERM the recorded pid, poll up to 10s, fall back to SIGKILL.                                   |
+| `--stop`            | SIGTERM the recorded pid, poll up to 12s, fall back to SIGKILL.                                   |
 | `--pid-file <path>` | Override pid-file location (defaults to `{data}/{kind}.pid`).                                     |
 | `--log-file <path>` | Override log-file location (append-only; defaults to `{data}/{kind}.log`).                        |
 
@@ -2014,7 +2042,7 @@ gno daemon --status
 # Check status (machine-readable; exits 3 when not running)
 gno daemon --status --json
 
-# Stop gracefully (SIGTERM with 10s timeout, SIGKILL fallback)
+# Stop gracefully (SIGTERM with 12s timeout, SIGKILL fallback)
 gno daemon --stop
 
 # Override paths

@@ -1,0 +1,107 @@
+[
+  {
+    "kind": "cli",
+    "coverage": [
+      "complete",
+      "incomplete"
+    ],
+    "reasons": [
+      [],
+      [
+        "CLI exit 137: see /private/tmp/fn143-control-metal-01/candidate/surfaces/cli-embedding-only/native-capture.json.stderr.log",
+        "model_not_exercised:embedding",
+        "vector_stage_unavailable",
+        "vectors_not_used",
+        "empty_successful_result"
+      ]
+    ],
+    "comparison": {
+      "passed": false,
+      "comparedCases": 1,
+      "failures": [
+        {
+          "caseId": "rerank-en-1000-start:embedding-only:cli",
+          "field": "deterministic.results.length",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "rerank-en-1000-start:embedding-only:cli",
+          "field": "deterministic.modelInputs.length",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "rerank-en-1000-start:embedding-only:cli",
+          "field": "deterministic.semanticState.status",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "rerank-en-1000-start:embedding-only:cli",
+          "field": "deterministic.semanticState.vectorsUsed",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "rerank-en-1000-start:embedding-only:cli",
+          "field": "deterministic.semanticState.vectorStatus",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "rerank-en-1000-start:embedding-only:cli",
+          "field": "deterministic.semanticState.error",
+          "reason": "Unexplained deterministic difference"
+        }
+      ],
+      "generatedAnswerChanges": []
+    }
+  },
+  {
+    "kind": "stdio",
+    "coverage": [
+      "complete",
+      "complete"
+    ],
+    "reasons": [
+      [],
+      []
+    ],
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    }
+  },
+  {
+    "kind": "resident",
+    "coverage": [
+      "complete",
+      "complete"
+    ],
+    "reasons": [
+      [],
+      []
+    ],
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    }
+  },
+  {
+    "kind": "api",
+    "coverage": [
+      "complete",
+      "complete"
+    ],
+    "reasons": [
+      [],
+      []
+    ],
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    }
+  }
+]

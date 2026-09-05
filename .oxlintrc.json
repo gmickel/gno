@@ -1,8 +1,10 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "ignorePatterns": [
+    "vendor/converters/**",
     "node_modules/**",
     "dist/**",
+    ".flow/artifacts/**",
     "desktop/electrobun-spike/**",
     "tmp/**",
     "evals/**",

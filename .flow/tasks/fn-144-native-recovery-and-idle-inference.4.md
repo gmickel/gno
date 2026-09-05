@@ -49,9 +49,12 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Queued/active requests racing expiry do not receive disposed contexts; scope/caller policy stays in parent.
 
 ## Done summary
-TBD
+Resident native ownership, lazy model resolution, truthful fallback and post-idle recovery integrated.
 
+Focused48-test resident/IPC gate and20-test startup gate passed with typed lint. Real CUDA and Ivan REST probes each returned eight exact20-result arrays through repeated metadata-polled expiry and fresh-process controls. Ivan equals frozen270c initial results. CUDA owned-child failure returned truthful bm25_only/vectorsUsed=false and recovered on the next request. Live dd38f777 empty-cache startup served REST/MCP lexical requests without model resolution/download/native child; first vector request failed explicitly for its intentionally missing local model.
+
+Physical evidence and source identities are retained under fn144 CUDA/Ivan artifact directories; CPU startup/public responses under fn148/public-lexical. No full child-native transcript, original Ivan expanded/reranked3/3 or complete Ask claim: these remain fn144.5.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 7274d5fe, 8330a58a, 23ba2c25, dd38f777
+- Tests: TMPDIR=/home/gordon/.cache/agent-tmp/gno-fn144-resident timeout 600 bun test ./test/serve/native-idle-recovery.test.ts ./test/serve/resident-request.test.ts ./test/serve/resident-runtime.test.ts ./test/mcp/context-lifecycle.test.ts ./test/pipeline/hybrid-query-batching.test.ts ./test/llm/native-worker-ports.test.ts ./test/llm/native-worker-protocol.test.ts ./test/llm/native-worker-lifecycle.test.ts — exit 0; 48 pass, 0 fail, 265 assertions, bunx oxlint --type-aware --type-check [22 owned source/test paths] — exit 0; zero warnings/errors, bunx oxfmt [owned changed files] — exit 0, Physical CUDA: eight full 20-result REST arrays equal through two metadata-polled expiry cycles and fresh control; owned-child SIGKILL returns vectorsUsed=false and next request recovers exact results, Physical Ivan: eight full 20-result REST arrays equal to frozen270c baseline, persistent parent and three child generations, 38 metadata polls do not prevent expiry, Live dd38f777 startup: empty cache and missing local model URIs under default policy; REST and HTTP MCP lexical pass without load/download/child; first vsearch returns explicit missing-model error
 - PRs:

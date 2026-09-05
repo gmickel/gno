@@ -15,6 +15,69 @@ export interface QueryFilterEvaluation {
   reasons: string[];
 }
 
+/** Internal pre-budget contract. Undefined metadata is a failed lookup, never
+ * an unrestricted candidate. Owners must be evaluated separately; this does
+ * not replace complete ownership lineage or change ranking/deduplication.
+ * Managed-memory scopes/supersession must already be enforced by the store.
+ */
+export async function evaluateRetrievalEligibility(
+  store: StorePort,
+  query: string,
+  doc: DocumentRow | undefined,
+  chunks: ChunkRow[] | undefined,
+  options: HybridSearchOptions,
+  callerScope?: Pick<HybridSearchOptions, "collection" | "retrievalScope">
+): Promise<QueryFilterEvaluation & { chunks: ChunkRow[] }> {
+  if (!doc || !chunks || !doc.mirrorHash) {
+    return { matches: false, reasons: ["metadata"], chunks: [] };
+  }
+  const reasons: string[] = [];
+  if (!doc.active) reasons.push("inactive");
+  const sourcePath = doc.recordSourcePath ?? doc.relPath;
+  for (const scope of [callerScope, options]) {
+    if (scope?.collection && doc.collection !== scope.collection) {
+      reasons.push("collection");
+    }
+    if (scope?.retrievalScope) {
+      if (!scope.retrievalScope.allowedMirrorHashes.includes(doc.mirrorHash)) {
+        reasons.push("scope");
+      }
+      const prefix = scope.retrievalScope.relPathPrefix;
+      if (
+        prefix !== undefined &&
+        sourcePath !== prefix &&
+        !sourcePath.startsWith(`${prefix}/`)
+      ) {
+        reasons.push("path");
+      }
+    }
+  }
+  // Whole-document exclusions inspect every chunk before language selection.
+  // A mismatched hash is incomplete/corrupt metadata, not a usable owner.
+  if (chunks.some((chunk) => chunk.mirrorHash !== doc.mirrorHash)) {
+    reasons.push("metadata");
+  }
+  if (reasons.length === 0) {
+    try {
+      reasons.push(
+        ...(
+          await evaluateQueryTargetFilters(store, query, doc, chunks, options)
+        ).reasons
+      );
+    } catch {
+      reasons.push("metadata");
+    }
+  }
+  const eligibleChunks = chunks.filter(
+    (chunk) => !options.lang || chunk.language === options.lang
+  );
+  return {
+    matches: reasons.length === 0,
+    reasons,
+    chunks: reasons.length === 0 ? eligibleChunks : [],
+  };
+}
+
 export function evaluateDocumentChunkFilters(
   query: string,
   doc: DocumentRow,

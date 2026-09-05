@@ -1,0 +1,47 @@
+{
+  "version": "eligible-variant-scaling-v1",
+  "identity": {
+    "model": "synthetic:eligible-scaling-v1",
+    "modelFingerprint": "0c13d7577d3527f34435769b8839646443880f1877e6348ac5f3d6b950f17a2e",
+    "contextSize": 512,
+    "truncationPolicy": "synthetic-tail-v1",
+    "dimensions": 2
+  },
+  "sizes": [
+    201,
+    2001,
+    10001
+  ],
+  "limits": [
+    1,
+    10
+  ],
+  "concurrency": [
+    1,
+    4
+  ],
+  "repetitions": 5,
+  "timerMs": 1,
+  "addedOwners": [
+    "Alpha",
+    "Beta",
+    "Alpha copy"
+  ],
+  "corpora": [
+    {
+      "size": 201,
+      "baseSha256": "06cbdc94eebdbb299c4f5525213da5fdc6671db8a5faad6198eead07bb0c9811",
+      "ownerScenarioSha256": "9040cf2f17c5ff6f170f70f1ace9038ccd2ea783af271cb332356131e155bdd4"
+    },
+    {
+      "size": 2001,
+      "baseSha256": "86bf68e4d59510e0823d639cc1a83e9a83d9ea0a8c1f661c6e508b57a85d6d55",
+      "ownerScenarioSha256": "037a621a5f8be8f315c8cd0fbacd77c522bdced66ea39564a5e0dcf5bc2e4216"
+    },
+    {
+      "size": 10001,
+      "baseSha256": "ad9e03b33592e9387a8f3a491fad92957c1769f6e3b4e1259b1680badb163f31",
+      "ownerScenarioSha256": "b121557cba3aafb587ea36703a28d0f072e0d6a378c4f874d19d2bc95d0856a7"
+    }
+  ]
+}

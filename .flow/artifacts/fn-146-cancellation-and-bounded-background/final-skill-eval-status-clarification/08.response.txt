@@ -1,0 +1,3 @@
+```bash
+gno query "error handling" --json | jq -r '.results[0].uri' | xargs gno get
+```

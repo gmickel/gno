@@ -1,0 +1,12 @@
+{
+  "candidateProduct": "9d0b57e30590b5d71429df538da7a5d0f08fff02",
+  "candidatePackageSha256": "1a01daff5030dfbab0492d8d7d76a759e699a3effbd87ede8a40a290e6879342",
+  "packageFiles": 902,
+  "packageBytes": 12848715,
+  "baselineProduct": "270c3a74f4f7a3aeb8a60462b4c8e1b4adf45462",
+  "baselineArchiveSha256": "ca991b29e0e23451290b82f8999fbca8725f20e4ac684e2acbc09ead9fd86d73",
+  "helper": "98252a9c991d9451d24b77f85d3b61bcfc5bb6e0",
+  "helperArchiveSha256": "bc8149c468fc583f0b3de0d70ab57a852e28c86b4c77642773b61689218b129a",
+  "runtime": "Bun 1.3.14; node-llama-cpp 3.19.1; llama.cpp b10068; CUDA",
+  "originalRawRoot": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3"
+}

@@ -1,0 +1,10 @@
+{
+  "sourceRoot": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package",
+  "productFilesVerified": 902,
+  "packageSha256": "1a01daff5030dfbab0492d8d7d76a759e699a3effbd87ede8a40a290e6879342",
+  "helperSha256": "a17680691f0326062f7cc132251fee28ed35319041f295398788b49e5428e116",
+  "extra": {
+    ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/driver.ts": "9a14793f1ebe2a2c4407c2f9e9e6ad4dd0056e1beb8b02a54e77c4bbec16e97f",
+    ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/seed.ts": "74afced789fe231bdd5b098ca8f9c65ef03029272223c8418230466a5f23ba13"
+  }
+}

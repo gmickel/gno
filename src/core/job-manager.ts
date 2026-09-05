@@ -1,11 +1,15 @@
+import type { SyncResult } from "../ingestion";
 /**
  * Background job manager for MCP write operations.
  *
  * @module src/core/job-manager
  */
 
-import type { SyncResult } from "../ingestion";
-
+import {
+  assertInferenceActive,
+  withOwnedInferenceScope,
+  withBackgroundInference,
+} from "../llm/inference-scope";
 import { MCP_ERRORS } from "./errors";
 import { acquireWriteLock, type WriteLockHandle } from "./file-lock";
 
@@ -78,7 +82,10 @@ export class JobManager {
   #jobs = new Map<string, JobRecord>();
   #jobAuthorizationEpochs = new Map<string, string>();
   #activeJobs = new Set<Promise<void>>();
+  #jobControllers = new Map<string, AbortController>();
   #authorizationEpoch = "egress-epoch-uninitialized";
+  #accepting = true;
+  #releaseJobLocks = new Map<string, () => Promise<void>>();
 
   constructor(options: JobManagerOptions) {
     this.#lockPath = options.lockPath;
@@ -89,8 +96,10 @@ export class JobManager {
 
   async startJob(
     type: JobType,
-    fn: () => Promise<SyncResult>
+    fn: (signal: AbortSignal) => Promise<SyncResult>
   ): Promise<string> {
+    assertInferenceActive();
+    this.#assertAccepting();
     this.#cleanupExpiredJobs();
 
     if (this.#activeJobId) {
@@ -105,14 +114,21 @@ export class JobManager {
       throw new JobError("LOCKED", MCP_ERRORS.LOCKED.message);
     }
 
+    if (!this.#accepting) {
+      await lock.release();
+      this.#assertAccepting();
+    }
+
     return this.#startJobWithLock(type, fn, lock);
   }
 
   async startJobWithLock(
     type: JobType,
     lock: WriteLockHandle,
-    fn: () => Promise<SyncResult>
+    fn: (signal: AbortSignal) => Promise<SyncResult>
   ): Promise<string> {
+    assertInferenceActive();
+    this.#assertAccepting();
     this.#cleanupExpiredJobs();
 
     if (this.#activeJobId) {
@@ -132,8 +148,10 @@ export class JobManager {
   async startTypedJobWithLock(
     type: JobType,
     lock: WriteLockHandle,
-    fn: () => Promise<JobResult>
+    fn: (signal: AbortSignal) => Promise<JobResult>
   ): Promise<string> {
+    assertInferenceActive();
+    this.#assertAccepting();
     this.#cleanupExpiredJobs();
 
     if (this.#activeJobId) {
@@ -205,8 +223,54 @@ export class JobManager {
     return { active, recent };
   }
 
+  /** Internal owner control; cancellation retains the existing failed job schema. */
+  cancelJob(jobId: string): boolean {
+    const controller = this.#jobControllers.get(jobId);
+    if (!controller) return false;
+    controller.abort();
+    return true;
+  }
+
   async shutdown(): Promise<void> {
+    this.stop();
     await Promise.allSettled(this.#activeJobs);
+  }
+
+  stop(): void {
+    this.#accepting = false;
+  }
+
+  cancel(): void {
+    this.stop();
+    for (const controller of this.#jobControllers.values()) controller.abort();
+  }
+
+  /** Call only after the shared shutdown budget; late callbacks stay canceled. */
+  async failUnfinished(): Promise<void> {
+    this.cancel();
+    for (const job of this.#jobs.values()) {
+      if (job.status !== "running") continue;
+      job.status = "failed";
+      job.error = "Resident shutdown deadline exceeded";
+      job.completedAt = Date.now();
+    }
+    await Promise.allSettled(
+      Array.from(this.#releaseJobLocks.values(), (release) => release())
+    );
+  }
+
+  #assertAccepting(): void {
+    if (!this.#accepting) throw new Error("Resident runtime is shutting down");
+  }
+
+  #ownLock(jobId: string, lock: WriteLockHandle): WriteLockHandle {
+    let releasing: Promise<void> | undefined;
+    const owned = {
+      release: () =>
+        (releasing ??= Promise.resolve().then(() => lock.release())),
+    };
+    this.#releaseJobLocks.set(jobId, owned.release);
+    return owned;
   }
 
   #track(jobPromise: Promise<void>): void {
@@ -219,14 +283,16 @@ export class JobManager {
 
   async #runJob(
     job: JobRecord,
-    fn: () => Promise<SyncResult>,
+    fn: (signal: AbortSignal) => Promise<SyncResult>,
     lock: { release: () => Promise<void> }
   ): Promise<void> {
     try {
       const release = await this.#toolMutex.acquire();
       try {
         this.#assertAuthorizationEpoch(job);
-        const result = await fn();
+        assertInferenceActive();
+        const result = await fn(this.#jobControllers.get(job.id)!.signal);
+        assertInferenceActive();
         job.status = "completed";
         job.result = result;
       } catch (e) {
@@ -239,6 +305,8 @@ export class JobManager {
       job.status = "failed";
       job.error = e instanceof Error ? e.message : String(e);
     } finally {
+      this.#releaseJobLocks.delete(job.id);
+      this.#jobControllers.delete(job.id);
       job.completedAt = Date.now();
       this.#activeJobId = null;
       await lock.release().catch(() => undefined);
@@ -248,10 +316,11 @@ export class JobManager {
 
   #startJobWithLock(
     type: JobType,
-    fn: () => Promise<SyncResult>,
+    fn: (signal: AbortSignal) => Promise<SyncResult>,
     lock: WriteLockHandle
   ): string {
     const jobId = crypto.randomUUID();
+    const ownedLock = this.#ownLock(jobId, lock);
     const job: JobRecord = {
       id: jobId,
       type,
@@ -260,11 +329,15 @@ export class JobManager {
       serverInstanceId: this.#serverInstanceId,
     };
 
+    this.#jobControllers.set(jobId, new AbortController());
     this.#jobs.set(jobId, job);
     this.#jobAuthorizationEpochs.set(jobId, this.#authorizationEpoch);
     this.#activeJobId = jobId;
 
-    const jobPromise = this.#runJob(job, fn, lock);
+    const jobPromise = withOwnedInferenceScope(
+      { signal: this.#jobControllers.get(jobId)!.signal },
+      () => withBackgroundInference(() => this.#runJob(job, fn, ownedLock))
+    );
     this.#track(jobPromise);
 
     return jobId;
@@ -272,10 +345,11 @@ export class JobManager {
 
   #startTypedJobWithLock(
     type: JobType,
-    fn: () => Promise<JobResult>,
+    fn: (signal: AbortSignal) => Promise<JobResult>,
     lock: WriteLockHandle
   ): string {
     const jobId = crypto.randomUUID();
+    const ownedLock = this.#ownLock(jobId, lock);
     const job: JobRecord = {
       id: jobId,
       type,
@@ -284,11 +358,15 @@ export class JobManager {
       serverInstanceId: this.#serverInstanceId,
     };
 
+    this.#jobControllers.set(jobId, new AbortController());
     this.#jobs.set(jobId, job);
     this.#jobAuthorizationEpochs.set(jobId, this.#authorizationEpoch);
     this.#activeJobId = jobId;
 
-    const jobPromise = this.#runTypedJob(job, fn, lock);
+    const jobPromise = withOwnedInferenceScope(
+      { signal: this.#jobControllers.get(jobId)!.signal },
+      () => withBackgroundInference(() => this.#runTypedJob(job, fn, ownedLock))
+    );
     this.#track(jobPromise);
 
     return jobId;
@@ -296,14 +374,16 @@ export class JobManager {
 
   async #runTypedJob(
     job: JobRecord,
-    fn: () => Promise<JobResult>,
+    fn: (signal: AbortSignal) => Promise<JobResult>,
     lock: { release: () => Promise<void> }
   ): Promise<void> {
     try {
       const release = await this.#toolMutex.acquire();
       try {
         this.#assertAuthorizationEpoch(job);
-        const result = await fn();
+        assertInferenceActive();
+        const result = await fn(this.#jobControllers.get(job.id)!.signal);
+        assertInferenceActive();
         job.status = "completed";
         job.typedResult = result;
       } catch (e) {
@@ -316,6 +396,8 @@ export class JobManager {
       job.status = "failed";
       job.error = e instanceof Error ? e.message : String(e);
     } finally {
+      this.#releaseJobLocks.delete(job.id);
+      this.#jobControllers.delete(job.id);
       job.completedAt = Date.now();
       this.#activeJobId = null;
       await lock.release().catch(() => undefined);

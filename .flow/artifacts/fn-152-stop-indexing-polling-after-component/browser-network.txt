@@ -1,0 +1,24 @@
+[A1AC43C37491AD6BFAFDDF92F17E520D] GET http://127.0.0.1:43953/collections (Document) 200
+[2809572.2] GET http://127.0.0.1:43953/_bun/asset/4d692a7e1b1e2d57.css (Stylesheet) 200
+[2809572.3] GET http://127.0.0.1:43953/_bun/client/index-00000000d23e352a.js (Script) 200
+[2809572.7] GET http://127.0.0.1:43953/favicon.ico (Other) 404
+[2809572.8] GET http://127.0.0.1:43953/api/status (Fetch) 200
+[2809572.9] GET http://127.0.0.1:43953/api/collections (Fetch) 200
+[2809572.15] POST http://127.0.0.1:43953/api/sync (Fetch) 200
+[2809572.16] GET http://127.0.0.1:43953/api/jobs/qa-1 (Fetch)
+[2809572.17] GET http://127.0.0.1:43953/api/status (Fetch) 200
+[2809572.18] GET http://127.0.0.1:43953/api/models/status (Fetch) 200
+[2809572.19] GET http://127.0.0.1:43953/api/presets (Fetch) 200
+[2809572.20] GET http://127.0.0.1:43953/api/models/status (Fetch) 200
+[2809572.21] GET http://127.0.0.1:43953/api/models/status (Fetch) 200
+[2809572.28] GET http://127.0.0.1:43953/api/status (Fetch) 200
+[2809572.29] GET http://127.0.0.1:43953/api/collections (Fetch) 200
+[2809572.30] POST http://127.0.0.1:43953/api/sync (Fetch) 200
+[2809572.31] GET http://127.0.0.1:43953/api/jobs/qa-2 (Fetch) 200
+[2809572.32] GET http://127.0.0.1:43953/api/jobs/qa-2 (Fetch) 200
+[2809572.34] GET http://127.0.0.1:43953/api/jobs/qa-2 (Fetch) 200
+[2809572.35] GET http://127.0.0.1:43953/api/presets (Fetch) 200
+[2809572.36] GET http://127.0.0.1:43953/api/models/status (Fetch) 200
+[2809572.37] GET http://127.0.0.1:43953/api/status (Fetch) 200
+[2809572.38] GET http://127.0.0.1:43953/api/models/status (Fetch) 200
+[2809572.39] GET http://127.0.0.1:43953/api/models/status (Fetch) 200

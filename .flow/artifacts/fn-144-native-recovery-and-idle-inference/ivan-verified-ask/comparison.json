@@ -1,0 +1,97 @@
+{
+  "passed": false,
+  "comparedCases": 1,
+  "failures": [
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.modelInputs[3].input[0]",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.modelInputs[3].input[1].jsonSchema.properties.judgments.items.properties.claimId.enum[0]",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.modelInputs[3].input[1].jsonSchema.properties.unresolvedClaimIds.items.enum[0]",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.capsule.retrieval.indexSnapshot.before",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.capsule.retrieval.indexSnapshot.after",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.capsule.fingerprints.config",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.capsule.fingerprints.retrieval",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.capsule.capsuleId",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.freshness.capsuleId",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.freshness.currentFingerprints.config",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.freshness.currentFingerprints.retrieval",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.freshness.currentFingerprints.index",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.freshness.indexSnapshot.before",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.freshness.indexSnapshot.after",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.claims.capsuleId",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.claims.claims[0].claimId",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.semantic.configFingerprint",
+      "reason": "Unexplained deterministic difference"
+    },
+    {
+      "caseId": "orchid-ownership:orchid-verified",
+      "field": "deterministic.semanticState.verification.semantic.verifierFingerprint",
+      "reason": "Unexplained deterministic difference"
+    }
+  ],
+  "generatedAnswerChanges": []
+}

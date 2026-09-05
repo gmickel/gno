@@ -1,0 +1,11 @@
+{
+  "command": [
+    "bun",
+    "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/source/src/index.ts",
+    "update",
+    "--json"
+  ],
+  "pid": 99970,
+  "exitCode": 0,
+  "elapsed": 1.1183011531829834
+}

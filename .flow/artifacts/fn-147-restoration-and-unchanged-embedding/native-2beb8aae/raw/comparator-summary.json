@@ -1,0 +1,311 @@
+[
+  {
+    "name": "initial",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "whitespace",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "unchanged",
+    "completeEmbeddingPair": false,
+    "comparison": {
+      "passed": false,
+      "comparedCases": 1,
+      "failures": [
+        {
+          "caseId": "unchanged",
+          "field": "deterministic.scope.owners[0].partition_id",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "unchanged",
+          "field": "deterministic.scope.owners[0].input_hash",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "unchanged",
+          "field": "deterministic.scope.owners[0].embedding",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "unchanged",
+          "field": "deterministic.scope.owners[1].partition_id",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "unchanged",
+          "field": "deterministic.scope.owners[1].input_hash",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "unchanged",
+          "field": "deterministic.scope.owners[1].embedding",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "unchanged",
+          "field": "deterministic.scope.semantic.value.results.length",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "unchanged",
+          "field": "deterministic.scope.semantic.value.meta.totalResults",
+          "reason": "Unexplained deterministic difference"
+        }
+      ],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "incomplete"
+  },
+  {
+    "name": "absent-1",
+    "completeEmbeddingPair": false,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "incomplete"
+  },
+  {
+    "name": "restored-1",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "absent-2",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "restored-2",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "same-title-duplicate",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "title-rename",
+    "completeEmbeddingPair": false,
+    "comparison": {
+      "passed": false,
+      "comparedCases": 1,
+      "failures": [
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.owners[1].partition_id",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.owners[1].input_hash",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.owners[1].embedding",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results.length",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[0].docid",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[0].score",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[0].uri",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[0].title",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[0].source.relPath",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[0].source.absPath",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[0].source.modifiedAt",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[0].source.sizeBytes",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[0].source.sourceHash",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].docid",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].score",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].uri",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].title",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].snippet",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].source.relPath",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].source.absPath",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].source.modifiedAt",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].source.sizeBytes",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].source.sourceHash",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].conversion.mirrorHash",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].egressLineage.digest",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.results[1].egressLineage.sources[0].collection",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "title-rename",
+          "field": "deterministic.scope.semantic.value.meta.totalResults",
+          "reason": "Unexplained deterministic difference"
+        }
+      ],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "incomplete"
+  },
+  {
+    "name": "force",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "materialization-repair",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "collection-global-catchup",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  }
+]

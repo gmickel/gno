@@ -1,0 +1,191 @@
+{
+  "scope": "draft read-only source/AST pins; regenerate after final freeze",
+  "root": "/home/gordon/.cache/agent-tmp/fn1465-final-f64c41c9/package",
+  "recordedAt": "2026-09-05T07:06:20.923Z",
+  "nativeExecuted": false,
+  "productImported": false,
+  "runtimeFunctionHashes": "Captured separately by shutdown observer at actual installation",
+  "files": [
+    {
+      "path": "src/store/sqlite/adapter.ts",
+      "sha256": "f4ed12b8e050315c53e9b4818b6dfffe5c4cd5edb0fe1e6ca05352f3cc1807f0",
+      "methods": [
+        {
+          "name": "close",
+          "line": 643,
+          "sourceDeclarationSha256": "7772038d89f98fe14fe3b14175af6c39715c8682307a6cf3d0651c98ee6cedbe"
+        },
+        {
+          "name": "beginShutdown",
+          "line": 652,
+          "sourceDeclarationSha256": "2bf310d0a32e032b1bfbb23d5f58e8c25f6bb5df1f80a1b4a3899e0a19948b62"
+        },
+        {
+          "name": "fenceForShutdown",
+          "line": 670,
+          "sourceDeclarationSha256": "09a80af08c2638ec70ea91763f2d036638e0a766c35aae156f4b5fe77d8f016c"
+        }
+      ]
+    },
+    {
+      "path": "src/serve/resident-admission.ts",
+      "sha256": "2a3860dfcce9ebfff7f1e9563c92317b9ca36c17d19b01960ccd4c87b3eec075",
+      "methods": [
+        {
+          "name": "stop",
+          "line": 146,
+          "sourceDeclarationSha256": "72443f9327aee3161d402e7be0790e2ad6fcd1deef6f7a9b82cb7678e2da7345"
+        },
+        {
+          "name": "cancel",
+          "line": 150,
+          "sourceDeclarationSha256": "dc36b87a12bc3b5da9d4f20d53cc1de0a0a9e761372ed3c736d64a62762c618e"
+        },
+        {
+          "name": "drain",
+          "line": 155,
+          "sourceDeclarationSha256": "542f029ca8f5db784cd315be87d72dfea15c13951f1dc21ffe7c7e1eb5ed1683"
+        }
+      ]
+    },
+    {
+      "path": "src/serve/resident-background-work.ts",
+      "sha256": "597b8e4438c38c8cf52bdfa4d1a0b7fc8ac11e74429599ec949410d7cb37f42b",
+      "methods": [
+        {
+          "name": "cancel",
+          "line": 41,
+          "sourceDeclarationSha256": "64626097065f2fb5888d27ffaf87c82dd07bd38e798e59f59ec5bf675e4164c1"
+        },
+        {
+          "name": "drain",
+          "line": 47,
+          "sourceDeclarationSha256": "ad6a72bd158136d397cce8a7f526cd056d9097f7eeee992c42de977b20158c18"
+        }
+      ]
+    },
+    {
+      "path": "src/core/job-manager.ts",
+      "sha256": "1498e664e63197c9a6865fab19cb9c87a380a5e3fcb15e5441035a3f0ed879ee",
+      "methods": [
+        {
+          "name": "shutdown",
+          "line": 234,
+          "sourceDeclarationSha256": "daf2fb0cd2e9087b09328b80a337acc9d0f45cabed8eba151fdb97bc2b826f8a"
+        },
+        {
+          "name": "stop",
+          "line": 239,
+          "sourceDeclarationSha256": "72443f9327aee3161d402e7be0790e2ad6fcd1deef6f7a9b82cb7678e2da7345"
+        },
+        {
+          "name": "cancel",
+          "line": 243,
+          "sourceDeclarationSha256": "1314cbe8324574ea19bbd6e8ed6b0ef663dab787d2158593959212419e7f6196"
+        },
+        {
+          "name": "failUnfinished",
+          "line": 249,
+          "sourceDeclarationSha256": "53615f027ef8d4cafeb70f23122f0f469ab3da873fcb55ab23f783a38eadd52e"
+        }
+      ]
+    },
+    {
+      "path": "src/llm/nodeLlamaCpp/adapter.ts",
+      "sha256": "abae68d88f26f1eda67e105095770df0dc5803b4fd9fde77c147582214241e31",
+      "methods": [
+        {
+          "name": "dispose",
+          "line": 325,
+          "sourceDeclarationSha256": "73ee77169dc57c5df723df64445a15425d28198daf82ee1bfcb1348a93a87204"
+        }
+      ]
+    },
+    {
+      "path": "src/llm/native-worker/client.ts",
+      "sha256": "92c6cef968f10e409c184575a4accdf55b47790c0f14cbb71a43d13ba77b6510",
+      "methods": [
+        {
+          "name": "retire",
+          "line": 506,
+          "sourceDeclarationSha256": "ee68dbfd56194cdc95a8d005377cbb1ce12edec84c0144948772df4b42627512"
+        },
+        {
+          "name": "dispose",
+          "line": 516,
+          "sourceDeclarationSha256": "c04943caef23184302148586057a4eb169c03276afbdb097d29fb381d5a63b55"
+        }
+      ]
+    },
+    {
+      "path": "src/serve/resident-shutdown.ts",
+      "sha256": "20c08f3e34318f0b5316be7e6381ec3b6d18953aba09a7a161b3e79288381a1a",
+      "methods": [
+        {
+          "name": "disposeResidentResources",
+          "line": 40,
+          "sourceDeclarationSha256": "5727072a96a663849a9e69a194f9b8250bfe4876dd7f0c816cbea06a19620c59"
+        }
+      ]
+    },
+    {
+      "path": "src/core/shutdown-budget.ts",
+      "sha256": "7a017266b71c8b8914f08fe7bc0b1f46bb99ff8b82549e4b950d24dd8c0f5009",
+      "methods": [
+        {
+          "name": "settlesBy",
+          "line": 9,
+          "sourceDeclarationSha256": "292f736710d6c3bfe1d494600177c34e807661a35e8218b7dd281bee4a713437"
+        },
+        {
+          "name": "shutdownDuration",
+          "line": 35,
+          "sourceDeclarationSha256": "7daf7c103978bee2da12fad39c41cd8975e44efcaedd1a58890a8e171621d79f"
+        }
+      ]
+    },
+    {
+      "path": "src/llm/native-worker/owned-exit.ts",
+      "sha256": "49579dc5e94f3c81267f1a6a1f19d349e93d7470a0965aae39e7b17e8390d7b4",
+      "methods": [
+        {
+          "name": "exitOwnedChild",
+          "line": 40,
+          "sourceDeclarationSha256": "2d0160e272537248d6b6969ab97b78b5c249782e632044947d25fa1d91c260da"
+        },
+        {
+          "name": "retireOwnedChild",
+          "line": 82,
+          "sourceDeclarationSha256": "cd3a3730f0921e7e3c0e1971affb3dc094c2cff945fdd829ec6f9b93c8f897d6"
+        }
+      ]
+    },
+    {
+      "path": "src/serve/resident-runtime.ts",
+      "sha256": "c6eb019d72e620195a74933b3e628edff5ee3a31bbcb972d509ccd60ea84dd5b",
+      "methods": [
+        {
+          "name": "dispose",
+          "line": 605,
+          "sourceDeclarationSha256": "f1b233647f542b1e1be8468c31c725b96bc5f23f7c03587b439497e26df2f9a7"
+        }
+      ]
+    },
+    {
+      "path": "src/serve/embed-scheduler.ts",
+      "sha256": "c10d3e049ad0a804e07b2745c656cab9765a600e764eafe32fd4c367f3648fb5",
+      "methods": [
+        {
+          "name": "stop",
+          "line": 263,
+          "sourceDeclarationSha256": "96fd17bc7a2a744c9adc5fcf013852ff9371c72c341ce0e40cd60034b1f64360"
+        },
+        {
+          "name": "dispose",
+          "line": 332,
+          "sourceDeclarationSha256": "6634b82c6b99700ed35b36ef275bff809e7dbd3e644782f7e175e5c0ae290540"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,185 @@
+{
+  "scope": "Captured source reports and isolated gate logs; raw logs not copied",
+  "files": [
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/SCALING.md",
+      "bytes": 5918,
+      "sha256": "6507dfb10713339ae94d541b3fc2677fafad7c4f45f526cd3f576ab14906a997"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/scaling-manifest.json",
+      "bytes": 559,
+      "sha256": "4ad0da75202a679255166ab83ac12d74b3748a3d74246dccc028c1a8d93550d1"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/exists-known-vectors/report.json",
+      "bytes": 1426894,
+      "sha256": "6b1badc8260522026a370b58face1f9ca132914b4ede578715250ff4c83b07e3"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/initial-known-vectors/report.json",
+      "bytes": 3772,
+      "sha256": "b6e5c4e8442b60b09a0ab0fc6d0293a98182991eb413ef7cae5fc509514ff409"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/paired-scaling.json",
+      "bytes": 55825,
+      "sha256": "8f1f34cb5c8b928b2a91a6eeade33371cdce0589019fc2f458bcdce86b021f1e"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/sql-diagnosis.json",
+      "bytes": 54408,
+      "sha256": "b19967af75999d31638da1fee2efa32279198492ea678d4bd6ca7b9e88080140"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/variant-scaling/README.md",
+      "bytes": 6469,
+      "sha256": "5145a1fdfc1fa691a11f84251cc6c4e536cafee642d8c0fad0401a68bea0490c"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/variant-scaling/manifest.json",
+      "bytes": 1183,
+      "sha256": "eb1ad53bd27dc8ceceb09b32cd13c0d86292f64b80c69af52e4a7e51161eb607"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/variant-scaling/initial/report.json",
+      "bytes": 767275,
+      "sha256": "34d411c6c0e6dc605a109e96bea36e010604bf3451b1fdd6b9a3a561be1b14e3"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/variant-scaling/split-verified/report.json",
+      "bytes": 767410,
+      "sha256": "d829de92b1bf700c51fd2e59225f3f91358ed4a4092a54cabc622d9bee2e419d"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/variant-scaling/semantic-state-verification.json",
+      "bytes": 202570,
+      "sha256": "1aa368439333e224ef210ba0c76bcf1ce636e92f51224fbe891ab52d99c7a8b9"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/variant-scaling/fixture-identity-verification.json",
+      "bytes": 257,
+      "sha256": "6b79aaaac7b696a3e907554054c18a10d68b8a2cbd4fd2fdcce00acb0db52534"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/variant-scaling/cost-summary.json",
+      "bytes": 21448,
+      "sha256": "5b4fb3b4309e211c9f5cf11ee99f8a31682b7aaf2721bc6959e1529883aa636f"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/variant-scaling/load-provenance.json",
+      "bytes": 627,
+      "sha256": "2c2ee9738a0dc57abfdc0614202ac1972705dc14ceb894dbe11511017b96d1d8"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/public-lexical/responses.json",
+      "bytes": 252074,
+      "sha256": "445577a0e372de345c4afbb7e4af29215d8698d0c6082e208b771c7b098bf512"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/public-lexical/broad-oracle.json",
+      "bytes": 6806,
+      "sha256": "9c3d9659bc8e50ca619b327084164bfd26dab28f31a24b9f3967ea4b7513bd06"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/public-lexical/date-contract-reconciliation.json",
+      "bytes": 702,
+      "sha256": "6f73b2e1ea3d623f04ad5b640f2a4664c995019ed65711e1595ddeacd5e58161"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/public-lexical/fixture-receipt.json",
+      "bytes": 390,
+      "sha256": "4ff9860244ad659c0f14f6e1cb3d231038dddeb573d0502e66cdd7ed7763da25"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/public-lexical/validation-fix/date-result.json",
+      "bytes": 2380,
+      "sha256": "7a24855f2a7e3419c81855cb4dbd4db0a4df121f7b65baa78fb5fac1e8894fed"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/public-lexical/validation-fix/rest-invalid.json",
+      "bytes": 151,
+      "sha256": "326dee2c3d7d4f052bd20869639dcb73cde35b67f53f204d5575d7d41fca99dc"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/skill-eval/results.json",
+      "bytes": 8653,
+      "sha256": "4029128649506cbbde9c62c23e45e74135f99e174956156e50fcc3d9343907fd"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/all-suites.log",
+      "bytes": 531289,
+      "sha256": "4a67c8f868af6c7ff571e0de17e621ca33a5512a2a87b972c2f4a1dfbec0e157"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/lint.log",
+      "bytes": 51350,
+      "sha256": "ede7ddc00f61da50fecdde1aac0679c5ebd838d8816232a61d870f37dc061225"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/lint-artifact-fix.log",
+      "bytes": 10644,
+      "sha256": "a5b5dad28c6fedabc60b7bb1671abd4df2a2c27bb88dce0626acf8c4c3cc323b"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/typecheck.log",
+      "bytes": 20,
+      "sha256": "0a7cbec9e31e5ab1dc3f62bf0e9994201b491a121c31235f27316f5151281817"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/docs.log",
+      "bytes": 1267,
+      "sha256": "7b554819d88cd16f5183e6b7938beb5505565736b65fe0c8cedc853497d0ced8"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/package.log",
+      "bytes": 5514,
+      "sha256": "a43711046c766f87d483374cddb223521452428ea65e74bc7827c2542db61bfa"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/memory-selected.log",
+      "bytes": 1833,
+      "sha256": "2ed281f8a6403119595101ab6696ff73d6c6aa842ee8b238070cf575c8934345"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/hybrid.log",
+      "bytes": 1197,
+      "sha256": "358fcec23c243299996edad98c3affacd75c169c0de379e3e61ec0dc4b2c2e80"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/vsearch.log",
+      "bytes": 11299,
+      "sha256": "5fcc015aac79a3f3561cbc755a8d3cec3dec3c117ef564a791a173587fc9ebbf"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda-receipt.json",
+      "bytes": 2554,
+      "sha256": "222ac4bbeb68b79379049861006678714487781fabf403b12850a3f0ecf51d4f"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda-manifest.json",
+      "bytes": 29726,
+      "sha256": "9aa13a13f41c42bb6cab91ab4f1ebac52a4b67e76d6f5353548805a3190ead04"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cleanup.json",
+      "bytes": 583,
+      "sha256": "85f1cab4b7818da2c30f3113ba043fcc7a6c456bda038369557fb4500d3c1dfa"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/verification.json",
+      "bytes": 1901,
+      "sha256": "ac5dc76fd09e33d7efab34cb0d1be9bff420fb567940c1c5364258c6f46ed6e3"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/manifest.json",
+      "bytes": 20460,
+      "sha256": "054558f79093b16cfe7648b5f6c982001077d27dbed87d6b044d3bf6010f3643"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/transfer.json",
+      "bytes": 11328,
+      "sha256": "dfc491e43585814e67d79e929ee96e7e518cbbf77d545be57f2818dafb91d13b"
+    }
+  ]
+}

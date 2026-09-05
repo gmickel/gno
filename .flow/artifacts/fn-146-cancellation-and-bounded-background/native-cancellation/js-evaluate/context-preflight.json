@@ -1,0 +1,92 @@
+{
+  "nativeExecution": false,
+  "unknownRejected": true,
+  "records": [
+    {
+      "telemetry": [
+        {
+          "contextSize": 2048,
+          "batchSize": {
+            "$undefined": true
+          },
+          "threads": 6,
+          "createSignal": {
+            "$operational": "AbortSignal",
+            "aborted": false,
+            "reason": {
+              "$undefined": true
+            }
+          },
+          "ignoreMemorySafetyChecks": {
+            "$undefined": true
+          },
+          "_embeddings": true
+        }
+      ]
+    },
+    {
+      "telemetry": [
+        {
+          "contextSize": 6400,
+          "createSignal": {
+            "$operational": "AbortSignal",
+            "aborted": false,
+            "reason": {
+              "$undefined": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "telemetry": [
+        {
+          "contextSize": 6400,
+          "batchSize": {
+            "$undefined": true
+          },
+          "threads": 6,
+          "createSignal": {
+            "$operational": "AbortSignal",
+            "aborted": false,
+            "reason": {
+              "$undefined": true
+            }
+          },
+          "ignoreMemorySafetyChecks": {
+            "$undefined": true
+          },
+          "_embeddings": true,
+          "_ranking": true
+        }
+      ]
+    },
+    {
+      "telemetry": [
+        {
+          "contextSize": 2048,
+          "createSignal": {
+            "$operational": "AbortSignal",
+            "aborted": false,
+            "reason": {
+              "$undefined": true
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "models": [
+    [
+      {
+        "contextSize": 2048
+      }
+    ],
+    [
+      {
+        "contextSize": 2048,
+        "threads": 6
+      }
+    ]
+  ]
+}

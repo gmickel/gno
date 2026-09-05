@@ -1,0 +1,97 @@
+{
+  "role": "candidate",
+  "sourceRoot": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3/packed/package",
+  "configPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3/warm30/config.json",
+  "dbPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3/warm30/candidate/data/index-default.sqlite",
+  "cacheDir": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3/warm30/candidate/cache",
+  "outputPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3/observations/capture-warm30-candidate/result.json",
+  "caseId": "rerank-en-1000-start",
+  "query": "What is the verified launch code for project Orion?",
+  "options": {
+    "collection": "rerank-en-1000-start",
+    "limit": 2,
+    "noExpand": true,
+    "noRerank": false,
+    "graph": false,
+    "explain": true
+  },
+  "mode": "serial",
+  "count": 24,
+  "concurrency": 1,
+  "productIdentity": {
+    "commit": "9d0b57e30590b5d71429df538da7a5d0f08fff02",
+    "packageSha256": "1a01daff5030dfbab0492d8d7d76a759e699a3effbd87ede8a40a290e6879342",
+    "helperCommit": "98252a9c991d9451d24b77f85d3b61bcfc5bb6e0",
+    "driverSha256": "1b292ce47ae84c14fa36ab4e863b45feda3ed5137614ff239ed5b309849ef0da"
+  },
+  "capture": true,
+  "manifest": {
+    "schemaVersion": "gno-acceptance-v1",
+    "role": "candidate",
+    "identity": {
+      "commit": "9d0b57e30590b5d71429df538da7a5d0f08fff02",
+      "indexId": "warm30-candidate",
+      "indexSha256": "b342f09602d69ecaf54636970d30691887e007525503e2a92d88d3abf2aaddea",
+      "bunVersion": "1.3.14",
+      "nativeDependencies": {
+        "node-llama-cpp": "3.19.1"
+      },
+      "platform": "linux",
+      "architecture": "x64"
+    },
+    "fixtureVersion": "fn144-cost-controls-v1",
+    "fixtures": [
+      {
+        "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/fixtures.json",
+        "sha256": "dc310b7cf0680967942b9e142bc0c141f01d2fc8fffb78226fcfe5a7555da367"
+      }
+    ],
+    "models": [
+      {
+        "role": "embedding",
+        "id": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+        "tokenizerSha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+      },
+      {
+        "role": "reranking",
+        "id": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+        "tokenizerSha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48"
+      },
+      {
+        "role": "generation",
+        "id": "file:/home/gordon/.cache/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338",
+        "tokenizerSha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+      },
+      {
+        "role": "generation",
+        "id": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
+        "tokenizerSha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897"
+      }
+    ],
+    "cases": [
+      {
+        "caseId": "rerank-en-1000-start",
+        "fixtureSha256": "dc310b7cf0680967942b9e142bc0c141f01d2fc8fffb78226fcfe5a7555da367",
+        "surface": "sdk",
+        "preset": "qa-pinned",
+        "configuration": {
+          "query": "What is the verified launch code for project Orion?",
+          "operation": "hybrid",
+          "options": {
+            "collection": "rerank-en-1000-start",
+            "limit": 2,
+            "noExpand": true,
+            "noRerank": false,
+            "graph": false,
+            "explain": true
+          }
+        }
+      }
+    ],
+    "intendedDeltas": []
+  }
+}

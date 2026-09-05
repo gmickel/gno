@@ -4244,7 +4244,9 @@ export async function handleSearch(
       req,
       trace.session,
       "failed",
-      errorResponse("RUNTIME", result.error.message, 500)
+      result.error.code === "INVALID_INPUT"
+        ? errorResponse("VALIDATION", result.error.message, 400)
+        : errorResponse("RUNTIME", result.error.message, 500)
     );
   }
 

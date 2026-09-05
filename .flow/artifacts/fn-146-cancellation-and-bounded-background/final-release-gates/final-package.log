@@ -1,0 +1,69 @@
+$ bun scripts/package-smoke.ts
+[pdfjs-assets] installed binary:  /home/gordon/.cache/agent-tmp/gno-package-smoke-TOb2at/prefix/bin/gno
+[pdfjs-assets] package root:      /home/gordon/.cache/agent-tmp/gno-package-smoke-TOb2at/prefix/lib/node_modules/@gmickel/gno
+[pdfjs-assets] installed pdfjs:   /home/gordon/.cache/agent-tmp/gno-package-smoke-TOb2at/prefix/lib/node_modules/@gmickel/gno/node_modules/pdfjs-dist
+[pdfjs-assets] launched installed 'gno serve' pid=2149367 port=45392 (NOT repo bun source)
+[pdfjs-assets] installed binary healthy at http://127.0.0.1:45392
+[pdfjs-assets] compatibility bootstrap: GET/HEAD 200, Math.sumPrecise + same-origin raw worker import verified
+[pdfjs-assets] --- /vendor/pdfjs/pdf.worker.raw.min.mjs ---
+[pdfjs-assets]   installed file: /home/gordon/.cache/agent-tmp/gno-package-smoke-TOb2at/prefix/lib/node_modules/@gmickel/gno/node_modules/pdfjs-dist/build/pdf.worker.min.mjs
+[pdfjs-assets]   installed bytes=1262398 sha256=0613f41490dd6aaceed7a93fbbd38c85e6d6aa60474b6588c6e7709cfbe18cb3
+[pdfjs-assets]   GET status=200 bytes=1262398 sha256=0613f41490dd6aaceed7a93fbbd38c85e6d6aa60474b6588c6e7709cfbe18cb3
+[pdfjs-assets]   byte-equality: MATCH (size equal)
+[pdfjs-assets]   HEAD status=200 bodyBytes=0 (expected 0)
+[pdfjs-assets]   header content-type: GET=text/javascript HEAD=text/javascript MATCH
+[pdfjs-assets]   header content-length: GET=1262398 HEAD=1262398 MATCH
+[pdfjs-assets]   header cache-control: GET=public, max-age=31536000, immutable HEAD=public, max-age=31536000, immutable MATCH
+[pdfjs-assets] --- /vendor/pdfjs/cmaps/UniJIS-UCS2-H.bcmap ---
+[pdfjs-assets]   installed file: /home/gordon/.cache/agent-tmp/gno-package-smoke-TOb2at/prefix/lib/node_modules/@gmickel/gno/node_modules/pdfjs-dist/cmaps/UniJIS-UCS2-H.bcmap
+[pdfjs-assets]   installed bytes=25439 sha256=ad2352f40870880fbf7f8ee5abadff743fbd025fbf9830b8ada472d1c5e4da0b
+[pdfjs-assets]   GET status=200 bytes=25439 sha256=ad2352f40870880fbf7f8ee5abadff743fbd025fbf9830b8ada472d1c5e4da0b
+[pdfjs-assets]   byte-equality: MATCH (size equal)
+[pdfjs-assets]   HEAD status=200 bodyBytes=0 (expected 0)
+[pdfjs-assets]   header content-type: GET=application/octet-stream HEAD=application/octet-stream MATCH
+[pdfjs-assets]   header content-length: GET=25439 HEAD=25439 MATCH
+[pdfjs-assets]   header cache-control: GET=public, max-age=31536000, immutable HEAD=public, max-age=31536000, immutable MATCH
+[pdfjs-assets] --- /vendor/pdfjs/standard_fonts/LiberationSans-Regular.ttf ---
+[pdfjs-assets]   installed file: /home/gordon/.cache/agent-tmp/gno-package-smoke-TOb2at/prefix/lib/node_modules/@gmickel/gno/node_modules/pdfjs-dist/standard_fonts/LiberationSans-Regular.ttf
+[pdfjs-assets]   installed bytes=139512 sha256=f8ace1f892b2bd9dc1792ba7f097fa7588f84fed48321480e04de5390828221f
+[pdfjs-assets]   GET status=200 bytes=139512 sha256=f8ace1f892b2bd9dc1792ba7f097fa7588f84fed48321480e04de5390828221f
+[pdfjs-assets]   byte-equality: MATCH (size equal)
+[pdfjs-assets]   HEAD status=200 bodyBytes=0 (expected 0)
+[pdfjs-assets]   header content-type: GET=font/ttf HEAD=font/ttf MATCH
+[pdfjs-assets]   header content-length: GET=139512 HEAD=139512 MATCH
+[pdfjs-assets]   header cache-control: GET=public, max-age=31536000, immutable HEAD=public, max-age=31536000, immutable MATCH
+Installed binary pdfjs asset smoke passed (worker + cmap + standard-font GET/HEAD)
+Packed native client/entry fault contracts passed (no native weights)
+Packed model-backed warm reuse SKIPPED: no explicit compatible cached GGUF was available in this offline environment.
+packed loopback serve process output
+stdout:
+GNO server running at http://127.0.0.1:38207
+Press Ctrl+C to stop
+
+Shutting down...
+
+stderr:
+
+packed secured daemon process output
+stdout:
+GNO daemon started for index "default" using 3 collections.
+MCP gateway listening at http://0.0.0.0:37883/mcp
+watching: package-smoke, packed-profile, packed-exports
+Skipping initial sync (--no-sync-on-start).
+Received SIGTERM. Shutting down...
+
+stderr:
+
+[gno-sentinel] privacy-safe before/after summary
+[gno-sentinel]   (absolute paths, content hashes, and all config-root file
+[gno-sentinel]    names/sizes/modes/mtimes are intentionally NOT recorded)
+[gno-sentinel]   root <config-root> exists=true count(before/after)=2/2 bytes(before/after)=4627/4627 unchanged=true
+[gno-sentinel]     <config root contents redacted — credential-bearing; equality proven by the full-snapshot assertion above>
+[gno-sentinel]   root <data-root> exists=true count(before/after)=5/5 bytes(before/after)=380861977/380861977 unchanged=true
+[gno-sentinel]     index-default.sqlite size(before/after)=380329984/380329984
+[gno-sentinel]     index-personal.sqlite size(before/after)=528384/528384
+[gno-sentinel]     setup-receipts/default/9b1931f6d473e70c5afa00781de51b5943e0679c65ff61ad1302b501d9c1505c.json size(before/after)=2535/2535
+[gno-sentinel]     setup-semantic/default/9b1931f6d473e70c5afa00781de51b5943e0679c65ff61ad1302b501d9c1505c.json size(before/after)=1074/1074
+[gno-sentinel]     setup-semantic/default/9b1931f6d473e70c5afa00781de51b5943e0679c65ff61ad1302b501d9c1505c.json.lock size(before/after)=0/0
+Real GNO sentinel passed: 7 files / 380866604 bytes SHA-256/stat/count unchanged
+Package smoke passed: /home/gordon/.cache/agent-tmp/gno-package-smoke-TOb2at/pack/gmickel-gno-2.0.0.tgz

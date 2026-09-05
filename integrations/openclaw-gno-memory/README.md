@@ -117,9 +117,12 @@ next search re-probes with one `gno index` run, clears the flag on success,
 or refreshes the reason and restarts the five-minute clock on failure. An
 explicit `openclaw gno-memory sync` re-probes immediately.
 
-Known gap (GNO core, not the plugin): a file deleted and later restored at the
-same path with byte-identical content stays inactive, because incremental sync
-treats a same-hash record as unchanged. Any content change reactivates it.
+Files restored at the same path with identical bytes become active on the next
+successful index run. Activation and one `reactivate` event commit together;
+repeated unchanged indexing adds no restoration event. Proven unchanged
+embedding inputs need no repeat embedding. Changed titles, content or model
+identity require matching vector coverage; per-document title-specific coverage
+requires a provider with verified embedding identity (see [embedding behavior](../../docs/CLI.md#gno-embed)).
 
 ## Config reference
 

@@ -1,0 +1,797 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ChunkingGenerator = void 0;
+const defaults_js_1 = require("../defaults.js");
+const types_js_1 = require("../types.js");
+const errorUtils_js_1 = require("../utils/errorUtils.js");
+const BaseGenerator_js_1 = require("./BaseGenerator.js");
+/** Node types whose text is block-level, so a boundary between two of them is a real break. */
+const BLOCK_NODE_TYPES = new Set([
+    'paragraph', 'heading', 'list', 'table', 'row', 'cell', 'code', 'note', 'admonition',
+    'definitionList', 'definitionTerm', 'definitionDescription', 'sheet', 'slide', 'page', 'embed',
+]);
+/**
+ * The visible text of a content node: its own `.text` when set, otherwise its descendants' text,
+ * plus any footnote/endnote bodies hanging off `node.notes`.
+ * HTML- and Markdown-origin parsers build paragraphs as `{ children: [...] }` with no `.text`, so
+ * reading `node.text` alone dropped their content from every chunk. Block-level children are joined
+ * with a newline so words don't merge across paragraphs/list items (matching the text generator);
+ * inline runs join with no separator. Notes live on `node.notes`, off the children tree, and a
+ * content node is emitted as a chunk without recursing into them - so their text was silently
+ * absent from the RAG index. Fold them in here (joined as block content) so a footnote's body is
+ * searchable alongside the paragraph that references it.
+ */
+function collectNodeText(node) {
+    let out = '';
+    if (typeof node.text === 'string' && node.text.length > 0) {
+        out = node.text;
+        // The `.text` fast-path above skips the children walk, but DOCX/ODT/RTF set `.text` on the
+        // paragraph while the footnote hangs off a nested text child - so its body would be missed.
+        // Fold in descendant note bodies (visible text already covered by `.text`, not re-added).
+        const descendantNotes = collectDescendantNoteText(node);
+        if (descendantNotes)
+            out += '\n' + descendantNotes;
+    }
+    else if (node.children && node.children.length > 0) {
+        for (const child of node.children) {
+            if (out && BLOCK_NODE_TYPES.has(child.type))
+                out += '\n';
+            out += collectNodeText(child);
+        }
+    }
+    if (node.notes && node.notes.length > 0) {
+        for (const note of node.notes) {
+            const noteText = collectNodeText(note);
+            if (noteText)
+                out += (out ? '\n' : '') + noteText;
+        }
+    }
+    return out;
+}
+/**
+ * Footnote/endnote bodies hanging off a node's descendants, without the descendants' own visible
+ * text (the caller already has that via `.text`). Only reached from the `.text` fast-path above, to
+ * recover notes that office-origin parsers attach to a nested text child of a `.text`-bearing node.
+ */
+function collectDescendantNoteText(node) {
+    if (!node.children || node.children.length === 0)
+        return '';
+    let out = '';
+    for (const child of node.children) {
+        if (child.notes) {
+            for (const note of child.notes) {
+                const t = collectNodeText(note);
+                if (t)
+                    out += (out ? '\n' : '') + t;
+            }
+        }
+        const deeper = collectDescendantNoteText(child);
+        if (deeper)
+            out += (out ? '\n' : '') + deeper;
+    }
+    return out;
+}
+/**
+ * Generates a list of OfficeChunk objects from an AST for use in RAG pipelines.
+ * Supports three strategies: 'fixed-size', 'document-structure', and 'semantic'.
+ */
+class ChunkingGenerator extends BaseGenerator_js_1.BaseGenerator {
+    /** The resolved chunking config (with defaults applied). */
+    chunkConfig;
+    /** Whether the user provided an explicit sentence boundary regex. */
+    isCustomRegex;
+    constructor(ast, config) {
+        super('chunks', ast, config);
+        this.chunkConfig = this.resolveChunkingConfig(this.config.chunksConfig);
+        // Track if the user explicitly provided a regex (vs using the library default)
+        this.isCustomRegex = !!config?.chunksConfig?.sentenceBoundaryRegex;
+    }
+    /**
+     * Merges the user's chunking config with the appropriate defaults for the chosen strategy.
+     */
+    resolveChunkingConfig(userChunkConfig) {
+        const strategy = userChunkConfig?.strategy ?? 'document-structure';
+        switch (strategy) {
+            case 'fixed-size':
+                return { ...defaults_js_1.DEFAULT_FIXED_SIZE_CHUNKING_CONFIG, ...userChunkConfig };
+            case 'semantic':
+                return { ...defaults_js_1.DEFAULT_SEMANTIC_CHUNKING_CONFIG, ...userChunkConfig };
+            case 'document-structure':
+                return { ...defaults_js_1.DEFAULT_DOCUMENT_STRUCTURE_CHUNKING_CONFIG, ...userChunkConfig };
+        }
+    }
+    /**
+     * Main entry point. Routes to the correct strategy implementation.
+     * Note: ConversionResult.value is a real OfficeChunk[] array for the 'chunks' destination, not
+     * a JSON string. Consumers serialize it to JSON/JSONL themselves.
+     */
+    async generate() {
+        (0, errorUtils_js_1.checkAbortSignal)(this.config.abortSignal);
+        let chunks;
+        switch (this.chunkConfig.strategy) {
+            case 'fixed-size':
+                chunks = await this.generateFixedSize(this.chunkConfig);
+                break;
+            case 'semantic':
+                chunks = await this.generateSemantic(this.chunkConfig);
+                break;
+            case 'document-structure':
+                chunks = await this.generateDocumentStructure(this.chunkConfig);
+                break;
+        }
+        return {
+            value: chunks,
+            messages: this.messages,
+        };
+    }
+    // ─── Strategy 1: Fixed-Size ────────────────────────────────────────────────
+    /**
+     * Splits the full document text into fixed-size chunks with optional overlap.
+     * Attempts to split on natural separators before hard-cutting.
+     */
+    async generateFixedSize(config) {
+        const { chunkSize, chunkOverlap, separators, lengthFunction: measure } = config;
+        // Build a flat text with positional map from top-level nodes
+        const { text: fullText, nodeMap } = await this.buildFlatTextWithPositions();
+        const rawChunks = this.splitTextRecursively(fullText, chunkSize, chunkOverlap, separators, measure);
+        return rawChunks.map(({ text, start, end }) => {
+            const chunk = { text, metadata: { sourceType: this.ast.type } };
+            if (config.includeMetadata ?? true) {
+                this.enrichMetadataFromPosition(chunk, nodeMap, start);
+            }
+            if (config.addStartIndex) {
+                chunk.startIndex = start;
+                chunk.endIndex = end;
+            }
+            return chunk;
+        });
+    }
+    /**
+     * Recursively tries separators to split text into chunks of at most `chunkSize`,
+     * with `chunkOverlap` characters of overlap between consecutive chunks.
+     */
+    splitTextRecursively(text, chunkSize, chunkOverlap, separators, measure) {
+        if (measure(text) <= chunkSize) {
+            return text.trim() ? [{ text, start: 0, end: text.length }] : [];
+        }
+        let chosenSep;
+        let nextSeparators = [];
+        let parts = [];
+        let actualSep = '';
+        // 1. Try splitting into sentences first
+        const sentences = this.splitIntoSentences(text);
+        if (sentences.length > 1) {
+            parts = sentences;
+            actualSep = ' ';
+            chosenSep = 'SENTENCE_SPLIT'; // Internal marker to avoid hard-cut
+            nextSeparators = separators;
+        }
+        else {
+            // 2. Fallback to the character separators provided in config
+            for (let i = 0; i < separators.length; i++) {
+                const sep = separators[i];
+                parts = sep ? text.split(sep) : [...text];
+                if (parts.length > 1) {
+                    chosenSep = sep;
+                    actualSep = sep;
+                    nextSeparators = separators.slice(i + 1);
+                    break;
+                }
+            }
+        }
+        if (chosenSep === undefined) {
+            // Last resort: hard cut
+            const results = [];
+            let offset = 0;
+            while (offset < text.length) {
+                const slice = text.slice(offset, offset + chunkSize);
+                results.push({ text: slice, start: offset, end: offset + slice.length });
+                offset += Math.max(1, chunkSize - chunkOverlap);
+            }
+            return results;
+        }
+        const results = [];
+        let currentChunk = '';
+        let currentStart = 0;
+        let absoluteOffset = 0;
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const candidate = currentChunk ? currentChunk + actualSep + part : part;
+            if (measure(candidate) <= chunkSize) {
+                currentChunk = candidate;
+            }
+            else {
+                if (currentChunk.trim()) {
+                    // If currentChunk is still too big (should only happen if it's a single part), recurse!
+                    if (measure(currentChunk) > chunkSize) {
+                        const subResults = this.splitTextRecursively(currentChunk, chunkSize, chunkOverlap, nextSeparators, measure);
+                        for (const r of subResults) {
+                            results.push({ text: r.text, start: currentStart + r.start, end: currentStart + r.end });
+                        }
+                    }
+                    else {
+                        results.push({ text: currentChunk, start: currentStart, end: currentStart + currentChunk.length });
+                    }
+                }
+                // Start next chunk
+                if (chunkOverlap > 0 && currentChunk.length > chunkOverlap && measure(currentChunk) <= chunkSize) {
+                    const overlapText = currentChunk.slice(-chunkOverlap);
+                    currentStart = absoluteOffset - chunkOverlap;
+                    currentChunk = overlapText + actualSep + part;
+                }
+                else {
+                    currentStart = absoluteOffset;
+                    currentChunk = part;
+                }
+            }
+            absoluteOffset += part.length + actualSep.length;
+        }
+        if (currentChunk.trim()) {
+            if (measure(currentChunk) > chunkSize) {
+                const subResults = this.splitTextRecursively(currentChunk, chunkSize, chunkOverlap, nextSeparators, measure);
+                for (const r of subResults) {
+                    results.push({ text: r.text, start: currentStart + r.start, end: currentStart + r.end });
+                }
+            }
+            else {
+                results.push({ text: currentChunk, start: currentStart, end: currentStart + currentChunk.length });
+            }
+        }
+        return results;
+    }
+    // ─── Strategy 2: Document Structure ───────────────────────────────────────
+    /**
+     * Walks the AST and splits at the designated structural boundaries (slide, page, heading, paragraph).
+     */
+    async generateDocumentStructure(config) {
+        const { splitBy, maxChunkSize, lengthFunction: measure } = config;
+        const chunks = [];
+        const contextStack = {};
+        // Walk top-level nodes and decide where to cut
+        for (const node of this.ast.content) {
+            await this.processNodeForStructure(node, config, splitBy, maxChunkSize, measure, chunks, contextStack);
+        }
+        return this.finalizeChunks(chunks, config);
+    }
+    async processNodeForStructure(node, config, splitBy, maxChunkSize, measure, chunks, contextStack) {
+        (0, errorUtils_js_1.checkAbortSignal)(this.config.abortSignal);
+        // Check for node override or skip
+        const override = await this.handleOnNode(node);
+        if (override === false)
+            return;
+        // Update context from structural container nodes
+        if (node.type === 'slide') {
+            const meta = node.metadata;
+            contextStack.slideNumber = meta?.slideNumber;
+        }
+        else if (node.type === 'page') {
+            const meta = node.metadata;
+            contextStack.pageNumber = meta?.pageNumber;
+        }
+        else if (node.type === 'sheet') {
+            const meta = node.metadata;
+            contextStack.sheetName = meta?.sheetName;
+        }
+        else if (node.type === 'heading') {
+            contextStack.heading = node.text;
+        }
+        const isStructuralBoundary = this.isStructuralBoundary(node, splitBy);
+        const isForcedSplit = splitBy === 'slide' && node.type === 'slide'
+            || splitBy === 'page' && node.type === 'page'
+            || splitBy === 'sheet' && node.type === 'sheet';
+        if (isForcedSplit) {
+            // Process children of the container as individual chunks within the boundary
+            if (node.children || node.notes) {
+                const innerChunks = [];
+                if (node.children) {
+                    for (const child of node.children) {
+                        await this.processNodeForStructure(child, config, 'paragraph', maxChunkSize, measure, innerChunks, contextStack);
+                    }
+                }
+                if (node.notes) {
+                    for (const note of node.notes) {
+                        await this.processNodeForStructure(note, config, 'paragraph', maxChunkSize, measure, innerChunks, contextStack);
+                    }
+                }
+                for (const ic of innerChunks) {
+                    ic.metadata.slideNumber = contextStack.slideNumber;
+                    ic.metadata.pageNumber = contextStack.pageNumber;
+                    ic.metadata.sheetName = contextStack.sheetName;
+                    chunks.push(ic);
+                }
+            }
+            return;
+        }
+        if (node.type === 'table') {
+            await this.processTableNode(node, config, maxChunkSize, measure, chunks, contextStack);
+            return;
+        }
+        const isContentNode = node.type === 'paragraph' || node.type === 'heading' || node.type === 'list' || node.type === 'code' || node.type === 'cell' || (node.text && (!node.children || node.children.length === 0));
+        if (isStructuralBoundary || isContentNode) {
+            const text = typeof override === 'string' ? override : collectNodeText(node);
+            const isWhitespaceOnly = !text.trim() && !text.includes('\u00A0');
+            if (isWhitespaceOnly && text.length > 0) {
+                // Log skipped empty nodes if debugging
+                // Only warn for non-cell nodes to reduce spreadsheet noise
+                if (node.type !== 'cell') {
+                    this.warn(types_js_1.OfficeWarningType.WHITESPACE_NODE_SKIPPED, node.type, node);
+                }
+                return;
+            }
+            if (node.type === 'heading')
+                contextStack.heading = text;
+            const chunk = {
+                text,
+                metadata: {
+                    sourceType: this.ast.type,
+                    closestHeading: contextStack.heading,
+                    slideNumber: contextStack.slideNumber,
+                    pageNumber: contextStack.pageNumber,
+                    sheetName: contextStack.sheetName,
+                },
+            };
+            // If this chunk is too big, further split it
+            if (measure(text) > maxChunkSize) {
+                const subChunks = this.splitTextRecursively(text, maxChunkSize, 0, ['\n\n', '\n', ' ', ''], measure);
+                for (const sub of subChunks) {
+                    chunks.push({ ...chunk, text: sub.text });
+                }
+            }
+            else {
+                chunks.push(chunk);
+            }
+            return;
+        }
+        // Recurse into children and notes for container nodes
+        if (node.children) {
+            for (const child of node.children) {
+                await this.processNodeForStructure(child, config, splitBy, maxChunkSize, measure, chunks, contextStack);
+            }
+        }
+        if (node.notes) {
+            for (const note of node.notes) {
+                await this.processNodeForStructure(note, config, splitBy, maxChunkSize, measure, chunks, contextStack);
+            }
+        }
+    }
+    isStructuralBoundary(node, splitBy) {
+        if (splitBy === 'heading')
+            return node.type === 'heading';
+        if (splitBy === 'paragraph')
+            return node.type === 'paragraph' || node.type === 'heading' || node.type === 'cell';
+        return false;
+    }
+    /**
+     * Handles table chunking with the configured tableSplitStrategy.
+     * 'row': keeps header row attached to every chunk.
+     * 'flatten': converts table to text and splits normally.
+     */
+    async processTableNode(node, config, maxChunkSize, measure, chunks, contextStack) {
+        const strategy = config.tableSplitStrategy;
+        if (strategy === 'flatten' || !node.children || node.children.length === 0) {
+            // Flatten: treat as plain text (collect from children for HTML/MD-origin tables).
+            const text = collectNodeText(node);
+            if (!text.trim())
+                return;
+            chunks.push({
+                text,
+                metadata: {
+                    sourceType: this.ast.type,
+                    closestHeading: contextStack.heading,
+                    slideNumber: contextStack.slideNumber,
+                    pageNumber: contextStack.pageNumber,
+                    sheetName: contextStack.sheetName,
+                },
+            });
+            return;
+        }
+        // 'row' strategy: extract header row(s) and chunk remaining rows
+        const rows = node.children; // Each child is a 'row' node
+        const headerRows = [];
+        const dataRows = [];
+        // Heuristic: first row is the header
+        if (rows.length > 0) {
+            const firstRow = rows[0];
+            const override = await this.handleOnNode(firstRow);
+            if (override !== false) {
+                // If overridden, we use the string as header, but we still treat it as a header
+                headerRows.push(firstRow); // We still add the node to get metadata later if needed, but renderRowsAsText will handle it?
+                // Actually renderRowsAsText needs to be updated too.
+            }
+            for (let i = 1; i < rows.length; i++) {
+                dataRows.push(rows[i]);
+            }
+        }
+        const headerText = await this.renderRowsAsText(headerRows);
+        const baseMetadata = {
+            sourceType: this.ast.type,
+            closestHeading: contextStack.heading,
+            slideNumber: contextStack.slideNumber,
+            pageNumber: contextStack.pageNumber,
+            sheetName: contextStack.sheetName,
+            isTableChunk: true,
+        };
+        // Group data rows into chunks
+        let currentRows = [];
+        let currentSize = headerText ? measure(headerText) : 0;
+        const flushCurrentRows = async () => {
+            if (currentRows.length === 0)
+                return;
+            const rowText = await this.renderRowsAsText(currentRows);
+            const chunkText = headerText ? `${headerText}\n${rowText}` : rowText;
+            if (chunkText.trim()) {
+                if (measure(chunkText) > maxChunkSize) {
+                    // Fallback to recursive splitting for oversized table chunks
+                    const subChunks = this.splitTextRecursively(chunkText, maxChunkSize, 0, ['\n', ' ', ''], measure);
+                    for (const sub of subChunks) {
+                        chunks.push({ text: sub.text, metadata: { ...baseMetadata } });
+                    }
+                }
+                else {
+                    chunks.push({ text: chunkText, metadata: { ...baseMetadata } });
+                }
+            }
+            currentRows = [];
+            currentSize = headerText ? measure(headerText) : 0;
+        };
+        for (const row of dataRows) {
+            const override = await this.handleOnNode(row);
+            if (override === false)
+                continue;
+            const rowText = typeof override === 'string' ? override : await this.renderRowsAsText([row]);
+            const rowSize = measure(rowText);
+            if (currentSize + rowSize > maxChunkSize && currentRows.length > 0) {
+                await flushCurrentRows();
+            }
+            if (typeof override === 'string') {
+                // If row was overridden, we flush current, then add the override as a chunk.
+                await flushCurrentRows();
+                const chunkText = headerText ? `${headerText}\n${override}` : override;
+                chunks.push({ text: chunkText, metadata: { ...baseMetadata } });
+                continue;
+            }
+            currentRows.push(row);
+            currentSize += rowSize;
+        }
+        await flushCurrentRows();
+    }
+    /**
+     * Renders a list of row nodes as a pipe-separated text string.
+     */
+    async renderRowsAsText(rows) {
+        const renderedRows = [];
+        for (const row of rows) {
+            const override = await this.handleOnNode(row);
+            if (override === false)
+                continue;
+            if (typeof override === 'string') {
+                renderedRows.push(override);
+                continue;
+            }
+            if (!row.children) {
+                renderedRows.push(row.text ?? '');
+                continue;
+            }
+            const getCellText = (cell) => {
+                if (cell.text)
+                    return cell.text;
+                if (!cell.children || cell.children.length === 0)
+                    return '';
+                return cell.children.map(c => getCellText(c)).join(' ');
+            };
+            const cells = row.children.map(cell => getCellText(cell).replace(/\n/g, ' ').trim());
+            renderedRows.push(`| ${cells.join(' | ')} |`);
+        }
+        return renderedRows.join('\n');
+    }
+    // ─── Strategy 3: Semantic ─────────────────────────────────────────────────
+    /**
+     * Splits document into semantically coherent chunks using cosine similarity
+     * between sentence embeddings. A new chunk begins when similarity drops
+     * below `similarityThreshold`.
+     */
+    async generateSemantic(config) {
+        const { similarityThreshold: threshold, maxChunkSize, bufferSize, lengthFunction: measure, embeddingBatchSize: batchSize } = config;
+        if (typeof config.embeddingFunction !== 'function') {
+            throw (0, errorUtils_js_1.getOfficeError)(types_js_1.OfficeErrorType.MISSING_EMBEDDING_FUNCTION, this.config);
+        }
+        // Extract all leaf-level text sentences from the AST
+        const sentences = await this.extractSentences();
+        if (sentences.length === 0)
+            return [];
+        // Embed all sentences in batches to avoid rate limiting
+        const embeddings = await this.batchEmbeddings(sentences, config.embeddingFunction, batchSize, config.timeout);
+        // Calculate cosine similarity between adjacent sentence windows
+        const chunks = [];
+        let currentSentences = [];
+        let currentSize = 0;
+        for (let i = 0; i < sentences.length; i++) {
+            const sentenceText = sentences[i].text;
+            currentSentences.push(sentences[i]);
+            currentSize += measure(sentenceText);
+            // Check if we should split here
+            const isLast = i === sentences.length - 1;
+            const exceedsMax = currentSize > maxChunkSize;
+            let shouldSplit = isLast || exceedsMax;
+            if (!shouldSplit && i < sentences.length - 1) {
+                // Compare the current window with the next window
+                const currentWindowEnd = Math.min(i + bufferSize, sentences.length - 1);
+                const nextWindowStart = i + 1;
+                const nextWindowEnd = Math.min(i + 1 + bufferSize, sentences.length - 1);
+                const currentEmbedding = this.averageEmbeddings(embeddings.slice(Math.max(0, i - bufferSize + 1), currentWindowEnd + 1));
+                const nextEmbedding = this.averageEmbeddings(embeddings.slice(nextWindowStart, nextWindowEnd + 1));
+                const similarity = this.cosineSimilarity(currentEmbedding, nextEmbedding);
+                if (similarity < threshold) {
+                    shouldSplit = true;
+                }
+            }
+            if (shouldSplit && currentSentences.length > 0) {
+                const chunkText = currentSentences.map(s => s.text).join(' ');
+                const firstSentence = currentSentences[0];
+                const baseMetadata = {
+                    sourceType: this.ast.type,
+                    closestHeading: firstSentence.closestHeading,
+                    slideNumber: firstSentence.slideNumber,
+                    pageNumber: firstSentence.pageNumber,
+                    sheetName: firstSentence.sheetName,
+                };
+                if (measure(chunkText) > maxChunkSize) {
+                    // Fallback to recursive splitting for oversized semantic chunks
+                    const subChunks = this.splitTextRecursively(chunkText, maxChunkSize, 0, ['\n', ' ', ''], measure);
+                    for (const sub of subChunks) {
+                        chunks.push({
+                            text: sub.text,
+                            metadata: { ...baseMetadata }
+                        });
+                    }
+                }
+                else {
+                    chunks.push({
+                        text: chunkText,
+                        metadata: baseMetadata
+                    });
+                }
+                currentSentences = [];
+                currentSize = 0;
+            }
+        }
+        return this.finalizeChunks(chunks, config);
+    }
+    /**
+     * Extracts all text sentences from the AST with their contextual metadata.
+     */
+    async extractSentences() {
+        const results = [];
+        let currentHeading;
+        let currentSlide;
+        let currentPage;
+        let currentSheet;
+        const walk = async (node) => {
+            (0, errorUtils_js_1.checkAbortSignal)(this.config.abortSignal);
+            const override = await this.handleOnNode(node);
+            if (override === false)
+                return;
+            if (node.type === 'heading')
+                currentHeading = node.text;
+            if (node.type === 'slide')
+                currentSlide = node.metadata?.slideNumber;
+            if (node.type === 'page')
+                currentPage = node.metadata?.pageNumber;
+            if (node.type === 'sheet')
+                currentSheet = node.metadata?.sheetName;
+            const isContentNode = node.type === 'paragraph' || node.type === 'heading' || node.type === 'list' || node.type === 'cell' || (node.text && (!node.children || node.children.length === 0));
+            if (isContentNode) {
+                const text = (typeof override === 'string' ? override : collectNodeText(node)).trim();
+                if (!text)
+                    return;
+                // Split paragraph text into individual sentences for finer-grained similarity
+                const sentences = this.splitIntoSentences(text);
+                for (const sentence of sentences) {
+                    if (sentence.trim()) {
+                        results.push({
+                            text: sentence.trim(),
+                            closestHeading: currentHeading,
+                            slideNumber: currentSlide,
+                            pageNumber: currentPage,
+                            sheetName: currentSheet,
+                        });
+                    }
+                }
+                return; // don't recurse into children; we already have the text
+            }
+            if (node.children) {
+                for (const child of node.children)
+                    await walk(child);
+            }
+            if (node.notes) {
+                for (const note of node.notes)
+                    await walk(note);
+            }
+        };
+        for (const node of this.ast.content)
+            await walk(node);
+        return results;
+    }
+    // ─── Shared Utilities ─────────────────────────────────────────────────────
+    /**
+     * Builds a flat text string from the entire document and a map of
+     * character offsets to AST node metadata for position-based metadata lookups.
+     */
+    async buildFlatTextWithPositions() {
+        const parts = [];
+        const nodeMap = [];
+        let offset = 0;
+        let currentHeading;
+        let currentSlide;
+        let currentPage;
+        let currentSheet;
+        const walk = async (node) => {
+            (0, errorUtils_js_1.checkAbortSignal)(this.config.abortSignal);
+            const override = await this.handleOnNode(node);
+            if (override === false)
+                return;
+            if (node.type === 'heading')
+                currentHeading = node.text;
+            if (node.type === 'slide')
+                currentSlide = node.metadata?.slideNumber;
+            if (node.type === 'page')
+                currentPage = node.metadata?.pageNumber;
+            if (node.type === 'sheet')
+                currentSheet = node.metadata?.sheetName;
+            const isContentNode = node.type === 'paragraph' || node.type === 'heading' || node.type === 'list' || node.type === 'code' || node.type === 'cell' || (node.text && (!node.children || node.children.length === 0));
+            if (isContentNode) {
+                const nodeText = typeof override === 'string' ? override : collectNodeText(node);
+                const txt = nodeText + '\n';
+                nodeMap.push({ offset, heading: currentHeading, slideNumber: currentSlide, pageNumber: currentPage, sheetName: currentSheet });
+                parts.push(txt);
+                offset += txt.length;
+                return;
+            }
+            if (node.children) {
+                for (const child of node.children)
+                    await walk(child);
+            }
+            if (node.notes) {
+                for (const note of node.notes)
+                    await walk(note);
+            }
+        };
+        for (const node of this.ast.content)
+            await walk(node);
+        return { text: parts.join(''), nodeMap };
+    }
+    /**
+     * Finds the closest AST metadata for a given character position.
+     */
+    enrichMetadataFromPosition(chunk, nodeMap, charOffset) {
+        let best = nodeMap[0];
+        for (const entry of nodeMap) {
+            if (entry.offset <= charOffset)
+                best = entry;
+            else
+                break;
+        }
+        if (best) {
+            chunk.metadata.closestHeading = best.heading;
+            chunk.metadata.slideNumber = best.slideNumber;
+            chunk.metadata.pageNumber = best.pageNumber;
+            chunk.metadata.sheetName = best.sheetName;
+        }
+    }
+    /**
+     * Applies final post-processing: strips whitespace, sets sourceType.
+     */
+    finalizeChunks(chunks, config) {
+        if (chunks.length === 0) {
+            this.warn(types_js_1.OfficeWarningType.EMPTY_CHUNK_GENERATED, this.chunkConfig.strategy);
+        }
+        return chunks
+            .map(chunk => {
+            const text = config.stripWhitespace !== false ? chunk.text.trim() : chunk.text;
+            const result = { text, metadata: { sourceType: this.ast.type } };
+            if (config.includeMetadata !== false) {
+                result.metadata = chunk.metadata;
+            }
+            return result;
+        })
+            .filter(chunk => chunk.text.length > 0);
+    }
+    // ─── Embedding Math Utilities ──────────────────────────────────────────────
+    /**
+     * Helper to process embeddings in sequential batches to avoid API rate limits and memory issues.
+     */
+    async batchEmbeddings(sentences, embedFn, batchSize = 50, timeoutMs) {
+        const results = [];
+        for (let i = 0; i < sentences.length; i += batchSize) {
+            (0, errorUtils_js_1.checkAbortSignal)(this.config.abortSignal);
+            const batch = sentences.slice(i, i + batchSize);
+            const batchPromises = batch.map(s => {
+                const call = embedFn(s.text);
+                if (timeoutMs !== undefined && timeoutMs > 0) {
+                    let timerId;
+                    const timeoutPromise = new Promise((_, reject) => {
+                        timerId = setTimeout(() => {
+                            reject((0, errorUtils_js_1.getOfficeError)(types_js_1.OfficeErrorType.EMBEDDING_TIMEOUT, this.config, timeoutMs));
+                        }, timeoutMs);
+                    });
+                    return Promise.race([call, timeoutPromise]).finally(() => {
+                        clearTimeout(timerId);
+                    });
+                }
+                return call;
+            });
+            const batchResults = await Promise.all(batchPromises);
+            results.push(...batchResults);
+        }
+        return results;
+    }
+    cosineSimilarity(a, b) {
+        if (a.length !== b.length || a.length === 0)
+            return 0;
+        let dot = 0, normA = 0, normB = 0;
+        for (let i = 0; i < a.length; i++) {
+            dot += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        const denom = Math.sqrt(normA) * Math.sqrt(normB);
+        return denom === 0 ? 0 : dot / denom;
+    }
+    averageEmbeddings(embeddings) {
+        if (embeddings.length === 0)
+            return [];
+        const len = embeddings[0].length;
+        const avg = new Array(len).fill(0);
+        for (const emb of embeddings) {
+            for (let i = 0; i < len; i++)
+                avg[i] += emb[i];
+        }
+        return avg.map(v => v / embeddings.length);
+    }
+    /**
+     * Robustly splits text into sentences, respecting abbreviations and non-Western punctuation.
+     */
+    splitIntoSentences(text) {
+        if (this.isCustomRegex) {
+            const userRegex = this.chunkConfig.sentenceBoundaryRegex;
+            const regex = typeof userRegex === 'string' ? new RegExp(userRegex, 'g') : userRegex;
+            // Split while keeping the separator if possible, or just split
+            return text.split(regex).map(s => s.trim()).filter(Boolean);
+        }
+        const abbreviations = this.chunkConfig.abbreviations;
+        const sentences = [];
+        let start = 0;
+        // Japanese full stop: 。 Exclamation: ！ Question: ？
+        // Western: . ! ?
+        const markRegex = /[.!?。！？]/g;
+        let match;
+        while ((match = markRegex.exec(text)) !== null) {
+            const mark = match[0];
+            const pos = match.index;
+            const nextChar = text[pos + 1];
+            const isAtEnd = pos === text.length - 1;
+            const isFollowedByWhitespace = !nextChar || /\s/.test(nextChar);
+            const isJapaneseMark = /[。！？]/.test(mark);
+            if (isFollowedByWhitespace || isJapaneseMark) {
+                // Check for abbreviations (only for period)
+                if (mark === '.') {
+                    const prevSpace = text.lastIndexOf(' ', pos - 1);
+                    let lastWord = text.substring(prevSpace + 1, pos);
+                    // Strip punctuation like quotes, parentheses, brackets
+                    lastWord = lastWord.replace(/^[^\w]+|[^\w]+$/g, '');
+                    if (abbreviations.includes(lastWord))
+                        continue;
+                }
+                sentences.push(text.substring(start, pos + 1).trim());
+                start = pos + 1;
+            }
+        }
+        if (start < text.length) {
+            const remaining = text.substring(start).trim();
+            if (remaining)
+                sentences.push(remaining);
+        }
+        return sentences.length > 0 ? sentences : [text];
+    }
+}
+exports.ChunkingGenerator = ChunkingGenerator;

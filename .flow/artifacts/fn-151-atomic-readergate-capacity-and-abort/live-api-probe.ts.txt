@@ -1,0 +1,65 @@
+import { startServer } from '/home/gordon/work/gno/src/serve/server.ts';
+import { startResidentRuntime } from '/home/gordon/work/gno/src/serve/resident-runtime.ts';
+import { mkdir } from 'node:fs/promises';
+import { strict as assert } from 'node:assert';
+
+const root = process.env.FN151_QA_ROOT!;
+await mkdir(`${root}/source`, {recursive:true});
+const config = {version:'1.0', ftsTokenizer:'unicode61', collections:[{name:'synthetic',path:`${root}/source`,pattern:'**/*.md',include:[],exclude:[]}],contexts:[]};
+await Bun.write(`${root}/config.yml`, Bun.YAML.stringify(config));
+let runtime: any;
+let port = 0;
+let maxActive = 0;
+const statuses: number[] = [];
+const waitUntil = async (predicate:()=>boolean) => { const deadline=Date.now()+4000; while(!predicate()) { if(Date.now()>deadline) throw new Error('QA deadline'); await Bun.sleep(2); } };
+const result = await startServer({port:0,configPath:`${root}/config.yml`}, {
+  startBackgroundRuntime: async (options:any) => {
+    const result = await startResidentRuntime({...options,readerLimit:1,readerQueueLimit:64,offline:true}, {
+      isInitialized:async()=>true,
+      loadConfig:async()=>({ok:true,value:config}),
+      createServerContext:async(store:any,config:any)=>({store,config,indexName:'default',vectorIndex:null,embedPort:null,expandPort:null,answerPort:null,rerankPort:null,capabilities:{bm25:true,vector:false,hybrid:false,answer:false}})
+    } as any);
+    assert(result.success); runtime=result.runtime;
+    const content='# Synthetic handoff\n\nCobalt reader concurrency verification.';
+    await runtime.store.upsertDocument({collection:'synthetic',relPath:'probe.md',sourceHash:'synthetic',sourceMime:'text/markdown',sourceExt:'.md',sourceMtime:'2026-09-05T00:00:00.000Z',sourceSize:content.length,mirrorHash:'synthetic',title:'Synthetic handoff'});
+    await runtime.store.upsertContent('synthetic',content);
+    await runtime.store.syncDocumentFts('synthetic','probe.md');
+    const original=runtime.withModelLease.bind(runtime);
+    runtime.withModelLease=async(operation:any)=>{
+      maxActive=Math.max(maxActive,runtime.readerGate.active);
+      // Controlled CPU-free work interval makes the socket queue observable.
+      await Bun.sleep(8);
+      return original(operation);
+    };
+    return result;
+  },
+  serve:(options:any)=>{const server=Bun.serve(options);port=server.port!;return server;},
+  waitForShutdown:async()=>{
+    const url=`http://127.0.0.1:${port}/api/search`;
+    const search=(signal?:AbortSignal)=>fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({query:'cobalt'}),signal});
+    const initial=await search(); const expected=await initial.json(); assert.equal(initial.status,200); assert.equal(expected.results.length,1);
+    const responses=await Promise.all(Array.from({length:24},()=>search()));
+    for(const response of responses){statuses.push(response.status);assert.equal(response.status,200);assert.deepEqual(await response.json(),expected);}
+    const release=await runtime.readerGate.acquire();
+    const abort=new AbortController();
+    const canceled=search(abort.signal).then(()=>false,()=>true);
+    await waitUntil(()=>runtime.readerGate.queued===1);
+    const survivor=search();
+    await waitUntil(()=>runtime.readerGate.queued===2);
+    abort.abort();
+    assert(await canceled);
+    await waitUntil(()=>runtime.readerGate.queued===1);
+    release();
+    const live=await survivor;assert.equal(live.status,200);assert.deepEqual(await live.json(),expected);
+    // Disconnect after work admission; survivor must still make progress.
+    const activeAbort=new AbortController();
+    const activeCanceled=search(activeAbort.signal).then(()=>false,()=>true);
+    await waitUntil(()=>runtime.readerGate.active===1);
+    activeAbort.abort(); assert(await activeCanceled);
+    const final=await search();assert.equal(final.status,200);assert.deepEqual(await final.json(),expected);
+    await waitUntil(()=>runtime.readerGate.active===0 && runtime.readerGate.queued===0);
+    assert.equal(maxActive,1);
+    console.log(JSON.stringify({surface:'startServer real Bun listener + real resident runtime + synthetic SQLite + lexical-only context',port,concurrentRequests:24,statuses,queuedDisconnect:true,activeDisconnect:true,unchangedSuccessfulOutput:expected,maxActive,finalActive:runtime.readerGate.active,finalQueued:runtime.readerGate.queued},null,2));
+  }
+} as any);
+assert(result.success);

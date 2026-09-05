@@ -1,0 +1,19 @@
+{
+  "comparatorSourceCommit": "44cf2a1dbd937d97594baf9387374b4b16f98c63",
+  "comparatorFiles": {
+    "comparator/acceptance/compare.ts": "773c5dd7f284bfdcb353d7827dceae336b31fee57b7e30aea0f0ce8e9724313b",
+    "comparator/acceptance/manifest.ts": "4d59390e721d45f2cba3b3b63672bc618c64a84aa0913b0a8c9f8497299d87bc",
+    "comparator/acceptance/records.ts": "0a31dbbc903706acaf404658e816bc6002046235a6fee22d0636db94ed0226c0",
+    "comparator/agentic/canonical.ts": "f561a76f60e8e42a9ce26b7c933420e93cb4a8103620bb12f9ec6aff901d4442",
+    "comparator/agentic/types.ts": "f4e0f1a5561c45449300e7e06980b9124b2d34e701bd30ab512ad9ca8fb4a11f"
+  },
+  "zodVersion": "4.4.3",
+  "losslessCompressedRaw": [
+    "baseline/result.json.gz",
+    "candidate/result.json.gz",
+    "baseline/phases.jsonl.gz",
+    "candidate/phases.jsonl.gz",
+    "baseline/process.jsonl.gz",
+    "candidate/process.jsonl.gz"
+  ]
+}

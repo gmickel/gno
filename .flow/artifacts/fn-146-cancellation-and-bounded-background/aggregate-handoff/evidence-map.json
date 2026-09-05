@@ -1,0 +1,513 @@
+{
+  "head": "f64c41c97e196e3bffdba23bc1c006bca7489b28",
+  "statusCheckedAt": "2026-09-05T08:52:58.280739+00:00",
+  "statusSource": "Live flowctl show for all10 selected specs:41tasks done,10specs closed; full refreshed exports retained separately from the original blocked snapshot.",
+  "specs": [
+    {
+      "spec": "fn-143-paired-retrieval-quality-and-resource",
+      "title": "Paired retrieval quality and resource acceptance",
+      "status": "done",
+      "tasks": {
+        "1": "done",
+        "2": "done",
+        "3": "done",
+        "4": "done",
+        "5": "done"
+      },
+      "implementationCommits": [
+        "a1a7417f0051c931bfc9fd0166b85645d9735b22",
+        "b50bf6ccd4cb2861ea24a0c6c8d9fc596bb57734"
+      ],
+      "observedProducts": [
+        "270c3a74"
+      ],
+      "evidence": [
+        [
+          "CUDA/Metal unchanged-source controls, verified Ask actual judge, retained warm/lifecycle failures",
+          ".flow/artifacts/fn-143-paired-retrieval-quality-and-resource/README.md"
+        ]
+      ],
+      "negatives": [
+        "Warm30 incomplete: CUDA50/60 records,20/30 pairs; Metal57/60 records,27/30 pairs.",
+        "Metal CLI crash; pressure-stopped rerank; mid-JSON expansion; disposed-state baseline failures retained."
+      ],
+      "gaps": [
+        "Harness complete, not original native-readiness PASS; baseline control coverage limited. Later fixes require their own evidence.",
+        "Historical QA remains NEEDS_WORK with two inherited P1 baseline-control findings. Closing the harness spec and later passing product receipts do not rewrite that verdict."
+      ]
+    },
+    {
+      "spec": "fn-144-native-recovery-and-idle-inference",
+      "title": "Native recovery and idle inference reclamation",
+      "status": "done",
+      "tasks": {
+        "1": "done",
+        "2": "done",
+        "3": "done",
+        "4": "done",
+        "5": "done",
+        "6": "done"
+      },
+      "implementationCommits": [
+        "9ee4f238aecb2e13fa53c3ce33f75eeca973deb5",
+        "e9027dbcf451987d9d10c997cee5be82891c3378",
+        "cbaa49c000f08e13ac680e59cdab9c608ecf2996",
+        "7274d5fe1f4ff373f0f107186c8649a05c60d7e7",
+        "dd38f7777189067024e37e8cdcda35c050ad18d0",
+        "3d9c0ec49c502ab0c3470c7df14ddac8123ad8d9",
+        "9d0b57e30590b5d71429df538da7a5d0f08fff02"
+      ],
+      "observedProducts": [
+        "3d9c0ec4",
+        "d0604b0d",
+        "9d0b57e3"
+      ],
+      "evidence": [
+        [
+          "CUDA packed CLI/stdio/HTTP MCP/REST exact24 full-field checks; matched29 Ask strict comparator and judge1 each",
+          ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-packed-surfaces-9d0b57e3/README.md"
+        ],
+        [
+          "Metal packed original-query warm3 complete, explicit cold timeout primer, actual native transcript",
+          ".flow/artifacts/fn-144-native-recovery-and-idle-inference/ivan-warm3/README.md"
+        ],
+        [
+          "New9d Metal HTTP/REST recovered locally;24 exact cold cross-surface fields; final warm3 actual complete, cold fallback retained",
+          ".flow/artifacts/fn-144-native-recovery-and-idle-inference/ivan-public-surfaces/README.md"
+        ],
+        [
+          "Matched plain/captured CUDA warm cost and original-query controls",
+          ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-burst-9d0b57e3/README.md"
+        ],
+        [
+          "Metal matched29 original Ask strict comparator PASS, actual judge1 both, complete native output equality",
+          ".flow/artifacts/fn-144-native-recovery-and-idle-inference/ivan-verified-ask-matched29/README.md"
+        ]
+      ],
+      "negatives": [
+        "Original pure-virtual/assertion failures, pressure stops, suppressed-expansion preset mismatch, cold expansion timeouts retained.",
+        "HTTP Bun cached-file-length ledger parse failure preserved alongside reader fix."
+      ],
+      "gaps": [
+        "Recovered f661cf44 Metal receipts are now local and hash-verified; all cold public calls still have expansion-timeout fallback, not complete cold expansion acceptance.",
+        "No claim that isolation alone fixes every native assertion or that cold expansion always succeeds. Later background/shutdown integrated acceptance belongs fn146."
+      ]
+    },
+    {
+      "spec": "fn-145-token-sized-reranker-contexts-with",
+      "title": "Token-sized reranker contexts with score parity",
+      "status": "done",
+      "tasks": {
+        "1": "done",
+        "2": "done",
+        "3": "done",
+        "4": "done"
+      },
+      "implementationCommits": [
+        "df9ffe64a89bcae3fdd13701d0914dd3b3a8c2c3"
+      ],
+      "observedProducts": [
+        "df9ffe64",
+        "9d0b57e3",
+        "44cf2a1d",
+        "f64c41c9 (Heimdall physical Metal allocation)"
+      ],
+      "evidence": [
+        [
+          "CUDA direct74 exact pairs/148 calls, full tokens/order/scores and context sizing",
+          ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/README.md"
+        ],
+        [
+          "New packed public6-call resize/reload:768\u21923840\u2192768, real child expiry; Ask before/after exact, judge1 each",
+          ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/public-reload/README.md"
+        ],
+        [
+          "Physical allocation metric diagnosis: old auto40960 context returned, byte denominator unmeasured",
+          ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/allocation-feasibility/fn145.4-allocation-evidence-diagnosis.md"
+        ],
+        [
+          "Read-only current Ivan headroom: no new safe old-auto allocation condition established",
+          ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/allocation-feasibility/fn145.4-ivan-current-headroom.md"
+        ],
+        [
+          "Actual CUDA context/compute allocation counters: sized768 vs auto40960; six exact input/token/score/rank cases, cold/warm",
+          ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/allocation-native-cuda/README.md"
+        ],
+        [
+          "Heimdall M4 Max128GiB: direct native allocation, exact six-input/token/score/rank cold/warm parity",
+          ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/allocation-native-metal-heimdall/README.md"
+        ],
+        [
+          "Host checksum/analysis/fixture/package verification and final local gates after CI assertion repair",
+          ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/heimdall-final-gates/README.md"
+        ]
+      ],
+      "negatives": [
+        "Original Metal direct old-auto denominator pressure-stopped with zero rows; no favorable retry.",
+        "Public baseline long rerank fails and postidle Ask lacks capsule; full6-case comparison fails,4 complete pairs exact. Historical disposed/native aborts remain.",
+        "New allocation stratum sized context was slower in its single ordered pair. GPU context/compute savings 4,650,696,704 bytes and CPU 41,156,608 bytes are CUDA counters, not RSS, whole-device usage or Metal unified-memory measurements.",
+        "First Heimdall launch failed before native execution because the Bun mise shim could not resolve under isolated HOME. Actual same-version binary used in separate v2; both actual native arms completed once. Sized warm scoring256.782334ms vs auto254.497584ms is slower."
+      ],
+      "gaps": [
+        "Task4 and spec complete. R3 physical Metal measured on Heimdall, separately from the unchanged prior Ivan pressure failures.",
+        "One ordered pair; no universal memory or throughput claim. Sized warm scoring was 2.28475ms slower and remains retained. Historical baseline failures remain immutable."
+      ]
+    },
+    {
+      "spec": "fn-146-cancellation-and-bounded-background",
+      "title": "Cancellation and bounded background inference",
+      "status": "done",
+      "tasks": {
+        "1": "done",
+        "2": "done",
+        "3": "done",
+        "4": "done",
+        "5": "done"
+      },
+      "implementationCommits": [
+        "50707752eae034b61dac4d94b845605dff7e3a71",
+        "a30da4423ec5604f46d2b050af8a2cba51c66e07",
+        "44cf2a1dbd937d97594baf9387374b4b16f98c63",
+        "9bb46bcaebd5fa5bcdea6e1cc6218a8b86c6e977"
+      ],
+      "observedProducts": [
+        "a30da442",
+        "44cf2a1d",
+        "f64c41c9 (final actual CUDA/Metal, CPU HTTP and production browser)"
+      ],
+      "evidence": [
+        [
+          "Actual packed a30 CUDA pre-abort/queued/active rerank+generation cancellation; ownership retained until actual settlement;4 recovery queries exact",
+          ".flow/artifacts/fn-146-cancellation-and-bounded-background/native-cancellation/js-evaluate/README.md"
+        ],
+        [
+          "Task3 bounded32-owner background pages, shared64-waiter queue/eight-inference fairness, model-specific leases; actual IPC and SQLite focused acceptance",
+          ".flow/tasks/fn-146-cancellation-and-bounded-background.3.md"
+        ],
+        [
+          "Actual CUDA independent model expiry and exact retrieval after reload",
+          ".flow/artifacts/fn-146-cancellation-and-bounded-background/model-residency/README.md"
+        ],
+        [
+          "Bounded shutdown, actual synthetic child/source-CLI and durable SQLite backlog restart acceptance",
+          ".flow/artifacts/fn-146-cancellation-and-bounded-background/task4-gates/README.md"
+        ],
+        [
+          "Final2.0 package:909 shipped files/all754 src exact frozen archive; fresh SPA/CSS",
+          ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-native-cuda/package-manifest.json"
+        ],
+        [
+          "Fresh unchanged20-scenario skill evaluation; original46/47 failure preserved, clarified skill47/47",
+          ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-skill-eval-status-clarification/README.md"
+        ],
+        [
+          "Final actual CUDA six-phase cancellation/background/restart/CLI acceptance; exact query/Ask native IO, judge1 abstention",
+          ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-native-cuda/README.md"
+        ],
+        [
+          "Final actual Metal six-phase acceptance and fairness supplement; original noRerank policy",
+          ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-native-metal/README.md"
+        ],
+        [
+          "All final gates at76743bd6; independent smoke archive comparison",
+          ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-release-gates/README.md"
+        ]
+      ],
+      "negatives": [
+        "Two earlier instrumentation failures retained separately; successful native observer calls original iterator.next and observes actual pending/settlement, not assumed kernel completion.",
+        "Active cancellation delivers caller error before native capacity release; quarantined ownership and waiters are retained until settlement. No forced retirement was needed in this native stratum.",
+        "Final CUDA failed preparation/capture revisions retained. Stale selected embedding stage ended before one notification; negative retention stays raw. Separate same-request rerank signal observer confirms168ms native settlement after abort.",
+        "Both platforms verified Ask abstains with one unresolved claim and one actual semantic judge per call; exact parity is not supported-answer quality. Only semantic.durationMs telemetry removed by original response projection."
+      ],
+      "gaps": [
+        "Task5 and spec accepted by host. Both platforms: idle/background full query and Ask/native IO exact;12/12 foreground responses exact; background selected at eight completed foreground credits; batches\u226432.",
+        "Durable restart: CUDA418 committed background owners plus670 physically missing; Metal98 plus30. Missing passage IDs resumed exactly once; all committed rows and30 legacy vectors survived. Active shadow-partition eligibility missing counts are distinct from physically unembedded counts.",
+        "Final scope excludes stuck GPU kernels, native forced-kill branch, saturation64, historical original143-query acceptance and default Metal reranking. CUDA noRerank:false, Metal noRerank:true; both noExpand:true. Task4 synthetic noncooperative-child coverage stays separate.",
+        "Shared5+5+1second policy assumes runnable parent event loop. Actual partial-backlog shutdown5404ms CUDA/5097ms Metal; CLI daemon/serve SIGTERM781/789ms CUDA,1450/1452ms Metal are observations, not universal timing guarantees."
+      ]
+    },
+    {
+      "spec": "fn-147-restoration-and-unchanged-embedding",
+      "title": "Restoration and unchanged embedding preservation",
+      "status": "done",
+      "tasks": {
+        "1": "done",
+        "2": "done",
+        "3": "done",
+        "4": "done",
+        "5": "done",
+        "6": "done"
+      },
+      "implementationCommits": [
+        "e4b3b5ea7ae8cf5a40a9415a31c1a28aed3e4a5e",
+        "5e66dd1e176869f94fd77f2e8b29bcc02a81e81a",
+        "8330a58a833a6fbb342fc6139e3fa4b1db53f9ac",
+        "2beb8aaeafd0fd84d16111cbda3d8ec35a44ee6e",
+        "fa291b8cf0d9be8c39ffffb2a816187d6c324461"
+      ],
+      "observedProducts": [
+        "2beb8aae",
+        "3d9c0ec4",
+        "9d0b57e3"
+      ],
+      "evidence": [
+        [
+          "Actual CUDA12-case clean-rebuild matrix,24 children/138 complete requests",
+          ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-3d9c0ec4-summary.md"
+        ],
+        [
+          "Reproducible zero passage calls unchanged/restored; force3 passages; old9 complete pairs retained separately",
+          ".flow/artifacts/fn-147-restoration-and-unchanged-embedding/native-call-attribution/README.md"
+        ],
+        [
+          "Current packed public result/native input-output equality",
+          ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-packed-surfaces-9d0b57e3/README.md"
+        ]
+      ],
+      "negatives": [
+        "Old2beb three incomplete mutation cases and missing effective-identity CLI/MCP failure retained under native-2beb8aae.",
+        "Old run lacks per-call transcript; new capture cannot retroactively prove old raw tokens."
+      ],
+      "gaps": [
+        "No full mutation\u00d7protocol\u00d7platform matrix claimed. New cancellation/background/shutdown belongs fn146; hosted docs deferred."
+      ]
+    },
+    {
+      "spec": "fn-148-eligible-candidates-before-retrieval",
+      "title": "Eligible candidates before retrieval top-K",
+      "status": "done",
+      "tasks": {
+        "1": "done",
+        "2": "done",
+        "3": "done",
+        "4": "done"
+      },
+      "implementationCommits": [
+        "d5a98ca52acaab949f66dcb992b76f448e799145",
+        "8455b1f937f9a49de3f9283d472590b483f43043",
+        "3adcb6bcdc60641365962bd655e796eeb1168abd",
+        "23ba2c258e2d6c27b03aa7504a7d28f88d1ae2cf",
+        "1f7e785df59e17fd3e31cd7397611128c0c6cdd7",
+        "635293b6c309cf3be34facf30b4fbc1802167cae"
+      ],
+      "observedProducts": [
+        "23ba2c25",
+        "80346337",
+        "9d0b57e3"
+      ],
+      "evidence": [
+        [
+          "96 real CLI/stdio/HTTP/REST lexical requests,80 result comparisons; full SQLite known-vector/activated-owner scaling and browser",
+          ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/final-receipt/README.md"
+        ],
+        [
+          "Actual CUDA201 native bridge: rare owner rank197, K1/K10 vector/hybrid, vectorsUsed true,72 raw files",
+          ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda-receipt.json"
+        ],
+        [
+          "Physical Metal201 bridge:198 native passage embeddings,24 complete native requests, K1/K10 sole eligible owner, all5 queries vectorsUsed true",
+          ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/README.md"
+        ]
+      ],
+      "negatives": [
+        "Pre-fix broad FTS stall, interrupted group, rare-selective slowdown and concurrent timer cost retained.",
+        "Initial native comparator rejected undefined contentType; original attempt retained, corrected wire comparison continuation adds no document embeddings."
+      ],
+      "gaps": [
+        "Task4 and spec done; CUDA and Metal201 native bridges locally curated/hash-verified and accepted by host.",
+        "No native Cartesian scaling matrix, cross-backend numerical equality, or universal throughput claim."
+      ]
+    },
+    {
+      "spec": "fn-149-request-local-retrieval-hydration-reuse",
+      "title": "Request-local retrieval hydration reuse",
+      "status": "done",
+      "tasks": {
+        "1": "done",
+        "2": "done",
+        "3": "done",
+        "4": "done"
+      },
+      "implementationCommits": [
+        "ad3047fee75aa54181902a0c954d8d3f15039caa",
+        "7378a05f0ea43f9dff5ffd64162edd19bdc9bc82",
+        "fa4feda75555dfcfd0cbf8870d00f42b5c702fb6",
+        "aae58c0a0662ea20d4e9ecdef1c9c4867c278833"
+      ],
+      "observedProducts": [
+        "d608b2c2",
+        "9d0b57e3"
+      ],
+      "evidence": [
+        [
+          "Real SQLite/production Ask with deterministic ports,6 exact cases and actual hydration row/byte counters",
+          ".flow/artifacts/fn-149-request-local-retrieval-hydration-reuse/README.md"
+        ],
+        [
+          "CUDA original matched29 Ask full unchanged comparator and actual judge1 each",
+          ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-packed-surfaces-9d0b57e3/README.md"
+        ],
+        [
+          "CUDA new public Ask before/after actual native reload exact",
+          ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/public-reload/README.md"
+        ],
+        [
+          "Recovered Metal matched29 Ask: unchanged strict comparator PASS, judge1 both, complete native outputs equal; original noRerank:true policy",
+          ".flow/artifacts/fn-144-native-recovery-and-idle-inference/ivan-verified-ask-matched29/README.md"
+        ]
+      ],
+      "negatives": [
+        "Unsupported verifier schema abstention, missing/corrupt mirror, indexed-source mutation retained; original native disposed-state Ask failures remain.",
+        "Model-double read counters are not native retained-heap measurements."
+      ],
+      "gaps": [
+        "Metal raw transfer and strict local comparator gap resolved by f661cf44. Original Metal Ask options are noExpand:true/noRerank:true; do not claim full-rerank Metal Ask.",
+        "Task4 and spec done; native evidence does not itself measure total hydration heap savings."
+      ]
+    },
+    {
+      "spec": "fn-150-incremental-graph-reconciliation-with",
+      "title": "Incremental graph reconciliation with global parity",
+      "status": "done",
+      "tasks": {
+        "1": "done",
+        "2": "done",
+        "3": "done",
+        "4": "done",
+        "5": "done"
+      },
+      "implementationCommits": [
+        "29b9ffbd7cdba8cd38c3d5236017728afb7ca498",
+        "23ba2c258e2d6c27b03aa7504a7d28f88d1ae2cf",
+        "e4e7c266261f04e0433e8cd910af35e73210bdb9",
+        "635293b6c309cf3be34facf30b4fbc1802167cae"
+      ],
+      "observedProducts": [
+        "dd38f777",
+        "635293b6"
+      ],
+      "evidence": [
+        [
+          "Real CLI/REST/HTTP MCP five graph consumers \u00d710 mutations vs fresh full oracle; postfix all equal; browser/scoped scaling",
+          ".flow/artifacts/fn-150-incremental-graph-reconciliation-with/README.md"
+        ]
+      ],
+      "negatives": [
+        "Initial REST backlinks chose inactive same-docid row:0 vs2; raw failure retained; active-owner lookup fix retested.",
+        "Existing graph-header overflow P2 observed; not a hidden P0/P1 pass."
+      ],
+      "gaps": [
+        "Synthetic offline graph acceptance; no native model proof needed or claimed. Shared hosted-doc/post-PR work remains outside this evidence."
+      ]
+    },
+    {
+      "spec": "fn-151-atomic-readergate-capacity-and-abort",
+      "title": "Atomic ReaderGate capacity and abort handoff",
+      "status": "done",
+      "tasks": {
+        "1": "done"
+      },
+      "implementationCommits": [
+        "6c1b7e82441b1f7eb968b06c94488d3c5db071b0"
+      ],
+      "observedProducts": [
+        "6c1b7e82",
+        "f64c41c9"
+      ],
+      "evidence": [
+        [
+          "Real Bun listener/resident/SQLite lexical:24 concurrent200 exact responses, queued+active disconnect, final0 active/queued",
+          ".flow/artifacts/fn-151-atomic-readergate-capacity-and-abort/live-api.log"
+        ],
+        [
+          "Original-source capacity1/3 and abort-handoff regression fails",
+          ".flow/artifacts/fn-151-atomic-readergate-capacity-and-abort/original-regression.log"
+        ],
+        [
+          "Final packaged2.0 real HTTP:24 exact200 responses, maxActive1, queued/active abort, final0; cleanup",
+          ".flow/artifacts/fn-151-atomic-readergate-capacity-and-abort/final-package-f64c41c9/summary.md"
+        ]
+      ],
+      "negatives": [
+        "Original capacity/handoff failures retained; successful live evidence uses injected lexical context and8ms delay, no GPU.",
+        "Initial final probe delay wrapped obsolete withModelLease boundary and missed active-reader observation; failure retained. One fresh isolated rerun moved the existing8ms observation interval after actual readerGate.acquire; no gate replacement or native inference."
+      ],
+      "gaps": [
+        "Task1 and spec done; final packaged HTTP refresh passed. Controlled acquired-reader abort is not native inference cancellation."
+      ]
+    },
+    {
+      "spec": "fn-152-stop-indexing-polling-after-component",
+      "title": "Stop indexing polling after component unmount",
+      "status": "done",
+      "tasks": {
+        "1": "done"
+      },
+      "implementationCommits": [
+        "6c1b7e82441b1f7eb968b06c94488d3c5db071b0"
+      ],
+      "observedProducts": [
+        "6c1b7e82",
+        "f64c41c9"
+      ],
+      "evidence": [
+        [
+          "Real current-source Collections UI with synthetic response proxy: navigate-away abort/no late polls; remount one loop; screenshots/network",
+          ".flow/artifacts/fn-152-stop-indexing-polling-after-component/summary.md"
+        ],
+        [
+          "Final packaged production desktop/mobile navigation and repeated remount; exact SPA assets, screenshots/HAR/event assertions and cleanup",
+          ".flow/artifacts/fn-152-stop-indexing-polling-after-component/final-package-f64c41c9/summary.md"
+        ]
+      ],
+      "negatives": [
+        "Legacy prebuilt bundle leak reproduced separately; expected proxy HMR warning and aborted browser request not application errors.",
+        "Final mobile rapid-driver clicks before route load failed; retained actions plus bounded missing-scenario rerun with visible-control wait.",
+        "Existing mobile horizontal overflow465px at375px viewport persists (P2); no new causal attribution."
+      ],
+      "gaps": [
+        "Task1 and spec done; final production browser refresh passed. Synthetic job-response proxy does not establish actual indexing completion; detailed settlement variants remain deterministic-only."
+      ]
+    }
+  ],
+  "productBoundary": "Frozen product f64c41c97e196e3bffdba23bc1c006bca7489b28, version2.0.0 and canonical package56587f10 remain unchanged. All41tasks done and10specs closed after Heimdall physical Metal allocation acceptance. Full local gates at32aa6d99:5216pass/2skip/0fail,41596assertions; prior memory100%,hybrid86%,BM2588% unchanged. Historical fn143 QA NEEDS_WORK/two inherited P1 baseline controls persist; no blanket historical QA pass, release or universal performance claim.",
+  "hostSteering": "Heimdall authorized to finish physical Metal allocation. PR217 remains aggregate draft. Hosted docs queued in gno.sh fn-3; queue reconciled with new evidence, implementation/deployment separate.",
+  "newEvidenceCommits": {
+    "1240c079": "actual a30 CUDA cancellation ownership/recovery",
+    "f661cf44": "recovered local Metal public/warm/strict matched29 Ask",
+    "822e24b0": "locally verified physical Metal201 native bridge",
+    "44cf2a1d": "bounded background/model leases product",
+    "2e3cd21c": "task1463 done receipt",
+    "95c46895": "actual CUDA allocation counters and exact scores; separate stratum",
+    "34957379": "actual independent CUDA model expiry/exact retrieval",
+    "9bb46bca": "bounded shutdown product",
+    "16eebd53": "shutdown/durable restart implementation acceptance",
+    "f64c41c9": "aggregate2.0 frozen package with fresh SPA/CSS",
+    "71115186": "final core QA/gates evidence; later final-native archive receipt retains6288 raw members host-verified",
+    "32aa6d99": "portable malformed-ledger SyntaxError assertion and repeated full green local gates",
+    "56ece85a": "Heimdall physical Metal native allocation and exact parity; independent host verification"
+  },
+  "taskTotals": {
+    "done": 41,
+    "blocked": 0
+  },
+  "closedSpecs": 10,
+  "packageComparison": {
+    "canonicalSha256": "56587f10c9969a795d6aa527c29fe8a057720a97d9f9e5de335daa996e706655",
+    "independentSmokeSha256": "75db15882854390d0730d4406847dbb73b289d5a6b14d0c0cab652f52f338e38",
+    "evidence": ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-release-gates/package-comparison.json",
+    "boundary": "All754src identical; identical clipper JavaScript bytes have different generated chunk filename, changing HTML reference and clipper ZIP/checksum. Archives remain distinct."
+  },
+  "heimdallAllocation": {
+    "source": "f64c41c97e196e3bffdba23bc1c006bca7489b28",
+    "host": "Heimdall M4 Max128GiB",
+    "gpuBytesSaved": 4648599552,
+    "cpuBytesSaved": 41156608,
+    "contextSizes": {
+      "sized": 768,
+      "auto": 40960
+    },
+    "parity": "exact six full inputs/tokens/unrounded native scores/public scores/ranks/indices, cold and warm",
+    "scope": "native context+compute counters; excludes model/runtime/driver extras; Metal unified accounting, not independent physical pools"
+  }
+}

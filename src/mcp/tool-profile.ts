@@ -1,3 +1,11 @@
+import type {
+  Icon,
+  McpServer,
+  StandardSchemaWithJSON,
+  ToolAnnotations,
+  ToolCallback,
+  ServerContext,
+} from "@modelcontextprotocol/server";
 /**
  * MCP tool profiles.
  *
@@ -9,13 +17,7 @@
  * @module src/mcp/tool-profile
  */
 
-import type {
-  Icon,
-  McpServer,
-  StandardSchemaWithJSON,
-  ToolAnnotations,
-  ToolCallback,
-} from "@modelcontextprotocol/server";
+import { withInferenceScope } from "../llm/inference-scope";
 
 export const MCP_TOOL_PROFILES = ["core", "full"] as const;
 
@@ -105,8 +107,28 @@ export function createProfileToolRegistrar(
   profile: McpToolProfile
 ): ProfileToolRegistrar {
   const allowlist = mcpToolProfileAllowlist(profile);
+  const connection = new AbortController();
+  const previousClose = server.server.onclose;
+  server.server.onclose = () => {
+    connection.abort();
+    previousClose?.();
+  };
   return (name, config, cb) => {
     if (allowlist !== null && !allowlist.has(name)) return;
-    server.registerTool(name, config, cb);
+    // The SDK callback is conditional on schema presence: the last argument
+    // is always ServerContext, while a schema-bearing call also has input.
+    const wrapped = (...args: unknown[]) => {
+      const request = args.at(-1) as ServerContext;
+      return withInferenceScope(
+        {
+          signal: AbortSignal.any([connection.signal, request.mcpReq.signal]),
+        },
+        async () =>
+          args.length === 1
+            ? (cb as ToolCallback<undefined>)(request)
+            : (cb as ToolCallback<StandardSchemaWithJSON>)(args[0], request)
+      );
+    };
+    server.registerTool(name, config, wrapped as unknown as typeof cb);
   };
 }

@@ -1,0 +1,228 @@
+// Bun has no realpath API; canonical identity must be rechecked in the child.
+import { realpath } from "node:fs/promises";
+
+import type { LlmResult } from "../types";
+import type { NativeEvaluationOptions } from "./evaluation";
+import type { ApprovedModel, NativeRequest, NativeResponse } from "./protocol";
+import type { NativeRuntimeConfig } from "./runtime-config";
+
+import { inferenceFailedError } from "../errors";
+import { NodeLlamaCppEmbedding } from "../nodeLlamaCpp/embedding";
+import { NodeLlamaCppGeneration } from "../nodeLlamaCpp/generation";
+import { ModelManager } from "../nodeLlamaCpp/lifecycle";
+import { NodeLlamaCppRerank } from "../nodeLlamaCpp/rerank";
+import {
+  fileIdentity,
+  fingerprintModel,
+  fingerprintRuntime,
+} from "./embedding-identity";
+import { NativeWorkerError } from "./errors";
+import { checkEvaluation } from "./evaluation";
+import { splitEmbeddingRequest } from "./protocol";
+import { wireError } from "./runtime-config";
+
+type Port = NodeLlamaCppEmbedding | NodeLlamaCppGeneration | NodeLlamaCppRerank;
+
+/** Imported only by the native child. No discovery, downloads or parent state. */
+export class NativeDispatcher {
+  private readonly manager: ModelManager;
+  private readonly ports = new Map<string, Port>();
+  private readonly files = new Map<
+    string,
+    { path: string; identity: string; fingerprint?: string }
+  >();
+
+  constructor(private readonly config: NativeRuntimeConfig) {
+    this.manager = new ModelManager(
+      {
+        activePreset: "native-worker",
+        presets: [],
+        expandContextSize: 2048,
+        loadTimeout: config.loadTimeout,
+        inferenceTimeout: config.inferenceTimeout,
+        warmModelTtl: config.warmModelTtl,
+      },
+      true
+    );
+  }
+
+  private async port(model: ApprovedModel): Promise<Port> {
+    if (
+      (await realpath(model.path)) !== model.path ||
+      !(await Bun.file(model.path).exists())
+    ) {
+      throw new NativeWorkerError("protocol");
+    }
+    const existing = this.ports.get(model.id);
+    // ModelManager retains weights by URI after a port disposes its contexts.
+    // Keep provenance at that same lifetime, not at the shorter port lifetime.
+    const file = this.files.get(model.modelUri);
+    const identity = await fileIdentity(model.path);
+    if (file && (file.path !== model.path || file.identity !== identity))
+      throw new NativeWorkerError("stale_generation");
+    if (existing) return existing;
+    const fingerprint =
+      model.type === "embed"
+        ? (file?.fingerprint ?? (await fingerprintModel(model.path)))
+        : file?.fingerprint;
+    if (identity !== (await fileIdentity(model.path)))
+      throw new NativeWorkerError("stale_generation");
+    const Constructor =
+      model.type === "embed"
+        ? NodeLlamaCppEmbedding
+        : model.type === "rerank"
+          ? NodeLlamaCppRerank
+          : NodeLlamaCppGeneration;
+    const port = new Constructor(this.manager, model.modelUri, model.path);
+    this.ports.set(model.id, port);
+    this.files.set(model.modelUri, { path: model.path, identity, fingerprint });
+    return port;
+  }
+
+  async execute(
+    request: NativeRequest,
+    options?: NativeEvaluationOptions
+  ): Promise<{ response: NativeResponse; activity: boolean }> {
+    const model = this.config.models.find(
+      (entry) => entry.id === request.modelId
+    );
+    if (!model) throw new NativeWorkerError("protocol");
+    // Metadata protects in-flight initialization without renewing idle models.
+    const lease = this.manager.acquireLease(
+      model.modelUri,
+      !["init", "dispose"].includes(request.op)
+    );
+    const before = this.manager.getLifecycleStats().loadAttempts;
+    let response: Omit<NativeResponse, "lifecycle">;
+    try {
+      const result = await this.run(request, model, options).catch(
+        (cause: unknown) => ({
+          ok: false as const,
+          error: inferenceFailedError(model.modelUri, cause),
+        })
+      );
+      // Lazy loads and inference may outlive a file mutation. Never publish their
+      // completion under provenance that no longer matches the approved artifact.
+      if (
+        request.op !== "dispose" &&
+        ((await realpath(model.path)) !== model.path ||
+          this.files.get(model.modelUri)?.identity !==
+            (await fileIdentity(model.path)))
+      )
+        throw new NativeWorkerError("stale_generation");
+      response = {
+        version: 1,
+        generation: request.generation,
+        requestId: request.requestId,
+        op: request.op,
+        result: result.ok
+          ? result
+          : { ok: false, error: wireError(result.error) },
+      };
+    } finally {
+      lease.release();
+    }
+    // Publish settled ownership, not the request lease held during evaluation.
+    const lifecycle = this.manager.getLifecycleStats();
+    return {
+      response: { ...response, lifecycle },
+      activity:
+        lifecycle.loadAttempts !== before ||
+        !["init", "dispose"].includes(request.op),
+    };
+  }
+
+  private async run(
+    request: NativeRequest,
+    model: ApprovedModel,
+    options?: NativeEvaluationOptions
+  ): Promise<
+    LlmResult<Extract<NativeResponse["result"], { ok: true }>["value"]>
+  > {
+    if (request.op === "dispose") {
+      await this.ports.get(model.id)?.dispose();
+      this.ports.delete(model.id);
+      return { ok: true, value: null };
+    }
+    checkEvaluation(options);
+    const port = await this.port(model);
+    checkEvaluation(options);
+    switch (request.op) {
+      case "init": {
+        if (port instanceof NodeLlamaCppEmbedding) {
+          const result = await port.init(options);
+          if (!result.ok) return result;
+          const file = this.files.get(model.modelUri);
+          if (
+            !file?.fingerprint ||
+            file.identity !== (await fileIdentity(model.path))
+          )
+            throw new NativeWorkerError("stale_generation");
+          const settings = port.getContextIdentity();
+          const llama = await this.manager.getLlama();
+          return {
+            ok: true,
+            value: {
+              dimensions: port.dimensions(),
+              structuredOutput: "none",
+              embeddingIdentity: {
+                contextSize: settings.contextSize,
+                truncationPolicy: settings.truncationPolicy,
+                modelFingerprint: file.fingerprint,
+                runtimeFingerprint: fingerprintRuntime({
+                  ...settings,
+                  gpu: llama.gpu,
+                  cpuMathCores: llama.cpuMathCores,
+                }),
+              },
+            },
+          };
+        }
+        return {
+          ok: true,
+          value: {
+            structuredOutput:
+              port instanceof NodeLlamaCppGeneration ? "json_schema" : "none",
+          },
+        };
+      }
+      case "embed":
+        if (port instanceof NodeLlamaCppEmbedding)
+          return port.embed(request.text, options);
+        break;
+      case "embedBatch":
+        if (port instanceof NodeLlamaCppEmbedding) {
+          const vectors: number[][] = [];
+          for (const texts of splitEmbeddingRequest(request)) {
+            const result = await port.embedBatch(texts, options);
+            if (!result.ok) return result;
+            for (const vector of result.value) vectors.push(vector);
+          }
+          return { ok: true, value: vectors };
+        }
+        break;
+      case "generate":
+        if (port instanceof NodeLlamaCppGeneration)
+          return port.generate(request.prompt, request.params, options);
+        break;
+      case "rerank":
+        if (port instanceof NodeLlamaCppRerank)
+          return port.rerank(request.query, request.documents, options);
+        break;
+      default:
+        break;
+    }
+    throw new NativeWorkerError("protocol");
+  }
+
+  async dispose(): Promise<void> {
+    const results = await Promise.allSettled(
+      Array.from(this.ports.values(), (port) => port.dispose())
+    );
+    this.ports.clear();
+    this.files.clear();
+    await this.manager.disposeAll();
+    if (results.some((result) => result.status === "rejected"))
+      throw new NativeWorkerError("exited");
+  }
+}

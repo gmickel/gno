@@ -167,3 +167,48 @@ describe("searchBm25 N+1 guard", () => {
     expect(result.value.results[1]?.source.relPath).toBe("b.md");
   });
 });
+
+test("targeted lexical reads preserve missing sequence and batch-error snippet fallback", async () => {
+  for (const fail of [false, true]) {
+    const fts = { ...makeFtsResult("hash", 0), snippet: "FTS evidence" };
+    const baseline: Partial<StorePort> = {
+      searchFts: async () => ({ ok: true, value: [fts, fts] }),
+      getCollections: async () => ({ ok: true, value: [TEST_COLLECTION] }),
+      getChunksBatch: async () =>
+        fail
+          ? {
+              ok: false,
+              error: { code: "QUERY_FAILED", message: "read failed" },
+            }
+          : { ok: true, value: new Map([["hash", [makeChunk("hash", 1)]]]) },
+    };
+    let calls = 0;
+    const candidate: Partial<StorePort> = {
+      ...baseline,
+      getChunksBySequenceBatch: async (keys) => {
+        calls++;
+        expect(
+          keys.every((key) => key.mirrorHash === "hash" && key.seq === 0)
+        ).toBe(true);
+        return fail
+          ? {
+              ok: false,
+              error: { code: "QUERY_FAILED", message: "read failed" },
+            }
+          : { ok: true, value: new Map() };
+      },
+      getChunksBatch: () => {
+        throw new Error("unexpected full hydration");
+      },
+    };
+    const expected = await searchBm25(baseline as StorePort, "query");
+    const actual = await searchBm25(candidate as StorePort, "query");
+    expect(actual).toEqual(expected);
+    expect(calls).toBe(1);
+    if (actual.ok) {
+      expect(actual.value.results).toHaveLength(1);
+      expect(actual.value.results[0]?.snippet).toBe("FTS evidence");
+      expect(actual.value.results[0]?.snippetRange).toBeUndefined();
+    }
+  }
+});

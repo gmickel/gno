@@ -1,0 +1,5 @@
+[MCP] gno v1.46.0 ready on stdio (tool profile: full)
+[MCP] gno_vsearch error: Vector search failed: Effective embedding identity unavailable after variant activation
+[MCP] stdin ended
+[MCP] Shutting down...
+[MCP] stdin closed

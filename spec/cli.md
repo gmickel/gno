@@ -1330,6 +1330,8 @@ gno search "contract" --json | jq '.[] | .uri'
 
 ---
 
+Keyword retrieval applies collection/path scope, caller allowlists, tags, modified-date bounds, category and author filters, managed-memory visibility, and whole-document exclusions before its ranked candidate limit. Higher-ranked ineligible documents cannot consume that window; fewer eligible matches still produce a short result. Existing BM25 weights, query syntax, recency/project-affinity reranking and minimum-score behavior are unchanged.
+
 ### gno vsearch
 
 Vector semantic search over indexed documents.
@@ -1342,6 +1344,21 @@ gno vsearch <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <d
 
 **Options:** Same as `gno search` (including temporal/category/author, tag, and
 project-affinity controls).
+
+**Embedding ownership:** After an exact-input partition activates, vector hits
+resolve only to eligible current document owners of that formatted input.
+Same-body documents with different title-derived inputs retain separate vector
+ranks. Collection, path, tag, memory, metadata and language eligibility apply
+before the nearest-neighbor limit. Public document IDs, URIs and mirror hashes
+keep their existing meaning.
+
+Incomplete shadow backfill retains the legacy retrieval path. Initial promotion
+requires complete active coverage and an atomic mutation-epoch check. Once
+promoted, later mutations never permit fallback to unproven legacy vectors:
+stale owners await embedding; missing runtime identity, an unactivated selected
+partition or an unavailable variant index reports semantic failure. Hybrid query
+may continue lexically with fallback diagnostics. Run `gno embed` to complete or
+repair coverage; no historical vector is treated as proof of its formatted input.
 
 **Scoring:**
 
@@ -3788,7 +3805,7 @@ production default unless the parent was started with `--dev`.
 | `--pid-file <path>`    | string  | `{data}/serve.pid`       | Override pid-file location (JSON metadata, absolute path)        |
 | `--log-file <path>`    | string  | `{data}/serve.log`       | Override log-file location (append mode)                         |
 | `--status`             | boolean | false                    | Read pid-file, check liveness, print status (JSON with `--json`) |
-| `--stop`               | boolean | false                    | Graceful SIGTERM with 10s timeout → SIGKILL fallback             |
+| `--stop`               | boolean | false                    | Graceful SIGTERM with 12s timeout → SIGKILL fallback             |
 | `--host <address>`     | string  | `127.0.0.1`              | Loopback listen address (Web/REST remains local-only)            |
 | `--mcp-token-file`     | string  | config                   | Restrictive bearer-token file                                    |
 | `--mcp-allowed-host`   | string  | config/loopback defaults | Exact Host value; repeatable                                     |
@@ -3847,7 +3864,7 @@ is blocked.
   without changing destination.
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON (`{pid, port, cmd:"serve", version, started_at}`), prints `{pid, url}` on stdout, exits 0
 - On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json). Liveness via `process.kill(pid, 0)`; stale pid-files (ESRCH) are reported as `running:false`. Live status best-effort reads the same redacted `resident-status@1.0` snapshot from the recorded listener.
-- On `--stop`: sends SIGTERM, polls every 100ms for up to 10s, falls back to SIGKILL, polls 2s more, unlinks pid-file if the process cleaned up after itself
+- On `--stop`: sends SIGTERM, polls every 100ms for up to 12s, falls back to SIGKILL, polls 2s more, unlinks pid-file if the process cleaned up after itself
 - **Windows**: `--detach` is unsupported and returns a `VALIDATION` error pointing to WSL. `--status` / `--stop` / `--pid-file` / `--log-file` remain parseable but have nothing to manage.
 
 **Exit Codes:**
@@ -3901,7 +3918,7 @@ gno daemon --stop
 | `--pid-file <path>`    | string  | `{data}/daemon.pid`      | Override pid-file location (JSON metadata, absolute path)        |
 | `--log-file <path>`    | string  | `{data}/daemon.log`      | Override log-file location (append mode)                         |
 | `--status`             | boolean | false                    | Read pid-file, check liveness, print status (JSON with `--json`) |
-| `--stop`               | boolean | false                    | Graceful SIGTERM with 10s timeout → SIGKILL fallback             |
+| `--stop`               | boolean | false                    | Graceful SIGTERM with 12s timeout → SIGKILL fallback             |
 | `--host <address>`     | string  | `127.0.0.1`              | HTTP listen address                                              |
 | `--mcp-token-file`     | string  | config                   | Restrictive bearer-token file                                    |
 | `--mcp-allowed-host`   | string  | config/loopback defaults | Exact Host value; repeatable                                     |
@@ -3943,7 +3960,7 @@ is blocked.
   peer zone and all participating collection policies before returning metadata
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON including the MCP gateway `port`, prints `{pid}` on stdout, exits 0
 - On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json), including the MCP gateway port and a best-effort copy of the live redacted resident snapshot
-- On `--stop`: SIGTERM → 10s poll → SIGKILL → 2s poll; the daemon's own signal handler unlinks the pid-file, `--stop` unlinks as fallback
+- On `--stop`: SIGTERM → 12s poll → SIGKILL → 2s poll; the daemon's own signal handler unlinks the pid-file, `--stop` unlinks as fallback
 - **Windows**: `--detach` is unsupported and returns a `VALIDATION` error pointing to WSL.
 
 **Packaged conformance:** `bun run test:package` installs the generated npm

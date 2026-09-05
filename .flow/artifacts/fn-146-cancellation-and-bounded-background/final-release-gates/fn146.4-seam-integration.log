@@ -1,0 +1,10 @@
+bun test v1.3.14 (0d9b296a)
+
+test/llm/native-worker-integration.test.ts:
+Packed native client/entry fault contracts passed (no native weights)
+(pass) packed native entry and client preserve lifecycle, fault, framing and request identity contracts [3136.95ms]
+
+ 1 pass
+ 0 fail
+ 2 expect() calls
+Ran 1 test across 1 file. [3.33s]

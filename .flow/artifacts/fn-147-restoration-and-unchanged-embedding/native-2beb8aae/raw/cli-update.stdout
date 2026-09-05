@@ -1,0 +1,54 @@
+{
+  "collections": [
+    {
+      "collection": "identity",
+      "filesProcessed": 1,
+      "filesAdded": 1,
+      "filesUpdated": 0,
+      "filesUnchanged": 0,
+      "filesErrored": 0,
+      "filesSkipped": 0,
+      "filesMarkedInactive": 0,
+      "durationMs": 625,
+      "files": [
+        {
+          "relPath": "Alpha.md",
+          "status": "added",
+          "docid": "#98897c0b",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "contentType": "prose",
+          "contentTypeSource": "fallback"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "collection": "other",
+      "filesProcessed": 1,
+      "filesAdded": 1,
+      "filesUpdated": 0,
+      "filesUnchanged": 0,
+      "filesErrored": 0,
+      "filesSkipped": 0,
+      "filesMarkedInactive": 0,
+      "durationMs": 2,
+      "files": [
+        {
+          "relPath": "Delta.md",
+          "status": "added",
+          "docid": "#ca2c1633",
+          "mirrorHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+          "contentType": "prose",
+          "contentTypeSource": "fallback"
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "totalDurationMs": 632,
+  "totalFilesProcessed": 2,
+  "totalFilesAdded": 2,
+  "totalFilesUpdated": 0,
+  "totalFilesErrored": 0,
+  "totalFilesSkipped": 0
+}

@@ -1,0 +1,6 @@
+{
+  "reason": "Host-directed bounded stop after material synchronous stalls; 10001 serial broad lexical maximum timer delay 5094.58ms. Four-reader group still running, intentionally terminated instead of finishing many expensive repetitions.",
+  "report_status": "incomplete",
+  "unavailable_samples": "Current unflushed four-reader wave/group is unavailable; never counts as passing or zero latency.",
+  "next": "Read-only current versus pre1482 SQL plan diagnosis."
+}

@@ -1,14 +1,18 @@
+import type { RerankPort } from "../llm/types";
 /**
  * Reranking and position-aware blending.
  * Uses RerankPort to reorder candidates.
  *
  * @module src/pipeline/rerank
  */
-
-import type { RerankPort } from "../llm/types";
 import type { ChunkRow, StorePort } from "../store/types";
+import type { RequestHydration } from "./hydration";
 import type { BlendingTier, FusionCandidate, RerankedCandidate } from "./types";
 
+import {
+  assertInferenceActive,
+  assertInferenceResult,
+} from "../llm/inference-scope";
 import {
   buildIntentAwareRerankQuery,
   selectBestChunkForSteering,
@@ -42,6 +46,8 @@ export interface RerankResult {
 export interface RerankDeps {
   rerankPort: RerankPort | null;
   store: StorePort;
+  /** Shared raw chunks only; model inputs are prepared per invocation. */
+  hydration?: RequestHydration;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,8 +102,12 @@ function isProtectedLexicalTopHit(candidate: FusionCandidate): boolean {
 /**
  * Fetch chunk texts for reranking.
  */
+function rerankOwnerKey(candidate: FusionCandidate): string {
+  return `${candidate.mirrorHash}${candidate.documentId === undefined ? "" : `:${candidate.documentId}`}`;
+}
+
 async function fetchChunkTexts(
-  store: StorePort,
+  store: Pick<StorePort, "getChunksBatch">,
   toRerank: FusionCandidate[],
   query: string,
   intent: string | undefined
@@ -110,13 +120,21 @@ async function fetchChunkTexts(
     ? chunksBatchResult.value
     : new Map();
   const preferredSeqByHash = new Map<string, number>();
+  const ownerHashes = new Map(
+    toRerank.map((candidate) => [
+      rerankOwnerKey(candidate),
+      candidate.mirrorHash,
+    ])
+  );
 
   for (const candidate of toRerank) {
-    const existingSeq = preferredSeqByHash.get(candidate.mirrorHash);
+    assertInferenceActive();
+    const existingSeq = preferredSeqByHash.get(rerankOwnerKey(candidate));
     if (existingSeq !== undefined) {
       const existingCandidate = toRerank.find(
         (entry) =>
-          entry.mirrorHash === candidate.mirrorHash && entry.seq === existingSeq
+          rerankOwnerKey(entry) === rerankOwnerKey(candidate) &&
+          entry.seq === existingSeq
       );
       if (
         existingCandidate &&
@@ -125,12 +143,13 @@ async function fetchChunkTexts(
         continue;
       }
     }
-    preferredSeqByHash.set(candidate.mirrorHash, candidate.seq);
+    preferredSeqByHash.set(rerankOwnerKey(candidate), candidate.seq);
   }
 
   const chunkTexts = new Map<string, string>();
-  for (const hash of uniqueHashes) {
-    const chunks = chunksByHash.get(hash);
+  for (const [hash, mirrorHash] of ownerHashes) {
+    assertInferenceActive();
+    const chunks = chunksByHash.get(mirrorHash);
     const bestChunk = selectBestChunkForSteering(chunks ?? [], query, intent, {
       preferredSeq: preferredSeqByHash.get(hash) ?? null,
       intentWeight: 0.5,
@@ -146,7 +165,8 @@ async function fetchChunkTexts(
 
   const hashToIndex = new Map<string, number>();
   const texts: string[] = [];
-  for (const hash of uniqueHashes) {
+  for (const hash of ownerHashes.keys()) {
+    assertInferenceActive();
     hashToIndex.set(hash, texts.length);
     texts.push(chunkTexts.get(hash) ?? "");
   }
@@ -234,7 +254,7 @@ export async function rerankCandidates(
 
   // Extract best chunk per document for efficient reranking
   const { texts, hashToIndex } = await fetchChunkTexts(
-    store,
+    deps.hydration ?? store,
     toRerank,
     query,
     options.intent
@@ -246,6 +266,7 @@ export async function rerankCandidates(
   const textToUniqueIndex = new Map<string, number>();
 
   for (const [docIndex, text] of texts.entries()) {
+    assertInferenceActive();
     const existingIndex = textToUniqueIndex.get(text);
     if (existingIndex !== undefined) {
       docIndexToUniqueIndex.set(docIndex, existingIndex);
@@ -268,6 +289,7 @@ export async function rerankCandidates(
     uniqueTexts
   );
 
+  assertInferenceResult(rerankResult);
   if (!rerankResult.ok) {
     return {
       candidates: sortAdjustedCandidates(
@@ -285,8 +307,10 @@ export async function rerankCandidates(
   // Normalize rerank scores using min-max
   const scoreByDocIndex = new Map<number, number>();
   for (const score of rerankResult.value) {
+    assertInferenceActive();
     const docIndices = uniqueIndexToDocIndices.get(score.index) ?? [];
     for (const docIndex of docIndices) {
+      assertInferenceActive();
       scoreByDocIndex.set(docIndex, score.score);
     }
   }
@@ -304,7 +328,7 @@ export async function rerankCandidates(
 
   // Build reranked candidates with blended scores
   const rerankedCandidates: RerankedCandidate[] = toRerank.map((c, i) => {
-    const docIndex = hashToIndex.get(c.mirrorHash) ?? -1;
+    const docIndex = hashToIndex.get(rerankOwnerKey(c)) ?? -1;
     const rerankScore = scoreByDocIndex.get(docIndex) ?? null;
     const normalizedRerankScore =
       rerankScore !== null ? normalizeRerankScore(rerankScore) : null;

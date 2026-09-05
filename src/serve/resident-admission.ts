@@ -2,6 +2,8 @@
 
 import type { ResidentRequestHandle } from "./resident-runtime";
 
+import { settlesBy } from "../core/shutdown-budget";
+
 const DEFAULT_READER_LIMIT = 8;
 const DEFAULT_READER_QUEUE_LIMIT = 64;
 
@@ -63,20 +65,31 @@ export class ReaderGate {
         signal?.addEventListener("abort", entry.onAbort, { once: true });
         this.#queue.push(entry);
       });
+      // Release reserved capacity if cancellation won the handoff race.
+      if (signal?.aborted) {
+        this.#releaseSlot();
+        throw new Error("Resident request aborted");
+      }
+    } else {
+      this.#active += 1;
     }
-    if (signal?.aborted) throw new Error("Resident request aborted");
-    this.#active += 1;
     let released = false;
     return () => {
       if (released) return;
       released = true;
-      this.#active -= 1;
-      const next = this.#queue.shift();
-      if (next) {
-        next.signal?.removeEventListener("abort", next.onAbort!);
-        next.resolve();
-      }
+      this.#releaseSlot();
     };
+  }
+
+  #releaseSlot(): void {
+    const next = this.#queue.shift();
+    if (next) {
+      // Transfer ownership synchronously, before any fresh acquire can run.
+      next.signal?.removeEventListener("abort", next.onAbort!);
+      next.resolve();
+    } else {
+      this.#active -= 1;
+    }
   }
 }
 
@@ -122,38 +135,25 @@ export class AdmissionController {
     deadlineMs: number,
     abortSettleMs = deadlineMs
   ): Promise<boolean> {
+    this.stop();
+    const deadline = performance.now() + deadlineMs;
+    if (await settlesBy(this.drain(), deadline)) return false;
+    this.cancel();
+    await settlesBy(this.drain(), deadline + abortSettleMs);
+    return true;
+  }
+
+  stop(): void {
     this.#accepting = false;
-    if (this.#requests.size === 0) return false;
+  }
 
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    let deadlineReached = false;
-    await Promise.race([
-      new Promise<void>((resolve) => this.#drainWaiters.add(resolve)),
-      new Promise<void>((resolve) => {
-        timeout = setTimeout(
-          () => {
-            deadlineReached = true;
-            resolve();
-          },
-          Math.max(0, deadlineMs)
-        );
-      }),
-    ]);
-    if (timeout) clearTimeout(timeout);
-
-    if (!deadlineReached) return false;
-
+  cancel(): void {
     for (const controller of this.#requests.values())
       controller.abort(new Error("Resident runtime is shutting down"));
+  }
 
-    if (this.#requests.size > 0) {
-      await Promise.race([
-        new Promise<void>((resolve) => this.#drainWaiters.add(resolve)),
-        new Promise<void>((resolve) =>
-          setTimeout(resolve, Math.max(0, abortSettleMs))
-        ),
-      ]);
-    }
-    return deadlineReached;
+  drain(): Promise<void> {
+    if (!this.#requests.size) return Promise.resolve();
+    return new Promise<void>((resolve) => this.#drainWaiters.add(resolve));
   }
 }

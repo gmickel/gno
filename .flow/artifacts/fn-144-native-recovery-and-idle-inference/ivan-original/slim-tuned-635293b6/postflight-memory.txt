@@ -1,0 +1,18 @@
+kern.memorystatus_vm_pressure_level: 1
+vm.swapusage: total = 4096.00M  used = 3267.81M  free = 828.19M  (encrypted)
+hw.memsize: 17179869184
+Pageouts: 10438113 
+
+System-wide memory free percentage: 56%
+87701     1  61600 /Library/SystemExtensions/7AC6716B-5673-40DD-9CE6-3C456DCC1BF3/io.tailscale.ipn.macsys.network-extension.systemextension/Contents/MacOS/io.tailscale.ipn.macsys.network-extension
+80696 80690  64304 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.174/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper
+80709 80690  65520 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.174/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)
+12216 12187  66656 /Users/gordon/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/Frameworks/Google Chrome for Testing Framework.framework/Versions/150.0.7871.115/Helpers/Google Chrome for Testing Helper (Renderer).app/Contents/MacOS/Google Chrome for Testing Helper (Renderer)
+95834 95833  73328 /Users/gordon/.local/share/mise/installs/node/26/bin/node
+17060 17059  81024 /Users/gordon/.hermes/hermes-agent/venv/bin/python
+31641 31639  90000 /opt/homebrew/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex
+88080  3747 105728 /Applications/Google Drive.app/Contents/MacOS/Google Drive
+96282 80690 125136 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.174/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)
+80690     1 215920 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+96281 80690 253872 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/151.0.7922.174/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)
+ 1025     1 737056 /Applications/OrbStack.app/Contents/Frameworks/OrbStack Helper.app/Contents/MacOS/OrbStack Helper

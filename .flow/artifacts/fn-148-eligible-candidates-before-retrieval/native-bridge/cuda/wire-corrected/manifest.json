@@ -1,0 +1,1825 @@
+{
+  "protocol": "fn148-native-201-bridge-v1",
+  "query": "needle noise 0",
+  "model": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+  "sourceFixture": "eligible-scaling-v1",
+  "corpusHash": "06cbdc94eebdbb299c4f5525213da5fdc6671db8a5faad6198eead07bb0c9811",
+  "embeddingReplacement": "Native model embeddings replace synthetic search identity; original synthetic rows remain under their separate model identity and are not native evidence",
+  "documents": [
+    {
+      "index": 0,
+      "rare": false,
+      "text": "needle noise 0 background background background background ",
+      "hash": "b77f1518ea86ae218c8c25b5122fbd0a27cd9b86370c001c8bf0b857211d41fe",
+      "relPath": "scope/000000.md",
+      "uri": "gno://scaling/scope/000000.md",
+      "active": false
+    },
+    {
+      "index": 1,
+      "rare": false,
+      "text": "needle noise 1 background background background background background ",
+      "hash": "38c008f57b79e8b8606aa2d6553a084012cd1af9735a1677b4e5f574df055df0",
+      "relPath": "scope/000001.md",
+      "uri": "gno://scaling/scope/000001.md",
+      "active": true
+    },
+    {
+      "index": 2,
+      "rare": false,
+      "text": "needle noise 2 background background background background background background ",
+      "hash": "3ba89b8a30e3e49650524bb292c10b7a1e2e22257f9a01baff2366464fd75b16",
+      "relPath": "scope/000002.md",
+      "uri": "gno://scaling/scope/000002.md",
+      "active": true
+    },
+    {
+      "index": 3,
+      "rare": false,
+      "text": "needle noise 3 background background background background background background background ",
+      "hash": "082795d3e1c375910d0b6b92df9259b7cd1618906455cdf6172402d4d54752de",
+      "relPath": "scope/000003.md",
+      "uri": "gno://scaling/scope/000003.md",
+      "active": true
+    },
+    {
+      "index": 4,
+      "rare": false,
+      "text": "needle noise 4 background background background background background background background background ",
+      "hash": "39f01536b7b6728f17af9ab6a37495ac791f000a5748b996582bb68193f470c7",
+      "relPath": "scope/000004.md",
+      "uri": "gno://scaling/scope/000004.md",
+      "active": true
+    },
+    {
+      "index": 5,
+      "rare": false,
+      "text": "needle noise 5 background background background background background background background background background ",
+      "hash": "6796aa1d0317f46f67c22a753b139f5479ce5ff8c3cdc95c2ce4c03d70abf86a",
+      "relPath": "scope/000005.md",
+      "uri": "gno://scaling/scope/000005.md",
+      "active": true
+    },
+    {
+      "index": 6,
+      "rare": false,
+      "text": "needle noise 6 background background background background background background background background background background ",
+      "hash": "ef7fdcc2e80b6480c0379a61d0168526f2c94452f53899dbdad2338ac261cc94",
+      "relPath": "scope/000006.md",
+      "uri": "gno://scaling/scope/000006.md",
+      "active": true
+    },
+    {
+      "index": 7,
+      "rare": false,
+      "text": "needle noise 7 background background background background background background background background background background background ",
+      "hash": "d1e59a885dd86a0c47c79de148153378cdeab70c4b1430f9fdc0862193380356",
+      "relPath": "scope/000007.md",
+      "uri": "gno://scaling/scope/000007.md",
+      "active": true
+    },
+    {
+      "index": 8,
+      "rare": false,
+      "text": "needle noise 8 background background background background background background background background background background background background ",
+      "hash": "35f618697eea93b3b1e4325a7e569849a17f85ae61d890ea7cb7476769a58e7d",
+      "relPath": "scope/000008.md",
+      "uri": "gno://scaling/scope/000008.md",
+      "active": true
+    },
+    {
+      "index": 9,
+      "rare": false,
+      "text": "needle noise 9 background background background background background background background background background background background background background ",
+      "hash": "6f3940d7f5d96cef1c481466aed15278db21db9cdda778dc5633091e7a8070de",
+      "relPath": "scope/000009.md",
+      "uri": "gno://scaling/scope/000009.md",
+      "active": true
+    },
+    {
+      "index": 10,
+      "rare": false,
+      "text": "needle noise 10 background background background background background background background background background background background background background background ",
+      "hash": "8810c3660893c128946800fbb7862ea04006172b35a8d80fff1169f672650315",
+      "relPath": "scope/000010.md",
+      "uri": "gno://scaling/scope/000010.md",
+      "active": true
+    },
+    {
+      "index": 11,
+      "rare": false,
+      "text": "needle noise 11 background background background background background background background background background background background background background background background ",
+      "hash": "672cdd575e149f42957479a7c7e520fd20440cd17f48b4d384c7783df013f938",
+      "relPath": "scope/000011.md",
+      "uri": "gno://scaling/scope/000011.md",
+      "active": true
+    },
+    {
+      "index": 12,
+      "rare": false,
+      "text": "needle noise 12 background background background background background background background background background background background background background background background background ",
+      "hash": "25198fdbeab81ea4a86f32ac206f9ccc477a67ca661ca21c846a034c05c07362",
+      "relPath": "scope/000012.md",
+      "uri": "gno://scaling/scope/000012.md",
+      "active": true
+    },
+    {
+      "index": 13,
+      "rare": false,
+      "text": "needle noise 13 background background background background background background background background background background background background background background background background background ",
+      "hash": "7d3b006702d64fbaf696475b33ed0d93613a266b068b8487e49a112d91dc3309",
+      "relPath": "scope/000013.md",
+      "uri": "gno://scaling/scope/000013.md",
+      "active": true
+    },
+    {
+      "index": 14,
+      "rare": false,
+      "text": "needle noise 14 background background background background background background background background background background background background background background background background background background ",
+      "hash": "1ec6bd5f411dbae25d290b64e535131a64bbc654c7e573de7db67f837ff312e5",
+      "relPath": "scope/000014.md",
+      "uri": "gno://scaling/scope/000014.md",
+      "active": true
+    },
+    {
+      "index": 15,
+      "rare": false,
+      "text": "needle noise 15 background background background background background background background background background background background background background background background background background background background ",
+      "hash": "4a2d5a54f031c27dd91ee34788a38d959c7517b0b1d79e2f8ba104ba1464a63f",
+      "relPath": "scope/000015.md",
+      "uri": "gno://scaling/scope/000015.md",
+      "active": true
+    },
+    {
+      "index": 16,
+      "rare": false,
+      "text": "needle noise 16 background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "d402dc856c49987156d17428e6eb729951d83421fc70833bd72b054a5f8fcad8",
+      "relPath": "scope/000016.md",
+      "uri": "gno://scaling/scope/000016.md",
+      "active": true
+    },
+    {
+      "index": 17,
+      "rare": false,
+      "text": "needle noise 17 background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "66f953510d9724db872322e76b882515b5a9558449d96625a4d92efe1935557d",
+      "relPath": "scope/000017.md",
+      "uri": "gno://scaling/scope/000017.md",
+      "active": true
+    },
+    {
+      "index": 18,
+      "rare": false,
+      "text": "needle noise 18 background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "5ece4f0c8c544777c4b619b8a6c479dec55aa6c249e2d8ff51f0fab8aa55b444",
+      "relPath": "scope/000018.md",
+      "uri": "gno://scaling/scope/000018.md",
+      "active": true
+    },
+    {
+      "index": 19,
+      "rare": false,
+      "text": "needle noise 19 background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "c2b3a33623ae7159bf2e22583399d584944fc9f690c32f47594a47f3abbba60c",
+      "relPath": "scope/000019.md",
+      "uri": "gno://scaling/scope/000019.md",
+      "active": true
+    },
+    {
+      "index": 20,
+      "rare": false,
+      "text": "needle noise 20 background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "129d123f5b9ed6dce3db6d32e334a1bbced51c2e568ccf0be0a718035b589706",
+      "relPath": "scope/000020.md",
+      "uri": "gno://scaling/scope/000020.md",
+      "active": true
+    },
+    {
+      "index": 21,
+      "rare": false,
+      "text": "needle noise 21 background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "4bf7e4bc5906d2673cbff8af7295486dc4dc7bb0505c7e004ce282aac681d397",
+      "relPath": "scope/000021.md",
+      "uri": "gno://scaling/scope/000021.md",
+      "active": true
+    },
+    {
+      "index": 22,
+      "rare": false,
+      "text": "needle noise 22 background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "85844c1b879e3f8bdacbafd6c0fe941780338558b746bffb9c58bd7e6aa11d9b",
+      "relPath": "scope/000022.md",
+      "uri": "gno://scaling/scope/000022.md",
+      "active": true
+    },
+    {
+      "index": 23,
+      "rare": false,
+      "text": "needle noise 23 background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "54e6541ce82b06c9a8a7199e5001ab238893be2ad386cd28aeb54acb8ae5c233",
+      "relPath": "scope/000023.md",
+      "uri": "gno://scaling/scope/000023.md",
+      "active": true
+    },
+    {
+      "index": 24,
+      "rare": false,
+      "text": "needle noise 24 background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "5deecb8bfdd3fe00c78ae204ea583cc24c3a5da32912b722750e889c0c9adcf2",
+      "relPath": "scope/000024.md",
+      "uri": "gno://scaling/scope/000024.md",
+      "active": true
+    },
+    {
+      "index": 25,
+      "rare": false,
+      "text": "needle noise 25 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "0d63ecaa5389374959573f44f0a20bb4d31fcf815bb77b6c9817f4ee95f44e34",
+      "relPath": "scope/000025.md",
+      "uri": "gno://scaling/scope/000025.md",
+      "active": true
+    },
+    {
+      "index": 26,
+      "rare": false,
+      "text": "needle noise 26 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "4d8c3caed1ac7bb6d025fc44cb3578ff700770689048767161cef6a445707033",
+      "relPath": "scope/000026.md",
+      "uri": "gno://scaling/scope/000026.md",
+      "active": true
+    },
+    {
+      "index": 27,
+      "rare": false,
+      "text": "needle noise 27 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "1d796b28c8fdcd61900013b2a7dbad873be1383099c6a5a6e579c77a1e2f74c3",
+      "relPath": "scope/000027.md",
+      "uri": "gno://scaling/scope/000027.md",
+      "active": true
+    },
+    {
+      "index": 28,
+      "rare": false,
+      "text": "needle noise 28 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "e650aba82f90e5b43247d3be197010bb06cd92e9553b95cae05b75017b8bf0f1",
+      "relPath": "scope/000028.md",
+      "uri": "gno://scaling/scope/000028.md",
+      "active": true
+    },
+    {
+      "index": 29,
+      "rare": false,
+      "text": "needle noise 29 background background background background ",
+      "hash": "6223ac2267e897d516398ff0df7f0fae5c132b38edeb8ae2930adfeecf5491ba",
+      "relPath": "scope/000029.md",
+      "uri": "gno://scaling/scope/000029.md",
+      "active": true
+    },
+    {
+      "index": 30,
+      "rare": false,
+      "text": "needle noise 30 background background background background background ",
+      "hash": "ddfd9976d7e2abeb34fff65758356171a694fc450bdbf8bfb1123573a23043c0",
+      "relPath": "scope/000030.md",
+      "uri": "gno://scaling/scope/000030.md",
+      "active": true
+    },
+    {
+      "index": 31,
+      "rare": false,
+      "text": "needle noise 31 background background background background background background ",
+      "hash": "d74723ad1f9b5375cf8e0a9074dfadf558ddc84b7684d268085cbb6290f6c99c",
+      "relPath": "scope/000031.md",
+      "uri": "gno://scaling/scope/000031.md",
+      "active": true
+    },
+    {
+      "index": 32,
+      "rare": false,
+      "text": "needle noise 32 background background background background background background background ",
+      "hash": "4c5669e43999d474e1de526b4a0d4ef99d830e229f2c4f28329bfe78032dd5c8",
+      "relPath": "scope/000032.md",
+      "uri": "gno://scaling/scope/000032.md",
+      "active": true
+    },
+    {
+      "index": 33,
+      "rare": false,
+      "text": "needle noise 33 background background background background background background background background ",
+      "hash": "e4f3eec152996aa0025334d1573add4934148ee2aa098c7e2905a2583f157fa8",
+      "relPath": "scope/000033.md",
+      "uri": "gno://scaling/scope/000033.md",
+      "active": true
+    },
+    {
+      "index": 34,
+      "rare": false,
+      "text": "needle noise 34 background background background background background background background background background ",
+      "hash": "bdb816a8375620903451a54d2d7b014ef991f8c5dfb9736be8ae75cc153440cd",
+      "relPath": "scope/000034.md",
+      "uri": "gno://scaling/scope/000034.md",
+      "active": true
+    },
+    {
+      "index": 35,
+      "rare": false,
+      "text": "needle noise 35 background background background background background background background background background background ",
+      "hash": "bb01661f6e9aa5c3c3bd257cfe9958273f88689d973b65fb92ceb45e469f8b89",
+      "relPath": "scope/000035.md",
+      "uri": "gno://scaling/scope/000035.md",
+      "active": true
+    },
+    {
+      "index": 36,
+      "rare": false,
+      "text": "needle noise 36 background background background background background background background background background background background ",
+      "hash": "ed860820509421b779780f91c3633e80ddcb0b9011c895139676f72542dbe405",
+      "relPath": "scope/000036.md",
+      "uri": "gno://scaling/scope/000036.md",
+      "active": true
+    },
+    {
+      "index": 37,
+      "rare": false,
+      "text": "needle noise 37 background background background background background background background background background background background background ",
+      "hash": "9c3dd05c28da70ab1dcae60d6e1de5d0fae5bff02e4638372e4103c6b96cd71c",
+      "relPath": "scope/000037.md",
+      "uri": "gno://scaling/scope/000037.md",
+      "active": true
+    },
+    {
+      "index": 38,
+      "rare": false,
+      "text": "needle noise 38 background background background background background background background background background background background background background ",
+      "hash": "82904b48e57fdc4c24e905d55e75ec6591c2c02d7bdfb7edf2cd5e64090bd74c",
+      "relPath": "scope/000038.md",
+      "uri": "gno://scaling/scope/000038.md",
+      "active": true
+    },
+    {
+      "index": 39,
+      "rare": false,
+      "text": "needle noise 39 background background background background background background background background background background background background background background ",
+      "hash": "4061add50fd8af72670f1e76d1500daf4d71fb0fd0688efe9b8c4b47b566c323",
+      "relPath": "scope/000039.md",
+      "uri": "gno://scaling/scope/000039.md",
+      "active": true
+    },
+    {
+      "index": 40,
+      "rare": false,
+      "text": "needle noise 40 background background background background background background background background background background background background background background background ",
+      "hash": "7e7b6743e8fe7b9688cbe579492fdfc003a432e1929be3b094f8603f60915e7a",
+      "relPath": "scope/000040.md",
+      "uri": "gno://scaling/scope/000040.md",
+      "active": true
+    },
+    {
+      "index": 41,
+      "rare": false,
+      "text": "needle noise 41 background background background background background background background background background background background background background background background background ",
+      "hash": "ecef9e41fff95f47b632c88681d25e1fd6210bc486b0a1a7db57e7d60b78e020",
+      "relPath": "scope/000041.md",
+      "uri": "gno://scaling/scope/000041.md",
+      "active": true
+    },
+    {
+      "index": 42,
+      "rare": false,
+      "text": "needle noise 42 background background background background background background background background background background background background background background background background background ",
+      "hash": "17c9895a147ee5814e09776fca8a6e5b13a7e23befe09e632a180e340ba5ad6b",
+      "relPath": "scope/000042.md",
+      "uri": "gno://scaling/scope/000042.md",
+      "active": true
+    },
+    {
+      "index": 43,
+      "rare": false,
+      "text": "needle noise 43 background background background background background background background background background background background background background background background background background background ",
+      "hash": "17798c18502b04498b1bd702f95326efa6b42914a8550aa375322babbd14f797",
+      "relPath": "scope/000043.md",
+      "uri": "gno://scaling/scope/000043.md",
+      "active": true
+    },
+    {
+      "index": 44,
+      "rare": false,
+      "text": "needle noise 44 background background background background background background background background background background background background background background background background background background background ",
+      "hash": "3b3e708c63d79b08e53f517c240981e6f72506b8cd2e8c29c49b910ff2eac54f",
+      "relPath": "scope/000044.md",
+      "uri": "gno://scaling/scope/000044.md",
+      "active": true
+    },
+    {
+      "index": 45,
+      "rare": false,
+      "text": "needle noise 45 background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "7888d91b27b6f086c335a5fdca95fdc953ba8f99b31446b3360250290aefbf49",
+      "relPath": "scope/000045.md",
+      "uri": "gno://scaling/scope/000045.md",
+      "active": true
+    },
+    {
+      "index": 46,
+      "rare": false,
+      "text": "needle noise 46 background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "651b77821dd0abede6a9b1474a2068d738a6a3f41f7422633b75021f603e4c9a",
+      "relPath": "scope/000046.md",
+      "uri": "gno://scaling/scope/000046.md",
+      "active": true
+    },
+    {
+      "index": 47,
+      "rare": false,
+      "text": "needle noise 47 background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "dd29bcd7ef4a0c78b7b912d2457f1e6c822a2beda01946d57b969458f7c52622",
+      "relPath": "scope/000047.md",
+      "uri": "gno://scaling/scope/000047.md",
+      "active": true
+    },
+    {
+      "index": 48,
+      "rare": false,
+      "text": "needle noise 48 background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "71c5ff2c9e4ce4698ffb31c847d2ac13b801037a3349606086fbaf04f22f1194",
+      "relPath": "scope/000048.md",
+      "uri": "gno://scaling/scope/000048.md",
+      "active": true
+    },
+    {
+      "index": 49,
+      "rare": false,
+      "text": "needle noise 49 background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "a5d7b7d049987413eb259b6789994c852150e6f8cb29801877c0d8df4f6f6a90",
+      "relPath": "scope/000049.md",
+      "uri": "gno://scaling/scope/000049.md",
+      "active": true
+    },
+    {
+      "index": 50,
+      "rare": false,
+      "text": "needle noise 50 background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "e28eb4431430d2725d6045774fe60be10e34bbc4c0f5a7931a86796e1afa0285",
+      "relPath": "scope/000050.md",
+      "uri": "gno://scaling/scope/000050.md",
+      "active": true
+    },
+    {
+      "index": 51,
+      "rare": false,
+      "text": "needle noise 51 background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "22bf4d2bfeeb0e33abeaefafa264994d5574f16d5eecac068601689538c401c0",
+      "relPath": "scope/000051.md",
+      "uri": "gno://scaling/scope/000051.md",
+      "active": true
+    },
+    {
+      "index": 52,
+      "rare": false,
+      "text": "needle noise 52 background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "cf88fda054047c2ac303ffd573eac3bb8f2c91607d20aad15447aff7dc74fe4b",
+      "relPath": "scope/000052.md",
+      "uri": "gno://scaling/scope/000052.md",
+      "active": true
+    },
+    {
+      "index": 53,
+      "rare": false,
+      "text": "needle noise 53 background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "1ca0e321d8f2c8a51e7be5594dc484b1d49161b075bbc848262a705d48283465",
+      "relPath": "scope/000053.md",
+      "uri": "gno://scaling/scope/000053.md",
+      "active": true
+    },
+    {
+      "index": 54,
+      "rare": false,
+      "text": "needle noise 54 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "88375a770d189ed5308fdcfc1304fbc69647c1e3b2465098e60d57150d64b13e",
+      "relPath": "scope/000054.md",
+      "uri": "gno://scaling/scope/000054.md",
+      "active": true
+    },
+    {
+      "index": 55,
+      "rare": false,
+      "text": "needle noise 55 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "9ac01a9d6623c99993cd9a009fd7072e0d640d297865e2a5a72b97db48e858db",
+      "relPath": "scope/000055.md",
+      "uri": "gno://scaling/scope/000055.md",
+      "active": true
+    },
+    {
+      "index": 56,
+      "rare": false,
+      "text": "needle noise 56 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "e2b76a8bca8b822168b2496ec2ee0e888b33d75ffdff16df20c9c1806bb6fa17",
+      "relPath": "scope/000056.md",
+      "uri": "gno://scaling/scope/000056.md",
+      "active": true
+    },
+    {
+      "index": 57,
+      "rare": false,
+      "text": "needle noise 57 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "c284d4a52ea725c07f1e11029c1e0d0886a0b28ed07941aa7fe2b8819be1b1fa",
+      "relPath": "scope/000057.md",
+      "uri": "gno://scaling/scope/000057.md",
+      "active": true
+    },
+    {
+      "index": 58,
+      "rare": false,
+      "text": "needle noise 58 background background background background ",
+      "hash": "f81a69c1e0595e78c05ff92bf0475a97ad71bd3845e80cd3d4ff5a47e57eb8e4",
+      "relPath": "scope/000058.md",
+      "uri": "gno://scaling/scope/000058.md",
+      "active": true
+    },
+    {
+      "index": 59,
+      "rare": false,
+      "text": "needle noise 59 background background background background background ",
+      "hash": "9eff263c4745dc0488d7d77f60505250882c736fa3e9f518d7bcb0808698be8e",
+      "relPath": "scope/000059.md",
+      "uri": "gno://scaling/scope/000059.md",
+      "active": true
+    },
+    {
+      "index": 60,
+      "rare": false,
+      "text": "needle noise 60 background background background background background background ",
+      "hash": "16703cf2688a4c4c3e25e5ae05033b4e2201e22b1477f4dfa0b0dd84f6b83b17",
+      "relPath": "scope/000060.md",
+      "uri": "gno://scaling/scope/000060.md",
+      "active": true
+    },
+    {
+      "index": 61,
+      "rare": false,
+      "text": "needle noise 61 background background background background background background background ",
+      "hash": "3293784a3eaf27a08f0fc729485abd164b2aa5b434ccb1bd2732522f37a681de",
+      "relPath": "scope/000061.md",
+      "uri": "gno://scaling/scope/000061.md",
+      "active": true
+    },
+    {
+      "index": 62,
+      "rare": false,
+      "text": "needle noise 62 background background background background background background background background ",
+      "hash": "400177a22d297d51c625268e9f30219e69b1ed49446394bafd6648f78f1d9581",
+      "relPath": "scope/000062.md",
+      "uri": "gno://scaling/scope/000062.md",
+      "active": true
+    },
+    {
+      "index": 63,
+      "rare": false,
+      "text": "needle noise 63 background background background background background background background background background ",
+      "hash": "694c72a7ba3f9fc9d4f41027dab70cdbb7b3add964bd8abfd952dc758fd17978",
+      "relPath": "scope/000063.md",
+      "uri": "gno://scaling/scope/000063.md",
+      "active": true
+    },
+    {
+      "index": 64,
+      "rare": false,
+      "text": "needle noise 64 background background background background background background background background background background ",
+      "hash": "d9f6f6eb65e6a51caa02a2ea3636a7a9af2f604f37f5920cae7320045dae90bc",
+      "relPath": "scope/000064.md",
+      "uri": "gno://scaling/scope/000064.md",
+      "active": true
+    },
+    {
+      "index": 65,
+      "rare": false,
+      "text": "needle noise 65 background background background background background background background background background background background ",
+      "hash": "861607aa86d057d3bd594ea79bae259d3df7da997bff949708f6e73d9c980f1b",
+      "relPath": "scope/000065.md",
+      "uri": "gno://scaling/scope/000065.md",
+      "active": true
+    },
+    {
+      "index": 66,
+      "rare": false,
+      "text": "needle noise 66 background background background background background background background background background background background background ",
+      "hash": "fafd9868600fbb1b628acb00c2796d57057dcbd77b3ee5ef974e23d87334a9bf",
+      "relPath": "scope/000066.md",
+      "uri": "gno://scaling/scope/000066.md",
+      "active": true
+    },
+    {
+      "index": 67,
+      "rare": false,
+      "text": "needle noise 67 background background background background background background background background background background background background background ",
+      "hash": "94ceb497e9e79acb227252c3aeaec0b4aaa6092f14655a79f30d0cecda2bace6",
+      "relPath": "scope/000067.md",
+      "uri": "gno://scaling/scope/000067.md",
+      "active": true
+    },
+    {
+      "index": 68,
+      "rare": false,
+      "text": "needle noise 68 background background background background background background background background background background background background background background ",
+      "hash": "84f856f45face220e09e6e0b6aa9a8ef02a403f1b75d4c94600582233f6ac18a",
+      "relPath": "scope/000068.md",
+      "uri": "gno://scaling/scope/000068.md",
+      "active": true
+    },
+    {
+      "index": 69,
+      "rare": false,
+      "text": "needle noise 69 background background background background background background background background background background background background background background background ",
+      "hash": "986f365017eaeffd810debe2af12a55bf432864c1d725fcdbe8e735dab417be3",
+      "relPath": "scope/000069.md",
+      "uri": "gno://scaling/scope/000069.md",
+      "active": true
+    },
+    {
+      "index": 70,
+      "rare": false,
+      "text": "needle noise 70 background background background background background background background background background background background background background background background background ",
+      "hash": "e6832824786083aaaa35d318ee3a979b84375dfb6efbd61c3ff34845023dfb4c",
+      "relPath": "scope/000070.md",
+      "uri": "gno://scaling/scope/000070.md",
+      "active": true
+    },
+    {
+      "index": 71,
+      "rare": false,
+      "text": "needle noise 71 background background background background background background background background background background background background background background background background background ",
+      "hash": "873b3945fa298c6975f8e6149de822e87b46e28fd8490ed6cbea9896928b4d42",
+      "relPath": "scope/000071.md",
+      "uri": "gno://scaling/scope/000071.md",
+      "active": true
+    },
+    {
+      "index": 72,
+      "rare": false,
+      "text": "needle noise 72 background background background background background background background background background background background background background background background background background background ",
+      "hash": "609ee7830d6f63c8b481b4253dd7f6c8a1e844d208c7b035de447949fa238462",
+      "relPath": "scope/000072.md",
+      "uri": "gno://scaling/scope/000072.md",
+      "active": true
+    },
+    {
+      "index": 73,
+      "rare": false,
+      "text": "needle noise 73 background background background background background background background background background background background background background background background background background background background ",
+      "hash": "1fe32ba9d623e11e7e076b6fdf0592645b18fb212884369e40b784da0bdccfb5",
+      "relPath": "scope/000073.md",
+      "uri": "gno://scaling/scope/000073.md",
+      "active": true
+    },
+    {
+      "index": 74,
+      "rare": false,
+      "text": "needle noise 74 background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "d39a7474d6a68b00c49dc92f34a5a862c010316a033365c99c193a641aed7c22",
+      "relPath": "scope/000074.md",
+      "uri": "gno://scaling/scope/000074.md",
+      "active": true
+    },
+    {
+      "index": 75,
+      "rare": false,
+      "text": "needle noise 75 background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "03e1c578827a91953a9d8b0d55e22071b375f2b91845d9fe119bac5dd8c2699a",
+      "relPath": "scope/000075.md",
+      "uri": "gno://scaling/scope/000075.md",
+      "active": true
+    },
+    {
+      "index": 76,
+      "rare": false,
+      "text": "needle noise 76 background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "f2a9f73ae7e909650aff560d83ee8e00442477120e7fe20c946ab1fcc80af7e8",
+      "relPath": "scope/000076.md",
+      "uri": "gno://scaling/scope/000076.md",
+      "active": true
+    },
+    {
+      "index": 77,
+      "rare": false,
+      "text": "needle noise 77 background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "0600f24665f3d1e38bdec1c77f68002b3bd9cca130beb8f2864122a387d7c9f1",
+      "relPath": "scope/000077.md",
+      "uri": "gno://scaling/scope/000077.md",
+      "active": true
+    },
+    {
+      "index": 78,
+      "rare": false,
+      "text": "needle noise 78 background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "1a95fed695be8a6e14a870d70285ffcee261a7d7cf975b5ca920f3fb78fc5987",
+      "relPath": "scope/000078.md",
+      "uri": "gno://scaling/scope/000078.md",
+      "active": true
+    },
+    {
+      "index": 79,
+      "rare": false,
+      "text": "needle noise 79 background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "5aa8e5d2028ef89fb167989d803b2d4e7d903db47100336e75a1bcf5b28e164e",
+      "relPath": "scope/000079.md",
+      "uri": "gno://scaling/scope/000079.md",
+      "active": true
+    },
+    {
+      "index": 80,
+      "rare": false,
+      "text": "needle noise 80 background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "fa47294aed4b0f42a65d394e90f23d8ef36304cc6369707cba16f057667efe85",
+      "relPath": "scope/000080.md",
+      "uri": "gno://scaling/scope/000080.md",
+      "active": true
+    },
+    {
+      "index": 81,
+      "rare": false,
+      "text": "needle noise 81 background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "294780ddc8725282e8f38a08b6bb9f0ce98839088894f0417d64e080ae69b038",
+      "relPath": "scope/000081.md",
+      "uri": "gno://scaling/scope/000081.md",
+      "active": true
+    },
+    {
+      "index": 82,
+      "rare": false,
+      "text": "needle noise 82 background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "9bca008ea508528bedf86022cfdacb47e2f1feae9b99c9a97781602ac717de14",
+      "relPath": "scope/000082.md",
+      "uri": "gno://scaling/scope/000082.md",
+      "active": true
+    },
+    {
+      "index": 83,
+      "rare": false,
+      "text": "needle noise 83 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "4a8e65c1a441219b0c822d0a9d0016bfab28d1c0d4f6f4fbee1851aea694a8dc",
+      "relPath": "scope/000083.md",
+      "uri": "gno://scaling/scope/000083.md",
+      "active": true
+    },
+    {
+      "index": 84,
+      "rare": false,
+      "text": "needle noise 84 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "47be6a857192255a0a37813a2fe67fccc0f8d841415f913a0829c1cc73d860e3",
+      "relPath": "scope/000084.md",
+      "uri": "gno://scaling/scope/000084.md",
+      "active": true
+    },
+    {
+      "index": 85,
+      "rare": false,
+      "text": "needle noise 85 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "48780193ca8622677073151113a64de46d8b06c4973f599ddd49eaecc160ea93",
+      "relPath": "scope/000085.md",
+      "uri": "gno://scaling/scope/000085.md",
+      "active": true
+    },
+    {
+      "index": 86,
+      "rare": false,
+      "text": "needle noise 86 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "bc0912ab33322c42ab43f2cb14bbe24a9e76e405901a705cb59f5bf6bcfd7fe5",
+      "relPath": "scope/000086.md",
+      "uri": "gno://scaling/scope/000086.md",
+      "active": true
+    },
+    {
+      "index": 87,
+      "rare": false,
+      "text": "needle noise 87 background background background background ",
+      "hash": "3d6b5bba8ec168e58c84967d8a7ce6708a398f5f41272b02674a1498a04a445a",
+      "relPath": "scope/000087.md",
+      "uri": "gno://scaling/scope/000087.md",
+      "active": true
+    },
+    {
+      "index": 88,
+      "rare": false,
+      "text": "needle noise 88 background background background background background ",
+      "hash": "fe3508e61f4931a9d1c80b4945d11c1d07ce02faafec093f24a9d6884a504416",
+      "relPath": "scope/000088.md",
+      "uri": "gno://scaling/scope/000088.md",
+      "active": true
+    },
+    {
+      "index": 89,
+      "rare": false,
+      "text": "needle noise 89 background background background background background background ",
+      "hash": "7708e7b99440c255e58b57233191d72010478f0db171df7646c4930ef7a560e9",
+      "relPath": "scope/000089.md",
+      "uri": "gno://scaling/scope/000089.md",
+      "active": true
+    },
+    {
+      "index": 90,
+      "rare": false,
+      "text": "needle noise 90 background background background background background background background ",
+      "hash": "08a014aeccf1ab818eeba2427b9f2066dee2d970d0d1e6f7910378fbb0756da7",
+      "relPath": "scope/000090.md",
+      "uri": "gno://scaling/scope/000090.md",
+      "active": true
+    },
+    {
+      "index": 91,
+      "rare": false,
+      "text": "needle noise 91 background background background background background background background background ",
+      "hash": "c88dcbe459d15f1c886350b8e7c6485afbf7ea9ecff023e9652209fb74cc19d8",
+      "relPath": "scope/000091.md",
+      "uri": "gno://scaling/scope/000091.md",
+      "active": true
+    },
+    {
+      "index": 92,
+      "rare": false,
+      "text": "needle noise 92 background background background background background background background background background ",
+      "hash": "a890675c45ce597d9e10ab459578c854914a30c78a6aaacad7918fb7451217d7",
+      "relPath": "scope/000092.md",
+      "uri": "gno://scaling/scope/000092.md",
+      "active": true
+    },
+    {
+      "index": 93,
+      "rare": false,
+      "text": "needle noise 93 background background background background background background background background background background ",
+      "hash": "b75af23bd7f0444e45014b93e76f04e11e023135fdfe8d921f39597c5d705278",
+      "relPath": "scope/000093.md",
+      "uri": "gno://scaling/scope/000093.md",
+      "active": true
+    },
+    {
+      "index": 94,
+      "rare": false,
+      "text": "needle noise 94 background background background background background background background background background background background ",
+      "hash": "8806ba3c3c5190b69ee8a12d1fb7a223f447adb10f80a1c72e8759f791adbef3",
+      "relPath": "scope/000094.md",
+      "uri": "gno://scaling/scope/000094.md",
+      "active": true
+    },
+    {
+      "index": 95,
+      "rare": false,
+      "text": "needle noise 95 background background background background background background background background background background background background ",
+      "hash": "3eb2e173e7d58321d1a1fe508fe894bf18c6889987de5c3dd6c89047af49c5fb",
+      "relPath": "scope/000095.md",
+      "uri": "gno://scaling/scope/000095.md",
+      "active": true
+    },
+    {
+      "index": 96,
+      "rare": false,
+      "text": "needle noise 96 background background background background background background background background background background background background background ",
+      "hash": "8ce98f1657801ad6addc5479c8cd653465ec70871f92fa7fee7d555660c1657d",
+      "relPath": "scope/000096.md",
+      "uri": "gno://scaling/scope/000096.md",
+      "active": true
+    },
+    {
+      "index": 97,
+      "rare": false,
+      "text": "needle noise 97 background background background background background background background background background background background background background background ",
+      "hash": "fc6ba116899edab8c5f63101a30f61fd892858275003e6fb305650ef78aed657",
+      "relPath": "scope/000097.md",
+      "uri": "gno://scaling/scope/000097.md",
+      "active": false
+    },
+    {
+      "index": 98,
+      "rare": false,
+      "text": "needle noise 98 background background background background background background background background background background background background background background background ",
+      "hash": "4b164671e575a40badbcd93b6efd4c79e4b996af39845ff73c8f5f09a6558e65",
+      "relPath": "scope/000098.md",
+      "uri": "gno://scaling/scope/000098.md",
+      "active": true
+    },
+    {
+      "index": 99,
+      "rare": false,
+      "text": "needle noise 99 background background background background background background background background background background background background background background background background ",
+      "hash": "1f6357a38cc39d0123470aa103227baf5631542d69f0cf5127decb78a8505a30",
+      "relPath": "scope/000099.md",
+      "uri": "gno://scaling/scope/000099.md",
+      "active": true
+    },
+    {
+      "index": 100,
+      "rare": false,
+      "text": "needle noise 100 background background background background background background background background background background background background background background background background background ",
+      "hash": "0b87e4667536d14e6c5c6cf8c77127aa88b8da13d4be0b08ef7570e70bf6e681",
+      "relPath": "scope/000100.md",
+      "uri": "gno://scaling/scope/000100.md",
+      "active": true
+    },
+    {
+      "index": 101,
+      "rare": false,
+      "text": "needle noise 101 background background background background background background background background background background background background background background background background background background ",
+      "hash": "7b652d608e69e876540b2f430cf67026d33fe90a7da8bab1636cbfc0c449d78b",
+      "relPath": "scope/000101.md",
+      "uri": "gno://scaling/scope/000101.md",
+      "active": true
+    },
+    {
+      "index": 102,
+      "rare": false,
+      "text": "needle noise 102 background background background background background background background background background background background background background background background background background background background ",
+      "hash": "546c88c1bddbe0766e5ac984e99125fb90150ce8fa2cdb55c11a8d6c84936ba4",
+      "relPath": "scope/000102.md",
+      "uri": "gno://scaling/scope/000102.md",
+      "active": true
+    },
+    {
+      "index": 103,
+      "rare": false,
+      "text": "needle noise 103 background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "384d211b12df25d49470a85da601c47d90f9cc1f58ea32c76e78a96a290cca24",
+      "relPath": "scope/000103.md",
+      "uri": "gno://scaling/scope/000103.md",
+      "active": true
+    },
+    {
+      "index": 104,
+      "rare": false,
+      "text": "needle noise 104 background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "e1266d86440d154f6fe070f830158b4d2294c35a8c3321bc3c8df6eca88f43cb",
+      "relPath": "scope/000104.md",
+      "uri": "gno://scaling/scope/000104.md",
+      "active": true
+    },
+    {
+      "index": 105,
+      "rare": false,
+      "text": "needle noise 105 background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "a238dc83da6a6a0a54cd8b27a183813dd82db0703d2c5a670edd558a554590a0",
+      "relPath": "scope/000105.md",
+      "uri": "gno://scaling/scope/000105.md",
+      "active": true
+    },
+    {
+      "index": 106,
+      "rare": false,
+      "text": "needle noise 106 background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "5dad2d720ee3cde39600721ba81e76598d3889628c82e4f6ac03890bbc05c164",
+      "relPath": "scope/000106.md",
+      "uri": "gno://scaling/scope/000106.md",
+      "active": true
+    },
+    {
+      "index": 107,
+      "rare": false,
+      "text": "needle noise 107 background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "31ae5a986669c343f71e1a517f67807451bd85469c4626830452b877d1c42027",
+      "relPath": "scope/000107.md",
+      "uri": "gno://scaling/scope/000107.md",
+      "active": true
+    },
+    {
+      "index": 108,
+      "rare": false,
+      "text": "needle noise 108 background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "dfc00fcdbe1e8c4255616c05ae535078cd95ba533425a3bd3297d77562ff8575",
+      "relPath": "scope/000108.md",
+      "uri": "gno://scaling/scope/000108.md",
+      "active": true
+    },
+    {
+      "index": 109,
+      "rare": false,
+      "text": "needle noise 109 background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "206843c2ff0ef137288aebc427925482e7cb4b806e24eee6396e561f2c0683fd",
+      "relPath": "scope/000109.md",
+      "uri": "gno://scaling/scope/000109.md",
+      "active": true
+    },
+    {
+      "index": 110,
+      "rare": false,
+      "text": "needle noise 110 background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "7cda58f76e5c62e82be997a28ad0412c7863d4a455493ad376111d2be229c733",
+      "relPath": "scope/000110.md",
+      "uri": "gno://scaling/scope/000110.md",
+      "active": true
+    },
+    {
+      "index": 111,
+      "rare": false,
+      "text": "needle noise 111 background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "4cc4126483ab1ccb85ccefc81a05f9c06ba16e3d4d74788b61ceb31a49f09136",
+      "relPath": "scope/000111.md",
+      "uri": "gno://scaling/scope/000111.md",
+      "active": true
+    },
+    {
+      "index": 112,
+      "rare": false,
+      "text": "needle noise 112 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "d6e95c1ca007a175d84f726e6e42ecc4ee0bc78325909f8462755bab4b33b911",
+      "relPath": "scope/000112.md",
+      "uri": "gno://scaling/scope/000112.md",
+      "active": true
+    },
+    {
+      "index": 113,
+      "rare": false,
+      "text": "needle noise 113 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "a95857a9c91fdb292b15298ea8c5bc6bf56af0ffd868ece5c3032eff4a7cbfab",
+      "relPath": "scope/000113.md",
+      "uri": "gno://scaling/scope/000113.md",
+      "active": true
+    },
+    {
+      "index": 114,
+      "rare": false,
+      "text": "needle noise 114 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "40904e8c66df0503230e5c746a94659155f34212cc659093b0f75107b79a6616",
+      "relPath": "scope/000114.md",
+      "uri": "gno://scaling/scope/000114.md",
+      "active": true
+    },
+    {
+      "index": 115,
+      "rare": false,
+      "text": "needle noise 115 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "34157fdd707eac5cd6e09f67432695c08471f79cba254841fd66f684fa835818",
+      "relPath": "scope/000115.md",
+      "uri": "gno://scaling/scope/000115.md",
+      "active": true
+    },
+    {
+      "index": 116,
+      "rare": false,
+      "text": "needle noise 116 background background background background ",
+      "hash": "417b519184c2fbc1bf7ea97034f95b67ed49f752262414f8d784267ac190a2b8",
+      "relPath": "scope/000116.md",
+      "uri": "gno://scaling/scope/000116.md",
+      "active": true
+    },
+    {
+      "index": 117,
+      "rare": false,
+      "text": "needle noise 117 background background background background background ",
+      "hash": "d7bf0e9308d0db76ab5c40c8f42cbc678ee7f29b95adbc282a895db92334c670",
+      "relPath": "scope/000117.md",
+      "uri": "gno://scaling/scope/000117.md",
+      "active": true
+    },
+    {
+      "index": 118,
+      "rare": false,
+      "text": "needle noise 118 background background background background background background ",
+      "hash": "0ed7a4bbae145e390bd26de74339681348de7278a3c9495f1c89809f06a33479",
+      "relPath": "scope/000118.md",
+      "uri": "gno://scaling/scope/000118.md",
+      "active": true
+    },
+    {
+      "index": 119,
+      "rare": false,
+      "text": "needle noise 119 background background background background background background background ",
+      "hash": "5cde269f917e99ba0975eeb01526a213c4aab529692aa60d0198ad77747253df",
+      "relPath": "scope/000119.md",
+      "uri": "gno://scaling/scope/000119.md",
+      "active": true
+    },
+    {
+      "index": 120,
+      "rare": false,
+      "text": "needle noise 120 background background background background background background background background ",
+      "hash": "818fa9c4de333bc0282f0c018c060cdb0a47c15e0c8c4d76739a6ce587812259",
+      "relPath": "scope/000120.md",
+      "uri": "gno://scaling/scope/000120.md",
+      "active": true
+    },
+    {
+      "index": 121,
+      "rare": false,
+      "text": "needle noise 121 background background background background background background background background background ",
+      "hash": "0c9b7680626b7da0ede3589c86a36680da4ef03dc859d60a029e4faf4e9ccae2",
+      "relPath": "scope/000121.md",
+      "uri": "gno://scaling/scope/000121.md",
+      "active": true
+    },
+    {
+      "index": 122,
+      "rare": false,
+      "text": "needle noise 122 background background background background background background background background background background ",
+      "hash": "39cff45c36f1d27970f63d3ac3a5857b68b66cbe5c2e2c0d5228ff0f696a0011",
+      "relPath": "scope/000122.md",
+      "uri": "gno://scaling/scope/000122.md",
+      "active": true
+    },
+    {
+      "index": 123,
+      "rare": false,
+      "text": "needle noise 123 background background background background background background background background background background background ",
+      "hash": "cf8638874f1ade9bf66abf1766cc663a9f560ec4cf8fe83cfc03b02310c10211",
+      "relPath": "scope/000123.md",
+      "uri": "gno://scaling/scope/000123.md",
+      "active": true
+    },
+    {
+      "index": 124,
+      "rare": false,
+      "text": "needle noise 124 background background background background background background background background background background background background ",
+      "hash": "973bfd378ad7f4c2a8d2f15c244729d47fbb5b0c20dd66b42fedece59a247424",
+      "relPath": "scope/000124.md",
+      "uri": "gno://scaling/scope/000124.md",
+      "active": true
+    },
+    {
+      "index": 125,
+      "rare": false,
+      "text": "needle noise 125 background background background background background background background background background background background background background ",
+      "hash": "03b96968bae2c3a3d940d332d0bcab70f2c66eb5c6e04fa242c23aabafc536ae",
+      "relPath": "scope/000125.md",
+      "uri": "gno://scaling/scope/000125.md",
+      "active": true
+    },
+    {
+      "index": 126,
+      "rare": false,
+      "text": "needle noise 126 background background background background background background background background background background background background background background ",
+      "hash": "3baf8216ce9d0998cdec83f25d80e1badfd3d7541a8b5a9fd57addd0cd0b43b1",
+      "relPath": "scope/000126.md",
+      "uri": "gno://scaling/scope/000126.md",
+      "active": true
+    },
+    {
+      "index": 127,
+      "rare": false,
+      "text": "needle noise 127 background background background background background background background background background background background background background background background ",
+      "hash": "73c9ebc692d0fd17f5a66dd4a1b067b483471113dcab54f712a3988a6b7cc0c1",
+      "relPath": "scope/000127.md",
+      "uri": "gno://scaling/scope/000127.md",
+      "active": true
+    },
+    {
+      "index": 128,
+      "rare": false,
+      "text": "needle noise 128 background background background background background background background background background background background background background background background background ",
+      "hash": "c1f5ea6816bb055fbd78debb77067c17aeb76ea3737220040b1fe39e7260ee06",
+      "relPath": "scope/000128.md",
+      "uri": "gno://scaling/scope/000128.md",
+      "active": true
+    },
+    {
+      "index": 129,
+      "rare": false,
+      "text": "needle noise 129 background background background background background background background background background background background background background background background background background ",
+      "hash": "5b8053af7363e42248107be74d45c23f121288dabad4bac26af881527c275ef4",
+      "relPath": "scope/000129.md",
+      "uri": "gno://scaling/scope/000129.md",
+      "active": true
+    },
+    {
+      "index": 130,
+      "rare": false,
+      "text": "needle noise 130 background background background background background background background background background background background background background background background background background background ",
+      "hash": "bdfc8b519ac0761e3f0ba1ccad3bcbf9d2c31dc7b98e0bc35294af329bcdf32c",
+      "relPath": "scope/000130.md",
+      "uri": "gno://scaling/scope/000130.md",
+      "active": true
+    },
+    {
+      "index": 131,
+      "rare": false,
+      "text": "needle noise 131 background background background background background background background background background background background background background background background background background background background ",
+      "hash": "9898e9423add3fec3da10a4c42da82270122ae0ec7ab9b3786b680f9f05603b1",
+      "relPath": "scope/000131.md",
+      "uri": "gno://scaling/scope/000131.md",
+      "active": true
+    },
+    {
+      "index": 132,
+      "rare": false,
+      "text": "needle noise 132 background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "97247a574d9a042d62224cef5731a3443f5b6de58011ca83d493c987cde273bb",
+      "relPath": "scope/000132.md",
+      "uri": "gno://scaling/scope/000132.md",
+      "active": true
+    },
+    {
+      "index": 133,
+      "rare": false,
+      "text": "needle noise 133 background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "c7eef1d9e16dd29711c62d3362bdbb952cbf62729fb315cb3c285081d49522f7",
+      "relPath": "scope/000133.md",
+      "uri": "gno://scaling/scope/000133.md",
+      "active": true
+    },
+    {
+      "index": 134,
+      "rare": false,
+      "text": "needle noise 134 background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "eec6fe3bb0fa8e9da79f9684107f3c8a9ea4dcfefbd68ee0d2966152defa8b19",
+      "relPath": "scope/000134.md",
+      "uri": "gno://scaling/scope/000134.md",
+      "active": true
+    },
+    {
+      "index": 135,
+      "rare": false,
+      "text": "needle noise 135 background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "f0ab45c4a8e6746e4d40b85c3d39e5c756bd161be6dd13e93838af999f599d69",
+      "relPath": "scope/000135.md",
+      "uri": "gno://scaling/scope/000135.md",
+      "active": true
+    },
+    {
+      "index": 136,
+      "rare": false,
+      "text": "needle noise 136 background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "dd617496db2b9570965160b259304ef0c59ece912cf228bdb8b179260c9bb2ed",
+      "relPath": "scope/000136.md",
+      "uri": "gno://scaling/scope/000136.md",
+      "active": true
+    },
+    {
+      "index": 137,
+      "rare": false,
+      "text": "needle noise 137 background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "12d08a538d36200524c32c83773a7538a5e9fa46e2bf16eb4dbde90c5dab93e8",
+      "relPath": "scope/000137.md",
+      "uri": "gno://scaling/scope/000137.md",
+      "active": true
+    },
+    {
+      "index": 138,
+      "rare": false,
+      "text": "needle noise 138 background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "7b1411c47f6149d236a78ffa33c1bbb76bf213b139429f0bb0b23a9f4c6aff15",
+      "relPath": "scope/000138.md",
+      "uri": "gno://scaling/scope/000138.md",
+      "active": true
+    },
+    {
+      "index": 139,
+      "rare": false,
+      "text": "needle noise 139 background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "79c4149f72dad79433676afe5dd1bd0bb04132091966d593627285db858fde48",
+      "relPath": "scope/000139.md",
+      "uri": "gno://scaling/scope/000139.md",
+      "active": true
+    },
+    {
+      "index": 140,
+      "rare": false,
+      "text": "needle noise 140 background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "9ef3c709a692851a627afb624b15c1537f3a0f189ca5df70ef8902b91781d296",
+      "relPath": "scope/000140.md",
+      "uri": "gno://scaling/scope/000140.md",
+      "active": true
+    },
+    {
+      "index": 141,
+      "rare": false,
+      "text": "needle noise 141 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "8155fd3cfd66b052b600457312e94e53c8e2a144d92a3ed56b681789c4277f88",
+      "relPath": "scope/000141.md",
+      "uri": "gno://scaling/scope/000141.md",
+      "active": true
+    },
+    {
+      "index": 142,
+      "rare": false,
+      "text": "needle noise 142 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "0d9bb417994d313a6d8eb957df187d62fb755faecd18ddd00b6c35a08a75d074",
+      "relPath": "scope/000142.md",
+      "uri": "gno://scaling/scope/000142.md",
+      "active": true
+    },
+    {
+      "index": 143,
+      "rare": false,
+      "text": "needle noise 143 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "8913387f635713a689be89865cec3f972fa4ba0472ea514e4edaad63f938f8b5",
+      "relPath": "scope/000143.md",
+      "uri": "gno://scaling/scope/000143.md",
+      "active": true
+    },
+    {
+      "index": 144,
+      "rare": false,
+      "text": "needle noise 144 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "d4feb52293a7e9f9bdd52a6a2e8515595e1d5ca6b4473acfc7eeabbf8e6664db",
+      "relPath": "scope/000144.md",
+      "uri": "gno://scaling/scope/000144.md",
+      "active": true
+    },
+    {
+      "index": 145,
+      "rare": false,
+      "text": "needle noise 145 background background background background ",
+      "hash": "05e1df985fdc37dbefc0a69dd5d373e5c3c83ab52047171645561eb09da90f6e",
+      "relPath": "scope/000145.md",
+      "uri": "gno://scaling/scope/000145.md",
+      "active": true
+    },
+    {
+      "index": 146,
+      "rare": false,
+      "text": "needle noise 146 background background background background background ",
+      "hash": "3a47f683608a020833d48b7ff4de32506bf2900cc8d30e6ea05b474ab407db3f",
+      "relPath": "scope/000146.md",
+      "uri": "gno://scaling/scope/000146.md",
+      "active": true
+    },
+    {
+      "index": 147,
+      "rare": false,
+      "text": "needle noise 147 background background background background background background ",
+      "hash": "b684b3a9a4902969769f92ad926d10016982c96cdef18eb2bdb5d8655ebdb321",
+      "relPath": "scope/000147.md",
+      "uri": "gno://scaling/scope/000147.md",
+      "active": true
+    },
+    {
+      "index": 148,
+      "rare": false,
+      "text": "needle noise 148 background background background background background background background ",
+      "hash": "4edfeb42bd60e6c2424d148e5d46d67192488e92810e6ef56c66ff5ef92726f8",
+      "relPath": "scope/000148.md",
+      "uri": "gno://scaling/scope/000148.md",
+      "active": true
+    },
+    {
+      "index": 149,
+      "rare": false,
+      "text": "needle noise 149 background background background background background background background background ",
+      "hash": "94eaed6376ab073c3c9a8c34c33b3617269afc12f9da1e2c718a9630a20f11ac",
+      "relPath": "scope/000149.md",
+      "uri": "gno://scaling/scope/000149.md",
+      "active": true
+    },
+    {
+      "index": 150,
+      "rare": false,
+      "text": "needle noise 150 background background background background background background background background background ",
+      "hash": "24691bf551b6712dbf53a7f2dad79b1d3d884ae534d808368309f3495d4d7769",
+      "relPath": "scope/000150.md",
+      "uri": "gno://scaling/scope/000150.md",
+      "active": true
+    },
+    {
+      "index": 151,
+      "rare": false,
+      "text": "needle noise 151 background background background background background background background background background background ",
+      "hash": "35221cde93b2a474a35cee0396105efda35c2d5c64e87074069803de9afa16cb",
+      "relPath": "scope/000151.md",
+      "uri": "gno://scaling/scope/000151.md",
+      "active": true
+    },
+    {
+      "index": 152,
+      "rare": false,
+      "text": "needle noise 152 background background background background background background background background background background background ",
+      "hash": "7c6589a2181f0ad45508e827dff19bfbd1533a355c34b792129bcfa790129cd6",
+      "relPath": "scope/000152.md",
+      "uri": "gno://scaling/scope/000152.md",
+      "active": true
+    },
+    {
+      "index": 153,
+      "rare": false,
+      "text": "needle noise 153 background background background background background background background background background background background background ",
+      "hash": "78238bf29a7c901b584e56cae61aa4f4c94451ac34cd7e53fe1181e08d1d396b",
+      "relPath": "scope/000153.md",
+      "uri": "gno://scaling/scope/000153.md",
+      "active": true
+    },
+    {
+      "index": 154,
+      "rare": false,
+      "text": "needle noise 154 background background background background background background background background background background background background background ",
+      "hash": "aeee9f46e36c16ce47b7c3176eebb21894d0fbea7e70f81805fcb1831538e033",
+      "relPath": "scope/000154.md",
+      "uri": "gno://scaling/scope/000154.md",
+      "active": true
+    },
+    {
+      "index": 155,
+      "rare": false,
+      "text": "needle noise 155 background background background background background background background background background background background background background background ",
+      "hash": "6b37d246a0740be877b16d5b664cf081de8434ec451774da74b22f767effaca8",
+      "relPath": "scope/000155.md",
+      "uri": "gno://scaling/scope/000155.md",
+      "active": true
+    },
+    {
+      "index": 156,
+      "rare": false,
+      "text": "needle noise 156 background background background background background background background background background background background background background background background ",
+      "hash": "141873220b6d33cc4ae95dbb9331f942b1656e13588f08fc421cb67035d31750",
+      "relPath": "scope/000156.md",
+      "uri": "gno://scaling/scope/000156.md",
+      "active": true
+    },
+    {
+      "index": 157,
+      "rare": false,
+      "text": "needle noise 157 background background background background background background background background background background background background background background background background ",
+      "hash": "9a1c48efc779a298d51af6b5c1716985d5d6843eac5753ba31ed120a5a2750c8",
+      "relPath": "scope/000157.md",
+      "uri": "gno://scaling/scope/000157.md",
+      "active": true
+    },
+    {
+      "index": 158,
+      "rare": false,
+      "text": "needle noise 158 background background background background background background background background background background background background background background background background background ",
+      "hash": "6e0383a05cc0334c628b191926e6e3f6e00f39a533b25863b8c4292df4839ef0",
+      "relPath": "scope/000158.md",
+      "uri": "gno://scaling/scope/000158.md",
+      "active": true
+    },
+    {
+      "index": 159,
+      "rare": false,
+      "text": "needle noise 159 background background background background background background background background background background background background background background background background background background ",
+      "hash": "6ac236920896f2ac260c42fbbc126256a3802cd5b8185343bca58b709bf52123",
+      "relPath": "scope/000159.md",
+      "uri": "gno://scaling/scope/000159.md",
+      "active": true
+    },
+    {
+      "index": 160,
+      "rare": false,
+      "text": "needle noise 160 background background background background background background background background background background background background background background background background background background background ",
+      "hash": "aae99562b8b0a503bbbf94e0e1ba4d5fdb99b64bdc4f96e578be48626f585991",
+      "relPath": "scope/000160.md",
+      "uri": "gno://scaling/scope/000160.md",
+      "active": true
+    },
+    {
+      "index": 161,
+      "rare": false,
+      "text": "needle noise 161 background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "ccb98c80c5b8696f4bd9aeb96cc08863caab2e01468f233dbf5262c6b9c10715",
+      "relPath": "scope/000161.md",
+      "uri": "gno://scaling/scope/000161.md",
+      "active": true
+    },
+    {
+      "index": 162,
+      "rare": false,
+      "text": "needle noise 162 background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "adb0ee1091f7aa988b61481ede6f81777da6c86733658cccbe58b339e88277d2",
+      "relPath": "scope/000162.md",
+      "uri": "gno://scaling/scope/000162.md",
+      "active": true
+    },
+    {
+      "index": 163,
+      "rare": false,
+      "text": "needle noise 163 background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "1000c089e04ce5451afadedd2b38ff7c18cd9684670719436f8ab42f5c1a9758",
+      "relPath": "scope/000163.md",
+      "uri": "gno://scaling/scope/000163.md",
+      "active": true
+    },
+    {
+      "index": 164,
+      "rare": false,
+      "text": "needle noise 164 background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "5a9e7d4cc4bd44a5176fa5ec4c246f517f11a84b31f2f273d2a99b183c2ca4cd",
+      "relPath": "scope/000164.md",
+      "uri": "gno://scaling/scope/000164.md",
+      "active": true
+    },
+    {
+      "index": 165,
+      "rare": false,
+      "text": "needle noise 165 background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "9bcdf8bb2b5bb4b6b37825cdf1d6f51d9a63bdb5612c3fd1917a501883c321da",
+      "relPath": "scope/000165.md",
+      "uri": "gno://scaling/scope/000165.md",
+      "active": true
+    },
+    {
+      "index": 166,
+      "rare": false,
+      "text": "needle noise 166 background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "0a37bfbc6c648a7e4a69c82cc0b236abdacd0d51c1f59cb2a3245f47e0512acc",
+      "relPath": "scope/000166.md",
+      "uri": "gno://scaling/scope/000166.md",
+      "active": true
+    },
+    {
+      "index": 167,
+      "rare": false,
+      "text": "needle noise 167 background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "61502417f7ed30bb743dee16b6e4122946cebc97f21562230f8ea55ce49a5664",
+      "relPath": "scope/000167.md",
+      "uri": "gno://scaling/scope/000167.md",
+      "active": true
+    },
+    {
+      "index": 168,
+      "rare": false,
+      "text": "needle noise 168 background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "57b0a0d9bd59faee4605b37bd99d34a68c5cb1374bc9cb557cbfcfa73e1386e7",
+      "relPath": "scope/000168.md",
+      "uri": "gno://scaling/scope/000168.md",
+      "active": true
+    },
+    {
+      "index": 169,
+      "rare": false,
+      "text": "needle noise 169 background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "6e563f6a071e8625ff223fbd9de1c089789c32432904136b660e88eb54135619",
+      "relPath": "scope/000169.md",
+      "uri": "gno://scaling/scope/000169.md",
+      "active": true
+    },
+    {
+      "index": 170,
+      "rare": false,
+      "text": "needle noise 170 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "58f4ab4a9c3b9097393b5addf57572c3a7ad2cab28b8c736dc4e8ed8eb1df6b3",
+      "relPath": "scope/000170.md",
+      "uri": "gno://scaling/scope/000170.md",
+      "active": true
+    },
+    {
+      "index": 171,
+      "rare": false,
+      "text": "needle noise 171 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "6d30b2692c768f1cb80fda878bcac90532b24a77ea26514611780cc811fbfb10",
+      "relPath": "scope/000171.md",
+      "uri": "gno://scaling/scope/000171.md",
+      "active": true
+    },
+    {
+      "index": 172,
+      "rare": false,
+      "text": "needle noise 172 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "3c87ee3e93ea182541f92fe34bb9a79d0763453297e162d4af4b72c510da6ef1",
+      "relPath": "scope/000172.md",
+      "uri": "gno://scaling/scope/000172.md",
+      "active": true
+    },
+    {
+      "index": 173,
+      "rare": false,
+      "text": "needle noise 173 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "bf64cfb2da06a4258cd05f18d2e3c6bd97916d9eddf3ddfe93b1720688e6e4f4",
+      "relPath": "scope/000173.md",
+      "uri": "gno://scaling/scope/000173.md",
+      "active": true
+    },
+    {
+      "index": 174,
+      "rare": false,
+      "text": "needle noise 174 background background background background ",
+      "hash": "61331be7e011e2881e4d75b2f0f96b3755d448b16ea92cc9357614b911cfc073",
+      "relPath": "scope/000174.md",
+      "uri": "gno://scaling/scope/000174.md",
+      "active": true
+    },
+    {
+      "index": 175,
+      "rare": false,
+      "text": "needle noise 175 background background background background background ",
+      "hash": "9343d38ee5db6d351094146dbdfacda1ea0bfdad86f4cc27078bcd273c3b0b82",
+      "relPath": "scope/000175.md",
+      "uri": "gno://scaling/scope/000175.md",
+      "active": true
+    },
+    {
+      "index": 176,
+      "rare": false,
+      "text": "needle noise 176 background background background background background background ",
+      "hash": "a5f54e49e24f6d3bd743af3a017fae89de71745bdf2e09371aa30e5c783c1962",
+      "relPath": "scope/000176.md",
+      "uri": "gno://scaling/scope/000176.md",
+      "active": true
+    },
+    {
+      "index": 177,
+      "rare": false,
+      "text": "needle noise 177 background background background background background background background ",
+      "hash": "23519e09f19de61154d28b6fdb1eff0349d9943be87afb172577a55bb4678708",
+      "relPath": "scope/000177.md",
+      "uri": "gno://scaling/scope/000177.md",
+      "active": true
+    },
+    {
+      "index": 178,
+      "rare": false,
+      "text": "needle noise 178 background background background background background background background background ",
+      "hash": "02fe2f3f18add177697e1afa62bd101b06a6e5a9b860ff1620c5f28d14ae6eb1",
+      "relPath": "scope/000178.md",
+      "uri": "gno://scaling/scope/000178.md",
+      "active": true
+    },
+    {
+      "index": 179,
+      "rare": false,
+      "text": "needle noise 179 background background background background background background background background background ",
+      "hash": "0f0cc6b9f0dbac22c65101a69e9f5f91af344e501ccbe881519438461b227a6e",
+      "relPath": "scope/000179.md",
+      "uri": "gno://scaling/scope/000179.md",
+      "active": true
+    },
+    {
+      "index": 180,
+      "rare": false,
+      "text": "needle noise 180 background background background background background background background background background background ",
+      "hash": "849a080fea742e92526df8024e9ed6018aa43ef989f3ec5d3aec2688849b5751",
+      "relPath": "scope/000180.md",
+      "uri": "gno://scaling/scope/000180.md",
+      "active": true
+    },
+    {
+      "index": 181,
+      "rare": false,
+      "text": "needle noise 181 background background background background background background background background background background background ",
+      "hash": "56fa319baa070a146f83f82b1d8c0d88961dfd073161bdc49e68a4912714bc02",
+      "relPath": "scope/000181.md",
+      "uri": "gno://scaling/scope/000181.md",
+      "active": true
+    },
+    {
+      "index": 182,
+      "rare": false,
+      "text": "needle noise 182 background background background background background background background background background background background background ",
+      "hash": "692b80c19f1b2a4ddaaa330b9f0d26adfb7c3f21096d19341ce6ed9a17489904",
+      "relPath": "scope/000182.md",
+      "uri": "gno://scaling/scope/000182.md",
+      "active": true
+    },
+    {
+      "index": 183,
+      "rare": false,
+      "text": "needle noise 183 background background background background background background background background background background background background background ",
+      "hash": "9fa8c46b9a1900e61e692dd5553656af3a02649fb931692e6f59a878226dd517",
+      "relPath": "scope/000183.md",
+      "uri": "gno://scaling/scope/000183.md",
+      "active": true
+    },
+    {
+      "index": 184,
+      "rare": false,
+      "text": "needle noise 184 background background background background background background background background background background background background background background ",
+      "hash": "6c56161973a76436a7db93bf3ca1f5df452c46db6674aa4a22ec6530c8ab8b65",
+      "relPath": "scope/000184.md",
+      "uri": "gno://scaling/scope/000184.md",
+      "active": true
+    },
+    {
+      "index": 185,
+      "rare": false,
+      "text": "needle noise 185 background background background background background background background background background background background background background background background ",
+      "hash": "4537d1a5aef326f723b3c16a2975661149e8712c9985c75fa00ee2915420f316",
+      "relPath": "scope/000185.md",
+      "uri": "gno://scaling/scope/000185.md",
+      "active": true
+    },
+    {
+      "index": 186,
+      "rare": false,
+      "text": "needle noise 186 background background background background background background background background background background background background background background background background ",
+      "hash": "2dd087de925db19584feb256c8d66dd69d04c4923e0a6e829b4e4f42621baf32",
+      "relPath": "scope/000186.md",
+      "uri": "gno://scaling/scope/000186.md",
+      "active": true
+    },
+    {
+      "index": 187,
+      "rare": false,
+      "text": "needle noise 187 background background background background background background background background background background background background background background background background background ",
+      "hash": "f47566561fc5e373baea907f1b479ac03d1522f8257061bb9e7f09f53d112e54",
+      "relPath": "scope/000187.md",
+      "uri": "gno://scaling/scope/000187.md",
+      "active": true
+    },
+    {
+      "index": 188,
+      "rare": false,
+      "text": "needle noise 188 background background background background background background background background background background background background background background background background background background ",
+      "hash": "037cafd0e1853be31b364ec248bd4d54fcb753894cc66b606a459c7446a42b2a",
+      "relPath": "scope/000188.md",
+      "uri": "gno://scaling/scope/000188.md",
+      "active": true
+    },
+    {
+      "index": 189,
+      "rare": false,
+      "text": "needle noise 189 background background background background background background background background background background background background background background background background background background background ",
+      "hash": "f1d217c29d2dbf16528084cec236c3439a9b4a7214f3bb36bfa92248a6c0c7e3",
+      "relPath": "scope/000189.md",
+      "uri": "gno://scaling/scope/000189.md",
+      "active": true
+    },
+    {
+      "index": 190,
+      "rare": false,
+      "text": "needle noise 190 background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "f5c6527f26896113a2c41292f4dbc024d41bead8f2810aa7387a2cdfd62ac011",
+      "relPath": "scope/000190.md",
+      "uri": "gno://scaling/scope/000190.md",
+      "active": true
+    },
+    {
+      "index": 191,
+      "rare": false,
+      "text": "needle noise 191 background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "0bb40c310bbc0b240598a34bb3c3db45f7def1ce229df36fce82d24972833dc2",
+      "relPath": "scope/000191.md",
+      "uri": "gno://scaling/scope/000191.md",
+      "active": true
+    },
+    {
+      "index": 192,
+      "rare": false,
+      "text": "needle noise 192 background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "aa7b9111bdaa2baf8910b4861b3ac4fd406bfe2edc1f2a0e58df3b14fe47bf90",
+      "relPath": "scope/000192.md",
+      "uri": "gno://scaling/scope/000192.md",
+      "active": true
+    },
+    {
+      "index": 193,
+      "rare": false,
+      "text": "needle noise 193 background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "5059e1088c84f257b20e802c494e73793925885e5ba44520d56d8753f0202bcc",
+      "relPath": "scope/000193.md",
+      "uri": "gno://scaling/scope/000193.md",
+      "active": true
+    },
+    {
+      "index": 194,
+      "rare": false,
+      "text": "needle noise 194 background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "ce6eea808891f3ab0fdb60c6e1f3b02cbfacce5841b407c7e4482bbe443e8205",
+      "relPath": "scope/000194.md",
+      "uri": "gno://scaling/scope/000194.md",
+      "active": false
+    },
+    {
+      "index": 195,
+      "rare": false,
+      "text": "needle noise 195 background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "70489175269c616159ccf0f7e4330ab0334ee2fd58e9883567647656f178e346",
+      "relPath": "scope/000195.md",
+      "uri": "gno://scaling/scope/000195.md",
+      "active": true
+    },
+    {
+      "index": 196,
+      "rare": false,
+      "text": "needle noise 196 background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "02ae3f2c82ac8a1a8e885e1951d4552e34f14900a15baa737e5a7f4f869229fd",
+      "relPath": "scope/000196.md",
+      "uri": "gno://scaling/scope/000196.md",
+      "active": true
+    },
+    {
+      "index": 197,
+      "rare": false,
+      "text": "needle noise 197 background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "ef788a8ef2a2277262d9c8e3b8a9e78897f2f8b9a6688a3a3569ff760484d5a2",
+      "relPath": "scope/000197.md",
+      "uri": "gno://scaling/scope/000197.md",
+      "active": true
+    },
+    {
+      "index": 198,
+      "rare": false,
+      "text": "needle noise 198 background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "cf25d8ef33e437b5f559dbcb086f55d44dfd9cf43ada5834457aef8234ac678c",
+      "relPath": "scope/000198.md",
+      "uri": "gno://scaling/scope/000198.md",
+      "active": true
+    },
+    {
+      "index": 199,
+      "rare": false,
+      "text": "needle noise 199 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "660732c30d24f03f148ee8e796212e6cf0499f349a8070274e425f87a0881f39",
+      "relPath": "scope/000199.md",
+      "uri": "gno://scaling/scope/000199.md",
+      "active": true
+    },
+    {
+      "index": 200,
+      "rare": true,
+      "text": "needle target 200 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "hash": "ff3ecf0de87fe80b498205f9d96b24c601e3f83a352e22f17ae9a916e7d576d6",
+      "relPath": "scope/000200.md",
+      "uri": "gno://scaling/scope/000200.md",
+      "active": true
+    }
+  ],
+  "limits": [
+    1,
+    10
+  ],
+  "expectedTarget": "gno://scaling/scope/000200.md",
+  "expectedNativeOperations": "One embed operation (198 active chunks), five query calls, no expansion/reranking"
+}

@@ -1,0 +1,1 @@
+export function wrap(original:Function, before:Function, after:Function){return function(this:any,...args:any[]){const token=before(this,args);let result;try{result=Reflect.apply(original,this,args);}catch(e){after(token,false,e);throw e;}return Promise.resolve(result).then(value=>{after(token,true,value);return value;},error=>{after(token,false,error);throw error;});};}

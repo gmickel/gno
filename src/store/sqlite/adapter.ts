@@ -173,6 +173,7 @@ import {
   listEgressAuditReceipts as listStoredEgressAuditReceipts,
   purgeEgressAuditReceipts as purgeStoredEgressAuditReceipts,
 } from "./egress-audit-store";
+import { buildEligibleDocumentQuery } from "./eligibility";
 import {
   advanceFileRefactorReceipt as advanceStoredFileRefactorReceipt,
   createFileRefactorPreparedReceipt as createStoredFileRefactorPreparedReceipt,
@@ -180,8 +181,17 @@ import {
   getLatestFileRefactorReceiptByPlanDigest as getStoredLatestFileRefactorReceiptByPlanDigest,
 } from "./file-refactor-journal-store";
 import { loadFts5Snowball } from "./fts5-snowball";
+import {
+  applyGraphEdges,
+  type DesiredGraphEdge,
+} from "./graph-edge-application";
 import { resolveGraphLinkTargets } from "./graph-link-resolver";
 import { queryGraphNeighborsForSeeds } from "./graph-neighbors";
+import { createGraphReferenceStore } from "./graph-reference-state";
+import {
+  snapshotLegacyTitles,
+  reconcileLegacyTitles,
+} from "./legacy-vector-ownership";
 import {
   appendExportManifest as appendStoredTraceExportManifest,
   getBoundedTrace as getBoundedStoredTrace,
@@ -512,8 +522,17 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private ftsTokenizer: FtsTokenizer = "unicode61";
   private configPath = ""; // Set by CLI layer for status output
   private txCounter = 0; // Savepoint counter for unique names
-  private readonly txContext = new AsyncLocalStorage<{ depth: number }>();
+  private readonly txContext = new AsyncLocalStorage<{
+    depth: number;
+    token: { revoked: boolean };
+  }>();
   private txTail: Promise<void> = Promise.resolve();
+  private activeTransaction?: {
+    token: { revoked: boolean };
+    release: () => void;
+  };
+  private shutdownFenced = false;
+  private shutdownDeadline?: number;
   private contextGeneration = 0;
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -527,6 +546,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   ): Promise<StoreResult<MigrationResult>> {
     try {
       this.db = new Database(dbPath, { create: true });
+      this.shutdownFenced = false;
+      this.shutdownDeadline = undefined;
       this.dbPath = dbPath;
       this.ftsTokenizer = ftsTokenizer;
 
@@ -597,6 +618,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   ): StoreResult<void> {
     try {
       this.db = new Database(dbPath, { readonly: true, strict: true });
+      this.shutdownFenced = false;
+      this.shutdownDeadline = undefined;
       this.dbPath = dbPath;
       this.db.exec("PRAGMA query_only = ON");
       this.db.exec(
@@ -618,10 +641,42 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   }
 
   async close(): Promise<void> {
+    this.fenceForShutdown();
     if (this.db) {
       this.db.close();
       this.db = null;
     }
+  }
+
+  /** Cap subsequent SQLite lock waits to the resident settlement deadline. */
+  beginShutdown(deadline: number): void {
+    this.shutdownDeadline = deadline;
+    if (this.db) this.capShutdownBusyWait(this.db);
+  }
+
+  private capShutdownBusyWait(db: Database): void {
+    if (this.shutdownDeadline === undefined) return;
+    const remaining = Math.max(
+      0,
+      Math.floor(this.shutdownDeadline - performance.now())
+    );
+    const current =
+      db.query<{ timeout: number }, []>("PRAGMA busy_timeout").get()?.timeout ??
+      0;
+    db.exec(`PRAGMA busy_timeout = ${Math.min(current, remaining)}`);
+  }
+
+  /** Revoke suspended transaction callbacks before closing their connection. */
+  fenceForShutdown(): void {
+    this.shutdownFenced = true;
+    const transaction = this.activeTransaction;
+    if (!transaction) return;
+    // JS cannot interleave this synchronous rollback with a running callback.
+    // A callback suspended at await must never commit or use the store again.
+    transaction.token.revoked = true;
+    this.db?.exec("ROLLBACK");
+    transaction.release();
+    this.activeTransaction = undefined;
   }
 
   isOpen(): boolean {
@@ -636,26 +691,38 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
    * explicit BEGIN/COMMIT to support async callbacks.
    */
   async withTransaction<T>(fn: () => Promise<T>): Promise<StoreResult<T>> {
-    const db = this.ensureOpen();
     const parent = this.txContext.getStore();
+    const connection = this.ensureOpen();
     const isOuter = parent === undefined;
     const savepoint = `sp_${++this.txCounter}`;
     const releaseWriter = isOuter
       ? await this.acquireTransactionWriter()
       : null;
+    const token = parent?.token ?? { revoked: false };
+    let db: Database | undefined;
 
     try {
+      const current = this.ensureOpen();
+      if (current !== connection)
+        throw new Error("Transaction connection retired before admission");
+      db = current;
       if (isOuter) {
         // IMMEDIATE reduces lock churn for bulk writes
         db.exec("BEGIN IMMEDIATE");
+        this.activeTransaction = { token, release: releaseWriter! };
       } else {
         db.exec(`SAVEPOINT ${savepoint}`);
       }
 
       const value = await this.txContext.run(
-        { depth: (parent?.depth ?? 0) + 1 },
+        { depth: (parent?.depth ?? 0) + 1, token },
         fn
       );
+
+      if (token.revoked || this.shutdownFenced)
+        throw new Error("Transaction revoked by resident shutdown");
+
+      this.capShutdownBusyWait(db);
 
       if (isOuter) {
         db.exec("COMMIT");
@@ -666,7 +733,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return ok(value);
     } catch (cause) {
       try {
-        if (isOuter) {
+        if (!db || token.revoked) {
+          // Shutdown already rolled back. Never touch a replacement connection.
+        } else if (isOuter) {
           db.exec("ROLLBACK");
         } else {
           db.exec(`ROLLBACK TO ${savepoint}`);
@@ -680,6 +749,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         cause instanceof Error ? cause.message : "Transaction failed";
       return err("TRANSACTION_FAILED", message, cause);
     } finally {
+      if (isOuter && this.activeTransaction?.token === token)
+        this.activeTransaction = undefined;
       releaseWriter?.();
     }
   }
@@ -709,10 +780,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     return this.ensureOpen();
   }
 
+  graphReferenceStore() {
+    return createGraphReferenceStore(this.ensureOpen());
+  }
+
   private ensureOpen(): Database {
+    if (this.shutdownFenced || this.txContext.getStore()?.token.revoked) {
+      throw new Error("Database fenced by resident shutdown");
+    }
     if (!this.db) {
       throw new Error("Database not open");
     }
+    this.capShutdownBusyWait(this.db);
     return this.db;
   }
 
@@ -1340,6 +1419,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             "SELECT * FROM documents WHERE collection = ? AND rel_path = ?"
           )
           .get(doc.collection, doc.relPath);
+        const legacyTitles = snapshotLegacyTitles(
+          db,
+          !previousRow ||
+            !previousRow.active ||
+            previousRow.title !== (doc.title ?? null) ||
+            previousRow.mirror_hash !== (doc.mirrorHash ?? null)
+            ? [previousRow?.mirror_hash, doc.mirrorHash]
+            : []
+        );
 
         db.run(
           `
@@ -1434,6 +1522,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
         if (!idRow) {
           throw new Error("Failed to get document id after upsert");
+        }
+
+        reconcileLegacyTitles(db, legacyTitles);
+
+        // Owner bindings describe the exact current source input. Keep inactive
+        // bindings for identical restoration, but invalidate changed ownership.
+        if (
+          previousRow &&
+          (previousRow.mirror_hash !== (doc.mirrorHash ?? null) ||
+            previousRow.title !== (doc.title ?? null))
+        ) {
+          db.run("DELETE FROM vector_owners WHERE document_id = ?", [idRow.id]);
         }
 
         // Conversion failures deliberately drop mirror ownership. Remove the
@@ -1599,7 +1699,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const db = this.ensureOpen();
       const row = db
         .query<DbDocumentRow, [string]>(
-          "SELECT * FROM documents WHERE docid = ?"
+          "SELECT * FROM documents WHERE docid = ? ORDER BY active DESC, id ASC LIMIT 1"
         )
         .get(docid);
 
@@ -2229,13 +2329,22 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         if (activeRows.length === 0) {
           return 0;
         }
-        const result = db.run(
+        const legacyTitles = snapshotLegacyTitles(
+          db,
+          activeRows.map((row) => row.mirror_hash)
+        );
+        db.run(
           `UPDATE documents SET active = 0, updated_at = datetime('now')
            WHERE collection = ?
              AND active = 1
              AND rel_path IN (${placeholders})`,
           [collection, ...uniquePaths]
         );
+        // Bun run().changes includes trigger writes; report logical document rows.
+        const changed =
+          db.query<{ count: number }, []>("SELECT changes() AS count").get()
+            ?.count ?? 0;
+        reconcileLegacyTitles(db, legacyTitles);
         const observedAtMs = Date.now();
         for (const activeRow of activeRows) {
           const previous = snapshotDocumentChange(mapDocumentRow(activeRow));
@@ -2248,7 +2357,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             observedAtMs,
           });
         }
-        return result.changes;
+        return changed;
       });
 
       return ok(transaction());
@@ -2527,15 +2636,42 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const db = this.ensureOpen();
 
       const transaction = db.transaction(() => {
-        // Delete existing chunks for this hash
-        db.run("DELETE FROM content_chunks WHERE mirror_hash = ?", [
-          mirrorHash,
-        ]);
+        // Retain stable rows: DELETE cascades erase valid legacy vectors even
+        // when duplicate ingestion produces exactly the same embedding input.
+        const nextBySequence = new Map(
+          chunks.map((chunk) => [chunk.seq, chunk])
+        );
+        const existing = db
+          .query<{ seq: number; text: string }, [string]>(
+            "SELECT seq, text FROM content_chunks WHERE mirror_hash = ?"
+          )
+          .all(mirrorHash);
+        for (const old of existing) {
+          const next = nextBySequence.get(old.seq);
+          if (!next || next.text !== old.text) {
+            db.run(
+              "DELETE FROM vector_owners WHERE mirror_hash = ? AND seq = ?",
+              [mirrorHash, old.seq]
+            );
+            db.run(
+              "DELETE FROM content_chunks WHERE mirror_hash = ? AND seq = ?",
+              [mirrorHash, old.seq]
+            );
+          }
+        }
 
-        // Insert new chunks
         const stmt = db.prepare(`
           INSERT INTO content_chunks (mirror_hash, seq, pos, text, start_line, end_line, language, token_count)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(mirror_hash, seq) DO UPDATE SET
+            pos = excluded.pos, start_line = excluded.start_line,
+            end_line = excluded.end_line, language = excluded.language,
+            token_count = excluded.token_count
+          WHERE content_chunks.pos IS NOT excluded.pos
+             OR content_chunks.start_line IS NOT excluded.start_line
+             OR content_chunks.end_line IS NOT excluded.end_line
+             OR content_chunks.language IS NOT excluded.language
+             OR content_chunks.token_count IS NOT excluded.token_count
         `);
 
         for (const chunk of chunks) {
@@ -2638,6 +2774,52 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async getChunksBySequenceBatch(
+    keys: { mirrorHash: string; seq: number }[]
+  ): Promise<StoreResult<Map<string, ChunkRow[]>>> {
+    try {
+      const unique = new Map<string, { mirrorHash: string; seq: number }>();
+      for (const key of keys) {
+        if (key.mirrorHash)
+          unique.set(JSON.stringify([key.mirrorHash, key.seq]), key);
+      }
+      const pairs = [...unique.values()];
+      const result = new Map<string, ChunkRow[]>();
+      if (pairs.length === 0) return ok(result);
+      const db = this.ensureOpen();
+      const batchSize = Math.floor(SQLITE_SAFE_PARAMETER_BATCH_SIZE / 2);
+      for (let offset = 0; offset < pairs.length; offset += batchSize) {
+        const batch = pairs.slice(offset, offset + batchSize);
+        const values = batch.map(() => "(?, ?)").join(",");
+        const rows = db
+          .query<DbChunkRow, (string | number)[]>(`
+          WITH requested(mirror_hash, seq) AS (VALUES ${values})
+          SELECT c.* FROM requested r JOIN content_chunks c
+            ON c.mirror_hash = r.mirror_hash AND c.seq = r.seq
+          ORDER BY c.mirror_hash, c.seq
+        `)
+          .all(...batch.flatMap(({ mirrorHash, seq }) => [mirrorHash, seq]));
+        for (const row of rows) {
+          const mapped = mapChunkRow(row);
+          const chunks = result.get(mapped.mirrorHash) ?? [];
+          chunks.push(mapped);
+          result.set(mapped.mirrorHash, chunks);
+        }
+      }
+      for (const chunks of result.values())
+        chunks.sort((a, b) => a.seq - b.seq);
+      return ok(result);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get targeted chunks batch",
+        cause
+      );
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // FTS Search
   // ─────────────────────────────────────────────────────────────────────────
@@ -2654,67 +2836,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         return err("INVALID_INPUT", builtQuery.error);
       }
 
-      // Build tag filter conditions using EXISTS subqueries
-      const tagConditions: string[] = [];
-      const params: (string | number)[] = [];
-
-      // tagsAny: document has at least one of these tags
-      if (options.tagsAny && options.tagsAny.length > 0) {
-        const placeholders = options.tagsAny.map(() => "?").join(",");
-        tagConditions.push(
-          `EXISTS (SELECT 1 FROM doc_tags dt WHERE dt.document_id = d.id AND dt.tag IN (${placeholders}))`
-        );
-        params.push(...options.tagsAny);
-      }
-
-      // tagsAll: document has all of these tags
-      if (options.tagsAll && options.tagsAll.length > 0) {
-        for (const tag of options.tagsAll) {
-          tagConditions.push(
-            "EXISTS (SELECT 1 FROM doc_tags dt WHERE dt.document_id = d.id AND dt.tag = ?)"
-          );
-          params.push(tag);
-        }
-      }
-
-      if (options.since) {
-        tagConditions.push("d.source_mtime >= ?");
-        params.push(options.since);
-      }
-      if (options.until) {
-        tagConditions.push("d.source_mtime <= ?");
-        params.push(options.until);
-      }
-      if (options.categories && options.categories.length > 0) {
-        const placeholders = options.categories.map(() => "?").join(",");
-        tagConditions.push(
-          `(d.content_type IN (${placeholders}) OR EXISTS (SELECT 1 FROM json_each(COALESCE(d.categories, '[]')) jc WHERE jc.value IN (${placeholders})))`
-        );
-        params.push(...options.categories, ...options.categories);
-      }
-      if (options.author) {
-        tagConditions.push("LOWER(COALESCE(d.author, '')) LIKE ?");
-        params.push(`%${options.author.toLowerCase()}%`);
-      }
-
-      // Scope and supersession filters run inside the candidate subquery so
-      // they narrow the corpus before the FTS LIMIT (never a post-filter).
-      const innerConditions: string[] = [];
-      const innerParams: string[] = [];
-      if (options.memoryScopesAny && options.memoryScopesAny.length > 0) {
-        const placeholders = options.memoryScopesAny.map(() => "?").join(",");
-        innerConditions.push(
-          `AND EXISTS (SELECT 1 FROM doc_memory_scopes ms WHERE ms.document_id = documents.id AND ms.scope IN (${placeholders}))`
-        );
-        innerParams.push(...options.memoryScopesAny);
-      }
-      if (options.excludeSuperseded) {
-        innerConditions.push(SUPERSEDED_EXCLUSION_SQL("documents.id"));
-      }
-
-      const hasOuterFilters = tagConditions.length > 0;
-      const ftsLimit = hasOuterFilters ? limit * 10 : limit;
-      params.push(limit);
+      const eligible = buildEligibleDocumentQuery(options, db);
 
       // Document-level FTS search using an FTS-first CTE to keep collection and
       // metadata filters from degrading the query plan into a broad scan.
@@ -2731,23 +2853,16 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             ) as score
           FROM documents_fts
           WHERE documents_fts MATCH ?
-          AND rowid IN (
-            SELECT id FROM documents
-            WHERE active = 1
-            ${options.collection ? "AND collection = ?" : ""}
-            ${
-              options.relPathPrefix !== undefined
-                ? "AND (COALESCE(NULLIF(record_source_path, ''), rel_path) = ? OR substr(COALESCE(NULLIF(record_source_path, ''), rel_path), 1, length(?) + 1) = ? || '/')"
-                : ""
-            }
-            ${innerConditions.join("\n            ")}
+          AND EXISTS (
+            SELECT 1 FROM (${eligible.sql}) eligible_docs
+            WHERE eligible_docs.id = documents_fts.rowid
           )
           ORDER BY score
           LIMIT ?
         )
         SELECT
           d.mirror_hash,
-          0 as seq,
+          ${options.chunkLanguage ? "(SELECT min(lc.seq) FROM content_chunks lc WHERE lc.mirror_hash = d.mirror_hash AND lc.language = ?) as seq," : "0 as seq,"}
           fm.score as score,
           ${options.snippet ? "fm.snippet as snippet," : ""}
           d.docid,
@@ -2775,7 +2890,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         FROM fts_matches fm
         JOIN documents d ON d.id = fm.rowid AND d.active = 1
         WHERE 1 = 1
-        ${tagConditions.length > 0 ? `AND ${tagConditions.join(" AND ")}` : ""}
         ORDER BY fm.score
         LIMIT ?
       `;
@@ -2811,17 +2925,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       const queryParams = [
         builtQuery.query,
-        ...(options.collection ? [options.collection] : []),
-        ...(options.relPathPrefix !== undefined
-          ? [
-              options.relPathPrefix,
-              options.relPathPrefix,
-              options.relPathPrefix,
-            ]
-          : []),
-        ...innerParams,
-        ftsLimit,
-        ...params,
+        ...eligible.params,
+        limit,
+        ...(options.chunkLanguage ? [options.chunkLanguage] : []),
+        limit,
       ];
       const rows = db
         .query<FtsRow, (string | number)[]>(sql)
@@ -3354,6 +3461,17 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const db = this.ensureOpen();
 
       const transaction = db.transaction(() => {
+        // Link edits without a changed source identity cannot be located from
+        // the prior document inventory, especially alongside unrelated changes.
+        // Persist full-recovery authority in the same transaction as those edits.
+        db.run(
+          `UPDATE graph_projection_state SET dirty = 1, in_progress = 1
+          WHERE id = 1 AND EXISTS (
+            SELECT 1 FROM graph_reference_documents r JOIN documents d ON d.id = r.document_id
+            WHERE d.id = ? AND r.source_hash IS d.source_hash AND r.mirror_hash IS d.mirror_hash
+          )`,
+          [documentId]
+        );
         // Delete existing links from this source
         db.run("DELETE FROM doc_links WHERE source_doc_id = ? AND source = ?", [
           documentId,
@@ -4253,36 +4371,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     try {
       const db = this.ensureOpen();
 
-      const transaction = db.transaction(() => {
-        db.run("DELETE FROM doc_edges WHERE src_doc_id = ? AND source = ?", [
-          documentId,
+      applyGraphEdges(
+        db,
+        edges.map((edge) => ({
+          sourceId: documentId,
+          targetId: edge.targetDocId,
+          edgeType: normalizeDocEdgeType(edge.edgeType),
+          confidence: edge.confidence,
           source,
-        ]);
-
-        if (edges.length === 0) {
-          return;
-        }
-
-        const stmt = db.prepare(`
-          INSERT INTO doc_edges (
-            src_doc_id, dst_doc_id, edge_type, confidence, source
-          ) VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT(src_doc_id, dst_doc_id, edge_type, source) DO UPDATE SET
-            confidence = excluded.confidence
-        `);
-
-        for (const edge of edges) {
-          stmt.run(
-            documentId,
-            edge.targetDocId,
-            normalizeDocEdgeType(edge.edgeType),
-            edge.confidence,
-            source
-          );
-        }
-      });
-
-      transaction();
+        })),
+        [source],
+        [documentId]
+      );
       return ok(undefined);
     } catch (cause) {
       return err(
@@ -4947,74 +5047,42 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       if (sourceIds?.length === 0) {
         return ok({ inserted: 0 });
       }
-      const sourcePlaceholders = sourceIds
-        ? sourceIds.map(() => "?").join(", ")
-        : "";
       const sourceFilter = sourceIds
-        ? `AND src.id IN (${sourcePlaceholders})`
+        ? "AND src.id IN (SELECT value FROM json_each(?))"
         : "";
-      let inserted = 0;
-
-      const transaction = db.transaction(() => {
-        db.run(
-          `DELETE FROM doc_edges
-           WHERE source IN (?, ?)
-           ${sourceIds ? `AND src_doc_id IN (${sourcePlaceholders})` : ""}`,
-          ["wikilink", "markdown-link", ...(sourceIds ?? [])]
-        );
-
-        const insertWiki = db.run(
-          `
-          INSERT OR IGNORE INTO doc_edges (
-            src_doc_id, dst_doc_id, edge_type, confidence, source
-          )
-          SELECT
-            src.id,
-            tgt.id,
-            'mentions',
-            'parsed',
-            'wikilink'
-          FROM documents src
-          JOIN doc_links dl ON dl.source_doc_id = src.id
+      const params = sourceIds ? [JSON.stringify(sourceIds)] : [];
+      const inserted = db.transaction(() => {
+        const wiki = db
+          .query<DesiredGraphEdge, string[]>(`
+          SELECT DISTINCT src.id AS sourceId, tgt.id AS targetId,
+            'mentions' AS edgeType, 'parsed' AS confidence, 'wikilink' AS source
+          FROM documents src JOIN doc_links dl ON dl.source_doc_id = src.id
           JOIN documents tgt ON tgt.id = (${buildWikiBestMatchSubquery(
             "COALESCE(dl.target_collection, src.collection)",
             "dl.target_ref_norm"
           )})
-          WHERE src.active = 1
-            AND tgt.active = 1
-            AND dl.link_type = 'wiki'
-            ${sourceFilter}
-        `,
-          sourceIds ?? []
-        );
-
-        const insertMarkdown = db.run(
-          `
-          INSERT OR IGNORE INTO doc_edges (
-            src_doc_id, dst_doc_id, edge_type, confidence, source
-          )
-          SELECT
-            src.id,
-            tgt.id,
-            'related_to',
-            'parsed',
-            'markdown-link'
-          FROM documents src
-          JOIN doc_links dl ON dl.source_doc_id = src.id
+          WHERE src.active = 1 AND tgt.active = 1 AND dl.link_type = 'wiki'
+          ${sourceFilter}
+        `)
+          .all(...params);
+        const markdown = db
+          .query<DesiredGraphEdge, string[]>(`
+          SELECT DISTINCT src.id AS sourceId, tgt.id AS targetId,
+            'related_to' AS edgeType, 'parsed' AS confidence, 'markdown-link' AS source
+          FROM documents src JOIN doc_links dl ON dl.source_doc_id = src.id
           JOIN documents tgt ON tgt.active = 1
             AND tgt.collection = COALESCE(dl.target_collection, src.collection)
             AND tgt.rel_path = dl.target_ref_norm
-          WHERE src.active = 1
-            AND dl.link_type = 'markdown'
-            ${sourceFilter}
-        `,
-          sourceIds ?? []
+          WHERE src.active = 1 AND dl.link_type = 'markdown' ${sourceFilter}
+        `)
+          .all(...params);
+        return applyGraphEdges(
+          db,
+          [...wiki, ...markdown],
+          ["wikilink", "markdown-link"],
+          sourceIds
         );
-
-        inserted = insertWiki.changes + insertMarkdown.changes;
-      });
-
-      transaction();
+      })();
       return ok({ inserted });
     } catch (cause) {
       return err(

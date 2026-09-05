@@ -1,0 +1,116 @@
+{
+  "gzip_mtime": 0,
+  "files": [
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-release-64400ffe-tests.log",
+      "logical_path": "gno-release-64400ffe-tests.log",
+      "archive_path": "gates/gno-release-64400ffe-tests.log.gz",
+      "raw_bytes": 539937,
+      "raw_sha256": "2ae3d443abc71e1800e4c11d50643d6591e1abcd456645da16dbca4f4801353b",
+      "gzip_bytes": 132115,
+      "gzip_sha256": "682a25aaf9392f0a83dfa8284273e123620020ff6da611334543906c85bcf65a"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-release-lint-final.log",
+      "logical_path": "gno-release-lint-final.log",
+      "archive_path": "gates/gno-release-lint-final.log.gz",
+      "raw_bytes": 12319,
+      "raw_sha256": "d22103f4a00d5228d0f0fd5f77d3a42398dd5a864ed9d3e716eefa56473222f8",
+      "gzip_bytes": 2625,
+      "gzip_sha256": "077dd8c03419a6c35a17bd7d073e5a51449c604fca5ffc9fd58403d75f3ffe90"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-release-lint-final2.log",
+      "logical_path": "gno-release-lint-final2.log",
+      "archive_path": "gates/gno-release-lint-final2.log.gz",
+      "raw_bytes": 12218,
+      "raw_sha256": "a620bb207b325ea00d2ca140e3a517e70ea12c23ccc8c7b162c9b08c856fe9fd",
+      "gzip_bytes": 2559,
+      "gzip_sha256": "1b52523d69655adf4ecb9d7949bedac53f2b1a641a0bc13dde66038285319845"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-release-typecheck-final.log",
+      "logical_path": "gno-release-typecheck-final.log",
+      "archive_path": "gates/gno-release-typecheck-final.log.gz",
+      "raw_bytes": 20,
+      "raw_sha256": "0a7cbec9e31e5ab1dc3f62bf0e9994201b491a121c31235f27316f5151281817",
+      "gzip_bytes": 40,
+      "gzip_sha256": "f6de834e3c048f3b285866da8282214f5d03ac320aa4169aee608709dc1c54da"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-release-docs-final.log",
+      "logical_path": "gno-release-docs-final.log",
+      "archive_path": "gates/gno-release-docs-final.log.gz",
+      "raw_bytes": 1267,
+      "raw_sha256": "7b554819d88cd16f5183e6b7938beb5505565736b65fe0c8cedc853497d0ced8",
+      "gzip_bytes": 550,
+      "gzip_sha256": "74e96758115749cb50b267c6133cd80a36a6ba4b35b40c354fdb54946edad6c0"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-release-frozen-final.log",
+      "logical_path": "gno-release-frozen-final.log",
+      "archive_path": "gates/gno-release-frozen-final.log.gz",
+      "raw_bytes": 174,
+      "raw_sha256": "cc4cfe80b24908ed1a1068577df67ec8ed00935af5e01b6c3992347eda0031c7",
+      "gzip_bytes": 166,
+      "gzip_sha256": "d771fec6d38dca5e4ad8eddab7fdf2906015f3d7a5eb7a1543627f53c4272749"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-release-shell-frozen.log",
+      "logical_path": "gno-release-shell-frozen.log",
+      "archive_path": "gates/gno-release-shell-frozen.log.gz",
+      "raw_bytes": 106,
+      "raw_sha256": "8f503670adabf3d0330849a2ee18c88f2557abb8a834c0d5173f5e0b1cf5f92c",
+      "gzip_bytes": 115,
+      "gzip_sha256": "50c0db6beba3ad1e0c32647365119449c26756e277143f2ab590f9af1a0d733f"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-release-clipper-build.log",
+      "logical_path": "gno-release-clipper-build.log",
+      "archive_path": "gates/gno-release-clipper-build.log.gz",
+      "raw_bytes": 219,
+      "raw_sha256": "f5c8b05236403d42e7189d36e667e4f914a97cb56153ad3babf4ca668f8bc1eb",
+      "gzip_bytes": 178,
+      "gzip_sha256": "e68f39e6bc24ff76c3f0ffb7806c5f4d9718ccba14b7fb06c70437539b0d7c1f"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-release-clipper-verify.log",
+      "logical_path": "gno-release-clipper-verify.log",
+      "archive_path": "gates/gno-release-clipper-verify.log.gz",
+      "raw_bytes": 178,
+      "raw_sha256": "d0fb1000addea458d47dbefbef52f9b8bccb95e68628522b90a0b377c0c308c8",
+      "gzip_bytes": 158,
+      "gzip_sha256": "9a339e1625e0d12d96aa5f8b3577cb5d4cd15bb53cfc8347dabd5a5a5274b30f"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-release-64400ffe-package-smoke.log",
+      "logical_path": "gno-release-64400ffe-package-smoke.log",
+      "archive_path": "gates/gno-release-64400ffe-package-smoke.log.gz",
+      "raw_bytes": 4778,
+      "raw_sha256": "94d1c3ca3e40a421eaf2e2914743634bf9725fe126568b8ab27165e31020546c",
+      "gzip_bytes": 1535,
+      "gzip_sha256": "c73b0bc0574ea86355a234cc6b4c54ea497d753e8fce2df266e67aa15a8ba5fe"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-release-64400ffe-package-smoke-isolated.log",
+      "logical_path": "gno-release-64400ffe-package-smoke-isolated.log",
+      "archive_path": "gates/gno-release-64400ffe-package-smoke-isolated.log.gz",
+      "raw_bytes": 4596,
+      "raw_sha256": "bfba61aec5c4d4eac878d02496e5174699365b38cb6da89bb826c10de7ea647b",
+      "gzip_bytes": 1431,
+      "gzip_sha256": "16903a6de47d869a1c65cf61a6fddcdc164d2b0390444b7277ca4e38da05532d"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-release-package-comparison.json",
+      "logical_path": "gno-release-package-comparison.json",
+      "archive_path": "gates/gno-release-package-comparison.json.gz",
+      "raw_bytes": 245,
+      "raw_sha256": "da6040a6cabb3276c9469695229103647e5b18e1dd20428b44db2605922ff520",
+      "gzip_bytes": 153,
+      "gzip_sha256": "2a34b599697a2e4105b74cd0b71f7b11b5e67169d4b35715bfaa8adbd6c44256"
+    }
+  ],
+  "count": 12,
+  "raw_bytes": 576057,
+  "gzip_bytes": 141625
+}

@@ -1,0 +1,116 @@
+{
+  "status": "incomplete-scratch-hook-failure",
+  "product": "a30da4423ec5604f46d2b050af8a2cba51c66e07",
+  "helper": "8b45a54d9fab684fddb69175e8c836dad4b935b2",
+  "cases": [
+    {
+      "label": "control",
+      "exercised": null,
+      "didDrain": true,
+      "nativeRequests": 3,
+      "errors": [
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "Attempted to assign to readonly property."
+      ],
+      "cancelled": null
+    },
+    {
+      "label": "pre-aborted",
+      "exercised": null,
+      "didDrain": true,
+      "nativeRequests": 3,
+      "errors": [
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "Attempted to assign to readonly property."
+      ],
+      "cancelled": {
+        "resolved": false,
+        "error": {
+          "name": "AbortError",
+          "message": "Inference cancelled",
+          "code": 20
+        }
+      }
+    },
+    {
+      "label": "queued",
+      "exercised": false,
+      "didDrain": true,
+      "nativeRequests": 4,
+      "errors": [
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "Attempted to assign to readonly property.",
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "Attempted to assign to readonly property."
+      ],
+      "cancelled": null
+    },
+    {
+      "label": "active-rerank",
+      "exercised": false,
+      "didDrain": true,
+      "nativeRequests": 4,
+      "errors": [
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "Attempted to assign to readonly property.",
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "Attempted to assign to readonly property."
+      ],
+      "cancelled": {
+        "resolved": true,
+        "value": {
+          "ok": false,
+          "error": {
+            "code": "INFERENCE_FAILED",
+            "message": "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "retryable": true,
+            "modelUri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "cause": {
+              "name": "TypeError",
+              "message": "Attempted to assign to readonly property."
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "active-generate",
+      "exercised": false,
+      "didDrain": true,
+      "nativeRequests": 4,
+      "errors": [
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "Attempted to assign to readonly property.",
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "Attempted to assign to readonly property."
+      ],
+      "cancelled": {
+        "resolved": true,
+        "value": {
+          "ok": false,
+          "error": {
+            "code": "INFERENCE_FAILED",
+            "message": "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "retryable": true,
+            "modelUri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "cause": {
+              "name": "TypeError",
+              "message": "Attempted to assign to readonly property."
+            }
+          }
+        }
+      }
+    }
+  ],
+  "postRun": {
+    "ownedPids": [
+      366503,
+      366549,
+      366598
+    ],
+    "remaining": []
+  }
+}

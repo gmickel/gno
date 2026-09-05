@@ -1,0 +1,24 @@
+{
+  "branch_name": "fn-143-152-retrieval-resource-major",
+  "created_at": "2026-09-05T10:00:29.413518Z",
+  "depends_on_epics": [],
+  "id": "fn-154-gno-20-release-dependency-sweep-and",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-154-gno-20-release-dependency-sweep-and.md",
+  "status": "done",
+  "title": "GNO 2.0 release dependency sweep and gates",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-05T11:59:58.095568Z"
+}

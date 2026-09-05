@@ -1,0 +1,22 @@
+bun test v1.3.14 (0d9b296a)
+
+../../.cache/agent-tmp/gno-fn150-qa/source/test/store/docid-active-owner.test.ts:
+28 |       targetRef: "moved.md", targetRefNorm: "moved.md", linkType: "markdown",
+29 |       startLine: 1, startCol: 1, endLine: 1, endCol: 10,
+30 |     }], "parsed")).ok).toBe(true);
+31 | 
+32 |     const resolved = await store.getDocumentByDocid(original.docid);
+33 |     expect(resolved.ok && resolved.value?.id).toBe(current.id);
+                                                   ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 1
+
+      at <anonymous> (/home/gordon/.cache/agent-tmp/gno-fn150-qa/source/test/store/docid-active-owner.test.ts:33:47)
+(fail) hash lookup prefers a current owner after rename and retains deterministic fallback [20.79ms]
+
+ 0 pass
+ 1 fail
+ 3 expect() calls
+Ran 1 test across 1 file. [254.00ms]

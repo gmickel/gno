@@ -1,0 +1,134 @@
+[
+  {
+    "name": "initial",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "whitespace",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "unchanged",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "absent-1",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "restored-1",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "absent-2",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "restored-2",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "same-title-duplicate",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "title-rename",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "force",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "materialization-repair",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  },
+  {
+    "name": "collection-global-catchup",
+    "completeEmbeddingPair": true,
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "acceptance": "observable-state parity"
+  }
+]

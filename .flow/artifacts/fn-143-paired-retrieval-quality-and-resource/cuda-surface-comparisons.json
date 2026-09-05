@@ -1,0 +1,70 @@
+[
+  {
+    "kind": "cli",
+    "coverage": [
+      "complete",
+      "complete"
+    ],
+    "reasons": [
+      [],
+      []
+    ],
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    }
+  },
+  {
+    "kind": "stdio",
+    "coverage": [
+      "complete",
+      "complete"
+    ],
+    "reasons": [
+      [],
+      []
+    ],
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    }
+  },
+  {
+    "kind": "resident",
+    "coverage": [
+      "complete",
+      "complete"
+    ],
+    "reasons": [
+      [],
+      []
+    ],
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    }
+  },
+  {
+    "kind": "api",
+    "coverage": [
+      "complete",
+      "complete"
+    ],
+    "reasons": [
+      [],
+      []
+    ],
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    }
+  }
+]

@@ -52,9 +52,14 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Measured plain-path row reduction and full-path reuse are reported separately; no candidate reduction masquerades as allocation saving.
 
 ## Done summary
-TBD
+Request-local hydration acceptance completed for the measured read domain. Six real-SQLite production Ask scenarios preserve complete outputs, prepared model inputs, citations, provenance and failures against the frozen predecessor. Raw full-context Ask reads fall from3 to2 and returned UTF-8 text from6,958,683 to4,638,789bytes; verified Ask reads fall from5 to4 and returned text from11,596,473 to9,277,578bytes. The independent plain targeted-path fixture reduces selected chunk rows from1,000 to1. These counters measure returned rows and text, not total heap or native allocation.
 
+CUDA and physical Ivan matched29 verified-Ask comparisons use the unchanged strict comparator, actual judge invocation and complete native transcript. Metal retains its original noRerank:true policy. Request ownership is released on completion and abort; separate requests observe edits. Corrupt/missing mirror, unsupported verifier outcome and indexed-source mutation negatives remain in the evidence.
+
+Final memory100%, hybrid86% and BM25 ranking88% gates passed with unchanged thresholds. Final repository gate evidence is under the fn146 final-release-gates artifact directory. Repository architecture and user guidance are reconciled. Hosted gno.sh documentation and driven-page QA are queued after the aggregate PR under the user's sequencing override. No total retained-heap saving or cross-backend numeric equality is claimed.
+
+Evidence: .flow/artifacts/fn-149-request-local-retrieval-hydration-reuse/README.md; .flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-packed-surfaces-9d0b57e3/README.md; ivan-verified-ask-matched29/README.md; .flow/artifacts/fn-146-cancellation-and-bounded-background/final-release-gates/.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 76743bd616cbe723b0adab87da9f380cad1513ad, f64c41c97e196e3bffdba23bc1c006bca7489b28, f661cf44c4e52cdf9a3f5020339a670c70fdffd1, aae58c0a0662ea20d4e9ecdef1c9c4867c278833
+- Tests: bun run lint:check, bun run typecheck, bun test, bun run docs:verify, bun run verify:clipper-package, bun run test:package, bun run eval:memory, bun run eval:hybrid, bun --bun evalite evals/vsearch.eval.ts
 - PRs:

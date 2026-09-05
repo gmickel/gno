@@ -1,0 +1,436 @@
+{
+  "commit": "635293b6c309cf3be34facf30b4fbc1802167cae",
+  "normalization": "Only runtime timing/generated timestamps and isolated synthetic root prefixes; raw responses retained",
+  "records": [
+    {
+      "step": "initial",
+      "ref": "gno://targets/anchor.md",
+      "comparison": {
+        "passed": true,
+        "comparedCases": 1,
+        "failures": [],
+        "generatedAnswerChanges": []
+      },
+      "differences": [],
+      "synced": {
+        "collections": [
+          {
+            "collection": "targets",
+            "filesProcessed": 1,
+            "filesAdded": 1,
+            "filesUpdated": 0,
+            "filesUnchanged": 0,
+            "filesErrored": 0,
+            "filesSkipped": 0,
+            "filesMarkedInactive": 0,
+            "durationMs": 537,
+            "files": [
+              {
+                "relPath": "anchor.md",
+                "status": "added",
+                "docid": "#dd26dda9",
+                "mirrorHash": "dd26dda953096959748eb9b88f9931af40847695e2a57fd6116bb4a0e8e893e3",
+                "contentType": "prose",
+                "contentTypeSource": "fallback"
+              }
+            ],
+            "errors": []
+          },
+          {
+            "collection": "outside",
+            "filesProcessed": 2,
+            "filesAdded": 2,
+            "filesUpdated": 0,
+            "filesUnchanged": 0,
+            "filesErrored": 0,
+            "filesSkipped": 0,
+            "filesMarkedInactive": 0,
+            "durationMs": 4,
+            "files": [
+              {
+                "relPath": "peer.md",
+                "status": "added",
+                "docid": "#183aaf29",
+                "mirrorHash": "183aaf29da2168d60cf362a7ed82910e23587999373249fb7b4dac14bbe8d3fa",
+                "contentType": "prose",
+                "contentTypeSource": "fallback"
+              },
+              {
+                "relPath": "source.md",
+                "status": "added",
+                "docid": "#6aa50529",
+                "mirrorHash": "6aa50529709d881489d700e4b9c839549b83a159d8ddd61d5855cb24ed553b9c",
+                "contentType": "meeting",
+                "contentTypeSource": "frontmatter-type"
+              }
+            ],
+            "errors": []
+          }
+        ],
+        "totalDurationMs": 550,
+        "totalFilesProcessed": 3,
+        "totalFilesAdded": 3,
+        "totalFilesUpdated": 0,
+        "totalFilesErrored": 0,
+        "totalFilesSkipped": 0
+      }
+    },
+    {
+      "step": "add",
+      "ref": "gno://targets/opaque.md",
+      "comparison": {
+        "passed": true,
+        "comparedCases": 1,
+        "failures": [],
+        "generatedAnswerChanges": []
+      },
+      "differences": [],
+      "synced": {
+        "collection": "targets",
+        "filesProcessed": 2,
+        "filesAdded": 1,
+        "filesUpdated": 0,
+        "filesUnchanged": 1,
+        "filesErrored": 0,
+        "filesSkipped": 0,
+        "filesMarkedInactive": 0,
+        "durationMs": 7,
+        "files": [
+          {
+            "relPath": "anchor.md",
+            "status": "unchanged"
+          },
+          {
+            "relPath": "opaque.md",
+            "status": "added",
+            "docid": "#8147d989",
+            "mirrorHash": "8147d9893183cf9d38ecd6218de4e5192925af8761323aed256a9eca908a95a6",
+            "contentType": "prose",
+            "contentTypeSource": "fallback"
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "step": "ambiguous",
+      "ref": "gno://targets/opaque.md",
+      "comparison": {
+        "passed": true,
+        "comparedCases": 1,
+        "failures": [],
+        "generatedAnswerChanges": []
+      },
+      "differences": [],
+      "synced": {
+        "collection": "targets",
+        "filesProcessed": 3,
+        "filesAdded": 1,
+        "filesUpdated": 0,
+        "filesUnchanged": 2,
+        "filesErrored": 0,
+        "filesSkipped": 0,
+        "filesMarkedInactive": 0,
+        "durationMs": 7,
+        "files": [
+          {
+            "relPath": "anchor.md",
+            "status": "unchanged"
+          },
+          {
+            "relPath": "duplicate.md",
+            "status": "added",
+            "docid": "#8147d989",
+            "mirrorHash": "8147d9893183cf9d38ecd6218de4e5192925af8761323aed256a9eca908a95a6",
+            "contentType": "prose",
+            "contentTypeSource": "fallback"
+          },
+          {
+            "relPath": "opaque.md",
+            "status": "unchanged"
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "step": "unique",
+      "ref": "gno://targets/opaque.md",
+      "comparison": {
+        "passed": true,
+        "comparedCases": 1,
+        "failures": [],
+        "generatedAnswerChanges": []
+      },
+      "differences": [],
+      "synced": {
+        "collection": "targets",
+        "filesProcessed": 2,
+        "filesAdded": 0,
+        "filesUpdated": 0,
+        "filesUnchanged": 2,
+        "filesErrored": 0,
+        "filesSkipped": 0,
+        "filesMarkedInactive": 1,
+        "durationMs": 6,
+        "files": [
+          {
+            "relPath": "anchor.md",
+            "status": "unchanged"
+          },
+          {
+            "relPath": "opaque.md",
+            "status": "unchanged"
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "step": "delete",
+      "ref": "gno://targets/anchor.md",
+      "comparison": {
+        "passed": true,
+        "comparedCases": 1,
+        "failures": [],
+        "generatedAnswerChanges": []
+      },
+      "differences": [],
+      "synced": {
+        "collection": "targets",
+        "filesProcessed": 1,
+        "filesAdded": 0,
+        "filesUpdated": 0,
+        "filesUnchanged": 1,
+        "filesErrored": 0,
+        "filesSkipped": 0,
+        "filesMarkedInactive": 1,
+        "durationMs": 5,
+        "files": [
+          {
+            "relPath": "anchor.md",
+            "status": "unchanged"
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "step": "restore",
+      "ref": "gno://targets/opaque.md",
+      "comparison": {
+        "passed": true,
+        "comparedCases": 1,
+        "failures": [],
+        "generatedAnswerChanges": []
+      },
+      "differences": [],
+      "synced": {
+        "collection": "targets",
+        "filesProcessed": 2,
+        "filesAdded": 0,
+        "filesUpdated": 1,
+        "filesUnchanged": 1,
+        "filesErrored": 0,
+        "filesSkipped": 0,
+        "filesMarkedInactive": 0,
+        "durationMs": 7,
+        "files": [
+          {
+            "relPath": "anchor.md",
+            "status": "unchanged"
+          },
+          {
+            "relPath": "opaque.md",
+            "status": "updated",
+            "docid": "#8147d989",
+            "mirrorHash": "8147d9893183cf9d38ecd6218de4e5192925af8761323aed256a9eca908a95a6",
+            "contentType": "prose",
+            "contentTypeSource": "fallback"
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "step": "rename",
+      "ref": "gno://targets/moved.md",
+      "comparison": {
+        "passed": true,
+        "comparedCases": 1,
+        "failures": [],
+        "generatedAnswerChanges": []
+      },
+      "differences": [],
+      "synced": {
+        "collection": "targets",
+        "filesProcessed": 2,
+        "filesAdded": 1,
+        "filesUpdated": 0,
+        "filesUnchanged": 1,
+        "filesErrored": 0,
+        "filesSkipped": 0,
+        "filesMarkedInactive": 1,
+        "durationMs": 9,
+        "files": [
+          {
+            "relPath": "anchor.md",
+            "status": "unchanged"
+          },
+          {
+            "relPath": "moved.md",
+            "status": "added",
+            "docid": "#8147d989",
+            "mirrorHash": "8147d9893183cf9d38ecd6218de4e5192925af8761323aed256a9eca908a95a6",
+            "contentType": "prose",
+            "contentTypeSource": "fallback"
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "step": "title",
+      "ref": "gno://targets/moved.md",
+      "comparison": {
+        "passed": true,
+        "comparedCases": 1,
+        "failures": [],
+        "generatedAnswerChanges": []
+      },
+      "differences": [],
+      "synced": {
+        "collection": "targets",
+        "filesProcessed": 2,
+        "filesAdded": 0,
+        "filesUpdated": 1,
+        "filesUnchanged": 1,
+        "filesErrored": 0,
+        "filesSkipped": 0,
+        "filesMarkedInactive": 0,
+        "durationMs": 7,
+        "files": [
+          {
+            "relPath": "anchor.md",
+            "status": "unchanged"
+          },
+          {
+            "relPath": "moved.md",
+            "status": "updated",
+            "docid": "#ac35cad8",
+            "mirrorHash": "ac35cad8508ecabdb9aa59b65a3c36f492ce0268b9e6350abac944704be1d65d",
+            "contentType": "prose",
+            "contentTypeSource": "fallback"
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "step": "config",
+      "ref": "gno://targets/moved.md",
+      "comparison": {
+        "passed": true,
+        "comparedCases": 1,
+        "failures": [],
+        "generatedAnswerChanges": []
+      },
+      "differences": [],
+      "synced": {
+        "collection": "targets",
+        "filesProcessed": 2,
+        "filesAdded": 0,
+        "filesUpdated": 2,
+        "filesUnchanged": 0,
+        "filesErrored": 0,
+        "filesSkipped": 0,
+        "filesMarkedInactive": 0,
+        "durationMs": 7,
+        "files": [
+          {
+            "relPath": "anchor.md",
+            "status": "updated",
+            "docid": "#dd26dda9",
+            "mirrorHash": "dd26dda953096959748eb9b88f9931af40847695e2a57fd6116bb4a0e8e893e3",
+            "contentType": "prose",
+            "contentTypeSource": "fallback"
+          },
+          {
+            "relPath": "moved.md",
+            "status": "updated",
+            "docid": "#ac35cad8",
+            "mirrorHash": "ac35cad8508ecabdb9aa59b65a3c36f492ce0268b9e6350abac944704be1d65d",
+            "contentType": "prose",
+            "contentTypeSource": "fallback"
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "step": "source-disappears",
+      "ref": "gno://targets/moved.md",
+      "comparison": {
+        "passed": true,
+        "comparedCases": 1,
+        "failures": [],
+        "generatedAnswerChanges": []
+      },
+      "differences": [],
+      "synced": {
+        "collections": [
+          {
+            "collection": "targets",
+            "filesProcessed": 2,
+            "filesAdded": 0,
+            "filesUpdated": 0,
+            "filesUnchanged": 2,
+            "filesErrored": 0,
+            "filesSkipped": 0,
+            "filesMarkedInactive": 0,
+            "durationMs": 1,
+            "files": [
+              {
+                "relPath": "anchor.md",
+                "status": "unchanged"
+              },
+              {
+                "relPath": "moved.md",
+                "status": "unchanged"
+              }
+            ],
+            "errors": []
+          },
+          {
+            "collection": "outside",
+            "filesProcessed": 1,
+            "filesAdded": 0,
+            "filesUpdated": 1,
+            "filesUnchanged": 0,
+            "filesErrored": 0,
+            "filesSkipped": 0,
+            "filesMarkedInactive": 1,
+            "durationMs": 4,
+            "files": [
+              {
+                "relPath": "peer.md",
+                "status": "updated",
+                "docid": "#183aaf29",
+                "mirrorHash": "183aaf29da2168d60cf362a7ed82910e23587999373249fb7b4dac14bbe8d3fa",
+                "contentType": "prose",
+                "contentTypeSource": "fallback"
+              }
+            ],
+            "errors": []
+          }
+        ],
+        "totalDurationMs": 10,
+        "totalFilesProcessed": 3,
+        "totalFilesAdded": 0,
+        "totalFilesUpdated": 1,
+        "totalFilesErrored": 0,
+        "totalFilesSkipped": 0
+      }
+    }
+  ]
+}

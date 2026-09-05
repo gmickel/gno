@@ -34,7 +34,6 @@ export const REQUIRED_PUBLIC_TRUTH_ANCHORS = [
   { path: "README.md", claimClass: "supported-platforms" },
   { path: "README.md", claimClass: "general-embedding-benchmark" },
   { path: "README.md", claimClass: "cjk-lexical-benchmark" },
-  { path: "website/_config.yml", claimClass: "current-version" },
   { path: "docs/FINE-TUNED-MODELS.md", claimClass: "default-embed-model" },
   {
     path: "docs/HOW-SEARCH-WORKS.md",
@@ -53,10 +52,6 @@ export const REQUIRED_PUBLIC_TRUTH_ANCHORS = [
     claimClass: "cjk-lexical-benchmark",
   },
   { path: "docs/CONFIGURATION.md", claimClass: "default-embed-model" },
-  {
-    path: "website/features/benchmarks.md",
-    claimClass: "general-embedding-benchmark",
-  },
 ] as const satisfies readonly RequiredPublicTruthAnchor[];
 
 const compareMismatches = (

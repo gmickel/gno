@@ -1,0 +1,47 @@
+{
+  "route": "strict existing HostKeyAlias=ivan, Heimdall to192.168.0.30 via owned control socket",
+  "masterSession": 38647,
+  "socket": "/home/gordon/.cache/agent-tmp/gno-fn144-childcapture/ivan-lan.sock",
+  "nativeInference": false,
+  "samples": [
+    {
+      "timestampUtc": "2026-09-05T07:41:37.178732+00:00",
+      "pressure": 1,
+      "physicalBytes": 17179869184,
+      "freeBytes": 1026244608,
+      "freeGiB": 0.9557647705078125,
+      "vmStat": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                                    62637.\nPages active:                                 330221.\nPages inactive:                               262866.\nPages speculative:                             70341.\nPages throttled:                                   0.\nPages wired down:                             184328.\nPages purgeable:                                5585.\n\"Translation faults\":                    30928513857.\nPages copy-on-write:                      1093242318.\nPages zero filled:                        7768148545.\nPages reactivated:                        6641931067.\nPages purged:                              750691684.\nFile-backed pages:                            208263.\nAnonymous pages:                              455165.\nPages stored in compressor:                   696654.\nPages occupied by compressor:                 103503.\nDecompressions:                           9629207548.\nCompressions:                             9930619439.\nPageins:                                   410297263.\nPageouts:                                   10441021.\nSwapins:                                    45792378.\nSwapouts:                                   50832925.",
+      "swap": "vm.swapusage: total = 5120.00M  used = 3956.31M  free = 1163.69M  (encrypted)",
+      "aggregateProcessRssKiB": 11590096,
+      "aggregateRssLimitation": "Shared pages double-count; not physical used memory",
+      "taskOwnedProcessMatches": [],
+      "processFilter": "Known QA/native-worker markers; raw args not retained; no claim about arbitrary inference software"
+    },
+    {
+      "timestampUtc": "2026-09-05T07:41:42.348907+00:00",
+      "pressure": 1,
+      "physicalBytes": 17179869184,
+      "freeBytes": 1020149760,
+      "freeGiB": 0.9500885009765625,
+      "vmStat": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                                    62265.\nPages active:                                 334369.\nPages inactive:                               264522.\nPages speculative:                             70344.\nPages throttled:                                   0.\nPages wired down:                             178515.\nPages purgeable:                                6470.\n\"Translation faults\":                    30928527246.\nPages copy-on-write:                      1093243343.\nPages zero filled:                        7768156640.\nPages reactivated:                        6641931067.\nPages purged:                              750691684.\nFile-backed pages:                            208266.\nAnonymous pages:                              460969.\nPages stored in compressor:                   696654.\nPages occupied by compressor:                 103503.\nDecompressions:                           9629207553.\nCompressions:                             9930619439.\nPageins:                                   410297284.\nPageouts:                                   10441021.\nSwapins:                                    45792378.\nSwapouts:                                   50832925.",
+      "swap": "vm.swapusage: total = 5120.00M  used = 3956.31M  free = 1163.69M  (encrypted)",
+      "aggregateProcessRssKiB": 11619616,
+      "aggregateRssLimitation": "Shared pages double-count; not physical used memory",
+      "taskOwnedProcessMatches": [],
+      "processFilter": "Known QA/native-worker markers; raw args not retained; no claim about arbitrary inference software"
+    }
+  ],
+  "governorPath": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/watchdog.py",
+  "governorSha256": "24713377c597313ddd1b0e68e4cd64ad7b50ee8bcce9b40173bb36f9feeba90f",
+  "policy": {
+    "stratum": "capacity-warning30-v1",
+    "startPressure": 1,
+    "warningLevel": 2,
+    "warningBudgetSeconds": 30,
+    "criticalLevel": 4,
+    "ownedRssMiB": 6144,
+    "phaseWallSeconds": 120,
+    "maximumPollingIntervalMs": 250
+  },
+  "scope": "Current read-only readiness snapshot only; no inference grant or fn145 allocation-fit claim"
+}

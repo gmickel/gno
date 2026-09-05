@@ -1,5 +1,5 @@
 {
-  "branch_name": "fn-150-incremental-graph-reconciliation-with",
+  "branch_name": "fn-143-152-retrieval-resource-major",
   "completion_review_status": "unknown",
   "completion_reviewed_at": null,
   "created_at": "2026-09-04T22:26:23.014595Z",
@@ -17,7 +17,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-150-incremental-graph-reconciliation-with.md",
-  "status": "open",
+  "status": "done",
   "title": "Incremental graph reconciliation with global parity",
   "tracker": {
     "baseHashFlow": null,
@@ -30,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T23:08:34.629265Z"
+  "updated_at": "2026-09-05T03:26:55.463990Z"
 }

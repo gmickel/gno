@@ -1,0 +1,703 @@
+{
+  "policy": {
+    "stratum": "capacity-warning30-v1",
+    "pressureKey": "kern.memorystatus_vm_pressure_level",
+    "normal": 1,
+    "warning": 2,
+    "critical": 4,
+    "warningBudgetSeconds": 30,
+    "wallSeconds": 120,
+    "ownedGroupRssMiB": 6144,
+    "pollSeconds": 0.2,
+    "xnuSourceCommit": "f6217f891ac0bb64f3d375211650a4c1ff8ca1ea",
+    "warningAccounting": "sample-hold monotonic seconds; raw transition samples retained; resolution <=250ms"
+  },
+  "governorSha256": "24713377c597313ddd1b0e68e4cd64ad7b50ee8bcce9b40173bb36f9feeba90f",
+  "command": [
+    "/tmp/gno-native-tools-1314.KrONBb/bun-darwin-aarch64/bun",
+    "/private/tmp/fn1445-final-f8a278ef.vbAn9o/matched-ask.ts",
+    "--native",
+    "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/matched29-f8a278ef/candidate"
+  ],
+  "pid": 9824,
+  "exit": 0,
+  "stopReason": null,
+  "wallSeconds": 11.469605207443237,
+  "cumulativeWarningSeconds": 0.0,
+  "samples": [
+    {
+      "elapsedSeconds": 0.001172499731183052,
+      "sampleIntervalSeconds": 0.001172499731183052,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 1296,
+      "ownedPids": [
+        9824
+      ]
+    },
+    {
+      "elapsedSeconds": 0.20324029121547937,
+      "sampleIntervalSeconds": 0.20206779148429632,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 216688,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 0.41326562501490116,
+      "sampleIntervalSeconds": 0.2100253337994218,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 218784,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 0.6162481252104044,
+      "sampleIntervalSeconds": 0.20298250019550323,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 218784,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 0.826277875341475,
+      "sampleIntervalSeconds": 0.2100297501310706,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 219296,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 1.0338524160906672,
+      "sampleIntervalSeconds": 0.20757454074919224,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 219552,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 1.243880458176136,
+      "sampleIntervalSeconds": 0.21002804208546877,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 219728,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 1.447523707523942,
+      "sampleIntervalSeconds": 0.20364324934780598,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 220944,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 1.657552583143115,
+      "sampleIntervalSeconds": 0.21002887561917305,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 222240,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 1.8645905833691359,
+      "sampleIntervalSeconds": 0.2070380002260208,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 222368,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 2.0676192911341786,
+      "sampleIntervalSeconds": 0.20302870776504278,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 222368,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 2.2776531660929322,
+      "sampleIntervalSeconds": 0.21003387495875359,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 222368,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 2.4877216247841716,
+      "sampleIntervalSeconds": 0.21006845869123936,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 222992,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 2.6977512082085013,
+      "sampleIntervalSeconds": 0.21002958342432976,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 222992,
+      "ownedPids": [
+        9824,
+        9826
+      ]
+    },
+    {
+      "elapsedSeconds": 2.9077754579484463,
+      "sampleIntervalSeconds": 0.21002424973994493,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 316336,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 3.1102517498657107,
+      "sampleIntervalSeconds": 0.20247629191726446,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 383952,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 3.320284250192344,
+      "sampleIntervalSeconds": 0.21003250032663345,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 389056,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 3.521317166276276,
+      "sampleIntervalSeconds": 0.20103291608393192,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 391408,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 3.731360166333616,
+      "sampleIntervalSeconds": 0.21004300005733967,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 593120,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 3.9350694995373487,
+      "sampleIntervalSeconds": 0.20370933320373297,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 842048,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 4.144796207547188,
+      "sampleIntervalSeconds": 0.20972670800983906,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 1673248,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        9889
+      ]
+    },
+    {
+      "elapsedSeconds": 4.350499874912202,
+      "sampleIntervalSeconds": 0.20570366736501455,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 1728240,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 4.5548991253599524,
+      "sampleIntervalSeconds": 0.2043992504477501,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 1730880,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 4.764964208006859,
+      "sampleIntervalSeconds": 0.21006508264690638,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 1828880,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        9910
+      ]
+    },
+    {
+      "elapsedSeconds": 4.974996125325561,
+      "sampleIntervalSeconds": 0.21003191731870174,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 1861904,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        9918
+      ]
+    },
+    {
+      "elapsedSeconds": 5.185042041353881,
+      "sampleIntervalSeconds": 0.2100459160283208,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 3019776,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        9924
+      ]
+    },
+    {
+      "elapsedSeconds": 5.395124915987253,
+      "sampleIntervalSeconds": 0.21008287463337183,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2861616,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        9932
+      ]
+    },
+    {
+      "elapsedSeconds": 5.59657995775342,
+      "sampleIntervalSeconds": 0.2014550417661667,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2865520,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        9939
+      ]
+    },
+    {
+      "elapsedSeconds": 5.801526707597077,
+      "sampleIntervalSeconds": 0.20494674984365702,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2866432,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        9946
+      ]
+    },
+    {
+      "elapsedSeconds": 6.011558040976524,
+      "sampleIntervalSeconds": 0.21003133337944746,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2870224,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        9953
+      ]
+    },
+    {
+      "elapsedSeconds": 6.221600124612451,
+      "sampleIntervalSeconds": 0.21004208363592625,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2846032,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        9961
+      ]
+    },
+    {
+      "elapsedSeconds": 6.428747000172734,
+      "sampleIntervalSeconds": 0.20714687556028366,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2844544,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 6.63877487462014,
+      "sampleIntervalSeconds": 0.21002787444740534,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2844624,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 6.848828290589154,
+      "sampleIntervalSeconds": 0.21005341596901417,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2844672,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 7.058891332708299,
+      "sampleIntervalSeconds": 0.2100630421191454,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2845152,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 7.268922415561974,
+      "sampleIntervalSeconds": 0.2100310828536749,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2841072,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 7.4789917496964335,
+      "sampleIntervalSeconds": 0.2100693341344595,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2841088,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 7.68906116578728,
+      "sampleIntervalSeconds": 0.21006941609084606,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2841904,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 7.899128166027367,
+      "sampleIntervalSeconds": 0.2100670002400875,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2843696,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 8.109186000190675,
+      "sampleIntervalSeconds": 0.21005783416330814,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2845248,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 8.312798207625747,
+      "sampleIntervalSeconds": 0.20361220743507147,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2846160,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 8.522878875024617,
+      "sampleIntervalSeconds": 0.21008066739887,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2847712,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 8.732908999547362,
+      "sampleIntervalSeconds": 0.2100301245227456,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2850896,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        10048
+      ]
+    },
+    {
+      "elapsedSeconds": 8.942937040701509,
+      "sampleIntervalSeconds": 0.2100280411541462,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2847408,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        10055
+      ]
+    },
+    {
+      "elapsedSeconds": 9.153029625304043,
+      "sampleIntervalSeconds": 0.21009258460253477,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 3112608,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        10065
+      ]
+    },
+    {
+      "elapsedSeconds": 9.363053208217025,
+      "sampleIntervalSeconds": 0.2100235829129815,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2937984,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        10071
+      ]
+    },
+    {
+      "elapsedSeconds": 9.573078207671642,
+      "sampleIntervalSeconds": 0.2100249994546175,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2938048,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        10078
+      ]
+    },
+    {
+      "elapsedSeconds": 9.783109207637608,
+      "sampleIntervalSeconds": 0.21003099996596575,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2938976,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        10085
+      ]
+    },
+    {
+      "elapsedSeconds": 9.990917458198965,
+      "sampleIntervalSeconds": 0.20780825056135654,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2960032,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        10092
+      ]
+    },
+    {
+      "elapsedSeconds": 10.200950457714498,
+      "sampleIntervalSeconds": 0.21003299951553345,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2975360,
+      "ownedPids": [
+        9824,
+        9826,
+        9841,
+        10099
+      ]
+    },
+    {
+      "elapsedSeconds": 10.411006665788591,
+      "sampleIntervalSeconds": 0.21005620807409286,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2973472,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 10.612808666191995,
+      "sampleIntervalSeconds": 0.20180200040340424,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2973568,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 10.81358312536031,
+      "sampleIntervalSeconds": 0.20077445916831493,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2975008,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 11.023636541329324,
+      "sampleIntervalSeconds": 0.21005341596901417,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2976144,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 11.233668874949217,
+      "sampleIntervalSeconds": 0.2100323336198926,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2346560,
+      "ownedPids": [
+        9824,
+        9826,
+        9841
+      ]
+    },
+    {
+      "elapsedSeconds": 11.44372195750475,
+      "sampleIntervalSeconds": 0.21005308255553246,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 0,
+      "ownedPids": [
+        9824
+      ]
+    }
+  ],
+  "finalPressure": 1,
+  "physicalQualityComplete": true
+}

@@ -1,11 +1,10 @@
+import type { Config } from "../config/types";
 /**
  * Vector search pipeline.
  * Wraps VectorIndexPort.searchNearest() to produce SearchResults.
  *
  * @module src/pipeline/vsearch
  */
-
-import type { Config } from "../config/types";
 import type { EmbeddingPort } from "../llm/types";
 import type { DocumentRow, StorePort } from "../store/types";
 import type { VectorIndexPort } from "../store/vector/types";
@@ -13,8 +12,14 @@ import type { SearchOptions, SearchResult, SearchResults } from "./types";
 
 import { normalizeContentTypes } from "../config/content-types";
 import { projectRecordEvidenceMetadata } from "../core/record-metadata";
+import {
+  assertInferenceActive,
+  assertInferenceResult,
+  withInferenceScope,
+} from "../llm/inference-scope";
 import { getContentBatch } from "../store/content-batch";
 import { err, ok } from "../store/types";
+import { resolveVectorSearchIdentity } from "../store/vector/variant-search";
 import { createChunkLookup } from "./chunk-lookup";
 import {
   applyContentTypeBoost,
@@ -88,6 +93,17 @@ export async function searchVectorWithEmbedding(
   queryEmbedding: Float32Array,
   options: SearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
+  return withInferenceScope(options, () =>
+    searchVectorWithEmbeddingOwned(deps, query, queryEmbedding, options)
+  );
+}
+
+async function searchVectorWithEmbeddingOwned(
+  deps: VectorSearchDeps,
+  query: string,
+  queryEmbedding: Float32Array,
+  options: SearchOptions = {}
+): Promise<ReturnType<typeof ok<SearchResults>>> {
   const traceStartedAt = options.traceSession ? performance.now() : 0;
   const { store, vectorIndex } = deps;
   const limit = options.limit ?? 20;
@@ -118,11 +134,37 @@ export async function searchVectorWithEmbedding(
     return err("VEC_SEARCH_UNAVAILABLE", vectorUnavailableMessage(vectorIndex));
   }
 
+  let embeddingIdentity;
+  try {
+    embeddingIdentity = resolveVectorSearchIdentity(deps.embedPort);
+  } catch (cause) {
+    return err(
+      "QUERY_FAILED",
+      cause instanceof Error ? cause.message : String(cause)
+    );
+  }
   // Search nearest neighbors
   const searchResult = await vectorIndex.searchNearest(
     queryEmbedding,
     retrievalLimit,
     {
+      embeddingIdentity,
+      eligibility: {
+        excludeMetadata: true,
+        semanticMetadata: true,
+        collection: options.collection,
+        memoryScopesAny: options.memoryFilter?.scopes,
+        excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+        relPathPrefix: options.retrievalScope?.relPathPrefix,
+        tagsAll: options.tagsAll,
+        tagsAny: options.tagsAny,
+        since: temporalRange.since,
+        until: temporalRange.until,
+        categories: options.categories,
+        author: options.author,
+        exclude: options.exclude,
+        language: options.lang,
+      },
       minScore: projectAffinityActive ? undefined : minScore,
       allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     }
@@ -140,6 +182,7 @@ export async function searchVectorWithEmbedding(
   const collectionPaths = new Map<string, string>();
   if (collectionsResult.ok) {
     for (const c of collectionsResult.value) {
+      assertInferenceActive();
       collectionPaths.set(c.name, c.path);
     }
   }
@@ -158,8 +201,15 @@ export async function searchVectorWithEmbedding(
       mirrorHashes: uniqueHashes,
     });
 
-  // Pre-fetch all chunks in one batch query (eliminates N+1)
-  const chunksMapResult = await store.getChunksBatch(uniqueHashes);
+  // Exact sequences suffice unless selection needs whole-document evidence.
+  const chunksMapResult =
+    store.getChunksBySequenceBatch &&
+    !options.intent &&
+    !options.exclude?.length
+      ? await store.getChunksBySequenceBatch(
+          vecResults.map(({ mirrorHash, seq }) => ({ mirrorHash, seq }))
+        )
+      : await store.getChunksBatch(uniqueHashes);
   if (!chunksMapResult.ok) {
     return err("QUERY_FAILED", chunksMapResult.error.message);
   }
@@ -182,6 +232,7 @@ export async function searchVectorWithEmbedding(
   >();
 
   for (const vec of vecResults) {
+    assertInferenceActive();
     const baseScore = normalizeVectorScore(vec.distance);
     if (!projectAffinityActive && baseScore < minScore) {
       continue;
@@ -191,7 +242,9 @@ export async function searchVectorWithEmbedding(
     const rawChunk = getChunk(vec.mirrorHash, vec.seq);
     const chunk = options.intent
       ? (selectBestChunkForSteering(
-          chunksMap.get(vec.mirrorHash) ?? [],
+          (chunksMap.get(vec.mirrorHash) ?? []).filter(
+            (chunk) => !options.lang || chunk.language === options.lang
+          ),
           query,
           options.intent,
           {
@@ -210,12 +263,21 @@ export async function searchVectorWithEmbedding(
     }
 
     // Get document (cached)
-    const matchingDocs = docsByMirrorHash.get(vec.mirrorHash);
+    const matchingDocs = docsByMirrorHash
+      .get(vec.mirrorHash)
+      ?.filter(
+        (doc) =>
+          vec.documentIds === undefined || vec.documentIds.includes(doc.id)
+      );
     if (!matchingDocs || matchingDocs.length === 0) {
       continue;
     }
-    const docs = auxiliaryRankingActive ? matchingDocs : [matchingDocs.at(-1)!];
+    const docs =
+      auxiliaryRankingActive || vec.documentIds !== undefined
+        ? matchingDocs
+        : [matchingDocs.at(-1)!];
     for (const doc of docs) {
+      assertInferenceActive();
       const collectionPath = collectionPaths.get(doc.collection);
       const sourceRelPath = doc.recordSourcePath ?? doc.relPath;
       const excluded =
@@ -335,6 +397,7 @@ export async function searchVectorWithEmbedding(
     const fullContentByHash = fullContentResult.value;
 
     for (const { doc, chunk, rawDistance, score } of bestByDocid.values()) {
+      assertInferenceActive();
       const fullContent = doc.mirrorHash
         ? fullContentByHash.get(doc.mirrorHash)
         : undefined;
@@ -430,6 +493,7 @@ export async function searchVectorWithEmbedding(
 
   const finalResults = results.slice(0, limit);
   for (const [index, result] of finalResults.entries()) {
+    assertInferenceActive();
     const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
     if (metadata) metadata.retrievalRank = index + 1;
   }
@@ -488,6 +552,16 @@ export async function searchVector(
   query: string,
   options: SearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
+  return withInferenceScope(options, () =>
+    searchVectorOwned(deps, query, options)
+  );
+}
+
+async function searchVectorOwned(
+  deps: VectorSearchDeps,
+  query: string,
+  options: SearchOptions = {}
+): Promise<ReturnType<typeof ok<SearchResults>>> {
   const { vectorIndex, embedPort } = deps;
 
   // Check if vector search is available
@@ -499,6 +573,7 @@ export async function searchVector(
   const embedResult = await embedPort.embed(
     formatQueryForEmbedding(query, embedPort.modelUri)
   );
+  assertInferenceResult(embedResult);
   if (!embedResult.ok) {
     return err(
       "QUERY_FAILED",
@@ -524,6 +599,7 @@ interface ChunkInfo {
 }
 
 interface DocumentInfo {
+  id: number;
   docid: string;
   uri: string;
   title: string | null;
@@ -625,11 +701,13 @@ async function buildDocumentMap(
     const docIds = activeDocs.map((d) => d.id);
     const tagsResult = await store.getTagsBatch(docIds);
 
+    if (!tagsResult.ok) return { documents, ownershipDocuments };
     if (tagsResult.ok) {
       allowedDocIds = new Set<number>();
       const tagsByDocId = tagsResult.value;
 
       for (const doc of activeDocs) {
+        assertInferenceActive();
         const docTags = new Set(
           (tagsByDocId.get(doc.id) ?? []).map((t) => t.tag)
         );
@@ -652,6 +730,7 @@ async function buildDocumentMap(
   }
 
   for (const doc of activeDocs) {
+    assertInferenceActive();
     const sourceRelPath = doc.recordSourcePath ?? doc.relPath;
     if (
       options.relPathPrefix !== undefined &&
@@ -679,6 +758,7 @@ async function buildDocumentMap(
     }
 
     const documentInfo: DocumentInfo = {
+      id: doc.id,
       docid: doc.docid,
       uri: doc.uri,
       title: doc.title,

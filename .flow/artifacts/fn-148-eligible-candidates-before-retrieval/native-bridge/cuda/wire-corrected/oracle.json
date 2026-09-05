@@ -1,0 +1,46 @@
+{
+  "targetRank": 197,
+  "excludedAhead": 197,
+  "expected": [
+    {
+      "docid": "#ff3ecf0d",
+      "score": 0.7814164012670517,
+      "uri": "gno://scaling/scope/000200.md",
+      "title": "Record",
+      "categories": [
+        "fixture"
+      ],
+      "line": 1,
+      "snippet": "needle target 200 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background background ",
+      "snippetLanguage": "en",
+      "snippetRange": {
+        "startLine": 1,
+        "endLine": 1
+      },
+      "source": {
+        "relPath": "scope/000200.md",
+        "absPath": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/scope/000200.md",
+        "mime": "text/markdown",
+        "ext": ".md",
+        "modifiedAt": "2026-09-01T00:00:00.000Z",
+        "sizeBytes": 348,
+        "sourceHash": "ff3ecf0de87fe80b498205f9d96b24c601e3f83a352e22f17ae9a916e7d576d6"
+      },
+      "conversion": {
+        "mirrorHash": "ff3ecf0de87fe80b498205f9d96b24c601e3f83a352e22f17ae9a916e7d576d6"
+      },
+      "egressLineage": {
+        "effectivePolicy": "local_only",
+        "digest": "03a0241dc16862bbffc01a6c4991a95da5425ad0b06a5f0b57f08ab8b2c41870",
+        "sources": [
+          {
+            "collection": "scaling",
+            "policy": "local_only",
+            "source": "config_default"
+          }
+        ]
+      }
+    }
+  ],
+  "completeBroadCount": 198
+}

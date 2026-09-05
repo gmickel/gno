@@ -1,0 +1,485 @@
+{
+  "phase": "cold-primer",
+  "before": false,
+  "after": true,
+  "result": {
+    "record": {
+      "schemaVersion": "gno-acceptance-v1",
+      "manifestSha256": "2f9f5c9107c8e864dc595f079382fefb921fe199fa1274a4c864d53c47b44828",
+      "caseId": "original143-sdk",
+      "deterministic": {
+        "scope": {
+          "query": "what retry budget did we decide and why",
+          "operation": "hybrid",
+          "options": {
+            "limit": 5
+          },
+          "surface": "sdk",
+          "preset": "slim-tuned"
+        },
+        "results": [
+          {
+            "uri": "gno://notes/decisions/adr-018-retry-budget.md",
+            "score": 0.9999115796142813,
+            "scores": {
+              "fusionScore": 0.13278688524590165,
+              "vecScore": 0.01639344262295082,
+              "rerankScore": 0.9996463184571254
+            },
+            "passage": {
+              "uri": "gno://notes/decisions/adr-018-retry-budget.md",
+              "sourceHash": "f5a86388e18e216b43a81e010c65acd1d3d6e72072c3fec3296a0a99d337d2d2",
+              "startLine": 1,
+              "endLine": 19,
+              "text": "# ADR-018 Retry budget\n\nStatus: proposed · Date: 2026-03-19\nDeciders: [[Priya Raman]], [[Luca Moretti]]\n\n## Context\n\nThe runbook engine needed a rule for retry budget. Earlier discussion in [[ADR-007 Migration plan]]\nand the [[Evidence vault spec]].\n\n## Decision\n\nWe sign retry budget at the postmortem builder\nboundary. Anything above the limit is queued for the next window.\n\n## Consequences\n\n- migration plan becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].",
+              "provenance": {
+                "conversion": {
+                  "mirrorHash": "f5a86388e18e216b43a81e010c65acd1d3d6e72072c3fec3296a0a99d337d2d2",
+                  "converterId": "native/markdown",
+                  "converterVersion": "1.0.0"
+                }
+              }
+            },
+            "provenance": {
+              "docid": "#f5a86388",
+              "score": 0.9999115796142813,
+              "uri": "gno://notes/decisions/adr-018-retry-budget.md",
+              "title": "ADR-018 Retry budget",
+              "contentType": "spec",
+              "categories": [
+                "spec"
+              ],
+              "line": 1,
+              "snippet": "# ADR-018 Retry budget\n\nStatus: proposed · Date: 2026-03-19\nDeciders: [[Priya Raman]], [[Luca Moretti]]\n\n## Context\n\nThe runbook engine needed a rule for retry budget. Earlier discussion in [[ADR-007 Migration plan]]\nand the [[Evidence vault spec]].\n\n## Decision\n\nWe sign retry budget at the postmortem builder\nboundary. Anything above the limit is queued for the next window.\n\n## Consequences\n\n- migration plan becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].\n",
+              "snippetLanguage": "en",
+              "snippetRange": {
+                "startLine": 1,
+                "endLine": 19
+              },
+              "source": {
+                "relPath": "decisions/adr-018-retry-budget.md",
+                "absPath": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/corpus/notes/decisions/adr-018-retry-budget.md",
+                "mime": "text/markdown",
+                "ext": ".md",
+                "modifiedAt": "2026-09-02T21:12:00.017Z",
+                "sizeBytes": 527,
+                "sourceHash": "f5a86388e18e216b43a81e010c65acd1d3d6e72072c3fec3296a0a99d337d2d2"
+              },
+              "conversion": {
+                "mirrorHash": "f5a86388e18e216b43a81e010c65acd1d3d6e72072c3fec3296a0a99d337d2d2",
+                "converterId": "native/markdown",
+                "converterVersion": "1.0.0"
+              },
+              "egressLineage": {
+                "effectivePolicy": "local_only",
+                "digest": "f952fce382f7bdb7261287c6269728088c9dc023d8430dfbde0bfa97f4e6a459",
+                "sources": [
+                  {
+                    "collection": "notes",
+                    "policy": "local_only",
+                    "source": "config_default"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "uri": "gno://notes/decisions/adr-011-retry-budget.md",
+            "score": 0.6991168994490258,
+            "scores": {
+              "fusionScore": 0.07125000000000001,
+              "vecScore": 0.015625,
+              "rerankScore": 0.9995445850711627
+            },
+            "passage": {
+              "uri": "gno://notes/decisions/adr-011-retry-budget.md",
+              "sourceHash": "4467ed579955a2f5a916a20e4c159faf1d3cdd39028a24e1d72cbed8449aa395",
+              "startLine": 1,
+              "endLine": 19,
+              "text": "# ADR-011 Retry budget\n\nStatus: proposed · Date: 2026-04-12\nDeciders: [[Mara Lindqvist]], [[Kenji Sato]]\n\n## Context\n\nThe postmortem builder needed a rule for retry budget. Earlier discussion in [[ADR-003 Handoff checklist]]\nand the [[Timeline store spec]].\n\n## Decision\n\nWe bound retry budget at the alert router\nboundary. Anything above the limit is queued for the next window.\n\n## Consequences\n\n- dedup window becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].",
+              "provenance": {
+                "conversion": {
+                  "mirrorHash": "4467ed579955a2f5a916a20e4c159faf1d3cdd39028a24e1d72cbed8449aa395",
+                  "converterId": "native/markdown",
+                  "converterVersion": "1.0.0"
+                }
+              }
+            },
+            "provenance": {
+              "docid": "#4467ed57",
+              "score": 0.6991168994490258,
+              "uri": "gno://notes/decisions/adr-011-retry-budget.md",
+              "title": "ADR-011 Retry budget",
+              "contentType": "spec",
+              "categories": [
+                "spec"
+              ],
+              "line": 1,
+              "snippet": "# ADR-011 Retry budget\n\nStatus: proposed · Date: 2026-04-12\nDeciders: [[Mara Lindqvist]], [[Kenji Sato]]\n\n## Context\n\nThe postmortem builder needed a rule for retry budget. Earlier discussion in [[ADR-003 Handoff checklist]]\nand the [[Timeline store spec]].\n\n## Decision\n\nWe bound retry budget at the alert router\nboundary. Anything above the limit is queued for the next window.\n\n## Consequences\n\n- dedup window becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].\n",
+              "snippetLanguage": "en",
+              "snippetRange": {
+                "startLine": 1,
+                "endLine": 19
+              },
+              "source": {
+                "relPath": "decisions/adr-011-retry-budget.md",
+                "absPath": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/corpus/notes/decisions/adr-011-retry-budget.md",
+                "mime": "text/markdown",
+                "ext": ".md",
+                "modifiedAt": "2026-09-02T21:12:00.017Z",
+                "sizeBytes": 528,
+                "sourceHash": "4467ed579955a2f5a916a20e4c159faf1d3cdd39028a24e1d72cbed8449aa395"
+              },
+              "conversion": {
+                "mirrorHash": "4467ed579955a2f5a916a20e4c159faf1d3cdd39028a24e1d72cbed8449aa395",
+                "converterId": "native/markdown",
+                "converterVersion": "1.0.0"
+              },
+              "egressLineage": {
+                "effectivePolicy": "local_only",
+                "digest": "f952fce382f7bdb7261287c6269728088c9dc023d8430dfbde0bfa97f4e6a459",
+                "sources": [
+                  {
+                    "collection": "notes",
+                    "policy": "local_only",
+                    "source": "config_default"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "uri": "gno://src/router/retry-budget.ts",
+            "score": 0.6969497791927699,
+            "scores": {
+              "fusionScore": 0.07076923076923078,
+              "vecScore": 0.015384615384615385,
+              "rerankScore": 1
+            },
+            "passage": {
+              "uri": "gno://src/router/retry-budget.ts",
+              "sourceHash": "4feebe6ef454148acbdc9bd9a9759d20195b81df802d730163c24d4358ceed33",
+              "startLine": 1,
+              "endLine": 21,
+              "text": "import { log } from \"../core/log\"\nimport { clock } from \"../core/clock\"\n\n/**\n * retryBudget: capsule format for the status page.\n * See notes/specs and the matching ADR for the bound it enforces.\n */\nexport type RetryBudgetOptions = {\n  limit: number\n  windowMs: number\n}\n\nexport function retryBudget(options: RetryBudgetOptions) {\n  const limit = Math.max(1, options.limit)\n  return {\n    limit,\n    accept(count: number) {\n      return count <= limit\n    },\n  }\n}",
+              "provenance": {
+                "conversion": {
+                  "mirrorHash": "4feebe6ef454148acbdc9bd9a9759d20195b81df802d730163c24d4358ceed33",
+                  "converterId": "native/plaintext",
+                  "converterVersion": "1.0.0"
+                }
+              }
+            },
+            "provenance": {
+              "docid": "#4feebe6e",
+              "score": 0.6969497791927699,
+              "uri": "gno://src/router/retry-budget.ts",
+              "title": "retry-budget",
+              "contentType": "code",
+              "categories": [
+                "code"
+              ],
+              "line": 1,
+              "snippet": "import { log } from \"../core/log\"\nimport { clock } from \"../core/clock\"\n\n/**\n * retryBudget: capsule format for the status page.\n * See notes/specs and the matching ADR for the bound it enforces.\n */\nexport type RetryBudgetOptions = {\n  limit: number\n  windowMs: number\n}\n\nexport function retryBudget(options: RetryBudgetOptions) {\n  const limit = Math.max(1, options.limit)\n  return {\n    limit,\n    accept(count: number) {\n      return count <= limit\n    },\n  }\n}\n",
+              "snippetLanguage": "en",
+              "snippetRange": {
+                "startLine": 1,
+                "endLine": 21
+              },
+              "source": {
+                "relPath": "router/retry-budget.ts",
+                "absPath": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/corpus/src/router/retry-budget.ts",
+                "mime": "text/plain",
+                "ext": ".ts",
+                "modifiedAt": "2026-09-02T21:12:00.021Z",
+                "sizeBytes": 466,
+                "sourceHash": "4feebe6ef454148acbdc9bd9a9759d20195b81df802d730163c24d4358ceed33"
+              },
+              "conversion": {
+                "mirrorHash": "4feebe6ef454148acbdc9bd9a9759d20195b81df802d730163c24d4358ceed33",
+                "converterId": "native/plaintext",
+                "converterVersion": "1.0.0"
+              },
+              "egressLineage": {
+                "effectivePolicy": "local_only",
+                "digest": "910c10028e3aebdfb2678e73ee752d03e55cc7b9477f37660c99aa385065feb7",
+                "sources": [
+                  {
+                    "collection": "src",
+                    "policy": "local_only",
+                    "source": "config_default"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "uri": "gno://notes/decisions/adr-024-retry-budget.md",
+            "score": 0.629982654267111,
+            "scores": {
+              "fusionScore": 0.07225806451612904,
+              "vecScore": 0.016129032258064516,
+              "rerankScore": 0.9988056762871871
+            },
+            "passage": {
+              "uri": "gno://notes/decisions/adr-024-retry-budget.md",
+              "sourceHash": "5d5eb137c5ae49925fd8789cd8eac73611f6c6cdf0ae195d3efad17b5a712c3c",
+              "startLine": 1,
+              "endLine": 19,
+              "text": "# ADR-024 Retry budget\n\nStatus: proposed · Date: 2026-01-25\nDeciders: [[Tobias Reuter]], [[Mara Lindqvist]]\n\n## Context\n\nThe paging bridge needed a rule for retry budget. Earlier discussion in [[ADR-012 Retry budget]]\nand the [[Paging bridge spec]].\n\n## Decision\n\nWe version retry budget at the paging bridge\nboundary. Anything above the limit is queued for the next window.\n\n## Consequences\n\n- SLO burn rate becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].",
+              "provenance": {
+                "conversion": {
+                  "mirrorHash": "5d5eb137c5ae49925fd8789cd8eac73611f6c6cdf0ae195d3efad17b5a712c3c",
+                  "converterId": "native/markdown",
+                  "converterVersion": "1.0.0"
+                }
+              }
+            },
+            "provenance": {
+              "docid": "#5d5eb137",
+              "score": 0.629982654267111,
+              "uri": "gno://notes/decisions/adr-024-retry-budget.md",
+              "title": "ADR-024 Retry budget",
+              "contentType": "spec",
+              "categories": [
+                "spec"
+              ],
+              "line": 1,
+              "snippet": "# ADR-024 Retry budget\n\nStatus: proposed · Date: 2026-01-25\nDeciders: [[Tobias Reuter]], [[Mara Lindqvist]]\n\n## Context\n\nThe paging bridge needed a rule for retry budget. Earlier discussion in [[ADR-012 Retry budget]]\nand the [[Paging bridge spec]].\n\n## Decision\n\nWe version retry budget at the paging bridge\nboundary. Anything above the limit is queued for the next window.\n\n## Consequences\n\n- SLO burn rate becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].\n",
+              "snippetLanguage": "en",
+              "snippetRange": {
+                "startLine": 1,
+                "endLine": 19
+              },
+              "source": {
+                "relPath": "decisions/adr-024-retry-budget.md",
+                "absPath": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/corpus/notes/decisions/adr-024-retry-budget.md",
+                "mime": "text/markdown",
+                "ext": ".md",
+                "modifiedAt": "2026-09-02T21:12:00.017Z",
+                "sizeBytes": 524,
+                "sourceHash": "5d5eb137c5ae49925fd8789cd8eac73611f6c6cdf0ae195d3efad17b5a712c3c"
+              },
+              "conversion": {
+                "mirrorHash": "5d5eb137c5ae49925fd8789cd8eac73611f6c6cdf0ae195d3efad17b5a712c3c",
+                "converterId": "native/markdown",
+                "converterVersion": "1.0.0"
+              },
+              "egressLineage": {
+                "effectivePolicy": "local_only",
+                "digest": "f952fce382f7bdb7261287c6269728088c9dc023d8430dfbde0bfa97f4e6a459",
+                "sources": [
+                  {
+                    "collection": "notes",
+                    "policy": "local_only",
+                    "source": "config_default"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "uri": "gno://notes/decisions/adr-012-retry-budget.md",
+            "score": 0.6271125782741954,
+            "scores": {
+              "fusionScore": 0.07174603174603175,
+              "vecScore": 0.015873015873015872,
+              "rerankScore": 0.9998356522791835
+            },
+            "passage": {
+              "uri": "gno://notes/decisions/adr-012-retry-budget.md",
+              "sourceHash": "c11074decb61bdeb36250f03a866008a3ecb92eb2ee3a1afa89b5e77db28c24b",
+              "startLine": 1,
+              "endLine": 19,
+              "text": "# ADR-012 Retry budget\n\nStatus: accepted · Date: 2026-05-13\nDeciders: [[Tobias Reuter]], [[Kenji Sato]]\n\n## Context\n\nThe on-call scheduler needed a rule for retry budget. Earlier discussion in [[ADR-001 Timeline export]]\nand the [[Status page spec]].\n\n## Decision\n\nWe cap retry budget at the postmortem builder\nboundary. Anything above the limit is queued for the next window.\n\n## Consequences\n\n- handoff checklist becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].",
+              "provenance": {
+                "conversion": {
+                  "mirrorHash": "c11074decb61bdeb36250f03a866008a3ecb92eb2ee3a1afa89b5e77db28c24b",
+                  "converterId": "native/markdown",
+                  "converterVersion": "1.0.0"
+                }
+              }
+            },
+            "provenance": {
+              "docid": "#c11074de",
+              "score": 0.6271125782741954,
+              "uri": "gno://notes/decisions/adr-012-retry-budget.md",
+              "title": "ADR-012 Retry budget",
+              "contentType": "spec",
+              "categories": [
+                "spec"
+              ],
+              "line": 1,
+              "snippet": "# ADR-012 Retry budget\n\nStatus: accepted · Date: 2026-05-13\nDeciders: [[Tobias Reuter]], [[Kenji Sato]]\n\n## Context\n\nThe on-call scheduler needed a rule for retry budget. Earlier discussion in [[ADR-001 Timeline export]]\nand the [[Status page spec]].\n\n## Decision\n\nWe cap retry budget at the postmortem builder\nboundary. Anything above the limit is queued for the next window.\n\n## Consequences\n\n- handoff checklist becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].\n",
+              "snippetLanguage": "en",
+              "snippetRange": {
+                "startLine": 1,
+                "endLine": 19
+              },
+              "source": {
+                "relPath": "decisions/adr-012-retry-budget.md",
+                "absPath": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/corpus/notes/decisions/adr-012-retry-budget.md",
+                "mime": "text/markdown",
+                "ext": ".md",
+                "modifiedAt": "2026-09-02T21:12:00.017Z",
+                "sizeBytes": 530,
+                "sourceHash": "c11074decb61bdeb36250f03a866008a3ecb92eb2ee3a1afa89b5e77db28c24b"
+              },
+              "conversion": {
+                "mirrorHash": "c11074decb61bdeb36250f03a866008a3ecb92eb2ee3a1afa89b5e77db28c24b",
+                "converterId": "native/markdown",
+                "converterVersion": "1.0.0"
+              },
+              "egressLineage": {
+                "effectivePolicy": "local_only",
+                "digest": "f952fce382f7bdb7261287c6269728088c9dc023d8430dfbde0bfa97f4e6a459",
+                "sources": [
+                  {
+                    "collection": "notes",
+                    "policy": "local_only",
+                    "source": "config_default"
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "citations": [],
+        "modelInputs": [
+          {
+            "role": "generation",
+            "modelId": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+            "input": [
+              "You expand search queries for a hybrid search system. Respond in the same language as the query.\n\nQuery: \"what retry budget did we decide and why\"\n\nGenerate JSON with:\n1. \"lexicalQueries\": 2-3 keyword variations using synonyms (for BM25)\n2. \"vectorQueries\": 2-3 semantic rephrasings capturing intent (for embeddings)\n3. \"hyde\": A 50-100 word passage that directly answers the query, as if excerpted from a relevant document\n\nRules:\n- Keep proper nouns exactly as written\n- Preserve quoted phrases and negated terms from the query in lexicalQueries\n- Keep symbol-heavy technical entities exactly (for example: C++, C#, Node.js)\n- Be concise - each variation 3-8 words\n- HyDE should read like actual documentation, not a question\n\nRespond with valid JSON only.",
+              {
+                "temperature": 0,
+                "seed": 42,
+                "maxTokens": 512,
+                "contextSize": 2048
+              }
+            ]
+          },
+          {
+            "role": "embedding",
+            "modelId": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "input": [
+              "Instruct: Retrieve relevant documents for the given query\nQuery: what retry budget did we decide and why"
+            ]
+          },
+          {
+            "role": "embedding",
+            "modelId": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "input": {
+              "nativeMethod": "getEmbeddingFor",
+              "context": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "arguments": [
+                [
+                  641,
+                  1235,
+                  25,
+                  31562,
+                  9760,
+                  9293,
+                  369,
+                  279,
+                  2661,
+                  3239,
+                  198,
+                  2859,
+                  25,
+                  1128,
+                  22683,
+                  8039,
+                  1521,
+                  582,
+                  10279,
+                  323,
+                  3170
+                ]
+              ]
+            }
+          },
+          {
+            "role": "reranking",
+            "modelId": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "input": [
+              "what retry budget did we decide and why",
+              [
+                "# ADR-018 Retry budget\n\nStatus: proposed · Date: 2026-03-19\nDeciders: [[Priya Raman]], [[Luca Moretti]]\n\n## Context\n\nThe runbook engine needed a rule for retry budget. Earlier discussion in [[ADR-007 Migration plan]]\nand the [[Evidence vault spec]].\n\n## Decision\n\nWe sign retry budget at the postmortem builder\nboundary. Anything above the limit is queued for the next window.\n\n## Consequences\n\n- migration plan becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].\n",
+                "# ADR-024 Retry budget\n\nStatus: proposed · Date: 2026-01-25\nDeciders: [[Tobias Reuter]], [[Mara Lindqvist]]\n\n## Context\n\nThe paging bridge needed a rule for retry budget. Earlier discussion in [[ADR-012 Retry budget]]\nand the [[Paging bridge spec]].\n\n## Decision\n\nWe version retry budget at the paging bridge\nboundary. Anything above the limit is queued for the next window.\n\n## Consequences\n\n- SLO burn rate becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].\n",
+                "# ADR-012 Retry budget\n\nStatus: accepted · Date: 2026-05-13\nDeciders: [[Tobias Reuter]], [[Kenji Sato]]\n\n## Context\n\nThe on-call scheduler needed a rule for retry budget. Earlier discussion in [[ADR-001 Timeline export]]\nand the [[Status page spec]].\n\n## Decision\n\nWe cap retry budget at the postmortem builder\nboundary. Anything above the limit is queued for the next window.\n\n## Consequences\n\n- handoff checklist becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].\n",
+                "# ADR-011 Retry budget\n\nStatus: proposed · Date: 2026-04-12\nDeciders: [[Mara Lindqvist]], [[Kenji Sato]]\n\n## Context\n\nThe postmortem builder needed a rule for retry budget. Earlier discussion in [[ADR-003 Handoff checklist]]\nand the [[Timeline store spec]].\n\n## Decision\n\nWe bound retry budget at the alert router\nboundary. Anything above the limit is queued for the next window.\n\n## Consequences\n\n- dedup window becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].\n",
+                "import { log } from \"../core/log\"\nimport { clock } from \"../core/clock\"\n\n/**\n * retryBudget: capsule format for the status page.\n * See notes/specs and the matching ADR for the bound it enforces.\n */\nexport type RetryBudgetOptions = {\n  limit: number\n  windowMs: number\n}\n\nexport function retryBudget(options: RetryBudgetOptions) {\n  const limit = Math.max(1, options.limit)\n  return {\n    limit,\n    accept(count: number) {\n      return count <= limit\n    },\n  }\n}\n",
+                "# Meeting 2026-01-03\n\nAttendees: [[Priya Raman]], [[Mara Lindqvist]], [[Kenji Sato]]\n\n## Agenda\n\n1. search index in the evidence vault — see [[Runbook engine spec]]\n2. [[ADR-018 Retry budget]] review\n3. On-call handoff — [[Incident Playbooks]]\n\n## Notes\n\nTobias raised that encryption at rest still breaks under retry budget.\nAgreed to defer to Q4.\nCobalt Paging follow-up is tracked in [[Vendor evaluation]].\n\n## Actions\n\n- Follow up on [[Q4 budget draft]] (not yet written).\n- Luca: update [[Evidence vault spec]].\n",
+                "# Meeting 2026-05-10\n\nAttendees: [[Mara Lindqvist]], [[Tobias Reuter]], [[Luca Moretti]]\n\n## Agenda\n\n1. retry budget in the postmortem builder — see [[Status page spec]]\n2. [[ADR-018 Retry budget]] review\n3. On-call handoff — [[Incident Playbooks]]\n\n## Notes\n\nMara raised that cold start still breaks under dedup window.\nAgreed to spike it.\nCobalt Paging follow-up is tracked in [[Vendor evaluation]].\n\n## Actions\n\n- Follow up on [[Vendor SOC2 letter]] (not yet written).\n- Kenji: update [[Timeline store spec]].\n",
+                "# Meeting 2026-05-17\n\nAttendees: [[Ines Okafor]], [[Tobias Reuter]], [[Mara Lindqvist]]\n\n## Agenda\n\n1. webhook signing in the timeline store — see [[Paging bridge spec]]\n2. [[ADR-018 Retry budget]] review\n3. On-call handoff — [[Incident Playbooks]]\n\n## Notes\n\nLuca raised that retry budget still breaks under rate limits.\nAgreed to defer to Q4.\nCobalt Paging follow-up is tracked in [[Vendor evaluation]].\n\n## Actions\n\n- Luca: update [[Runbook engine spec]].\n",
+                "# Meeting 2026-03-03\n\nAttendees: [[Mara Lindqvist]], [[Priya Raman]], [[Luca Moretti]]\n\n## Agenda\n\n1. retry budget in the on-call scheduler — see [[Status page spec]]\n2. [[ADR-009 Dedup window]] review\n3. On-call handoff — [[Incident Playbooks]]\n\n## Notes\n\nTobias raised that retry budget still breaks under runbook versioning.\nAgreed to write an ADR.\nHalcyon Identity follow-up is tracked in [[Vendor evaluation]].\n\n## Actions\n\n- Follow up on [[Load test 2026-09]] (not yet written).\n- Mara: update [[Paging bridge spec]].\n",
+                "Bounded retries in paging systems\nAbstract\nRetry budgets prevent paging storms by capping redelivery per incident\nwindow.\nKeywords: incident response, Harbor, cold start\n\n-- 1 of 1 --\n",
+                "# Decisions Log\n\n- [[ADR-001 Timeline export]]\n- [[ADR-002 Webhook signing]]\n- [[ADR-003 Handoff checklist]]\n- [[ADR-004 Escalation policy]]\n- [[ADR-005 Rate limits]]\n- [[ADR-006 Rate limits]]\n- [[ADR-007 Migration plan]]\n- [[ADR-008 Escalation policy]]\n- [[ADR-009 Dedup window]]\n- [[ADR-010 Migration plan]]\n- [[ADR-011 Retry budget]]\n- [[ADR-012 Retry budget]]\n- [[ADR-013 Search index]]\n- [[ADR-014 Timeline export]]\n- [[ADR-015 Capsule format]]\n- [[ADR-016 Capsule format]]\n- [[ADR-017 Incident severity]]\n- [[ADR-018 Retry budget]]\n- [[ADR-019 Webhook signing]]\n- [[ADR-020 Migration plan]]\n- [[ADR-021 Sqlite schema]]\n- [[ADR-022 SLO burn rate]]\n- [[ADR-023 Runbook versioning]]\n- [[ADR-024 Retry budget]]\n- [[ADR-025 Incident severity]]\n- [[ADR-026 Webhook signing]]\n- [[ADR-027 Quiet hours]]\n- [[ADR-028 SLO burn rate]]\n",
+                "# Timeline store spec\n\nPart of [[Architecture]]. Owner: [[Ines Okafor]].\n\n## Purpose\n\nThe timeline store is the Harbor component that turns encryption at rest events into\ndurable records. It depends on the [[Paging bridge spec]] and [[Postmortem builder spec]]\nand must keep working in [[Offline mode]].\n\n## Constraints\n\n- SLO burn rate: bounded, see [[Glossary]].\n- quiet hours: recorded in the [[Decisions Log]].\n- Every write is appended to the [[Evidence vault spec]] with a content hash.\n\n## Open questions\n\n- Does the timeline store need its own [[Migration plan]]?\n- See [[Meeting 2026-03-12]] for the last discussion.\n",
+                "# Roadmap 2026\n\n- Q3: [[Offline mode]], [[ADR-012 Encryption at rest]]\n- Q4: [[Migration plan]], [[Vendor evaluation]], [[Timeline export]] (not started)\n",
+                "# Priya Raman\n\nMember of [[Team]]. Owns [[Paging bridge spec]] and [[ADR-015 Capsule format]].\nUsual on-call pair: [[Kenji Sato]].\n",
+                "# Luca Moretti\n\nMember of [[Team]]. Owns [[Status page spec]] and [[ADR-005 Rate limits]].\nUsual on-call pair: [[Kenji Sato]].\n",
+                "# ADR-007 Migration plan\n\nStatus: accepted · Date: 2026-08-08\nDeciders: [[Priya Raman]], [[Tobias Reuter]]\n\n## Context\n\nThe paging bridge needed a rule for migration plan. Earlier discussion in [[ADR-003 Handoff checklist]]\nand the [[Paging bridge spec]].\n\n## Decision\n\nWe bound migration plan at the timeline store\nboundary. Anything above the limit is dropped with an audit row.\n\n## Consequences\n\n- timeline export becomes a first-class column in the [[Timeline store spec]].\n- Tracked in [[Decisions Log]] and [[Roadmap 2026]].\n",
+                "# Evidence vault spec\n\nPart of [[Architecture]]. Owner: [[Mara Lindqvist]].\n\n## Purpose\n\nThe evidence vault is the Harbor component that turns runbook versioning events into\ndurable records. It depends on the [[Timeline store spec]] and [[Runbook engine spec]]\nand must keep working in [[Offline mode]].\n\n## Constraints\n\n- audit trail: bounded, see [[Glossary]].\n- quiet hours: recorded in the [[Decisions Log]].\n- Every write is appended to the [[Evidence vault spec]] with a content hash.\n\n## Open questions\n\n- Does the evidence vault need its own [[Migration plan]]?\n- See [[Meeting 2026-07-16]] for the last discussion.\n",
+                "# Tobias Reuter\n\nMember of [[Team]]. Owns [[Timeline store spec]] and [[ADR-003 Handoff checklist]].\nUsual on-call pair: [[Mara Lindqvist]].\n",
+                "# Mara Lindqvist\n\nMember of [[Team]]. Owns [[Status page spec]] and [[ADR-002 Webhook signing]].\nUsual on-call pair: [[Luca Moretti]].\n",
+                "# Kenji Sato\n\nMember of [[Team]]. Owns [[Runbook engine spec]] and [[ADR-017 Incident severity]].\nUsual on-call pair: [[Mara Lindqvist]].\n"
+              ]
+            ]
+          }
+        ],
+        "semanticState": {
+          "status": "incomplete",
+          "vectorsUsed": true,
+          "vectorStatus": "used",
+          "error": [
+            "native_fallback"
+          ],
+          "fallbacks": [
+            {
+              "capability": "query_expansion",
+              "status": "failed",
+              "reasonCode": "expansion_error"
+            }
+          ],
+          "verification": null
+        }
+      },
+      "generatedAnswer": null,
+      "transport": {}
+    },
+    "coverage": "incomplete",
+    "reasons": [
+      "native_fallback"
+    ]
+  },
+  "queryDurationMs": 11072.389709,
+  "wholeDurationMs": 13502.366583,
+  "processIdentity": {
+    "pid": 8337,
+    "runId": "e0d427a1-7f63-4fe8-b6ab-8e60a3d98967",
+    "sourceRoot": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package",
+    "startedAt": "2026-09-05T04:05:29.888Z",
+    "directory": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/sdk/protocol/session-hmGwKv",
+    "preflightMs": 2344.5148329999997,
+    "harnessSha256": {
+      "session-driver.ts": "7b514fcb39d28bb1b83fde0b1b16107d6775b3b49b11cec0f3ef5fc62653f0ed",
+      "session-child.ts": "8c1c23a1173a36b41f662d0fee0e9d459d74995fc3547697bb30c84fa5d84921",
+      "native-adapter.ts": "78420014cdf19274239e5ba3ab761609252f6a5644f81e9a5c7564267499da9c",
+      "native-capture.ts": "594304497f74c59e680792945890769c0034ae81d00bcae6b8b0480510393e21",
+      "capture-contract.ts": "b1607196966658972c9ab2c2ee8dc3705ebb85b9f907e11cdfab6c8aad61853a",
+      "child-receipt.ts": "1f6066b90352fe009eca03e5766b6f85e48844efd6a65295741f7223a95c50dc",
+      "parent-capture.ts": "ea0506c429c9aae60fd0688839616728ac58594f6a70bdb72d94346258aa3aa9",
+      "native-child-preload.ts": "e5308ab70944f03aa26fb4b531ace04021342f2c562acd51956c1be8bf4ef521",
+      "manifest.ts": "4d59390e721d45f2cba3b3b63672bc618c64a84aa0913b0a8c9f8497299d87bc",
+      "records.ts": "0a31dbbc903706acaf404658e816bc6002046235a6fee22d0636db94ed0226c0",
+      "../agentic/canonical.ts": "f561a76f60e8e42a9ce26b7c933420e93cb4a8103620bb12f9ec6aff901d4442",
+      "../../scripts/package-smoke-isolation.ts": "5d37a595f6da0446106ae2d906b936d0907420d1db855d90ecbf1809e7d3672a"
+    }
+  }
+}

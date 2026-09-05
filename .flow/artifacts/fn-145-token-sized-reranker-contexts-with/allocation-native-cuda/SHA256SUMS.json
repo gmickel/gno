@@ -1,0 +1,200 @@
+{
+  "fixture.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/fixture.json",
+    "sourceSha256": "b062c891086c63f1021050b8fb5fba4dfbea81a6d0bc30eeeda04a87011bdeb1",
+    "artifactSha256": "80f409476f08a1828a0085e97b4972d2682243c7b435391a0811c440a6557508",
+    "sourceBytes": 7326
+  },
+  "package-pins.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/package-pins.json",
+    "sourceSha256": "feb88a01c935f82ca19647290d83a8d24f005aa9437358d0b318444ae82b7ae9",
+    "artifactSha256": "f39bccfaab0a616bfde0bf997c84ec0e5f604182157bcc6fec73e3c947cebfd3",
+    "sourceBytes": 99851
+  },
+  "protocol.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/protocol.json",
+    "sourceSha256": "de90a1684555ee41cc70f533471b785d9d3941275003c563ded7a5c6a46112ad",
+    "artifactSha256": "b1090e10a6ebeb4035574f72d8f2948a4111b4b3e1fe573996ee06fd458e03e1",
+    "sourceBytes": 1315
+  },
+  "helper-pins.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/helper-pins.json",
+    "sourceSha256": "c4ad9356bbdb46c9105db0f7788a8b8e8ce2b62fdf3a40e9f58df8601862cdbb",
+    "artifactSha256": "72df8e36257ba436a26aa93f63082d5b9463a66ff946f3cb090c61d72611c72c",
+    "sourceBytes": 675
+  },
+  "helper-postcheck.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/helper-postcheck.json",
+    "sourceSha256": "118ef260a163de133df3c8523140db2439861bc67d1c57568b8252dcc90383c8",
+    "artifactSha256": "856901ffa35ce1c8dfd7412627f87d77f10d2aa941b69fcef3a6479b2f3183ad",
+    "sourceBytes": 37
+  },
+  "hooks.ts.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/hooks.ts",
+    "sourceSha256": "2429d8968f325bbea81f7fecdc210b33991e5555a92575e7558a58b39656f2e0",
+    "artifactSha256": "61f5de9c64e98d946d5d46a2f4434c33c2229d1bf6b6420a5fedca8b73dd3169",
+    "sourceBytes": 2804
+  },
+  "launch.ts.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/launch.ts",
+    "sourceSha256": "337e46b86aec2b68ba68369ef474f7f6759d1069d821ce9ba73b021df7cf274c",
+    "artifactSha256": "6995e34ead8f23c2b713975f795bc6de10d6ad21c7a6416fb98214a1e98a93dc",
+    "sourceBytes": 394
+  },
+  "child.ts.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/child.ts",
+    "sourceSha256": "8c4efb68b0338062ead44bea84436700e9d492c58ad1c1ac9c5d697de1cf0c57",
+    "artifactSha256": "d977f17713f3666d7ee7ea52963e6e0e0df9e6bfc21fd2bfaefdfa875a6e79b9",
+    "sourceBytes": 2605
+  },
+  "run.ts.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/run.ts",
+    "sourceSha256": "efd7219bcb66d0e9225cac9a854aa884d34fcf05dd2a1d8b150cd8c4f23f65d8",
+    "artifactSha256": "5aa04587de12120af700ef2dce849d6c9dbbed0abb9404861ec95199b5c8247a",
+    "sourceBytes": 1753
+  },
+  "supervise.py.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/supervise.py",
+    "sourceSha256": "83734c1afea3cb825473f87af903ec345ccb9b168c10579a2c1915eb7042aab9",
+    "artifactSha256": "ce845b61c2f0b4ae7831289e0fa1483383febf8d752fe870b296d5db95b4895a",
+    "sourceBytes": 5714
+  },
+  "hooks.test.ts.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/hooks.test.ts",
+    "sourceSha256": "b0ce798dfbf9dd553f6db40f46baa473cb826c09f22fb8e9283c819a50dc09ea",
+    "artifactSha256": "1ea69bf9d8802e23656b6229e0c1a339fa3c5a930c4f1a3fe7d58b6cae0532fa",
+    "sourceBytes": 3148
+  },
+  "cpu-tests.log.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/cpu-tests.log",
+    "sourceSha256": "6c61af58dbb5deedf99d770acd67bcc9e39d70d9ae1a9c6939df600aea580913",
+    "artifactSha256": "2c2bfe4b675a0036a07a1aab6250569bf51e726e8acb30c8b5215647a063692d",
+    "sourceBytes": 526
+  },
+  "analyze.py.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/analyze.py",
+    "sourceSha256": "78e2e9873402f0316e1e6e147586da926dcdcf3283c5b84aafa4624eabffed63",
+    "artifactSha256": "5631a71e0017004d7b5420f97bf23084df80ed77c2262895e47abb5ebd4aa0a5",
+    "sourceBytes": 5883
+  },
+  "metric-source-pins.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/metric-source-pins.json",
+    "sourceSha256": "0063c3f55774b37f0fed5db385af0279a908ed967c32516b6a5e170107e2f920",
+    "artifactSha256": "74162c05dbd21c4f91d0119d61dbd67dbb25f75ca55af2dc65af77dcca0a715e",
+    "sourceBytes": 1668
+  },
+  "model-metadata.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/model-metadata.json",
+    "sourceSha256": "37914d6c61e7bffdffaa6d0b0759c82a684499547266d195f203bcb2dfd9ff08",
+    "artifactSha256": "ffe7d892ac99d295c559145eddb91902808f3b8125d7d029ebc059f4b74c6faa",
+    "sourceBytes": 65
+  },
+  "native-build.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/native-build.json",
+    "sourceSha256": "e985d3d79f48f7574468fdfa473c4c164d81ce8dc30cee57cdd9e7977b9b7cc7",
+    "artifactSha256": "6f331b5979902840a50cc9f42c53d79b4955cee70c7cc8874ec97695dfcc33e2",
+    "sourceBytes": 218
+  },
+  "sized/headroom.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/sized/headroom.json",
+    "sourceSha256": "a67755781bb96a2b4ef7d81e8c7279a792cbaca51a844ea1e5cf5ee92695bf92",
+    "artifactSha256": "10188b60a428cbddb817a7198d6dc94c7d6bc0fa1294c2103f32be9fbffb5889",
+    "sourceBytes": 668
+  },
+  "sized/plan.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/sized/plan.json",
+    "sourceSha256": "0d1713f9a066570499c7b44bd64cc0669e8240943cc8c227195fb87fbded842c",
+    "artifactSha256": "240943824f45e3aac929f89b5052f3326beca0156146eb3cb9f50e37152dcbb0",
+    "sourceBytes": 440
+  },
+  "sized/result.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/sized/result.json",
+    "sourceSha256": "8c8d30cc79e65298e6391b5bc369441801e346c12fb316999b52e1251a0f6d25",
+    "artifactSha256": "4e989ffb8cd2dec6561ac120e6603a75771177644f06cbc92f0cee20e981d7c0",
+    "sourceBytes": 1860
+  },
+  "sized/child.jsonl.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/sized/child.jsonl",
+    "sourceSha256": "a898c9abf38a2312c5c000b176b9c50f0d142ff6fe345a7a0a6fe62f682d34e3",
+    "artifactSha256": "d2a7e7369558df7af9198675f76771d1348dedcb76541e3ef634890650cba6ff",
+    "sourceBytes": 94169
+  },
+  "sized/resources.jsonl.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/sized/resources.jsonl",
+    "sourceSha256": "bb3c56119bde0b56f2c8f14991cb7ec9b738ba664c33fc78dd2a52c393bf536d",
+    "artifactSha256": "9f7cf1fa531ad1b555bbb5502bd0f2a1291986f34bdd71a28def6fab1a7af846",
+    "sourceBytes": 4630
+  },
+  "sized/process-receipt.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/sized/process-receipt.json",
+    "sourceSha256": "73b6e261832687454ae4a72e4b5dbee7ecead552eee7b38553d53dd63e358280",
+    "artifactSha256": "9e8aee89d0742df4130aabfeeb2470e3a6caa784fadb12aca2d4adea1797b829",
+    "sourceBytes": 1634
+  },
+  "sized/stdout.log.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/sized/stdout.log",
+    "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "artifactSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+    "sourceBytes": 0
+  },
+  "sized/stderr.log.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/sized/stderr.log",
+    "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "artifactSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+    "sourceBytes": 0
+  },
+  "auto/headroom.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/auto/headroom.json",
+    "sourceSha256": "d5cde086ea5bdfd1e48220d7121e534b068cc63c285359dc125b22d51a9872be",
+    "artifactSha256": "41a53bb8cf00413e8f2b59a6082c2a881301f95d29becd9eb00b4ce8565180f7",
+    "sourceBytes": 668
+  },
+  "auto/plan.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/auto/plan.json",
+    "sourceSha256": "92a6200d6115e39f8c80cffe91300e5f27e59341c08170dcd6acfb8abd3541d0",
+    "artifactSha256": "50a37a285be52a6baf461082ccd6021096b9db04421d81092d0a1867415f244a",
+    "sourceBytes": 437
+  },
+  "auto/result.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/auto/result.json",
+    "sourceSha256": "b828e812c240314eae619427cf334b95cffb4857f3def60b3264087eaf49dfbd",
+    "artifactSha256": "efba0fc6a22bd9c2b72fe4f4250d07a387fb4f6924fa0b6bfb6ae4b6aa6389ff",
+    "sourceBytes": 1857
+  },
+  "auto/child.jsonl.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/auto/child.jsonl",
+    "sourceSha256": "4242a8c6da1d7af4f44a59c45cfe2a97b7e27a6e7f28eb7570d449310d42a366",
+    "artifactSha256": "eedd1c8103854032798025c52c6ae20760b94ea44e4ee1b6df85625ddbdaaff9",
+    "sourceBytes": 94208
+  },
+  "auto/resources.jsonl.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/auto/resources.jsonl",
+    "sourceSha256": "a9712bde56cb2127bfc9c3f5ab99811142e863d9ca0b3b54db63c1b8b9f91975",
+    "artifactSha256": "48d3ab31b2cc629f67f85075cae79ac436e2ee4184416f5a1003e2ff388a64ba",
+    "sourceBytes": 4148
+  },
+  "auto/process-receipt.json.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/auto/process-receipt.json",
+    "sourceSha256": "fdd7834f7ad9030184f9595fb1b65a19db5e2333ebc4d298a37580f212bd87a5",
+    "artifactSha256": "809dee282f403f8cfed4f1d4e64f871ea3ef75e0869e7fe00a6769b7cf3c6177",
+    "sourceBytes": 1639
+  },
+  "auto/stdout.log.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/auto/stdout.log",
+    "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "artifactSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+    "sourceBytes": 0
+  },
+  "auto/stderr.log.gz": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/auto/stderr.log",
+    "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "artifactSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+    "sourceBytes": 0
+  },
+  "analysis.json": {
+    "source": "/home/gordon/.cache/agent-tmp/gno-fn145-native-allocation-cuda-44cf2a1d/analysis.json",
+    "sourceSha256": "c6cfe05fb16eb6afe0d4e9412cd11a6394622637ab720f4075bd5466869077be",
+    "artifactSha256": "c6cfe05fb16eb6afe0d4e9412cd11a6394622637ab720f4075bd5466869077be",
+    "sourceBytes": 3712
+  }
+}

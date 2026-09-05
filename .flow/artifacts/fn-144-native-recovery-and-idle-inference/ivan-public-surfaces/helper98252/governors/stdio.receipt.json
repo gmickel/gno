@@ -1,0 +1,679 @@
+{
+  "policy": {
+    "stratum": "capacity-warning30-v1",
+    "pressureKey": "kern.memorystatus_vm_pressure_level",
+    "normal": 1,
+    "warning": 2,
+    "critical": 4,
+    "warningBudgetSeconds": 30,
+    "wallSeconds": 120,
+    "ownedGroupRssMiB": 6144,
+    "pollSeconds": 0.2,
+    "xnuSourceCommit": "f6217f891ac0bb64f3d375211650a4c1ff8ca1ea",
+    "warningAccounting": "sample-hold monotonic seconds; raw transition samples retained; resolution <=250ms"
+  },
+  "governorSha256": "24713377c597313ddd1b0e68e4cd64ad7b50ee8bcce9b40173bb36f9feeba90f",
+  "command": [
+    "/tmp/gno-native-tools-1314.KrONBb/bun-darwin-aarch64/bun",
+    "/private/tmp/fn1445-final-98252a9c.9vA2jZ/drive.ts",
+    "--native",
+    "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-98252a9c/plan.json",
+    "stdio"
+  ],
+  "pid": 5859,
+  "exit": 2,
+  "stopReason": null,
+  "wallSeconds": 10.633882584050298,
+  "cumulativeWarningSeconds": 0.0,
+  "samples": [
+    {
+      "elapsedSeconds": 0.0010855002328753471,
+      "sampleIntervalSeconds": 0.0010855002328753471,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 1296,
+      "ownedPids": [
+        5859
+      ]
+    },
+    {
+      "elapsedSeconds": 0.2072567092254758,
+      "sampleIntervalSeconds": 0.20617120899260044,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 172560,
+      "ownedPids": [
+        5859,
+        5862
+      ]
+    },
+    {
+      "elapsedSeconds": 0.41728900000452995,
+      "sampleIntervalSeconds": 0.21003229077905416,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 390048,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 0.6252920841798186,
+      "sampleIntervalSeconds": 0.20800308417528868,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 454560,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 0.8353223754093051,
+      "sampleIntervalSeconds": 0.21003029122948647,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 461280,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        5881
+      ]
+    },
+    {
+      "elapsedSeconds": 1.0387557921931148,
+      "sampleIntervalSeconds": 0.20343341678380966,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 463536,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        5888
+      ]
+    },
+    {
+      "elapsedSeconds": 1.2487966250628233,
+      "sampleIntervalSeconds": 0.21004083286970854,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 466592,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        5895
+      ]
+    },
+    {
+      "elapsedSeconds": 1.45882020983845,
+      "sampleIntervalSeconds": 0.21002358477562666,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 471264,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        5903
+      ]
+    },
+    {
+      "elapsedSeconds": 1.6688505420461297,
+      "sampleIntervalSeconds": 0.21003033220767975,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 472816,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        5910
+      ]
+    },
+    {
+      "elapsedSeconds": 1.87887754291296,
+      "sampleIntervalSeconds": 0.21002700086683035,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 497280,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        5917
+      ]
+    },
+    {
+      "elapsedSeconds": 2.0889318753033876,
+      "sampleIntervalSeconds": 0.2100543323904276,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 843024,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        5924
+      ]
+    },
+    {
+      "elapsedSeconds": 2.2910092091187835,
+      "sampleIntervalSeconds": 0.20207733381539583,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2262320,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        5931
+      ]
+    },
+    {
+      "elapsedSeconds": 2.4912136252969503,
+      "sampleIntervalSeconds": 0.20020441617816687,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4575152,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        5938
+      ]
+    },
+    {
+      "elapsedSeconds": 2.7000628346577287,
+      "sampleIntervalSeconds": 0.20884920936077833,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4759808,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        5945
+      ]
+    },
+    {
+      "elapsedSeconds": 2.9101130003109574,
+      "sampleIntervalSeconds": 0.21005016565322876,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4760528,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 3.1201685005798936,
+      "sampleIntervalSeconds": 0.21005550026893616,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4762976,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 3.330243500880897,
+      "sampleIntervalSeconds": 0.21007500030100346,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4768304,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 3.5402795001864433,
+      "sampleIntervalSeconds": 0.21003599930554628,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4772336,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 3.7503383345901966,
+      "sampleIntervalSeconds": 0.21005883440375328,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4773360,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 3.96040016785264,
+      "sampleIntervalSeconds": 0.21006183326244354,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4773488,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 4.164997792802751,
+      "sampleIntervalSeconds": 0.2045976249501109,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4773616,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 4.374809875153005,
+      "sampleIntervalSeconds": 0.20981208235025406,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4773632,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 4.584868084639311,
+      "sampleIntervalSeconds": 0.2100582094863057,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4773632,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 4.794917459599674,
+      "sampleIntervalSeconds": 0.2100493749603629,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4773648,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 5.0049447091296315,
+      "sampleIntervalSeconds": 0.21002724952995777,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4775648,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6027
+      ]
+    },
+    {
+      "elapsedSeconds": 5.210241959430277,
+      "sampleIntervalSeconds": 0.20529725030064583,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4775968,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6034
+      ]
+    },
+    {
+      "elapsedSeconds": 5.420270834118128,
+      "sampleIntervalSeconds": 0.21002887468785048,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4776416,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6042
+      ]
+    },
+    {
+      "elapsedSeconds": 5.627226375043392,
+      "sampleIntervalSeconds": 0.20695554092526436,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4774880,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6051
+      ]
+    },
+    {
+      "elapsedSeconds": 5.837257792241871,
+      "sampleIntervalSeconds": 0.21003141719847918,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4775808,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6057
+      ]
+    },
+    {
+      "elapsedSeconds": 6.043971584178507,
+      "sampleIntervalSeconds": 0.20671379193663597,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4775808,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6064
+      ]
+    },
+    {
+      "elapsedSeconds": 6.254007125273347,
+      "sampleIntervalSeconds": 0.21003554109483957,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4775872,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6071
+      ]
+    },
+    {
+      "elapsedSeconds": 6.464051250368357,
+      "sampleIntervalSeconds": 0.2100441250950098,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4666944,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6078
+      ]
+    },
+    {
+      "elapsedSeconds": 6.672337959520519,
+      "sampleIntervalSeconds": 0.20828670915216208,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4986592,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 6.875868542119861,
+      "sampleIntervalSeconds": 0.20353058259934187,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 4986608,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 7.085947792045772,
+      "sampleIntervalSeconds": 0.21007924992591143,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5049008,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6099
+      ]
+    },
+    {
+      "elapsedSeconds": 7.29599566757679,
+      "sampleIntervalSeconds": 0.21004787553101778,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5651072,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 7.506030500866473,
+      "sampleIntervalSeconds": 0.21003483328968287,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5779904,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 7.716076084412634,
+      "sampleIntervalSeconds": 0.21004558354616165,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5330944,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 7.9192301677539945,
+      "sampleIntervalSeconds": 0.2031540833413601,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5202864,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 8.12815354205668,
+      "sampleIntervalSeconds": 0.20892337430268526,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5272800,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 8.338249209336936,
+      "sampleIntervalSeconds": 0.21009566728025675,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5871872,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 8.548341000452638,
+      "sampleIntervalSeconds": 0.2100917911157012,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5672048,
+      "ownedPids": [
+        5859,
+        5862,
+        5864
+      ]
+    },
+    {
+      "elapsedSeconds": 8.758355917409062,
+      "sampleIntervalSeconds": 0.2100149169564247,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5811024,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6159
+      ]
+    },
+    {
+      "elapsedSeconds": 8.96070383489132,
+      "sampleIntervalSeconds": 0.2023479174822569,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5813088,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6166
+      ]
+    },
+    {
+      "elapsedSeconds": 9.163688084110618,
+      "sampleIntervalSeconds": 0.20298424921929836,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5816912,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6174
+      ]
+    },
+    {
+      "elapsedSeconds": 9.373799584805965,
+      "sampleIntervalSeconds": 0.21011150069534779,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5825456,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6180
+      ]
+    },
+    {
+      "elapsedSeconds": 9.574769125320017,
+      "sampleIntervalSeconds": 0.20096954051405191,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5914992,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6187
+      ]
+    },
+    {
+      "elapsedSeconds": 9.784802125766873,
+      "sampleIntervalSeconds": 0.21003300044685602,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5917296,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6195
+      ]
+    },
+    {
+      "elapsedSeconds": 9.994781125336885,
+      "sampleIntervalSeconds": 0.2099789995700121,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5923472,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6203
+      ]
+    },
+    {
+      "elapsedSeconds": 10.204811500385404,
+      "sampleIntervalSeconds": 0.21003037504851818,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5927392,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6210
+      ]
+    },
+    {
+      "elapsedSeconds": 10.408202584832907,
+      "sampleIntervalSeconds": 0.2033910844475031,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 5933072,
+      "ownedPids": [
+        5859,
+        5862,
+        5864,
+        6217
+      ]
+    },
+    {
+      "elapsedSeconds": 10.618302292190492,
+      "sampleIntervalSeconds": 0.21009970735758543,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 0,
+      "ownedPids": [
+        5859
+      ]
+    }
+  ],
+  "finalPressure": 1,
+  "physicalQualityComplete": false
+}

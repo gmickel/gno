@@ -129,6 +129,64 @@ function createDeps(calls: string[] = []): ResidentRuntimeDeps {
 }
 
 describe("ResidentRuntime", () => {
+  test("simultaneous stuck participants share one drain and abort budget, reject admission and join disposal", async () => {
+    const calls: string[] = [];
+    const deps = createDeps(calls);
+    const forever = new Promise<void>(() => {});
+    let schedulerStopped = false;
+    let schedulerCanceled = false;
+    let fenced = false;
+    const baseStore = deps.storeFactory!;
+    deps.storeFactory = () =>
+      Object.assign(baseStore(), {
+        fenceForShutdown: () => {
+          fenced = true;
+          calls.push("fence");
+        },
+      });
+    deps.createEmbedScheduler = () =>
+      ({
+        stop: () => {
+          schedulerStopped = true;
+          return forever;
+        },
+        dispose: () => {
+          schedulerCanceled = true;
+          return forever;
+        },
+        getState: () => ({ pendingDocCount: 32, running: true }),
+      }) as never;
+    const result = await startResidentRuntime(
+      { shutdownDeadlineMs: 20, shutdownAbortSettleMs: 20 },
+      deps
+    );
+    if (!result.success) throw new Error(result.error);
+    const runtime = result.runtime;
+    const request = runtime.admitRequest()!;
+    let canceledAt = 0;
+    runtime.startBackgroundWork(async (signal) => {
+      signal.addEventListener("abort", () => {
+        canceledAt = performance.now();
+      });
+      await forever;
+    });
+    const started = performance.now();
+    const first = runtime.dispose(() => forever);
+    expect(runtime.dispose()).toBe(first);
+    expect(runtime.admitRequest()).toBeNull();
+    expect(runtime.startBackgroundWork(async () => {})).toBe(false);
+    await first;
+    expect(schedulerStopped).toBe(true);
+    expect(schedulerCanceled).toBe(true);
+    expect(request.signal.aborted).toBe(true);
+    expect(canceledAt - started).toBeGreaterThanOrEqual(15);
+    expect(performance.now() - started).toBeLessThan(250);
+    expect(fenced).toBe(true);
+    expect(calls.indexOf("fence")).toBeLessThan(calls.indexOf("store"));
+    expect(runtime.getStatus().shutdown.state).toBe("deadline");
+    request.finish();
+  });
+
   test("fails a second serve/daemon owner with a stable status hint", async () => {
     const acquireOwnerLock = mock(async () => null);
     const result = await startResidentRuntime(
@@ -345,8 +403,10 @@ describe("ResidentRuntime", () => {
 
     expect(calls.indexOf("handler")).toBeLessThan(calls.indexOf("context"));
     expect(calls.indexOf("handler")).toBeLessThan(calls.indexOf("store"));
-    expect(calls.indexOf("background")).toBeLessThan(
-      calls.indexOf("scheduler")
+    // Scheduling must stop before the shared drain; background cancellation
+    // happens only after that drain expires.
+    expect(calls.indexOf("scheduler")).toBeLessThan(
+      calls.indexOf("background")
     );
     expect(calls.indexOf("scheduler")).toBeLessThan(calls.indexOf("context"));
     expect(calls.indexOf("context")).toBeLessThan(calls.indexOf("models"));

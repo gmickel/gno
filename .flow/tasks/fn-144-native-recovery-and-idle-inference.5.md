@@ -47,9 +47,8 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Warm concurrent/serial burst comparison reports throughput and complete cold penalty; unexplained steady-state degradation blocks default promotion and requires task-local admission adjustment before completion.
 
 ## Done summary
-TBD
-
+Packed CUDA CLI, stdio MCP, HTTP MCP, REST and matched verified Ask retain exact full public/native payloads. Physical Ivan original expanded and reranked query succeeds 3/3 in retained warm3 evidence, separately from containment/idle tests. Owned native failure and repeated idle reload evidence preserves native-free parent and independent later recovery. Actual model-fingerprint reuse removes measured warm regression: serial72/72 at4.403req/s versus3.720baseline; cold+418.07ms remains explicit. Baseline concurrent abort/errors prevent overall concurrent-speedup claim. Newer Ivan optional matched-Ask artifact transfer and cold control remain pending SSH; no new pass inferred. Current packed smoke passes with isolated taskcache; original /tmp quota failure retained.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 9d0b57e3, f8a278ef, f62e6438, 80b3cc8e, 16d533db
+- Tests: bun test:5150pass2skip0fail, bun run lint:check, bun run typecheck, bun run docs:verify, TMPDIR=/home/gordon/.cache/agent-tmp bun run test:package, captured CUDA packed native cross-surface equality and original baseline paired cost, captured physical Ivan original query3/3 and native fault/idle receipts
 - PRs:

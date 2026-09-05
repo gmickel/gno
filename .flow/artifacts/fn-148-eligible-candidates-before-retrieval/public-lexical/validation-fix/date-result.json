@@ -1,0 +1,30 @@
+{
+  "values": {
+    "since": "2026-09-01",
+    "until": "2026-09-02"
+  },
+  "responses": [
+    {
+      "url": "http://127.0.0.1:3349/api/search",
+      "status": 200,
+      "request": "{\"query\":\"needle\",\"limit\":20,\"since\":\"2026-09-01\",\"until\":\"2026-09-02\"}",
+      "body": "{\"results\":[{\"docid\":\"#source-2\",\"score\":1,\"uri\":\"gno://notes/scope/target.md\",\"title\":\"Target\",\"contentType\":\"decision\",\"categories\":[\"release\"],\"line\":1,\"snippet\":\"<mark>needle</mark> deutsche Notiz\\n<mark>needle</mark> background background background background background background background background background background background background background background background background background background background background background background background background background background background background...\",\"snippetLanguage\":\"de\",\"snippetRange\":{\"startLine\":1,\"endLine\":1},\"source\":{\"relPath\":\"scope/target.md\",\"mime\":\"text/markdown\",\"ext\":\".md\",\"modifiedAt\":\"2026-09-01T00:00:00.000Z\",\"sizeBytes\":4429,\"sourceHash\":\"source-200\",\"absPath\":\"/home/gordon/.cache/agent-tmp/gno-fn148-public/runtime/corpus/scope/target.md\"},\"conversion\":{\"mirrorHash\":\"eligible-v1-200\"},\"egressLineage\":{\"effectivePolicy\":\"local_only\",\"digest\":\"f952fce382f7bdb7261287c6269728088c9dc023d8430dfbde0bfa97f4e6a459\",\"sources\":[{\"collection\":\"notes\",\"policy\":\"local_only\",\"source\":\"config_default\"}]}}],\"meta\":{\"query\":\"needle\",\"mode\":\"bm25\",\"totalResults\":1,\"since\":\"2026-09-01T00:00:00.000Z\",\"until\":\"2026-09-02T23:59:59.999Z\",\"queryLanguage\":\"und\"}}"
+    },
+    {
+      "url": "http://127.0.0.1:3349/api/search",
+      "status": 400,
+      "request": "{\"query\":\"\\\"unterminated\",\"limit\":20,\"since\":\"2026-09-01\",\"until\":\"2026-09-02\"}",
+      "body": "{\"error\":{\"code\":\"VALIDATION\",\"message\":\"Invalid search query: Lexical query has an unmatched double quote (\\\"). Add the closing quote or remove it.\"}}"
+    }
+  ],
+  "console": [
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+    }
+  ]
+}

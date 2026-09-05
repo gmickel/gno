@@ -149,6 +149,23 @@ describe("packed resident shutdown exits", () => {
 });
 
 describe("packed warm model reuse validation", () => {
+  test("requires settled primer and exact child operation leases for warm burst", () => {
+    const before = models({ leaseAcquisitions: 6, leaseReleases: 6 });
+    const after = models({ leaseAcquisitions: 30, leaseReleases: 30 });
+    expect(isValidPackedWarmModelReuse(before, before, 0)).toBe(true);
+    expect(isValidPackedWarmModelReuse(before, after, 24)).toBe(true);
+    expect(
+      isValidPackedWarmModelReuse(
+        before,
+        { ...after, activeLeases: 1, leaseReleases: 29 },
+        24
+      )
+    ).toBe(false);
+    expect(isValidPackedWarmModelReuse(before, after, 4)).toBe(false);
+    const cold = models({ loadedModels: 0, loadAttempts: 0, loadSuccesses: 0 });
+    expect(isValidPackedWarmModelReuse(cold, cold, 0)).toBe(false);
+  });
+
   test("accepts recovered prior load failure when settled", () => {
     const before = models({
       leaseAcquisitions: 2,

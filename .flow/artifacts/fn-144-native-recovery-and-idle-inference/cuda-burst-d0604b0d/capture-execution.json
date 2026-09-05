@@ -1,0 +1,18 @@
+[
+  {
+    "plan": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/plans/capture-warm30-baseline.json",
+    "exitCode": 1
+  },
+  {
+    "plan": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/plans/capture-warm30-candidate.json",
+    "exitCode": 1
+  },
+  {
+    "plan": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/plans/capture-original143-baseline.json",
+    "exitCode": 1
+  },
+  {
+    "plan": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/plans/capture-original143-candidate.json",
+    "exitCode": 1
+  }
+]

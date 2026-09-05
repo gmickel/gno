@@ -15,6 +15,20 @@ gno serve
 
 ---
 
+## Request cancellation
+
+Disconnecting a REST query or Ask request, or aborting its admitted resident
+request, propagates through retrieval, expansion, generation and verification.
+The API suppresses late results and successful fallback after caller cancellation.
+Remote inference uses HTTP fetch cancellation. Native generation receives an
+evaluation abort; noncooperative embedding/ranking retains native capacity until
+settlement or controlled child exit. Cancellation does not replay inference.
+The existing unavailable/error response schema is unchanged.
+
+Accepted asynchronous jobs own their lifetime after the job ID has been returned;
+normal client disconnect does not cancel them. Explicit job cancellation or resident
+shutdown stops subsequent work and suppresses late publication.
+
 ## Overview
 
 The GNO REST API provides programmatic access to your local knowledge index. Use it to:
@@ -31,6 +45,28 @@ transaction with private lexical and semantic receipts and never discovers or
 attaches to this resident API. Web/Desktop onboarding uses the collection,
 sync, model, and connector endpoints below; those separate operations do not
 produce `FolderSetupReceipt@1.0` or `setup-activation-result@1.0`.
+
+## Semantic document ownership
+
+Semantic retrieval binds vectors to exact formatted inputs and the actual
+model/runtime identity. After the partition activates, same-body documents with
+different titles retain their own vector ranks; only current owners satisfying
+request filters enter the nearest-neighbor budget. Public result IDs, URIs,
+mirror hashes and JSON shapes are unchanged.
+
+During incomplete shadow backfill the legacy path remains authoritative. Initial
+activation requires complete current coverage and an atomic mutation-epoch
+check. After activation, ordinary edits can leave affected owners awaiting
+embedding but cannot restore legacy authority. Missing identity, an unactivated
+selected partition or a missing/corrupt variant index produces semantic failure;
+hybrid retrieval may continue lexically with explicit fallback diagnostics.
+`gno embed` completes or repairs semantic coverage.
+
+Providers without verified identity retain one legacy vector for each canonical
+chunk and model before activation. A change to the selected owner's
+formatted title input invalidates the affected legacy vectors. Ambiguous
+inactive title histories may require recomputation on restore; separate vectors
+for simultaneous differently titled owners require verified identity.
 
 ## Project hints
 
@@ -1035,6 +1071,18 @@ POST /api/sync
 ```
 
 Trigger re-indexing of all collections or a specific one.
+
+Successful sync updates graph references affected by changed targets, including
+incoming references from other collections and previously unresolved links.
+Missing, stale, or interrupted graph state triggers a full reconciliation.
+An unchanged sync with current graph state skips graph projection.
+
+An identical file restored at the same path becomes active on its next successful
+sync. Activation and one `reactivate` change with unchanged source and mirror
+hashes commit together. Another unchanged sync emits no change. Existing exact-input vectors are retained;
+changed titles, content, or model identity require matching embedding coverage for
+the current document owner. With verified variant identity, semantic results
+remain owner-specific even when documents share a canonical mirror.
 
 **Note**: After sync completes, embeddings are automatically generated for any new/updated chunks (debounced, runs in background).
 
@@ -3718,3 +3766,26 @@ None. The API runs locally with no rate limiting. Performance depends on your ha
 - [Web UI Guide](./WEB-UI.md): Visual interface documentation
 - [CLI Reference](./CLI.md): Command-line interface
 - [MCP Integration](./MCP.md): AI assistant integration
+
+### Native inference lifetime and idle recovery
+
+The resident service owns native inference in a child process. Model-file resolution, downloads and native loading wait until the first
+inference operation. An empty/offline cache does not block the service from
+binding or serving lexical and metadata requests. Validated stored vector
+dimensions let an existing index start without loading the embedding model. A new index discovers dimensions on
+its first vector operation. First-use resolution retains the configured download
+and offline policy. Capability flags describe configured functionality,
+not whether a model is currently loaded.
+
+The child retires after five minutes of inference inactivity by default. Pending
+native operations prevent retirement; status, document and other metadata reads
+do not extend that deadline. The next model operation reloads lazily. Resident
+model counters are the latest child-reported lifecycle snapshot for its generation,
+not a live GPU-memory measurement; after child exit, loaded-model and active counts
+are zero. Polling the snapshot does not contact the child.
+
+Hybrid query fallback remains available when embedding or vector search fails.
+In that case `meta.vectorsUsed` is false unless at least one vector search actually
+succeeded, and a wholly lexical fallback reports `meta.mode: "bm25_only"`.
+A successful vector search with no matches can legitimately report
+`vectorsUsed: true`. Native reload failure is not evidence of a semantic no-match.

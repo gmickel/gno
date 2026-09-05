@@ -3,6 +3,7 @@ import { describe, expect, mock, test } from "bun:test";
 import type { EmbeddingPort } from "../../src/llm/types";
 
 import { embedTextsWithRecovery } from "../../src/embed/batch";
+import { withInferenceScope } from "../../src/llm/inference-scope";
 
 function createEmbedPort(
   options: {
@@ -237,4 +238,34 @@ describe("embedTextsWithRecovery", () => {
       [0.5, 0.6, 0.7],
     ]);
   });
+});
+
+test("cancelled embedding batch never retries individual inputs or returns partial success", async () => {
+  const controller = new AbortController();
+  const port = createEmbedPort();
+  let singleCalls = 0;
+  let batchCalls = 0;
+  port.embed = async () => {
+    singleCalls++;
+    return { ok: true, value: [1, 2, 3] };
+  };
+  port.embedBatch = async () => {
+    batchCalls++;
+    controller.abort();
+    return {
+      ok: false,
+      error: {
+        code: "INFERENCE_FAILED",
+        message: "cancelled",
+        retryable: false,
+        cause: { name: "AbortError", message: "cancelled" },
+      },
+    };
+  };
+  const result = await withInferenceScope({ signal: controller.signal }, () =>
+    embedTextsWithRecovery(port, ["first", "second"])
+  ).catch((error: unknown) => error);
+  expect(result).toMatchObject({ name: "AbortError" });
+  expect(batchCalls).toBe(1);
+  expect(singleCalls).toBe(0);
 });

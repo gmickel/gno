@@ -1,0 +1,24 @@
+{
+  "commit": "a30da4423ec5604f46d2b050af8a2cba51c66e07",
+  "packageSha256": "592c38574b9b88d4da3488256b49d7421c2f2f44223090d5cd98e78736cdebc0",
+  "packageFiles": 906,
+  "packageBytes": 12858293,
+  "sourceArchiveSha256": "324448f8c6e4a2ef92942209b0b7a6a76928f9d50a62c69bb91423d3b1026a7d",
+  "productSourceDifferences": [],
+  "packaging": "Frozen archive prepack completed; prepare lefthook install fails without .git. Final npm pack --ignore-scripts reuses exact completed prepack files. All logs retained; initial shared-cwd pack unaccepted.",
+  "selectedIndexSha256BeforeNative": "bc696b82ee1337b4e808dee158822dc2c4a5a007e14e299cf2341ba5cf04148a",
+  "fixtureSha256": "49f16dc68a52ef027379a8a473f8089238e9b157881f053b14c820b38ff178e4",
+  "helper": "9814b800097c89e1a9085eb51fc5e91c2a06b2c4",
+  "helperArchiveSha256": "e65ecac83347d8011765c52f88ce14610c90c1c75d3d9ddfb5b95694a92a4e53",
+  "helperFiles": {
+    "native-capture.ts": "355cf9d093ab6e76fbb66eaa6d4312b063252010c7aa8a85533a52cfd857001d",
+    "native-child-preload.ts": "e15912277f72dd3e4c0ae0ca6f2e22c04a5707059b60ac7022fca526b1e3d3e5",
+    "parent-capture.ts": "ea0506c429c9aae60fd0688839616728ac58594f6a70bdb72d94346258aa3aa9"
+  },
+  "driverHashes": {
+    "ownership-observer.ts": "d0fa8b0a4dca15fcde88481a6f9df635f6911b13640f59b516f2cfe7b33d1171",
+    "phase-child.ts": "692c18a4391dccebb35c9ff38745f12b5acb3dcfb6ff9e79615a56ef0cbf99a7",
+    "phase-parent.ts": "ded108764c4ac35c5ae70f38a9b444e5cb16bcd0ff95b595ecc6f26a97ffec19",
+    "run.ts": "3c6e6f5595687ff817d2916dac5c0ef23ca85144acb0c2e954b6ce040a3faa8a"
+  }
+}

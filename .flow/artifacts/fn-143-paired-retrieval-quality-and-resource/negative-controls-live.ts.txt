@@ -1,0 +1,61 @@
+/** CPU-only mutations of captured synthetic CUDA evidence; original inputs are read-only. */
+import { compareAcceptance } from "../../evals/acceptance/compare";
+import { sha256Bytes } from "../../evals/agentic/canonical";
+import { acceptanceRecordSchema, type AcceptanceRecord } from "../../evals/acceptance/records";
+
+const root = "notes/fn143-native-tmp/qa-prep/runs/cuda-control-01";
+const output = "notes/fn143-native-tmp/negative-controls-live.json";
+const inputs: Array<{ path: string; sha256: string; bytes: number }> = [];
+async function read(path: string, gzip = false): Promise<unknown> {
+  const bytes = new Uint8Array(await Bun.file(path).arrayBuffer());
+  inputs.push({ path, sha256: sha256Bytes(bytes), bytes: bytes.length });
+  return JSON.parse(new TextDecoder().decode(gzip ? Bun.gunzipSync(bytes) : bytes));
+}
+const baselineManifest = await read(`${root}/baseline/manifest.json`);
+const candidateManifest = await read(`${root}/candidate/manifest.json`);
+const baselineCapture = await read(`${root}/baseline/control-v2.json.gz`, true) as { record: unknown; coverage: string };
+const candidateCapture = await read(`${root}/candidate/control-v2.json.gz`, true) as { record: unknown; coverage: string };
+if (baselineCapture.coverage !== "complete" || candidateCapture.coverage !== "complete") throw new Error("Control requires complete capture coverage");
+const baseline = acceptanceRecordSchema.parse(baselineCapture.record);
+const candidate = acceptanceRecordSchema.parse(candidateCapture.record);
+function compare(record: AcceptanceRecord) {
+  return compareAcceptance(baselineManifest, candidateManifest, [baseline], [record]);
+}
+const control = compare(candidate);
+if (!control.passed) throw new Error(`Unchanged control failed: ${JSON.stringify(control.failures)}`);
+
+const mutations: Array<{ name: string; expectedField: string; change: string; mutate: (record: AcceptanceRecord) => void }> = [
+  { name: "result-loss", expectedField: "deterministic.results.length", change: "Remove the last ordered result", mutate: (r) => { if (!r.deterministic.results.pop()) throw new Error("No result to remove"); } },
+  { name: "scope-leak", expectedField: "deterministic.results[0].uri", change: "Replace the first result URI with an out-of-scope synthetic collection", mutate: (r) => { r.deterministic.results[0]!.uri = "gno://injected-private-scope/leak.md"; } },
+  { name: "false-vectors-success", expectedField: "deterministic.semanticState.vectorsUsed", change: "Keep vectorsUsed=true while marking independently observed vector stage unavailable", mutate: (r) => { r.deterministic.semanticState.vectorStatus = "unavailable"; r.deterministic.semanticState.vectorsUsed = true; } },
+  { name: "changed-actual-model-input", expectedField: "deterministic.modelInputs[0].input", change: "Replace the first actual model-port input with an injected prompt string", mutate: (r) => { r.deterministic.modelInputs[0]!.input = "INJECTED changed actual model input"; } },
+  { name: "score-drift", expectedField: "deterministic.results[0].score", change: "Add 0.000001 to the first result score", mutate: (r) => { r.deterministic.results[0]!.score += 0.000001; } },
+  { name: "citation-drift", expectedField: "deterministic.citations.length", change: "Hybrid control has no citations; inject its selected passage as an additional citation", mutate: (r) => { const passage = r.deterministic.results.find((item) => item.passage)?.passage; if (!passage) throw new Error("No captured passage for citation injection"); r.deterministic.citations.push(structuredClone(passage)); } },
+];
+const negatives = mutations.map(({ name, expectedField, change, mutate }) => {
+  const copy = structuredClone(candidate);
+  mutate(copy);
+  const result = compare(copy);
+  const rejectedAtExpectedField = !result.passed && result.failures.some((failure) => failure.caseId === candidate.caseId && failure.field === expectedField);
+  if (!rejectedAtExpectedField) throw new Error(`${name}: ${JSON.stringify(result)}`);
+  if (result.failures.some((failure) => failure.field === "manifestSha256" || failure.field === "caseId")) throw new Error(`${name}: invalid binding`);
+  return { name, change, rejectedAtExpectedField, ...result };
+});
+// Re-read hashes to prove no raw capture/manifest changed during the run.
+for (const input of inputs) {
+  const bytes = new Uint8Array(await Bun.file(input.path).arrayBuffer());
+  if (sha256Bytes(bytes) !== input.sha256) throw new Error(`Source changed: ${input.path}`);
+}
+await Bun.write(output, `${JSON.stringify({
+  schemaVersion: "gno-acceptance-live-negative-controls-v1",
+  command: "bun notes/fn143-native-tmp/negative-controls-live.ts",
+  scriptSha256: sha256Bytes(new Uint8Array(await Bun.file(import.meta.path).arrayBuffer())),
+  scope: "CPU-only deep-copy mutations of complete synthetic CUDA SDK captures; no native calls",
+  inputs,
+  sourcesUnchanged: true,
+  caseId: candidate.caseId,
+  control,
+  negatives,
+  passed: control.passed && negatives.every((item) => item.rejectedAtExpectedField),
+}, null, 2)}\n`);
+console.log(JSON.stringify({ output, controlPassed: control.passed, rejectedNegativeControls: negatives.length }));

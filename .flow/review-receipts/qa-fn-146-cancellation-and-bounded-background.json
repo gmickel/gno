@@ -1,0 +1,67 @@
+{
+  "branch": "fn-143-152-retrieval-resource-major",
+  "evidence": [
+    ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-native-cuda/README.md",
+    ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-native-metal/README.md",
+    ".flow/artifacts/fn-146-cancellation-and-bounded-background/model-residency/README.md",
+    ".flow/artifacts/fn-146-cancellation-and-bounded-background/task4-gates/",
+    ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-release-gates/README.md"
+  ],
+  "findings": {
+    "backend": "interactive",
+    "headSha": "24ec121764b7477f0dd5bddce8c023957c630c92",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-a578b9be26c87ed2cdc945d64579d8a420635822b2390918fdbd29f1c4cf5c96"
+  },
+  "head_sha": "24ec121764b7477f0dd5bddce8c023957c630c92",
+  "id": "fn-146-cancellation-and-bounded-background",
+  "limitations": [
+    "Both native verified-Ask pairs abstain with one semantic judge call each; supported-answer quality is not claimed.",
+    "Complete actual model inputs/outputs match; accumulated cold/resident model-load inventories differ and remain retained.",
+    "Physical coverage does not include a stuck GPU kernel, forced native kill or saturation at64. Task4 real noncooperative child regression tests cover bounded forced retirement separately.",
+    "Model-specific expiry proof uses its separately pinned44cf checkpoint. Final physical package uses original300000msTTL.",
+    "Metal retains original noRerank:true. The fn145 physical Metal auto-allocation control remains blocked and is not cleared by this QA.",
+    "Hosted docs are queued after aggregate PR under the explicit user instruction."
+  ],
+  "mode": "interactive",
+  "model": "gpt-6-astra medium",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "tested_source_sha": "f64c41c97e196e3bffdba23bc1c006bca7489b28",
+  "timestamp": "2026-09-05T08:12:21Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

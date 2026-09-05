@@ -7,11 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-05
+
 ### Added
+
+- SDK inference cancellation through `signal` and absolute `deadlineAt`
+  options. Cancellation reaches retrieval, answer verification, native workers,
+  and HTTP inference without changing model-generation parameters.
+- Paired retrieval acceptance tooling that retains complete results, native
+  model inputs and outputs, resource samples, and unsuccessful runs.
 
 ### Changed
 
+- Update node-llama-cpp to 3.20.0 and the development runtime to Bun 1.4.2,
+  retaining GNO's additional simulator failure cleanup and joined disposal.
+- Refresh document parsing, PDF rendering, Markdown editing and streaming
+  dependencies. Ship audited, unchanged converter distributions with corrected
+  SheetJS and PDF.js dependencies so fixes also reach installed npm consumers.
+- Retain the compatible AI SDK 6 maintenance line and existing MCP wire schema;
+  refresh supported parser and test-tool patches.
+- Background embedding yields between turns of at most 32 pending chunks;
+  foreground native dispatches take priority with bounded background fairness.
+  Failed chunks remain resumable, and model-specific leases let idle generation
+  and reranking weights expire while embedding continues.
+- Local GGUF inference runs in an owned persistent Bun child. Warm requests
+  reuse the child; idle native allocation can be reclaimed and loaded again on
+  the next request. Child failures return structured errors without replaying
+  failed requests or writes.
+- Supported rerankers size their context from the complete prepared input and
+  native formatter, reusing compatible capacity. Unsupported formatters retain
+  automatic sizing; candidate depth and existing input preparation stay intact.
+- Embedding storage tracks exact formatted inputs and verified model/runtime
+  identities. Unchanged inputs can reuse vectors while distinct title-derived
+  inputs retain separate ownership.
+- Vector retrieval applies collection, document and exclusion eligibility before
+  top-K selection. Request-local hydration reuses fetched content while keeping
+  answer verification's live source-hash checks independent.
+- Graph reconciliation updates affected owners and referrers incrementally,
+  falling back to full reconciliation when incremental state cannot be trusted.
+- Local inference timeouts start at evaluation after model loading; HTTP
+  inference timeouts cover preparation, fetch and response-body consumption.
+  Caller deadlines cover queueing through publication. Cancelled native work
+  retains capacity until actual settlement or controlled child exit, and
+  accepted asynchronous jobs retain their own lifetime after client disconnect.
+
 ### Fixed
+
+- Native lifecycle status reports request leases after release, so completed
+  requests no longer leave a stale active-lease count in resident diagnostics.
+- Resident shutdown shares one drain, cancellation and owned-child-exit budget
+  across requests and background work. Suspended writes roll back before store
+  close; incomplete jobs stay failed and embedding backlog resumes on restart.
+  Detached stop allows the resident cleanup budget to finish.
+- Agent skill guidance uses `status` for chunk totals and index health, and
+  `peek` for cheap document/collection counts and runtime snapshots.
+- Native model disposal waits for in-flight context-budget estimates, avoiding
+  disposal while those estimates still read the model's native allocation.
+- Restoring unchanged source bytes at the same path reactivates the document,
+  preserves eligible embeddings, and records one reactivation event. Changed
+  input and ambiguous legacy vector ownership cannot reuse stale vectors.
+- Graph backlinks select the active document after delete/restore and rename
+  cycles instead of an inactive row with the same document identifier.
+- Resident reader admission preserves its capacity during queued handoff and
+  cancellation, preventing excess concurrent readers and stranded requests.
+- Leaving the indexing progress view stops polling, including when an earlier
+  status response arrives after navigation. Returning starts one polling loop.
 
 ## [1.46.0] - 2026-09-03
 
@@ -2602,7 +2662,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.46.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/gmickel/gno/compare/v1.46.0...v2.0.0
 [1.46.0]: https://github.com/gmickel/gno/compare/v1.45.1...v1.46.0
 [1.45.1]: https://github.com/gmickel/gno/compare/v1.45.0...v1.45.1
 [1.45.0]: https://github.com/gmickel/gno/compare/v1.44.0...v1.45.0

@@ -1,0 +1,9 @@
+{"time":1788576852269,"pid":179391,"parentPid":179354,"generation":1,"event":"phase-ready"}
+{"time":1788576852296,"pid":179391,"parentPid":179354,"generation":1,"event":"request-start","requestId":1,"op":"init"}
+{"time":1788576853099,"pid":179391,"parentPid":179354,"generation":1,"event":"start","kind":"actual-model-load","eventId":1,"requestId":1,"ownerId":1}
+{"time":1788576853099,"pid":179391,"parentPid":179354,"generation":1,"event":"start","kind":"backend-init","eventId":2,"requestId":1,"ownerId":1}
+{"time":1788576853141,"pid":179391,"parentPid":179354,"generation":1,"event":"error","kind":"backend-init","eventId":2,"requestId":1,"ownerId":1,"error":"Error: NoBinaryFoundError"}
+{"time":1788576853141,"pid":179391,"parentPid":179354,"generation":1,"event":"end","kind":"actual-model-load","eventId":1,"requestId":1,"ownerId":1}
+{"time":1788576853142,"pid":179391,"parentPid":179354,"generation":1,"event":"request-end","requestId":1,"op":"init"}
+{"time":1788576853149,"pid":179391,"parentPid":179354,"generation":1,"event":"request-start","requestId":2,"op":"dispose"}
+{"time":1788576853149,"pid":179391,"parentPid":179354,"generation":1,"event":"request-end","requestId":2,"op":"dispose"}

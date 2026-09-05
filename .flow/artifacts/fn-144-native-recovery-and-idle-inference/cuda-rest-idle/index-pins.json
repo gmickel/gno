@@ -1,0 +1,9 @@
+{
+  "scope": "post-run local synthetic SQLite files; SHA256 of sorted filename/hash JSON identifies this snapshot",
+  "files": {
+    "index-default.sqlite": "88e87a7ee9b2b80f13e194ceb07815c396842e5016fd61a453164333b14aa318",
+    "index-default.sqlite-shm": "f0af66ea0ee7d06aa1740b08e33eb61824c648378145a7b7d604457d7869396d",
+    "index-default.sqlite-wal": "3da61c6a42bd176aa263c16f12d1c1f417d46acbcb0d2e4ce8c65435c6450fb8"
+  },
+  "snapshotSha256": "288cc22ac8a6b5c30320758e4ac611bc3bb435902e94bf0a93331e3dd7ecebed"
+}

@@ -1,0 +1,37 @@
+{
+  "sourceCommit": "dd38f777",
+  "driver": "agent-browser 0.35.1",
+  "session": "fn150-graph-qa",
+  "target": "http://127.0.0.1:3385/graph",
+  "fixture": "public-v2/oracle-add",
+  "viewports": [
+    {
+      "width": 1380,
+      "height": 880,
+      "screenshot": "graph-desktop.png",
+      "observed": "3 nodes, 2 edges, top degree 2; collection selector changed to targets, zero visible nodes with linked-only default",
+      "scopedScreenshot": "graph-desktop-scoped.png"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "screenshot": "graph-mobile.png",
+      "reproScreenshot": "graph-mobile-repro.png",
+      "observed": "Graph renders; header overflows, collection selector beyond visible viewport",
+      "scrollWidth": 472
+    }
+  ],
+  "console": "browser-console.txt",
+  "errors": "browser-errors.txt",
+  "network": "browser-network.txt",
+  "dom": "browser-mobile-dom.txt",
+  "findings": [
+    {
+      "severity": "P2",
+      "status": "existing tracked finding in fn151/fn152; not duplicated",
+      "title": "Graph header overflows mobile width",
+      "reproductions": 2
+    }
+  ],
+  "cleanup": "Owned browser session closed and server PID110720 terminated"
+}

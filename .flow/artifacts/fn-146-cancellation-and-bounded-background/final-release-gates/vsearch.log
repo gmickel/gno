@@ -1,0 +1,93 @@
+
+ EVALITE running...
+
+ ⏳ evals/vsearch.eval.ts  (25 evals)
+ 88% evals/vsearch.eval.ts  (25 evals)
+
+      Score  88%
+  Threshold  70% (passed)
+ Eval Files  1
+      Evals  25
+   Duration  87ms
+
+╔══════════════════════╤══════════════════════╤══════════════════════╤═══════╗
+║ ID                   │ Query                │ Top 3                │ Score ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q1                   │ API authentication   │ en/api-reference.md  │ 93%   ║
+║                      │ bearer toke          │                      │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q2                   │ rate limiting        │ en/api-reference.md  │ 100%  ║
+║                      │ requests per min     │                      │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q3                   │ microservices        │ en/architecture-     │ 100%  ║
+║                      │ message queue Ra     │ decisions.md         │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q4                   │ event sourcing audit │ en/architecture-     │ 100%  ║
+║                      │ trail                │ decisions.md         │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q5                   │ kubernetes           │ de/deployment-       │ 100%  ║
+║                      │ deployment helm cha  │ anleitung.md,        │       ║
+║                      │                      │ en/architecture-     │       ║
+║                      │                      │ decisions.md         │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q6                   │ connection refused   │                      │ 0%    ║
+║                      │ database er          │                      │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q7                   │ memory leak          │ en/troubleshooting-  │ 100%  ║
+║                      │ debugging heap sna   │ guide.md             │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q8                   │ JWT token expired    │ en/troubleshooting-  │ 60%   ║
+║                      │ refresh              │ guide.md             │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q9                   │ Bereitstellung       │ de/deployment-       │ 97%   ║
+║                      │ Kubernetes Helm      │ anleitung.md         │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q10                  │ Rollback vorherige   │ de/deployment-       │ 100%  ║
+║                      │ Version              │ anleitung.md         │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q11                  │ Fehlerklassen        │ de/fehlerbehandlung. │ 100%  ║
+║                      │ ValidationError      │ md                   │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q12                  │ Circuit Breaker      │ de/fehlerbehandlung. │ 100%  ║
+║                      │ retry Logik          │ md                   │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q13                  │ composants React     │ fr/guide-debutant.md │ 100%  ║
+║                      │ hooks useStat        │                      │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q14                  │ tests unitaires      │ fr/guide-debutant.md │ 100%  ║
+║                      │ intégration          │                      │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q15                  │ injection SQL        │ fr/securite-         │ 100%  ║
+║                      │ requêtes paramét     │ applications.md      │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q16                  │ CSRF token           │ fr/securite-         │ 100%  ║
+║                      │ protection formulai  │ applications.md      │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q17                  │ cache Redis LRU      │ it/ottimizzazione-   │ 100%  ║
+║                      │ performance          │ performance.md       │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q19                  │ Docker Compose       │                      │ 0%    ║
+║                      │ configurazione       │                      │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q18                  │ lazy loading         │ it/ottimizzazione-   │ 100%  ║
+║                      │ componenti React     │ performance.md       │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q20                  │ variabili ambiente   │ it/configurazione-   │ 100%  ║
+║                      │ validazione          │ sistema.md           │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q21                  │ API gateway Kong     │ en/architecture-     │ 97%   ║
+║                      │ authenticatio        │ decisions.md         │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q22                  │ database per service │ en/architecture-     │ 100%  ║
+║                      │ saga patt            │ decisions.md         │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q23                  │ container logs       │ en/troubleshooting-  │ 60%   ║
+║                      │ kubectl debug        │ guide.md             │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q24                  │ hachage mot de passe │ fr/securite-         │ 100%  ║
+║                      │ argon2               │ applications.md      │       ║
+╟──────────────────────┼──────────────────────┼──────────────────────┼───────╢
+║ q25                  │ indici database      │ it/ottimizzazione-   │ 100%  ║
+║                      │ query N+1            │ performance.md       │       ║
+╚══════════════════════╧══════════════════════╧══════════════════════╧═══════╝
+

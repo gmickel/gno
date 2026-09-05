@@ -1,0 +1,38 @@
+{
+  "reason": "Generated synthetic databases retained only in task cache; physical source and payload hashes preserved.",
+  "files": [
+    {
+      "path": "ask29/seed.sqlite.gz",
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/ask29/seed.sqlite",
+      "sourceSha256": "41068115fb9f59b3d4e748f3b652369c0107f046288f920d241d060581cc1eab",
+      "sha256": "49214b73b8fcebc66289ae389e980fc8b202cef3ab3fb3231134e03bbbfd85d5",
+      "bytes": 289220,
+      "sourceFileSha256": "41068115fb9f59b3d4e748f3b652369c0107f046288f920d241d060581cc1eab",
+      "sourceEncoding": "identity",
+      "sourceBytes": 5120000,
+      "retainedCachePath": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-f8a278ef/excluded-database-artifacts/seed.sqlite.gz"
+    },
+    {
+      "path": "ask29/seed.sqlite-wal.gz",
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/ask29/seed.sqlite-wal",
+      "sourceSha256": "e30646a6cd4fff16c1139b11077094760a13f44d6040c94050588db60f949236",
+      "sha256": "66d715a41b4c8db75271c53f23450400f15d85f1ea6a566c38f7765ac96ad159",
+      "bytes": 6790,
+      "sourceFileSha256": "e30646a6cd4fff16c1139b11077094760a13f44d6040c94050588db60f949236",
+      "sourceEncoding": "identity",
+      "sourceBytes": 115392,
+      "retainedCachePath": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-f8a278ef/excluded-database-artifacts/seed.sqlite-wal.gz"
+    },
+    {
+      "path": "ask29/seed.sqlite-shm.gz",
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/ask29/seed.sqlite-shm",
+      "sourceSha256": "f537fb22df2709c51c697dbe4739b730c9665a4b78d41d0c0417913c1d1f2005",
+      "sha256": "5aae5b26d910eb22aea8b63ad78cf2c2ed8ae81c6e54c309027cb1cebc0e6137",
+      "bytes": 302,
+      "sourceFileSha256": "f537fb22df2709c51c697dbe4739b730c9665a4b78d41d0c0417913c1d1f2005",
+      "sourceEncoding": "identity",
+      "sourceBytes": 32768,
+      "retainedCachePath": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-f8a278ef/excluded-database-artifacts/seed.sqlite-shm.gz"
+    }
+  ]
+}

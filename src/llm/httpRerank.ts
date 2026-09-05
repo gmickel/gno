@@ -1,16 +1,17 @@
+import type { HttpInferenceOptions } from "./http-inference";
+import type { InferenceOptions } from "./types";
 /**
  * HTTP-based rerank port implementation.
  * Calls OpenAI-compatible completions endpoints for reranking.
  *
  * @module src/llm/httpRerank
  */
-
-import type { HttpInferenceOptions } from "./http-inference";
 import type { LlmResult, RerankPort, RerankScore } from "./types";
 
 import { EgressDeniedError } from "../core/egress-enforcement";
 import { egressDeniedInferenceError, inferenceFailedError } from "./errors";
 import { requestHttpInference } from "./http-inference";
+import { runHttpInference } from "./inference-scope";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -63,7 +64,20 @@ export class HttpRerank implements RerankPort {
 
   async rerank(
     query: string,
-    documents: string[]
+    documents: string[],
+    options?: InferenceOptions
+  ): Promise<LlmResult<RerankScore[]>> {
+    return runHttpInference(
+      options,
+      (operational) => this.rerankRequest(query, documents, operational),
+      this.requestOptions.inferenceTimeout
+    );
+  }
+
+  private async rerankRequest(
+    query: string,
+    documents: string[],
+    options: InferenceOptions
   ): Promise<LlmResult<RerankScore[]>> {
     if (documents.length === 0) {
       return { ok: true, value: [] };
@@ -74,7 +88,7 @@ export class HttpRerank implements RerankPort {
       const prompts = documents.map((doc) => this.buildPrompt(query, doc));
 
       // Score all documents in a single batch request
-      const scoresResult = await this.scoreBatch(prompts);
+      const scoresResult = await this.scoreBatch(prompts, options);
 
       if (!scoresResult.ok) {
         return { ok: false, error: scoresResult.error };
@@ -112,11 +126,15 @@ export class HttpRerank implements RerankPort {
     return `<Instruct>: ${this.instruction}\n<Query>: ${query}\n<Document>: ${document}\n<Score>:`;
   }
 
-  private async scoreBatch(prompts: string[]): Promise<LlmResult<number[]>> {
+  private async scoreBatch(
+    prompts: string[],
+    options: InferenceOptions
+  ): Promise<LlmResult<number[]>> {
     try {
       const response = await requestHttpInference(
         this.apiUrl,
         {
+          signal: options.signal,
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -12,6 +12,36 @@ Use GNO as a local MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Ra
 
 ![GNO MCP in Claude Desktop](../assets/screenshots/mcp.jpg)
 
+## Cancellation
+
+Protocol request cancellation and connection loss propagate into each request's
+retrieval, expansion, generation and verification stages, including remote HTTP
+inference. Canceled requests cannot publish a late successful or partial result.
+Queued cancellation removes only the caller's work; an active native operation
+retains capacity until settlement or controlled child exit.
+
+An accepted asynchronous indexing/embedding job owns its lifetime after returning
+a job ID. Closing the accepting transport does not cancel that persistent job.
+Owner-initiated job cancellation stops further inference retries and checkpoint
+publication; interrupted work is reported as failed under the existing job schema,
+with unfinished backlog left pending. Finite shutdown orchestration is a separate
+lifecycle boundary.
+
+## Filtered retrieval limits
+
+Search candidate budgets apply after supported owner filters (collection, path,
+tags, dates, author, categories and exclusions). Semantic retrieval and hybrid
+retrieval also select matching-language chunks before their budgets; standalone
+lexical language remains reserved. A nearby out-of-scope vector cannot displace
+an eligible hit. Caller scope intersects user filters; empty allowlists deny all.
+Whole-document exclusions inspect every chunk, including other languages;
+hybrid exclusions also inspect author and category metadata.
+
+Results can remain shorter than the requested limit after score thresholds,
+deduplication or limited eligible coverage. Ranking/fusion and output schemas
+are unchanged. This correction does not change independent natural-language
+memory recall matching.
+
 ## Project hints and trust
 
 Retrieval tools accept optional `projectHints` arrays with at most 16 strings.
@@ -1687,6 +1717,13 @@ Each edge also includes `confidence` (`explicit`, `inferred`,
 `ambiguous`, or `similarity`) and `audit` metadata describing exact matches,
 fallback matches, collision-prone matches, or similarity scores.
 
+Successful sync reconciles references affected by target changes, including
+incoming references from other collections and previously unresolved links.
+Missing, stale, or interrupted graph state falls back to full reconciliation.
+An unchanged sync with current graph state skips projection; graph reads continue
+to use the current index. This also applies to typed graph queries and impact
+analysis.
+
 **Use cases**:
 
 - Explore document relationships programmatically
@@ -1896,3 +1933,22 @@ GNO_VERBOSE=1 gno mcp
   acknowledgement. Stale and replayed confirmations fail closed.
 - `gno_egress_audit_list|show|status` inspect content-free local receipts;
   `gno_egress_audit_delete|purge` are write-enabled local cleanup controls.
+
+### Native worker lifetime
+
+Resident and stdio MCP reuse a context-owned native inference child across calls.
+Model selection and outbound HTTP policy remain bound to the request's configuration
+snapshot and collection scope. Metadata tools do not acquire model-use leases or
+refresh the inference idle deadline. Native work prevents idle retirement; the
+five-minute default idle grace ends by retiring the child, and the next model call
+reloads lazily. Shutdown disposes owned children after active work drains.
+
+Serve startup defers model-file resolution and downloads until actual inference;
+empty/offline caches do not block lexical or metadata service. The first model
+operation still enforces the configured offline/download and collection policy.
+Existing indexes can use validated stored vector dimensions without eagerly loading
+an embedding model. Capability availability is distinct from loaded-model state.
+For hybrid queries, embedding/index failures retain lexical fallback but cannot
+claim `vectorsUsed: true` unless a vector search succeeded. A real zero-match vector
+search remains a successful operation. Native worker failures are contained in the
+host and follow each tool's existing error or fallback contract.

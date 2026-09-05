@@ -1,0 +1,425 @@
+[
+  {
+    "file": "protocol/session-OI2I86/native-nrOHX1/98948-1.json",
+    "identity": {
+      "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+      "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+      "parentPid": 98926,
+      "pid": 98948,
+      "generation": 1,
+      "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+    },
+    "request": {
+      "version": 1,
+      "generation": 1,
+      "requestId": 1,
+      "modelId": "embed:file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "op": "init"
+    },
+    "complete": true,
+    "lifecycle": {
+      "activeLeases": 1,
+      "leaseAcquisitions": 1,
+      "leaseReleases": 0,
+      "loadedModels": 1,
+      "loadAttempts": 1,
+      "loadSuccesses": 1,
+      "loadFailures": 0,
+      "inflightLoads": 0
+    },
+    "models": [
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+      }
+    ],
+    "backends": [
+      "metal"
+    ],
+    "errors": [],
+    "modelInputs": [],
+    "contextEvents": [
+      {
+        "modelId": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "method": "createContext",
+        "arguments": [
+          {
+            "contextSize": 2048,
+            "batchSize": {
+              "$undefined": true
+            },
+            "threads": 6,
+            "createSignal": {
+              "$undefined": true
+            },
+            "ignoreMemorySafetyChecks": {
+              "$undefined": true
+            },
+            "_embeddings": true
+          }
+        ],
+        "result": {
+          "contextSize": 2048
+        }
+      }
+    ],
+    "tokenizeEvents": 0
+  },
+  {
+    "file": "protocol/session-OI2I86/native-nrOHX1/98948-2.json",
+    "identity": {
+      "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+      "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+      "parentPid": 98926,
+      "pid": 98948,
+      "generation": 1,
+      "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+    },
+    "request": {
+      "version": 1,
+      "generation": 1,
+      "requestId": 2,
+      "modelId": "gen:file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+      "op": "generate",
+      "params": {
+        "temperature": 0,
+        "seed": 42,
+        "maxTokens": 512,
+        "contextSize": 2048
+      }
+    },
+    "complete": true,
+    "lifecycle": {
+      "activeLeases": 1,
+      "leaseAcquisitions": 1,
+      "leaseReleases": 0,
+      "loadedModels": 2,
+      "loadAttempts": 2,
+      "loadSuccesses": 2,
+      "loadFailures": 0,
+      "inflightLoads": 0
+    },
+    "models": [
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+      },
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+      }
+    ],
+    "backends": [
+      "metal"
+    ],
+    "errors": [],
+    "modelInputs": [
+      {
+        "role": "generation",
+        "modelId": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "inputBytes": 857
+      }
+    ],
+    "contextEvents": [
+      {
+        "modelId": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "method": "createContext",
+        "arguments": [
+          {
+            "contextSize": 2048
+          }
+        ],
+        "result": {
+          "contextSize": 2048
+        }
+      }
+    ],
+    "tokenizeEvents": 0
+  },
+  {
+    "file": "protocol/session-OI2I86/native-nrOHX1/98948-3.json",
+    "identity": {
+      "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+      "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+      "parentPid": 98926,
+      "pid": 98948,
+      "generation": 1,
+      "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+    },
+    "request": {
+      "version": 1,
+      "generation": 1,
+      "requestId": 3,
+      "modelId": "embed:file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "op": "embed"
+    },
+    "complete": true,
+    "lifecycle": {
+      "activeLeases": 1,
+      "leaseAcquisitions": 1,
+      "leaseReleases": 0,
+      "loadedModels": 2,
+      "loadAttempts": 2,
+      "loadSuccesses": 2,
+      "loadFailures": 0,
+      "inflightLoads": 0
+    },
+    "models": [
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+      },
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+      }
+    ],
+    "backends": [
+      "metal"
+    ],
+    "errors": [],
+    "modelInputs": [
+      {
+        "role": "embedding",
+        "modelId": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "inputBytes": 109
+      },
+      {
+        "role": "embedding",
+        "modelId": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "inputBytes": 207
+      }
+    ],
+    "contextEvents": [],
+    "tokenizeEvents": 1
+  },
+  {
+    "file": "protocol/session-OI2I86/native-nrOHX1/98948-4.json",
+    "identity": {
+      "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+      "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+      "parentPid": 98926,
+      "pid": 98948,
+      "generation": 1,
+      "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+    },
+    "request": {
+      "version": 1,
+      "generation": 1,
+      "requestId": 4,
+      "modelId": "rerank:file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+      "op": "rerank",
+      "query": "what retry budget did we decide and why"
+    },
+    "complete": true,
+    "lifecycle": {
+      "activeLeases": 1,
+      "leaseAcquisitions": 2,
+      "leaseReleases": 1,
+      "loadedModels": 3,
+      "loadAttempts": 3,
+      "loadSuccesses": 3,
+      "loadFailures": 0,
+      "inflightLoads": 0
+    },
+    "models": [
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+      },
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+      },
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48"
+      }
+    ],
+    "backends": [
+      "metal"
+    ],
+    "errors": [],
+    "modelInputs": [
+      {
+        "role": "reranking",
+        "modelId": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "inputBytes": 8694
+      }
+    ],
+    "contextEvents": [
+      {
+        "modelId": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "method": "createRankingContext",
+        "arguments": [
+          {
+            "contextSize": 768
+          }
+        ]
+      },
+      {
+        "modelId": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "method": "createContext",
+        "arguments": [
+          {
+            "contextSize": 768,
+            "batchSize": {
+              "$undefined": true
+            },
+            "threads": 6,
+            "createSignal": {
+              "$undefined": true
+            },
+            "ignoreMemorySafetyChecks": {
+              "$undefined": true
+            },
+            "_embeddings": true,
+            "_ranking": true
+          }
+        ],
+        "result": {
+          "contextSize": 768
+        }
+      }
+    ],
+    "tokenizeEvents": 120
+  },
+  {
+    "file": "protocol/session-OI2I86/native-nrOHX1/98948-5.json",
+    "identity": {
+      "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+      "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+      "parentPid": 98926,
+      "pid": 98948,
+      "generation": 1,
+      "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+    },
+    "request": {
+      "version": 1,
+      "generation": 1,
+      "requestId": 5,
+      "modelId": "embed:file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "op": "dispose"
+    },
+    "complete": true,
+    "lifecycle": {
+      "activeLeases": 1,
+      "leaseAcquisitions": 2,
+      "leaseReleases": 1,
+      "loadedModels": 3,
+      "loadAttempts": 3,
+      "loadSuccesses": 3,
+      "loadFailures": 0,
+      "inflightLoads": 0
+    },
+    "models": [
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+      },
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48"
+      }
+    ],
+    "backends": [
+      "metal"
+    ],
+    "errors": [],
+    "modelInputs": [],
+    "contextEvents": [],
+    "tokenizeEvents": 0
+  },
+  {
+    "file": "protocol/session-OI2I86/native-nrOHX1/98948-6.json",
+    "identity": {
+      "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+      "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+      "parentPid": 98926,
+      "pid": 98948,
+      "generation": 1,
+      "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+    },
+    "request": {
+      "version": 1,
+      "generation": 1,
+      "requestId": 6,
+      "modelId": "gen:file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+      "op": "dispose"
+    },
+    "complete": true,
+    "lifecycle": {
+      "activeLeases": 1,
+      "leaseAcquisitions": 2,
+      "leaseReleases": 1,
+      "loadedModels": 3,
+      "loadAttempts": 3,
+      "loadSuccesses": 3,
+      "loadFailures": 0,
+      "inflightLoads": 0
+    },
+    "models": [
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+      },
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48"
+      }
+    ],
+    "backends": [
+      "metal"
+    ],
+    "errors": [],
+    "modelInputs": [],
+    "contextEvents": [],
+    "tokenizeEvents": 0
+  },
+  {
+    "file": "protocol/session-OI2I86/native-nrOHX1/98948-7.json",
+    "identity": {
+      "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+      "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+      "parentPid": 98926,
+      "pid": 98948,
+      "generation": 1,
+      "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+    },
+    "request": {
+      "version": 1,
+      "generation": 1,
+      "requestId": 7,
+      "modelId": "rerank:file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+      "op": "dispose"
+    },
+    "complete": true,
+    "lifecycle": {
+      "activeLeases": 1,
+      "leaseAcquisitions": 3,
+      "leaseReleases": 2,
+      "loadedModels": 3,
+      "loadAttempts": 3,
+      "loadSuccesses": 3,
+      "loadFailures": 0,
+      "inflightLoads": 0
+    },
+    "models": [
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+      },
+      {
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48"
+      }
+    ],
+    "backends": [
+      "metal"
+    ],
+    "errors": [],
+    "modelInputs": [],
+    "contextEvents": [],
+    "tokenizeEvents": 0
+  }
+]

@@ -1,0 +1,484 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "12 retained document changes"
+    }
+  ],
+  "structuredContent": {
+    "schemaVersion": "1.0",
+    "changes": [
+      {
+        "id": "gno-change-v1.eyJzZXF1ZW5jZSI6MX0=",
+        "kind": "create",
+        "collection": "identity",
+        "observedAt": "2026-09-05T02:51:48.560Z",
+        "previous": null,
+        "current": {
+          "relPath": "Alpha.md",
+          "docid": "#98897c0b",
+          "uri": "gno://identity/Alpha.md",
+          "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": true
+        },
+        "structureDelta": {
+          "headings": {
+            "added": [],
+            "removed": []
+          },
+          "links": {
+            "added": [],
+            "removed": []
+          },
+          "typedEdges": {
+            "added": [],
+            "removed": []
+          },
+          "dates": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "truncated": false
+        }
+      },
+      {
+        "id": "gno-change-v1.eyJzZXF1ZW5jZSI6Mn0=",
+        "kind": "create",
+        "collection": "other",
+        "observedAt": "2026-09-05T02:51:48.564Z",
+        "previous": null,
+        "current": {
+          "relPath": "Delta.md",
+          "docid": "#ca2c1633",
+          "uri": "gno://other/Delta.md",
+          "sourceHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+          "mirrorHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+          "active": true
+        },
+        "structureDelta": {
+          "headings": {
+            "added": [],
+            "removed": []
+          },
+          "links": {
+            "added": [],
+            "removed": []
+          },
+          "typedEdges": {
+            "added": [],
+            "removed": []
+          },
+          "dates": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "truncated": false
+        }
+      },
+      {
+        "id": "gno-change-v1.eyJzZXF1ZW5jZSI6M30=",
+        "kind": "update",
+        "collection": "identity",
+        "observedAt": "2026-09-05T02:55:40.790Z",
+        "previous": {
+          "relPath": "Alpha.md",
+          "docid": "#98897c0b",
+          "uri": "gno://identity/Alpha.md",
+          "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": true
+        },
+        "current": {
+          "relPath": "Alpha.md",
+          "docid": "#6dc5c05b",
+          "uri": "gno://identity/Alpha.md",
+          "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": true
+        },
+        "structureDelta": {
+          "headings": {
+            "added": [],
+            "removed": []
+          },
+          "links": {
+            "added": [],
+            "removed": []
+          },
+          "typedEdges": {
+            "added": [],
+            "removed": []
+          },
+          "dates": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "truncated": false
+        }
+      },
+      {
+        "id": "gno-change-v1.eyJzZXF1ZW5jZSI6NH0=",
+        "kind": "inactivate",
+        "collection": "identity",
+        "observedAt": "2026-09-05T02:55:52.033Z",
+        "previous": {
+          "relPath": "Alpha.md",
+          "docid": "#6dc5c05b",
+          "uri": "gno://identity/Alpha.md",
+          "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": true
+        },
+        "current": {
+          "relPath": "Alpha.md",
+          "docid": "#6dc5c05b",
+          "uri": "gno://identity/Alpha.md",
+          "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": false
+        },
+        "structureDelta": {
+          "headings": {
+            "added": [],
+            "removed": []
+          },
+          "links": {
+            "added": [],
+            "removed": []
+          },
+          "typedEdges": {
+            "added": [],
+            "removed": []
+          },
+          "dates": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "truncated": false
+        }
+      },
+      {
+        "id": "gno-change-v1.eyJzZXF1ZW5jZSI6NX0=",
+        "kind": "reactivate",
+        "collection": "identity",
+        "observedAt": "2026-09-05T02:55:57.688Z",
+        "previous": {
+          "relPath": "Alpha.md",
+          "docid": "#6dc5c05b",
+          "uri": "gno://identity/Alpha.md",
+          "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": false
+        },
+        "current": {
+          "relPath": "Alpha.md",
+          "docid": "#6dc5c05b",
+          "uri": "gno://identity/Alpha.md",
+          "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": true
+        },
+        "structureDelta": {
+          "headings": {
+            "added": [],
+            "removed": []
+          },
+          "links": {
+            "added": [],
+            "removed": []
+          },
+          "typedEdges": {
+            "added": [],
+            "removed": []
+          },
+          "dates": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "truncated": false
+        }
+      },
+      {
+        "id": "gno-change-v1.eyJzZXF1ZW5jZSI6Nn0=",
+        "kind": "inactivate",
+        "collection": "identity",
+        "observedAt": "2026-09-05T02:56:03.405Z",
+        "previous": {
+          "relPath": "Alpha.md",
+          "docid": "#6dc5c05b",
+          "uri": "gno://identity/Alpha.md",
+          "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": true
+        },
+        "current": {
+          "relPath": "Alpha.md",
+          "docid": "#6dc5c05b",
+          "uri": "gno://identity/Alpha.md",
+          "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": false
+        },
+        "structureDelta": {
+          "headings": {
+            "added": [],
+            "removed": []
+          },
+          "links": {
+            "added": [],
+            "removed": []
+          },
+          "typedEdges": {
+            "added": [],
+            "removed": []
+          },
+          "dates": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "truncated": false
+        }
+      },
+      {
+        "id": "gno-change-v1.eyJzZXF1ZW5jZSI6N30=",
+        "kind": "reactivate",
+        "collection": "identity",
+        "observedAt": "2026-09-05T02:56:09.137Z",
+        "previous": {
+          "relPath": "Alpha.md",
+          "docid": "#6dc5c05b",
+          "uri": "gno://identity/Alpha.md",
+          "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": false
+        },
+        "current": {
+          "relPath": "Alpha.md",
+          "docid": "#6dc5c05b",
+          "uri": "gno://identity/Alpha.md",
+          "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": true
+        },
+        "structureDelta": {
+          "headings": {
+            "added": [],
+            "removed": []
+          },
+          "links": {
+            "added": [],
+            "removed": []
+          },
+          "typedEdges": {
+            "added": [],
+            "removed": []
+          },
+          "dates": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "truncated": false
+        }
+      },
+      {
+        "id": "gno-change-v1.eyJzZXF1ZW5jZSI6OH0=",
+        "kind": "create",
+        "collection": "identity",
+        "observedAt": "2026-09-05T02:56:14.885Z",
+        "previous": null,
+        "current": {
+          "relPath": "copy/Alpha.md",
+          "docid": "#98897c0b",
+          "uri": "gno://identity/copy/Alpha.md",
+          "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": true
+        },
+        "structureDelta": {
+          "headings": {
+            "added": [],
+            "removed": []
+          },
+          "links": {
+            "added": [],
+            "removed": []
+          },
+          "typedEdges": {
+            "added": [],
+            "removed": []
+          },
+          "dates": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "truncated": false
+        }
+      },
+      {
+        "id": "gno-change-v1.eyJzZXF1ZW5jZSI6OX0=",
+        "kind": "create",
+        "collection": "identity",
+        "observedAt": "2026-09-05T02:56:20.668Z",
+        "previous": null,
+        "current": {
+          "relPath": "copy/Beta.md",
+          "docid": "#98897c0b",
+          "uri": "gno://identity/copy/Beta.md",
+          "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": true
+        },
+        "structureDelta": {
+          "headings": {
+            "added": [],
+            "removed": []
+          },
+          "links": {
+            "added": [],
+            "removed": []
+          },
+          "typedEdges": {
+            "added": [],
+            "removed": []
+          },
+          "dates": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "truncated": false
+        }
+      },
+      {
+        "id": "gno-change-v1.eyJzZXF1ZW5jZSI6MTB9",
+        "kind": "inactivate",
+        "collection": "identity",
+        "observedAt": "2026-09-05T02:56:20.670Z",
+        "previous": {
+          "relPath": "copy/Alpha.md",
+          "docid": "#98897c0b",
+          "uri": "gno://identity/copy/Alpha.md",
+          "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": true
+        },
+        "current": {
+          "relPath": "copy/Alpha.md",
+          "docid": "#98897c0b",
+          "uri": "gno://identity/copy/Alpha.md",
+          "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "active": false
+        },
+        "structureDelta": {
+          "headings": {
+            "added": [],
+            "removed": []
+          },
+          "links": {
+            "added": [],
+            "removed": []
+          },
+          "typedEdges": {
+            "added": [],
+            "removed": []
+          },
+          "dates": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "truncated": false
+        }
+      },
+      {
+        "id": "gno-change-v1.eyJzZXF1ZW5jZSI6MTF9",
+        "kind": "create",
+        "collection": "identity",
+        "observedAt": "2026-09-05T02:56:38.666Z",
+        "previous": null,
+        "current": {
+          "relPath": "Scope.md",
+          "docid": "#60145b31",
+          "uri": "gno://identity/Scope.md",
+          "sourceHash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+          "mirrorHash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+          "active": true
+        },
+        "structureDelta": {
+          "headings": {
+            "added": [],
+            "removed": []
+          },
+          "links": {
+            "added": [],
+            "removed": []
+          },
+          "typedEdges": {
+            "added": [],
+            "removed": []
+          },
+          "dates": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "truncated": false
+        }
+      },
+      {
+        "id": "gno-change-v1.eyJzZXF1ZW5jZSI6MTJ9",
+        "kind": "create",
+        "collection": "other",
+        "observedAt": "2026-09-05T02:56:38.669Z",
+        "previous": null,
+        "current": {
+          "relPath": "Scope.md",
+          "docid": "#77cf571d",
+          "uri": "gno://other/Scope.md",
+          "sourceHash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+          "mirrorHash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+          "active": true
+        },
+        "structureDelta": {
+          "headings": {
+            "added": [],
+            "removed": []
+          },
+          "links": {
+            "added": [],
+            "removed": []
+          },
+          "typedEdges": {
+            "added": [],
+            "removed": []
+          },
+          "dates": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "truncated": false
+        }
+      }
+    ],
+    "page": {
+      "nextCursor": null,
+      "earliestCursor": "gno-change-v1.eyJzZXF1ZW5jZSI6MH0=",
+      "latestCursor": "gno-change-v1.eyJzZXF1ZW5jZSI6MTJ9",
+      "cursorExpired": false,
+      "truncated": false,
+      "retentionTruncated": false
+    },
+    "warnings": []
+  }
+}

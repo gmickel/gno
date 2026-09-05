@@ -1,0 +1,57 @@
+{
+  "branch": "fn-143-152-retrieval-resource-major",
+  "evidence": [
+    ".flow/artifacts/fn-148-eligible-candidates-before-retrieval",
+    ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-release-gates/README.md"
+  ],
+  "findings": {
+    "backend": "interactive",
+    "headSha": "302ffe79ed8aa9ddafc1531c264391430d1ab366",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-070f8eb834f1cf634d5e4472bb374c1f0c78a077ad7f6e6dc9cc34549efd616c"
+  },
+  "head_sha": "302ffe79ed8aa9ddafc1531c264391430d1ab366",
+  "id": "fn-148-eligible-candidates-before-retrieval",
+  "limitations": [
+    "Acceptance combines the explicitly pinned captured checkpoints in the artifact reports. This receipt does not relabel all historical runs as f64.",
+    "Hosted gno.sh documentation and driven-page QA are queued after the aggregate PR under the explicit user sequencing override.",
+    "Formal plan-review and impl-review were disabled by the user.",
+    "Rare selective SQL one-shot slowed1.81 to3.38ms; concurrent activated-owner timer tails around365ms remain. Actual201-owner native bridges cover CUDA and Metal; no native Cartesian scaling matrix claimed."
+  ],
+  "mode": "interactive",
+  "model": "gpt-6-astra medium",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 5,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      }
+    ],
+    "total": 5
+  },
+  "timestamp": "2026-09-05T07:38:37Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

@@ -1,0 +1,62 @@
+{
+  "branch": "fn-143-152-retrieval-resource-major",
+  "evidence": [
+    ".flow/artifacts/fn-145-token-sized-reranker-contexts-with",
+    ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-release-gates/README.md",
+    ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/allocation-native-metal-heimdall/README.md",
+    ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/heimdall-final-gates/host-native-verification.json"
+  ],
+  "findings": {
+    "backend": "interactive",
+    "headSha": "56ece85a4ea6020db8b2f1772846e0e7b3e7a393",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-c72ea2a485a9cd8b14cc0fc9708566da03f9173606a744205f0f6f69c4f198c8"
+  },
+  "head_sha": "56ece85a4ea6020db8b2f1772846e0e7b3e7a393",
+  "id": "fn-145-token-sized-reranker-contexts-with",
+  "limitations": [
+    "Acceptance combines the explicitly pinned captured checkpoints in the artifact reports. This receipt does not relabel all historical runs as f64.",
+    "Hosted gno.sh documentation and driven-page QA are queued after the aggregate PR under the explicit user sequencing override.",
+    "Formal plan-review and impl-review were disabled by the user.",
+    "CUDA measured4.3313GiB native GPU context/compute reduction for the declared short-input pair; sized context/scoring timings were slower and remain retained.",
+    "New physical Metal measurement is Heimdall M4 Max128GiB, unchanged finalf64 package, not a rewrite of prior Ivan pressure failures.",
+    "Native GPU context/compute reduction4648599552bytes with exact six-input/token/unrounded-score/rank cold/warm parity; one ordered pair, sized warm score2.28475ms slower retained. No universal performance claim.",
+    "Final local gates rerun at32aa6d99 pass; subsequent commits change acceptance metadata only. Remote CI remains independently required."
+  ],
+  "mode": "interactive",
+  "model": "gpt-6-astra medium",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 5,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      }
+    ],
+    "total": 5
+  },
+  "timestamp": "2026-09-05T08:50:14.522702+00:00",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

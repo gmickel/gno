@@ -1,0 +1,532 @@
+{
+  "source": "3d9c0ec49c502ab0c3470c7df14ddac8123ad8d9",
+  "runs": {
+    "cli-update": {
+      "command": [
+        "bun",
+        "--preload",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/phase-parent.ts",
+        "--preload",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/evals/acceptance/parent-capture.ts",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/src/index.ts",
+        "update",
+        "--json"
+      ],
+      "pid": 176503,
+      "exitCode": 0,
+      "elapsed": 1.1193196773529053,
+      "peakSampledOwnedRssKiB": 300384,
+      "stderrBytes": 0,
+      "capture": {
+        "requests": 0,
+        "incomplete": 0,
+        "childPids": [],
+        "backends": [],
+        "errors": [
+          "Public parent loaded native inference artifacts"
+        ],
+        "parentNative": {
+          "pid": 176503,
+          "bindingLoads": [],
+          "nativeModules": [
+            "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/src/llm/nodeLlamaCpp/lifecycle.ts"
+          ],
+          "mappedModels": [],
+          "mappingSource": "/proc/self/maps"
+        }
+      }
+    },
+    "cli-embed": {
+      "command": [
+        "bun",
+        "--preload",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/phase-parent.ts",
+        "--preload",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/evals/acceptance/parent-capture.ts",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/src/index.ts",
+        "embed",
+        "--json"
+      ],
+      "pid": 179354,
+      "exitCode": 2,
+      "elapsed": 1.1122846603393555,
+      "peakSampledOwnedRssKiB": 278904,
+      "stderrBytes": 2599,
+      "capture": {
+        "requests": 2,
+        "incomplete": 0,
+        "childPids": [
+          179391
+        ],
+        "backends": [],
+        "errors": [
+          "Failed to load model: file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "Public parent loaded native inference artifacts"
+        ],
+        "parentNative": {
+          "pid": 179354,
+          "bindingLoads": [],
+          "nativeModules": [
+            "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/src/llm/nodeLlamaCpp/lifecycle.ts"
+          ],
+          "mappedModels": [],
+          "mappingSource": "/proc/self/maps"
+        }
+      }
+    },
+    "cli-embed-capture-scope-fixed": {
+      "command": [
+        "bun",
+        "--preload",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/phase-parent.ts",
+        "--preload",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/evals/acceptance/parent-capture.ts",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/src/index.ts",
+        "embed",
+        "--json"
+      ],
+      "pid": 180169,
+      "exitCode": 0,
+      "elapsed": 2.7854273319244385,
+      "peakSampledOwnedRssKiB": 1137240,
+      "stderrBytes": 0,
+      "capture": {
+        "requests": 3,
+        "incomplete": 0,
+        "childPids": [
+          180205
+        ],
+        "backends": [
+          "cuda"
+        ],
+        "errors": [
+          "Public parent loaded native inference artifacts"
+        ],
+        "parentNative": {
+          "pid": 180169,
+          "bindingLoads": [],
+          "nativeModules": [
+            "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/src/llm/nodeLlamaCpp/lifecycle.ts"
+          ],
+          "mappedModels": [],
+          "mappingSource": "/proc/self/maps"
+        }
+      }
+    },
+    "sdk-matrix": {
+      "command": [
+        "bun",
+        "--preload",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/phase-parent.ts",
+        "--preload",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/evals/acceptance/parent-capture.ts",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/matrix.ts"
+      ],
+      "pid": 180407,
+      "exitCode": 0,
+      "elapsed": 70.98909020423889,
+      "peakSampledOwnedRssKiB": 1989532,
+      "stderrBytes": 0,
+      "capture": {
+        "requests": 138,
+        "incomplete": 0,
+        "childPids": [
+          180447,
+          180580,
+          180709,
+          180891,
+          181013,
+          181122,
+          181219,
+          181312,
+          181423,
+          181524,
+          181655,
+          181747,
+          181843,
+          181979,
+          182074,
+          182167,
+          182270,
+          182670,
+          182798,
+          182940,
+          183424,
+          183949,
+          184393,
+          184507
+        ],
+        "backends": [
+          "cuda"
+        ],
+        "errors": [],
+        "parentNative": {
+          "pid": 180407,
+          "bindingLoads": [],
+          "nativeModules": [],
+          "mappedModels": [],
+          "mappingSource": "/proc/self/maps"
+        }
+      }
+    },
+    "cli-vsearch": {
+      "command": [
+        "bun",
+        "--preload",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/phase-parent.ts",
+        "--preload",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/evals/acceptance/parent-capture.ts",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/src/index.ts",
+        "vsearch",
+        "cobalt observatory dawn",
+        "--json"
+      ],
+      "pid": 185103,
+      "exitCode": 0,
+      "elapsed": 2.776810884475708,
+      "peakSampledOwnedRssKiB": 1068040,
+      "stderrBytes": 0,
+      "capture": {
+        "requests": 3,
+        "incomplete": 0,
+        "childPids": [
+          185190
+        ],
+        "backends": [
+          "cuda"
+        ],
+        "errors": [
+          "Public parent loaded native inference artifacts"
+        ],
+        "parentNative": {
+          "pid": 185103,
+          "bindingLoads": [],
+          "nativeModules": [
+            "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/src/llm/nodeLlamaCpp/lifecycle.ts"
+          ],
+          "mappedModels": [],
+          "mappingSource": "/proc/self/maps"
+        }
+      }
+    },
+    "mcp": {
+      "command": [
+        "bun",
+        "--preload",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/phase-parent.ts",
+        "--preload",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/evals/acceptance/parent-capture.ts",
+        "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/mcp-only.ts"
+      ],
+      "pid": 187331,
+      "exitCode": 0,
+      "elapsed": 2.806112766265869,
+      "peakSampledOwnedRssKiB": 1134808,
+      "stderrBytes": 114,
+      "capture": {
+        "requests": 3,
+        "incomplete": 0,
+        "childPids": [
+          187558
+        ],
+        "backends": [
+          "cuda"
+        ],
+        "errors": [
+          "Public parent loaded native inference artifacts"
+        ],
+        "parentNative": {
+          "pid": 187469,
+          "bindingLoads": [],
+          "nativeModules": [
+            "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/src/llm/nodeLlamaCpp/lifecycle.ts"
+          ],
+          "mappedModels": [],
+          "mappingSource": "/proc/self/maps"
+        }
+      }
+    }
+  },
+  "crossRunOwners": [
+    {
+      "name": "initial",
+      "oldCompletePair": true,
+      "oldCurrentVsNewCurrentExact": true,
+      "oldRebuildVsNewRebuildExact": true
+    },
+    {
+      "name": "whitespace",
+      "oldCompletePair": true,
+      "oldCurrentVsNewCurrentExact": true,
+      "oldRebuildVsNewRebuildExact": true
+    },
+    {
+      "name": "unchanged",
+      "oldCompletePair": false,
+      "oldCurrentVsNewCurrentExact": true,
+      "oldRebuildVsNewRebuildExact": false
+    },
+    {
+      "name": "absent-1",
+      "oldCompletePair": false,
+      "oldCurrentVsNewCurrentExact": true,
+      "oldRebuildVsNewRebuildExact": true
+    },
+    {
+      "name": "restored-1",
+      "oldCompletePair": true,
+      "oldCurrentVsNewCurrentExact": true,
+      "oldRebuildVsNewRebuildExact": true
+    },
+    {
+      "name": "absent-2",
+      "oldCompletePair": true,
+      "oldCurrentVsNewCurrentExact": true,
+      "oldRebuildVsNewRebuildExact": true
+    },
+    {
+      "name": "restored-2",
+      "oldCompletePair": true,
+      "oldCurrentVsNewCurrentExact": true,
+      "oldRebuildVsNewRebuildExact": true
+    },
+    {
+      "name": "same-title-duplicate",
+      "oldCompletePair": true,
+      "oldCurrentVsNewCurrentExact": true,
+      "oldRebuildVsNewRebuildExact": true
+    },
+    {
+      "name": "title-rename",
+      "oldCompletePair": false,
+      "oldCurrentVsNewCurrentExact": false,
+      "oldRebuildVsNewRebuildExact": true
+    },
+    {
+      "name": "force",
+      "oldCompletePair": true,
+      "oldCurrentVsNewCurrentExact": true,
+      "oldRebuildVsNewRebuildExact": true
+    },
+    {
+      "name": "materialization-repair",
+      "oldCompletePair": true,
+      "oldCurrentVsNewCurrentExact": true,
+      "oldRebuildVsNewRebuildExact": true
+    },
+    {
+      "name": "collection-global-catchup",
+      "oldCompletePair": true,
+      "oldCurrentVsNewCurrentExact": true,
+      "oldRebuildVsNewRebuildExact": true
+    }
+  ],
+  "phaseSummary": {
+    "starts": {
+      "actual-model-load": 53,
+      "backend-init": 132,
+      "simulator-model-estimate": 188,
+      "simulator-model-load": 215,
+      "simulator-context-estimate": 215,
+      "simulator-session-dispose": 79,
+      "simulator-handle-dispose": 215,
+      "actual-backend-dispose": 25
+    },
+    "sessionDisposalWhileEstimatesActive": [
+      {
+        "pid": 180205,
+        "time": 1788576922530,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 180447,
+        "time": 1788576936411,
+        "activeEstimates": 3
+      },
+      {
+        "pid": 180580,
+        "time": 1788576939699,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 180709,
+        "time": 1788576942524,
+        "activeEstimates": 2
+      },
+      {
+        "pid": 180891,
+        "time": 1788576945316,
+        "activeEstimates": 3
+      },
+      {
+        "pid": 181122,
+        "time": 1788576950912,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 181219,
+        "time": 1788576953756,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 181312,
+        "time": 1788576956556,
+        "activeEstimates": 2
+      },
+      {
+        "pid": 181423,
+        "time": 1788576959409,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 181524,
+        "time": 1788576962268,
+        "activeEstimates": 2
+      },
+      {
+        "pid": 181655,
+        "time": 1788576965126,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 181747,
+        "time": 1788576967993,
+        "activeEstimates": 2
+      },
+      {
+        "pid": 181843,
+        "time": 1788576970882,
+        "activeEstimates": 3
+      },
+      {
+        "pid": 181979,
+        "time": 1788576973741,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 182074,
+        "time": 1788576976621,
+        "activeEstimates": 4
+      },
+      {
+        "pid": 182167,
+        "time": 1788576979500,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 182270,
+        "time": 1788576982398,
+        "activeEstimates": 2
+      },
+      {
+        "pid": 182670,
+        "time": 1788576985421,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 182798,
+        "time": 1788576988485,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 182940,
+        "time": 1788576991517,
+        "activeEstimates": 3
+      },
+      {
+        "pid": 183424,
+        "time": 1788576994501,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 183949,
+        "time": 1788576997454,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 184393,
+        "time": 1788577000464,
+        "activeEstimates": 2
+      },
+      {
+        "pid": 184507,
+        "time": 1788577003927,
+        "activeEstimates": 1
+      },
+      {
+        "pid": 185190,
+        "time": 1788577019966,
+        "activeEstimates": 1
+      }
+    ],
+    "unfinished": []
+  },
+  "cliMcpExactPublicEquality": true,
+  "cliMcpVectorsUsed": true,
+  "postRun": {
+    "ownedPids": [
+      176503,
+      179354,
+      179391,
+      180169,
+      180205,
+      180254,
+      180407,
+      180447,
+      180492,
+      180580,
+      180624,
+      180709,
+      180814,
+      180891,
+      180963,
+      181013,
+      181122,
+      181219,
+      181312,
+      181423,
+      181524,
+      181585,
+      181655,
+      181698,
+      181747,
+      181793,
+      181843,
+      181979,
+      182074,
+      182118,
+      182167,
+      182219,
+      182270,
+      182375,
+      182670,
+      182798,
+      182859,
+      182940,
+      183424,
+      183532,
+      183949,
+      184393,
+      184507,
+      184551,
+      185103,
+      185190,
+      185603,
+      187331,
+      187469,
+      187558
+    ],
+    "stillPresent": [],
+    "gpu": "1475083, /app/libexec/stremio/stremio, 925 MiB\n4007014, bun, 428 MiB\n"
+  },
+  "helperHashes": {
+    "prepare.ts": "5ee14d134b8c30c4b684547409ca0c0537ebb9ff32927e298a4c528157644d63",
+    "matrix.ts": "b63d7857fac2ebaf705e8ce6f9b248ae1b19de3e99a9eb5da8b421f844fd9634",
+    "run.py": "12ed8026255e330a0d72630f03a407a1b282794f160b0cea8b1cfef0c96a9fcf",
+    "phase-parent.ts": "2d9cf62da62253e45ba63b654539a7e6cab42c490cba7ae6d421e0b51f89a39b",
+    "phase-child.ts": "d1c96c89d5604f32355d243d513c9365e08d365b8b7bbb3a9927c488966f5fc7",
+    "mcp-only.ts": "3ebbc3e18b68c847fd5d17d9c4e96855e428e8a06bf9166e5f1d561ef173ebd9",
+    "compare-candidate.ts": "f31ccfc4813f6dc00a808de9353bbca37e242f8e138f609e3b0c92075c934dff",
+    "analyze.py": "9430287e0899fb293e9f047d5d2203ff65244b7e20bf1fa78e7137158d263c6e"
+  }
+}

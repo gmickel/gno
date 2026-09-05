@@ -18,13 +18,14 @@ import type {
 } from "../store/vector";
 import type { GnoEmbedOptions, GnoEmbedResult } from "./types";
 
-import { embedBacklog } from "../embed";
+import { embedBacklog, prepareEmbeddingBacklog } from "../embed/backlog";
 import { getEmbeddingFingerprint } from "../embed/fingerprint";
 import {
   chunkRetryKey,
   embedAndStoreBatch,
   MAX_EMBED_CHUNK_ATTEMPTS,
 } from "../embed/retry";
+import { countVariantBacklog } from "../embed/variant-plan";
 import { resolveModelUri } from "../llm/registry";
 import { err, ok } from "../store/types";
 import { createVectorIndexPort, createVectorStatsPort } from "../store/vector";
@@ -71,7 +72,7 @@ function getActiveChunks(
     const sql = after
       ? `
         SELECT c.mirror_hash as mirrorHash, c.seq, c.text,
-          (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 LIMIT 1) as title,
+          (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 ORDER BY d.id LIMIT 1) as title,
           'force' as reason
         FROM content_chunks c
         WHERE EXISTS (
@@ -84,7 +85,7 @@ function getActiveChunks(
       `
       : `
         SELECT c.mirror_hash as mirrorHash, c.seq, c.text,
-          (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 LIMIT 1) as title,
+          (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 ORDER BY d.id LIMIT 1) as title,
           'force' as reason
         FROM content_chunks c
         WHERE EXISTS (
@@ -238,16 +239,6 @@ async function forceEmbedAll(
   return { embedded, errors, contentionErrors };
 }
 
-async function checkVecAvailable(db: Database): Promise<boolean> {
-  try {
-    const sqliteVec = await import("sqlite-vec");
-    sqliteVec.load(db);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export async function runEmbed(
   runtime: EmbedRuntimeOptions,
   options: GnoEmbedOptions = {}
@@ -265,26 +256,6 @@ export async function runEmbed(
   const stats: VectorStatsPort = createVectorStatsPort(db);
 
   let totalToEmbed = 0;
-  if (force) {
-    const forceCount = await getActiveChunkCount(db);
-    if (!forceCount.ok) {
-      throw sdkError("STORE", forceCount.error.message, {
-        cause: forceCount.error.cause,
-      });
-    }
-
-    totalToEmbed = forceCount.value;
-    if (totalToEmbed === 0 || dryRun) {
-      return {
-        embedded: totalToEmbed,
-        errors: 0,
-        duration: 0,
-        model: modelUri,
-        searchAvailable: await checkVecAvailable(db),
-      };
-    }
-  }
-
   const embedResult = await runtime.llm.createEmbeddingPort(modelUri, {
     egressCollections: options.collection ? [options.collection] : "all",
     policy: runtime.downloadPolicy,
@@ -297,16 +268,22 @@ export async function runEmbed(
 
   const embedPort = embedResult.value;
   try {
-    const probeResult = await embedPort.embed("dimension probe");
-    if (!probeResult.ok) {
-      throw sdkError("MODEL", probeResult.error.message, {
-        cause: probeResult.error.cause,
-      });
+    const initializedPort = await embedPort.init();
+    if (!initializedPort.ok)
+      throw sdkError("MODEL", initializedPort.error.message);
+    let dimensions = embedPort.dimensions();
+    if (!embedPort.getIdentity?.()) {
+      const probeResult = await embedPort.embed("dimension probe");
+      if (!probeResult.ok)
+        throw sdkError("MODEL", probeResult.error.message, {
+          cause: probeResult.error.cause,
+        });
+      dimensions = probeResult.value.length;
     }
 
     const vectorResult = await createVectorIndexPort(db, {
       model: modelUri,
-      dimensions: probeResult.value.length,
+      dimensions,
     });
     if (!vectorResult.ok) {
       throw sdkError("STORE", vectorResult.error.message, {
@@ -315,6 +292,53 @@ export async function runEmbed(
     }
 
     const vectorIndex = vectorResult.value;
+    const prepared = await prepareEmbeddingBacklog({
+      statsPort: stats,
+      embedPort,
+      vectorIndex,
+      modelUri,
+      collection: options.collection,
+      batchSize,
+      force,
+    });
+    if (!prepared.ok) throw sdkError("STORE", prepared.error.message);
+    if (prepared.value.variantStore) {
+      const count = countVariantBacklog(prepared.value);
+      const startedAt = Date.now();
+      if (dryRun)
+        return {
+          embedded: count,
+          errors: 0,
+          duration: 0,
+          model: modelUri,
+          searchAvailable: prepared.value.variantStore.searchAvailable,
+        };
+      const processed = await embedBacklog(prepared.value);
+      if (!processed.ok) throw sdkError("STORE", processed.error.message);
+      if (processed.value.syncError)
+        throw sdkError("STORE", processed.value.syncError);
+      return {
+        embedded: processed.value.embedded,
+        errors: processed.value.errors,
+        contentionErrors: processed.value.contentionErrors ?? 0,
+        duration: (Date.now() - startedAt) / 1000,
+        model: modelUri,
+        searchAvailable: prepared.value.variantStore.searchAvailable,
+      };
+    }
+    if (force) {
+      const count = await getActiveChunkCount(db);
+      if (!count.ok) throw sdkError("STORE", count.error.message);
+      totalToEmbed = count.value;
+      if (dryRun || !totalToEmbed)
+        return {
+          embedded: totalToEmbed,
+          errors: 0,
+          duration: 0,
+          model: modelUri,
+          searchAvailable: vectorIndex.searchAvailable,
+        };
+    }
     if (!force) {
       const embedFingerprint = getEmbeddingFingerprint({
         modelUri,

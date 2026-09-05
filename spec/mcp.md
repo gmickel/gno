@@ -11,6 +11,21 @@ name answers JSON-RPC `-32602`)
 
 This document specifies the MCP server interface for GNO.
 
+## Filtered retrieval limits
+
+Search candidate budgets apply after supported owner filters (collection, path,
+tags, dates, author, categories and exclusions). Semantic retrieval and hybrid
+retrieval also select matching-language chunks before their budgets; standalone
+lexical language remains reserved. A nearby out-of-scope vector cannot displace
+an eligible hit. Caller scope intersects user filters; empty allowlists deny all.
+Whole-document exclusions inspect every chunk, including other languages;
+hybrid exclusions also inspect author and category metadata.
+
+Results can remain shorter than the requested limit after score thresholds,
+deduplication or limited eligible coverage. Ranking/fusion and output schemas
+are unchanged. This correction does not change independent natural-language
+memory recall matching.
+
 ## Server Information
 
 | Property  | Value                |
@@ -280,6 +295,17 @@ redacted statuses: 401 (authentication), 403 (peer/Host/Origin/write), 413
 (shutdown, revoked credentials, or unavailable runtime). Defaults are 1 MiB per
 POST body, 120 requests/minute per actual peer, 64 active requests, 16 queued
 requests, 32 sessions, and a five-minute idle session timeout.
+
+### Cancellation and accepted jobs
+
+MCP request cancellation notifications and transport disconnect propagate to the
+participating inference stages. Canceled calls cannot publish late results or
+successful fallback. Noncooperative native operations retain their model lease
+and shared queue capacity until actual settlement or controlled child exit; queued
+operations are never replayed on a replacement child. Accepted asynchronous jobs
+have an independent lifetime after job-ID delivery and survive normal initiating
+transport closure. Explicit job cancellation and resident shutdown stop their
+subsequent work. Existing error, job status and output schemas remain unchanged.
 
 ### Packaged gateway conformance
 

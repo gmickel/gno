@@ -1,0 +1,95 @@
+{
+  "sourceCommit": "f64c41c97e196e3bffdba23bc1c006bca7489b28",
+  "rows": [
+    {
+      "stage": "clipper-build",
+      "command": [
+        "bun",
+        "run",
+        "package:clipper"
+      ],
+      "exitCode": 0,
+      "startedAt": 1788591751.398199,
+      "durationSeconds": 0.07011604309082031,
+      "log": "/home/gordon/.cache/agent-tmp/gno-final-f64c41c9/clipper-build.log",
+      "sha256": "1ccde204fc4c86c0e421485f1b40b204c8eb6927e985d1cfead67b07efe7e320"
+    },
+    {
+      "stage": "lint",
+      "command": [
+        "bun",
+        "run",
+        "lint:check"
+      ],
+      "exitCode": 0,
+      "startedAt": 1788591751.46848,
+      "durationSeconds": 12.558425188064575,
+      "log": "/home/gordon/.cache/agent-tmp/gno-final-f64c41c9/lint.log",
+      "sha256": "e082e1b476eafa71e6f06be67d514b4f54fdb9191374a235f856bd1b00a382ba"
+    },
+    {
+      "stage": "typecheck",
+      "command": [
+        "bun",
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "startedAt": 1788591764.027306,
+      "durationSeconds": 13.65861701965332,
+      "log": "/home/gordon/.cache/agent-tmp/gno-final-f64c41c9/typecheck.log",
+      "sha256": "0a7cbec9e31e5ab1dc3f62bf0e9994201b491a121c31235f27316f5151281817"
+    },
+    {
+      "stage": "tests",
+      "command": [
+        "bun",
+        "test"
+      ],
+      "exitCode": 1,
+      "startedAt": 1788591777.6863155,
+      "durationSeconds": 364.5357491970062,
+      "log": "/home/gordon/.cache/agent-tmp/gno-final-f64c41c9/tests.log",
+      "sha256": "d30aa3d566fdaa41dd4b768b6668cc9471e709ad70b493985c032480dfb2c7e2"
+    },
+    {
+      "stage": "docs",
+      "command": [
+        "bun",
+        "run",
+        "docs:verify"
+      ],
+      "exitCode": 0,
+      "startedAt": 1788592142.2241828,
+      "durationSeconds": 0.9379799365997314,
+      "log": "/home/gordon/.cache/agent-tmp/gno-final-f64c41c9/docs.log",
+      "sha256": "7b554819d88cd16f5183e6b7938beb5505565736b65fe0c8cedc853497d0ced8"
+    },
+    {
+      "stage": "clipper-verify",
+      "command": [
+        "bun",
+        "run",
+        "verify:clipper-package"
+      ],
+      "exitCode": 0,
+      "startedAt": 1788592143.1624346,
+      "durationSeconds": 0.1316981315612793,
+      "log": "/home/gordon/.cache/agent-tmp/gno-final-f64c41c9/clipper-verify.log",
+      "sha256": "c47bbd5dd0a933f1c9685664199a16a157aae8e254595268764150e2604f31d2"
+    },
+    {
+      "stage": "package",
+      "command": [
+        "bun",
+        "run",
+        "test:package"
+      ],
+      "exitCode": 1,
+      "startedAt": 1788592143.2945554,
+      "durationSeconds": 35.22403597831726,
+      "log": "/home/gordon/.cache/agent-tmp/gno-final-f64c41c9/package.log",
+      "sha256": "55710b58acb437ad7271933f02a7a22e28edb7f561310ca23c7b3689673b47f7"
+    }
+  ]
+}

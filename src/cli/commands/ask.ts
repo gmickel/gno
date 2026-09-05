@@ -31,6 +31,7 @@ import {
   processAnswerResultWithTrace,
 } from "../../pipeline/answer";
 import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
+import { RequestHydration } from "../../pipeline/hydration";
 import {
   createVectorIndexPort,
   type VectorIndexPort,
@@ -106,6 +107,7 @@ export async function ask(
   }
 
   const { store, config } = initResult;
+  const hydration = new RequestHydration(store);
 
   let embedPort: EmbeddingPort | null = null;
   let expandPort: GenerationPort | null = null;
@@ -258,6 +260,7 @@ export async function ask(
 
     const deps: HybridSearchDeps = {
       store,
+      hydration,
       config,
       vectorIndex,
       embedPort,
@@ -292,6 +295,7 @@ export async function ask(
           embedPort,
           rerankPort,
           genPort: answerPort,
+          hydration,
           projectAffinity,
           traceSession,
         }
@@ -357,7 +361,7 @@ export async function ask(
       await traceSession?.recordCapability("answer_generation", "attempted");
       const maxTokens = options.maxAnswerTokens ?? 512;
       const rawResult = await generateGroundedAnswer(
-        { genPort: answerPort, store },
+        { genPort: answerPort, store, hydration },
         query,
         results,
         maxTokens
@@ -441,6 +445,7 @@ export async function ask(
       error: cause instanceof Error ? cause.message : "Ask failed",
     };
   } finally {
+    hydration.release();
     if (embedPort) {
       await embedPort.dispose();
     }

@@ -35,3 +35,19 @@ export function getEmbeddingFingerprint(
     .update(JSON.stringify(payload))
     .digest("hex");
 }
+
+/** Partition provenance combines actual weights/runtime with the unchanged formatter policy. */
+export function getVariantModelFingerprint(
+  input: EmbeddingFingerprintInput,
+  identity: { modelFingerprint: string; runtimeFingerprint: string }
+): string {
+  return new Bun.CryptoHasher("sha256")
+    .update(
+      JSON.stringify([
+        identity.modelFingerprint,
+        identity.runtimeFingerprint,
+        getEmbeddingFingerprint(input),
+      ])
+    )
+    .digest("hex");
+}

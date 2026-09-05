@@ -1,0 +1,286 @@
+{
+  "config": {
+    "version": "1.0",
+    "ftsTokenizer": "unicode61",
+    "busyTimeoutMs": 60000,
+    "collections": [
+      {
+        "name": "probe",
+        "path": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/corpus/probe",
+        "pattern": "**/*.md",
+        "include": [],
+        "exclude": []
+      }
+    ],
+    "contexts": [],
+    "contentTypes": [],
+    "models": {
+      "activePreset": "qa-pinned",
+      "presets": [
+        {
+          "id": "qa-pinned",
+          "name": "Cached slim-tuned equivalent",
+          "embed": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "rerank": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "expand": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+          "gen": "file:/Users/gordon/Library/Caches/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf"
+        }
+      ],
+      "loadTimeout": 60000,
+      "inferenceTimeout": 30000,
+      "expandContextSize": 2048,
+      "warmModelTtl": 300000
+    },
+    "retrievalTraces": {
+      "enabled": true,
+      "redactionMode": "metadata",
+      "retention": {
+        "maxAgeDays": 30,
+        "maxTraces": 1000,
+        "maxRecordsPerTrace": 10000,
+        "maxBytes": 16777216
+      }
+    },
+    "projectAffinity": {
+      "enabled": true,
+      "contribution": 0.03
+    }
+  },
+  "init": {
+    "config": {
+      "version": "1.0",
+      "ftsTokenizer": "unicode61",
+      "busyTimeoutMs": 60000,
+      "collections": [
+        {
+          "name": "probe",
+          "path": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/corpus/probe",
+          "pattern": "**/*.md",
+          "include": [],
+          "exclude": []
+        }
+      ],
+      "contexts": [],
+      "contentTypes": [],
+      "models": {
+        "activePreset": "qa-pinned",
+        "presets": [
+          {
+            "id": "qa-pinned",
+            "name": "Cached slim-tuned equivalent",
+            "embed": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+            "rerank": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "expand": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+            "gen": "file:/Users/gordon/Library/Caches/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf"
+          }
+        ],
+        "loadTimeout": 60000,
+        "inferenceTimeout": 30000,
+        "expandContextSize": 2048,
+        "warmModelTtl": 300000
+      },
+      "retrievalTraces": {
+        "enabled": true,
+        "redactionMode": "metadata",
+        "retention": {
+          "maxAgeDays": 30,
+          "maxTraces": 1000,
+          "maxRecordsPerTrace": 10000,
+          "maxBytes": 16777216
+        }
+      },
+      "projectAffinity": {
+        "enabled": true,
+        "contribution": 0.03
+      }
+    },
+    "dbPath": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/data/index-default.sqlite",
+    "cacheDir": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/cache"
+  },
+  "manifest": {
+    "schemaVersion": "gno-acceptance-v1",
+    "role": "candidate",
+    "identity": {
+      "commit": "d0604b0d7b0c888653390618ab498187bf71b397",
+      "indexId": "ivan-packed-original-orchid-ask",
+      "indexSha256": "f8fff2ed68c444b0bfdedeb0743d08ac3095eaeb1fcd04823f970cf26483762c",
+      "bunVersion": "1.3.14",
+      "nativeDependencies": {
+        "node-llama-cpp": "3.19.1"
+      },
+      "platform": "darwin",
+      "architecture": "arm64"
+    },
+    "fixtureVersion": "gno-acceptance-qa-orchid-v1",
+    "fixtures": [
+      {
+        "path": "fixtures.json",
+        "sha256": "14779e45cbfec6903d4e63476172e835a7857c27cebf24d7ebcde5cb420e3d59"
+      }
+    ],
+    "models": [
+      {
+        "role": "embedding",
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+        "tokenizerSha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+      },
+      {
+        "role": "reranking",
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+        "tokenizerSha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48"
+      },
+      {
+        "role": "generation",
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338",
+        "tokenizerSha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+      },
+      {
+        "role": "generation",
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
+        "tokenizerSha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897"
+      }
+    ],
+    "cases": [
+      {
+        "caseId": "orchid-ownership:orchid-verified",
+        "fixtureSha256": "abd9f124d99afdb109dae88872a675e36be1d9531634ee55e2a6719a106884ff",
+        "surface": "sdk",
+        "preset": "qa-pinned",
+        "configuration": {
+          "operation": "verified-ask",
+          "query": "Who owns the meadow migration?",
+          "options": {
+            "collection": "probe",
+            "limit": 3,
+            "noExpand": true,
+            "noRerank": true,
+            "graph": false
+          },
+          "request": {
+            "query": "Who owns the meadow migration?",
+            "operation": "verified-ask",
+            "options": {
+              "collection": "probe",
+              "limit": 3,
+              "noExpand": true,
+              "noRerank": true,
+              "graph": false
+            },
+            "expectedBackend": "metal"
+          }
+        }
+      }
+    ],
+    "intendedDeltas": []
+  },
+  "sourceRoot": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/package",
+  "root": "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ",
+  "request": {
+    "manifest": {
+      "schemaVersion": "gno-acceptance-v1",
+      "role": "candidate",
+      "identity": {
+        "commit": "d0604b0d7b0c888653390618ab498187bf71b397",
+        "indexId": "ivan-packed-original-orchid-ask",
+        "indexSha256": "f8fff2ed68c444b0bfdedeb0743d08ac3095eaeb1fcd04823f970cf26483762c",
+        "bunVersion": "1.3.14",
+        "nativeDependencies": {
+          "node-llama-cpp": "3.19.1"
+        },
+        "platform": "darwin",
+        "architecture": "arm64"
+      },
+      "fixtureVersion": "gno-acceptance-qa-orchid-v1",
+      "fixtures": [
+        {
+          "path": "fixtures.json",
+          "sha256": "14779e45cbfec6903d4e63476172e835a7857c27cebf24d7ebcde5cb420e3d59"
+        }
+      ],
+      "models": [
+        {
+          "role": "embedding",
+          "id": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+          "tokenizerSha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+        },
+        {
+          "role": "reranking",
+          "id": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+          "tokenizerSha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48"
+        },
+        {
+          "role": "generation",
+          "id": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+          "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338",
+          "tokenizerSha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+        },
+        {
+          "role": "generation",
+          "id": "file:/Users/gordon/Library/Caches/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+          "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
+          "tokenizerSha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897"
+        }
+      ],
+      "cases": [
+        {
+          "caseId": "orchid-ownership:orchid-verified",
+          "fixtureSha256": "abd9f124d99afdb109dae88872a675e36be1d9531634ee55e2a6719a106884ff",
+          "surface": "sdk",
+          "preset": "qa-pinned",
+          "configuration": {
+            "operation": "verified-ask",
+            "query": "Who owns the meadow migration?",
+            "options": {
+              "collection": "probe",
+              "limit": 3,
+              "noExpand": true,
+              "noRerank": true,
+              "graph": false
+            },
+            "request": {
+              "query": "Who owns the meadow migration?",
+              "operation": "verified-ask",
+              "options": {
+                "collection": "probe",
+                "limit": 3,
+                "noExpand": true,
+                "noRerank": true,
+                "graph": false
+              },
+              "expectedBackend": "metal"
+            }
+          }
+        }
+      ],
+      "intendedDeltas": []
+    },
+    "caseId": "orchid-ownership:orchid-verified",
+    "query": "Who owns the meadow migration?",
+    "operation": "verified-ask",
+    "options": {
+      "collection": "probe",
+      "limit": 3,
+      "noExpand": true,
+      "noRerank": true,
+      "graph": false
+    },
+    "expectedBackend": "metal"
+  },
+  "provenance": {
+    "packageSha256": "f42dfdddd6296e527f3c4bf01d21bb8a685a33996edcfd1c7624e60fe13320bd",
+    "helperSha256": "f728ffc5a3525b750e9efa9d5bfb4b9929c82c8fc54b2398490f92f088cd9956",
+    "helperCommit": "9244d715",
+    "originalInitSha256": "21fced94091863dad0f5070db2d62d5a1d1ad42a976cb42c2d972183c78d279f",
+    "originalManifestSha256": "3b2cfd11414445c85221ed52a29d6d51659fe0ffb6b0b49b0d246f26f4e92b27",
+    "changedConfigFields": [
+      "collection paths relocated to identical copied synthetic bytes"
+    ],
+    "governorSha256": "24713377c597313ddd1b0e68e4cd64ad7b50ee8bcce9b40173bb36f9feeba90f"
+  }
+}

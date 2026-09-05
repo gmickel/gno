@@ -1,0 +1,35 @@
+{
+  "commit": "2beb8aaeafd0fd84d16111cbda3d8ec35a44ee6e",
+  "status": "incomplete",
+  "R5Passed3of3": false,
+  "attempted": 1,
+  "stoppedAtFirstFailure": true,
+  "failure": "expanded=false; no actualgenerationcall",
+  "successfulCliExit": true,
+  "publicPid": 94598,
+  "nativePid": 94600,
+  "nativeGeneration": 1,
+  "actualBackend": "metal",
+  "actualRoles": [
+    "embedding",
+    "rerank"
+  ],
+  "results": 5,
+  "wholeSeconds": 4.220413874834776,
+  "peakOwnedRSSMiB": 2525.0,
+  "stopReason": null,
+  "retainedSDKPrecondition": "not executed after first CLI capability failure",
+  "skipCause": "PROVEN: custom audit-default-equivalent preset ID resolves CLI balanced noExpand=true; only slim/slim-tuned IDs enable balanced expansion",
+  "pins": "raw/pins.json",
+  "sourceVerification": {
+    "commit": "2beb8aaeafd0fd84d16111cbda3d8ec35a44ee6e",
+    "verifiedSourceFiles": 742,
+    "mismatches": [],
+    "indexSha256AfterRun": "ee20bafbecfbf21dda20e164fd26e4e4c843cbed2802801238ff241b9efdfb76"
+  },
+  "gpuReleased": true,
+  "artifactRoot": ".flow/artifacts/fn-144-native-recovery-and-idle-inference/ivan-original",
+  "offlineExpansionPort": "success NativeGenerationPort; file exists; child spawning forbidden; all lifecycle counters zero",
+  "bm25Diagnostic": "unavailable: readonly connection lacks snowball tokenizer; no lexical-strength inference",
+  "nextProof": "separate config stratum with explicit same role files under slim-tuned preset ID, unchanged143doc/query/context/TTL; no GPU run in diagnostic"
+}

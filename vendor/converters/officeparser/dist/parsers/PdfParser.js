@@ -1,0 +1,848 @@
+"use strict";
+/**
+ * PDF Parser
+ *
+ * Extracts text, metadata, images, links, and attachments from PDF files using PDF.js (pdfjs-dist).
+ *
+ * **Features:**
+ * - Text extraction with formatting (bold, italic, font, size)
+ * - Comprehensive metadata extraction (title, author, subject, creator, producer, creation/modification dates)
+ * - Hyperlink extraction from PDF annotations
+ * - Heading detection via font size heuristics
+ * - Image extraction as attachments with optional OCR (using Tesseract.js)
+ * - Embedded file attachment extraction
+ * - Layout preservation (respects order of text and images)
+ *
+ * **PDF Format Limitations (compared to DOCX/ODT):**
+ *
+ * PDF was designed as a "page description language" for visual fidelity, not semantic structure.
+ * The following features **cannot be reliably extracted** from PDFs:
+ *
+ * - **Tables**: PDF has no table structure. Tables are just text positioned to look tabular.
+ *   Extracting tables would require complex spatial analysis with many false positives.
+ *   See: https://stackoverflow.com/questions/36978446/why-is-it-difficult-to-extract-data-from-pdfs
+ *
+ * - **Lists**: PDF has no list structure. Bullets/numbers are just text characters.
+ *   No hierarchy or list type information is stored. Would require heuristic detection
+ *   that would have many edge cases and errors.
+ *
+ * - **Styles**: PDF has no style definitions like "Heading1" or "Normal". Only visual
+ *   properties (font, size) exist. We use font size heuristics to detect headings.
+ *
+ * - **Notes (Footnotes/Endnotes)**: PDF has no concept of footnotes/endnotes as structured
+ *   elements. They're just smaller text at the bottom of pages.
+ *
+ * - **Text Color**: While PDF stores color, pdfjs-dist doesn't expose text color in the
+ *   textContent API. Would require parsing the operator stream which is complex.
+ *
+ * - **Background Color**: Same limitation as text color.
+ *
+ * - **Underline/Strikethrough**: These are drawn as separate line elements in PDF,
+ *   not properties of text. Association would require spatial analysis.
+ *
+ * **Parsing Approach:**
+ * 1. Load PDF document using pdfjs-dist.
+ * 2. Extract global metadata from document info dictionary.
+ * 3. Extract embedded file attachments.
+ * 4. Iterate through each page:
+ *    a. Collect text items with position and formatting.
+ *    b. Collect link annotations with associated text.
+ *    c. Collect images from the operator list.
+ *    d. Sort all items by vertical position (top-to-bottom reading order).
+ *    e. Group text into paragraphs/headings based on line breaks and font sizes.
+ *    f. Process images as attachments with optional OCR.
+ * 5. Apply heading detection based on font size heuristics.
+ *
+ * @module PdfParser
+ * @see https://mozilla.github.io/pdf.js/ PDF.js documentation
+ * @see https://www.adobe.com/devnet/pdf/pdf_reference.html PDF Reference
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.parsePdf = void 0;
+const defaults_js_1 = require("../defaults.js");
+const types_js_1 = require("../types.js");
+const astUtils_js_1 = require("../utils/astUtils.js");
+const dateUtils_js_1 = require("../utils/dateUtils.js");
+const envUtils_js_1 = require("../utils/envUtils.js");
+const errorUtils_js_1 = require("../utils/errorUtils.js");
+const imageUtils_js_1 = require("../utils/imageUtils.js");
+const moduleLoader_js_1 = require("../utils/moduleLoader.js");
+const ocrUtils_js_1 = require("../utils/ocrUtils.js");
+/** Type guard for TextItem in PDF.js 5.x */
+function isTextItem(item) {
+    return item && typeof item.str === 'string' && Array.isArray(item.transform) && item.transform.length >= 6;
+}
+/**
+ * Calculates statistics about font sizes in the document.
+ * Used for heading detection heuristics.
+ */
+function calculateFontStats(pageItems) {
+    const sizes = [];
+    for (const page of pageItems) {
+        for (const item of page) {
+            if (item.type === 'text' && item.height > 0) {
+                sizes.push(item.height);
+            }
+        }
+    }
+    if (sizes.length === 0)
+        return { median: 12, max: 12 };
+    sizes.sort((a, b) => a - b);
+    const median = sizes[Math.floor(sizes.length / 2)];
+    const max = sizes[sizes.length - 1];
+    return { median, max };
+}
+/**
+ * Determines if a text item should be considered a heading based on its font size.
+ *
+ * Heuristic: Text that is at least 20% larger than the median body text size
+ * is considered a heading. The level (1-6) is determined by relative size.
+ *
+ * @param fontSize - The font size of the text
+ * @param fontStats - Statistics about fonts in the document
+ * @returns Heading level (1-6) or 0 if not a heading
+ */
+function detectHeadingLevel(fontSize, fontStats) {
+    // If font is less than 20% larger than median, it's not a heading
+    if (fontSize <= fontStats.median * 1.2)
+        return 0;
+    // Calculate heading level based on how much larger than median
+    const ratio = fontSize / fontStats.median;
+    if (ratio >= 2.0)
+        return 1; // 2x or more = H1
+    if (ratio >= 1.7)
+        return 2; // 1.7x-2x = H2
+    if (ratio >= 1.5)
+        return 3; // 1.5x-1.7x = H3
+    if (ratio >= 1.35)
+        return 4; // 1.35x-1.5x = H4
+    if (ratio >= 1.2)
+        return 5; // 1.2x-1.35x = H5
+    return 0; // Below threshold
+}
+function findLinkForText(item, annotations) {
+    const itemMinX = item.x;
+    const itemMaxX = item.x + item.width;
+    const itemMinY = item.y;
+    const itemMaxY = item.y + item.height;
+    for (const annot of annotations) {
+        const [x1, y1, x2, y2] = annot.rect;
+        const annotMinX = Math.min(x1, x2);
+        const annotMaxX = Math.max(x1, x2);
+        const annotMinY = Math.min(y1, y2);
+        const annotMaxY = Math.max(y1, y2);
+        // Check for any intersection between boxes
+        const intersects = (itemMinX < annotMaxX && itemMaxX > annotMinX) &&
+            (itemMinY < annotMaxY && itemMaxY > annotMinY);
+        if (intersects) {
+            return annot;
+        }
+    }
+    return undefined;
+}
+/**
+ * Encodes raw RGBA data into a 24-bit BMP buffer with a white background.
+ * Transparency (alpha channel) is flattened against white.
+ *
+ * @param width - Image width
+ * @param height - Image height
+ * @param data - RGBA pixel data
+ * @returns BMP Buffer
+ */
+function encodeBmp(width, height, data) {
+    // BMP row size must be a multiple of 4 bytes
+    const rowSize = Math.floor((24 * width + 31) / 32) * 4;
+    const padding = rowSize - (width * 3);
+    const headerSize = 54; // 14 (File Header) + 40 (DIB Header)
+    const imageSize = rowSize * height;
+    const fileSize = headerSize + imageSize;
+    const buffer = Buffer.alloc(fileSize);
+    // --- File Header (14 bytes) ---
+    buffer.write('BM', 0); // Signature
+    buffer.writeUInt32LE(fileSize, 2); // File Size
+    buffer.writeUInt32LE(0, 6); // Reserved
+    buffer.writeUInt32LE(headerSize, 10); // Offset to pixel data
+    // --- DIB Header (BITMAPINFOHEADER - 40 bytes) ---
+    buffer.writeUInt32LE(40, 14); // Header Size
+    buffer.writeInt32LE(width, 18); // Width
+    buffer.writeInt32LE(-height, 22); // Height (negative for top-down)
+    buffer.writeUInt16LE(1, 26); // Planes
+    buffer.writeUInt16LE(24, 28); // Bit Count (24-bit RGB)
+    buffer.writeUInt32LE(0, 30); // Compression (BI_RGB)
+    buffer.writeUInt32LE(imageSize, 34); // Image Size
+    buffer.writeInt32LE(2835, 38); // X PixelsPerMeter (72 DPI)
+    buffer.writeInt32LE(2835, 42); // Y PixelsPerMeter (72 DPI)
+    buffer.writeUInt32LE(0, 46); // Colors Used
+    buffer.writeUInt32LE(0, 50); // Colors Important
+    // --- Pixel Data ---
+    let offset = headerSize;
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            // RGBA input
+            const r = data[i + 0];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const a = data[i + 3];
+            // Flatten alpha against white background
+            // out = alpha * pixel + (1 - alpha) * white
+            // white = 255
+            const alpha = a / 255;
+            const outR = Math.round(r * alpha + 255 * (1 - alpha));
+            const outG = Math.round(g * alpha + 255 * (1 - alpha));
+            const outB = Math.round(b * alpha + 255 * (1 - alpha));
+            // Write as BGR (BMP standard)
+            buffer[offset + 0] = outB;
+            buffer[offset + 1] = outG;
+            buffer[offset + 2] = outR;
+            offset += 3;
+        }
+        // Write padding
+        for (let p = 0; p < padding; p++) {
+            buffer[offset] = 0;
+            offset++;
+        }
+    }
+    return buffer;
+}
+/**
+ * Converts raw PDF image data to a buffer for attachment extraction.
+ *
+ * **Important Limitation:**
+ * PDF images are stored as raw pixel data (RGB, RGBA, or grayscale), not as encoded
+ * image files like PNG or JPEG. This function converts the raw data to a normalized
+ * RGBA buffer, but this is NOT a valid image file format.
+ *
+ * For display, the raw RGBA data would need to be encoded to PNG/JPEG, which requires
+ * an additional library like `sharp` or `pngjs`. Currently, this is stored as raw bytes.
+ *
+ * OCR is NOT supported for PDF images because Tesseract.js requires encoded image files
+ * (PNG, JPEG, etc.), not raw pixel data. To enable OCR, a PNG encoder would need to be added.
+ *
+ * @param data - Raw pixel data from PDF.js
+ * @param width - Image width in pixels
+ * @param height - Image height in pixels
+ * @param kind - PDF.js image kind (1=Grayscale, 2=RGB, 3=RGBA)
+ * @returns Buffer containing RGBA pixel data (NOT an encoded image file)
+ */
+function convertToRgbaBuffer(data, width, height, kind) {
+    // PDF.js image kind values:
+    // 1 = GRAYSCALE
+    // 2 = RGB  
+    // 3 = RGBA
+    let rgbaData;
+    if (kind === 1) {
+        // Grayscale - expand to RGBA
+        rgbaData = new Uint8ClampedArray(width * height * 4);
+        for (let i = 0; i < width * height; i++) {
+            const gray = data[i];
+            rgbaData[i * 4] = gray;
+            rgbaData[i * 4 + 1] = gray;
+            rgbaData[i * 4 + 2] = gray;
+            rgbaData[i * 4 + 3] = 255;
+        }
+    }
+    else if (kind === 2 || data.length === width * height * 3) {
+        // RGB - add alpha channel
+        rgbaData = new Uint8ClampedArray(width * height * 4);
+        for (let i = 0; i < width * height; i++) {
+            rgbaData[i * 4] = data[i * 3];
+            rgbaData[i * 4 + 1] = data[i * 3 + 1];
+            rgbaData[i * 4 + 2] = data[i * 3 + 2];
+            rgbaData[i * 4 + 3] = 255;
+        }
+    }
+    else {
+        // Assume RGBA
+        rgbaData = data instanceof Uint8ClampedArray ? data : new Uint8ClampedArray(data);
+    }
+    return Buffer.from(rgbaData.buffer, rgbaData.byteOffset, rgbaData.byteLength);
+}
+/**
+ * Parses a PDF file and extracts content.
+ *
+ * @param buffer - The PDF file buffer
+ * @param config - Parser configuration
+ * @returns Promise resolving to the parsed AST
+ */
+const parsePdf = async (buffer, config) => {
+    (0, errorUtils_js_1.checkAbortSignal)(config.abortSignal);
+    const pdfjs = await (0, moduleLoader_js_1.loadPdfJs)();
+    // Configure worker
+    const workerSrc = config.pdfWorkerSrc;
+    if (envUtils_js_1.isBrowser) {
+        pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+    }
+    else {
+        // Node.js: Try to auto-resolve local worker path to avoid remote download errors
+        (0, envUtils_js_1.assertNode)('pdf-worker-auto-resolution');
+        let resolved = false;
+        // If the user provided a custom path (not the default CDN one), use it.
+        // Otherwise, check if the worker is already loaded globally, or try to find it locally.
+        if (workerSrc !== defaults_js_1.DEFAULT_OFFICE_PARSER_CONFIG.pdfWorkerSrc && workerSrc !== '') {
+            pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+            resolved = true;
+        }
+        else if (globalThis.pdfjsWorker) {
+            resolved = true;
+        }
+        else {
+            try {
+                // We use require.resolve to find the exact path of the installed package.
+                // @ts-ignore - 'require' is available in Node.js/CommonJS environment
+                const localWorkerPath = require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs');
+                // Use file:// URL for the worker source in Node.js to ensure compatibility with ESM-native PDF.js 5.x
+                // We use dynamic import for 'url' to avoid breaking browser bundles
+                const { pathToFileURL } = await import('url');
+                pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(localWorkerPath).href;
+                resolved = true;
+            }
+            catch (e) {
+                (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.PDF_WORKER_FALLBACK, config, undefined, e);
+            }
+        }
+        if (!resolved) {
+            pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+        }
+    }
+    const uint8Array = new Uint8Array(buffer);
+    const loadingTask = pdfjs.getDocument({
+        data: uint8Array,
+        verbosity: 0, // ERRORS only, suppresses warnings
+        // Harden against untrusted PDFs: don't let pdf.js JIT font/CMap fast-paths
+        // compile via `new Function`.
+        isEvalSupported: false
+    });
+    // Handle loading errors, specifically missing worker in browser
+    let pdfDocument;
+    try {
+        pdfDocument = await loadingTask.promise;
+    }
+    catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        if (message.includes('workerSrc') || message.includes('No "GlobalWorkerOptions.workerSrc" specified')) {
+            throw (0, errorUtils_js_1.getOfficeError)(types_js_1.OfficeErrorType.PDF_WORKER_MISSING, config);
+        }
+        throw e;
+    }
+    const content = [];
+    const attachments = [];
+    const numPages = pdfDocument.numPages;
+    // Collect all page items for font statistics before processing
+    const allPageItems = [];
+    // --- Metadata Extraction ---
+    // Extract all available metadata from the PDF info dictionary.
+    // Note: Some metadata fields depend on how the PDF was created.
+    // - Producer: Software that created the PDF
+    // - Creator: Application that made the original document
+    // - Keywords, Description are rarely present
+    const meta = await pdfDocument.getMetadata().catch(() => ({ info: {} }));
+    const info = meta.info;
+    const metadata = {
+        pages: numPages,
+        title: info?.Title,
+        author: info?.Author,
+        subject: info?.Subject,
+        description: info?.Keywords, // Map Keywords to description as closest match
+        created: (0, dateUtils_js_1.parseOfficeDate)(info?.CreationDate),
+        modified: (0, dateUtils_js_1.parseOfficeDate)(info?.ModDate),
+        // Note: lastModifiedBy is not available in PDF format - there's no concept of "last modifier"
+        // The Author field only tracks original author.
+    };
+    // Extract non-standard entries from the PDF Info dictionary as custom properties.
+    // The standard keys are defined by the PDF spec; anything else is user/tool-defined.
+    const standardPdfInfoKeys = new Set([
+        'Title', 'Author', 'Subject', 'Keywords', 'Creator', 'Producer',
+        'CreationDate', 'ModDate', 'Trapped', 'IsAcroFormPresent', 'IsXFAPresent',
+        'IsCollectionPresent', 'IsSignaturesPresent', 'PDFFormatVersion'
+    ]);
+    if (info) {
+        metadata.nativeProperties = {};
+        for (const [key, val] of Object.entries(info)) {
+            if (key === 'Custom' && typeof val === 'object' && !Array.isArray(val) && !(val instanceof Date) && val !== null) {
+                for (const [customKey, customVal] of Object.entries(val)) {
+                    metadata.nativeProperties[customKey] = customVal;
+                }
+            }
+            else {
+                metadata.nativeProperties[key] = val;
+            }
+        }
+        const customProperties = {};
+        for (const key of Object.keys(info)) {
+            if (standardPdfInfoKeys.has(key))
+                continue;
+            const val = info[key];
+            if (val === null || val === undefined)
+                continue;
+            // pdf.js groups document-level custom metadata under a 'Custom' object.
+            // Flatten its entries directly into customProperties.
+            if (key === 'Custom' && typeof val === 'object' && !Array.isArray(val) && !(val instanceof Date)) {
+                for (const [customKey, customVal] of Object.entries(val)) {
+                    if (customVal === null || customVal === undefined)
+                        continue;
+                    if (typeof customVal === 'string' || typeof customVal === 'number' || typeof customVal === 'boolean' || customVal instanceof Date) {
+                        customProperties[customKey] = customVal;
+                    }
+                }
+                continue;
+            }
+            if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' || val instanceof Date) {
+                customProperties[key] = val;
+            }
+        }
+        if (Object.keys(customProperties).length > 0) {
+            metadata.customProperties = customProperties;
+        }
+    }
+    if (meta.metadata) {
+        if (!metadata.nativeProperties)
+            metadata.nativeProperties = {};
+        const xmp = meta.metadata;
+        if (typeof xmp.getAll === 'function') {
+            metadata.nativeProperties['XMP'] = xmp.getAll();
+        }
+        else {
+            metadata.nativeProperties['XMP'] = xmp;
+        }
+    }
+    // --- Embedded File Attachment Extraction ---
+    /**
+     * PDF can contain embedded files (not images in content, but attached files).
+     * These are separate from images in the page content stream.
+     */
+    try {
+        const embeddedFiles = await pdfDocument.getAttachments();
+        if (embeddedFiles && config.extractAttachments) {
+            for (const name in embeddedFiles) {
+                const file = embeddedFiles[name];
+                const fileBuffer = Buffer.from(file.content);
+                const attachment = (0, imageUtils_js_1.createAttachment)(file.filename, fileBuffer);
+                attachments.push(attachment);
+            }
+        }
+    }
+    catch (e) {
+        (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.ATTACHMENT_EXTRACTION_FAILED, config, undefined, e);
+    }
+    // --- First Pass: Collect all items for font statistics ---
+    for (let i = 1; i <= numPages; i++) {
+        (0, errorUtils_js_1.checkAbortSignal)(config.abortSignal);
+        let page;
+        let textContent;
+        const pageItems = [];
+        try {
+            page = await pdfDocument.getPage(i);
+            // Extract text content
+            textContent = await page.getTextContent();
+        }
+        catch (e) {
+            (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.PAGE_LOAD_FAILED, config, i, e);
+            // Push empty items to maintain index alignment for second pass
+            allPageItems.push(pageItems);
+            continue;
+        }
+        const commonObjs = page.commonObjs;
+        const fontCache = new Map();
+        for (const item of textContent.items) {
+            // PDF.js 5.x: textContent.items can contain TextMarkedContent which lack
+            // 'str' and 'transform'. Skip these to avoid crashes and page skipping.
+            if (!isTextItem(item)) {
+                continue;
+            }
+            // At this point we know the item is a TextItem
+            const textItem = item;
+            const transform = textItem.transform;
+            const x = transform[4];
+            const y = transform[5];
+            const width = textItem.width || 0;
+            const height = textItem.height || Math.abs(transform[3]) || 12;
+            // Extract formatting from font
+            const formatting = {};
+            let fontName;
+            if (textItem.fontName && commonObjs) {
+                try {
+                    if (commonObjs.has(textItem.fontName)) {
+                        let fontData = fontCache.get(textItem.fontName);
+                        if (!fontData) {
+                            // Use callback-based get to ensure safe resolution
+                            fontData = await new Promise((resolve) => {
+                                // @ts-ignore - commonObjs.get is callback-based in legacy builds
+                                commonObjs.get(textItem.fontName, (data) => resolve(data));
+                            });
+                            fontCache.set(textItem.fontName, fontData);
+                        }
+                        if (fontData?.name && typeof fontData.name === 'string') {
+                            // Remove PDF subset prefix (6 uppercase letters + '+')
+                            fontName = fontData.name.replace(/^[A-Z]{6}\+/, '');
+                            formatting.font = fontName;
+                            // Detect bold/italic from font name
+                            const lowerName = fontData.name.toLowerCase();
+                            if (lowerName.includes('bold'))
+                                formatting.bold = true;
+                            if (lowerName.includes('italic') || lowerName.includes('oblique'))
+                                formatting.italic = true;
+                        }
+                    }
+                }
+                catch {
+                    // Font lookup failed, continue without font info
+                }
+            }
+            if (height > 0) {
+                formatting.size = Math.round(height).toString();
+            }
+            pageItems.push({
+                type: 'text',
+                x,
+                y,
+                width,
+                height,
+                text: textItem.str,
+                fontName,
+                formatting
+            });
+        }
+        // Extract images if enabled
+        if (config.extractAttachments || config.ocr) {
+            try {
+                const ops = await page.getOperatorList();
+                const fnArray = ops.fnArray;
+                const argsArray = ops.argsArray;
+                for (let j = 0; j < fnArray.length; j++) {
+                    const fn = fnArray[j];
+                    if (fn === pdfjs.OPS.dependency) {
+                        const deps = argsArray[j];
+                        for (const dep of deps) {
+                            // In pdfjs-dist v3+, get() throws if not resolved unless a callback is provided.
+                            // We must use the callback pattern to wait for resolution.
+                            try {
+                                if (page.objs.has(dep))
+                                    continue;
+                                await new Promise((resolve) => {
+                                    const timeout = setTimeout(() => {
+                                        resolve();
+                                    }, 500);
+                                    page.objs.get(dep, (data) => {
+                                        clearTimeout(timeout);
+                                        resolve();
+                                    });
+                                });
+                            }
+                            catch (e) {
+                                (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.DEPENDENCY_LOAD_FAILED, config, dep, e);
+                            }
+                        }
+                    }
+                    if (fn === pdfjs.OPS.paintImageXObject || fn === pdfjs.OPS.paintXObject) {
+                        const imgName = argsArray[j][0];
+                        try {
+                            let hasObj = page.objs.has(imgName);
+                            let targetObjs = page.objs;
+                            if (!hasObj && page.commonObjs.has(imgName)) {
+                                hasObj = true;
+                                targetObjs = page.commonObjs;
+                            }
+                            if (hasObj) {
+                                // Use callback-based get to ensure safe resolution
+                                const imgObj = await new Promise((resolve) => {
+                                    // @ts-ignore - targetObjs.get is callback-based
+                                    targetObjs.get(imgName, (data) => resolve(data));
+                                });
+                                // Browser-specific: Handle ImageBitmap if data is missing
+                                if (envUtils_js_1.isBrowser && !imgObj.data && imgObj.bitmap) {
+                                    try {
+                                        const canvas = document.createElement('canvas');
+                                        canvas.width = imgObj.width;
+                                        canvas.height = imgObj.height;
+                                        const ctx = canvas.getContext('2d');
+                                        if (ctx) {
+                                            ctx.drawImage(imgObj.bitmap, 0, 0);
+                                            imgObj.data = ctx.getImageData(0, 0, imgObj.width, imgObj.height).data;
+                                            imgObj.kind = 3; // RGBA
+                                        }
+                                    }
+                                    catch (e) {
+                                        (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.IMAGE_PROCESSING_FAILED, config, undefined, e);
+                                    }
+                                }
+                                if (imgObj?.data && imgObj.width > 0 && imgObj.height > 0) {
+                                    // Find position from transform matrix
+                                    let imgX = 0, imgY = 0;
+                                    for (let k = j - 1; k >= 0; k--) {
+                                        if (fnArray[k] === pdfjs.OPS.transform) {
+                                            imgX = argsArray[k][4];
+                                            imgY = argsArray[k][5];
+                                            break;
+                                        }
+                                    }
+                                    pageItems.push({
+                                        type: 'image',
+                                        x: imgX,
+                                        y: imgY,
+                                        name: imgName,
+                                        data: imgObj.data,
+                                        width: imgObj.width,
+                                        height: imgObj.height,
+                                        kind: imgObj.kind
+                                    });
+                                }
+                            }
+                        }
+                        catch {
+                            // Image access failed, continue
+                        }
+                    }
+                }
+            }
+            catch (e) {
+                (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.IMAGE_EXTRACTION_FAILED, config, `from page ${i}`, e);
+            }
+        }
+        allPageItems.push(pageItems);
+    }
+    // Calculate font statistics for heading detection
+    const fontStats = calculateFontStats(allPageItems);
+    // --- Second Pass: Process pages with font statistics ---
+    for (let i = 0; i < allPageItems.length; i++) {
+        (0, errorUtils_js_1.checkAbortSignal)(config.abortSignal);
+        const pageNum = i + 1;
+        let page;
+        try {
+            page = await pdfDocument.getPage(pageNum);
+        }
+        catch (e) {
+            (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.PAGE_LOAD_FAILED, config, pageNum, e);
+            continue;
+        }
+        const pageItems = allPageItems[i];
+        const pageContent = [];
+        // Extract link annotations for this page
+        const annotations = [];
+        const matchedAnnotations = new Set();
+        try {
+            const annots = await page.getAnnotations();
+            for (const annot of annots) {
+                if (annot.subtype === 'Link' && annot.rect) {
+                    // PDF.js 5.x compatibility: url might be in 'url', 'unsafeUrl', or 'data.url'
+                    const url = annot.url || annot.unsafeUrl || annot.data?.url;
+                    annotations.push({
+                        rect: annot.rect,
+                        url: url,
+                        dest: annot.dest
+                    });
+                }
+            }
+        }
+        catch (e) {
+            (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.ANNOTATION_EXTRACTION_FAILED, config, pageNum, e);
+        }
+        // Sort items: Y descending (top to bottom), then X ascending (left to right)
+        pageItems.sort((a, b) => {
+            // Relax tolerance slightly (5 -> 7) for PDF.js 5.x coordinate precision
+            if (Math.abs(b.y - a.y) > 7)
+                return b.y - a.y;
+            return a.x - b.x;
+        });
+        // Process sorted items into content nodes
+        let currentNode = null;
+        let currentNodeFontSize = 0;
+        let lastY = -1;
+        let imageCounter = 0;
+        for (const item of pageItems) {
+            if (item.type === 'text') {
+                const text = item.text;
+                if (!text)
+                    continue;
+                // Check for new line
+                const isNewLine = lastY !== -1 && Math.abs(item.y - lastY) > 5;
+                if (isNewLine && currentNode) {
+                    // Finalize and push current node
+                    if ((currentNode.text || '').trim().length > 0) {
+                        pageContent.push(currentNode);
+                    }
+                    currentNode = null;
+                }
+                // Skip pure whitespace at start of lines
+                if (!currentNode && text.trim().length === 0) {
+                    lastY = item.y;
+                    continue;
+                }
+                // Determine if this should be a heading
+                const headingLevel = detectHeadingLevel(item.height, fontStats);
+                if (!currentNode) {
+                    // Start new node
+                    if (headingLevel > 0) {
+                        currentNode = {
+                            type: 'heading',
+                            text: '',
+                            children: [],
+                            metadata: { level: headingLevel }
+                        };
+                    }
+                    else {
+                        currentNode = {
+                            type: 'paragraph',
+                            text: '',
+                            children: []
+                        };
+                    }
+                    currentNodeFontSize = item.height;
+                }
+                // Handle whitespace
+                if (text.trim().length === 0) {
+                    if (currentNode.children && currentNode.children.length > 0) {
+                        const lastChild = currentNode.children[currentNode.children.length - 1];
+                        if (lastChild.type === 'text' && lastChild.text) {
+                            lastChild.text += text;
+                            currentNode.text += text;
+                        }
+                    }
+                    lastY = item.y;
+                    continue;
+                }
+                // Add space between words if needed
+                if (currentNode.text && currentNode.text.length > 0 && !currentNode.text.endsWith(' ')) {
+                    currentNode.text += ' ';
+                    if (currentNode.children && currentNode.children.length > 0) {
+                        const lastChild = currentNode.children[currentNode.children.length - 1];
+                        if (lastChild.type === 'text' && lastChild.text) {
+                            lastChild.text += ' ';
+                        }
+                    }
+                }
+                currentNode.text += text;
+                // Check for link
+                const link = findLinkForText(item, annotations);
+                if (link)
+                    matchedAnnotations.add(link);
+                let textMetadata;
+                if (link) {
+                    if (link.url) {
+                        textMetadata = {
+                            link: link.url,
+                            linkType: link.url.startsWith('#') ? 'internal' : 'external'
+                        };
+                    }
+                    else if (link.dest) {
+                        // Internal destination
+                        textMetadata = {
+                            link: typeof link.dest === 'string' ? `#${link.dest}` : '#internal',
+                            linkType: 'internal'
+                        };
+                    }
+                }
+                // Try to merge with last child if same formatting and no link change
+                let merged = false;
+                if (currentNode.children && currentNode.children.length > 0 && !textMetadata) {
+                    const lastChild = currentNode.children[currentNode.children.length - 1];
+                    if (lastChild.type === 'text' &&
+                        isSameFormatting(lastChild.formatting, item.formatting) &&
+                        !lastChild.metadata) {
+                        lastChild.text = (lastChild.text || '') + text;
+                        merged = true;
+                    }
+                }
+                if (!merged) {
+                    const textNode = {
+                        type: 'text',
+                        text: text,
+                        formatting: Object.keys(item.formatting).length > 0 ? item.formatting : undefined
+                    };
+                    if (textMetadata) {
+                        textNode.metadata = textMetadata;
+                    }
+                    currentNode.children?.push(textNode);
+                }
+                lastY = item.y;
+            }
+            else if (item.type === 'image') {
+                // Flush current node
+                if (currentNode) {
+                    if ((currentNode.text || '').trim().length > 0) {
+                        pageContent.push(currentNode);
+                    }
+                    currentNode = null;
+                }
+                imageCounter++;
+                // Note: Using .bmp extension since we encode to BMP for broad compatibility
+                const attachmentName = `pdf_image_p${pageNum}_${imageCounter}.bmp`;
+                /**
+                 * Image extraction for PDF files.
+                 *
+                 * PDF stores images as raw pixel data. We convert to BMP for compatibility.
+                 */
+                if (config.extractAttachments) {
+                    try {
+                        const imageBuffer = convertToRgbaBuffer(item.data, item.width, item.height, item.kind);
+                        // Encode as BMP
+                        const bmpBuffer = encodeBmp(item.width, item.height, new Uint8Array(imageBuffer));
+                        const attachment = (0, imageUtils_js_1.createAttachment)(attachmentName, bmpBuffer);
+                        attachment.mimeType = 'image/bmp';
+                        // Perform OCR if enabled
+                        if (config.ocr) {
+                            try {
+                                // Skip OCR for very small images/artifacts (e.g. < 10px) to avoid Tesseract warnings
+                                if (item.width >= 10 && item.height >= 10) {
+                                    attachment.ocrText = (await (0, ocrUtils_js_1.performOcr)(bmpBuffer, { ...config.ocrConfig })).trim();
+                                }
+                            }
+                            catch (e) {
+                                (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.OCR_FAILED, config, attachmentName, e);
+                            }
+                        }
+                        attachments.push(attachment);
+                        // Create image content node
+                        const imageMetadata = {
+                            attachmentName,
+                        };
+                        pageContent.push({
+                            type: 'image',
+                            text: attachment.ocrText || '',
+                            metadata: { ...imageMetadata }
+                        });
+                    }
+                    catch (e) {
+                        (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.IMAGE_EXTRACTION_FAILED, config, attachmentName, e);
+                    }
+                }
+            }
+        }
+        // Flush last node
+        if (currentNode && (currentNode.text || '').trim().length > 0) {
+            pageContent.push(currentNode);
+        }
+        // Add page node to content
+        content.push({
+            type: 'page',
+            children: pageContent,
+            text: pageContent.map(node => node.text).join(config.newlineDelimiter),
+            metadata: { pageNumber: pageNum }
+        });
+    }
+    const toTextSync = () => content.map(c => c.text).join(config.newlineDelimiter);
+    return (0, astUtils_js_1.createAST)('pdf', metadata, content, attachments, config, undefined, toTextSync);
+};
+exports.parsePdf = parsePdf;
+/**
+ * Helper to compare two text formatting objects.
+ * Returns true if both have the same properties with the same values.
+ */
+function isSameFormatting(a, b) {
+    if (!a && !b)
+        return true;
+    if (!a || !b)
+        return false;
+    const keysA = Object.keys(a).sort();
+    const keysB = Object.keys(b).sort();
+    if (keysA.length !== keysB.length)
+        return false;
+    for (let i = 0; i < keysA.length; i++) {
+        const key = keysA[i];
+        if (keysA[i] !== keysB[i])
+            return false;
+        if (a[key] !== b[key])
+            return false;
+    }
+    return true;
+}

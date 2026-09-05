@@ -1,0 +1,510 @@
+{
+  "files": [
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/config.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/config.json",
+      "rawBytes": 975,
+      "rawSha256": "fc69b886469530dbbc4c0bcd4c9fbc933c0b7bcf2c4ed39ab3ac2c6b3ac6f135",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/manifest.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/manifest.json",
+      "rawBytes": 95054,
+      "rawSha256": "e2c45f27db478b3ba1bff2551e5ee31cde193d190ee9fc8c54647c3a2cfe5a43",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.request.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.request.json",
+      "rawBytes": 348,
+      "rawSha256": "ed0ef8c3c3254ec24e863c05619925686c5d35958db783fcf36ff58b10128e0e",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/run-provenance.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/run-provenance.json",
+      "rawBytes": 493,
+      "rawSha256": "b4b4612b17ae16ed072ee2f77606b1357cd6d18e3da504305d79552805d12e76",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/stdout.log",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/stdout.log",
+      "rawBytes": 0,
+      "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/stderr.log",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/stderr.log",
+      "rawBytes": 1014,
+      "rawSha256": "033a47c29ef91d2da3fc013d2206b93229b0be1a213c9c096a8d2db660e7f7f1",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/model.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/model.json",
+      "rawBytes": 172,
+      "rawSha256": "0250e9f851ead21064e4754dbf08ac76b3acf9927e5d31fbf1c07c9f47f8440b",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/embed.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/embed.json",
+      "rawBytes": 199,
+      "rawSha256": "9736887c45e608bf5f06adac5a69e2b046a2bc729281d57bcc9e8397ed03bdd9",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/partitions.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/partitions.json",
+      "rawBytes": 396,
+      "rawSha256": "d40bd34ac0a3ae8b642afa84fefc83c23ba03eb2195c17f4fcab61cb8c41677f",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/owners.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/owners.json",
+      "rawBytes": 130214,
+      "rawSha256": "ddfb52f1f0476cd4a8ef1daf0ce107750006b57528e956d2589570de5f5c5695",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/broad.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/broad.json",
+      "rawBytes": 275295,
+      "rawSha256": "9eea88c5e7a9f76f672982285b3a91d50ce75f1a13914c7e5b4c4a11d72f2a63",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/oracle.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/oracle.json",
+      "rawBytes": 1621,
+      "rawSha256": "a20644ffa453f10d27cd8c387f80ebafe63798fa7d3fd7e5b7262ffef384ac7c",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/vector-1.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/vector-1.json",
+      "rawBytes": 1720,
+      "rawSha256": "dd6e6eaf2bea5867c317780ba3a530f0e649ef4333e582955f99d425a260f8fb",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/failure.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/failure.json",
+      "rawBytes": 133,
+      "rawSha256": "e1d7b393ed00a14778ee665c60215ca9c42ec1269e8625a49ee3afef96f17035",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.gz",
+      "rawBytes": 8357522,
+      "rawSha256": "4dc66310c680979aa266b73910d7f00bc3e998962f682d371a6f6d6e3f305234",
+      "compressed": true
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/requests.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/requests.json",
+      "rawBytes": 53950,
+      "rawSha256": "76fb3b9856781689b53eff107b5f5395bd131218931945e11c12c5e74f3cbb0e",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/children.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/children.json",
+      "rawBytes": 633,
+      "rawSha256": "7f057b82dd96c438dbfcf5e5864d41b96b06e87c359729f1025cb5ce4e296315",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/parent-capture.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/parent-capture.json.gz",
+      "rawBytes": 8357522,
+      "rawSha256": "4dc66310c680979aa266b73910d7f00bc3e998962f682d371a6f6d6e3f305234",
+      "compressed": true
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/bootstrap.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/bootstrap.json",
+      "rawBytes": 555,
+      "rawSha256": "3b2531f100a5a19437f878e7178e86c031eb3782d479ec510d8dd560fdf74ece",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-1.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-1.json",
+      "rawBytes": 1292,
+      "rawSha256": "6ac3907c6167c0045d4c6082b44f24a38855069cef6335a3c3fde955abdfdc34",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-2.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-2.json",
+      "rawBytes": 670646,
+      "rawSha256": "628a4481c2df52b09095704c73857d010fbdee3075d99a124fe449d843b0ab97",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-3.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-3.json",
+      "rawBytes": 670691,
+      "rawSha256": "92be4af1c5cd260e010dd7fb90a6d2983808fa7beb3f0930fda4382453fbae74",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-4.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-4.json",
+      "rawBytes": 671181,
+      "rawSha256": "305ab0e196ace49f9e333f347f60b341054ddaa34cf10cf4833bea80a22a42f6",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-5.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-5.json",
+      "rawBytes": 671767,
+      "rawSha256": "82e6d624d58581d62d519b13e006110e0951e3e514329b44cf14d61f3c00f31b",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-6.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-6.json",
+      "rawBytes": 671797,
+      "rawSha256": "bbf9e889549afa13361d29c01804e3dd493336133f68785132fd48d1b38d6e2b",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-7.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-7.json",
+      "rawBytes": 672849,
+      "rawSha256": "5e5354de9a0f620a902344b548d51bff60de53b3daf0bdb806b17df7186d0fcf",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-8.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-8.json",
+      "rawBytes": 129376,
+      "rawSha256": "f0f1bf7ff1edd1d851a57acf46731a05ef5a9b44dd7f7ee0a5b923717598a428",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-9.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-9.json",
+      "rawBytes": 813,
+      "rawSha256": "35bc87778055054bcb64503d3a362570d1248513744286d002d2d74bba5b4f4c",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-10.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-10.json",
+      "rawBytes": 1293,
+      "rawSha256": "c8294de88d6e78a28a79e3ac70fee6ae5858b6e8e9e9a6303a0cab3e3d627c93",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-11.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-11.json",
+      "rawBytes": 21443,
+      "rawSha256": "73e3a8ccd867cc3ff5a9a55a91477b662706c8893cecb81cf450e9152a6c39b2",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-12.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-12.json",
+      "rawBytes": 814,
+      "rawSha256": "a1d56c58aa067198369fc2b915bad795605338a4189fd6ae0c21c24848c22efb",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-13.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-13.json",
+      "rawBytes": 1293,
+      "rawSha256": "ae338bc7609b0addaa9910502dd0289d20d5f63029a4932d14d2fe2360c9aba4",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-14.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-14.json",
+      "rawBytes": 21443,
+      "rawSha256": "ed804e011d4c79e4365ca2ae3bf39a276ddf7528337599bc88497293ec7c9592",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/capture.json.children/native-O5GlZb/293203-15.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/initial/capture.json.children/native-O5GlZb/293203-15.json",
+      "rawBytes": 814,
+      "rawSha256": "47d2a67aca2336c40f6b7ef3218f6f4b76b06086b070c13a9b1ea54f733e5454",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/manifest.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/manifest.json",
+      "rawBytes": 95054,
+      "rawSha256": "e2c45f27db478b3ba1bff2551e5ee31cde193d190ee9fc8c54647c3a2cfe5a43",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.request.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.request.json",
+      "rawBytes": 348,
+      "rawSha256": "ed0ef8c3c3254ec24e863c05619925686c5d35958db783fcf36ff58b10128e0e",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/attempt-provenance.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/attempt-provenance.json",
+      "rawBytes": 391,
+      "rawSha256": "351ee2f3843ef3543b3fdbe4c1f93008bd9152c405ddf4460f86b351f1db0767",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/stdout.log",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/stdout.log",
+      "rawBytes": 0,
+      "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/stderr.log",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/stderr.log",
+      "rawBytes": 0,
+      "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/model.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/model.json",
+      "rawBytes": 172,
+      "rawSha256": "0250e9f851ead21064e4754dbf08ac76b3acf9927e5d31fbf1c07c9f47f8440b",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/embed.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/embed.json",
+      "rawBytes": 197,
+      "rawSha256": "e2152ee83b86183475ca96df36a53ceba2ebe03d6c04e62b5cd6e60e82fca82e",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/partitions.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/partitions.json",
+      "rawBytes": 396,
+      "rawSha256": "d40bd34ac0a3ae8b642afa84fefc83c23ba03eb2195c17f4fcab61cb8c41677f",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/owners.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/owners.json",
+      "rawBytes": 130214,
+      "rawSha256": "ddfb52f1f0476cd4a8ef1daf0ce107750006b57528e956d2589570de5f5c5695",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/broad.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/broad.json",
+      "rawBytes": 276483,
+      "rawSha256": "7e5380c893ffb5a82078302185a232d0cb176091e341224493a8781008e99b37",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/oracle.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/oracle.json",
+      "rawBytes": 1627,
+      "rawSha256": "de1cd499e5fbad6af291e9d16e4e63f3f16b9a7050b00f85c932266f4cfffb4c",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/vector-1.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/vector-1.json",
+      "rawBytes": 1726,
+      "rawSha256": "a94ce69f370376e40e40e2811eaabf3f12bb485f789545b86ebe8b4b114c42d7",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/hybrid-1.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/hybrid-1.json",
+      "rawBytes": 2101,
+      "rawSha256": "fa44dd55dc9f1b0b9395a94a6aabd28cc883be55eb8e5d284cab7232f288141d",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/vector-10.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/vector-10.json",
+      "rawBytes": 1726,
+      "rawSha256": "a94ce69f370376e40e40e2811eaabf3f12bb485f789545b86ebe8b4b114c42d7",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/hybrid-10.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/hybrid-10.json",
+      "rawBytes": 2101,
+      "rawSha256": "fa44dd55dc9f1b0b9395a94a6aabd28cc883be55eb8e5d284cab7232f288141d",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/result.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/result.json",
+      "rawBytes": 456,
+      "rawSha256": "0ceb354761ca94ac27cb6a29992eafbf2d95e6fd5f38118cd2b0406a9410eb4e",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json",
+      "rawBytes": 229368,
+      "rawSha256": "c559bd0c39178133bda4f0f23c262915e253f077abe686bd8969609bd15e5834",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/requests.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/requests.json",
+      "rawBytes": 10959,
+      "rawSha256": "5ee4f4e24d1fca5a02573a84b348be7cea6c80b2bae6d0f737e74576bfff12f0",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/children.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/children.json",
+      "rawBytes": 633,
+      "rawSha256": "f5616e2af27da615b28192dd8a61530d9b14cb21a3019f7c95de247ad788972a",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/parent-capture.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/parent-capture.json",
+      "rawBytes": 229368,
+      "rawSha256": "c559bd0c39178133bda4f0f23c262915e253f077abe686bd8969609bd15e5834",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/bootstrap.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/bootstrap.json",
+      "rawBytes": 555,
+      "rawSha256": "cd7883c4032f41e3411fa6efd8e4be16879329157728b5157a23385abebc9b01",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-1.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-1.json",
+      "rawBytes": 1292,
+      "rawSha256": "ded579a7655a90369a278adc058fb565fa6b10a7bab303fdc9d554af8c83faa5",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-2.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-2.json",
+      "rawBytes": 813,
+      "rawSha256": "11ad8808dbee24d5b7dd4a2d180c66ddb66a639adb81d4f945743340d7009fa8",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-3.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-3.json",
+      "rawBytes": 1292,
+      "rawSha256": "1d2b4bb8f20bb551d3cbdfd18dcde4b835f8d864001b11d3d8f03073c770f130",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-4.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-4.json",
+      "rawBytes": 21442,
+      "rawSha256": "cac21de6d4c567bf1c0f59b471cd02ad520fa96dde851425c51d0abe93ec229c",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-5.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-5.json",
+      "rawBytes": 813,
+      "rawSha256": "63901915bc6f4fc25aafadc6fba72be9bb192618e7deba992a516cd2fa2b1ad3",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-6.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-6.json",
+      "rawBytes": 1292,
+      "rawSha256": "f0564239aca8671ed81fe87f76109de54515a1f6933a74de899244ac468258c7",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-7.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-7.json",
+      "rawBytes": 21442,
+      "rawSha256": "70e71cf9a952de31ba34517c215c2157f61d17b5efdb40d58a55111d9bf140c9",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-8.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-8.json",
+      "rawBytes": 813,
+      "rawSha256": "bf5895fbb279283ac2d72ca2e93c968025ab7ceb430b2d11ccdca532c51188f6",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-9.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-9.json",
+      "rawBytes": 1292,
+      "rawSha256": "b33736c014f39b6b658de9402eb200baf6acb0ed78a80c67a72c50863cf24a1b",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-10.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-10.json",
+      "rawBytes": 21443,
+      "rawSha256": "b8bf6dd7ecac2c0941264ea3bf8f2ca54e3fad2dbf1595f2c30bbcc2d4d67683",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-11.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-11.json",
+      "rawBytes": 814,
+      "rawSha256": "2140bb8c81ed26afe03070ea1550cdd65a7a03da33e7198285333950564321c9",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-12.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-12.json",
+      "rawBytes": 1293,
+      "rawSha256": "f6f82103eeca39285e40a73d26b18742078911ae6ddaa00decf1529dbdbabeef",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-13.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-13.json",
+      "rawBytes": 21443,
+      "rawSha256": "f84154202e39625531a1007bece906e59b7a115e0aa38773fc2b1e903a665fc1",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-14.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-14.json",
+      "rawBytes": 814,
+      "rawSha256": "abd2a474b81ee636ab3ad45c9be5505849a877ec1efb7a9b8a00fe148a925151",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-15.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-15.json",
+      "rawBytes": 1293,
+      "rawSha256": "0b0144531705851377dc4404fedda17448885ae73a5f0d9b306cd28d1a7f2274",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-16.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-16.json",
+      "rawBytes": 21443,
+      "rawSha256": "4311685dd14bc15043a9ca4fdc35d459544d6cb23fb3d9505716ff41f8f033da",
+      "compressed": false
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected/capture.json.children/native-R3zKCn/293949-17.json",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda/wire-corrected/capture.json.children/native-R3zKCn/293949-17.json",
+      "rawBytes": 814,
+      "rawSha256": "d209c71cf5734b22593d88cc23872ad92d5e6a2688749999fc4a25b04deb1959",
+      "compressed": false
+    }
+  ],
+  "excluded": "SQLite database/WAL/SHM: machine-local derived state retained only in isolated cache",
+  "capturedDriver": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda-driver-captured.ts"
+}

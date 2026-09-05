@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 // node:fs/promises: temporary directory lifecycle has no Bun equivalent.
 import { mkdtemp, rm } from "node:fs/promises";
 // node:os: temporary directory discovery has no Bun equivalent.
@@ -18,6 +18,9 @@ import {
   validateAgentModelLock,
 } from "../../../evals/agentic/local-model-agent";
 import { runAgenticBenchmark } from "../../../evals/agentic/runner";
+import { ModelCache } from "../../../src/llm/cache";
+import { NodeLlamaCppGeneration } from "../../../src/llm/nodeLlamaCpp/generation";
+import { ModelManager } from "../../../src/llm/nodeLlamaCpp/lifecycle";
 import { createPerfectAdapterFactory } from "./driver-fakes";
 import { taskFixture } from "./fixtures";
 
@@ -59,6 +62,127 @@ const withTinyLockedModel = async <T>(
 };
 
 describe("cached local agent lock", () => {
+  test("default dev runtime preserves pinned tokenizer and deterministic generation on its owned manager", async () => {
+    await withTinyLockedModel(async ({ model, lock }) => {
+      const owners = new Set<ModelManager>();
+      const exactText = "exact\r\n雪";
+      const tokenized: string[] = [];
+      const nativeModel = {
+        tokenize: (text: string) => {
+          tokenized.push(text);
+          return [17, 29];
+        },
+      };
+      const cache = spyOn(
+        ModelCache.prototype,
+        "ensureModel"
+      ).mockResolvedValue({ ok: true, value: model });
+      const load = spyOn(
+        ModelManager.prototype,
+        "loadModel"
+      ).mockImplementation(async function (this: ModelManager) {
+        owners.add(this);
+        return {
+          ok: true,
+          value: {
+            model: nativeModel,
+            uri: `file:${model}`,
+            type: "gen",
+            loadedAt: 1,
+          },
+        };
+      });
+      const loaded = spyOn(
+        ModelManager.prototype,
+        "getLoadedModel"
+      ).mockImplementation(function (this: ModelManager) {
+        expect(owners.has(this)).toBe(true);
+        return {
+          model: nativeModel,
+          uri: `file:${model}`,
+          type: "gen",
+          loadedAt: 1,
+        } as never;
+      });
+      const generate = spyOn(
+        NodeLlamaCppGeneration.prototype,
+        "generate"
+      ).mockResolvedValue({
+        ok: true,
+        value:
+          '{"kind":"tool","toolName":"search","arguments":{"query":"exact"}}',
+      });
+      const dispose = spyOn(
+        ModelManager.prototype,
+        "disposeAll"
+      ).mockImplementation(async function (this: ModelManager) {
+        expect(owners.has(this)).toBe(true);
+      });
+      try {
+        const factory = new LocalModelAgentFactory(model, undefined, lock);
+        const signal = new AbortController().signal;
+        const runtime = (await factory.open(signal)).runtime;
+        const session = await runtime.createSession(
+          {
+            task: taskFixture(),
+            tools: CANONICAL_AGENT_TOOLS,
+            trial: { trialId: "local-01", seed: 11 },
+          },
+          signal
+        );
+        expect(session.countTokens(exactText)).toBe(2);
+        expect(tokenized).toEqual([exactText]);
+        expect(await session.next([], signal)).toMatchObject({
+          kind: "tool",
+          toolName: "search",
+        });
+        expect(generate.mock.calls[0]?.[1]).toEqual({
+          temperature: 0,
+          seed: 11,
+          maxTokens: 256,
+        });
+        expect(load).toHaveBeenCalledWith(model, `file:${model}`, "gen");
+        expect(cache).toHaveBeenCalledWith(`file:${model}`, "gen", {
+          offline: true,
+          allowDownload: false,
+        });
+        await runtime.dispose();
+        expect(dispose).toHaveBeenCalledTimes(1);
+      } finally {
+        cache.mockRestore();
+        load.mockRestore();
+        loaded.mockRestore();
+        generate.mockRestore();
+        dispose.mockRestore();
+      }
+    });
+  });
+
+  test("failed runtime loading disposes its owned resources", async () => {
+    await withTinyLockedModel(async ({ model, lock }) => {
+      let disposed = 0;
+      const factory = new LocalModelAgentFactory(
+        model,
+        async () => ({
+          load: async () => {
+            throw new Error("native load failed");
+          },
+          generate: async () => "unused",
+          countTokens: () => 0,
+          dispose: async () => {
+            disposed++;
+          },
+        }),
+        lock
+      );
+      const failure = await factory
+        .open(new AbortController().signal)
+        .catch((cause: unknown) => cause);
+      expect(failure).toEqual(new Error("native load failed"));
+      expect(disposed).toBe(1);
+    });
+  });
+
   test("commits one exact non-placeholder model and three paired seeds", async () => {
     const lock = validateAgentModelLock(
       await Bun.file(AGENT_MODEL_LOCK_PATH).json()

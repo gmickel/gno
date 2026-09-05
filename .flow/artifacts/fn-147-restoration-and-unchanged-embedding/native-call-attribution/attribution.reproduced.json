@@ -1,0 +1,2800 @@
+{
+  "analysisScript": "/home/gordon/work/gno/.flow/artifacts/fn-147-restoration-and-unchanged-embedding/native-call-attribution/attribute.py",
+  "analysisScriptSha256": "ab2522448e8e58e69e465d637beab13f29b45e20ed2b34c634d0d0b1a9c639c3",
+  "sourceCommit": "3d9c0ec49c502ab0c3470c7df14ddac8123ad8d9",
+  "matrixSha256": "b63d7857fac2ebaf705e8ce6f9b248ae1b19de3e99a9eb5da8b421f844fd9634",
+  "captureSha256": "ee1260e653156ca7a8143107d79af51d50adedad5641b20be962207f58eb849c",
+  "childrenLedgerSha256": "1a99beb017f664818a611a1ca73ddf17e597ecbd5a26ada635ba8af484e37dca",
+  "requestsLedgerSha256": "f171dab4228b2d7e8cb8fd8d5602c7c18eaa051d1c22d0b70a0450dbeccd887e",
+  "mapping": "Derived uniquely from exact sequential matrix, 24 ordered birth/exit pairs, 24 single-query client sessions, complete sent/received request bijection, contiguous request IDs and nonoverlapping child phase intervals. Not an originally emitted per-case scope.",
+  "rows": [
+    {
+      "case": "initial",
+      "side": "incremental",
+      "pid": 180447,
+      "birthOrdinal": 1,
+      "firstCaptureOffset": 0,
+      "lastCaptureOffset": 4,
+      "phaseStartMs": 1788576934733,
+      "phaseExitMs": 1788576937299,
+      "requestCounts": {
+        "init": 2,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 0,
+      "actualPassageGetEmbeddingForCalls": 0,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 3,
+          "requestId": 4,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "initial",
+      "side": "clean",
+      "pid": 180580,
+      "birthOrdinal": 2,
+      "firstCaptureOffset": 5,
+      "lastCaptureOffset": 10,
+      "phaseStartMs": 1788576938063,
+      "phaseExitMs": 1788576940683,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 2,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 6,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 2,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Alpha\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "vectorFloat32LeSha256": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b",
+              "dimensions": 1024,
+              "tokenIds": [
+                19384,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Alpha.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 9,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "whitespace",
+      "side": "incremental",
+      "pid": 180709,
+      "birthOrdinal": 3,
+      "firstCaptureOffset": 11,
+      "lastCaptureOffset": 15,
+      "phaseStartMs": 1788576940895,
+      "phaseExitMs": 1788576943458,
+      "requestCounts": {
+        "init": 2,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 0,
+      "actualPassageGetEmbeddingForCalls": 0,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 14,
+          "requestId": 4,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "whitespace",
+      "side": "clean",
+      "pid": 180891,
+      "birthOrdinal": 4,
+      "firstCaptureOffset": 16,
+      "lastCaptureOffset": 21,
+      "phaseStartMs": 1788576943698,
+      "phaseExitMs": 1788576946328,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 2,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 17,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 2,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Alpha\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "vectorFloat32LeSha256": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b",
+              "dimensions": 1024,
+              "tokenIds": [
+                19384,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Alpha.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 20,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "unchanged",
+      "side": "incremental",
+      "pid": 181013,
+      "birthOrdinal": 5,
+      "firstCaptureOffset": 22,
+      "lastCaptureOffset": 26,
+      "phaseStartMs": 1788576946531,
+      "phaseExitMs": 1788576949040,
+      "requestCounts": {
+        "init": 2,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 0,
+      "actualPassageGetEmbeddingForCalls": 0,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 25,
+          "requestId": 4,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "unchanged",
+      "side": "clean",
+      "pid": 181122,
+      "birthOrdinal": 6,
+      "firstCaptureOffset": 27,
+      "lastCaptureOffset": 32,
+      "phaseStartMs": 1788576949273,
+      "phaseExitMs": 1788576951922,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 2,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 28,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 2,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Alpha\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "vectorFloat32LeSha256": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b",
+              "dimensions": 1024,
+              "tokenIds": [
+                19384,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Alpha.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": false
+            },
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": false
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 31,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "absent-1",
+      "side": "incremental",
+      "pid": 181219,
+      "birthOrdinal": 7,
+      "firstCaptureOffset": 33,
+      "lastCaptureOffset": 37,
+      "phaseStartMs": 1788576952134,
+      "phaseExitMs": 1788576954718,
+      "requestCounts": {
+        "init": 2,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 0,
+      "actualPassageGetEmbeddingForCalls": 0,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 36,
+          "requestId": 4,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "absent-1",
+      "side": "clean",
+      "pid": 181312,
+      "birthOrdinal": 8,
+      "firstCaptureOffset": 38,
+      "lastCaptureOffset": 43,
+      "phaseStartMs": 1788576954951,
+      "phaseExitMs": 1788576957573,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 1,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 39,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 42,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "restored-1",
+      "side": "incremental",
+      "pid": 181423,
+      "birthOrdinal": 9,
+      "firstCaptureOffset": 44,
+      "lastCaptureOffset": 48,
+      "phaseStartMs": 1788576957794,
+      "phaseExitMs": 1788576960362,
+      "requestCounts": {
+        "init": 2,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 0,
+      "actualPassageGetEmbeddingForCalls": 0,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 47,
+          "requestId": 4,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "restored-1",
+      "side": "clean",
+      "pid": 181524,
+      "birthOrdinal": 10,
+      "firstCaptureOffset": 49,
+      "lastCaptureOffset": 54,
+      "phaseStartMs": 1788576960602,
+      "phaseExitMs": 1788576963286,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 2,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 50,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 2,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Alpha\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "vectorFloat32LeSha256": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b",
+              "dimensions": 1024,
+              "tokenIds": [
+                19384,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Alpha.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 53,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "absent-2",
+      "side": "incremental",
+      "pid": 181655,
+      "birthOrdinal": 11,
+      "firstCaptureOffset": 55,
+      "lastCaptureOffset": 59,
+      "phaseStartMs": 1788576963510,
+      "phaseExitMs": 1788576966096,
+      "requestCounts": {
+        "init": 2,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 0,
+      "actualPassageGetEmbeddingForCalls": 0,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 58,
+          "requestId": 4,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "absent-2",
+      "side": "clean",
+      "pid": 181747,
+      "birthOrdinal": 12,
+      "firstCaptureOffset": 60,
+      "lastCaptureOffset": 65,
+      "phaseStartMs": 1788576966333,
+      "phaseExitMs": 1788576969020,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 1,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 61,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 64,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "restored-2",
+      "side": "incremental",
+      "pid": 181843,
+      "birthOrdinal": 13,
+      "firstCaptureOffset": 66,
+      "lastCaptureOffset": 70,
+      "phaseStartMs": 1788576969241,
+      "phaseExitMs": 1788576971868,
+      "requestCounts": {
+        "init": 2,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 0,
+      "actualPassageGetEmbeddingForCalls": 0,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 69,
+          "requestId": 4,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "restored-2",
+      "side": "clean",
+      "pid": 181979,
+      "birthOrdinal": 14,
+      "firstCaptureOffset": 71,
+      "lastCaptureOffset": 76,
+      "phaseStartMs": 1788576972112,
+      "phaseExitMs": 1788576974774,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 2,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 72,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 2,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Alpha\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "vectorFloat32LeSha256": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b",
+              "dimensions": 1024,
+              "tokenIds": [
+                19384,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Alpha.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 75,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "same-title-duplicate",
+      "side": "incremental",
+      "pid": 182074,
+      "birthOrdinal": 15,
+      "firstCaptureOffset": 77,
+      "lastCaptureOffset": 81,
+      "phaseStartMs": 1788576974991,
+      "phaseExitMs": 1788576977622,
+      "requestCounts": {
+        "init": 2,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 0,
+      "actualPassageGetEmbeddingForCalls": 0,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 80,
+          "requestId": 4,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "same-title-duplicate",
+      "side": "clean",
+      "pid": 182167,
+      "birthOrdinal": 16,
+      "firstCaptureOffset": 82,
+      "lastCaptureOffset": 87,
+      "phaseStartMs": 1788576977866,
+      "phaseExitMs": 1788576980551,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 2,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 83,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 2,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Alpha\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "vectorFloat32LeSha256": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b",
+              "dimensions": 1024,
+              "tokenIds": [
+                19384,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Alpha.md",
+                  "seq": 0
+                },
+                {
+                  "collection": "identity",
+                  "relPath": "copy/Alpha.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 86,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "title-rename",
+      "side": "incremental",
+      "pid": 182270,
+      "birthOrdinal": 17,
+      "firstCaptureOffset": 88,
+      "lastCaptureOffset": 93,
+      "phaseStartMs": 1788576980772,
+      "phaseExitMs": 1788576983481,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 1,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 89,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Beta\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "0f773436d21df5a1ded2566159157c2e78934149c05f95f030f71ff9df8750b1",
+              "vectorFloat32LeSha256": "651490d2fae7c60e32053f5040bbd08c9b9321d1baddc0e690aa6e6440b889f2",
+              "dimensions": 1024,
+              "tokenIds": [
+                64811,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "copy/Beta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": false
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 92,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "title-rename",
+      "side": "clean",
+      "pid": 182670,
+      "birthOrdinal": 18,
+      "firstCaptureOffset": 94,
+      "lastCaptureOffset": 99,
+      "phaseStartMs": 1788576983737,
+      "phaseExitMs": 1788576986541,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 3,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 95,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 3,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Alpha\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "vectorFloat32LeSha256": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b",
+              "dimensions": 1024,
+              "tokenIds": [
+                19384,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Alpha.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Beta\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "0f773436d21df5a1ded2566159157c2e78934149c05f95f030f71ff9df8750b1",
+              "vectorFloat32LeSha256": "651490d2fae7c60e32053f5040bbd08c9b9321d1baddc0e690aa6e6440b889f2",
+              "dimensions": 1024,
+              "tokenIds": [
+                64811,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "copy/Beta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 98,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "force",
+      "side": "incremental",
+      "pid": 182798,
+      "birthOrdinal": 19,
+      "firstCaptureOffset": 100,
+      "lastCaptureOffset": 105,
+      "phaseStartMs": 1788576986756,
+      "phaseExitMs": 1788576989588,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 3,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 101,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 3,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Alpha\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "vectorFloat32LeSha256": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b",
+              "dimensions": 1024,
+              "tokenIds": [
+                19384,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Alpha.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Beta\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "0f773436d21df5a1ded2566159157c2e78934149c05f95f030f71ff9df8750b1",
+              "vectorFloat32LeSha256": "651490d2fae7c60e32053f5040bbd08c9b9321d1baddc0e690aa6e6440b889f2",
+              "dimensions": 1024,
+              "tokenIds": [
+                64811,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "copy/Beta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 104,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "force",
+      "side": "clean",
+      "pid": 182940,
+      "birthOrdinal": 20,
+      "firstCaptureOffset": 106,
+      "lastCaptureOffset": 111,
+      "phaseStartMs": 1788576989861,
+      "phaseExitMs": 1788576992631,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 3,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 107,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 3,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Alpha\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "vectorFloat32LeSha256": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b",
+              "dimensions": 1024,
+              "tokenIds": [
+                19384,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Alpha.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Beta\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "0f773436d21df5a1ded2566159157c2e78934149c05f95f030f71ff9df8750b1",
+              "vectorFloat32LeSha256": "651490d2fae7c60e32053f5040bbd08c9b9321d1baddc0e690aa6e6440b889f2",
+              "dimensions": 1024,
+              "tokenIds": [
+                64811,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "copy/Beta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 110,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "materialization-repair",
+      "side": "incremental",
+      "pid": 183424,
+      "birthOrdinal": 21,
+      "firstCaptureOffset": 112,
+      "lastCaptureOffset": 116,
+      "phaseStartMs": 1788576992853,
+      "phaseExitMs": 1788576995539,
+      "requestCounts": {
+        "init": 2,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 0,
+      "actualPassageGetEmbeddingForCalls": 0,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 115,
+          "requestId": 4,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "materialization-repair",
+      "side": "clean",
+      "pid": 183949,
+      "birthOrdinal": 22,
+      "firstCaptureOffset": 117,
+      "lastCaptureOffset": 122,
+      "phaseStartMs": 1788576995795,
+      "phaseExitMs": 1788576998542,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 3,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 118,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 3,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Alpha\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "vectorFloat32LeSha256": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b",
+              "dimensions": 1024,
+              "tokenIds": [
+                19384,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Alpha.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Beta\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "0f773436d21df5a1ded2566159157c2e78934149c05f95f030f71ff9df8750b1",
+              "vectorFloat32LeSha256": "651490d2fae7c60e32053f5040bbd08c9b9321d1baddc0e690aa6e6440b889f2",
+              "dimensions": 1024,
+              "tokenIds": [
+                64811,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "copy/Beta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 121,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "collection-global-catchup",
+      "side": "incremental",
+      "pid": 184393,
+      "birthOrdinal": 23,
+      "firstCaptureOffset": 123,
+      "lastCaptureOffset": 131,
+      "phaseStartMs": 1788576998774,
+      "phaseExitMs": 1788577002043,
+      "requestCounts": {
+        "init": 3,
+        "embedBatch": 2,
+        "dispose": 3,
+        "embed": 1
+      },
+      "passageBatchRequests": 2,
+      "actualPassageGetEmbeddingForCalls": 2,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 124,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Scope\nThe cobalt observatory telescope uses a quartz lens.\n",
+              "inputSha256": "6a3dbbe07ca2e108038c46df6fdbda3f7884a19365dcf7f7e5128b264cf06292",
+              "vectorFloat32LeSha256": "016a77209bd22414e0035b09f01019c506b8701ad5e1784731b29aaaf969b89d",
+              "dimensions": 1024,
+              "tokenIds": [
+                10803,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                55825,
+                5711,
+                264,
+                51155,
+                18342,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Scope.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 127,
+          "requestId": 5,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Scope\nThe copper laboratory uses an argon chamber.\n",
+              "inputSha256": "74bfc29f6e7da434b0d201b203a28d01aef5dfc6bfe492dc1d51f5512f1c98aa",
+              "vectorFloat32LeSha256": "807acf149113038ab2a1564ff0a8f4af20bacdd47e3d92fe88c12b0fd0d82c08",
+              "dimensions": 1024,
+              "tokenIds": [
+                10803,
+                198,
+                785,
+                23285,
+                26594,
+                5711,
+                458,
+                1392,
+                263,
+                24220,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Scope.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 130,
+          "requestId": 8,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "scopeCaveat": "This client first embeds collection identity before checkpoint, then global catchup. Request 2 is the identity Scope passage; request 5 is the other Scope passage. Their attribution follows exact source order and unique input bytes."
+    },
+    {
+      "case": "collection-global-catchup",
+      "side": "clean",
+      "pid": 184507,
+      "birthOrdinal": 24,
+      "firstCaptureOffset": 132,
+      "lastCaptureOffset": 137,
+      "phaseStartMs": 1788577002298,
+      "phaseExitMs": 1788577005060,
+      "requestCounts": {
+        "init": 2,
+        "embedBatch": 1,
+        "dispose": 2,
+        "embed": 1
+      },
+      "passageBatchRequests": 1,
+      "actualPassageGetEmbeddingForCalls": 5,
+      "actualQueryGetEmbeddingForCalls": 1,
+      "calls": [
+        {
+          "captureArrayOffset": 133,
+          "requestId": 2,
+          "operation": "embedBatch",
+          "classification": "passage",
+          "actualGetEmbeddingForCalls": 5,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Alpha\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "vectorFloat32LeSha256": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b",
+              "dimensions": 1024,
+              "tokenIds": [
+                19384,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Alpha.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Beta\nThe cobalt observatory opens at dawn.\n",
+              "inputSha256": "0f773436d21df5a1ded2566159157c2e78934149c05f95f030f71ff9df8750b1",
+              "vectorFloat32LeSha256": "651490d2fae7c60e32053f5040bbd08c9b9321d1baddc0e690aa6e6440b889f2",
+              "dimensions": 1024,
+              "tokenIds": [
+                64811,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                15885,
+                518,
+                38393,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "copy/Beta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Scope\nThe cobalt observatory telescope uses a quartz lens.\n",
+              "inputSha256": "6a3dbbe07ca2e108038c46df6fdbda3f7884a19365dcf7f7e5128b264cf06292",
+              "vectorFloat32LeSha256": "016a77209bd22414e0035b09f01019c506b8701ad5e1784731b29aaaf969b89d",
+              "dimensions": 1024,
+              "tokenIds": [
+                10803,
+                198,
+                785,
+                33828,
+                3145,
+                9282,
+                5269,
+                55825,
+                5711,
+                264,
+                51155,
+                18342,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "identity",
+                  "relPath": "Scope.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Delta\nThe copper laboratory closes at midnight.\n",
+              "inputSha256": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "vectorFloat32LeSha256": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579",
+              "dimensions": 1024,
+              "tokenIds": [
+                20277,
+                198,
+                785,
+                23285,
+                26594,
+                33250,
+                518,
+                32333,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Delta.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            },
+            {
+              "input": "Scope\nThe copper laboratory uses an argon chamber.\n",
+              "inputSha256": "74bfc29f6e7da434b0d201b203a28d01aef5dfc6bfe492dc1d51f5512f1c98aa",
+              "vectorFloat32LeSha256": "807acf149113038ab2a1564ff0a8f4af20bacdd47e3d92fe88c12b0fd0d82c08",
+              "dimensions": 1024,
+              "tokenIds": [
+                10803,
+                198,
+                785,
+                23285,
+                26594,
+                5711,
+                458,
+                1392,
+                263,
+                24220,
+                624
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ],
+              "matchingOwners": [
+                {
+                  "collection": "other",
+                  "relPath": "Scope.md",
+                  "seq": 0
+                }
+              ],
+              "oldMatchingInputAndVector": true
+            }
+          ]
+        },
+        {
+          "captureArrayOffset": 136,
+          "requestId": 5,
+          "operation": "embed",
+          "classification": "query",
+          "actualGetEmbeddingForCalls": 1,
+          "inputsAndOutputHashes": [
+            {
+              "input": "Instruct: Retrieve relevant documents for the given query\nQuery: cobalt observatory dawn",
+              "inputSha256": "c58c8f51aa4557ba443c55da2658925a6044426155123ab42d5d1aacc46b3bd0",
+              "vectorFloat32LeSha256": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+              "dimensions": 1024,
+              "tokenIds": [
+                641,
+                1235,
+                25,
+                31562,
+                9760,
+                9293,
+                369,
+                279,
+                2661,
+                3239,
+                198,
+                2859,
+                25,
+                33828,
+                3145,
+                9282,
+                5269,
+                38393
+              ],
+              "nativeContext": [
+                {
+                  "contextSize": 2048
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "crossRunNineCompletePairs": [
+    {
+      "case": "initial",
+      "oldPairComplete": true,
+      "bothSidesAllOwnerFieldsExact": true,
+      "oldIncrementalOwnerCount": 2,
+      "oldCleanOwnerCount": 2,
+      "newCleanActualPassageCalls": 2,
+      "newCleanNativeInputAndOutputMatchOldPersistedHashes": true
+    },
+    {
+      "case": "whitespace",
+      "oldPairComplete": true,
+      "bothSidesAllOwnerFieldsExact": true,
+      "oldIncrementalOwnerCount": 2,
+      "oldCleanOwnerCount": 2,
+      "newCleanActualPassageCalls": 2,
+      "newCleanNativeInputAndOutputMatchOldPersistedHashes": true
+    },
+    {
+      "case": "unchanged",
+      "oldPairComplete": false,
+      "bothSidesAllOwnerFieldsExact": false,
+      "oldIncrementalOwnerCount": 2,
+      "oldCleanOwnerCount": 2,
+      "newCleanActualPassageCalls": 2,
+      "newCleanNativeInputAndOutputMatchOldPersistedHashes": null
+    },
+    {
+      "case": "absent-1",
+      "oldPairComplete": false,
+      "bothSidesAllOwnerFieldsExact": true,
+      "oldIncrementalOwnerCount": 1,
+      "oldCleanOwnerCount": 1,
+      "newCleanActualPassageCalls": 1,
+      "newCleanNativeInputAndOutputMatchOldPersistedHashes": null
+    },
+    {
+      "case": "restored-1",
+      "oldPairComplete": true,
+      "bothSidesAllOwnerFieldsExact": true,
+      "oldIncrementalOwnerCount": 2,
+      "oldCleanOwnerCount": 2,
+      "newCleanActualPassageCalls": 2,
+      "newCleanNativeInputAndOutputMatchOldPersistedHashes": true
+    },
+    {
+      "case": "absent-2",
+      "oldPairComplete": true,
+      "bothSidesAllOwnerFieldsExact": true,
+      "oldIncrementalOwnerCount": 1,
+      "oldCleanOwnerCount": 1,
+      "newCleanActualPassageCalls": 1,
+      "newCleanNativeInputAndOutputMatchOldPersistedHashes": true
+    },
+    {
+      "case": "restored-2",
+      "oldPairComplete": true,
+      "bothSidesAllOwnerFieldsExact": true,
+      "oldIncrementalOwnerCount": 2,
+      "oldCleanOwnerCount": 2,
+      "newCleanActualPassageCalls": 2,
+      "newCleanNativeInputAndOutputMatchOldPersistedHashes": true
+    },
+    {
+      "case": "same-title-duplicate",
+      "oldPairComplete": true,
+      "bothSidesAllOwnerFieldsExact": true,
+      "oldIncrementalOwnerCount": 3,
+      "oldCleanOwnerCount": 3,
+      "newCleanActualPassageCalls": 2,
+      "newCleanNativeInputAndOutputMatchOldPersistedHashes": true
+    },
+    {
+      "case": "title-rename",
+      "oldPairComplete": false,
+      "bothSidesAllOwnerFieldsExact": false,
+      "oldIncrementalOwnerCount": 3,
+      "oldCleanOwnerCount": 3,
+      "newCleanActualPassageCalls": 3,
+      "newCleanNativeInputAndOutputMatchOldPersistedHashes": null
+    },
+    {
+      "case": "force",
+      "oldPairComplete": true,
+      "bothSidesAllOwnerFieldsExact": true,
+      "oldIncrementalOwnerCount": 3,
+      "oldCleanOwnerCount": 3,
+      "newCleanActualPassageCalls": 3,
+      "newCleanNativeInputAndOutputMatchOldPersistedHashes": true
+    },
+    {
+      "case": "materialization-repair",
+      "oldPairComplete": true,
+      "bothSidesAllOwnerFieldsExact": true,
+      "oldIncrementalOwnerCount": 3,
+      "oldCleanOwnerCount": 3,
+      "newCleanActualPassageCalls": 3,
+      "newCleanNativeInputAndOutputMatchOldPersistedHashes": true
+    },
+    {
+      "case": "collection-global-catchup",
+      "oldPairComplete": true,
+      "bothSidesAllOwnerFieldsExact": true,
+      "oldIncrementalOwnerCount": 5,
+      "oldCleanOwnerCount": 5,
+      "newCleanActualPassageCalls": 5,
+      "newCleanNativeInputAndOutputMatchOldPersistedHashes": true
+    }
+  ],
+  "allQueryVectorHash": "4e44c9e83a55f78c7418c6e9da666fe6675a98dfc56d2757f168a143ea5b683e",
+  "limits": [
+    "Old baseline has persisted input/vector hashes, not raw per-call native capture. No old raw token/context equality claim.",
+    "Counts refer to recorded embedding-port and getEmbeddingFor invocations, not speculative simulator allocation or GPU kernel counts.",
+    "Metadata init/dispose and one query inference remain in zero-passage cases.",
+    "Collection-global-catchup original session includes the preceding collection-scoped embedding; preserved as separate requests."
+  ]
+}

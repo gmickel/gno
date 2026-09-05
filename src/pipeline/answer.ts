@@ -1,13 +1,13 @@
+import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 /**
  * Grounded answer generation.
  * Shared between CLI ask command and web API.
  *
  * @module src/pipeline/answer
  */
-
-import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { GenerationPort } from "../llm/types";
 import type { StorePort } from "../store/types";
+import type { RequestHydration } from "./hydration";
 import type {
   AnswerContextEntry,
   AnswerContextExplain,
@@ -15,6 +15,10 @@ import type {
   SearchResult,
 } from "./types";
 
+import {
+  assertInferenceActive,
+  assertInferenceResult,
+} from "../llm/inference-scope";
 import { buildAnswerPrompt, type AnswerPromptSource } from "./answer-prompt";
 import { attachCitationTraceMetadata } from "./trace-metadata";
 import {
@@ -117,6 +121,7 @@ const completeLinePrefix = (
   const selected: string[] = [];
   let characters = 0;
   for (const line of lines) {
+    assertInferenceActive();
     const addition = selected.length === 0 ? line.length : line.length + 1;
     if (characters + addition > maxChars) break;
     selected.push(line);
@@ -172,6 +177,7 @@ export function extractValidCitationNumbers(
   const re = /\[(\d+)\]/g;
   const matches = answer.matchAll(re);
   for (const match of matches) {
+    assertInferenceActive();
     const n = Number(match[1]);
     if (Number.isInteger(n) && n >= 1 && n <= maxCitation) {
       nums.add(n);
@@ -231,6 +237,8 @@ export interface AnswerGenerationResult {
 export interface AnswerGenerationDeps {
   genPort: GenerationPort;
   store: StorePort | null;
+  /** Raw request-owned content only; passage/hash validation still runs. */
+  hydration?: Pick<RequestHydration, "getContent">;
 }
 
 function normalizeScore(score: number): number {
@@ -273,6 +281,7 @@ function buildCandidates(
 
     const matchedQueryTokens = new Set<string>();
     for (const token of queryTokenSet) {
+      assertInferenceActive();
       if (signalTokenSet.has(token)) {
         matchedQueryTokens.add(token);
       }
@@ -280,7 +289,9 @@ function buildCandidates(
 
     const matchedFacetIndexes = new Set<number>();
     for (const [index, facetTokenSet] of facetTokenSets.entries()) {
+      assertInferenceActive();
       for (const token of facetTokenSet) {
+        assertInferenceActive();
         if (signalTokenSet.has(token)) {
           matchedFacetIndexes.add(index);
           break;
@@ -301,6 +312,7 @@ function dedupeByDocidBestScore(results: SearchResult[]): SearchResult[] {
   const bestByDocid = new Map<string, SearchResult>();
 
   for (const result of results) {
+    assertInferenceActive();
     const existing = bestByDocid.get(result.docid);
     if (!existing || result.score > existing.score) {
       bestByDocid.set(result.docid, result);
@@ -358,6 +370,7 @@ function selectAdaptiveSources(
     let bestReason = "relevance";
 
     for (const candidate of candidates) {
+      assertInferenceActive();
       const docid = candidate.result.docid;
       if (selectedDocids.has(docid)) {
         continue;
@@ -418,15 +431,18 @@ function selectAdaptiveSources(
     selected.push({ candidate: bestCandidate, reason: bestReason });
     selectedDocids.add(bestCandidate.result.docid);
     for (const token of bestCandidate.matchedQueryTokens) {
+      assertInferenceActive();
       coveredTokens.add(token);
     }
     for (const index of bestCandidate.matchedFacetIndexes) {
+      assertInferenceActive();
       coveredFacets.add(index);
     }
   }
 
   if (comparisonIntent && selected.length < 2) {
     for (const candidate of candidates) {
+      assertInferenceActive();
       if (selectedDocids.has(candidate.result.docid)) {
         continue;
       }
@@ -501,6 +517,7 @@ export async function generateGroundedAnswer(
   let citationIndex = 0;
 
   for (const r of sourceSelection.selected) {
+    assertInferenceActive();
     let passage: ExactAnswerPassage | null = null;
     const plannerMetadata = r[SEARCH_RESULT_PLANNER_METADATA];
     const sourceHash = r.source.sourceHash;
@@ -508,7 +525,9 @@ export async function generateGroundedAnswer(
 
     // Try to fetch full document content if store available
     if (store && mirrorHash) {
-      const contentResult = await store.getContent(mirrorHash);
+      const contentResult = await (deps.hydration ?? store).getContent(
+        mirrorHash
+      );
       if (contentResult.ok && contentResult.value) {
         if (sha256(contentResult.value) === mirrorHash) {
           passage =
@@ -578,6 +597,7 @@ export async function generateGroundedAnswer(
     maxTokens,
   });
 
+  assertInferenceResult(result);
   if (!result.ok) {
     return null;
   }

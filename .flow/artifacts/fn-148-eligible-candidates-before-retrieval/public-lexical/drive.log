@@ -1,0 +1,38 @@
+{
+  "observations": 96,
+  "passed": 88,
+  "failures": [
+    {
+      "surface": "cli",
+      "scenario": "invalid-date"
+    },
+    {
+      "surface": "rest",
+      "scenario": "invalid-date"
+    },
+    {
+      "surface": "cli",
+      "scenario": "invalid-date"
+    },
+    {
+      "surface": "rest",
+      "scenario": "invalid-date"
+    },
+    {
+      "surface": "stdio-mcp",
+      "scenario": "invalid-date"
+    },
+    {
+      "surface": "stdio-mcp",
+      "scenario": "invalid-date"
+    },
+    {
+      "surface": "http-mcp",
+      "scenario": "invalid-date"
+    },
+    {
+      "surface": "http-mcp",
+      "scenario": "invalid-date"
+    }
+  ]
+}

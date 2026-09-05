@@ -1,4 +1,35 @@
 -- GNO Database Schema v1
+-- Graph reference inventory (migration 029). Parsed links remain in doc_links.
+-- Snapshots deliberately survive document deletion: closure needs old identities.
+-- Missing inventory, changed version/config, or dirty state requires full recovery.
+-- Begin persists dirty before projection. Complete only after successful edge writes,
+-- unchanged input epoch, and coverage of every active source; compose in a transaction.
+CREATE TABLE graph_projection_state (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  epoch INTEGER NOT NULL DEFAULT 0,
+  version INTEGER,
+  config_fingerprint TEXT,
+  in_progress INTEGER NOT NULL DEFAULT 0 CHECK (in_progress IN (0, 1)),
+  dirty INTEGER NOT NULL DEFAULT 1 CHECK (dirty IN (0, 1))
+);
+INSERT INTO graph_projection_state(id) VALUES (1);
+CREATE TABLE graph_reference_documents (
+  document_id INTEGER PRIMARY KEY,
+  collection TEXT NOT NULL, rel_path TEXT NOT NULL, docid TEXT NOT NULL,
+  uri TEXT NOT NULL, title TEXT, mirror_hash TEXT, source_hash TEXT NOT NULL,
+  content_type TEXT
+);
+CREATE INDEX idx_graph_reference_uri ON graph_reference_documents(uri);
+CREATE INDEX idx_graph_reference_path ON graph_reference_documents(collection, rel_path);
+CREATE INDEX idx_graph_reference_title ON graph_reference_documents(title);
+CREATE TABLE graph_frontmatter_references (
+  source_doc_id INTEGER NOT NULL REFERENCES graph_reference_documents(document_id) ON DELETE CASCADE,
+  ordinal INTEGER NOT NULL,
+  edge_type TEXT NOT NULL,
+  target TEXT NOT NULL,
+  PRIMARY KEY(source_doc_id, ordinal)
+);
+CREATE INDEX idx_graph_reference_target ON graph_frontmatter_references(target);
 -- SQLite with FTS5
 --
 -- Tables:
@@ -221,9 +252,109 @@ CREATE INDEX IF NOT EXISTS idx_vectors_freshness
   ON content_vectors(model, embed_fingerprint, mirror_hash, seq, embedded_at);
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- LLM Cache (EPIC 6+)
+-- Exact embedding input variants (v1)
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- Input variants v1 are additive shadow state. Legacy content_vectors remain
+-- authoritative until a partition's complete active-owner coverage is checked
+-- under BEGIN IMMEDIATE at the expected mutation epoch. Never infer exact
+-- historical input from unique ownership. Pending work is current active
+-- document/chunk pairs without a validated binding; it is resumable by owner.
+CREATE TABLE IF NOT EXISTS vector_variant_epoch (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  epoch INTEGER NOT NULL DEFAULT 0
+);
+INSERT OR IGNORE INTO vector_variant_epoch(id) VALUES (1);
+CREATE TABLE IF NOT EXISTS vector_partitions (
+  partition_id TEXT PRIMARY KEY,
+  version INTEGER NOT NULL CHECK (version = 1),
+  model TEXT NOT NULL,
+  fingerprint TEXT NOT NULL,
+  dimensions INTEGER NOT NULL CHECK (dimensions > 0),
+  state TEXT NOT NULL DEFAULT 'shadow' CHECK (state IN ('shadow', 'active')),
+  activated_epoch INTEGER,
+  UNIQUE(model, fingerprint, dimensions)
+);
+CREATE TABLE IF NOT EXISTS vector_variants (
+  variant_id INTEGER PRIMARY KEY,
+  partition_id TEXT NOT NULL REFERENCES vector_partitions(partition_id),
+  input_hash TEXT NOT NULL CHECK (length(input_hash) = 64),
+  embedding BLOB NOT NULL,
+  UNIQUE(partition_id, input_hash),
+  UNIQUE(partition_id, variant_id)
+);
+CREATE TABLE IF NOT EXISTS vector_owners (
+  document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  mirror_hash TEXT NOT NULL,
+  seq INTEGER NOT NULL,
+  partition_id TEXT NOT NULL,
+  variant_id INTEGER NOT NULL,
+  PRIMARY KEY(document_id, seq, partition_id),
+  FOREIGN KEY(partition_id, variant_id)
+    REFERENCES vector_variants(partition_id, variant_id)
+);
+CREATE INDEX IF NOT EXISTS idx_vector_owners_variant ON vector_owners(variant_id);
+-- No chunk FK: replacing shared canonical chunks must not cascade vector loss.
+-- The writer validates bindings against current document/chunk/formatted input.
+-- vec_v1_<partition SHA256> uses variant_id INTEGER PRIMARY KEY and FLOAT[dims].
+-- Its writes/deletes share the authoritative variant transaction; no best effort.
+-- Mutation epoch fences all old and new writers, including raw SQL. Active state
+-- records durable variant authority after initial promotion. activated_epoch
+-- proves current completeness only when it matches the mutation epoch.
+-- Later mutations do not revoke authority: retrieval validates each owner and
+-- continues serving unaffected variants; it must not fall back wholesale to
+-- legacy rows. Recreating a missing vec0 table resets its partition to shadow.
+
+CREATE TRIGGER IF NOT EXISTS variant_epoch_documents_INSERT
+  AFTER INSERT ON documents BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_documents_UPDATE
+  AFTER UPDATE ON documents BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_documents_DELETE
+  AFTER DELETE ON documents BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_content_chunks_INSERT
+  AFTER INSERT ON content_chunks BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_content_chunks_UPDATE
+  AFTER UPDATE ON content_chunks BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_content_chunks_DELETE
+  AFTER DELETE ON content_chunks BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_vector_owners_INSERT
+  AFTER INSERT ON vector_owners BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_vector_owners_UPDATE
+  AFTER UPDATE ON vector_owners BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_vector_owners_DELETE
+  AFTER DELETE ON vector_owners BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_vector_variants_INSERT
+  AFTER INSERT ON vector_variants BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_vector_variants_UPDATE
+  AFTER UPDATE ON vector_variants BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_vector_variants_DELETE
+  AFTER DELETE ON vector_variants BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+
+-- LLM Cache (EPIC 6+)
 CREATE TABLE IF NOT EXISTS llm_cache (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
@@ -814,3 +945,17 @@ CREATE INDEX IF NOT EXISTS idx_file_refactor_journal_plan_digest
 
 CREATE INDEX IF NOT EXISTS idx_file_refactor_journal_collection
   ON file_refactor_recovery_journal(collection, updated_at_ms DESC);
+
+-- Graph input/inventory invalidation (029); begin also advances epoch to fence older passes.
+CREATE TRIGGER graph_input_documents_insert AFTER INSERT ON documents BEGIN UPDATE graph_projection_state SET epoch = epoch + 1, dirty = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_input_documents_update AFTER UPDATE ON documents WHEN OLD.collection IS NOT NEW.collection OR OLD.rel_path IS NOT NEW.rel_path OR OLD.docid IS NOT NEW.docid OR OLD.uri IS NOT NEW.uri OR OLD.title IS NOT NEW.title OR OLD.mirror_hash IS NOT NEW.mirror_hash OR OLD.source_hash IS NOT NEW.source_hash OR OLD.content_type IS NOT NEW.content_type OR OLD.active IS NOT NEW.active BEGIN UPDATE graph_projection_state SET epoch = epoch + 1, dirty = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_input_documents_delete AFTER DELETE ON documents BEGIN UPDATE graph_projection_state SET epoch = epoch + 1, dirty = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_input_doc_links_insert AFTER INSERT ON doc_links BEGIN UPDATE graph_projection_state SET epoch = epoch + 1, dirty = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_input_doc_links_update AFTER UPDATE ON doc_links BEGIN UPDATE graph_projection_state SET epoch = epoch + 1, dirty = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_input_doc_links_delete AFTER DELETE ON doc_links BEGIN UPDATE graph_projection_state SET epoch = epoch + 1, dirty = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_inventory_graph_reference_documents_insert AFTER INSERT ON graph_reference_documents BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_inventory_graph_reference_documents_update AFTER UPDATE ON graph_reference_documents BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_inventory_graph_reference_documents_delete AFTER DELETE ON graph_reference_documents BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_inventory_graph_frontmatter_references_insert AFTER INSERT ON graph_frontmatter_references BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_inventory_graph_frontmatter_references_update AFTER UPDATE ON graph_frontmatter_references BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_inventory_graph_frontmatter_references_delete AFTER DELETE ON graph_frontmatter_references BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;

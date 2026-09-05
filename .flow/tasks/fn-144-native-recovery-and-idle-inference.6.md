@@ -50,9 +50,8 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Final receipts list fixture/model/runtime identities, raw measurements and residual limits; production deployment stays separately authorized.
 
 ## Done summary
-TBD
-
+Reconciled lazy startup, five-minute idle grace, process/model accounting, recovery limits, simulator lifetime guard and first-next-query cost in architecture/configuration/daemon/SDK/troubleshooting docs. Captured CLI, stdio/resident MCP and REST native behavior plus shared web UI startup/filter/poll states support scoped QA; original physical Metal3/3 retained independently of containment. Full current lint/typecheck/tests/docs and packed install smoke pass, including unchanged real-GNO sentinel. Hosted documentation is explicitly deferred to the post-PR queue by user. Additional SSH-blocked Metal comparisons remain later aggregate QA limits, not fabricated successes; no production deployment authorized.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: d4266578, 017513d2, 9d0b57e3, 80b3cc8e, f62e6438, 16d533db
+- Tests: bun test:5150pass2skip0fail41177assertions603files, bun run lint:check, bun run typecheck, bun run docs:verify:15pass0fail2skip, TMPDIR=/home/gordon/.cache/agent-tmp bun run test:package:PASS, actual native CUDA and physical Ivan receipts under fn144 artifacts, actual shared web UI desktop/mobile startup/filter/polling evidence under fn148/fn151/fn152
 - PRs:

@@ -896,6 +896,11 @@ Model provisioning follows one of three modes:
 - manual: no auto-download, but explicit `gno models pull` still works (`GNO_NO_AUTO_DOWNLOAD=1`)
 
 The dashboard bootstrap panel reflects the active mode in plain language.
+Starting serve or daemon does not resolve or download models. An empty or offline
+model cache does not block listener startup, lexical search or metadata access.
+The first operation requiring inference, including background embedding, resolves
+its model under the policy captured for that context. Missing models or blocked
+downloads follow the operation's existing error or fallback contract.
 
 ### Using A Fine-Tuned Local Model
 
@@ -1002,6 +1007,90 @@ models:
   expandContextSize: 2048 # Context window used for query expansion generation
   warmModelTtl: 300000 # Keep-warm duration (ms)
 ```
+
+`loadTimeout` and `inferenceTimeout` accept integer milliseconds from 1 through
+2,147,483,647; zero, negative, fractional and overflowing values fail configuration
+validation. Neither setting has a disabled-by-zero mode.
+
+`inferenceTimeout` starts at native evaluation, after model/context loading.
+The child reports evaluation start using the current generation and request ID;
+metadata and queued requests do not start that timer. `loadTimeout` bounds the
+dispatched request's loading phase independently; the two timers are never added.
+A caller's absolute `deadlineAt` covers queueing and loading through response
+publication. Generation receives an evaluation abort signal. Embedding/reranking
+evaluation may be noncooperative, so canceled active work retains capacity until
+actual settlement. After five seconds without settlement, the parent retires its
+isolated child; queued operations fail explicitly and are never replayed.
+
+For remote HTTP inference, `inferenceTimeout` measures the complete request
+from policy/DNS preparation through fetch and response-body consumption. The
+client cannot observe the remote model's load/evaluation boundary. The caller's
+`deadlineAt` remains the tighter outer limit. `loadTimeout` applies only to local
+native loading; it does not configure a remote server.
+
+The separate expansion-stage budget still falls back without expansion when it
+expires, while aborting its generation. A caller abort/deadline cannot become a
+successful lexical fallback. Operational cancellation options do not change
+sampling, model selection, candidate counts, or ranking.
+
+The resident shutdown contract allocates a shared five-second drain, five-second
+abort-settlement period, then at most one second awaiting forced owned-child
+exit. Requests, accepted jobs, background scheduling and listener cleanup share
+those phases; individual participants do not restart the clock. Admission and
+scheduling stop first. At the abort deadline, suspended parent transactions are
+rolled back and their store access revoked before the database closes. Completed
+checkpoints remain durable; unfinished embedding work stays pending for restart.
+Only the owned native child can be forced to exit; an unconfirmed OS termination
+is reported as an error, never successful cleanup. See [daemon shutdown](DAEMON.md#shutdown).
+
+These bounds apply while the parent event loop can run. JavaScript timers cannot
+preempt a synchronous callback, a blocked OS call or a SQLite statement already
+executing when the signal arrives. During shutdown, ordinary store access caps
+SQLite busy waiting to the remaining settlement budget. Raw database handles
+cached outside the store API do not inherit that per-access cap or transaction
+token; they become unusable when their connection closes. The bounds are not a
+universal query latency promise and have no new CLI/configuration setting.
+
+Native embedding, generation and reranking share one child per LLM adapter.
+`warmModelTtl` is the inactivity grace for each model and for the native child
+(five minutes by default). Model-specific leases protect actual loading,
+context creation, evaluation and cleanup. Background embedding does not renew
+idle generation/reranking weights; they can expire while the same child remains
+busy. A later call reloads the expired model and rebinds its context. Cached
+metadata and status reads do not renew a model's idle grace.
+Active inference, pending responses and model-use leases prevent idle retirement;
+metadata-only access does not refresh native activity. Retirement exits the
+child to reclaim its native process allocations. The next inference reloads
+models. That complete cold request includes worker startup, model loading and
+context creation; its cost depends on the model, backend and hardware. Changing
+the idle grace does not change candidate counts, precision or input text.
+Command/SDK disposal terminates the owned child. Explicit model disposal retires
+the shared child, so other native roles reload lazily too. HTTP inference is
+unaffected by this child lifecycle.
+
+Background embedding runs in internal turns of at most 32 pending chunks. A
+scheduler run or accepted job may span many turns; it does not report completion
+after one page. Each turn checkpoints current inputs, releases native/model
+ownership and yields before continuing. Foreground requests dispatch first,
+with one pending background native request served after at most eight completed
+foreground native inference dispatches. Metadata init/dispose do not earn or reset
+that service credit. Both classes share the existing 64-call waiting
+queue. Native batches are not preemptible and this is not a total-query deadline.
+Failed chunks remain pending for a subsequent pass; later pages still progress.
+Notifications keep the existing 30-second debounce and five-minute maximum wait,
+and failed scheduler passes retry after debounce. No priority or turn-size
+configuration is exposed.
+
+Resident model counters are cached child-reported lifecycle snapshots. Reading
+status sends no native request and does not extend the idle deadline. Loaded-model
+counts describe residency, not GPU-memory usage; capability flags describe
+configured functionality.
+
+Native worker startup or inference failure returns a structured error without
+automatically replaying the operation. The npm package and desktop source
+runtime include the worker entrypoint. A standalone `bun build --compile`
+executable without that source runtime cannot launch native inference and fails
+explicitly instead of recursively launching itself.
 
 ## FTS Tokenizer
 

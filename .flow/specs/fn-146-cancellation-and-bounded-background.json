@@ -1,5 +1,5 @@
 {
-  "branch_name": "fn-146-cancellation-and-bounded-background",
+  "branch_name": "fn-143-152-retrieval-resource-major",
   "completion_review_status": "unknown",
   "completion_reviewed_at": null,
   "created_at": "2026-09-04T22:26:21.733971Z",
@@ -18,7 +18,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-146-cancellation-and-bounded-background.md",
-  "status": "open",
+  "status": "done",
   "title": "Cancellation and bounded background inference",
   "tracker": {
     "baseHashFlow": null,
@@ -31,5 +31,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T23:08:33.543814Z"
+  "updated_at": "2026-09-05T08:12:22.991154Z"
 }

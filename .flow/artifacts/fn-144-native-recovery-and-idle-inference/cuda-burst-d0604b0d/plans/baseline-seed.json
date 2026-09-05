@@ -1,0 +1,9 @@
+{
+  "seed": true,
+  "role": "baseline",
+  "sourceRoot": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/baseline-source",
+  "configPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/config.json",
+  "dbPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/baseline/data/index-default.sqlite",
+  "cacheDir": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/baseline/cache",
+  "outputPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/observations/baseline-seed/result.json"
+}

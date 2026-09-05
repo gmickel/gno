@@ -1,5 +1,5 @@
 {
-  "branch_name": "fn-144-native-recovery-and-idle-inference",
+  "branch_name": "fn-143-152-retrieval-resource-major",
   "completion_review_status": "unknown",
   "completion_reviewed_at": null,
   "created_at": "2026-09-04T22:26:21.128147Z",
@@ -17,7 +17,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-144-native-recovery-and-idle-inference.md",
-  "status": "open",
+  "status": "done",
   "title": "Native recovery and idle inference reclamation",
   "tracker": {
     "baseHashFlow": null,
@@ -30,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T23:08:32.999975Z"
+  "updated_at": "2026-09-05T04:24:13.302584Z"
 }

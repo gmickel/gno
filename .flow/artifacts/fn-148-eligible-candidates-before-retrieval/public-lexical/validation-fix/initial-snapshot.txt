@@ -1,0 +1,52 @@
+- button "Search"
+- button
+- button "New Tab"
+- banner:
+  - button "GNO"
+  - button "Back"
+  - heading "Search" [level=1]
+  - text: Preset
+  - button "Missing local files QA"
+- complementary:
+  - heading "Tags" [level=3]
+  - button "noise 199"
+  - button "approved 1"
+  - button "release 1"
+- main:
+  - textbox "Search your documents... Use Shift+Enter for structured query documents"
+  - button "Search" [disabled]
+  - paragraph:
+    - text: Press Enter to search. Use Shift+Enter for multi-line structured query documents with
+    - code: "term:"
+    - text: ","
+    - code: "intent:"
+    - text: ", and"
+    - code: "hyde:"
+    - text: .
+  - text: Depth
+  - radiogroup:
+    - radio "Fast"
+    - radio "Balanced ~2s" [checked]
+    - radio "Thorough"
+  - text: Hybrid + reranking
+  - button "Advanced Retrieval"
+- contentinfo:
+  - text: ◆
+  - button "Collections"
+  - text: —
+  - button "Trace history"
+  - text: —
+  - link "GitHub":
+    - /url: https://github.com/gmickel/gno
+  - text: —
+  - link "Discord":
+    - /url: https://discord.gg/nHEmyJB5tg
+  - text: —
+  - link "gno.sh":
+    - /url: https://gno.sh
+  - text: —
+  - link "Twitter":
+    - /url: https://twitter.com/gmickel
+- button "Keyboard shortcuts": "?"
+- heading "Quick Switcher" [level=2]
+- paragraph: Jump to notes, open recent documents, or create a new note.

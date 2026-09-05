@@ -1,0 +1,17 @@
+{
+  "configEqual": true,
+  "indexEqual": true,
+  "indexSha256": "579f0148e208ab38cffb047d3c3fb56ae57081e5b61d61d83ce32ce3537a9166",
+  "packageSha256": "1a01daff5030dfbab0492d8d7d76a759e699a3effbd87ede8a40a290e6879342",
+  "helperSha256": "a17680691f0326062f7cc132251fee28ed35319041f295398788b49e5428e116",
+  "baselineSource": "/private/tmp/gno-native-baseline-20260905.VQtXt5/source",
+  "unchangedBaselineProductFiles": 759,
+  "query": "Who owns the meadow migration?",
+  "options": {
+    "collection": "probe",
+    "limit": 3,
+    "noExpand": true,
+    "noRerank": true,
+    "graph": false
+  }
+}

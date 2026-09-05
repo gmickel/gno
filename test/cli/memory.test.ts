@@ -104,9 +104,21 @@ describe("gno remember / gno recall", () => {
 
   afterAll(async () => {
     await safeRm(testDir);
-    process.env.GNO_CONFIG_DIR = originalEnv.configDir;
-    process.env.GNO_DATA_DIR = originalEnv.dataDir;
-    process.env.GNO_CACHE_DIR = originalEnv.cacheDir;
+    if (originalEnv.configDir === undefined) {
+      delete process.env.GNO_CONFIG_DIR;
+    } else {
+      process.env.GNO_CONFIG_DIR = originalEnv.configDir;
+    }
+    if (originalEnv.dataDir === undefined) {
+      delete process.env.GNO_DATA_DIR;
+    } else {
+      process.env.GNO_DATA_DIR = originalEnv.dataDir;
+    }
+    if (originalEnv.cacheDir === undefined) {
+      delete process.env.GNO_CACHE_DIR;
+    } else {
+      process.env.GNO_CACHE_DIR = originalEnv.cacheDir;
+    }
   });
 
   test("missing --scope exits VALIDATION naming the flag on both commands", async () => {

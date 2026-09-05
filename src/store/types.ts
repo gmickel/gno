@@ -615,22 +615,65 @@ export interface IngestErrorInput {
 // Search Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Options for FTS search */
-export interface FtsSearchOptions {
-  /** Max results to return */
-  limit?: number;
+/** Existing SQL owner filters shared by lexical and chunk candidate selection. */
+export interface GraphReferenceDocument {
+  documentId: number;
+  collection: string;
+  relPath: string;
+  docid: string;
+  uri: string;
+  title: string | null;
+  mirrorHash: string | null;
+  sourceHash: string;
+  contentType: string | null;
+}
+
+export interface GraphFrontmatterReference {
+  edgeType: string;
+  target: string;
+}
+
+export interface GraphReferenceInventory {
+  document: GraphReferenceDocument;
+  references: GraphFrontmatterReference[];
+}
+
+export interface GraphProjectionState {
+  epoch: number;
+  version: number | null;
+  configFingerprint: string | null;
+  dirty: boolean;
+  /** Interrupted projection requires full recovery; ordinary input dirtiness does not. */
+  inProgress: boolean;
+  complete: boolean;
+}
+
+/** Synchronous internal operations compose with the adapter transaction. */
+export interface GraphReferenceStore {
+  state(version: number, configFingerprint: string): GraphProjectionState;
+  begin(version: number, configFingerprint: string): number;
+  readInventory(): GraphReferenceInventory[];
+  /** Active parsed-link sources matching any old/new target candidate. */
+  incomingLinkSources(identities: GraphReferenceDocument[]): number[];
+  writeInventory(inventory: GraphReferenceInventory): void;
+  complete(expectedEpoch: number): void;
+}
+
+export interface DocumentEligibilityOptions {
+  /** Internal owner eligibility; public lexical language remains reserved. */
+  chunkLanguage?: string;
+  /** Include author, content type and categories in whole-owner exclusion. */
+  excludeMetadata?: boolean;
+  /** Internal vector/hybrid JavaScript metadata matching semantics. */
+  semanticMetadata?: boolean;
+  /** Internal caller allowlist; undefined is unrestricted, empty denies all. */
+  allowedMirrorHashes?: string[];
+  /** Whole-document title/path/chunk exclusions, applied before the budget. */
+  exclude?: string[];
   /** Filter by collection */
   collection?: string;
   /** Internal exact relative-path boundary applied before ranking and LIMIT. */
   relPathPrefix?: string;
-  /**
-   * Language hint (reserved for future use).
-   * Note: FTS5 snowball tokenizer is language-aware at index time,
-   * so runtime language filtering is not currently implemented.
-   */
-  language?: string;
-  /** Include snippet with highlights */
-  snippet?: boolean;
   /** Filter to docs with ANY of these tags */
   tagsAny?: string[];
   /** Filter to docs with ALL of these tags */
@@ -654,6 +697,19 @@ export interface FtsSearchOptions {
    * `supersedes` pointing at them). Applied inside the candidate subquery.
    */
   excludeSuperseded?: boolean;
+}
+
+export interface FtsSearchOptions extends DocumentEligibilityOptions {
+  /** Max eligible ranked results to return (filters run before this budget) */
+  limit?: number;
+  /**
+   * Language hint (reserved for future use).
+   * Note: FTS5 snowball tokenizer is language-aware at index time,
+   * so runtime language filtering is not currently implemented.
+   */
+  language?: string;
+  /** Include snippet with highlights */
+  snippet?: boolean;
   /** Match documents containing ANY positive term instead of ALL of them. */
   anyTerm?: boolean;
 }
@@ -1998,6 +2054,15 @@ export interface StorePort {
     mirrorHashes: string[]
   ): Promise<StoreResult<Map<string, ChunkRow[]>>>;
 
+  /**
+   * Optional exact (mirrorHash, seq) batch hydration. Same mapping as
+   * getChunksBatch, but only requested sequences; missing pairs are omitted.
+   * Callers fall back to whole-hash batching when this capability is absent.
+   */
+  getChunksBySequenceBatch?(
+    keys: { mirrorHash: string; seq: number }[]
+  ): Promise<StoreResult<Map<string, ChunkRow[]>>>;
+
   // ─────────────────────────────────────────────────────────────────────────
   // FTS Search
   // ─────────────────────────────────────────────────────────────────────────
@@ -2111,6 +2176,9 @@ export interface StorePort {
    * Get all outgoing links for a document.
    */
   getLinksForDoc(documentId: number): Promise<StoreResult<DocLinkRow[]>>;
+
+  /** Missing capability or stale state requires full graph reconciliation. */
+  graphReferenceStore?(): GraphReferenceStore;
 
   /**
    * Get backlinks pointing to a document.

@@ -133,3 +133,7 @@ newprds/
 # fn-72.9/72.2 throwaway spikes (Bun detach validation)
 scripts/spike-detach.ts
 scripts/spike-detach-llm.ts
+
+# Audited upstream converter distributions ship with the npm package.
+!vendor/converters/*/dist/
+!vendor/converters/*/dist/**

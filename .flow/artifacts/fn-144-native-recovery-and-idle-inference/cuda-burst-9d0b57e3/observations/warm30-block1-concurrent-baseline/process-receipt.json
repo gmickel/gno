@@ -1,0 +1,13 @@
+{
+  "command": [
+    "bun",
+    "--no-env-file",
+    "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3/burst-driver.ts",
+    "/home/gordon/.cache/agent-tmp/gno-fn144-burst-9d0b57e3/plans/warm30-block1-concurrent-baseline.json"
+  ],
+  "pid": 276641,
+  "exitCode": -6,
+  "stopReason": null,
+  "wallMs": 12166.285385144874,
+  "firstResponse": []
+}

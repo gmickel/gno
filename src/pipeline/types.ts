@@ -1,11 +1,10 @@
+import type { NormalizedContentTypeRule } from "../config/content-types";
 /**
  * Search pipeline types.
  * Defines SearchPipelinePort and related types for search operations.
  *
  * @module src/pipeline/types
  */
-
-import type { NormalizedContentTypeRule } from "../config/content-types";
 import type {
   ContextCapsuleV1,
   ContextCapsuleVerification,
@@ -13,6 +12,7 @@ import type {
 import type { EgressLineage } from "../core/egress-provenance";
 import type { RecordEvidenceMetadata } from "../core/record-metadata";
 import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
+import type { InferenceOptions } from "../llm/types";
 import type { StoreResult } from "../store/types";
 import type { ClaimVerificationResult } from "./claim-verification";
 import type { SemanticVerificationCapability } from "./claim-verifier";
@@ -172,7 +172,7 @@ export interface SearchResults {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Common options for all search commands */
-export interface SearchOptions {
+export interface SearchOptions extends InferenceOptions {
   /** Internal receipt seam; never serialized or included in public schemas. */
   traceSession?: RetrievalTraceSession;
   /** Trusted, already-resolved project affinity; never accepts raw roots. */
@@ -332,6 +332,8 @@ export type FusionSource =
 
 /** Fusion candidate with ranks from different sources */
 export interface FusionCandidate {
+  /** Internal exact document owner; canonical public chunk identity is unchanged. */
+  documentId?: number;
   mirrorHash: string;
   seq: number;
   bm25Rank: number | null;

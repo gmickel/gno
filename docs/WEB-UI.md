@@ -613,6 +613,9 @@ When syncing or adding collections, a progress indicator shows:
 - Files processed
 - Elapsed time
 
+Leaving the progress view stops its status polling; indexing continues on the
+server. Returning to an active job resumes status updates.
+
 ### Search Modes
 
 ![GNO Search](../assets/screenshots/webui-search.jpg)
@@ -709,6 +712,12 @@ The Graph page (`/graph`) provides an interactive visualization of document rela
 - **Collection**: Filter to single collection or view all
 - **Similarity**: Toggle similarity edges (requires embeddings)
 - Isolated nodes (no links) are hidden by default
+
+After a successful sync, reopen or refresh the graph to see updated references.
+Changes to a target also update incoming references from other collections,
+including links that previously had no matching target. Missing or interrupted
+graph state is rebuilt during sync; unchanged syncs with current graph state
+skip graph projection.
 
 > **Note**: When filtering by collection, node degrees may reflect links to documents outside the current view (used for importance ranking).
 

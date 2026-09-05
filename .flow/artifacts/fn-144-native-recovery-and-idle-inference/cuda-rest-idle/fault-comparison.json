@@ -1,0 +1,34 @@
+{
+  "recoveryFullResultsEqual": true,
+  "normalizations": [],
+  "faultResponse": {
+    "resultCount": 0,
+    "meta": {
+      "query": "Who owns the meadow migration?",
+      "mode": "bm25_only",
+      "expanded": false,
+      "reranked": false,
+      "vectorsUsed": false,
+      "totalResults": 0,
+      "collection": "probe",
+      "candidateLimit": 20,
+      "graphExpansion": {
+        "enabled": false,
+        "seedCount": 0,
+        "candidateCount": 0,
+        "maxCandidates": 20,
+        "edgeConfidence": {
+          "explicit": 0,
+          "inferred": 0,
+          "ambiguous": 0,
+          "similarity": 0
+        },
+        "fallbackReasons": [
+          "graph_no_seed_candidates"
+        ]
+      },
+      "queryLanguage": "en"
+    }
+  },
+  "sameParent": true
+}

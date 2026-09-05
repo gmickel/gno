@@ -47,9 +47,21 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Negative controls leave original fixtures and real HOME/XDG/GNO state untouched.
 
 ## Done summary
-TBD
+Implemented deterministic synthetic acceptance fixtures, pinned corpus/query/exhaustive-oracle hashes, and two independently built temporary SQLite indexes. Corpus: 296 documents, 51 scenarios; includes rare eligibility, 1,000 chunks, EN/DE/CJK conflicting boundary/tail claims, long query, lifecycle recipes, and both title ingestion orders. README records sanitized provenance and preserves negative/slower observations without copying private data or measurements.
 
+Files: evals/acceptance/fixtures.ts; evals/fixtures/acceptance/{generate.ts,manifest.json,README.md}; test/eval/acceptance/fixtures.test.ts.
+
+Baseline: 6 existing memory fixture tests passed before edits. Final focused command: bun test test/eval/acceptance/fixtures.test.ts test/eval/memory-fixtures.test.ts — 9 passed, 84 assertions. Logs: /tmp/fn-143.2-baseline.log and /tmp/fn-143.2-tests.log. Targeted repo-config oxlint passed, but evals are ignored by repo config. Explicit whole-project tsc check returned unrelated errors (no owned-file diagnostics), captured /tmp/fn-143.2-types.log. eval:memory deferred to host to avoid port 3006 concurrency; host reports initial 100% baseline.
+
+R1: memory fixture pins unchanged; native/model-backed claims deferred to adapter and host gates.
+R2: exhaustive evidence owns URI, title, source/mirror hash, chunk sequence/language/span/text; no top-k truncation. Both index ingestion orders preserve shared-body ownership and title-conditioned embedding inputs.
+R5: candidate-only inactive control proves baseline index, generated corpus, memory manifest and process HOME/XDG/GNO environment remain untouched. Existing comparator negative controls remain unchanged.
+
+stage: impl-review - skipped(config: user requested no reviews)
+Shared-checkout override: no git/Flow state mutations; host commits, validates full gates, and completes task. No GPU/native execution or semantic pass claimed.
+
+Host follow-up: bun run eval:memory passed unchanged threshold100, 19 evaluations; /tmp/fn1432-memory.log. Implementation model: gpt-6-astra medium.
 ## Evidence
 - Commits:
-- Tests:
+- Tests: bun test test/eval/acceptance/fixtures.test.ts test/eval/memory-fixtures.test.ts — 9 pass,84 assertions, bun run eval:memory —100% unchanged threshold100;19 evaluations, targeted format and repository-config lint passed; full integration typecheck pending .3 completion
 - PRs:

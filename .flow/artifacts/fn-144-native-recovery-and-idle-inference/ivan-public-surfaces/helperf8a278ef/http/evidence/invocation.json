@@ -1,0 +1,28 @@
+{
+  "args": [
+    "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/index.ts",
+    "--config",
+    "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/http/config/index.yml",
+    "serve",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "53345"
+  ],
+  "invocation": {
+    "surface": "mcp",
+    "transport": "http",
+    "url": "http://127.0.0.1:53345/mcp",
+    "tool": "gno_query",
+    "arguments": {
+      "query": "what retry budget did we decide and why",
+      "limit": 5,
+      "explain": true
+    }
+  },
+  "env": {
+    "GNO_CONFIG_DIR": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/http/config",
+    "GNO_DATA_DIR": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/http/data",
+    "GNO_CACHE_DIR": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/http/cache"
+  }
+}

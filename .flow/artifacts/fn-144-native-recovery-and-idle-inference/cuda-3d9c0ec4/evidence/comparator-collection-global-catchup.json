@@ -1,0 +1,891 @@
+{
+  "baseline": {
+    "schemaVersion": "gno-acceptance-v1",
+    "role": "baseline",
+    "identity": {
+      "commit": "3d9c0ec49c502ab0c3470c7df14ddac8123ad8d9",
+      "indexId": "clean-collection-global-catchup-logical-snapshot",
+      "indexSha256": "5fc45b5228c4a6faea4ac4dffe86220f356c0648edb2a0983e963a6d663ab21e",
+      "bunVersion": "1.3.14",
+      "nativeDependencies": {
+        "node-llama-cpp": "3.19.1"
+      },
+      "platform": "linux",
+      "architecture": "x64"
+    },
+    "fixtureVersion": "fn147-native-mutation-matrix-v1",
+    "fixtures": [
+      {
+        "path": "matrix.ts",
+        "sha256": "b63d7857fac2ebaf705e8ce6f9b248ae1b19de3e99a9eb5da8b421f844fd9634"
+      }
+    ],
+    "models": [
+      {
+        "role": "embedding",
+        "id": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+        "tokenizerSha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+      }
+    ],
+    "cases": [
+      {
+        "caseId": "collection-global-catchup",
+        "fixtureSha256": "b63d7857fac2ebaf705e8ce6f9b248ae1b19de3e99a9eb5da8b421f844fd9634",
+        "surface": "sdk",
+        "preset": "synthetic",
+        "configuration": {
+          "query": "cobalt observatory dawn",
+          "comparison": "full public result objects and exact active owner/input/vector hashes; native transcript retained separately in sdk-matrix.capture.json; this comparison projects observable state only"
+        }
+      }
+    ],
+    "intendedDeltas": []
+  },
+  "candidate": {
+    "schemaVersion": "gno-acceptance-v1",
+    "role": "candidate",
+    "identity": {
+      "commit": "3d9c0ec49c502ab0c3470c7df14ddac8123ad8d9",
+      "indexId": "incremental-collection-global-catchup-logical-snapshot",
+      "indexSha256": "b86de5110b5b87d21dd88a30b66ecaefe95f686ca6b8d2b1a94e47d31cba6ee3",
+      "bunVersion": "1.3.14",
+      "nativeDependencies": {
+        "node-llama-cpp": "3.19.1"
+      },
+      "platform": "linux",
+      "architecture": "x64"
+    },
+    "fixtureVersion": "fn147-native-mutation-matrix-v1",
+    "fixtures": [
+      {
+        "path": "matrix.ts",
+        "sha256": "b63d7857fac2ebaf705e8ce6f9b248ae1b19de3e99a9eb5da8b421f844fd9634"
+      }
+    ],
+    "models": [
+      {
+        "role": "embedding",
+        "id": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+        "tokenizerSha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+      }
+    ],
+    "cases": [
+      {
+        "caseId": "collection-global-catchup",
+        "fixtureSha256": "b63d7857fac2ebaf705e8ce6f9b248ae1b19de3e99a9eb5da8b421f844fd9634",
+        "surface": "sdk",
+        "preset": "synthetic",
+        "configuration": {
+          "query": "cobalt observatory dawn",
+          "comparison": "full public result objects and exact active owner/input/vector hashes; native transcript retained separately in sdk-matrix.capture.json; this comparison projects observable state only"
+        }
+      }
+    ],
+    "intendedDeltas": []
+  },
+  "records": [
+    {
+      "schemaVersion": "gno-acceptance-v1",
+      "manifestSha256": "d4ec9396383bf149123f1d16572140ccc2a41b26c0ce0912317903e24cc15520",
+      "caseId": "collection-global-catchup",
+      "deterministic": {
+        "scope": {
+          "owners": [
+            {
+              "rel_path": "Alpha.md",
+              "collection": "identity",
+              "source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+              "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+              "title": "Alpha",
+              "seq": 0,
+              "text": "The cobalt observatory opens at dawn.\n",
+              "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+              "input_hash": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "embedding": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b"
+            },
+            {
+              "rel_path": "Scope.md",
+              "collection": "identity",
+              "source_hash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+              "mirror_hash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+              "title": "Scope",
+              "seq": 0,
+              "text": "The cobalt observatory telescope uses a quartz lens.\n",
+              "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+              "input_hash": "6a3dbbe07ca2e108038c46df6fdbda3f7884a19365dcf7f7e5128b264cf06292",
+              "embedding": "016a77209bd22414e0035b09f01019c506b8701ad5e1784731b29aaaf969b89d"
+            },
+            {
+              "rel_path": "copy/Beta.md",
+              "collection": "identity",
+              "source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+              "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+              "title": "Beta",
+              "seq": 0,
+              "text": "The cobalt observatory opens at dawn.\n",
+              "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+              "input_hash": "0f773436d21df5a1ded2566159157c2e78934149c05f95f030f71ff9df8750b1",
+              "embedding": "651490d2fae7c60e32053f5040bbd08c9b9321d1baddc0e690aa6e6440b889f2"
+            },
+            {
+              "rel_path": "Delta.md",
+              "collection": "other",
+              "source_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+              "mirror_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+              "title": "Delta",
+              "seq": 0,
+              "text": "The copper laboratory closes at midnight.\n",
+              "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+              "input_hash": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "embedding": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579"
+            },
+            {
+              "rel_path": "Scope.md",
+              "collection": "other",
+              "source_hash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+              "mirror_hash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+              "title": "Scope",
+              "seq": 0,
+              "text": "The copper laboratory uses an argon chamber.\n",
+              "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+              "input_hash": "74bfc29f6e7da434b0d201b203a28d01aef5dfc6bfe492dc1d51f5512f1c98aa",
+              "embedding": "807acf149113038ab2a1564ff0a8f4af20bacdd47e3d92fe88c12b0fd0d82c08"
+            }
+          ],
+          "keyword": {
+            "ok": true,
+            "value": {
+              "results": [
+                {
+                  "docid": "#6dc5c05b",
+                  "score": 1,
+                  "uri": "gno://identity/Alpha.md",
+                  "title": "Alpha",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The <mark>cobalt</mark> <mark>observatory</mark> opens at <mark>dawn</mark>.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "Alpha.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:56:09.136Z",
+                    "sizeBytes": 43,
+                    "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/corpus/Alpha.md"
+                  },
+                  "conversion": {
+                    "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+                    "sources": [
+                      {
+                        "collection": "identity",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "docid": "#98897c0b",
+                  "score": 0,
+                  "uri": "gno://identity/copy/Beta.md",
+                  "title": "Beta",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The <mark>cobalt</mark> <mark>observatory</mark> opens at <mark>dawn</mark>.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "copy/Beta.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:56:14.883Z",
+                    "sizeBytes": 38,
+                    "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/corpus/copy/Beta.md"
+                  },
+                  "conversion": {
+                    "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+                    "sources": [
+                      {
+                        "collection": "identity",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "meta": {
+                "query": "cobalt observatory dawn",
+                "mode": "bm25",
+                "totalResults": 2,
+                "queryLanguage": "it"
+              }
+            }
+          },
+          "semantic": {
+            "ok": true,
+            "value": {
+              "results": [
+                {
+                  "docid": "#98897c0b",
+                  "score": 0.8896359279751778,
+                  "uri": "gno://identity/copy/Beta.md",
+                  "title": "Beta",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The cobalt observatory opens at dawn.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "copy/Beta.md",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/corpus/copy/Beta.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:56:14.883Z",
+                    "sizeBytes": 38,
+                    "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+                  },
+                  "conversion": {
+                    "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+                    "converterId": "native/markdown",
+                    "converterVersion": "1.0.0"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+                    "sources": [
+                      {
+                        "collection": "identity",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "docid": "#6dc5c05b",
+                  "score": 0.8845320791006088,
+                  "uri": "gno://identity/Alpha.md",
+                  "title": "Alpha",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The cobalt observatory opens at dawn.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "Alpha.md",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/corpus/Alpha.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:56:09.136Z",
+                    "sizeBytes": 43,
+                    "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2"
+                  },
+                  "conversion": {
+                    "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+                    "converterId": "native/markdown",
+                    "converterVersion": "1.0.0"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+                    "sources": [
+                      {
+                        "collection": "identity",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "docid": "#60145b31",
+                  "score": 0.8186313658952713,
+                  "uri": "gno://identity/Scope.md",
+                  "title": "Scope",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The cobalt observatory telescope uses a quartz lens.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "Scope.md",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/corpus/Scope.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:56:38.663Z",
+                    "sizeBytes": 53,
+                    "sourceHash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946"
+                  },
+                  "conversion": {
+                    "mirrorHash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+                    "converterId": "native/markdown",
+                    "converterVersion": "1.0.0"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+                    "sources": [
+                      {
+                        "collection": "identity",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "docid": "#ca2c1633",
+                  "score": 0.701312780380249,
+                  "uri": "gno://other/Delta.md",
+                  "title": "Delta",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The copper laboratory closes at midnight.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "Delta.md",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/other/Delta.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:50:59.874Z",
+                    "sizeBytes": 42,
+                    "sourceHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f"
+                  },
+                  "conversion": {
+                    "mirrorHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+                    "converterId": "native/markdown",
+                    "converterVersion": "1.0.0"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "713099f0668e0eec9cbc4066570f3ef37e32aff76fff1ca6df5769776862142d",
+                    "sources": [
+                      {
+                        "collection": "other",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "docid": "#77cf571d",
+                  "score": 0.6617915630340576,
+                  "uri": "gno://other/Scope.md",
+                  "title": "Scope",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The copper laboratory uses an argon chamber.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "Scope.md",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/other/Scope.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:56:38.663Z",
+                    "sizeBytes": 45,
+                    "sourceHash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36"
+                  },
+                  "conversion": {
+                    "mirrorHash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+                    "converterId": "native/markdown",
+                    "converterVersion": "1.0.0"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "713099f0668e0eec9cbc4066570f3ef37e32aff76fff1ca6df5769776862142d",
+                    "sources": [
+                      {
+                        "collection": "other",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "meta": {
+                "query": "cobalt observatory dawn",
+                "mode": "vector",
+                "vectorsUsed": true,
+                "totalResults": 5,
+                "queryLanguage": "it"
+              }
+            }
+          }
+        },
+        "results": [],
+        "citations": [],
+        "modelInputs": [],
+        "semanticState": {
+          "status": "incomplete",
+          "vectorsUsed": false,
+          "vectorStatus": "unavailable",
+          "error": null,
+          "fallbacks": [],
+          "verification": {
+            "scope": "mechanical observable-state projection only",
+            "nativeTranscript": "retained separately; not consumed by this observable-state comparator"
+          }
+        }
+      },
+      "generatedAnswer": null,
+      "transport": {}
+    },
+    {
+      "schemaVersion": "gno-acceptance-v1",
+      "manifestSha256": "e5da31df538c885dae23d22b68f5394a547b22d8c2ca781bde2483df7e47c702",
+      "caseId": "collection-global-catchup",
+      "deterministic": {
+        "scope": {
+          "owners": [
+            {
+              "rel_path": "Alpha.md",
+              "collection": "identity",
+              "source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+              "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+              "title": "Alpha",
+              "seq": 0,
+              "text": "The cobalt observatory opens at dawn.\n",
+              "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+              "input_hash": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+              "embedding": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b"
+            },
+            {
+              "rel_path": "Scope.md",
+              "collection": "identity",
+              "source_hash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+              "mirror_hash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+              "title": "Scope",
+              "seq": 0,
+              "text": "The cobalt observatory telescope uses a quartz lens.\n",
+              "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+              "input_hash": "6a3dbbe07ca2e108038c46df6fdbda3f7884a19365dcf7f7e5128b264cf06292",
+              "embedding": "016a77209bd22414e0035b09f01019c506b8701ad5e1784731b29aaaf969b89d"
+            },
+            {
+              "rel_path": "copy/Beta.md",
+              "collection": "identity",
+              "source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+              "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+              "title": "Beta",
+              "seq": 0,
+              "text": "The cobalt observatory opens at dawn.\n",
+              "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+              "input_hash": "0f773436d21df5a1ded2566159157c2e78934149c05f95f030f71ff9df8750b1",
+              "embedding": "651490d2fae7c60e32053f5040bbd08c9b9321d1baddc0e690aa6e6440b889f2"
+            },
+            {
+              "rel_path": "Delta.md",
+              "collection": "other",
+              "source_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+              "mirror_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+              "title": "Delta",
+              "seq": 0,
+              "text": "The copper laboratory closes at midnight.\n",
+              "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+              "input_hash": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+              "embedding": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579"
+            },
+            {
+              "rel_path": "Scope.md",
+              "collection": "other",
+              "source_hash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+              "mirror_hash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+              "title": "Scope",
+              "seq": 0,
+              "text": "The copper laboratory uses an argon chamber.\n",
+              "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+              "input_hash": "74bfc29f6e7da434b0d201b203a28d01aef5dfc6bfe492dc1d51f5512f1c98aa",
+              "embedding": "807acf149113038ab2a1564ff0a8f4af20bacdd47e3d92fe88c12b0fd0d82c08"
+            }
+          ],
+          "keyword": {
+            "ok": true,
+            "value": {
+              "results": [
+                {
+                  "docid": "#6dc5c05b",
+                  "score": 1,
+                  "uri": "gno://identity/Alpha.md",
+                  "title": "Alpha",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The <mark>cobalt</mark> <mark>observatory</mark> opens at <mark>dawn</mark>.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "Alpha.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:56:09.136Z",
+                    "sizeBytes": 43,
+                    "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/corpus/Alpha.md"
+                  },
+                  "conversion": {
+                    "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+                    "sources": [
+                      {
+                        "collection": "identity",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "docid": "#98897c0b",
+                  "score": 0,
+                  "uri": "gno://identity/copy/Beta.md",
+                  "title": "Beta",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The <mark>cobalt</mark> <mark>observatory</mark> opens at <mark>dawn</mark>.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "copy/Beta.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:56:14.883Z",
+                    "sizeBytes": 38,
+                    "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/corpus/copy/Beta.md"
+                  },
+                  "conversion": {
+                    "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+                    "sources": [
+                      {
+                        "collection": "identity",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "meta": {
+                "query": "cobalt observatory dawn",
+                "mode": "bm25",
+                "totalResults": 2,
+                "queryLanguage": "it"
+              }
+            }
+          },
+          "semantic": {
+            "ok": true,
+            "value": {
+              "results": [
+                {
+                  "docid": "#98897c0b",
+                  "score": 0.8896359279751778,
+                  "uri": "gno://identity/copy/Beta.md",
+                  "title": "Beta",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The cobalt observatory opens at dawn.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "copy/Beta.md",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/corpus/copy/Beta.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:56:14.883Z",
+                    "sizeBytes": 38,
+                    "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+                  },
+                  "conversion": {
+                    "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+                    "converterId": "native/markdown",
+                    "converterVersion": "1.0.0"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+                    "sources": [
+                      {
+                        "collection": "identity",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "docid": "#6dc5c05b",
+                  "score": 0.8845320791006088,
+                  "uri": "gno://identity/Alpha.md",
+                  "title": "Alpha",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The cobalt observatory opens at dawn.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "Alpha.md",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/corpus/Alpha.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:56:09.136Z",
+                    "sizeBytes": 43,
+                    "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2"
+                  },
+                  "conversion": {
+                    "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+                    "converterId": "native/markdown",
+                    "converterVersion": "1.0.0"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+                    "sources": [
+                      {
+                        "collection": "identity",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "docid": "#60145b31",
+                  "score": 0.8186313658952713,
+                  "uri": "gno://identity/Scope.md",
+                  "title": "Scope",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The cobalt observatory telescope uses a quartz lens.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "Scope.md",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/corpus/Scope.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:56:38.663Z",
+                    "sizeBytes": 53,
+                    "sourceHash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946"
+                  },
+                  "conversion": {
+                    "mirrorHash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+                    "converterId": "native/markdown",
+                    "converterVersion": "1.0.0"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+                    "sources": [
+                      {
+                        "collection": "identity",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "docid": "#ca2c1633",
+                  "score": 0.701312780380249,
+                  "uri": "gno://other/Delta.md",
+                  "title": "Delta",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The copper laboratory closes at midnight.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "Delta.md",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/other/Delta.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:50:59.874Z",
+                    "sizeBytes": 42,
+                    "sourceHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f"
+                  },
+                  "conversion": {
+                    "mirrorHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+                    "converterId": "native/markdown",
+                    "converterVersion": "1.0.0"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "713099f0668e0eec9cbc4066570f3ef37e32aff76fff1ca6df5769776862142d",
+                    "sources": [
+                      {
+                        "collection": "other",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "docid": "#77cf571d",
+                  "score": 0.6617915630340576,
+                  "uri": "gno://other/Scope.md",
+                  "title": "Scope",
+                  "contentType": "prose",
+                  "categories": [
+                    "prose"
+                  ],
+                  "line": 1,
+                  "snippet": "The copper laboratory uses an argon chamber.\n",
+                  "snippetRange": {
+                    "startLine": 1,
+                    "endLine": 1
+                  },
+                  "source": {
+                    "relPath": "Scope.md",
+                    "absPath": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/other/Scope.md",
+                    "mime": "text/markdown",
+                    "ext": ".md",
+                    "modifiedAt": "2026-09-05T02:56:38.663Z",
+                    "sizeBytes": 45,
+                    "sourceHash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36"
+                  },
+                  "conversion": {
+                    "mirrorHash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+                    "converterId": "native/markdown",
+                    "converterVersion": "1.0.0"
+                  },
+                  "egressLineage": {
+                    "effectivePolicy": "local_only",
+                    "digest": "713099f0668e0eec9cbc4066570f3ef37e32aff76fff1ca6df5769776862142d",
+                    "sources": [
+                      {
+                        "collection": "other",
+                        "policy": "local_only",
+                        "source": "config_default"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "meta": {
+                "query": "cobalt observatory dawn",
+                "mode": "vector",
+                "vectorsUsed": true,
+                "totalResults": 5,
+                "queryLanguage": "it"
+              }
+            }
+          }
+        },
+        "results": [],
+        "citations": [],
+        "modelInputs": [],
+        "semanticState": {
+          "status": "incomplete",
+          "vectorsUsed": false,
+          "vectorStatus": "unavailable",
+          "error": null,
+          "fallbacks": [],
+          "verification": {
+            "scope": "mechanical observable-state projection only",
+            "nativeTranscript": "retained separately; not consumed by this observable-state comparator"
+          }
+        }
+      },
+      "generatedAnswer": null,
+      "transport": {}
+    }
+  ],
+  "comparison": {
+    "passed": true,
+    "comparedCases": 1,
+    "failures": [],
+    "generatedAnswerChanges": []
+  },
+  "completeEmbeddingPair": true
+}

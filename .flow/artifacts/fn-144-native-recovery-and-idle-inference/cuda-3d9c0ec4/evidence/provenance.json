@@ -1,0 +1,18 @@
+{
+  "sourceCommit": "3d9c0ec4",
+  "sourceArchive": "/home/gordon/.cache/agent-tmp/gno-native-candidate-3d9c0ec4.tar",
+  "archiveSha256": "8ee665f35df83c46aa11f8726d394e6364e6d961e83f8916a3684261791bb4ac",
+  "baselineEvidence": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/evidence/sdk-matrix.*",
+  "dependencies": "/home/gordon/.cache/agent-tmp/gno-native-baseline-dependencies/node_modules",
+  "runtime": "Bun1.3.14,node-llama-cpp3.19.1,b10068,CUDA",
+  "modelSha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+  "configSha256": "73381f5273ab9d82585c200c61b25843d0eec8a110f1997bcf6fa2057e44d5be",
+  "helpers": {
+    "prepare.ts": "5ee14d134b8c30c4b684547409ca0c0537ebb9ff32927e298a4c528157644d63",
+    "matrix.ts": "b63d7857fac2ebaf705e8ce6f9b248ae1b19de3e99a9eb5da8b421f844fd9634",
+    "run.py": "12ed8026255e330a0d72630f03a407a1b282794f160b0cea8b1cfef0c96a9fcf",
+    "phase-parent.ts": "2d9cf62da62253e45ba63b654539a7e6cab42c490cba7ae6d421e0b51f89a39b",
+    "phase-child.ts": "c65897fc3ff8c3d516dabcbecaee470c4b20de279d9538c9c2401a83172818eb"
+  },
+  "scope": "exact12case147matrix; relocatedsyntheticpaths; addedchildcapture/phasewatchdog not product edits"
+}

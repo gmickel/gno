@@ -1,0 +1,380 @@
+{
+  "archive": "/private/tmp/fn1445-completed-f8a278ef-no-databases.tar.gz",
+  "sha256": "6067a83a113212435b0a4b5d9c6a4b586259cbb3f315817b0ad455f1257460ee",
+  "included": [
+    {
+      "path": "ask/preparation.json",
+      "bytes": 595,
+      "sha256": "fe63fe5bdb76c0f4ac40e9558554e7d33d7718f63df739066b5817e57e3d7c6d"
+    },
+    {
+      "path": "ask/baseline-source-pins.json",
+      "bytes": 80635,
+      "sha256": "3d72e755da3dedde3bf2acb9f4462a9fe9fdc79616a73682ef80d91ac2ab7fef"
+    },
+    {
+      "path": "ask/baseline/setup.json",
+      "bytes": 8165,
+      "sha256": "defec5413ffa63a8675fc3b2b43e49954dcef757b90b2a489a22d703efc2ff53"
+    },
+    {
+      "path": "ask/baseline/manifest.json",
+      "bytes": 2843,
+      "sha256": "5e3d6e1bdac35f0365db581b981dc1aca2b88187884f200682cdb5bb8b71f2bb"
+    },
+    {
+      "path": "ask/baseline/evidence/resources.json",
+      "bytes": 19573,
+      "sha256": "eefdc97e512c8611fadf54be31c70a18d683e762e508cdf4ab8198901be1fb60"
+    },
+    {
+      "path": "ask/baseline/evidence/result.json",
+      "bytes": 29106,
+      "sha256": "6700423703be9d353888285d9b0b75fe0b2ea8acc5ef789921f2b95198b17962"
+    },
+    {
+      "path": "ask/baseline/evidence/semantic.json",
+      "bytes": 505,
+      "sha256": "50459c3390393864092baed566b9b44ba000d962e8bec10491f61457395c2a94"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/1.reply.json.gz",
+      "bytes": 199,
+      "sha256": "e63ccf61f6d0623b962a4782b54ba0ca4be5bfebb50ee89b1e81d660eafa85a8"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/2.reply.json.gz",
+      "bytes": 20721,
+      "sha256": "9133231f6d696aef09d41d838d669a1f5ac183114f4d8a549154edc5e3df90db"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/3.reply.json.gz",
+      "bytes": 302,
+      "sha256": "0c8a6e67dfc50036e0ba05d5af7b93edf9a41e59e0c4e90475cc5deda6fe4f5f"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/4.reply.json.gz",
+      "bytes": 108,
+      "sha256": "08599ff3c10ab054b96bf690f74dcc82b5683b363cb92f6dcbc2f93f955f4536"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/bootstrap.json",
+      "bytes": 6234,
+      "sha256": "5e76359220d7f2efe1da14250c20a557976c3141d58eb24f91298411264c5217"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/harness.json",
+      "bytes": 1182,
+      "sha256": "f91eb169df06fd09489e0732a38bba8f7aefc5f906c004728f864b0547cb70cc"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/readiness.json",
+      "bytes": 349,
+      "sha256": "47fb58d954aa70d794545834f9f1c71d3045291e68dea6a5ecd37e8f99b4db47"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "ask/candidate/setup.json",
+      "bytes": 8170,
+      "sha256": "461ec39a57ff0e1aa9a4a518233d5d30b71ad6c4ef111c2e5aa86dce8aa6dd2d"
+    },
+    {
+      "path": "ask/candidate/manifest.json",
+      "bytes": 2844,
+      "sha256": "4f31b05b5898fe1397b42ceca565d9da693563b7d1e4fd7606457c25b2ac5eec"
+    },
+    {
+      "path": "ask/candidate/evidence/resources.json",
+      "bytes": 61710,
+      "sha256": "7aa23096e743c9e966aed0282755b2a44504cb40a6aa0e7cdc18a5c57a0c437e"
+    },
+    {
+      "path": "ask/candidate/evidence/result.json",
+      "bytes": 29097,
+      "sha256": "c6baead1076bb474bc71478e631e6b3db9fd9684d082f330b76ac810965bac01"
+    },
+    {
+      "path": "ask/candidate/evidence/semantic.json",
+      "bytes": 505,
+      "sha256": "84a537fbc2d373495bde49f2294dd6d27c3015825fefe803c4643aaa5b34096e"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/1.reply.json.gz",
+      "bytes": 129,
+      "sha256": "041072035e79a95587a29ab2ebc71f599328252a7ceda9b7e96c1daae0d591b3"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/2.reply.json.gz",
+      "bytes": 24672,
+      "sha256": "5e854ba457ef3061918fd794e6030fbab3e6f15146593f18935995c3000119c3"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/3.reply.json.gz",
+      "bytes": 448,
+      "sha256": "f44919a4b2f2ce99c7ee3a1442fb0b831838cc2ec471856e4b9f1382782fb997"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/4.reply.json.gz",
+      "bytes": 107,
+      "sha256": "43a839d6e5c41280ffaa533787fdac4696a63e9f06c50fc0a3f81bfb93330e99"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/bootstrap.json",
+      "bytes": 6239,
+      "sha256": "73f3ac4dd5c77eba12b863a38b3dea5bedc49ff53462a953d3abe8b362c58949"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/children.json",
+      "bytes": 601,
+      "sha256": "81f723a7c40263dd618042f9e47923453ad0a1864f6940f81382ec2bbc9d6bee"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/harness.json",
+      "bytes": 1185,
+      "sha256": "03ccae2fff9d37e08fb68478f8f47cf094614a47a461de1b9853e2d7ca195e08"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/native-ft8p8L/9841-1.json",
+      "bytes": 1310,
+      "sha256": "204d80c91404492d6948f70065f2081975e5c8eb90594b219e8583290942afed"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/native-ft8p8L/9841-2.json",
+      "bytes": 21643,
+      "sha256": "793840b1def9afdecfe39d9d94419f793b7e4fb4e5219b172acedb1dff1f5013"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/native-ft8p8L/9841-3.json",
+      "bytes": 10965,
+      "sha256": "9161c6d476623c7395487a68ca8392261a5fd18e8eab93972fe633da63ebc8c3"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/native-ft8p8L/9841-4.json",
+      "bytes": 15180,
+      "sha256": "8a5d7040adfd6867ee3d1cd8fd382c3c66609a06e3392ba871e2302e497bde6a"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/native-ft8p8L/9841-5.json",
+      "bytes": 976,
+      "sha256": "32ff4d474e92f73356a6ba05b39c1ec307f700f79376ae0033d17da23648eb16"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/native-ft8p8L/9841-6.json",
+      "bytes": 969,
+      "sha256": "230961dad5ba69c9443c9d8a4ef5cc854ff9086477dce8eedcfc494af7bd8223"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/native-ft8p8L/bootstrap.json",
+      "bytes": 1431,
+      "sha256": "4871861b59063c1b69443384a4e37afd2a70c6a9a96746d7810fc4c67b5fc14e"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/parent-capture.json",
+      "bytes": 99224,
+      "sha256": "84fd54b047a3b76ba3635c14e102cfba57bef9e7ff16981f5fbe59668f79c514"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/readiness.json",
+      "bytes": 198,
+      "sha256": "a772a61627dd4b9befe5b3e27fbb478bfe4a9deb83204c4a9a65d6fbefa67170"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/requests.json",
+      "bytes": 9896,
+      "sha256": "6fcff31b1d9b258e41dd0dade81cfad556a9405d1f69a1960c19a03261639205"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "ask/governors/baseline.receipt.json",
+      "bytes": 13394,
+      "sha256": "3fb650adf225887d8e1a0c5fbb12d562d42f8fc8c973ca3bdba2eb4a36b29df6"
+    },
+    {
+      "path": "ask/governors/baseline.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "ask/governors/baseline.stdout",
+      "bytes": 77,
+      "sha256": "fadda29b95d82dbb16b25b8615b9051c315a49705b4e3a0d528087468d50ba90"
+    },
+    {
+      "path": "ask/governors/candidate.receipt.json",
+      "bytes": 15705,
+      "sha256": "2d0fc8d969567a633e328a5ef48969b4287e3ff16368edf448fd5ce03622cbd1"
+    },
+    {
+      "path": "ask/governors/candidate.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "ask/governors/candidate.stdout",
+      "bytes": 77,
+      "sha256": "fadda29b95d82dbb16b25b8615b9051c315a49705b4e3a0d528087468d50ba90"
+    }
+  ],
+  "excluded": [
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/cache/bun/@t@/0012e8e5e9e525dc.pile",
+      "bytes": 151694,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/cache/bun/@t@/125a3214d3c61ad8.pile",
+      "bytes": 64774,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/cache/bun/@t@/1287feb9edf1d484.pile",
+      "bytes": 181802,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/cache/bun/@t@/29c6a8125ab3f718.pile",
+      "bytes": 122413,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/cache/bun/@t@/4167b5e88f9e49aa.pile",
+      "bytes": 463,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/cache/bun/@t@/7a87559fbb4087c4.pile",
+      "bytes": 59902,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/cache/bun/@t@/7f3921ba02fe9373.pile",
+      "bytes": 168987,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/cache/bun/@t@/8118a7e70dc83dbb.pile",
+      "bytes": 89148,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/cache/bun/@t@/8e32a11c2687e222.pile",
+      "bytes": 71516,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/cache/bun/@t@/9e8758c8517cedac.pile",
+      "bytes": 357960,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/cache/bun/@t@/b87698c43918d4d2.pile",
+      "bytes": 64288,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/baseline/protocol/session-xuvUzt/cache/bun/@t@/cf86f20c120ce818.pile",
+      "bytes": 88408,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/cache/bun/@t@/5a4a1d3fb0f9cb3a.pile",
+      "bytes": 46027,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/cache/bun/@t@/7a87559fbb4087c4.pile",
+      "bytes": 59902,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/cache/bun/@t@/8111b123ffc15d51.pile",
+      "bytes": 63227,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/cache/bun/@t@/851cb60a3259f7e1.pile",
+      "bytes": 182556,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/cache/bun/@t@/91f1e5a9fb66c76c.pile",
+      "bytes": 463,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/cache/bun/@t@/9e8758c8517cedac.pile",
+      "bytes": 357960,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/cache/bun/@t@/ae7304b5448338c7.pile",
+      "bytes": 65039,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/cache/bun/@t@/cf86f20c120ce818.pile",
+      "bytes": 88408,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/tmp/bun/@t@/0012e8e5e9e525dc.pile",
+      "bytes": 151694,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/tmp/bun/@t@/29c6a8125ab3f718.pile",
+      "bytes": 122413,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/tmp/bun/@t@/7a87559fbb4087c4.pile",
+      "bytes": 59902,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/tmp/bun/@t@/7f3921ba02fe9373.pile",
+      "bytes": 168987,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/tmp/bun/@t@/8118a7e70dc83dbb.pile",
+      "bytes": 89148,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/tmp/bun/@t@/91f1e5a9fb66c76c.pile",
+      "bytes": 463,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/tmp/bun/@t@/b87698c43918d4d2.pile",
+      "bytes": 64288,
+      "reason": "disposable compiled/AppleDouble metadata"
+    },
+    {
+      "path": "ask/candidate/protocol/session-RNGsux/tmp/bun/@t@/cf86f20c120ce818.pile",
+      "bytes": 88408,
+      "reason": "disposable compiled/AppleDouble metadata"
+    }
+  ],
+  "route": "Heimdall ProxyJump to192.168.0.30; strict existing HostKeyAlias=ivan",
+  "databaseTransfer": false
+}

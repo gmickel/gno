@@ -1,0 +1,1662 @@
+{
+  "defaultContext": 40960,
+  "longQueryRequirement": 6025,
+  "records": [
+    {
+      "id": "EN-1000-start",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 211,
+      "safe": 512,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 33.026855999999725,
+          "rankMs": 121.72642600000017,
+          "actualSize": 40960,
+          "scores": [0.999872088432312, 0.9996242523193359]
+        },
+        "B": {
+          "createMs": 147.650439,
+          "rankMs": 75.58471100000042,
+          "actualSize": 512,
+          "scores": [0.999872088432312, 0.9996242523193359]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-1000-boundary",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 211,
+      "safe": 512,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 7.153583000000253,
+          "rankMs": 76.28302099999974,
+          "actualSize": 512,
+          "scores": [0.9998351335525513, 0.9996834397315979]
+        },
+        "A": {
+          "createMs": 29.914772000000085,
+          "rankMs": 74.39494300000024,
+          "actualSize": 40960,
+          "scores": [0.9998351335525513, 0.9996834397315979]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-1000-end",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 211,
+      "safe": 512,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 33.28837999999996,
+          "rankMs": 77.74641199999996,
+          "actualSize": 40960,
+          "scores": [0.9998351335525513, 0.9996834397315979]
+        },
+        "B": {
+          "createMs": 10.085545999999795,
+          "rankMs": 83.38643199999979,
+          "actualSize": 512,
+          "scores": [0.9998351335525513, 0.9996834397315979]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-4000-start",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 572,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 127.07673299999988,
+          "rankMs": 175.92809699999998,
+          "actualSize": 1024,
+          "scores": [0.9996700882911682, 0.997918426990509]
+        },
+        "A": {
+          "createMs": 29.484074999999848,
+          "rankMs": 182.29078000000027,
+          "actualSize": 40960,
+          "scores": [0.9996700882911682, 0.997918426990509]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-4000-boundary",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 571,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 35.55154300000004,
+          "rankMs": 181.81274200000007,
+          "actualSize": 40960,
+          "scores": [0.999008059501648, 0.9981916546821594]
+        },
+        "B": {
+          "createMs": 11.216711999999916,
+          "rankMs": 186.46893,
+          "actualSize": 1024,
+          "scores": [0.999008059501648, 0.9981916546821594]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-4000-end",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 571,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 8.506362000000081,
+          "rankMs": 180.67111600000044,
+          "actualSize": 1024,
+          "scores": [0.999008059501648, 0.9981916546821594]
+        },
+        "A": {
+          "createMs": 30.148055000000568,
+          "rankMs": 193.41333000000031,
+          "actualSize": 40960,
+          "scores": [0.999008059501648, 0.9981916546821594]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-4001-start",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 572,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 33.370670999999675,
+          "rankMs": 187.32983199999944,
+          "actualSize": 40960,
+          "scores": [0.999616265296936, 0.9988254904747009]
+        },
+        "B": {
+          "createMs": 10.306258999999955,
+          "rankMs": 185.5097050000004,
+          "actualSize": 1024,
+          "scores": [0.999616265296936, 0.9988254904747009]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-4001-boundary",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 572,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 8.958528999999544,
+          "rankMs": 176.77095999999983,
+          "actualSize": 1024,
+          "scores": [0.9992104768753052, 0.998487114906311]
+        },
+        "A": {
+          "createMs": 31.07822800000031,
+          "rankMs": 184.99179899999945,
+          "actualSize": 40960,
+          "scores": [0.9992104768753052, 0.998487114906311]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-4001-end",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 572,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 35.40361099999973,
+          "rankMs": 188.97363599999971,
+          "actualSize": 40960,
+          "scores": [0.9992104768753052, 0.998487114906311]
+        },
+        "B": {
+          "createMs": 9.977833000000828,
+          "rankMs": 176.36416299999928,
+          "actualSize": 1024,
+          "scores": [0.9992104768753052, 0.998487114906311]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-8000-start",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 572,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 8.191678000000138,
+          "rankMs": 182.5763939999997,
+          "actualSize": 1024,
+          "scores": [0.999616265296936, 0.9988254904747009]
+        },
+        "A": {
+          "createMs": 28.838565999999446,
+          "rankMs": 179.0148220000001,
+          "actualSize": 40960,
+          "scores": [0.999616265296936, 0.9988254904747009]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-8000-boundary",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 569,
+      "safe": 1024,
+      "preparedCount": 1,
+      "arms": {
+        "A": {
+          "createMs": 33.30260999999973,
+          "rankMs": 140.39659500000016,
+          "actualSize": 40960,
+          "scores": [0.5232007503509521]
+        },
+        "B": {
+          "createMs": 10.324438999999984,
+          "rankMs": 151.94694199999958,
+          "actualSize": 1024,
+          "scores": [0.5232007503509521]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-8000-end",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 567,
+      "safe": 1024,
+      "preparedCount": 1,
+      "arms": {
+        "B": {
+          "createMs": 7.895292999999583,
+          "rankMs": 144.7636279999997,
+          "actualSize": 1024,
+          "scores": [0.00025159644428640604]
+        },
+        "A": {
+          "createMs": 28.914496999999756,
+          "rankMs": 138.70886999999948,
+          "actualSize": 40960,
+          "scores": [0.00025159644428640604]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-16000-start",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 572,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 32.20659499999965,
+          "rankMs": 180.91294899999957,
+          "actualSize": 40960,
+          "scores": [0.999616265296936, 0.9988254904747009]
+        },
+        "B": {
+          "createMs": 10.161817000000156,
+          "rankMs": 175.4668700000002,
+          "actualSize": 1024,
+          "scores": [0.999616265296936, 0.9988254904747009]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-16000-boundary",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 569,
+      "safe": 1024,
+      "preparedCount": 1,
+      "arms": {
+        "B": {
+          "createMs": 8.006905000000188,
+          "rankMs": 146.40867200000048,
+          "actualSize": 1024,
+          "scores": [0.5232007503509521]
+        },
+        "A": {
+          "createMs": 28.30142800000067,
+          "rankMs": 149.40615499999876,
+          "actualSize": 40960,
+          "scores": [0.5232007503509521]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-16000-end",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 567,
+      "safe": 1024,
+      "preparedCount": 1,
+      "arms": {
+        "A": {
+          "createMs": 30.219575999999506,
+          "rankMs": 153.21515,
+          "actualSize": 40960,
+          "scores": [0.00025159644428640604]
+        },
+        "B": {
+          "createMs": 10.066734999998516,
+          "rankMs": 152.0994439999995,
+          "actualSize": 1024,
+          "scores": [0.00025159644428640604]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-1000-start",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 332,
+      "safe": 768,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 127.70331199999964,
+          "rankMs": 114.05132499999854,
+          "actualSize": 768,
+          "scores": [0.9996660947799683, 0.9992064237594604]
+        },
+        "A": {
+          "createMs": 29.924102000000858,
+          "rankMs": 114.34808899999916,
+          "actualSize": 40960,
+          "scores": [0.9996660947799683, 0.9992064237594604]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-1000-boundary",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 332,
+      "safe": 768,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 35.85303700000077,
+          "rankMs": 117.17086999999992,
+          "actualSize": 40960,
+          "scores": [0.999861478805542, 0.9980682730674744]
+        },
+        "B": {
+          "createMs": 10.198107000000164,
+          "rankMs": 120.83259200000066,
+          "actualSize": 768,
+          "scores": [0.999861478805542, 0.9980682730674744]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-1000-end",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 332,
+      "safe": 768,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 7.221693999999843,
+          "rankMs": 112.14948799999911,
+          "actualSize": 768,
+          "scores": [0.999861478805542, 0.9980682730674744]
+        },
+        "A": {
+          "createMs": 27.199901999998474,
+          "rankMs": 107.46500000000015,
+          "actualSize": 40960,
+          "scores": [0.999861478805542, 0.9980682730674744]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-4000-start",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 1056,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 33.25511899999947,
+          "rankMs": 219.4415050000007,
+          "actualSize": 40960,
+          "scores": [0.9987155199050903, 0.9983572363853455]
+        },
+        "B": {
+          "createMs": 133.94118200000048,
+          "rankMs": 228.33156299999973,
+          "actualSize": 1536,
+          "scores": [0.9987155199050903, 0.9983572363853455]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-4000-boundary",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 1056,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 8.795416999999361,
+          "rankMs": 231.92562499999985,
+          "actualSize": 1536,
+          "scores": [0.9999014139175415, 0.998845100402832]
+        },
+        "A": {
+          "createMs": 31.7669879999994,
+          "rankMs": 232.81735800000024,
+          "actualSize": 40960,
+          "scores": [0.9999014139175415, 0.998845100402832]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-4000-end",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 1056,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 36.51558699999987,
+          "rankMs": 237.2711220000001,
+          "actualSize": 40960,
+          "scores": [0.9999014139175415, 0.998845100402832]
+        },
+        "B": {
+          "createMs": 11.187740999999733,
+          "rankMs": 243.3847709999991,
+          "actualSize": 1536,
+          "scores": [0.9999014139175415, 0.998845100402832]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-4001-start",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 1057,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 9.699459999999817,
+          "rankMs": 240.7461029999995,
+          "actualSize": 1536,
+          "scores": [0.9989950060844421, 0.9987900257110596]
+        },
+        "A": {
+          "createMs": 33.228140000001076,
+          "rankMs": 234.24278799999956,
+          "actualSize": 40960,
+          "scores": [0.9989950060844421, 0.9987900257110596]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-4001-boundary",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 1056,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 38.78413899999941,
+          "rankMs": 238.0755939999999,
+          "actualSize": 40960,
+          "scores": [0.9999021291732788, 0.9992846250534058]
+        },
+        "B": {
+          "createMs": 13.570636000000377,
+          "rankMs": 241.81142700000055,
+          "actualSize": 1536,
+          "scores": [0.9999021291732788, 0.9992846250534058]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-4001-end",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 1056,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 8.39665099999911,
+          "rankMs": 239.58727499999986,
+          "actualSize": 1536,
+          "scores": [0.9999021291732788, 0.9992846250534058]
+        },
+        "A": {
+          "createMs": 30.433168999999907,
+          "rankMs": 241.32294999999976,
+          "actualSize": 40960,
+          "scores": [0.9999021291732788, 0.9992846250534058]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-8000-start",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 1057,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 36.82639100000051,
+          "rankMs": 235.96720399999867,
+          "actualSize": 40960,
+          "scores": [0.9989950060844421, 0.9987900257110596]
+        },
+        "B": {
+          "createMs": 11.507425999998304,
+          "rankMs": 236.11992499999906,
+          "actualSize": 1536,
+          "scores": [0.9989950060844421, 0.9987900257110596]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-8000-boundary",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 1054,
+      "safe": 1536,
+      "preparedCount": 1,
+      "arms": {
+        "B": {
+          "createMs": 8.240558999999848,
+          "rankMs": 180.68653599999925,
+          "actualSize": 1536,
+          "scores": [0.24713081121444702]
+        },
+        "A": {
+          "createMs": 32.07421200000135,
+          "rankMs": 180.2548999999999,
+          "actualSize": 40960,
+          "scores": [0.24713081121444702]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-8000-end",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 1053,
+      "safe": 1536,
+      "preparedCount": 1,
+      "arms": {
+        "A": {
+          "createMs": 35.24058800000057,
+          "rankMs": 178.65785700000015,
+          "actualSize": 40960,
+          "scores": [0.0006405713502317667]
+        },
+        "B": {
+          "createMs": 12.348507999999129,
+          "rankMs": 186.03625400000055,
+          "actualSize": 1536,
+          "scores": [0.0006405713502317667]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-16000-start",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 1057,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 8.503222999999707,
+          "rankMs": 224.36841599999934,
+          "actualSize": 1536,
+          "scores": [0.9989950060844421, 0.9987900257110596]
+        },
+        "A": {
+          "createMs": 33.15881799999988,
+          "rankMs": 231.38690699999825,
+          "actualSize": 40960,
+          "scores": [0.9989950060844421, 0.9987900257110596]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-16000-boundary",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 1054,
+      "safe": 1536,
+      "preparedCount": 1,
+      "arms": {
+        "A": {
+          "createMs": 34.196194000000105,
+          "rankMs": 161.23502499999813,
+          "actualSize": 40960,
+          "scores": [0.24713081121444702]
+        },
+        "B": {
+          "createMs": 11.131929999999556,
+          "rankMs": 164.38014100000146,
+          "actualSize": 1536,
+          "scores": [0.24713081121444702]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-16000-end",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 1053,
+      "safe": 1536,
+      "preparedCount": 1,
+      "arms": {
+        "B": {
+          "createMs": 8.115727000000334,
+          "rankMs": 157.80419600000096,
+          "actualSize": 1536,
+          "scores": [0.0006405713502317667]
+        },
+        "A": {
+          "createMs": 30.2000859999971,
+          "rankMs": 167.20402200000171,
+          "actualSize": 40960,
+          "scores": [0.0006405713502317667]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-1000-start",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 637,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 34.3981160000003,
+          "rankMs": 181.09309199999916,
+          "actualSize": 40960,
+          "scores": [0.9987037181854248, 0.9951942563056946]
+        },
+        "B": {
+          "createMs": 11.114410000001953,
+          "rankMs": 183.59674799999993,
+          "actualSize": 1024,
+          "scores": [0.9987037181854248, 0.9951942563056946]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-1000-boundary",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 637,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 9.230752999999822,
+          "rankMs": 197.54685899999822,
+          "actualSize": 1024,
+          "scores": [0.998180627822876, 0.9874058365821838]
+        },
+        "A": {
+          "createMs": 31.539534999999887,
+          "rankMs": 189.88273900000058,
+          "actualSize": 40960,
+          "scores": [0.998180627822876, 0.9874058365821838]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-1000-end",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 637,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 35.0766360000016,
+          "rankMs": 195.7921439999991,
+          "actualSize": 40960,
+          "scores": [0.998180627822876, 0.9874058365821838]
+        },
+        "B": {
+          "createMs": 12.396878999999899,
+          "rankMs": 201.22561199999836,
+          "actualSize": 1024,
+          "scores": [0.998180627822876, 0.9874058365821838]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-4000-start",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 2287,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 189.6351649999997,
+          "rankMs": 346.29242499999964,
+          "actualSize": 2560,
+          "scores": [0.9984643459320068, 0.9949742555618286]
+        },
+        "A": {
+          "createMs": 31.172190000001137,
+          "rankMs": 346.72478000000046,
+          "actualSize": 40960,
+          "scores": [0.9984643459320068, 0.9949742555618286]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-4000-boundary",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 2287,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 35.39701000000059,
+          "rankMs": 349.52665200000047,
+          "actualSize": 40960,
+          "scores": [0.9993834495544434, 0.9946780800819397]
+        },
+        "B": {
+          "createMs": 12.496609999998327,
+          "rankMs": 347.94369800000277,
+          "actualSize": 2560,
+          "scores": [0.9993834495544434, 0.9946780800819397]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-4000-end",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 2287,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 10.627942999999505,
+          "rankMs": 340.4947009999996,
+          "actualSize": 2560,
+          "scores": [0.9993103742599487, 0.9948216676712036]
+        },
+        "A": {
+          "createMs": 31.85323900000003,
+          "rankMs": 344.85017399999924,
+          "actualSize": 40960,
+          "scores": [0.9993103742599487, 0.9948216676712036]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-4001-start",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 2288,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 37.28581800000029,
+          "rankMs": 343.12087800000154,
+          "actualSize": 40960,
+          "scores": [0.9980102181434631, 0.9942439198493958]
+        },
+        "B": {
+          "createMs": 12.398279000000912,
+          "rankMs": 350.6491280000009,
+          "actualSize": 2560,
+          "scores": [0.9980102181434631, 0.9942439198493958]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-4001-boundary",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 2288,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 11.093740000000253,
+          "rankMs": 348.15677199999845,
+          "actualSize": 2560,
+          "scores": [0.9990869760513306, 0.9918861389160156]
+        },
+        "A": {
+          "createMs": 33.163558000000194,
+          "rankMs": 332.372202999999,
+          "actualSize": 40960,
+          "scores": [0.9990869760513306, 0.9918861389160156]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-4001-end",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 2288,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 33.06568700000207,
+          "rankMs": 330.2452429999976,
+          "actualSize": 40960,
+          "scores": [0.998653769493103, 0.9888343214988708]
+        },
+        "B": {
+          "createMs": 12.231966000003013,
+          "rankMs": 347.22174799999993,
+          "actualSize": 2560,
+          "scores": [0.998653769493103, 0.9888343214988708]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-8000-start",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 2288,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 11.040928999998869,
+          "rankMs": 346.9734649999991,
+          "actualSize": 2560,
+          "scores": [0.9980102181434631, 0.9942439198493958]
+        },
+        "A": {
+          "createMs": 33.498192999999446,
+          "rankMs": 345.85434800000075,
+          "actualSize": 40960,
+          "scores": [0.9980102181434631, 0.9942439198493958]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-8000-boundary",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 2288,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 35.089656000000105,
+          "rankMs": 343.80713900000046,
+          "actualSize": 40960,
+          "scores": [0.9990869760513306, 0.9918861389160156]
+        },
+        "B": {
+          "createMs": 12.263246999998955,
+          "rankMs": 340.88701599999695,
+          "actualSize": 2560,
+          "scores": [0.9990869760513306, 0.9918861389160156]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-8000-end",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 2285,
+      "safe": 2560,
+      "preparedCount": 1,
+      "arms": {
+        "B": {
+          "createMs": 9.63032899999962,
+          "rankMs": 223.26584000000003,
+          "actualSize": 2560,
+          "scores": [0.0009420097921974957]
+        },
+        "A": {
+          "createMs": 31.415403000002698,
+          "rankMs": 221.01076699999976,
+          "actualSize": 40960,
+          "scores": [0.0009420097921974957]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-16000-start",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 2288,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 31.00725799999782,
+          "rankMs": 332.4614939999992,
+          "actualSize": 40960,
+          "scores": [0.9980102181434631, 0.9942439198493958]
+        },
+        "B": {
+          "createMs": 12.17799599999853,
+          "rankMs": 329.3107990000026,
+          "actualSize": 2560,
+          "scores": [0.9980102181434631, 0.9942439198493958]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-16000-boundary",
+      "repeat": 0,
+      "order": ["B", "A"],
+      "req": 2288,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 8.662514999999985,
+          "rankMs": 314.11945099999866,
+          "actualSize": 2560,
+          "scores": [0.9990869760513306, 0.9918861389160156]
+        },
+        "A": {
+          "createMs": 30.003852999998344,
+          "rankMs": 323.23254200000156,
+          "actualSize": 40960,
+          "scores": [0.9990869760513306, 0.9918861389160156]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-16000-end",
+      "repeat": 0,
+      "order": ["A", "B"],
+      "req": 2285,
+      "safe": 2560,
+      "preparedCount": 1,
+      "arms": {
+        "A": {
+          "createMs": 33.15538899999956,
+          "rankMs": 213.3944870000014,
+          "actualSize": 40960,
+          "scores": [0.0009420097921974957]
+        },
+        "B": {
+          "createMs": 11.08483999999953,
+          "rankMs": 221.84901900000114,
+          "actualSize": 2560,
+          "scores": [0.0009420097921974957]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-4000-start",
+      "repeat": 1,
+      "order": ["B", "A"],
+      "req": 572,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 8.507662999996683,
+          "rankMs": 177.19535499999984,
+          "actualSize": 1024,
+          "scores": [0.9996700882911682, 0.997918426990509]
+        },
+        "A": {
+          "createMs": 28.735454000001482,
+          "rankMs": 170.79538399999728,
+          "actualSize": 40960,
+          "scores": [0.9996700882911682, 0.997918426990509]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-4000-end",
+      "repeat": 1,
+      "order": ["A", "B"],
+      "req": 571,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 29.9341319999985,
+          "rankMs": 176.21748099999968,
+          "actualSize": 40960,
+          "scores": [0.999008059501648, 0.9981916546821594]
+        },
+        "B": {
+          "createMs": 10.01500500000111,
+          "rankMs": 181.08151100000032,
+          "actualSize": 1024,
+          "scores": [0.999008059501648, 0.9981916546821594]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-16000-start",
+      "repeat": 1,
+      "order": ["B", "A"],
+      "req": 572,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 8.148166999999376,
+          "rankMs": 180.63372499999969,
+          "actualSize": 1024,
+          "scores": [0.999616265296936, 0.9988254904747009]
+        },
+        "A": {
+          "createMs": 27.894852000001265,
+          "rankMs": 165.7685109999984,
+          "actualSize": 40960,
+          "scores": [0.999616265296936, 0.9988254904747009]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-16000-end",
+      "repeat": 1,
+      "order": ["A", "B"],
+      "req": 567,
+      "safe": 1024,
+      "preparedCount": 1,
+      "arms": {
+        "A": {
+          "createMs": 32.014241000000766,
+          "rankMs": 140.28092399999878,
+          "actualSize": 40960,
+          "scores": [0.00025159644428640604]
+        },
+        "B": {
+          "createMs": 10.029083999997965,
+          "rankMs": 152.4397190000018,
+          "actualSize": 1024,
+          "scores": [0.00025159644428640604]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-4000-start",
+      "repeat": 1,
+      "order": ["B", "A"],
+      "req": 1056,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 8.100636999999551,
+          "rankMs": 204.42710799999986,
+          "actualSize": 1536,
+          "scores": [0.9987155199050903, 0.9983572363853455]
+        },
+        "A": {
+          "createMs": 28.317997999998624,
+          "rankMs": 213.57432999999946,
+          "actualSize": 40960,
+          "scores": [0.9987155199050903, 0.9983572363853455]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-4000-end",
+      "repeat": 1,
+      "order": ["A", "B"],
+      "req": 1056,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 33.067386999999144,
+          "rankMs": 234.39815100000123,
+          "actualSize": 40960,
+          "scores": [0.9999014139175415, 0.998845100402832]
+        },
+        "B": {
+          "createMs": 11.031248999999661,
+          "rankMs": 247.8603750000002,
+          "actualSize": 1536,
+          "scores": [0.9999014139175415, 0.998845100402832]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-16000-start",
+      "repeat": 1,
+      "order": ["B", "A"],
+      "req": 1057,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 11.479726000001392,
+          "rankMs": 237.76834900000176,
+          "actualSize": 1536,
+          "scores": [0.9989950060844421, 0.9987900257110596]
+        },
+        "A": {
+          "createMs": 30.048993000000337,
+          "rankMs": 243.5705330000019,
+          "actualSize": 40960,
+          "scores": [0.9989950060844421, 0.9987900257110596]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-16000-end",
+      "repeat": 1,
+      "order": ["A", "B"],
+      "req": 1053,
+      "safe": 1536,
+      "preparedCount": 1,
+      "arms": {
+        "A": {
+          "createMs": 37.30709800000113,
+          "rankMs": 189.51775300000008,
+          "actualSize": 40960,
+          "scores": [0.0006405713502317667]
+        },
+        "B": {
+          "createMs": 12.19584500000201,
+          "rankMs": 195.67894199999864,
+          "actualSize": 1536,
+          "scores": [0.0006405713502317667]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-4000-start",
+      "repeat": 1,
+      "order": ["B", "A"],
+      "req": 2287,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 9.941592999995919,
+          "rankMs": 358.750503999996,
+          "actualSize": 2560,
+          "scores": [0.9984643459320068, 0.9949742555618286]
+        },
+        "A": {
+          "createMs": 37.21274599999742,
+          "rankMs": 371.5693390000015,
+          "actualSize": 40960,
+          "scores": [0.9984643459320068, 0.9949742555618286]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-4000-end",
+      "repeat": 1,
+      "order": ["A", "B"],
+      "req": 2287,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 37.617382000004,
+          "rankMs": 364.91840299999603,
+          "actualSize": 40960,
+          "scores": [0.9993103742599487, 0.9948216676712036]
+        },
+        "B": {
+          "createMs": 11.063459000004514,
+          "rankMs": 358.0068440000032,
+          "actualSize": 2560,
+          "scores": [0.9993103742599487, 0.9948216676712036]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-16000-start",
+      "repeat": 1,
+      "order": ["B", "A"],
+      "req": 2288,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 10.410949999997683,
+          "rankMs": 355.3938659999985,
+          "actualSize": 2560,
+          "scores": [0.9980102181434631, 0.9942439198493958]
+        },
+        "A": {
+          "createMs": 33.589844000001904,
+          "rankMs": 355.8166119999951,
+          "actualSize": 40960,
+          "scores": [0.9980102181434631, 0.9942439198493958]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-16000-end",
+      "repeat": 1,
+      "order": ["A", "B"],
+      "req": 2285,
+      "safe": 2560,
+      "preparedCount": 1,
+      "arms": {
+        "A": {
+          "createMs": 35.11068599999999,
+          "rankMs": 240.90520499999548,
+          "actualSize": 40960,
+          "scores": [0.0009420097921974957]
+        },
+        "B": {
+          "createMs": 12.316417999994883,
+          "rankMs": 247.31304600000294,
+          "actualSize": 2560,
+          "scores": [0.0009420097921974957]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-4000-start",
+      "repeat": 2,
+      "order": ["B", "A"],
+      "req": 572,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 9.436025999995763,
+          "rankMs": 196.89655999999377,
+          "actualSize": 1024,
+          "scores": [0.9996700882911682, 0.997918426990509]
+        },
+        "A": {
+          "createMs": 31.540284999995492,
+          "rankMs": 185.64881699999387,
+          "actualSize": 40960,
+          "scores": [0.9996700882911682, 0.997918426990509]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-4000-end",
+      "repeat": 2,
+      "order": ["A", "B"],
+      "req": 571,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 36.05109000000084,
+          "rankMs": 189.0320869999996,
+          "actualSize": 40960,
+          "scores": [0.999008059501648, 0.9981916546821594]
+        },
+        "B": {
+          "createMs": 10.000543999994989,
+          "rankMs": 178.44204400000308,
+          "actualSize": 1024,
+          "scores": [0.999008059501648, 0.9981916546821594]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-16000-start",
+      "repeat": 2,
+      "order": ["B", "A"],
+      "req": 572,
+      "safe": 1024,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 7.819671999997809,
+          "rankMs": 174.97769400000107,
+          "actualSize": 1024,
+          "scores": [0.999616265296936, 0.9988254904747009]
+        },
+        "A": {
+          "createMs": 27.9955340000015,
+          "rankMs": 179.6936610000048,
+          "actualSize": 40960,
+          "scores": [0.999616265296936, 0.9988254904747009]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "EN-16000-end",
+      "repeat": 2,
+      "order": ["A", "B"],
+      "req": 567,
+      "safe": 1024,
+      "preparedCount": 1,
+      "arms": {
+        "A": {
+          "createMs": 34.08766099999775,
+          "rankMs": 153.32022100000177,
+          "actualSize": 40960,
+          "scores": [0.00025159644428640604]
+        },
+        "B": {
+          "createMs": 10.014864000004309,
+          "rankMs": 136.71976200000063,
+          "actualSize": 1024,
+          "scores": [0.00025159644428640604]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-4000-start",
+      "repeat": 2,
+      "order": ["B", "A"],
+      "req": 1056,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 7.910752999996475,
+          "rankMs": 218.78073600000062,
+          "actualSize": 1536,
+          "scores": [0.9987155199050903, 0.9983572363853455]
+        },
+        "A": {
+          "createMs": 29.849341000001004,
+          "rankMs": 208.05830000000424,
+          "actualSize": 40960,
+          "scores": [0.9987155199050903, 0.9983572363853455]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-4000-end",
+      "repeat": 2,
+      "order": ["A", "B"],
+      "req": 1056,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 30.86455500000011,
+          "rankMs": 214.01012600000104,
+          "actualSize": 40960,
+          "scores": [0.9999014139175415, 0.998845100402832]
+        },
+        "B": {
+          "createMs": 9.980883999996877,
+          "rankMs": 222.31519599999592,
+          "actualSize": 1536,
+          "scores": [0.9999014139175415, 0.998845100402832]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-16000-start",
+      "repeat": 2,
+      "order": ["B", "A"],
+      "req": 1057,
+      "safe": 1536,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 8.478922000002058,
+          "rankMs": 214.17421900000045,
+          "actualSize": 1536,
+          "scores": [0.9989950060844421, 0.9987900257110596]
+        },
+        "A": {
+          "createMs": 28.956736999993154,
+          "rankMs": 220.74455400000443,
+          "actualSize": 40960,
+          "scores": [0.9989950060844421, 0.9987900257110596]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "DE-16000-end",
+      "repeat": 2,
+      "order": ["A", "B"],
+      "req": 1053,
+      "safe": 1536,
+      "preparedCount": 1,
+      "arms": {
+        "A": {
+          "createMs": 33.06317699999636,
+          "rankMs": 176.59557700000005,
+          "actualSize": 40960,
+          "scores": [0.0006405713502317667]
+        },
+        "B": {
+          "createMs": 11.068620000005467,
+          "rankMs": 173.603194000003,
+          "actualSize": 1536,
+          "scores": [0.0006405713502317667]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-4000-start",
+      "repeat": 2,
+      "order": ["B", "A"],
+      "req": 2287,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 9.201043000000936,
+          "rankMs": 343.4318429999985,
+          "actualSize": 2560,
+          "scores": [0.9984643459320068, 0.9949742555618286]
+        },
+        "A": {
+          "createMs": 32.130574000002525,
+          "rankMs": 342.93254600000364,
+          "actualSize": 40960,
+          "scores": [0.9984643459320068, 0.9949742555618286]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-4000-end",
+      "repeat": 2,
+      "order": ["A", "B"],
+      "req": 2287,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "A": {
+          "createMs": 32.947954999996,
+          "rankMs": 346.61697899999854,
+          "actualSize": 40960,
+          "scores": [0.9993103742599487, 0.9948216676712036]
+        },
+        "B": {
+          "createMs": 11.065639000000374,
+          "rankMs": 350.678267999996,
+          "actualSize": 2560,
+          "scores": [0.9993103742599487, 0.9948216676712036]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-16000-start",
+      "repeat": 2,
+      "order": ["B", "A"],
+      "req": 2288,
+      "safe": 2560,
+      "preparedCount": 2,
+      "arms": {
+        "B": {
+          "createMs": 8.88727800000197,
+          "rankMs": 344.25966500000504,
+          "actualSize": 2560,
+          "scores": [0.9980102181434631, 0.9942439198493958]
+        },
+        "A": {
+          "createMs": 33.52461300000141,
+          "rankMs": 352.0476570000028,
+          "actualSize": 40960,
+          "scores": [0.9980102181434631, 0.9942439198493958]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    },
+    {
+      "id": "CJK-16000-end",
+      "repeat": 2,
+      "order": ["A", "B"],
+      "req": 2285,
+      "safe": 2560,
+      "preparedCount": 1,
+      "arms": {
+        "A": {
+          "createMs": 35.33886999999959,
+          "rankMs": 247.85782400000608,
+          "actualSize": 40960,
+          "scores": [0.0009420097921974957]
+        },
+        "B": {
+          "createMs": 13.53043500000058,
+          "rankMs": 250.5722539999988,
+          "actualSize": 2560,
+          "scores": [0.0009420097921974957]
+        }
+      },
+      "exact": true,
+      "sameOrder": true
+    }
+  ]
+}

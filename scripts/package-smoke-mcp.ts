@@ -1,5 +1,7 @@
 /** Packed-install MCP contract verification for the package smoke gate. */
 
+import { Client } from "@modelcontextprotocol/client";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 // node:fs/promises: canonical path resolution has no Bun-native equivalent.
 import { realpath } from "node:fs/promises";
 // node:path: portable path containment and joining have no Bun-native equivalent.
@@ -137,4 +139,37 @@ export async function verifyPackedMcpInstall(input: {
     input.cwd,
     { ...input.env, ...entry.env }
   );
+  await verifyRegisteredStdio(entry, input.cwd, input.env);
+}
+
+/** Drive the exact installed registration command through real stdio framing. */
+async function verifyRegisteredStdio(
+  entry: PackedMcpEntry,
+  cwd: string,
+  env: Record<string, string>
+): Promise<void> {
+  const transport = new StdioClientTransport({
+    command: entry.command,
+    args: entry.args,
+    cwd,
+    env: { ...env, ...entry.env },
+    stderr: "pipe",
+  });
+  const client = new Client({
+    name: "packed-registration-framing",
+    version: "1.0.0",
+  });
+  const deadline = setTimeout(() => {
+    void transport.close();
+  }, 5000);
+  try {
+    await client.connect(transport);
+    const tools = await client.listTools();
+    if (!tools.tools.some((tool) => tool.name === "gno_query")) {
+      throw new Error("Installed MCP registration omitted gno_query");
+    }
+  } finally {
+    clearTimeout(deadline);
+    await client.close();
+  }
 }

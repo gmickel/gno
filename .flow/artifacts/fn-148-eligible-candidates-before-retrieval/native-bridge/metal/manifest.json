@@ -1,0 +1,419 @@
+{
+  "archiveSha256": "e00272fe468000e20e3bae76f4ffe9d6ed4281459d5c1f4fb88f714adacfe818",
+  "files": [
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/broad.json",
+      "rawSha256": "1939a6c5b1023f3c6c1bc2a3327478fb1b33129ba4d573fff85e8772774610a1",
+      "rawBytes": 272920,
+      "sha256": "1939a6c5b1023f3c6c1bc2a3327478fb1b33129ba4d573fff85e8772774610a1",
+      "bytes": 272920,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.gz",
+      "rawSha256": "94604514eace912cfcc767c83ee723ad650201748713474b03185ba2db97fb54",
+      "rawBytes": 8501961,
+      "sha256": "ad396b9dcd5384a2634798c6747a105e97729e73f3a405e050466d930a86a4c1",
+      "bytes": 3620381,
+      "compressed": true
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/children.json",
+      "rawSha256": "212ab652b2942aecf8ebcd5c39f8252f38b930ea83441df71ef46fd1322a5963",
+      "rawBytes": 605,
+      "sha256": "212ab652b2942aecf8ebcd5c39f8252f38b930ea83441df71ef46fd1322a5963",
+      "bytes": 605,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-1.json",
+      "rawSha256": "06b656bf86e5a1c4807bad5b2d773debec2eeb670424789811ec0e47e9166177",
+      "rawBytes": 1312,
+      "sha256": "06b656bf86e5a1c4807bad5b2d773debec2eeb670424789811ec0e47e9166177",
+      "bytes": 1312,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-10.json",
+      "rawSha256": "a9e62ab050d8dd72d77b80e0dda75a02dee2352f7a05f66afb9dab919ffd9831",
+      "rawBytes": 1313,
+      "sha256": "a9e62ab050d8dd72d77b80e0dda75a02dee2352f7a05f66afb9dab919ffd9831",
+      "bytes": 1313,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-11.json",
+      "rawSha256": "afdc958c75931629a8eadc460906f46f4b4934d74737760d12e5bbdf37751cb6",
+      "rawBytes": 21519,
+      "sha256": "afdc958c75931629a8eadc460906f46f4b4934d74737760d12e5bbdf37751cb6",
+      "bytes": 21519,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-12.json",
+      "rawSha256": "883139d63da7e8907e779dff6dcef27c5b93ce5edff6729e5f6143dd50246252",
+      "rawBytes": 816,
+      "sha256": "883139d63da7e8907e779dff6dcef27c5b93ce5edff6729e5f6143dd50246252",
+      "bytes": 816,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-13.json",
+      "rawSha256": "5078bb06768225363309e4753e4f680c268da332b304a91c7ece4d2dbd86a801",
+      "rawBytes": 1313,
+      "sha256": "5078bb06768225363309e4753e4f680c268da332b304a91c7ece4d2dbd86a801",
+      "bytes": 1313,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-14.json",
+      "rawSha256": "b3fe1811488d9dc948abe6aa74271d73d3afdfb96529314aff3d04c5fc649b41",
+      "rawBytes": 21519,
+      "sha256": "b3fe1811488d9dc948abe6aa74271d73d3afdfb96529314aff3d04c5fc649b41",
+      "bytes": 21519,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-15.json",
+      "rawSha256": "a69901b17b5b0e8e864a8842f314e367631bed79f125c88731ab356642c05ddc",
+      "rawBytes": 816,
+      "sha256": "a69901b17b5b0e8e864a8842f314e367631bed79f125c88731ab356642c05ddc",
+      "bytes": 816,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-16.json",
+      "rawSha256": "cd4d8793b35268ea978102af4189a33c74fbf79ebd48572a70b2c190f6256a86",
+      "rawBytes": 1313,
+      "sha256": "cd4d8793b35268ea978102af4189a33c74fbf79ebd48572a70b2c190f6256a86",
+      "bytes": 1313,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-17.json",
+      "rawSha256": "441b043af7e24a4c26fd71deabf27cb3b87703911fcbd23b73acc456473f2760",
+      "rawBytes": 21519,
+      "sha256": "441b043af7e24a4c26fd71deabf27cb3b87703911fcbd23b73acc456473f2760",
+      "bytes": 21519,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-18.json",
+      "rawSha256": "18a92b4f834c7feca062fbc3d35924c935ebf25bdde0e8a2e52ac49b1e2bc33d",
+      "rawBytes": 816,
+      "sha256": "18a92b4f834c7feca062fbc3d35924c935ebf25bdde0e8a2e52ac49b1e2bc33d",
+      "bytes": 816,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-19.json",
+      "rawSha256": "a8865e252db0c51a961a4d0afbb6edc84dd5e2f388395c189898b8f93464049c",
+      "rawBytes": 1313,
+      "sha256": "a8865e252db0c51a961a4d0afbb6edc84dd5e2f388395c189898b8f93464049c",
+      "bytes": 1313,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-2.json",
+      "rawSha256": "037f6c5d9e87c8d864d60a160665f827d28735e840c660647e24bf88dd1f84f0",
+      "rawBytes": 671085,
+      "sha256": "037f6c5d9e87c8d864d60a160665f827d28735e840c660647e24bf88dd1f84f0",
+      "bytes": 671085,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-20.json",
+      "rawSha256": "91e21125c4f6d8d4672a84b7ae0691166f0ca9af59e6bd7376cabe8611bf0ed0",
+      "rawBytes": 21519,
+      "sha256": "91e21125c4f6d8d4672a84b7ae0691166f0ca9af59e6bd7376cabe8611bf0ed0",
+      "bytes": 21519,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-21.json",
+      "rawSha256": "af667a7a4eeec4b7e5afa57f05f6098fb1dd2ccd8258fb6cceafefdead035f48",
+      "rawBytes": 816,
+      "sha256": "af667a7a4eeec4b7e5afa57f05f6098fb1dd2ccd8258fb6cceafefdead035f48",
+      "bytes": 816,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-22.json",
+      "rawSha256": "fec0dd6bb63429edae5e451858640c2dd227015ffcda25e1251a0371f809c1f7",
+      "rawBytes": 1313,
+      "sha256": "fec0dd6bb63429edae5e451858640c2dd227015ffcda25e1251a0371f809c1f7",
+      "bytes": 1313,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-23.json",
+      "rawSha256": "30d071aa6c101716a65a0ff86849b8943b9dda4c12f9279ebed835aaa55a6c79",
+      "rawBytes": 21519,
+      "sha256": "30d071aa6c101716a65a0ff86849b8943b9dda4c12f9279ebed835aaa55a6c79",
+      "bytes": 21519,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-24.json",
+      "rawSha256": "0d66c879d53ba8b7b1ffa21151e7cb2fdf4c8aaf5e19b34b8c694d6836fdb6df",
+      "rawBytes": 816,
+      "sha256": "0d66c879d53ba8b7b1ffa21151e7cb2fdf4c8aaf5e19b34b8c694d6836fdb6df",
+      "bytes": 816,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-3.json",
+      "rawSha256": "6e5d962d83d4c0c1fec7180c44d2bfb701e03f3c6241b048be693443782a7faf",
+      "rawBytes": 671224,
+      "sha256": "6e5d962d83d4c0c1fec7180c44d2bfb701e03f3c6241b048be693443782a7faf",
+      "bytes": 671224,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-4.json",
+      "rawSha256": "629baff638091363e721fbd8c79373e729c7237d1d0c10da43f9ee62c0cedcfa",
+      "rawBytes": 671500,
+      "sha256": "629baff638091363e721fbd8c79373e729c7237d1d0c10da43f9ee62c0cedcfa",
+      "bytes": 671500,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-5.json",
+      "rawSha256": "37bc99f40ec58d8d60ffbb818d96487985dc1d1291a82a2e417f29ed8869353e",
+      "rawBytes": 672670,
+      "sha256": "37bc99f40ec58d8d60ffbb818d96487985dc1d1291a82a2e417f29ed8869353e",
+      "bytes": 672670,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-6.json",
+      "rawSha256": "0ec3886c520e39cfc5a033bee89e3fc1dd55b69552549ea439866265b1066b61",
+      "rawBytes": 672362,
+      "sha256": "0ec3886c520e39cfc5a033bee89e3fc1dd55b69552549ea439866265b1066b61",
+      "bytes": 672362,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-7.json",
+      "rawSha256": "e8d20b7eb9d58b74c052433ee5279a529f9d94c371a1a219542c6ac1bbfcd717",
+      "rawBytes": 673087,
+      "sha256": "e8d20b7eb9d58b74c052433ee5279a529f9d94c371a1a219542c6ac1bbfcd717",
+      "bytes": 673087,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-8.json",
+      "rawSha256": "212033b7ed8a26a8b1e6353aa339b0fb689d78109080e05c0b7a2b27b325eda6",
+      "rawBytes": 129436,
+      "sha256": "212033b7ed8a26a8b1e6353aa339b0fb689d78109080e05c0b7a2b27b325eda6",
+      "bytes": 129436,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/18126-9.json",
+      "rawSha256": "297c67e9b19c0c1468ec4bcf8b9d865c62506ad85d1a3734052d37a69ff2f612",
+      "rawBytes": 815,
+      "sha256": "297c67e9b19c0c1468ec4bcf8b9d865c62506ad85d1a3734052d37a69ff2f612",
+      "bytes": 815,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/native-5wTLyY/bootstrap.json",
+      "rawSha256": "f327e7c134f4711f36e6384261dc8917ccba0374566e9027c9e56a0e3f257688",
+      "rawBytes": 551,
+      "sha256": "f327e7c134f4711f36e6384261dc8917ccba0374566e9027c9e56a0e3f257688",
+      "bytes": 551,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/parent-capture.json.gz",
+      "rawSha256": "94604514eace912cfcc767c83ee723ad650201748713474b03185ba2db97fb54",
+      "rawBytes": 8501961,
+      "sha256": "ad396b9dcd5384a2634798c6747a105e97729e73f3a405e050466d930a86a4c1",
+      "bytes": 3620381,
+      "compressed": true
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.children/requests.json",
+      "rawSha256": "2f82e2a18388cd59b44ee3effba1840ba3a0fafe9498ff6591cf29aeee5584e8",
+      "rawBytes": 59292,
+      "sha256": "2f82e2a18388cd59b44ee3effba1840ba3a0fafe9498ff6591cf29aeee5584e8",
+      "bytes": 59292,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/capture.json.request.json",
+      "rawSha256": "744262cd6caa29bc437342fd1de5a00a7cc398203b58f78819d3f33fca305de5",
+      "rawBytes": 421,
+      "sha256": "744262cd6caa29bc437342fd1de5a00a7cc398203b58f78819d3f33fca305de5",
+      "bytes": 421,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/config.json",
+      "rawSha256": "fb0d2e6b7706e1c33c3a319aea04cf880803a70a1dee658be58896bed88009cd",
+      "rawBytes": 990,
+      "sha256": "fb0d2e6b7706e1c33c3a319aea04cf880803a70a1dee658be58896bed88009cd",
+      "bytes": 990,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/embed.json",
+      "rawSha256": "1f639059941c7883635cc9ac9a9029d4a15dee794605b162a990598e26e050c8",
+      "rawBytes": 208,
+      "sha256": "1f639059941c7883635cc9ac9a9029d4a15dee794605b162a990598e26e050c8",
+      "bytes": 208,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/evidence/control-environment.json",
+      "rawSha256": "0e82e083267cc14b80aa6c938d285b716af0a65c0ab60d9d87db07d15c3883a0",
+      "rawBytes": 2313,
+      "sha256": "0e82e083267cc14b80aa6c938d285b716af0a65c0ab60d9d87db07d15c3883a0",
+      "bytes": 2313,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/evidence/governor.receipt.json",
+      "rawSha256": "2ac5cc4df82456254876b4a80a11bfd4f148c72b40c2bb5d14aaf7d29294261e",
+      "rawBytes": 11523,
+      "sha256": "2ac5cc4df82456254876b4a80a11bfd4f148c72b40c2bb5d14aaf7d29294261e",
+      "bytes": 11523,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/evidence/governor.stderr",
+      "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "rawBytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/evidence/governor.stdout",
+      "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "rawBytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/hybrid-1.json",
+      "rawSha256": "43d485fb696398a263a5a036795dee95b8483b886722bed8c0ae05632aa6dbe5",
+      "rawBytes": 2083,
+      "sha256": "43d485fb696398a263a5a036795dee95b8483b886722bed8c0ae05632aa6dbe5",
+      "bytes": 2083,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/hybrid-10.json",
+      "rawSha256": "43d485fb696398a263a5a036795dee95b8483b886722bed8c0ae05632aa6dbe5",
+      "rawBytes": 2083,
+      "sha256": "43d485fb696398a263a5a036795dee95b8483b886722bed8c0ae05632aa6dbe5",
+      "bytes": 2083,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/launch-prepare.json",
+      "rawSha256": "787bf438cf0b5628210b09dacdb01e6d838ad1f850f753567be186868f2b938c",
+      "rawBytes": 2856,
+      "sha256": "787bf438cf0b5628210b09dacdb01e6d838ad1f850f753567be186868f2b938c",
+      "bytes": 2856,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/launch-run.json",
+      "rawSha256": "9700df64cf7f9c2f6de49c341934533a1fe794e71397a998aa343e2f8a4545ad",
+      "rawBytes": 3126,
+      "sha256": "9700df64cf7f9c2f6de49c341934533a1fe794e71397a998aa343e2f8a4545ad",
+      "bytes": 3126,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/manifest.json",
+      "rawSha256": "09aed67cd2876a4c42c51ca0ea6dc8322aa2548f999447c9dcafd8d29c9375fa",
+      "rawBytes": 95148,
+      "sha256": "09aed67cd2876a4c42c51ca0ea6dc8322aa2548f999447c9dcafd8d29c9375fa",
+      "bytes": 95148,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/model.json",
+      "rawSha256": "6aad7ed65e5807361a67a34a474244e589bc8bd9af80f45582709d213bf66ea4",
+      "rawBytes": 181,
+      "sha256": "6aad7ed65e5807361a67a34a474244e589bc8bd9af80f45582709d213bf66ea4",
+      "bytes": 181,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/oracle.json",
+      "rawSha256": "73a1fd59968420a329d12c50b8f6f240c5e05b439d0c3f2e36361340a4139de6",
+      "rawBytes": 1609,
+      "sha256": "73a1fd59968420a329d12c50b8f6f240c5e05b439d0c3f2e36361340a4139de6",
+      "bytes": 1609,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/overlay.json",
+      "rawSha256": "74f6de99100a5848220252489b3626c0658ff11cdf8c978f30d1630a2c1820e1",
+      "rawBytes": 643,
+      "sha256": "74f6de99100a5848220252489b3626c0658ff11cdf8c978f30d1630a2c1820e1",
+      "bytes": 643,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/owners.json",
+      "rawSha256": "6d9b42d5d29d77f731a99d1995ae35fb1ac51ae757bdab7b5610d548b342650a",
+      "rawBytes": 130214,
+      "sha256": "6d9b42d5d29d77f731a99d1995ae35fb1ac51ae757bdab7b5610d548b342650a",
+      "bytes": 130214,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/partitions.json",
+      "rawSha256": "6eb7e3d655f0d6128ef86005cacdc1fbf07317ad7c7731918f9378684e3bc44e",
+      "rawBytes": 405,
+      "sha256": "6eb7e3d655f0d6128ef86005cacdc1fbf07317ad7c7731918f9378684e3bc44e",
+      "bytes": 405,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/result.json",
+      "rawSha256": "0ceb354761ca94ac27cb6a29992eafbf2d95e6fd5f38118cd2b0406a9410eb4e",
+      "rawBytes": 456,
+      "sha256": "0ceb354761ca94ac27cb6a29992eafbf2d95e6fd5f38118cd2b0406a9410eb4e",
+      "bytes": 456,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/vector-1.json",
+      "rawSha256": "18d30afcb246e0d1fb75b81630a4bb50c4afbf3133df2629b2f73af8adeb52c5",
+      "rawBytes": 1708,
+      "sha256": "18d30afcb246e0d1fb75b81630a4bb50c4afbf3133df2629b2f73af8adeb52c5",
+      "bytes": 1708,
+      "compressed": false
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/raw/vector-10.json",
+      "rawSha256": "18d30afcb246e0d1fb75b81630a4bb50c4afbf3133df2629b2f73af8adeb52c5",
+      "rawBytes": 1708,
+      "sha256": "18d30afcb246e0d1fb75b81630a4bb50c4afbf3133df2629b2f73af8adeb52c5",
+      "bytes": 1708,
+      "compressed": false
+    }
+  ],
+  "sourcePins": [
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/driver.ts",
+      "sha256": "9a14793f1ebe2a2c4407c2f9e9e6ad4dd0056e1beb8b02a54e77c4bbec16e97f",
+      "capturedPath": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/source/driver.ts"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/seed.ts",
+      "sha256": "74afced789fe231bdd5b098ca8f9c65ef03029272223c8418230466a5f23ba13",
+      "capturedPath": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/source/seed.ts"
+    }
+  ],
+  "transfer": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/transfer.json",
+  "databaseTransferred": false
+}

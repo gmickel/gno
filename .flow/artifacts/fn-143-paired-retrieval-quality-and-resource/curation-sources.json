@@ -1,0 +1,198 @@
+{
+  "native-QA-SUMMARY.md": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/QA-SUMMARY.md",
+    "sourceSha256": "1c58abcf74deb61c5dbebda0b3bdf59aa7f5f85ba41e3448f50dceafdbe210dd",
+    "gzip": false,
+    "curationCorrection": "Clarified warm comparison count against raw report: one block, three cases; lifecycle total five comparison blocks, seven case comparisons, fourteen samples."
+  },
+  "native-original-checksums.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/evidence-sha256.json",
+    "sourceSha256": "9d69bda9f81dd99d533d4c6b201620193a70cb38dca92b979a57dd3cc77f59c3",
+    "gzip": false
+  },
+  "cuda-surface-comparisons.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/surface-comparison-final.json",
+    "sourceSha256": "a9b41affab502d6e55954fc637f507af10826c0951199f45ed42e210575e82f9",
+    "gzip": false
+  },
+  "cuda-warm30-report.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/warm30/report.json",
+    "sourceSha256": "c2bd0e0b7913ccbfbca76f5f9f9e45eca7c93724152bd16cb7686e8061df6cc9",
+    "gzip": true
+  },
+  "cuda-verified-comparison.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-orchid-01/orchid-verified-comparison.json",
+    "sourceSha256": "a178bde89f3c0f8f07907385db3b727134525b7d927f60a8dc98c442319f16d7",
+    "gzip": false
+  },
+  "cuda-baseline-verified-raw.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-orchid-01/baseline/orchid-verified.json.gz",
+    "sourceSha256": "0a0cec618028746a7435f11c5d34a8a16e66202a8456236d72dc7cf41df70890",
+    "gzip": false
+  },
+  "cuda-baseline-verified-manifest.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-orchid-01/baseline/manifest-orchid-verified.json",
+    "sourceSha256": "180287cd61f077907743c1560940d8dd471413fdc017eb5207b1da2655825e07",
+    "gzip": false
+  },
+  "cuda-candidate-verified-raw.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-orchid-01/candidate/orchid-verified.json.gz",
+    "sourceSha256": "9e8b1bceb277748e521d0ea927a7d2fa99c91acf0bc60b5d7c97957bec3c8f23",
+    "gzip": false
+  },
+  "cuda-candidate-verified-manifest.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-orchid-01/candidate/manifest-orchid-verified.json",
+    "sourceSha256": "b070b1dcc0c1eba15a5aec7d13d512e67912e208df2e9b74117f377afda8c85d",
+    "gzip": false
+  },
+  "metal-surface-comparisons.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/metal-control-01/surface-comparison-final.json",
+    "sourceSha256": "245b3965f57f7033818902d647bc77b275577ede849cf0e21d8d8b44ddd3c51d",
+    "gzip": false
+  },
+  "metal-warm30-report.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/metal-control-01/warm30-embedding-only/report.json",
+    "sourceSha256": "79a2683f5241f18fac764b353fc5e57c916538db8a84f90da88890618fe5cecb",
+    "gzip": true
+  },
+  "metal-verified-comparison.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/metal-orchid-01/orchid-verified-comparison.json",
+    "sourceSha256": "a178bde89f3c0f8f07907385db3b727134525b7d927f60a8dc98c442319f16d7",
+    "gzip": false
+  },
+  "metal-baseline-verified-raw.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/metal-orchid-01/baseline/orchid-verified.json.gz",
+    "sourceSha256": "8a980082a2ccae8e0fb3f65264647523cf294d3aae8c1d0f64a60c4dd07c5d41",
+    "gzip": false
+  },
+  "metal-baseline-verified-manifest.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/metal-orchid-01/baseline/manifest-orchid-verified.json",
+    "sourceSha256": "3b2cfd11414445c85221ed52a29d6d51659fe0ffb6b0b49b0d246f26f4e92b27",
+    "gzip": false
+  },
+  "metal-candidate-verified-raw.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/metal-orchid-01/candidate/orchid-verified.json.gz",
+    "sourceSha256": "a5a8d61bf719c04652aec9f88e41d183b4c70c8eb67a16382edd45056a4fc208",
+    "gzip": false
+  },
+  "metal-candidate-verified-manifest.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/metal-orchid-01/candidate/manifest-orchid-verified.json",
+    "sourceSha256": "e1bc710b6c6ded09f93b38462f09b28dc60807236817b6be127234f3edee58ad",
+    "gzip": false
+  },
+  "cuda-expanded-comparison.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-orchid-01/expanded-semantic-comparison.json",
+    "sourceSha256": "1da06a6893065ce89fdd4b4494ec46500c9692a01d7adf37117b67ed6acc959c",
+    "gzip": false
+  },
+  "cuda-baseline-expanded-raw.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-orchid-01/baseline/expanded-semantic.json.gz",
+    "sourceSha256": "c08575ab89f5ced2a6c10d53495dfd12344154b5da440c74a8f9797a91b1494f",
+    "gzip": false
+  },
+  "cuda-candidate-expanded-raw.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-orchid-01/candidate/expanded-semantic.json.gz",
+    "sourceSha256": "1521ab2e0fb4b5eb68d76e5cec8efadab281cd9b030e31e007888f80d0dbd2e4",
+    "gzip": false
+  },
+  "metal-expanded-pressure-receipt.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/metal-orchid-01/baseline-expanded-semantic.receipt.json",
+    "sourceSha256": "514dcad71ec02d9ed59c11c9cf5382cec7c13f97818790ba2bbc537f5f992357",
+    "gzip": false
+  },
+  "metal-embedding-only-comparison.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/metal-control-01/embedding-only-comparison.json",
+    "sourceSha256": "abb90ee15cc92d682f346160027abb5a230a7251972e52a670ba5e2c5c4d05c0",
+    "gzip": false
+  },
+  "metal-lifecycle-summary.md": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/lifecycle/LIFECYCLE-SUMMARY.md",
+    "sourceSha256": "d7582897fc52c5e0b3051972f3d68f05f298b241f4374881b85c130ba2b78a42",
+    "gzip": false
+  },
+  "metal-lifecycle-observations.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/lifecycle/summary.json",
+    "sourceSha256": "28154f5007d97fb062ae628924130a75597555a630678b1c0c0fc37ee7c97d08",
+    "gzip": false
+  },
+  "metal-lifecycle-warm-report.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/lifecycle/completed/warm/report.json",
+    "sourceSha256": "5dbd40dbe1615585d42e32b0c8eb46d6d000119673e10c675ff97a9755a5d29f",
+    "gzip": true
+  },
+  "metal-lifecycle-cold-default-report.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/lifecycle/completed/cold-default/report.json",
+    "sourceSha256": "e1983538a3bc66e6c9971a151e6a594f6d623c189455d1a872038a41e1d0dc4f",
+    "gzip": true
+  },
+  "metal-lifecycle-ttl1200-report.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/lifecycle/completed/ttl1200/report.json",
+    "sourceSha256": "771151a6329132bbce059df98fbc04014c92aa41646afb19453788ff0d395f4a",
+    "gzip": true
+  },
+  "cuda-lifecycle-summary.md": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/results.md",
+    "sourceSha256": "f584477ca8b3c2b8e1dc3d2c31d3dce2ce12dc5d8e36906f485ee1c0891e42d1",
+    "gzip": false
+  },
+  "cuda-lifecycle-observations.json": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/observations.json",
+    "sourceSha256": "b5df27c2f140a53301a301b35d9c66dcff75de3ba083ae399988e5e1973e2457",
+    "gzip": false
+  },
+  "cuda-lifecycle-cold-report.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/cold/report.json",
+    "sourceSha256": "dd6cd18baffd1de061763dd6395b907923c3b5ac08b32800e8ce2b0bfb74f6b5",
+    "gzip": true
+  },
+  "cuda-lifecycle-novel-report.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/novel/report.json",
+    "sourceSha256": "a6ee6b65da0aecdebdcccac90874aa40565e0ebec3362803559f39dce0ae246f",
+    "gzip": true
+  },
+  "cuda-lifecycle-overlap-report.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/overlap/report.json",
+    "sourceSha256": "b9fdd36e48e4bd5ddb11b60c1fb7966a5c5e419433e22349a0bcc8c5347219f7",
+    "gzip": true
+  },
+  "cuda-lifecycle-post-idle-default-report.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/post-idle-default/report.json",
+    "sourceSha256": "92f1ed967cfca42c97d8e704b8f29aec301d51dd908536a24ba54e3493e2c991",
+    "gzip": true
+  },
+  "cuda-lifecycle-post-idle-expiry-report.json.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/state-screens/post-idle-expiry/report.json",
+    "sourceSha256": "d655ef2cd170a8b19d747dea653f8da58088d1b9991a66912048e67f0936f927",
+    "gzip": true
+  },
+  "gate-full-tests.log.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/full-tests-owned.log",
+    "sourceSha256": "73c36d107b96f4f164fcf89f5370fa9523782bc316be7231bc7758a884209f41",
+    "gzip": true
+  },
+  "gate-full-lint.log.gz": {
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/full-lint-settled.log",
+    "sourceSha256": "121c3de22c5145cddb74f67aaf800d4f730b8193dc79485773f4c6b09c7edf83",
+    "gzip": true
+  },
+  "gate-docs.log.gz": {
+    "source": "/tmp/fn143-publictruth-docs.log",
+    "sourceSha256": "7b554819d88cd16f5183e6b7938beb5505565736b65fe0c8cedc853497d0ced8",
+    "gzip": true
+  },
+  "gate-memory.log.gz": {
+    "source": "/tmp/fn143-prerequisite-memory.log",
+    "sourceSha256": "68fc446d5771d3e75955d357a9f254e8b8f2d444f7b70d8f72e0ffa91cf015aa",
+    "gzip": true
+  },
+  "gate-lexical-hybrid.log.gz": {
+    "source": "/tmp/gno-fn143-baseline-hybrid.log",
+    "sourceSha256": "5c294e9f296f7ac147a3dd9542a199c5ad3190d0c6f6b5b4f56c5a765871c7d0",
+    "gzip": true
+  },
+  "gate-lexical-vsearch.log.gz": {
+    "source": "/tmp/gno-fn143-baseline-vsearch.log",
+    "sourceSha256": "6784cf98d5c74697b240d4778c30f02b41119d55910dc3eba01b36b6f7a65828",
+    "gzip": true
+  }
+}

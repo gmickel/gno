@@ -1,0 +1,42 @@
+bun test v1.3.14 (0d9b296a)
+
+test/mcp/tools/sections.test.ts:
+(pass) gno_section MCP > registers as read-only when enableWrite=false and is not a write tool [40.61ms]
+(pass) gno_section MCP > input schema rejects malformed, unknown, and XOR violations [32.64ms]
+(pass) gno_section MCP > input schema rejects inverted hints and oversized serialized targets [27.45ms]
+(pass) gno_section MCP > create+resolve exact [37.63ms]
+(pass) gno_section MCP > create+resolve recovered [30.31ms]
+(pass) gno_section MCP > create+resolve ambiguous [31.14ms]
+(pass) gno_section MCP > create+resolve stale [31.06ms]
+(pass) gno_section MCP > create+resolve missing [29.43ms]
+(pass) gno_section MCP > wrong-document target resolves as missing without citation [37.86ms]
+[MCP] gno_section error: NOT_FOUND: Section not found
+(pass) gno_section MCP > create with unknown section returns NOT_FOUND [28.47ms]
+(pass) gno_section MCP > create/resolve with enableWrite=false never touch non-read store methods [28.82ms]
+[MCP] gno_section error: VALIDATION: hints.endOffset must be >= hints.startOffset
+(pass) gno_section MCP > resolve rejects inverted hints before core resolution [27.50ms]
+[MCP] gno_section error: VALIDATION: Section target exceeds size bounds
+(pass) gno_section MCP > resolve rejects oversized serialized target before core resolution [26.93ms]
+(pass) gno_section MCP > gno_get line-range behavior remains unchanged [28.76ms]
+
+test/mcp/tools/capture.test.ts:
+(pass) gno_capture MCP > does not register write tools when writes are disabled [24.72ms]
+[MCP] gno_trace_purge error: WRITE_DISABLED: Trace mutations require gateway.enableWrite or --mcp-enable-write
+(pass) gno_capture MCP > trace mutation handlers defend against direct disabled dispatch [24.65ms]
+[MCP] gno_capture error: Write tools disabled. Start MCP with --enable-write.
+(pass) gno_capture MCP > direct handler rejects disabled writes [24.78ms]
+(pass) gno_capture MCP > returns a provenance receipt with legacy MCP fields [616.37ms]
+(pass) gno_capture MCP > supports open_existing through shared collision planning [59.90ms]
+(pass) gno_capture MCP > legacy overwrite returns overwritten collision result [71.39ms]
+[MCP] gno_capture error: INVALID_PATH: Cannot write to sensitive directory: .git
+(pass) gno_capture MCP > rejects sensitive directories at any path depth [50.43ms]
+[MCP] gno_capture error: CAPTURE_SYNC_FAILED: Capture written to /home/gordon/.cache/agent-tmp/gno-mcp-capture-nrMAYc/sync-failed.md but lexical sync failed: PARSE_ERROR - bad markdown. Run gno update to retry indexing.
+(pass) gno_capture MCP > fails the tool when the file is written but sync fails [31.66ms]
+(pass) gno_capture MCP > open_existing syncs a disk-only file before returning [37.61ms]
+[MCP] gno_capture error: INVALID_INPUT: Capture content exceeds 1048576 byte limit.
+(pass) gno_capture MCP > rejects content beyond the shared byte limit [36.29ms]
+
+ 24 pass
+ 0 fail
+ 249 expect() calls
+Ran 24 tests across 2 files. [1.81s]

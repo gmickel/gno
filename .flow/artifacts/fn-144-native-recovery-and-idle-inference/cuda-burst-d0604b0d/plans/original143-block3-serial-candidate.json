@@ -1,0 +1,23 @@
+{
+  "role": "candidate",
+  "sourceRoot": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/packed/package",
+  "configPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/config.json",
+  "dbPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/candidate/data/index-default.sqlite",
+  "cacheDir": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/candidate/cache",
+  "outputPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/observations/original143-block3-serial-candidate/result.json",
+  "caseId": "original143-expanded",
+  "query": "what retry budget did we decide and why",
+  "options": {
+    "limit": 5,
+    "explain": true
+  },
+  "mode": "serial",
+  "count": 3,
+  "concurrency": 1,
+  "productIdentity": {
+    "commit": "d0604b0d7b0c888653390618ab498187bf71b397",
+    "packageSha256": "f42dfdddd6296e527f3c4bf01d21bb8a685a33996edcfd1c7624e60fe13320bd",
+    "helperCommit": "9244d715",
+    "driverSha256": "1b292ce47ae84c14fa36ab4e863b45feda3ed5137614ff239ed5b309849ef0da"
+  }
+}

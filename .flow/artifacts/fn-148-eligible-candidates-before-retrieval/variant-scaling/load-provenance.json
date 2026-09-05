@@ -1,0 +1,5 @@
+{
+  "source": "Host message during capture: full CPU bun test ./test at frozen80346337 was already running for several minutes and remains active.",
+  "affected": "Treat both initial and split-verified performance strata as potentially overlapping unrelated full-suite CPU load; exact time overlap was not independently sampled.",
+  "interpretation": "Raw timings retained. No idle-machine or universal legacy-versus-variant comparative performance claim. Exact output oracle checks remain valid. Host can schedule a bounded largest representative repeat after full tests finish; do not silently replace these observations."
+}

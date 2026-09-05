@@ -1,0 +1,158 @@
+{
+  "nativeExecuted": false,
+  "rows": [
+    {
+      "kind": "shutdown-budget-constants",
+      "drainMs": 5000,
+      "abortMs": 5000,
+      "exitMs": 1000,
+      "detachedParentStopGraceMs": 12000
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "SqliteAdapter",
+      "method": "beginShutdown",
+      "sha256": "20ae94066c7656bf36b672c4924378b89820d0b8f20816fe482bf1b09723bf76"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "SqliteAdapter",
+      "method": "fenceForShutdown",
+      "sha256": "148422834f551e76dab45d8acad7079ab8301c62bb80de14018ea941569fac3d"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "SqliteAdapter",
+      "method": "close",
+      "sha256": "578d820ce55358bb3661f1a5ad6198d2ab7fb026a78b46609f93a73e908291e8"
+    },
+    {
+      "kind": "shutdown-source-pin",
+      "path": "src/store/sqlite/adapter.ts",
+      "sha256": "f4ed12b8e050315c53e9b4818b6dfffe5c4cd5edb0fe1e6ca05352f3cc1807f0"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "AdmissionController",
+      "method": "stop",
+      "sha256": "8f13b5b7470aec9ed3c99e38765075bd1415849af624e48a45c58013cd0d1c20"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "AdmissionController",
+      "method": "drain",
+      "sha256": "80f4d8fb7f7bd963cb06c4bb3e26a44ebc901dc789e0c9f897c9ed903c78e23d"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "AdmissionController",
+      "method": "cancel",
+      "sha256": "9750b227c04f71fdaf46a069a332b89d3576472e20b78780628482519c30cf80"
+    },
+    {
+      "kind": "shutdown-source-pin",
+      "path": "src/serve/resident-admission.ts",
+      "sha256": "2a3860dfcce9ebfff7f1e9563c92317b9ca36c17d19b01960ccd4c87b3eec075"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "ResidentBackgroundWork",
+      "method": "drain",
+      "sha256": "e12ca930abc2d3e43a7fd792566841b379f3ed3695a206956585796bd465df0c"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "ResidentBackgroundWork",
+      "method": "cancel",
+      "sha256": "0e2448885e299915540f1a835a96721831960943dfb70a5bc3fa7eff80a92b80"
+    },
+    {
+      "kind": "shutdown-source-pin",
+      "path": "src/serve/resident-background-work.ts",
+      "sha256": "597b8e4438c38c8cf52bdfa4d1a0b7fc8ac11e74429599ec949410d7cb37f42b"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "JobManager",
+      "method": "stop",
+      "sha256": "8f13b5b7470aec9ed3c99e38765075bd1415849af624e48a45c58013cd0d1c20"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "JobManager",
+      "method": "shutdown",
+      "sha256": "f8bbb5e0ee8b4300fccc068d4bc8a31244ce6f3a30db87701b231653e353e5cd"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "JobManager",
+      "method": "cancel",
+      "sha256": "2a422f463cb18088c57a6dbbf97c6f7a228f231d33004336590af354e126d8a1"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "JobManager",
+      "method": "failUnfinished",
+      "sha256": "ba3c0248364238a8865ab0205dac6c1e51d392cd96cfc420e1336353030815e9"
+    },
+    {
+      "kind": "shutdown-source-pin",
+      "path": "src/core/job-manager.ts",
+      "sha256": "1498e664e63197c9a6865fab19cb9c87a380a5e3fcb15e5441035a3f0ed879ee"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "LlmAdapter",
+      "method": "dispose",
+      "sha256": "6cf0eb6ae9a78a8bbd82f2d6b57079956e15fdf7b313acf222b5c6d3ec147e85"
+    },
+    {
+      "kind": "shutdown-source-pin",
+      "path": "src/llm/nodeLlamaCpp/adapter.ts",
+      "sha256": "abae68d88f26f1eda67e105095770df0dc5803b4fd9fde77c147582214241e31"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "NativeWorkerClient",
+      "method": "dispose",
+      "sha256": "100411b09d3fc4e1e09c76253a209a68f8d76b8790286c2e44e767f5854c1470"
+    },
+    {
+      "kind": "shutdown-function-pin",
+      "label": "NativeWorkerClient",
+      "method": "retire",
+      "sha256": "78b8c60986104aaf6a39ef927923382809bd8ea679407a3571f6aab7468594ab"
+    },
+    {
+      "kind": "shutdown-source-pin",
+      "path": "src/llm/native-worker/client.ts",
+      "sha256": "92c6cef968f10e409c184575a4accdf55b47790c0f14cbb71a43d13ba77b6510"
+    },
+    {
+      "kind": "shutdown-source-pin",
+      "path": "src/serve/resident-shutdown.ts",
+      "sha256": "20c08f3e34318f0b5316be7e6381ec3b6d18953aba09a7a161b3e79288381a1a"
+    },
+    {
+      "kind": "shutdown-source-pin",
+      "path": "src/core/shutdown-budget.ts",
+      "sha256": "7a017266b71c8b8914f08fe7bc0b1f46bb99ff8b82549e4b950d24dd8c0f5009"
+    },
+    {
+      "kind": "shutdown-source-pin",
+      "path": "src/llm/native-worker/owned-exit.ts",
+      "sha256": "49579dc5e94f3c81267f1a6a1f19d349e93d7470a0965aae39e7b17e8390d7b4"
+    },
+    {
+      "kind": "shutdown-source-pin",
+      "path": "src/serve/resident-runtime.ts",
+      "sha256": "c6eb019d72e620195a74933b3e628edff5ee3a31bbcb972d509ccd60ea84dd5b"
+    },
+    {
+      "kind": "shutdown-source-pin",
+      "path": "src/serve/embed-scheduler.ts",
+      "sha256": "c10d3e049ad0a804e07b2745c656cab9765a600e764eafe32fd4c367f3648fb5"
+    }
+  ],
+  "errors": []
+}

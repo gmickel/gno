@@ -27,6 +27,19 @@ projection, or file sync retain durable retry authority; bounded overflow or a
 platform without native anchored directory handles escalates to a full
 collection sync.
 
+Graph updates include incoming references from other collections, including
+frontmatter references whose target did not exist when the source was indexed.
+Target additions, removals, renames and title changes use both previous and
+current identities. An unchanged scoped sync skips global graph content reads
+when the reference inventory is complete. Missing or interrupted inventory and
+collection or graph-rule configuration changes trigger full reconciliation;
+failed projection remains eligible for retry.
+
+Graph application retains existing edge identities and timestamps when the
+relationship is unchanged. A failed or interrupted projection keeps its durable
+retry marker; the next sync reconciles the graph before recording completion.
+Source changes committed before the interruption remain in the change journal.
+
 These guarantees are exercised on supported local filesystems across macOS,
 Linux, and Windows. They do not claim universal watcher semantics for network,
 removable, or coarse-timestamp filesystems.
@@ -104,7 +117,7 @@ status, Capsule-settlement, REST, or MCP contracts.
 | ------------------- | ------------------------------------------------------------------------- |
 | `--detach`          | Self-spawn a detached child; parent prints `pid` and exits 0              |
 | `--status`          | Read pid-file, check liveness, print status (`--json` for machine output) |
-| `--stop`            | SIGTERM with 10s timeout, SIGKILL fallback                                |
+| `--stop`            | SIGTERM with 12s timeout, SIGKILL fallback                                |
 | `--pid-file <path>` | Override pid-file location (defaults to `{data}/daemon.pid`)              |
 | `--log-file <path>` | Override log-file location (append-only)                                  |
 
@@ -120,7 +133,7 @@ gno daemon --status
 # Check status (machine-readable; exits 3 when not running)
 gno daemon --status --json
 
-# Stop gracefully (SIGTERM with 10s timeout, then SIGKILL fallback)
+# Stop gracefully (SIGTERM with 12s timeout, then SIGKILL fallback)
 gno daemon --stop
 
 # Override paths
@@ -286,6 +299,24 @@ GNO_NO_AUTO_DOWNLOAD=1 gno daemon
 - `GNO_NO_AUTO_DOWNLOAD=1` disables automatic download while still allowing
   explicit `gno models pull`
 
+## Native Inference Lifetime
+
+The daemon can bind and serve lexical and metadata requests with an empty model
+cache. Model-file resolution, downloads and native loading wait until inference
+is required, including background embedding work. Offline/manual policy still
+applies to that first use.
+
+Native inference runs in an owned child shared by the matching resident adapter.
+Its default idle grace is five minutes. Status polling, filesystem metadata and
+open MCP sessions do not keep native models resident. Pending native work prevents
+retirement; after the child exits, the next inference request reloads its models.
+The daemon parent, watcher, jobs and transports remain running.
+
+Resident model counters are cached child-reported lifecycle snapshots, not GPU
+memory measurements. Capability flags describe configured functionality. A native
+failure follows each operation's error or fallback contract; a later explicit
+request can acquire a fresh child without replacing the daemon parent.
+
 ## Windows
 
 Native `--detach` is **not supported** on Windows. The flag returns a clean
@@ -295,6 +326,36 @@ child.
 
 For Windows-native long-running deployment, run `gno daemon` under WSL or wrap
 the foreground process with a service supervisor (NSSM, sc.exe).
+
+## Shutdown
+
+`gno daemon` and `gno serve` use one shutdown clock: up to five seconds to drain,
+five seconds for cancellation to settle, then at most one second to confirm
+owned native-child exit. Request/job admission and new scheduling stop first.
+Listener cleanup, watcher work, accepted jobs and the embedding scheduler share
+the clock; a blocked participant cannot start another full drain period.
+
+At the drain deadline, the runtime cancels requests and the separate lifetimes
+of accepted jobs. A client disconnect alone still does not cancel an accepted
+job. At the settlement deadline, the runtime rolls back suspended parent write
+transactions and revokes their store access before closing the database. A late
+callback cannot commit or turn an unfinished job into a completed one. Existing
+checkpoints remain; incomplete embedding chunks are discovered again on restart.
+Job records themselves remain process-local and are not a durable job queue.
+
+Only the native process owned by the adapter is force-terminated. If the OS does
+not confirm exit within the final budget, shutdown reports the PID and failure;
+it does not report the child as absent. `--stop` gives the resident 12 seconds
+before its existing identity-checked parent SIGKILL fallback, allowing the
+resident's 11-second internal sequence to finish first.
+
+The finite policy requires a responsive parent event loop: synchronous JavaScript,
+SQLite or OS blocking cannot be preempted by a timer. Ordinary store calls cap
+SQLite busy waiting to the remaining shutdown settlement budget. Already-running
+statements and cached raw SQLite handles are outside that per-call cap. Async
+transaction callbacks using the store API are revoked on rollback; cached raw
+handles are invalid after connection close. A rollback/close failure is reported
+and the runtime retains its owner lock instead of releasing an unsafe store.
 
 ## Troubleshooting
 

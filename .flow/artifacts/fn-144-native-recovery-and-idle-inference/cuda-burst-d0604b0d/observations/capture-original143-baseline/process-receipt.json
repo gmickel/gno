@@ -1,0 +1,13 @@
+{
+  "command": [
+    "bun",
+    "--no-env-file",
+    "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/capture-control.ts",
+    "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/plans/capture-original143-baseline.json"
+  ],
+  "pid": 257891,
+  "exitCode": 1,
+  "stopReason": null,
+  "wallMs": 556.6080429125577,
+  "firstResponse": []
+}

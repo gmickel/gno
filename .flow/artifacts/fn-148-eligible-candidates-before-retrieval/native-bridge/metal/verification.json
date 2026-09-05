@@ -1,0 +1,51 @@
+{
+  "status": "captured-and-locally-verified",
+  "packageSha256": "1a01daff5030dfbab0492d8d7d76a759e699a3effbd87ede8a40a290e6879342",
+  "helperArchiveSha256": "a17680691f0326062f7cc132251fee28ed35319041f295398788b49e5428e116",
+  "productFilesVerifiedByRemoteOverlay": 902,
+  "corpusHash": "06cbdc94eebdbb299c4f5525213da5fdc6671db8a5faad6198eead07bb0c9811",
+  "modelSha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+  "nativeModelUri": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+  "backend": "metal",
+  "actualNativeInputsMatched": 198,
+  "completeNativeRequests": 24,
+  "fullVectorRowsExact": [
+    1,
+    10
+  ],
+  "hybridOwnerExact": [
+    1,
+    10
+  ],
+  "allFiveQueriesVectorsUsed": true,
+  "excludedOwnersAhead": 197,
+  "activeNativePartition": {
+    "partition_id": "3a87ac2bc586250b0e4d83fe0cc728e59202de94e2773db4185de1b03bcc3d11",
+    "version": 1,
+    "model": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+    "fingerprint": "567ed8ab1bcc03dc8d9b471e5e08f1e02b094cb94f0313f9d788861f95f23483",
+    "dimensions": 1024,
+    "state": "active",
+    "activated_epoch": 997,
+    "current_epoch": 997
+  },
+  "parentNative": {
+    "pid": 18124,
+    "bindingLoads": [],
+    "nativeModules": [],
+    "mappedModels": null,
+    "mappingSource": "unavailable-use-owned-GPU-and-platform-proof"
+  },
+  "governor": {
+    "wallSeconds": 8.203884582966566,
+    "exit": 0,
+    "cumulativeWarningSeconds": 0
+  },
+  "ownedNativeOrSessionPidsAfter": [],
+  "filesVerified": 50,
+  "limitations": [
+    "Hybrid complete score assembly is not independently implemented by this native bridge",
+    "Per-backend/model-URI partition and numeric identities retained; no cross-backend numeric equality claim",
+    "Instrumented governor duration is descriptive, not steady-state performance acceptance"
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "version": "1.0",
+  "ftsTokenizer": "snowball english",
+  "busyTimeoutMs": 60000,
+  "collections": [
+    {
+      "name": "notes",
+      "path": "/private/tmp/fn1445-capacity-control.LUEhqi/corpus/notes",
+      "pattern": "**/*",
+      "include": [],
+      "exclude": [
+        ".git",
+        "node_modules",
+        ".venv",
+        ".idea",
+        "dist",
+        "build",
+        "__pycache__",
+        ".DS_Store",
+        "Thumbs.db"
+      ]
+    },
+    {
+      "name": "src",
+      "path": "/private/tmp/fn1445-capacity-control.LUEhqi/corpus/src",
+      "pattern": "**/*",
+      "include": [],
+      "exclude": [
+        ".git",
+        "node_modules",
+        ".venv",
+        ".idea",
+        "dist",
+        "build",
+        "__pycache__",
+        ".DS_Store",
+        "Thumbs.db"
+      ]
+    },
+    {
+      "name": "papers",
+      "path": "/private/tmp/fn1445-capacity-control.LUEhqi/corpus/papers",
+      "pattern": "**/*",
+      "include": [],
+      "exclude": [
+        ".git",
+        "node_modules",
+        ".venv",
+        ".idea",
+        "dist",
+        "build",
+        "__pycache__",
+        ".DS_Store",
+        "Thumbs.db"
+      ]
+    },
+    {
+      "name": "office",
+      "path": "/private/tmp/fn1445-capacity-control.LUEhqi/corpus/office",
+      "pattern": "**/*",
+      "include": [],
+      "exclude": [
+        ".git",
+        "node_modules",
+        ".venv",
+        ".idea",
+        "dist",
+        "build",
+        "__pycache__",
+        ".DS_Store",
+        "Thumbs.db"
+      ]
+    }
+  ],
+  "contexts": [],
+  "contentTypes": [],
+  "projectAffinity": {
+    "enabled": true,
+    "contribution": 0.03
+  },
+  "models": {
+    "activePreset": "slim-tuned",
+    "warmModelTtl": 300000,
+    "presets": [
+      {
+        "id": "slim-tuned",
+        "name": "Pinned slim-tuned file URI equivalent",
+        "embed": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "rerank": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "expand": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "gen": "file:/Users/gordon/Library/Caches/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf"
+      }
+    ]
+  }
+}

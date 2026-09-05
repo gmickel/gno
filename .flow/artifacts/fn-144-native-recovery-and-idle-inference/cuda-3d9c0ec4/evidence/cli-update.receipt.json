@@ -1,0 +1,15 @@
+{
+  "command": [
+    "bun",
+    "--preload",
+    "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/phase-parent.ts",
+    "--preload",
+    "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/evals/acceptance/parent-capture.ts",
+    "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/source/src/index.ts",
+    "update",
+    "--json"
+  ],
+  "pid": 176503,
+  "exitCode": 0,
+  "elapsed": 1.1193196773529053
+}

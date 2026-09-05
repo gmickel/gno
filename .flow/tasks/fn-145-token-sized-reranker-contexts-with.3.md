@@ -46,9 +46,8 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Real hybrid/Ask paths preserve retrieved spans and citations after context resize/reload.
 
 ## Done summary
-TBD
-
+Frozen CUDA45case matrix and69historical pairs preserve122preparedscores exactly; five explicit added scenarios extend long-query/grow/shrink/reload coverage with negatives retained. New actual packed public sequence completes6/6 candidate calls with contexts768→3840→768 and observed child expiry/newgeneration. Four complete original-baseline pairs are exact; baseline long/post-idleAsk failures remain failed, not retried. Candidate verifiedAsk before/afterreload has exact spans/citations/provenance/modelinputs/nativeoutputs and one actual semanticjudge each. Physical candidate short-long-short and original3/3hybrid captures complement CUDA; oldauto Metal pressure stops remain incomplete resource measurements for task4.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: a675eb86, 80b3cc8e
+- Tests: frozen actualCUDA74comparisons148calls122scores exact, actual packed public resize/reload6of6candidate4of6baselinecomplete, candidate verifiedAsk pre/postidle exactfullpayload/inputs/outputs actualjudgeeach, sha256sum --quiet -c public-reload/SHA256SUMS, fullbun test5150pass2skip0fail
 - PRs:

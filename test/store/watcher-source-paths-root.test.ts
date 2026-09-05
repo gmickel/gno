@@ -72,11 +72,17 @@ describe("listActiveSourcePaths", () => {
 
   test("returns unique ordered active sources within budget (5000)", async () => {
     const expected: string[] = [];
-    for (let i = 0; i < 5000; i += 1) {
-      const rel = `n${String(i).padStart(4, "0")}.md`;
-      expected.push(rel);
-      await adapter.upsertDocument(doc({ relPath: rel }));
-    }
+    // This is a row-count boundary check, not a per-insert durability benchmark.
+    const seeded = await adapter.withTransaction(async () => {
+      for (let i = 0; i < 5000; i += 1) {
+        const rel = `n${String(i).padStart(4, "0")}.md`;
+        expected.push(rel);
+        const inserted = await adapter.upsertDocument(doc({ relPath: rel }));
+        if (!inserted.ok) throw new Error(inserted.error.message);
+      }
+    });
+    expect(seeded.ok).toBe(true);
+    if (!seeded.ok) throw new Error(seeded.error.message);
     const result = await adapter.listActiveSourcePaths("notes", 5000);
     expect(result.ok).toBe(true);
     if (!result.ok) {

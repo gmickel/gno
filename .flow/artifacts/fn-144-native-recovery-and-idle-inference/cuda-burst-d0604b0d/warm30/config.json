@@ -1,0 +1,390 @@
+{
+  "version": "1.0",
+  "ftsTokenizer": "unicode61",
+  "busyTimeoutMs": 60000,
+  "collections": [
+    {
+      "name": "eligible",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/eligible",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "hydration",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/hydration",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-1000-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-1000-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-1000-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-1000-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-1000-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-1000-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-4000-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-4000-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-4000-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-4000-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-4000-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-4000-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-4001-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-4001-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-4001-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-4001-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-4001-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-4001-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-8000-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-8000-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-8000-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-8000-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-8000-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-8000-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-16000-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-16000-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-16000-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-16000-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-en-16000-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-en-16000-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-1000-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-1000-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-1000-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-1000-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-1000-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-1000-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-4000-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-4000-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-4000-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-4000-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-4000-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-4000-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-4001-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-4001-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-4001-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-4001-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-4001-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-4001-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-8000-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-8000-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-8000-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-8000-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-8000-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-8000-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-16000-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-16000-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-16000-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-16000-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-de-16000-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-de-16000-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-1000-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-1000-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-1000-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-1000-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-1000-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-1000-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-4000-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-4000-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-4000-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-4000-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-4000-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-4000-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-4001-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-4001-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-4001-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-4001-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-4001-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-4001-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-8000-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-8000-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-8000-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-8000-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-8000-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-8000-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-16000-start",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-16000-start",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-16000-boundary",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-16000-boundary",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "rerank-zh-16000-end",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/rerank-zh-16000-end",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "expiry",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/expiry",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "restoration",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/restoration",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "titles",
+      "path": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/runs/cuda-control-01/corpus/titles",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    }
+  ],
+  "contexts": [],
+  "contentTypes": [],
+  "models": {
+    "activePreset": "qa-pinned",
+    "presets": [
+      {
+        "id": "qa-pinned",
+        "name": "Cached slim-tuned equivalent",
+        "embed": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "rerank": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "expand": "file:/home/gordon/.cache/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "gen": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf"
+      }
+    ],
+    "loadTimeout": 60000,
+    "inferenceTimeout": 30000,
+    "expandContextSize": 2048,
+    "warmModelTtl": 300000
+  },
+  "retrievalTraces": {
+    "enabled": true,
+    "redactionMode": "metadata",
+    "retention": {
+      "maxAgeDays": 30,
+      "maxTraces": 1000,
+      "maxRecordsPerTrace": 10000,
+      "maxBytes": 16777216
+    }
+  },
+  "projectAffinity": {
+    "enabled": true,
+    "contribution": 0.03
+  }
+}

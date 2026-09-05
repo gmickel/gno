@@ -1,0 +1,15 @@
+{
+  "originalRows": 304,
+  "retainedRows": 261,
+  "excludedDatabaseArtifacts": 3,
+  "artifactHashesVerified": 261,
+  "decompressedHashesVerified": 261,
+  "physicalSourceHashesVerified": 304,
+  "rawArtifactBytesChanged": 0,
+  "credentialPatternFlags": [],
+  "pathInventory": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-f8a278ef/excluded-database-artifacts/path-inventory.json",
+  "pathInventoryReview": "117 extracted path strings: only task scratch, synthetic fixture/package, model cache, repository, retained Ivan temporary package paths",
+  "excludedBunCacheArtifacts": 40,
+  "retainedTargetsGitTracked": 261,
+  "inventoryAuthority": "git ls-files plus compressed/decompressed hashes; filesystem existence alone is insufficient"
+}

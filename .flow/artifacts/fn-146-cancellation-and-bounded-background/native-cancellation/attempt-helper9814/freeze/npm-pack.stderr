@@ -1,0 +1,9 @@
+
+> @gmickel/gno@1.46.0 prepack
+> bun run package:clipper
+
+$ bun browser-extension/package-cli.ts
+
+> @gmickel/gno@1.46.0 prepare
+> lefthook install
+

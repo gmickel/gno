@@ -1,5 +1,5 @@
 {
-  "branch_name": "fn-147-restoration-and-unchanged-embedding",
+  "branch_name": "fn-143-152-retrieval-resource-major",
   "completion_review_status": "unknown",
   "completion_reviewed_at": null,
   "created_at": "2026-09-04T22:26:22.060974Z",
@@ -17,7 +17,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-147-restoration-and-unchanged-embedding.md",
-  "status": "open",
+  "status": "done",
   "title": "Restoration and unchanged embedding preservation",
   "tracker": {
     "baseHashFlow": null,
@@ -30,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T23:08:33.815573Z"
+  "updated_at": "2026-09-05T04:25:37.967507Z"
 }

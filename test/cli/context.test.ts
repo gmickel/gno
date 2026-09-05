@@ -24,6 +24,7 @@ import { safeRm } from "../helpers/cleanup";
 // ─────────────────────────────────────────────────────────────────────────────
 
 let testDir: string;
+let originalEnv: Partial<Record<string, string>> = {};
 
 const MINIMAL_CONFIG: Config = {
   version: "1.0",
@@ -51,6 +52,10 @@ const CONFIG_WITH_COLLECTION: Config = {
  * Set up environment variables and create temp directories
  */
 async function setupTest(): Promise<void> {
+  originalEnv = {
+    GNO_CONFIG_DIR: process.env.GNO_CONFIG_DIR,
+    GNO_DATA_DIR: process.env.GNO_DATA_DIR,
+  };
   testDir = await mkdtemp(join(tmpdir(), "gno-test-"));
   process.env.GNO_CONFIG_DIR = join(testDir, "config");
   process.env.GNO_DATA_DIR = join(testDir, "data");
@@ -67,13 +72,40 @@ function getConfigPath(): string {
  * Clean up test directories and env vars
  */
 async function teardownTest(): Promise<void> {
-  process.env.GNO_CONFIG_DIR = undefined;
-  process.env.GNO_DATA_DIR = undefined;
+  if (originalEnv.GNO_CONFIG_DIR === undefined) {
+    delete process.env.GNO_CONFIG_DIR;
+  } else {
+    process.env.GNO_CONFIG_DIR = originalEnv.GNO_CONFIG_DIR;
+  }
+  if (originalEnv.GNO_DATA_DIR === undefined) {
+    delete process.env.GNO_DATA_DIR;
+  } else {
+    process.env.GNO_DATA_DIR = originalEnv.GNO_DATA_DIR;
+  }
 
   if (testDir) {
     await safeRm(testDir);
   }
 }
+
+test("fixture cleanup restores absent, empty and configured environment values", async () => {
+  const priorConfigDir = process.env.GNO_CONFIG_DIR;
+  try {
+    for (const value of [undefined, "", "/fixture-original-config"]) {
+      if (value === undefined) delete process.env.GNO_CONFIG_DIR;
+      else process.env.GNO_CONFIG_DIR = value;
+      await setupTest();
+      await teardownTest();
+      expect(process.env.GNO_CONFIG_DIR).toBe(value);
+      expect(Object.hasOwn(process.env, "GNO_CONFIG_DIR")).toBe(
+        value !== undefined
+      );
+    }
+  } finally {
+    if (priorConfigDir === undefined) delete process.env.GNO_CONFIG_DIR;
+    else process.env.GNO_CONFIG_DIR = priorConfigDir;
+  }
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests

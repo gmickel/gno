@@ -1,0 +1,23 @@
+bun test v1.3.14 (0d9b296a)
+
+notes/fn144-simulator-patch/lifetime.test.ts:
+77 |   const estimation = state.estimate();
+78 |   await state.contextEntered.promise;
+79 |   const disposal = state.session.dispose();
+80 |   try {
+81 |     await microtasks();
+82 |     expect(state.freeCount()).toBe(0);
+                                   ^
+error: expect(received).toBe(expected)
+
+Expected: 0
+Received: 1
+
+      at <anonymous> (/home/gordon/work/gno/notes/fn144-simulator-patch/lifetime.test.ts:82:31)
+(fail) paused speculative context survives session disposal until memory read and context disposal [1.62ms]
+
+ 0 pass
+ 4 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [193.00ms]

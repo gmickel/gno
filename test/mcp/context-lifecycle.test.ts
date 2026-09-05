@@ -130,7 +130,7 @@ describe("shared MCP context lifecycle", () => {
     });
   });
 
-  test("semantic MCP calls keep one warm load and balance request leases", async () => {
+  test("tool dispatch does not acquire model leases for metadata or semantic handlers", async () => {
     let physicalLoads = 0;
     let loaded = false;
     let acquisitions = 0;
@@ -174,8 +174,8 @@ describe("shared MCP context lifecycle", () => {
 
     expect(physicalLoads).toBe(1);
     expect({ acquisitions, releases }).toEqual({
-      acquisitions: 2,
-      releases: 2,
+      acquisitions: 0,
+      releases: 0,
     });
   });
 });

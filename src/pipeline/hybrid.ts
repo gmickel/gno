@@ -1,14 +1,16 @@
+import type { Config } from "../config/types";
 /**
  * Hybrid search orchestrator.
  * Combines BM25, vector search, expansion, fusion, and reranking.
  *
  * @module src/pipeline/hybrid
  */
-
-import type { Config } from "../config/types";
 import type { EmbeddingPort, GenerationPort, RerankPort } from "../llm/types";
 import type { DocumentRow, StorePort } from "../store/types";
-import type { VectorIndexPort } from "../store/vector/types";
+import type {
+  VectorIndexPort,
+  VectorSearchOptions,
+} from "../store/vector/types";
 import type {
   ExpansionResult,
   ExplainLine,
@@ -23,7 +25,13 @@ import type {
 import { normalizeContentTypes } from "../config/content-types";
 import { projectRecordEvidenceMetadata } from "../core/record-metadata";
 import { embedTextsWithRecovery } from "../embed/batch";
+import {
+  assertInferenceActive,
+  assertInferenceResult,
+  withInferenceScope,
+} from "../llm/inference-scope";
 import { err, ok } from "../store/types";
+import { resolveVectorSearchIdentity } from "../store/vector/variant-search";
 import { createChunkLookup } from "./chunk-lookup";
 import {
   attachAuxiliaryScoreMetadata,
@@ -49,7 +57,9 @@ import {
 import { evaluateDocumentChunkFilters } from "./filters";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
+import { RequestHydration } from "./hydration";
 import { selectBestChunkForSteering } from "./intent";
+import { OwnerMetadataError, resolveFusionOwners } from "./owner-fusion";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import {
@@ -86,6 +96,8 @@ export interface HybridSearchDeps {
   expandPort: GenerationPort | null;
   rerankPort: RerankPort | null;
   pipelineConfig?: PipelineConfig;
+  /** Internal request owner; the creating caller releases it. */
+  hydration?: RequestHydration;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,6 +149,10 @@ async function checkBm25Strength(
     categories?: string[];
     author?: string;
     relPathPrefix?: string;
+    allowedMirrorHashes?: string[];
+    exclude?: string[];
+    memoryScopesAny?: string[];
+    excludeSuperseded?: boolean;
   }
 ): Promise<boolean> {
   const result = await store.searchFts(query, {
@@ -144,6 +160,13 @@ async function checkBm25Strength(
     collection: options?.collection,
     relPathPrefix: options?.relPathPrefix,
     language: options?.lang,
+    chunkLanguage: options?.lang,
+    allowedMirrorHashes: options?.allowedMirrorHashes,
+    exclude: options?.exclude,
+    excludeMetadata: true,
+    semanticMetadata: true,
+    memoryScopesAny: options?.memoryScopesAny,
+    excludeSuperseded: options?.excludeSuperseded,
     tagsAll: options?.tagsAll,
     tagsAny: options?.tagsAny,
     since: options?.since,
@@ -174,6 +197,8 @@ async function checkBm25Strength(
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface ChunkId {
+  sourceDocid?: string;
+  documentIds?: number[];
   mirrorHash: string;
   seq: number;
   score?: number;
@@ -197,6 +222,10 @@ async function searchFtsChunks(
     categories?: string[];
     author?: string;
     relPathPrefix?: string;
+    allowedMirrorHashes?: string[];
+    exclude?: string[];
+    memoryScopesAny?: string[];
+    excludeSuperseded?: boolean;
   }
 ): Promise<FtsChunksResult> {
   const result = await store.searchFts(query, {
@@ -204,6 +233,13 @@ async function searchFtsChunks(
     collection: options.collection,
     relPathPrefix: options.relPathPrefix,
     language: options.lang,
+    chunkLanguage: options.lang,
+    excludeMetadata: true,
+    semanticMetadata: true,
+    memoryScopesAny: options.memoryScopesAny,
+    excludeSuperseded: options.excludeSuperseded,
+    exclude: options.exclude,
+    allowedMirrorHashes: options.allowedMirrorHashes,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
     since: options.since,
@@ -220,6 +256,7 @@ async function searchFtsChunks(
   return {
     ok: true,
     chunks: result.value.map((r) => ({
+      sourceDocid: r.docid,
       mirrorHash: r.mirrorHash,
       seq: r.seq,
       score: r.score,
@@ -239,18 +276,20 @@ async function searchVectorChunks(
     limit: number;
     minScore?: number;
     allowedMirrorHashes?: string[];
+    eligibility?: VectorSearchOptions["eligibility"];
   }
-): Promise<ChunkId[]> {
+): Promise<{ ok: true; chunks: ChunkId[] } | { ok: false; reason: string }> {
   if (!vectorIndex.searchAvailable) {
-    return [];
+    return { ok: false, reason: "vector_unavailable" };
   }
 
   // Embed query with contextual formatting
   const embedResult = await embedPort.embed(
     formatQueryForEmbedding(query, embedPort.modelUri)
   );
+  assertInferenceResult(embedResult);
   if (!embedResult.ok) {
-    return [];
+    return { ok: false, reason: "vector_embed_error" };
   }
 
   const queryEmbedding = new Float32Array(embedResult.value);
@@ -258,20 +297,26 @@ async function searchVectorChunks(
     queryEmbedding,
     options.limit,
     {
+      embeddingIdentity: resolveVectorSearchIdentity(embedPort),
       minScore: options.minScore,
       allowedMirrorHashes: options.allowedMirrorHashes,
+      eligibility: options.eligibility,
     }
   );
 
   if (!searchResult.ok) {
-    return [];
+    return { ok: false, reason: "vector_search_error" };
   }
 
-  return searchResult.value.map((r) => ({
-    mirrorHash: r.mirrorHash,
-    seq: r.seq,
-    score: r.distance,
-  }));
+  return {
+    ok: true,
+    chunks: searchResult.value.map((r) => ({
+      documentIds: r.documentIds,
+      mirrorHash: r.mirrorHash,
+      seq: r.seq,
+      score: r.distance,
+    })),
+  };
 }
 
 function toTraceCandidates(chunks: ChunkId[]): QueryDiagnoseTraceCandidate[] {
@@ -306,11 +351,31 @@ function candidatesToTrace(
 /**
  * Execute hybrid search with full pipeline.
  */
-// oxlint-disable-next-line max-lines-per-function -- search orchestration with BM25, vector, fusion, reranking
 export async function searchHybrid(
   deps: HybridSearchDeps,
   query: string,
   options: HybridSearchOptions = {}
+): Promise<ReturnType<typeof ok<SearchResults>>> {
+  const hydration = deps.hydration ?? new RequestHydration(deps.store);
+  try {
+    return await withInferenceScope(options, () =>
+      searchHybridWithHydration(deps, query, options, hydration)
+    );
+  } catch (cause) {
+    if (cause instanceof OwnerMetadataError)
+      return err("QUERY_FAILED", cause.message);
+    throw cause;
+  } finally {
+    if (!deps.hydration) hydration.release();
+  }
+}
+
+// oxlint-disable-next-line max-lines-per-function -- search orchestration with BM25, vector, fusion, reranking
+async function searchHybridWithHydration(
+  deps: HybridSearchDeps,
+  query: string,
+  options: HybridSearchOptions,
+  hydration: RequestHydration
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
   const runStartedAt = performance.now();
   const { store, vectorIndex, embedPort, expandPort, rerankPort } = deps;
@@ -408,6 +473,10 @@ export async function searchHybrid(
       : await checkBm25Strength(store, query, {
           collection: options.collection,
           lang: options.lang,
+          memoryScopesAny: options.memoryFilter?.scopes,
+          excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+          exclude: options.exclude,
+          allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
           tagsAll: options.tagsAll,
           tagsAny: options.tagsAny,
           since: temporalRange.since,
@@ -451,11 +520,31 @@ export async function searchHybrid(
     ? { stages: [] }
     : undefined;
 
+  const vectorEligibility: VectorSearchOptions["eligibility"] = {
+    collection: options.collection,
+    memoryScopesAny: options.memoryFilter?.scopes,
+    excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+    relPathPrefix: options.retrievalScope?.relPathPrefix,
+    tagsAll: options.tagsAll,
+    tagsAny: options.tagsAny,
+    since: temporalRange.since,
+    until: temporalRange.until,
+    categories: options.categories,
+    author: options.author,
+    exclude: options.exclude,
+    excludeMetadata: true,
+    semanticMetadata: true,
+    language: options.lang,
+  };
   const bm25StartedAt = performance.now();
 
   // BM25: original query
   const bm25Result = await searchFtsChunks(store, query, {
     limit: limit * 2 * retrievalMultiplier,
+    memoryScopesAny: options.memoryFilter?.scopes,
+    excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+    exclude: options.exclude,
+    allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     collection: options.collection,
     lang: options.lang,
     tagsAll: options.tagsAll,
@@ -491,6 +580,10 @@ export async function searchHybrid(
       expansion.lexicalQueries.map((variant) =>
         searchFtsChunks(store, variant, {
           limit: limit * retrievalMultiplier,
+          memoryScopesAny: options.memoryFilter?.scopes,
+          excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+          exclude: options.exclude,
+          allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
           collection: options.collection,
           lang: options.lang,
           tagsAll: options.tagsAll,
@@ -505,6 +598,7 @@ export async function searchHybrid(
     );
 
     for (const settled of lexicalVariantResults) {
+      assertInferenceActive();
       if (settled.status !== "fulfilled") {
         continue;
       }
@@ -520,6 +614,7 @@ export async function searchHybrid(
 
   // Vector search
   let vecCount = 0;
+  let vectorsUsed = false;
   const vectorAvailable =
     (vectorIndex?.searchAvailable && embedPort !== null) ?? false;
   if (!vectorAvailable) {
@@ -541,16 +636,20 @@ export async function searchHybrid(
     ];
 
     if (vectorVariantQueries.length === 0) {
-      const vecChunks = await searchVectorChunks(
+      const vectorResult = await searchVectorChunks(
         vectorIndex,
         embedPort,
         query,
         {
           limit: limit * 2 * retrievalMultiplier,
           allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
+          eligibility: vectorEligibility,
         }
       );
 
+      if (!vectorResult.ok) counters.fallbackEvents.push(vectorResult.reason);
+      else vectorsUsed = true;
+      const vecChunks = vectorResult.ok ? vectorResult.chunks : [];
       vecCount = vecChunks.length;
       vectorTraceChunks.push(...vecChunks);
       if (vecCount > 0) {
@@ -576,6 +675,7 @@ export async function searchHybrid(
         )
       );
 
+      assertInferenceResult(embedResult);
       if (!embedResult.ok) {
         counters.fallbackEvents.push("vector_embed_error");
       } else {
@@ -584,6 +684,7 @@ export async function searchHybrid(
         }
 
         for (const [index, variant] of batchedQueries.entries()) {
+          assertInferenceActive();
           const embedding = embedResult.value.vectors[index];
           if (!embedding || !variant) {
             continue;
@@ -593,14 +694,20 @@ export async function searchHybrid(
             new Float32Array(embedding),
             variant.limit,
             {
+              embeddingIdentity: resolveVectorSearchIdentity(embedPort),
               allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
+              eligibility: vectorEligibility,
             }
           );
-          if (!searchResult.ok || searchResult.value.length === 0) {
+          if (!searchResult.ok) {
+            counters.fallbackEvents.push("vector_search_error");
             continue;
           }
+          vectorsUsed = true;
+          if (searchResult.value.length === 0) continue;
 
           const chunks = searchResult.value.map((item) => ({
+            documentIds: item.documentIds,
             mirrorHash: item.mirrorHash,
             seq: item.seq,
           }));
@@ -641,7 +748,10 @@ export async function searchHybrid(
   const fusionStartedAt = performance.now();
   const candidateLimit =
     options.candidateLimit ?? pipelineConfig.rerankCandidates;
-  let fusedCandidates = rrfFuse(rankedInputs, pipelineConfig.rrf);
+  let fusedCandidates = rrfFuse(
+    await resolveFusionOwners(rankedInputs, store, hydration, query, options),
+    pipelineConfig.rrf
+  );
   diagnoseTrace?.stages.push({
     id: "fusion",
     status: "active",
@@ -651,26 +761,34 @@ export async function searchHybrid(
 
   timings.fusionMs = performance.now() - fusionStartedAt;
   const graphStartedAt = performance.now();
-  const graphExpansion = await expandGraphCandidates(store, fusedCandidates, {
-    collection: options.collection,
-    includeSimilar: vectorAvailable,
-    limit,
-    candidateLimit,
-    disabled: options.graph === false || options.noGraph === true,
-    relPathPrefix: options.retrievalScope?.relPathPrefix,
-    lang: options.lang,
-    tagsAll: options.tagsAll,
-    tagsAny: options.tagsAny,
-    since: temporalRange.since,
-    until: temporalRange.until,
-    categories: options.categories,
-    author: options.author,
-  });
+  const graphExpansion = await expandGraphCandidates(
+    store,
+    fusedCandidates,
+    {
+      collection: options.collection,
+      includeSimilar: vectorAvailable,
+      limit,
+      candidateLimit,
+      disabled: options.graph === false || options.noGraph === true,
+      relPathPrefix: options.retrievalScope?.relPathPrefix,
+      lang: options.lang,
+      tagsAll: options.tagsAll,
+      tagsAny: options.tagsAny,
+      since: temporalRange.since,
+      until: temporalRange.until,
+      categories: options.categories,
+      author: options.author,
+    },
+    hydration
+  );
   timings.graphMs = performance.now() - graphStartedAt;
   if (graphExpansion.candidates.length > 0) {
     const graphFusionStartedAt = performance.now();
     rankedInputs.push(toRankedInput("graph", graphExpansion.candidates));
-    fusedCandidates = rrfFuse(rankedInputs, pipelineConfig.rrf);
+    fusedCandidates = rrfFuse(
+      await resolveFusionOwners(rankedInputs, store, hydration, query, options),
+      pipelineConfig.rrf
+    );
     timings.fusionMs += performance.now() - graphFusionStartedAt;
   }
   diagnoseTrace?.stages.push({
@@ -713,13 +831,14 @@ export async function searchHybrid(
       ) => number)
     | undefined;
   if (auxiliaryRankingActive) {
-    const prefetchedDocumentsResult = await store.getDocumentsByMirrorHashes(
-      [...new Set(fusedCandidates.map((candidate) => candidate.mirrorHash))],
-      {
-        collection: options.collection,
-        activeOnly: true,
-      }
-    );
+    const prefetchedDocumentsResult =
+      await hydration.getDocumentsByMirrorHashes(
+        [...new Set(fusedCandidates.map((candidate) => candidate.mirrorHash))],
+        {
+          collection: options.collection,
+          activeOnly: true,
+        }
+      );
     if (!prefetchedDocumentsResult.ok) {
       return err("QUERY_FAILED", prefetchedDocumentsResult.error.message);
     }
@@ -735,9 +854,15 @@ export async function searchHybrid(
       scoringDocumentsByHash.set(document.mirrorHash, documents);
     }
     adjustNormalizedFusionScore = (candidate, normalizedScore) => {
-      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}`;
+      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}:${candidate.documentId ?? ""}`;
       auxiliaryBaseScores.set(candidateKey, normalizedScore);
-      const documents = scoringDocumentsByHash.get(candidate.mirrorHash);
+      const documents = scoringDocumentsByHash
+        .get(candidate.mirrorHash)
+        ?.filter(
+          (doc) =>
+            candidate.documentId === undefined ||
+            candidate.documentId === doc.id
+        );
       if (!documents?.length) return normalizedScore;
       const projectedScores = documents.map(
         (document) =>
@@ -767,7 +892,7 @@ export async function searchHybrid(
   // ─────────────────────────────────────────────────────────────────────────
   const rerankStartedAt = performance.now();
   const rerankResult = await rerankCandidates(
-    { rerankPort: options.noRerank ? null : rerankPort, store },
+    { rerankPort: options.noRerank ? null : rerankPort, store, hydration },
     query,
     fusedCandidates,
     {
@@ -819,7 +944,7 @@ export async function searchHybrid(
   // Fetch only needed documents and collections.
   let documents = prefetchedDocuments;
   if (!documents) {
-    const docsResult = await store.getDocumentsByMirrorHashes(
+    const docsResult = await hydration.getDocumentsByMirrorHashes(
       [...neededHashes],
       {
         collection: options.collection,
@@ -881,6 +1006,7 @@ export async function searchHybrid(
   const candidateDocs: DocumentRow[] = [];
 
   for (const doc of documents) {
+    assertInferenceActive();
     if (!doc.mirrorHash) {
       continue;
     }
@@ -900,6 +1026,7 @@ export async function searchHybrid(
     if (tagsResult.ok) {
       const tagsByDocId = tagsResult.value;
       for (const doc of candidateDocs) {
+        assertInferenceActive();
         const docTags = new Set(
           (tagsByDocId.get(doc.id) ?? []).map((t) => t.tag)
         );
@@ -924,6 +1051,7 @@ export async function searchHybrid(
   }
 
   for (const docs of docsByMirrorHash.values()) {
+    assertInferenceActive();
     docs.sort((left, right) => {
       if (left.uri < right.uri) return -1;
       if (left.uri > right.uri) return 1;
@@ -934,12 +1062,13 @@ export async function searchHybrid(
   const collectionPaths = new Map<string, string>();
   if (collectionsResult.ok) {
     for (const c of collectionsResult.value) {
+      assertInferenceActive();
       collectionPaths.set(c.name, c.path);
     }
   }
 
   // Pre-fetch all chunks in one batch query (eliminates N+1)
-  const chunksMapResult = await store.getChunksBatch([...neededHashes]);
+  const chunksMapResult = await hydration.getChunksBatch([...neededHashes]);
   if (!chunksMapResult.ok) {
     return err("QUERY_FAILED", chunksMapResult.error.message);
   }
@@ -960,13 +1089,19 @@ export async function searchHybrid(
 
   // Iterate until we have enough results (don't slice early - deduping may skip candidates)
   for (const [candidateIndex, candidate] of filteredCandidates.entries()) {
+    assertInferenceActive();
     // Stop when we have enough results
     if (!auxiliaryRankingActive && results.length >= assemblyLimit) {
       break;
     }
 
     // Find document from pre-fetched map
-    const candidateDocs = docsByMirrorHash.get(candidate.mirrorHash) ?? [];
+    const candidateDocs = (
+      docsByMirrorHash.get(candidate.mirrorHash) ?? []
+    ).filter(
+      (doc) =>
+        candidate.documentId === undefined || candidate.documentId === doc.id
+    );
     if (candidateDocs.length === 0) {
       continue;
     }
@@ -994,7 +1129,9 @@ export async function searchHybrid(
       options.full || !options.intent?.trim()
         ? chunk
         : (selectBestChunkForSteering(
-            chunksMap.get(candidate.mirrorHash) ?? [],
+            (chunksMap.get(candidate.mirrorHash) ?? []).filter(
+              (chunk) => !options.lang || chunk.language === options.lang
+            ),
             query,
             options.intent,
             {
@@ -1014,7 +1151,7 @@ export async function searchHybrid(
       // Get or fetch full content for this mirrorHash
       let contentResult = contentCache.get(candidate.mirrorHash);
       if (!contentResult) {
-        contentResult = await store.getContent(candidate.mirrorHash);
+        contentResult = await hydration.getContent(candidate.mirrorHash);
         contentCache.set(candidate.mirrorHash, contentResult);
       }
 
@@ -1038,6 +1175,7 @@ export async function searchHybrid(
     }
 
     for (const doc of candidateDocs) {
+      assertInferenceActive();
       if (!auxiliaryRankingActive && results.length >= assemblyLimit) break;
       const filterEval = evaluateDocumentChunkFilters(
         query,
@@ -1051,7 +1189,7 @@ export async function searchHybrid(
       ) {
         continue;
       }
-      const docidKey = `${candidate.mirrorHash}:${candidate.seq}`;
+      const docidKey = `${candidate.mirrorHash}:${candidate.seq}${candidate.documentId === undefined ? "" : `:${candidate.documentId}`}`;
       if (!docidMap.has(docidKey)) docidMap.set(docidKey, doc.docid);
       const collectionPath = collectionPaths.get(doc.collection);
       if (options.full && !auxiliaryRankingActive) {
@@ -1088,9 +1226,10 @@ export async function searchHybrid(
         record: projectRecordEvidenceMetadata(doc),
       };
       const auxiliaryBaseScore =
-        auxiliaryBaseScores.get(`${candidate.mirrorHash}:${candidate.seq}`) ??
-        candidate.blendedScore;
-      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}`;
+        auxiliaryBaseScores.get(
+          `${candidate.mirrorHash}:${candidate.seq}:${candidate.documentId ?? ""}`
+        ) ?? candidate.blendedScore;
+      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}:${candidate.documentId ?? ""}`;
       const composedBeforeRerank =
         preRerankAdjustedCandidates.has(candidateKey);
       const scoringBaseScore =
@@ -1172,6 +1311,7 @@ export async function searchHybrid(
 
   const finalResults = dedupedResults.slice(0, limit);
   for (const [index, result] of finalResults.entries()) {
+    assertInferenceActive();
     const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
     if (metadata) metadata.retrievalRank = index + 1;
   }
@@ -1202,10 +1342,10 @@ export async function searchHybrid(
     results: finalResults,
     meta: {
       query,
-      mode: vectorAvailable ? "hybrid" : "bm25_only",
+      mode: vectorsUsed ? "hybrid" : "bm25_only",
       expanded: expansion !== null,
       reranked: rerankResult.reranked,
-      vectorsUsed: vectorAvailable,
+      vectorsUsed,
       totalResults: finalResults.length,
       intent: options.intent,
       exclude: options.exclude,
@@ -1234,11 +1374,13 @@ export async function searchHybrid(
   const capabilityOutcomes = [
     { capability: "lexical_search", status: "used" as const },
     vectorAvailable
-      ? fallbackCodes.includes("vector_embed_error")
+      ? !vectorsUsed
         ? {
             capability: "semantic_search",
             status: "failed" as const,
-            reasonCode: "vector_embed_error",
+            reasonCode: fallbackCodes.includes("vector_embed_error")
+              ? "vector_embed_error"
+              : "vector_search_error",
           }
         : { capability: "semantic_search", status: "used" as const }
       : {
@@ -1304,6 +1446,7 @@ export async function searchHybrid(
 function dedupeFullResultsByDocid(results: SearchResult[]): SearchResult[] {
   const bestByDocid = new Map<string, SearchResult>();
   for (const result of results) {
+    assertInferenceActive();
     const existing = bestByDocid.get(result.docid);
     if (!existing || result.score > existing.score) {
       bestByDocid.set(result.docid, result);

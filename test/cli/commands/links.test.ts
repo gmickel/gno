@@ -522,6 +522,7 @@ describe("gno query diagnose", () => {
       "--target",
       "gno://notes/target.md",
       "--fast",
+      "--offline",
       "--json"
     );
 
@@ -544,6 +545,7 @@ describe("gno query diagnose", () => {
       "--target",
       "gno://notes/target.md",
       "--fast",
+      "--offline",
       "--json",
     ] as const;
     const baseline = await cli(...baseArgs);
@@ -573,6 +575,7 @@ describe("gno query diagnose", () => {
       "--query-mode",
       "term:Target Document",
       "--fast",
+      "--offline",
       "--json"
     );
 

@@ -10,6 +10,65 @@ Import GNO directly into another Bun or TypeScript app and reuse the same local 
 
 No CLI subprocesses. No local server required.
 
+Native GGUF inference runs in an owned persistent Bun child; indexing, policy,
+model selection and downloads stay in the SDK process. Embedding, generation
+and reranking share that child within each LLM adapter. Warm calls reuse it;
+after five minutes of native inactivity by default, it retires and the next call
+loads models again. Actual native work, pending delivery and model-use leases
+prevent retirement; metadata reads do not extend that deadline.
+HTTP inference keeps its existing direct adapter path.
+
+Always call `client.close()` when finished. Adapter owners call
+`LlmAdapter.dispose()` to terminate their native child. An abnormal native exit
+or invalid response becomes a structured inference failure; GNO does not replay
+the failed operation automatically. A later explicit call can acquire a fresh
+child.
+
+Native embedding ports establish current identity during initialization and before
+direct single or batch embedding. The child verifies the model artifact and
+reports dimensions, effective context/truncation policy and runtime identity.
+The parent binds that metadata to the worker generation; it becomes unavailable
+after retirement until initialization refreshes it. HTTP and custom ports may
+omit verified identity. Retrieval does not reuse an activated vector partition
+under an unverified or different identity.
+
+A cold call includes worker startup, model loading and context creation. Its
+latency depends on the model, backend and hardware. Include the native child in
+resource measurements: the SDK parent's memory alone omits native allocations.
+
+### Inference cancellation contract
+
+Low-level embedding, generation and reranking port interfaces accept optional
+`InferenceOptions` (`signal?: AbortSignal`, `deadlineAt?: number`). The deadline
+is an absolute Unix epoch time in milliseconds, covering admission, queueing,
+model loading, evaluation and response publication. Generation accepts these
+options as its third argument, after sampling parameters; embedding methods
+accept them as the second argument and `init` as the first. Reranking accepts
+them as the third argument. Existing calls remain valid.
+
+SDK `search`, `query`, `ask`, and `vsearch` accept the same operational options.
+They propagate through nested retrieval, expansion, answer generation and semantic
+verification into native inference or the remote HTTP fetch. Cancellation
+suppresses late publication and fallback success. Native ownership remains held
+until the operation actually settles or its owned child exits; port cleanup does
+not make the canceled caller wait for noncooperative evaluation.
+
+Caller cancellation uses `INFERENCE_FAILED` with an `AbortError` cause; deadline
+expiry uses `TIMEOUT` with a `TimeoutError` cause. Native failures retain their
+original structured error. Cancellation is not an automatic retry request.
+
+For remote HTTP inference, `inferenceTimeout` measures the complete request
+from policy/DNS preparation through fetch and response-body consumption. The
+client cannot observe the remote model's load/evaluation boundary. The caller's
+`deadlineAt` remains the tighter outer limit. `loadTimeout` applies only to local
+native loading; it does not configure a remote server.
+
+Native generation supports an evaluation abort signal. Embedding and reranking
+support signals during context creation, but do not promise interruption of
+active evaluation. Stopping the caller's wait does not release native capacity.
+The configured native inference timeout starts at evaluation, after loading; it is not
+an end-to-end query deadline.
+
 ## Project hints
 
 `search`, `vsearch`, `query`, `ask`, and context compilation accept optional

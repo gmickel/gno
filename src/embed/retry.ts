@@ -1,9 +1,17 @@
 import type { EmbeddingPort } from "../llm/types";
 import type { StoreResult } from "../store/types";
-import type { BacklogItem, VectorIndexPort, VectorRow } from "../store/vector";
+import type {
+  BacklogItem,
+  VectorIndexPort,
+  VectorRow,
+  VectorStatsPort,
+} from "../store/vector";
 
 import { isSqliteLockContention } from "../core/file-lock";
+import { assertInferenceActive } from "../llm/inference-scope";
 import { formatDocForEmbedding } from "../pipeline/contextual";
+import { err, ok } from "../store/types";
+import { getVectorStatsDatabase } from "../store/vector/stats";
 import { embedTextsWithRecovery } from "./batch";
 
 export const MAX_EMBED_CHUNK_ATTEMPTS = 2;
@@ -42,12 +50,21 @@ export interface EmbedStoreBatchResult {
 // src/cli/commands/index-cmd.ts) must surface contentionErrors in their
 // summary and exit non-zero — the integrator wires that.
 
-export function chunkRetryKey(item: Pick<BacklogItem, "mirrorHash" | "seq">) {
+export function chunkRetryKey(
+  item: Pick<BacklogItem, "mirrorHash" | "seq"> & {
+    documentId?: number;
+    inputHash?: string;
+  }
+) {
+  if (item.documentId !== undefined && item.inputHash !== undefined) {
+    return `${item.documentId}\0${item.mirrorHash}\0${item.seq}\0${item.inputHash}`;
+  }
   return `${item.mirrorHash}\0${item.seq}`;
 }
 
 export function addUniqueSamples(target: string[], samples: string[]): void {
   for (const sample of samples) {
+    assertInferenceActive();
     if (target.length >= MAX_EMBED_FAILURE_SAMPLES) {
       break;
     }
@@ -127,6 +144,7 @@ export async function upsertVectorsWithContentionRetry(
   vectors: VectorRow[],
   delays?: number[]
 ): Promise<StoreResult<void>> {
+  assertInferenceActive();
   let storeResult = await vectorIndex.upsertVectors(vectors);
   let attempts = 1;
   while (
@@ -138,6 +156,7 @@ export async function upsertVectorsWithContentionRetry(
     if (delayMs > 0) {
       await Bun.sleep(delayMs);
     }
+    assertInferenceActive();
     storeResult = await vectorIndex.upsertVectors(vectors);
     attempts += 1;
   }
@@ -150,10 +169,22 @@ export async function embedAndStoreBatch(params: {
   items: BacklogItem[];
   modelUri: string;
   embedFingerprint: string;
+  statsPort?: VectorStatsPort;
+  identityStillCurrent?: () => boolean;
   /** Test seam: override contention-retry delays in milliseconds. */
   delays?: number[];
 }): Promise<EmbedStoreBatchResult> {
   const { embedPort, vectorIndex, items, modelUri, embedFingerprint } = params;
+  const db = params.statsPort && getVectorStatsDatabase(params.statsPort);
+  if (db && !vectorIndex.upsertVectorsChecked)
+    return {
+      embedded: 0,
+      errors: items.length,
+      contentionErrors: 0,
+      retryItems: [],
+      errorSamples: ["Atomic vector checkpoint unavailable"],
+      batchFailed: false,
+    };
   const embedResult = await embedTextsWithRecovery(
     embedPort,
     items.map((item) =>
@@ -180,6 +211,7 @@ export async function embedAndStoreBatch(params: {
   const vectors: VectorRow[] = [];
   const retryItems: BacklogItem[] = [];
   for (const [idx, item] of items.entries()) {
+    assertInferenceActive();
     const embedding = embedResult.value.vectors[idx];
     if (!embedding) {
       retryItems.push(item);
@@ -207,8 +239,75 @@ export async function embedAndStoreBatch(params: {
     };
   }
 
+  let written = 0;
+  let committedRows: VectorRow[] = [];
+  const itemsByKey = new Map(items.map((item) => [chunkRetryKey(item), item]));
+  const checkpoint = (rows: VectorRow[]): VectorRow[] => {
+    assertInferenceActive();
+    if (params.identityStillCurrent && !params.identityStillCurrent())
+      return [];
+    if (!db) return rows;
+    // A concurrently activated verified partition forbids a late legacy write.
+    if (
+      db
+        .query(
+          "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'vector_partitions'"
+        )
+        .get() &&
+      db
+        .query(
+          "SELECT 1 FROM vector_partitions WHERE model = ? AND state = 'active' AND activated_epoch IS NOT NULL LIMIT 1"
+        )
+        .get(modelUri)
+    )
+      return [];
+    return rows.filter((row) => {
+      const item = itemsByKey.get(chunkRetryKey(row));
+      const current = db
+        .query<{ text: string; title: string | null }, [string, number]>(`
+        SELECT c.text, d.title FROM content_chunks c
+        JOIN documents d ON d.mirror_hash = c.mirror_hash AND d.active = 1
+        WHERE c.mirror_hash = ? AND c.seq = ? ORDER BY d.id LIMIT 1
+      `)
+        .get(row.mirrorHash, row.seq);
+      return (
+        !!item &&
+        !!current &&
+        formatDocForEmbedding(
+          current.text,
+          current.title ?? undefined,
+          modelUri
+        ) ===
+          formatDocForEmbedding(item.text, item.title ?? undefined, modelUri)
+      );
+    });
+  };
   const storeResult = await upsertVectorsWithContentionRetry(
-    vectorIndex,
+    {
+      upsertVectors: async (rows) => {
+        if (vectorIndex.upsertVectorsChecked) {
+          const result = await vectorIndex.upsertVectorsChecked(
+            rows,
+            (candidates) => {
+              committedRows = checkpoint(candidates);
+              return committedRows;
+            }
+          );
+          if (!result.ok) return result;
+          written = result.value;
+          return ok(undefined);
+        }
+        if (db)
+          return err("INVALID_INPUT", "Atomic vector checkpoint unavailable");
+        const valid = checkpoint(rows);
+        const result = await vectorIndex.upsertVectors(valid);
+        if (result.ok) {
+          written = valid.length;
+          committedRows = valid;
+        }
+        return result;
+      },
+    },
     vectors,
     params.delays
   );
@@ -237,11 +336,20 @@ export async function embedAndStoreBatch(params: {
     };
   }
 
+  const vectorKeys = new Set(vectors.map((row) => chunkRetryKey(row)));
+  const committedKeys = new Set(committedRows.map((row) => chunkRetryKey(row)));
   return {
-    embedded: vectors.length,
+    embedded: written,
     errors: 0,
     contentionErrors: 0,
-    retryItems,
+    retryItems: [
+      ...retryItems,
+      ...items.filter(
+        (item) =>
+          vectorKeys.has(chunkRetryKey(item)) &&
+          !committedKeys.has(chunkRetryKey(item))
+      ),
+    ],
     errorSamples: embedResult.value.failureSamples,
     suggestion: embedResult.value.retrySuggestion,
     batchFailed: embedResult.value.batchFailed,

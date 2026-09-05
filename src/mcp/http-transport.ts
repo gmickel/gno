@@ -1,9 +1,8 @@
-/** Web Standard Streamable HTTP request routing for the resident MCP runtime. */
-
 import {
   isInitializeRequest,
   type McpServer,
 } from "@modelcontextprotocol/server";
+/** Web Standard Streamable HTTP request routing for the resident MCP runtime. */
 
 import type { DestinationClassification } from "../core/destination-classifier";
 import type { ResidentRequestHandle } from "../serve/resident-runtime";
@@ -16,6 +15,7 @@ import type {
 
 import { MCP_SERVER_NAME, VERSION } from "../app/constants";
 import { EgressDeniedError } from "../core/egress-enforcement";
+import { withInferenceScope } from "../llm/inference-scope";
 import { createMcpServerSurface, type ToolContext } from "./context";
 import {
   enforceHttpMcpEgress,
@@ -416,14 +416,16 @@ export class HttpMcpTransport {
         throw error;
       }
       const handle = () =>
-        transport
-          ? transport.handleRequest(
-              request,
-              requestBody === undefined
-                ? undefined
-                : { parsedBody: requestBody }
-            )
-          : this.#modern.fetch(request, requestBody);
+        withInferenceScope({ signal: admission.signal }, async () =>
+          transport
+            ? transport.handleRequest(
+                request,
+                requestBody === undefined
+                  ? undefined
+                  : { parsedBody: requestBody }
+              )
+            : this.#modern.fetch(request, requestBody)
+        );
       const destinationZone =
         context.peerClassification?.zone ??
         (context.identity === "loopback" ? "loopback" : "remote");

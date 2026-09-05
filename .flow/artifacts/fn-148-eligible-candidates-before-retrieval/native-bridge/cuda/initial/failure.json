@@ -1,0 +1,5 @@
+{
+  "error": "Error: Canonical JSON rejects undefined at $[0].contentType",
+  "status": "incomplete-or-failed",
+  "retained": true
+}

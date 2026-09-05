@@ -1,0 +1,62 @@
+{
+  "task": "fn-148-eligible-candidates-before-retrieval.4",
+  "status": "CUDA bridge captured; Metal requested bridge pending separate owner",
+  "product": "9d0b57e30590b5d71429df538da7a5d0f08fff02",
+  "helpers": "f8a278ef",
+  "packageSha256": "1a01daff5030dfbab0492d8d7d76a759e699a3effbd87ede8a40a290e6879342",
+  "modelSha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+  "initial": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared",
+  "final": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected",
+  "manifest": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda-manifest.json",
+  "capture": {
+    "backends": [
+      "cuda"
+    ],
+    "completeRequests": 32,
+    "allRequestsComplete": true,
+    "errors": [],
+    "parentNative": {
+      "pid": 293903,
+      "bindingLoads": [],
+      "nativeModules": [],
+      "mappedModels": [],
+      "mappingSource": "/proc/self/maps"
+    }
+  },
+  "results": {
+    "status": "captured",
+    "checks": [
+      {
+        "limit": 1,
+        "vectorFullRowsExact": true,
+        "hybridOwnerExact": true,
+        "vectorsUsed": true
+      },
+      {
+        "limit": 10,
+        "vectorFullRowsExact": true,
+        "hybridOwnerExact": true,
+        "vectorsUsed": true
+      }
+    ],
+    "limitation": "Hybrid score assembly is not compared to an independent native fusion implementation; deterministic matrix supplies that declared-domain proof",
+    "targetRankZeroBased": 197,
+    "excludedOwnersAhead": 197,
+    "actualNativeDocumentEmbeddings": 198,
+    "correctedRunEmbedded": 0,
+    "completedFinalQueries": 5,
+    "totalNativeQueryCallsAcrossAttempts": 7,
+    "allOwnedPidsAbsent": true
+  },
+  "preservedFailure": "Initial attempt canonical helper rejected undefined optional contentType after K1; captured JSON wire rows already exact. Corrected comparator projects only JSON serialization before canonical hashing. Separate continuation reused native vectors, unchanged fixture/query/threshold.",
+  "cpuPreparation": "Local reconstruction from pinned text verified; no cross-host database transport",
+  "tests": [
+    "CUDA initial actual embed:198 chunks,0errors; partial query attempt retained",
+    "CUDA corrected continuation:exit0,all5queryoutputs captured",
+    "Native child capture:32/32requests complete,CUDAonly,0errors",
+    "Strict TypeScript and type-aware Oxlint:driver+seed,2files105rules,0warnings0errors",
+    "Oxfmt stdin formatted both ignored artifact files"
+  ],
+  "commits": [],
+  "prs": []
+}

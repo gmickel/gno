@@ -1,0 +1,32 @@
+{
+  "version": "eligible-scaling-v1",
+  "sizes": [
+    201,
+    2001,
+    10001
+  ],
+  "concurrency": [
+    1,
+    4
+  ],
+  "repetitions": 5,
+  "limits": [
+    1,
+    10
+  ],
+  "timerMs": 1,
+  "corpora": [
+    {
+      "size": 201,
+      "sha256": "06cbdc94eebdbb299c4f5525213da5fdc6671db8a5faad6198eead07bb0c9811"
+    },
+    {
+      "size": 2001,
+      "sha256": "86bf68e4d59510e0823d639cc1a83e9a83d9ea0a8c1f661c6e508b57a85d6d55"
+    },
+    {
+      "size": 10001,
+      "sha256": "ad9e03b33592e9387a8f3a491fad92957c1769f6e3b4e1259b1680badb163f31"
+    }
+  ]
+}

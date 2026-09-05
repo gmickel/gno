@@ -164,6 +164,8 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
       // Best-effort - server may already be closed
     }
 
+    await ctx.disposeModels?.();
+
     // 4. Close DB (safe now - no tool or job is running)
     await store.close();
 
@@ -214,4 +216,5 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     });
     // Also resolve on SIGTERM/SIGINT (already handled by shutdown())
   });
+  await shutdown();
 }

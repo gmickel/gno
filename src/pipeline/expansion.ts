@@ -1,16 +1,21 @@
+import { createHash } from "node:crypto"; // No Bun alternative for hashing
+
+import type { InferenceOptions } from "../llm/types";
 /**
  * Query expansion for hybrid search.
  * Uses GenerationPort to generate query variants.
  *
  * @module src/pipeline/expansion
  */
-
-import { createHash } from "node:crypto"; // No Bun alternative for hashing
-
 import type { GenerationPort } from "../llm/types";
 import type { StoreResult } from "../store/types";
 import type { ExpansionResult } from "./types";
 
+import {
+  assertInferenceActive,
+  assertInferenceResult,
+  inferenceOptions,
+} from "../llm/inference-scope";
 import { ok } from "../store/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -449,7 +454,7 @@ export function parseExpansionOutput(
 // Expansion Function
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface ExpansionOptions {
+export interface ExpansionOptions extends InferenceOptions {
   /** Language hint for prompt selection */
   lang?: string;
   /** Timeout in milliseconds */
@@ -474,49 +479,47 @@ export async function expandQuery(
   // Build prompt
   const prompt = buildExpansionPrompt(query, options);
 
-  // Run with timeout (clear timer to avoid resource leak)
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeoutPromise = new Promise<null>((resolve) => {
-    timeoutId = setTimeout(() => resolve(null), timeout);
-  });
-
+  assertInferenceActive(options);
+  const operational = inferenceOptions(options);
+  const budget = new AbortController();
+  const expiresAt = performance.now() + timeout;
+  const timer = setTimeout(() => budget.abort(), timeout);
   try {
-    const result = await Promise.race([
-      genPort.generate(prompt, {
+    const result = await genPort.generate(
+      prompt,
+      {
         temperature: 0,
         seed: 42,
         maxTokens: 512,
         contextSize: options.contextSize,
-      }),
-      timeoutPromise,
-    ]);
-
-    // Clear timeout if generation completed first
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-
-    // Timeout
-    if (result === null) {
+      },
+      {
+        ...operational,
+        signal: operational.signal
+          ? AbortSignal.any([operational.signal, budget.signal])
+          : budget.signal,
+      }
+    );
+    // The independent expansion budget preserves its existing fallback. Caller
+    // cancellation/deadline always wins and cannot become a lexical success.
+    assertInferenceActive(options);
+    if (budget.signal.aborted || performance.now() >= expiresAt)
       return ok(null);
-    }
-
-    // Generation failed
-    if (!result.ok) {
-      return ok(null); // Graceful degradation
-    }
-
-    // Parse result
-    const parsed = parseExpansionOutput(result.value, query);
-    if (!parsed) {
+    assertInferenceResult(result);
+    if (!result.ok) return ok(null);
+    return ok(parseExpansionOutput(result.value, query));
+  } catch (cause) {
+    assertInferenceActive(options);
+    if (budget.signal.aborted || performance.now() >= expiresAt)
       return ok(null);
-    }
-    return ok(parsed);
-  } catch {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    return ok(null); // Graceful degradation
+    if (
+      cause instanceof Error &&
+      ["AbortError", "TimeoutError"].includes(cause.name)
+    )
+      throw cause;
+    return ok(null);
+  } finally {
+    clearTimeout(timer);
   }
 }
 

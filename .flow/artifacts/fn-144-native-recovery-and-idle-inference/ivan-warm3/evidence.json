@@ -1,0 +1,901 @@
+{
+  "status": "warm3 complete; cold primer incomplete; full acceptance remains pending",
+  "productCommit": "d0604b0d7b0c888653390618ab498187bf71b397",
+  "helperCommit": "9244d715",
+  "candidateTarballSha256": "f42dfdddd6296e527f3c4bf01d21bb8a685a33996edcfd1c7624e60fe13320bd",
+  "archiveSha256": "c131477127699a760bd8a07001e51387b347aa2a1a9c317b2b11af48934b81d3",
+  "governorSha256": "24713377c597313ddd1b0e68e4cd64ad7b50ee8bcce9b40173bb36f9feeba90f",
+  "policy": {
+    "stratum": "capacity-warning30-v1",
+    "pressureKey": "kern.memorystatus_vm_pressure_level",
+    "normal": 1,
+    "warning": 2,
+    "critical": 4,
+    "warningBudgetSeconds": 30,
+    "wallSeconds": 120,
+    "ownedGroupRssMiB": 6144,
+    "pollSeconds": 0.2,
+    "xnuSourceCommit": "f6217f891ac0bb64f3d375211650a4c1ff8ca1ea",
+    "warningAccounting": "sample-hold monotonic seconds; raw transition samples retained; resolution <=250ms"
+  },
+  "policyApplication": "Original unchanged governor applies a stricter total30s warning and120s wall cap to the entire four-call session",
+  "wallSeconds": 34.00975270848721,
+  "warningSeconds": 7.508538001216948,
+  "peakOwnedGroupMiB": 5701.671875,
+  "maxPollSeconds": 0.21007624920457602,
+  "observations": [
+    {
+      "phase": "cold-primer",
+      "reply": "notes/fn144.5-capture-ivan-warm3/raw/protocol/session-3sBTQQ/2.reply.json.gz",
+      "coverage": "incomplete",
+      "reasons": [
+        "native_fallback"
+      ],
+      "rawMeta": {
+        "query": "what retry budget did we decide and why",
+        "mode": "hybrid",
+        "expanded": false,
+        "reranked": true,
+        "vectorsUsed": true,
+        "totalResults": 5,
+        "candidateLimit": 20,
+        "graphExpansion": {
+          "enabled": true,
+          "seedCount": 5,
+          "candidateCount": 20,
+          "maxCandidates": 20,
+          "edgeConfidence": {
+            "explicit": 39,
+            "inferred": 0,
+            "ambiguous": 0,
+            "similarity": 0
+          },
+          "fallbackReasons": []
+        },
+        "queryLanguage": "nl",
+        "explain": {
+          "lines": [
+            {
+              "stage": "lang",
+              "message": "queryLanguage=nl (detected)"
+            },
+            {
+              "stage": "expansion",
+              "message": "skipped (timeout)"
+            },
+            {
+              "stage": "bm25",
+              "message": "0 candidates"
+            },
+            {
+              "stage": "vector",
+              "message": "10 candidates"
+            },
+            {
+              "stage": "graph",
+              "message": "seeds=5, candidates=20/20, explicit=39, inferred=0, ambiguous=0, similarity=0"
+            },
+            {
+              "stage": "fusion",
+              "message": "RRF k=60, 27 unique candidates"
+            },
+            {
+              "stage": "rerank",
+              "message": "top 20 reranked"
+            },
+            {
+              "stage": "timing",
+              "message": "lang=0.55ms, expansion=5005.49ms, bm25=0.59ms, vector=1524.61ms, graph=13.17ms, fusion=2.52ms, rerank=3120.77ms, assembly=1.88ms, total=9669.80ms"
+            },
+            {
+              "stage": "counters",
+              "message": "expansionCache=0/0, rerankCache=0/0, fallbacks=none"
+            }
+          ],
+          "results": [
+            {
+              "rank": 1,
+              "docid": "#f5a86388",
+              "score": 0.9999115796142813,
+              "fusionScore": 0.13278688524590165,
+              "vecScore": 0.01639344262295082,
+              "rerankScore": 0.9996463184571254
+            },
+            {
+              "rank": 2,
+              "docid": "#4467ed57",
+              "score": 0.6991168994490258,
+              "fusionScore": 0.07125000000000001,
+              "vecScore": 0.015625,
+              "rerankScore": 0.9995445850711627
+            },
+            {
+              "rank": 3,
+              "docid": "#4feebe6e",
+              "score": 0.6969497791927699,
+              "fusionScore": 0.07076923076923078,
+              "vecScore": 0.015384615384615385,
+              "rerankScore": 1
+            },
+            {
+              "rank": 4,
+              "docid": "#5d5eb137",
+              "score": 0.629982654267111,
+              "fusionScore": 0.07225806451612904,
+              "vecScore": 0.016129032258064516,
+              "rerankScore": 0.9988056762871871
+            },
+            {
+              "rank": 5,
+              "docid": "#c11074de",
+              "score": 0.6271125782741954,
+              "fusionScore": 0.07174603174603175,
+              "vecScore": 0.015873015873015872,
+              "rerankScore": 0.9998356522791835
+            }
+          ]
+        }
+      },
+      "parentNative": {
+        "pid": 948,
+        "bindingLoads": [],
+        "nativeModules": [],
+        "mappedModels": null,
+        "mappingSource": "unavailable-use-owned-GPU-and-platform-proof"
+      },
+      "rawModelInputCount": 4,
+      "rawModelOutputCount": 3,
+      "nativeRequestCount": 7,
+      "nativeIdentities": [
+        "{\"entry\": \"/private/tmp/fn1445-warm-packed-9244d715.w5WfkX/package/src/llm/native-worker/entry.ts\", \"generation\": 1, \"parentPid\": 948, \"pid\": 965, \"runId\": \"7d592222-ff47-4f11-a13f-cd1ebc73335e\", \"token\": \"99189407-2fe2-4f3e-b2c4-153448d5eeda\"}"
+      ],
+      "nativeAllComplete": true,
+      "errors": [],
+      "capturedPipelineTrace": {
+        "capabilityOutcomes": [
+          {
+            "capability": "lexical_search",
+            "status": "used"
+          },
+          {
+            "capability": "semantic_search",
+            "status": "used"
+          },
+          {
+            "capability": "query_expansion",
+            "status": "failed",
+            "reasonCode": "expansion_error"
+          },
+          {
+            "capability": "reranking",
+            "status": "used"
+          },
+          {
+            "capability": "graph_expansion",
+            "status": "used"
+          }
+        ],
+        "fallbackCodes": []
+      }
+    },
+    {
+      "phase": "warm-1",
+      "reply": "notes/fn144.5-capture-ivan-warm3/raw/protocol/session-3sBTQQ/5.reply.json.gz",
+      "coverage": "complete",
+      "reasons": [],
+      "rawMeta": {
+        "query": "what retry budget did we decide and why",
+        "mode": "hybrid",
+        "expanded": true,
+        "reranked": true,
+        "vectorsUsed": true,
+        "totalResults": 5,
+        "candidateLimit": 20,
+        "graphExpansion": {
+          "enabled": true,
+          "seedCount": 5,
+          "candidateCount": 20,
+          "maxCandidates": 20,
+          "edgeConfidence": {
+            "explicit": 89,
+            "inferred": 0,
+            "ambiguous": 0,
+            "similarity": 0
+          },
+          "fallbackReasons": []
+        },
+        "queryLanguage": "nl",
+        "explain": {
+          "lines": [
+            {
+              "stage": "lang",
+              "message": "queryLanguage=nl (detected)"
+            },
+            {
+              "stage": "expansion",
+              "message": "enabled (4 lexical, 2 semantic variants, 1 HyDE)"
+            },
+            {
+              "stage": "bm25",
+              "message": "0 candidates"
+            },
+            {
+              "stage": "vector",
+              "message": "10 candidates"
+            },
+            {
+              "stage": "graph",
+              "message": "seeds=5, candidates=20/20, explicit=89, inferred=0, ambiguous=0, similarity=0"
+            },
+            {
+              "stage": "fusion",
+              "message": "RRF k=60, 29 unique candidates"
+            },
+            {
+              "stage": "rerank",
+              "message": "top 20 reranked"
+            },
+            {
+              "stage": "timing",
+              "message": "lang=0.26ms, expansion=4061.32ms, bm25=1.08ms, vector=148.33ms, graph=22.92ms, fusion=0.96ms, rerank=2256.82ms, assembly=0.74ms, total=6492.46ms"
+            },
+            {
+              "stage": "counters",
+              "message": "expansionCache=0/0, rerankCache=0/0, fallbacks=none"
+            }
+          ],
+          "results": [
+            {
+              "rank": 1,
+              "docid": "#f5a86388",
+              "score": 0.9999115796142813,
+              "fusionScore": 0.16065573770491803,
+              "vecScore": 0.01639344262295082,
+              "rerankScore": 0.9996463184571254
+            },
+            {
+              "rank": 2,
+              "docid": "#c11074de",
+              "score": 0.7516309161787857,
+              "fusionScore": 0.09830853174603175,
+              "vecScore": 0.015873015873015872,
+              "rerankScore": 0.9998356522791835
+            },
+            {
+              "rank": 3,
+              "docid": "#4467ed57",
+              "score": 0.7512181656518654,
+              "fusionScore": 0.098234126984127,
+              "vecScore": 0.015873015873015872,
+              "rerankScore": 0.9995445850711627
+            },
+            {
+              "rank": 4,
+              "docid": "#46d18841",
+              "score": 0.7270970669668059,
+              "fusionScore": 0.10819672131147541,
+              "bm25Score": 0.01639344262295082,
+              "rerankScore": 0.9530019784221743
+            },
+            {
+              "rank": 5,
+              "docid": "#4feebe6e",
+              "score": 0.7155436511258058,
+              "fusionScore": 0.08923076923076924,
+              "vecScore": 0.015384615384615385,
+              "rerankScore": 1
+            }
+          ]
+        }
+      },
+      "parentNative": {
+        "pid": 948,
+        "bindingLoads": [],
+        "nativeModules": [],
+        "mappedModels": null,
+        "mappingSource": "unavailable-use-owned-GPU-and-platform-proof"
+      },
+      "rawModelInputCount": 7,
+      "rawModelOutputCount": 3,
+      "nativeRequestCount": 7,
+      "nativeIdentities": [
+        "{\"entry\": \"/private/tmp/fn1445-warm-packed-9244d715.w5WfkX/package/src/llm/native-worker/entry.ts\", \"generation\": 1, \"parentPid\": 948, \"pid\": 965, \"runId\": \"7d592222-ff47-4f11-a13f-cd1ebc73335e\", \"token\": \"99189407-2fe2-4f3e-b2c4-153448d5eeda\"}"
+      ],
+      "nativeAllComplete": true,
+      "errors": [],
+      "capturedPipelineTrace": {
+        "capabilityOutcomes": [
+          {
+            "capability": "lexical_search",
+            "status": "used"
+          },
+          {
+            "capability": "semantic_search",
+            "status": "used"
+          },
+          {
+            "capability": "query_expansion",
+            "status": "used"
+          },
+          {
+            "capability": "reranking",
+            "status": "used"
+          },
+          {
+            "capability": "graph_expansion",
+            "status": "used"
+          }
+        ],
+        "fallbackCodes": []
+      }
+    },
+    {
+      "phase": "warm-2",
+      "reply": "notes/fn144.5-capture-ivan-warm3/raw/protocol/session-3sBTQQ/8.reply.json.gz",
+      "coverage": "complete",
+      "reasons": [],
+      "rawMeta": {
+        "query": "what retry budget did we decide and why",
+        "mode": "hybrid",
+        "expanded": true,
+        "reranked": true,
+        "vectorsUsed": true,
+        "totalResults": 5,
+        "candidateLimit": 20,
+        "graphExpansion": {
+          "enabled": true,
+          "seedCount": 5,
+          "candidateCount": 20,
+          "maxCandidates": 20,
+          "edgeConfidence": {
+            "explicit": 89,
+            "inferred": 0,
+            "ambiguous": 0,
+            "similarity": 0
+          },
+          "fallbackReasons": []
+        },
+        "queryLanguage": "nl",
+        "explain": {
+          "lines": [
+            {
+              "stage": "lang",
+              "message": "queryLanguage=nl (detected)"
+            },
+            {
+              "stage": "expansion",
+              "message": "enabled (4 lexical, 2 semantic variants, 1 HyDE)"
+            },
+            {
+              "stage": "bm25",
+              "message": "0 candidates"
+            },
+            {
+              "stage": "vector",
+              "message": "10 candidates"
+            },
+            {
+              "stage": "graph",
+              "message": "seeds=5, candidates=20/20, explicit=89, inferred=0, ambiguous=0, similarity=0"
+            },
+            {
+              "stage": "fusion",
+              "message": "RRF k=60, 29 unique candidates"
+            },
+            {
+              "stage": "rerank",
+              "message": "top 20 reranked"
+            },
+            {
+              "stage": "timing",
+              "message": "lang=0.16ms, expansion=3880.83ms, bm25=0.77ms, vector=143.20ms, graph=21.45ms, fusion=0.89ms, rerank=2283.79ms, assembly=0.70ms, total=6331.83ms"
+            },
+            {
+              "stage": "counters",
+              "message": "expansionCache=0/0, rerankCache=0/0, fallbacks=none"
+            }
+          ],
+          "results": [
+            {
+              "rank": 1,
+              "docid": "#f5a86388",
+              "score": 0.9999115796142813,
+              "fusionScore": 0.16065573770491803,
+              "vecScore": 0.01639344262295082,
+              "rerankScore": 0.9996463184571254
+            },
+            {
+              "rank": 2,
+              "docid": "#c11074de",
+              "score": 0.7516309161787857,
+              "fusionScore": 0.09830853174603175,
+              "vecScore": 0.015873015873015872,
+              "rerankScore": 0.9998356522791835
+            },
+            {
+              "rank": 3,
+              "docid": "#4467ed57",
+              "score": 0.7512181656518654,
+              "fusionScore": 0.098234126984127,
+              "vecScore": 0.015873015873015872,
+              "rerankScore": 0.9995445850711627
+            },
+            {
+              "rank": 4,
+              "docid": "#46d18841",
+              "score": 0.7270970669668059,
+              "fusionScore": 0.10819672131147541,
+              "bm25Score": 0.01639344262295082,
+              "rerankScore": 0.9530019784221743
+            },
+            {
+              "rank": 5,
+              "docid": "#4feebe6e",
+              "score": 0.7155436511258058,
+              "fusionScore": 0.08923076923076924,
+              "vecScore": 0.015384615384615385,
+              "rerankScore": 1
+            }
+          ]
+        }
+      },
+      "parentNative": {
+        "pid": 948,
+        "bindingLoads": [],
+        "nativeModules": [],
+        "mappedModels": null,
+        "mappingSource": "unavailable-use-owned-GPU-and-platform-proof"
+      },
+      "rawModelInputCount": 7,
+      "rawModelOutputCount": 3,
+      "nativeRequestCount": 7,
+      "nativeIdentities": [
+        "{\"entry\": \"/private/tmp/fn1445-warm-packed-9244d715.w5WfkX/package/src/llm/native-worker/entry.ts\", \"generation\": 1, \"parentPid\": 948, \"pid\": 965, \"runId\": \"7d592222-ff47-4f11-a13f-cd1ebc73335e\", \"token\": \"99189407-2fe2-4f3e-b2c4-153448d5eeda\"}"
+      ],
+      "nativeAllComplete": true,
+      "errors": [],
+      "capturedPipelineTrace": {
+        "capabilityOutcomes": [
+          {
+            "capability": "lexical_search",
+            "status": "used"
+          },
+          {
+            "capability": "semantic_search",
+            "status": "used"
+          },
+          {
+            "capability": "query_expansion",
+            "status": "used"
+          },
+          {
+            "capability": "reranking",
+            "status": "used"
+          },
+          {
+            "capability": "graph_expansion",
+            "status": "used"
+          }
+        ],
+        "fallbackCodes": []
+      }
+    },
+    {
+      "phase": "warm-3",
+      "reply": "notes/fn144.5-capture-ivan-warm3/raw/protocol/session-3sBTQQ/11.reply.json.gz",
+      "coverage": "complete",
+      "reasons": [],
+      "rawMeta": {
+        "query": "what retry budget did we decide and why",
+        "mode": "hybrid",
+        "expanded": true,
+        "reranked": true,
+        "vectorsUsed": true,
+        "totalResults": 5,
+        "candidateLimit": 20,
+        "graphExpansion": {
+          "enabled": true,
+          "seedCount": 5,
+          "candidateCount": 20,
+          "maxCandidates": 20,
+          "edgeConfidence": {
+            "explicit": 89,
+            "inferred": 0,
+            "ambiguous": 0,
+            "similarity": 0
+          },
+          "fallbackReasons": []
+        },
+        "queryLanguage": "nl",
+        "explain": {
+          "lines": [
+            {
+              "stage": "lang",
+              "message": "queryLanguage=nl (detected)"
+            },
+            {
+              "stage": "expansion",
+              "message": "enabled (4 lexical, 2 semantic variants, 1 HyDE)"
+            },
+            {
+              "stage": "bm25",
+              "message": "0 candidates"
+            },
+            {
+              "stage": "vector",
+              "message": "10 candidates"
+            },
+            {
+              "stage": "graph",
+              "message": "seeds=5, candidates=20/20, explicit=89, inferred=0, ambiguous=0, similarity=0"
+            },
+            {
+              "stage": "fusion",
+              "message": "RRF k=60, 29 unique candidates"
+            },
+            {
+              "stage": "rerank",
+              "message": "top 20 reranked"
+            },
+            {
+              "stage": "timing",
+              "message": "lang=0.14ms, expansion=3897.59ms, bm25=0.66ms, vector=143.48ms, graph=22.71ms, fusion=0.82ms, rerank=2282.12ms, assembly=0.61ms, total=6348.19ms"
+            },
+            {
+              "stage": "counters",
+              "message": "expansionCache=0/0, rerankCache=0/0, fallbacks=none"
+            }
+          ],
+          "results": [
+            {
+              "rank": 1,
+              "docid": "#f5a86388",
+              "score": 0.9999115796142813,
+              "fusionScore": 0.16065573770491803,
+              "vecScore": 0.01639344262295082,
+              "rerankScore": 0.9996463184571254
+            },
+            {
+              "rank": 2,
+              "docid": "#c11074de",
+              "score": 0.7516309161787857,
+              "fusionScore": 0.09830853174603175,
+              "vecScore": 0.015873015873015872,
+              "rerankScore": 0.9998356522791835
+            },
+            {
+              "rank": 3,
+              "docid": "#4467ed57",
+              "score": 0.7512181656518654,
+              "fusionScore": 0.098234126984127,
+              "vecScore": 0.015873015873015872,
+              "rerankScore": 0.9995445850711627
+            },
+            {
+              "rank": 4,
+              "docid": "#46d18841",
+              "score": 0.7270970669668059,
+              "fusionScore": 0.10819672131147541,
+              "bm25Score": 0.01639344262295082,
+              "rerankScore": 0.9530019784221743
+            },
+            {
+              "rank": 5,
+              "docid": "#4feebe6e",
+              "score": 0.7155436511258058,
+              "fusionScore": 0.08923076923076924,
+              "vecScore": 0.015384615384615385,
+              "rerankScore": 1
+            }
+          ]
+        }
+      },
+      "parentNative": {
+        "pid": 948,
+        "bindingLoads": [],
+        "nativeModules": [],
+        "mappedModels": null,
+        "mappingSource": "unavailable-use-owned-GPU-and-platform-proof"
+      },
+      "rawModelInputCount": 7,
+      "rawModelOutputCount": 3,
+      "nativeRequestCount": 7,
+      "nativeIdentities": [
+        "{\"entry\": \"/private/tmp/fn1445-warm-packed-9244d715.w5WfkX/package/src/llm/native-worker/entry.ts\", \"generation\": 1, \"parentPid\": 948, \"pid\": 965, \"runId\": \"7d592222-ff47-4f11-a13f-cd1ebc73335e\", \"token\": \"99189407-2fe2-4f3e-b2c4-153448d5eeda\"}"
+      ],
+      "nativeAllComplete": true,
+      "errors": [],
+      "capturedPipelineTrace": {
+        "capabilityOutcomes": [
+          {
+            "capability": "lexical_search",
+            "status": "used"
+          },
+          {
+            "capability": "semantic_search",
+            "status": "used"
+          },
+          {
+            "capability": "query_expansion",
+            "status": "used"
+          },
+          {
+            "capability": "reranking",
+            "status": "used"
+          },
+          {
+            "capability": "graph_expansion",
+            "status": "used"
+          }
+        ],
+        "fallbackCodes": []
+      }
+    }
+  ],
+  "warmExactDeterministicEquality": true,
+  "warmExactRawPortInputEquality": true,
+  "warmExactRawPortOutputEquality": true,
+  "cleanup": {
+    "checkedPids": [
+      946,
+      948,
+      965,
+      972,
+      979,
+      1071,
+      1078,
+      1086,
+      1093,
+      1101,
+      1108,
+      1116,
+      1123,
+      1130,
+      1137,
+      1151,
+      1262,
+      1269,
+      1278,
+      1283,
+      1292,
+      1300,
+      1308,
+      1315,
+      1324,
+      1431,
+      1437,
+      1447,
+      1468,
+      1488,
+      1497,
+      1504,
+      1511,
+      1520,
+      1528,
+      1608,
+      1617,
+      1623,
+      1630,
+      1637,
+      1645,
+      1652,
+      1659,
+      1666,
+      1762,
+      1769,
+      1776,
+      1785,
+      1791,
+      1798,
+      1805,
+      1813,
+      1923,
+      1929,
+      1936,
+      1944,
+      1951,
+      1959,
+      1966,
+      1973,
+      2056,
+      2065,
+      2072,
+      2078,
+      2086,
+      2093,
+      2100
+    ],
+    "psExit": 1,
+    "psStdout": "",
+    "psStderr": "",
+    "pressure": "kern.memorystatus_vm_pressure_level: 1\n"
+  },
+  "resourcesErrors": [],
+  "files": {
+    "setup.json": "d76df3b69477635e35a4cda849d2676689129a9c6d4b9910293052d60ab20f8f",
+    "manifest.json": "99c631c79ad7d6aefd410098909019232000bcaa0e18b0079985d9d507b5e146",
+    "config.json": "0add25fc60d8e1a9848f7aa275ba5efaf45a5a7af9f1fed2465ad8ba762e8c8a",
+    "fixtures.json": "1c62a7609674d06645dadca3b6141fb4222a80eff61c21e5e8124ed7d1b15097",
+    "product-files.json": "55083a3372bded960180c6b2abd27873ab49c642188344c2dbdad09e1ae39d8f",
+    "helper-files.json": "dd2b25136e60b6f3408cc3b2cf286f5877446f692ab292eb187bd21475430a2f",
+    "prepare.py": "13ceb301e6e888402e6b0fcefb8cffd2b05f9432fc86875fd26ca821eeae9e98",
+    "first.ts": "29780362a79a8ad4ac84b20a999e8dd3c453e874f94e4a0fce6da7b3f3bfb57f",
+    "watchdog.py": "24713377c597313ddd1b0e68e4cd64ad7b50ee8bcce9b40173bb36f9feeba90f",
+    "evidence/warm-four.receipt.json": "5d8716a390506a4e342c2d0f2e2dfc83aac45bdbc5e3eaaf531f21cf1b12097a",
+    "evidence/warm-1.json": "521ecdc43c806d22b2b4879f5a21335a2dad8e1bd9d4274bffa2803a9b51bc63",
+    "evidence/warm-summary.json": "462317c86a7a9735b1d9b3c68f3cbea9023e156e2c327b2b6ab31d66527830b1",
+    "evidence/cold-primer.json": "7d852a351ff6ec0030933b49c309c1140fde9941c97e3af80388b57d40be8168",
+    "evidence/resources.json": "8aad760b68edacf9f590f87195b4db1846bcab2041c085b6dacbaa7e3a7cfa54",
+    "evidence/warm-four.stdout": "3ffca6931476f46f5a6f018bdd6c911e181db70ead9ecf9248191d70146054b0",
+    "evidence/cleanup.json": "c8526b80ae41c436c891a826c69f086cd7183a88b7481b2079156c6d693adf47",
+    "evidence/warm-2.json": "e3faf792fef6396feba43aaeb68e504baaaa2895bbed1742b71552ecaac966c3",
+    "evidence/warm-3.json": "a82487c3de41a638f629710095d4c6b20e92754a0d17d46a6fc964b66ceeff07",
+    "evidence/warm-four.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "protocol/session-3sBTQQ/9.reply.json.gz": "2c793d9d2476f3b2ff5bba16376762bb29fabfbe39ff79fcd650c58b28e4d3ea",
+    "protocol/session-3sBTQQ/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "protocol/session-3sBTQQ/parent-capture.json": "06eb1eeba69a0e7d42fe3dd0bcbcab51fb3963a06ce7689879f0d5a0933d2511",
+    "protocol/session-3sBTQQ/12.reply.json.gz": "cf441ecc8a50f7be6f0ed174fb9fbca376ece5584dd55471ef23d40c816cbf95",
+    "protocol/session-3sBTQQ/4.reply.json.gz": "9241fe33248cc31f5e86c280bbf794445fb4b3617e9e4cc050936b62b95ae7fd",
+    "protocol/session-3sBTQQ/7.reply.json.gz": "1cbfd8c6d263af182767c0721ac6ad0bb5cd3292e54bceb5ddb87acbb43989a6",
+    "protocol/session-3sBTQQ/harness.json": "6ae1cb6c313687ccc5c2bb04b1b37a689226f69a6ca7bde2f55b0749b36e29b4",
+    "protocol/session-3sBTQQ/3.reply.json.gz": "0c1ec36f7d302aadef928464907c1c6f6b682e22921f158b467edcc6bc630f1a",
+    "protocol/session-3sBTQQ/11.reply.json.gz": "a34e873873067f3f9af82f2535a89e2b09ac243a867b59ea125dfa79a6cd8bfd",
+    "protocol/session-3sBTQQ/stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "protocol/session-3sBTQQ/2.reply.json.gz": "c327649d9f3ec2f8e0133746a4d78de82ea4ace0690304241da3322d1cffc0c2",
+    "protocol/session-3sBTQQ/6.reply.json.gz": "e4372c1cf6b89ab8ba0a94bad4e3a9d88f243828a423f1fd852a90acff3245f8",
+    "protocol/session-3sBTQQ/readiness.json": "9e817951eaa7b0ab87ae4af6058245cffbf15bfd8a82238613805c120aa0954a",
+    "protocol/session-3sBTQQ/10.reply.json.gz": "fb7f4f475e612c45c06497ec452ec619a78533deba7c691b6e5ea3600bc886a5",
+    "protocol/session-3sBTQQ/requests.json": "90069901c221af613c0269b51e30ab3865dd7bbe732eafe83051c47fae67cfed",
+    "protocol/session-3sBTQQ/13.reply.json.gz": "6e9e47abf5d28e17d0e095ac35603339648f7d684618fcbdb571fc88faa853f0",
+    "protocol/session-3sBTQQ/1.reply.json.gz": "08792a74e890c4f2ccd126891d42031122f3f00dba340e451a09d4e72919c73d",
+    "protocol/session-3sBTQQ/5.reply.json.gz": "976ac55d9a4b74b6e4b35796cb93b041cba74e2f0c758868c00247931d2eb009",
+    "protocol/session-3sBTQQ/children.json": "b2466c4e3dbc35a11854432b27ca2f1a30cc4397436ed4ce1fd1284d3f84901e",
+    "protocol/session-3sBTQQ/bootstrap.json": "6938dc91309f369ecf970d8453cfc785a8e8768f75dccdddf6dcb2687a37e56a",
+    "protocol/session-3sBTQQ/8.reply.json.gz": "660f4c15031314f5bb639302ba8d200fa01e00c6ac89555c9e919215d4672072",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-22.json": "d5676638268d4ea1cdbd8426a4938c8fdfda6fc87ba4fc456925f97410fef060",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-1.json": "360dee0b491ebc9ec166f362a4df5efb2aff88780e5f5f24b03d8b2cecec0dc7",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-18.json": "fb9e4087a50fd145b7a9c23d7b69bd28fb87ba4a45e2c62ac806847733851f69",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-14.json": "5e28dc2667ac332b930a37494e145f2e2e32db6be6e9b29e4d8b3d5e40cec289",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-15.json": "10b614c85e9e6bb4d3cc6eff757330b9986ede9ca1f1d4801bc7ec40f966e720",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-19.json": "7a9a92f547e3617c6a5eae29ab39847234b9c4e6e71dd7c47402aebab0a004a6",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-23.json": "38608f3363a4de0cad032f96fd89de336a7a7f58d265c7e772e6de43a659e3c8",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-28.json": "618f4630a6e39e406a1a5c925bdb90e808e4650c98c4fb00dc1408bbb0717f57",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-12.json": "46bffadd362ef52c2ac30cce3bad845d663d828bd52645f1930181fbe973cc03",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-24.json": "fd8b7d707c754503b65b2497d0236282177d9ba117c930a2d83d07015da30c93",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-7.json": "fd2ac124123cf8db360aee4d9a67ea9fde8640cc8f31b80186c46c3f76b0b4c0",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-25.json": "e2d6303c8e783801e4009631bf288573aa1077a1a10267febbc54089b960f386",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-6.json": "5ecb51eb4663c644ac24518c633dc53e238227af248b8873402c29082d0982bb",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-13.json": "c282a89d1e67e0940e60155409d91fff3bcf23daa69830d07c43b5e466557c02",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-10.json": "17de1846ea00fb2e0c05d61fbe26f8e1ccaccbaa6788195f8a08645fbd0fa7ba",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-9.json": "c54cf03ef2ba6a01937911a325b3c6a7404281be8ae72c1700eda43312590345",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-5.json": "4442ae43d5bc3f45a64018c9c583d512f1026e7ad667b25c877e0025f1197daa",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-26.json": "4d34bd54b894d75eb663ecfcd473e0efd263b0713502b5d02176ba022c285ed2",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-4.json": "3745f0d45a374cae194ab07ba5e1773ece0eda2d7240bfb466390018efcb66a6",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-27.json": "13c120eaea6c0e3a888249dbfd5fd2b89934692f03210bd61db82ca9f04f3f61",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-8.json": "35650023f2112e1dbe2fd5e2415f7be8eca83d9f123af7fda1d2b17d5d889c55",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-11.json": "fcb10d838aadae557da893e3c688ed5d4a5cd9d9d5035d88e71359ca14255ccf",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-3.json": "87ca9f7e4dd75769b8d31e8085060c7216440aa1f4959eed75098a20b78681d6",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-20.json": "2de5f14c2c54de08012ac8977e194215753adcb1078445b1f541b7b9e627f044",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-16.json": "b2b1de1944e2b015b96ec14d5046ca03380f54cec11eecd9bfeaa938012ac51d",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-17.json": "c3c1ed16084853fd55d942780c0ee7bf462a29e3954286dfadfd268d22ec1a32",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-2.json": "99c089b38ebfdb7d5587411fcb6c46b7b418dbf22b992c07b8c64d54d850c2f0",
+    "protocol/session-3sBTQQ/native-Ho3gy3/965-21.json": "a3ee8c894d857f3cf2d8be801c5cca99baa7a8e7c1403a8461fd2c2a45e3292c",
+    "protocol/session-3sBTQQ/native-Ho3gy3/bootstrap.json": "9d17c07fbaf6a1f42f8268b698ba20cda1903a530c3639cf0141911565dc8e12",
+    "protocol/session-3sBTQQ/cache/bun/@t@/7a87559fbb4087c4.pile": "43ad90878ada5ec2e513032ffc103e8791fca6ab52729ac9830b7e7435623842",
+    "protocol/session-3sBTQQ/cache/bun/@t@/9e8758c8517cedac.pile": "2914190809fbafd4e23bcd34cfa2cd06f3e7b275fee71559e749bb3b2f9cf6b3",
+    "protocol/session-3sBTQQ/cache/bun/@t@/8111b123ffc15d51.pile": "b3baa27f8e8dc8b14aeabfc7278273d7a4a001397371945551cba182090b4fa0",
+    "protocol/session-3sBTQQ/cache/bun/@t@/ae7304b5448338c7.pile": "b57659eaa8b84e6014cd8744e55d45f5010d74600512627e6cd13bf6f4ebe2e5",
+    "protocol/session-3sBTQQ/cache/bun/@t@/5a4a1d3fb0f9cb3a.pile": "0e2eef7aa3b7527133ec06e360c964c4b119bcbf7aff26d31c728b75ec065cf0",
+    "protocol/session-3sBTQQ/cache/bun/@t@/cf86f20c120ce818.pile": "6ed922209f60e274d8217f07ef3c8a71c59bcc54ca96ca8d28691db9784ef60e",
+    "protocol/session-3sBTQQ/cache/bun/@t@/91f1e5a9fb66c76c.pile": "577004b2017ae9ddcf4f7534ff5314fdec0ec42ed37d428119a7b374b6aec7a8",
+    "protocol/session-3sBTQQ/cache/bun/@t@/851cb60a3259f7e1.pile": "bfc666a005c05f485b50f1ac830dfbdc60c21c46a26eb15f1237b59fd2348bf1",
+    "protocol/session-3sBTQQ/tmp/bun/@t@/7a87559fbb4087c4.pile": "43ad90878ada5ec2e513032ffc103e8791fca6ab52729ac9830b7e7435623842",
+    "protocol/session-3sBTQQ/tmp/bun/@t@/29c6a8125ab3f718.pile": "3763f1320f08d7d7d5bbb26f3623412772b82e780bafbdcaecfd6cf53f0d2dd5",
+    "protocol/session-3sBTQQ/tmp/bun/@t@/b87698c43918d4d2.pile": "63dfbaf9440f3c2c379ab423b2b9872b8ed41983abe056aff8103e486f5351cb",
+    "protocol/session-3sBTQQ/tmp/bun/@t@/8118a7e70dc83dbb.pile": "808ff6eb22ed2c9e2173696b4a87d8d7de1b6fd56c860cf4ef1c552c9ff3d5f2",
+    "protocol/session-3sBTQQ/tmp/bun/@t@/7f3921ba02fe9373.pile": "5cd05ed5c6534a31a2f4107b2d666451c1384cb87f216796674c6385c38853bc",
+    "protocol/session-3sBTQQ/tmp/bun/@t@/cf86f20c120ce818.pile": "6ed922209f60e274d8217f07ef3c8a71c59bcc54ca96ca8d28691db9784ef60e",
+    "protocol/session-3sBTQQ/tmp/bun/@t@/91f1e5a9fb66c76c.pile": "577004b2017ae9ddcf4f7534ff5314fdec0ec42ed37d428119a7b374b6aec7a8",
+    "protocol/session-3sBTQQ/tmp/bun/@t@/0012e8e5e9e525dc.pile": "26fbfd63645a80aa028a7bcfc0695a2737cc6543538e6dc82e208a3553038d92"
+  },
+  "curation": {
+    "source": "notes/fn144.5-capture-ivan-warm3",
+    "originalArchiveSha256": "c131477127699a760bd8a07001e51387b347aa2a1a9c317b2b11af48934b81d3",
+    "includedFiles": [
+      "setup.json",
+      "manifest.json",
+      "config.json",
+      "fixtures.json",
+      "product-files.json",
+      "helper-files.json",
+      "prepare.py",
+      "first.ts",
+      "watchdog.py",
+      "evidence/warm-four.receipt.json",
+      "evidence/warm-1.json",
+      "evidence/warm-summary.json",
+      "evidence/cold-primer.json",
+      "evidence/resources.json",
+      "evidence/warm-four.stdout",
+      "evidence/cleanup.json",
+      "evidence/warm-2.json",
+      "evidence/warm-3.json",
+      "evidence/warm-four.stderr",
+      "protocol/session-3sBTQQ/9.reply.json.gz",
+      "protocol/session-3sBTQQ/stderr.log",
+      "protocol/session-3sBTQQ/parent-capture.json",
+      "protocol/session-3sBTQQ/12.reply.json.gz",
+      "protocol/session-3sBTQQ/4.reply.json.gz",
+      "protocol/session-3sBTQQ/7.reply.json.gz",
+      "protocol/session-3sBTQQ/harness.json",
+      "protocol/session-3sBTQQ/3.reply.json.gz",
+      "protocol/session-3sBTQQ/11.reply.json.gz",
+      "protocol/session-3sBTQQ/stdout.log",
+      "protocol/session-3sBTQQ/2.reply.json.gz",
+      "protocol/session-3sBTQQ/6.reply.json.gz",
+      "protocol/session-3sBTQQ/readiness.json",
+      "protocol/session-3sBTQQ/10.reply.json.gz",
+      "protocol/session-3sBTQQ/requests.json",
+      "protocol/session-3sBTQQ/13.reply.json.gz",
+      "protocol/session-3sBTQQ/1.reply.json.gz",
+      "protocol/session-3sBTQQ/5.reply.json.gz",
+      "protocol/session-3sBTQQ/children.json",
+      "protocol/session-3sBTQQ/bootstrap.json",
+      "protocol/session-3sBTQQ/8.reply.json.gz",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-22.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-1.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-18.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-14.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-15.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-19.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-23.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-28.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-12.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-24.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-7.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-25.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-6.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-13.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-10.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-9.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-5.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-26.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-4.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-27.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-8.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-11.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-3.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-20.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-16.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-17.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-2.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/965-21.json",
+      "protocol/session-3sBTQQ/native-Ho3gy3/bootstrap.json"
+    ],
+    "excludedDisposableFiles": [
+      "protocol/session-3sBTQQ/cache/bun/@t@/7a87559fbb4087c4.pile",
+      "protocol/session-3sBTQQ/cache/bun/@t@/9e8758c8517cedac.pile",
+      "protocol/session-3sBTQQ/cache/bun/@t@/8111b123ffc15d51.pile",
+      "protocol/session-3sBTQQ/cache/bun/@t@/ae7304b5448338c7.pile",
+      "protocol/session-3sBTQQ/cache/bun/@t@/5a4a1d3fb0f9cb3a.pile",
+      "protocol/session-3sBTQQ/cache/bun/@t@/cf86f20c120ce818.pile",
+      "protocol/session-3sBTQQ/cache/bun/@t@/91f1e5a9fb66c76c.pile",
+      "protocol/session-3sBTQQ/cache/bun/@t@/851cb60a3259f7e1.pile",
+      "protocol/session-3sBTQQ/tmp/bun/@t@/7a87559fbb4087c4.pile",
+      "protocol/session-3sBTQQ/tmp/bun/@t@/29c6a8125ab3f718.pile",
+      "protocol/session-3sBTQQ/tmp/bun/@t@/b87698c43918d4d2.pile",
+      "protocol/session-3sBTQQ/tmp/bun/@t@/8118a7e70dc83dbb.pile",
+      "protocol/session-3sBTQQ/tmp/bun/@t@/7f3921ba02fe9373.pile",
+      "protocol/session-3sBTQQ/tmp/bun/@t@/cf86f20c120ce818.pile",
+      "protocol/session-3sBTQQ/tmp/bun/@t@/91f1e5a9fb66c76c.pile",
+      "protocol/session-3sBTQQ/tmp/bun/@t@/0012e8e5e9e525dc.pile"
+    ],
+    "excludedReason": "Bun/transpiler/npm runtime caches and isolated environment directories; original full archive remains scratch/notes"
+  },
+  "depth": {
+    "explicitConfigCandidateLimit": null,
+    "actualEffectiveCandidateLimit": 20,
+    "actualRerankDepth": 20,
+    "policy": "No query options/depth changed; effective balanced pipeline20 retained in cold/control/warm public metadata. No claim40 actual."
+  }
+}

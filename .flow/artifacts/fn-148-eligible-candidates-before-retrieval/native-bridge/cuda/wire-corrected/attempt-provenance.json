@@ -1,0 +1,7 @@
+{
+  "prior": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared",
+  "correction": "Wire serialization removes only non-JSON undefined optional object properties before canonical comparison; full raw public JSON rows remain exact",
+  "fixtureChanged": false,
+  "nativeEmbeddingsReused": true,
+  "driverSha256": "117f3ef85043a047405acae3c832bd4fbf464456e3bd6f6a74c130fb9aba1dd9"
+}

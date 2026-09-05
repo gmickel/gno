@@ -402,7 +402,25 @@ This preserves strong initial signals through the pipeline.
 After RRF fusion, top candidates are reranked using **Qwen3-Reranker**. For efficiency, GNO reranks the **best chunk per document** (selected by highest fusion score) rather than full documents.
 Chunk text loading is batched (`getChunksBatch`) to avoid per-document N+1 lookups in this stage.
 
-**Why chunk-level?** Full-document reranking (128K chars) is 25× slower than chunk-level (4K chars). Testing shows chunk-level achieves similar quality at ~2s vs ~10s for the same query.
+Reranking the selected chunk bounds the input compared with full-document
+reranking. Actual cost depends on prepared pairs, candidate count, model, context
+allocation and hardware. Compare complete warm, resize and post-idle requests on
+the same corpus before attributing a speedup to context reuse.
+
+**Native context capacity:** Explicit sizing applies only to node-llama-cpp
+3.20.0 with Qwen3 architecture, BPE vocabulary and the exact audited rerank
+template. GNO counts complete prepared query/document pairs, takes the largest,
+adds 256 tokens and rounds up to a 256-token capacity bucket. It reuses a matching
+context and replaces it between batches when that bucket changes. Native empty
+batches require no ranking model/context load.
+
+Other versions, architectures, vocabularies and templates use the native library's
+automatic sizing. Unknown context limits and padded capacities beyond the known
+limit also take that path; GNO does not force an unvalidated smaller context or
+add input clipping. For the audited formatter, a complete pair beyond the known
+model limit fails explicitly. Incomplete or invalid scores fail reranking and
+preserve the existing fusion fallback. Candidate counts, duplicate mappings and
+input text are not reduced to obtain a smaller context.
 
 ### Position-Aware Blending
 
@@ -497,11 +515,11 @@ including `matched: false` when the target collection does not match.
 
 GNO offers three search modes with different speed/quality trade-offs:
 
-| Mode     | Flag         | Time  | Description                   |
-| -------- | ------------ | ----- | ----------------------------- |
-| Fast     | `--fast`     | ~0.7s | Skip expansion and reranking  |
-| Default  | (none)       | ~2-3s | Preset-aware balanced mode    |
-| Thorough | `--thorough` | ~5-8s | Expansion + wider rerank pool |
+| Mode     | Flag         | Description                   |
+| -------- | ------------ | ----------------------------- |
+| Fast     | `--fast`     | Skip expansion and reranking  |
+| Default  | (none)       | Preset-aware balanced mode    |
+| Thorough | `--thorough` | Expansion + wider rerank pool |
 
 ```bash
 gno query "quick lookup" --fast       # Fastest
@@ -604,6 +622,11 @@ GNO works even when components are missing:
 | Rerank model         | Skip reranking, use fusion |
 | Generation model     | Skip query expansion       |
 
+Hybrid fallback does not claim successful semantic work: `vectorsUsed` is false
+unless at least one vector search succeeded, and wholly lexical fallback reports
+`mode: "bm25_only"`. A successful vector search with no matches can still report
+`vectorsUsed: true`. Configured capability and current model residency are separate.
+
 Run `gno doctor` to check what's available.
 
 ## Language Support
@@ -673,22 +696,27 @@ sanity lane and is not a release gate.
 
 ## Performance Characteristics
 
-| Operation             | Typical Time           |
-| --------------------- | ---------------------- |
-| BM25 search           | ~5-20ms                |
-| Vector search         | ~10-50ms               |
-| Query expansion       | ~3-5s (LLM generation) |
-| Chunk-level reranking | ~1-2s                  |
-| **Fast mode**         | ~0.7s                  |
-| **Default mode**      | ~2-3s                  |
-| **Thorough mode**     | ~5-8s                  |
+Measure complete requests on the intended corpus and hardware, separating warm
+calls from first use, context resize and post-idle reload. Native inference shares
+an owned child within each adapter; its five-minute default idle grace releases
+the child when actual inference work is finished. Metadata polling does not keep
+it alive. The next inference call includes process startup, model loading and
+context creation, so a warm stage time is not a cold-request budget.
 
-**Optimizations**:
+| Operation           | Work that affects cost                                          |
+| ------------------- | --------------------------------------------------------------- |
+| BM25 search         | FTS lookup and selected result hydration                        |
+| Vector search       | Query embedding, eligible candidate ranking and hydration       |
+| Query expansion     | Generation, unless skipped or served from cache                 |
+| Reranking           | Prepared candidate pairs and compatible context reuse or resize |
+| Post-idle inference | Worker/model/context reload plus the requested operation        |
 
-- Balanced mode can skip expansion on larger presets to save 3-5s
-- Chunk-level reranking: 4K chars vs 128K = 25× faster
-- Strong signal detection skips expansion for confident BM25 matches
-- Query expansion is cached by query + model
+Balanced mode can skip expansion on larger presets. Strong lexical signals can
+also skip expansion, and query expansion is cached by query and model. These
+optimizations do not establish a fixed latency gain or quality equivalence across
+corpora. Cold expansion can still exceed the expansion stage's five-second budget.
+That budget is separate from model load/inference timeouts; raising those timeouts
+does not extend it. Inspect stage outcomes and fallbacks when comparing runs.
 
 ## Related Documentation
 

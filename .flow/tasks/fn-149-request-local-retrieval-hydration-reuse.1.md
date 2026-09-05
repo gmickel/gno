@@ -46,9 +46,60 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Negative stale-input control fails parity; counters measure row volume as well as round trips.
 
 ## Done summary
-TBD
+# fn-149-request-local-retrieval-hydration-reuse.1
 
+Implemented `RequestHydration` with request-owned detached/frozen raw chunk,
+content and document snapshots, pending-read deduplication, retryable errors,
+and idempotent release/abort. Existing consumers receive StorePort-compatible
+results; result maps and document arrays are caller-owned. No integration,
+global cache, prepared-input cache, transaction, native model, Git or Flow
+lifecycle operation was performed by this worker.
+
+Files:
+- `src/pipeline/hydration.ts`
+- `test/pipeline/hydration.test.ts`
+- `evals/fixtures/acceptance/hydration-long-doc/fixture.ts`
+- `evals/fixtures/acceptance/hydration-long-doc/manifest.json`
+- `evals/fixtures/acceptance/hydration-long-doc/README.md`
+
+Document lookup caches the exact ordered hash-list plus collection and
+activeOnly settings. It retains all owners and their titles, preserving the
+adapter's document ordering, including SQL batch boundaries. Regrouping these
+rows by hash would change that order. Chunk/content caching uses mirror hash.
+Missing values remain stable within a request; failures are evicted for retry.
+Release clears ownership without mutating values or cancelling pending reads;
+new reads fail with QUERY_FAILED. Caller mutations of original store rows do
+not affect the detached snapshots.
+
+Baseline: green, `bun test ./test/pipeline/search-n1.test.ts` (new hydration test
+did not yet exist). Final focused suite: 10 passed, 0 failed, 62 assertions.
+The paired 1,000-chunk fixture drives real searchBm25 and rerankCandidates with
+duplicate candidates and two deterministic model identities. fn-143's exact
+comparator checks complete public outputs and captured reranker-port arguments.
+The deliberately stale/shortened input fails parity. Hydration work decreases
+from 5 reads / 3,002 rows / 11,601,473 UTF-8 bytes to 2 reads / 1,001 rows /
+4,640,789 UTF-8 bytes. This measures raw store hydration, not all JS allocation.
+
+Fixture SHA-256: fd7fd4ba729385ffefcf59b423b9ca2b73891956f92cc97ac121e2fcae0d8c9e.
+Existing fn-143 fixture pins remain unchanged.
+
+Other focused coverage: completion and abort while a read is pending;
+in-flight deduplication; immutable snapshots after source mutation; fresh next
+request after missing content, returned errors and thrown errors; collection
+and activeOnly isolation; multiple owners sharing a hash and title edits.
+
+Validation commands and log paths are in `notes/fn149.1-evidence.json`.
+Targeted type-aware/type-check lint and formatting passed. A relative-path
+`oxlint --no-ignore` invocation hit an upstream tsgolint absolute-path panic;
+the same check with absolute file paths passed. Evals fixture paths are excluded
+by repo lint configuration; the imported fixture is exercised by the tests.
+
+stage: impl-review - skipped(config: user disabled formal reviews)
+
+Task remains in_progress for host-owned commit, gates and heavy live QA.
+No native or live-surface acceptance claimed. Downstream task integration is
+still required before any application-wide savings can be claimed.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: ad3047fee75aa54181902a0c954d8d3f15039caa
+- Tests: baseline: green - bun test ./test/pipeline/search-n1.test.ts, TMPDIR=/home/gordon/.cache/agent-tmp/gno-fn149-hydration timeout 600 bun test ./test/pipeline/hydration.test.ts ./test/pipeline/search-n1.test.ts (10 pass, 0 fail, 62 assertions), TMPDIR=/home/gordon/.cache/agent-tmp/gno-fn149-hydration bunx oxlint --no-ignore --type-aware --type-check /home/gordon/work/gno/src/pipeline/hydration.ts /home/gordon/work/gno/test/pipeline/hydration.test.ts /home/gordon/work/gno/evals/fixtures/acceptance/hydration-long-doc/fixture.ts (0 warnings, 0 errors; fixture excluded by repo config), bunx oxfmt --check src/pipeline/hydration.ts test/pipeline/hydration.test.ts evals/fixtures/acceptance/hydration-long-doc (passed)
 - PRs:

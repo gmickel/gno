@@ -29,9 +29,21 @@ describe("trace CLI contract", () => {
   let root = "";
 
   afterEach(async () => {
-    process.env.GNO_CONFIG_DIR = originalDirs.config;
-    process.env.GNO_DATA_DIR = originalDirs.data;
-    process.env.GNO_CACHE_DIR = originalDirs.cache;
+    if (originalDirs.config === undefined) {
+      delete process.env.GNO_CONFIG_DIR;
+    } else {
+      process.env.GNO_CONFIG_DIR = originalDirs.config;
+    }
+    if (originalDirs.data === undefined) {
+      delete process.env.GNO_DATA_DIR;
+    } else {
+      process.env.GNO_DATA_DIR = originalDirs.data;
+    }
+    if (originalDirs.cache === undefined) {
+      delete process.env.GNO_CACHE_DIR;
+    } else {
+      process.env.GNO_CACHE_DIR = originalDirs.cache;
+    }
     if (root) await safeRm(root);
   });
 

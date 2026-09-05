@@ -833,9 +833,21 @@ describe("malformed memory files", () => {
   afterAll(async () => {
     await harness.store.close();
     await safeRm(harness.root);
-    process.env.GNO_CONFIG_DIR = originalEnv.configDir;
-    process.env.GNO_DATA_DIR = originalEnv.dataDir;
-    process.env.GNO_CACHE_DIR = originalEnv.cacheDir;
+    if (originalEnv.configDir === undefined) {
+      delete process.env.GNO_CONFIG_DIR;
+    } else {
+      process.env.GNO_CONFIG_DIR = originalEnv.configDir;
+    }
+    if (originalEnv.dataDir === undefined) {
+      delete process.env.GNO_DATA_DIR;
+    } else {
+      process.env.GNO_DATA_DIR = originalEnv.dataDir;
+    }
+    if (originalEnv.cacheDir === undefined) {
+      delete process.env.GNO_CACHE_DIR;
+    } else {
+      process.env.GNO_CACHE_DIR = originalEnv.cacheDir;
+    }
   });
 
   test("excluded from managed recall but visible to ordinary retrieval", async () => {

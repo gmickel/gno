@@ -1,0 +1,552 @@
+{
+  "candidateCases": [
+    {
+      "caseId": "short-before",
+      "coverage": "complete",
+      "childPids": [
+        320487
+      ],
+      "generations": [
+        1
+      ],
+      "nativeRequests": 5,
+      "allComplete": true,
+      "rerankContexts": [
+        768
+      ],
+      "actualJudgeCalls": 0
+    },
+    {
+      "caseId": "long-resize",
+      "coverage": "complete",
+      "childPids": [
+        320487
+      ],
+      "generations": [
+        1
+      ],
+      "nativeRequests": 5,
+      "allComplete": true,
+      "rerankContexts": [
+        3840
+      ],
+      "actualJudgeCalls": 0
+    },
+    {
+      "caseId": "short-after",
+      "coverage": "complete",
+      "childPids": [
+        320487
+      ],
+      "generations": [
+        1
+      ],
+      "nativeRequests": 5,
+      "allComplete": true,
+      "rerankContexts": [
+        768
+      ],
+      "actualJudgeCalls": 0
+    },
+    {
+      "caseId": "verified-before",
+      "coverage": "complete",
+      "childPids": [
+        320487
+      ],
+      "generations": [
+        1
+      ],
+      "nativeRequests": 8,
+      "allComplete": true,
+      "rerankContexts": [
+        768
+      ],
+      "actualJudgeCalls": 1
+    },
+    {
+      "caseId": "short-after-idle",
+      "coverage": "complete",
+      "childPids": [
+        321268
+      ],
+      "generations": [
+        2
+      ],
+      "nativeRequests": 5,
+      "allComplete": true,
+      "rerankContexts": [
+        768
+      ],
+      "actualJudgeCalls": 0
+    },
+    {
+      "caseId": "verified-after-idle",
+      "coverage": "complete",
+      "childPids": [
+        321268
+      ],
+      "generations": [
+        2
+      ],
+      "nativeRequests": 8,
+      "allComplete": true,
+      "rerankContexts": [
+        768
+      ],
+      "actualJudgeCalls": 1
+    }
+  ],
+  "candidateNativeRequests": 36,
+  "allCandidateRequestsComplete": true,
+  "idleTransitions": [
+    {
+      "event": "idle-start",
+      "at": 1788582400809,
+      "durationMs": 2500,
+      "nativeChildren": [
+        {
+          "identity": {
+            "runId": "d7ad45da-b20f-4ca5-9199-517b243f1eb0",
+            "token": "d7e217da-73b7-46d8-a975-6b63e973e2a4",
+            "parentPid": 320347,
+            "pid": 320487,
+            "generation": 1,
+            "entry": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/package/src/llm/native-worker/entry.ts"
+          },
+          "event": "birth"
+        }
+      ]
+    },
+    {
+      "event": "idle-end",
+      "at": 1788582403315,
+      "nativeChildren": [
+        {
+          "identity": {
+            "runId": "d7ad45da-b20f-4ca5-9199-517b243f1eb0",
+            "token": "d7e217da-73b7-46d8-a975-6b63e973e2a4",
+            "parentPid": 320347,
+            "pid": 320487,
+            "generation": 1,
+            "entry": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/package/src/llm/native-worker/entry.ts"
+          },
+          "event": "birth"
+        },
+        {
+          "identity": {
+            "runId": "d7ad45da-b20f-4ca5-9199-517b243f1eb0",
+            "token": "d7e217da-73b7-46d8-a975-6b63e973e2a4",
+            "parentPid": 320347,
+            "pid": 320487,
+            "generation": 1,
+            "entry": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/package/src/llm/native-worker/entry.ts"
+          },
+          "event": "exit",
+          "exitCode": 0
+        }
+      ]
+    }
+  ],
+  "childEvents": [
+    {
+      "identity": {
+        "runId": "d7ad45da-b20f-4ca5-9199-517b243f1eb0",
+        "token": "d7e217da-73b7-46d8-a975-6b63e973e2a4",
+        "parentPid": 320347,
+        "pid": 320487,
+        "generation": 1,
+        "entry": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/package/src/llm/native-worker/entry.ts"
+      },
+      "event": "birth"
+    },
+    {
+      "identity": {
+        "runId": "d7ad45da-b20f-4ca5-9199-517b243f1eb0",
+        "token": "d7e217da-73b7-46d8-a975-6b63e973e2a4",
+        "parentPid": 320347,
+        "pid": 320487,
+        "generation": 1,
+        "entry": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/package/src/llm/native-worker/entry.ts"
+      },
+      "event": "exit",
+      "exitCode": 0
+    },
+    {
+      "identity": {
+        "runId": "d7ad45da-b20f-4ca5-9199-517b243f1eb0",
+        "token": "65870026-e841-45ba-b525-1a206957a2a5",
+        "parentPid": 320347,
+        "pid": 321268,
+        "generation": 2,
+        "entry": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/package/src/llm/native-worker/entry.ts"
+      },
+      "event": "birth"
+    },
+    {
+      "identity": {
+        "runId": "d7ad45da-b20f-4ca5-9199-517b243f1eb0",
+        "token": "65870026-e841-45ba-b525-1a206957a2a5",
+        "parentPid": 320347,
+        "pid": 321268,
+        "generation": 2,
+        "entry": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/package/src/llm/native-worker/entry.ts"
+      },
+      "event": "exit",
+      "exitCode": 0
+    }
+  ],
+  "comparison": {
+    "strict": {
+      "passed": false,
+      "comparedCases": 6,
+      "failures": [
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[0].score",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[0].scores.rerankScore",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[0].provenance.score",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].uri",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].score",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].scores.fusionScore",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].scores.vecScore",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].scores.rerankScore",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].passage.uri",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].passage.sourceHash",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].passage.text",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].passage.provenance.conversion.mirrorHash",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].provenance.docid",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].provenance.score",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].provenance.uri",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].provenance.title",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].provenance.snippet",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].provenance.source.relPath",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].provenance.source.absPath",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].provenance.source.sizeBytes",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].provenance.source.sourceHash",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[1].provenance.conversion.mirrorHash",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[2].score",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[2].scores.rerankScore",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.results[2].provenance.score",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.semanticState.status",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.semanticState.error",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "long-resize",
+          "field": "deterministic.semanticState.fallbacks.length",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "verified-after-idle",
+          "field": "deterministic.modelInputs.length",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "verified-after-idle",
+          "field": "deterministic.semanticState.status",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "verified-after-idle",
+          "field": "deterministic.semanticState.vectorsUsed",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "verified-after-idle",
+          "field": "deterministic.semanticState.vectorStatus",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "verified-after-idle",
+          "field": "deterministic.semanticState.error",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "verified-after-idle",
+          "field": "deterministic.semanticState.fallbacks.length",
+          "reason": "Unexplained deterministic difference"
+        },
+        {
+          "caseId": "verified-after-idle",
+          "field": "deterministic.semanticState.verification",
+          "reason": "Unexplained deterministic difference"
+        }
+      ],
+      "generatedAnswerChanges": [
+        "verified-after-idle"
+      ]
+    },
+    "pairs": [
+      {
+        "caseId": "short-before",
+        "coverage": [
+          "complete",
+          "complete"
+        ],
+        "fullResultsEqual": true,
+        "deterministicRecordEqual": true,
+        "generatedAnswerEqual": true,
+        "modelInputsEqual": true,
+        "modelOutputsEqual": true
+      },
+      {
+        "caseId": "long-resize",
+        "coverage": [
+          "incomplete",
+          "complete"
+        ],
+        "fullResultsEqual": false,
+        "deterministicRecordEqual": false,
+        "generatedAnswerEqual": true,
+        "modelInputsEqual": true,
+        "modelOutputsEqual": false
+      },
+      {
+        "caseId": "short-after",
+        "coverage": [
+          "complete",
+          "complete"
+        ],
+        "fullResultsEqual": true,
+        "deterministicRecordEqual": true,
+        "generatedAnswerEqual": true,
+        "modelInputsEqual": true,
+        "modelOutputsEqual": true
+      },
+      {
+        "caseId": "verified-before",
+        "coverage": [
+          "complete",
+          "complete"
+        ],
+        "fullResultsEqual": true,
+        "deterministicRecordEqual": true,
+        "generatedAnswerEqual": true,
+        "modelInputsEqual": true,
+        "modelOutputsEqual": true
+      },
+      {
+        "caseId": "short-after-idle",
+        "coverage": [
+          "complete",
+          "complete"
+        ],
+        "fullResultsEqual": true,
+        "deterministicRecordEqual": true,
+        "generatedAnswerEqual": true,
+        "modelInputsEqual": true,
+        "modelOutputsEqual": true
+      },
+      {
+        "caseId": "verified-after-idle",
+        "coverage": [
+          "incomplete",
+          "complete"
+        ],
+        "fullResultsEqual": false,
+        "deterministicRecordEqual": false,
+        "generatedAnswerEqual": false,
+        "modelInputsEqual": false,
+        "modelOutputsEqual": false
+      }
+    ],
+    "withinCandidateAsk": {
+      "deterministicRecordEqual": true,
+      "generatedAnswerEqual": true,
+      "modelInputsEqual": true,
+      "modelOutputsEqual": true,
+      "semanticBefore": {
+        "status": "completed",
+        "reason": "verified",
+        "schemaRequested": true,
+        "schemaEnforced": true,
+        "modelFingerprint": "dac5f172f2a016a998fd49a6520cb52a52d7dd66505bddd153f369d0cc27c2c9",
+        "configFingerprint": "b59278085e417308c5d950779a05cd09241a36a09e1f4d6ea485c490c131025e",
+        "verifierFingerprint": "6457df503e36c5418928821e6cd69948cbc9966016470c0aa6020406c0d33782",
+        "candidateClaims": 1,
+        "verifiedClaims": 0,
+        "unresolvedClaims": 1,
+        "modelCalls": 1,
+        "durationMs": 494.8749680000001
+      },
+      "semanticAfter": {
+        "status": "completed",
+        "reason": "verified",
+        "schemaRequested": true,
+        "schemaEnforced": true,
+        "modelFingerprint": "dac5f172f2a016a998fd49a6520cb52a52d7dd66505bddd153f369d0cc27c2c9",
+        "configFingerprint": "b59278085e417308c5d950779a05cd09241a36a09e1f4d6ea485c490c131025e",
+        "verifierFingerprint": "6457df503e36c5418928821e6cd69948cbc9966016470c0aa6020406c0d33782",
+        "candidateClaims": 1,
+        "verifiedClaims": 0,
+        "unresolvedClaims": 1,
+        "modelCalls": 1,
+        "durationMs": 518.5990280000005
+      }
+    }
+  },
+  "postRun": {
+    "ownedPids": [
+      319254,
+      319287,
+      319520,
+      319777,
+      319817,
+      319857,
+      319896,
+      320312,
+      320347,
+      320487,
+      320796,
+      320857,
+      320996,
+      321268,
+      321417,
+      321514,
+      321577,
+      321651,
+      321723
+    ],
+    "remaining": []
+  },
+  "baselineIncomplete": [
+    {
+      "caseId": "long-resize",
+      "reasons": [
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "reranking_not_used",
+        "native_fallback"
+      ]
+    },
+    {
+      "caseId": "verified-after-idle",
+      "reasons": [
+        "No in-scope evidence was available for the Context Capsule",
+        "model_not_exercised:embedding",
+        "model_not_exercised:reranking",
+        "model_not_exercised:generation",
+        "vector_stage_unavailable",
+        "vectors_not_used",
+        "reranking_not_used",
+        "verification_incomplete",
+        "empty_successful_result",
+        "native_fallback"
+      ]
+    }
+  ],
+  "scope": "fn145-public-resize-reload-schema29-v1",
+  "preparedSeedIndexSha256": "bc696b82ee1337b4e808dee158822dc2c4a5a007e14e299cf2341ba5cf04148a",
+  "actualClientOpenLogicalStateEqual": true,
+  "initialCandidateContainedDbHeaderSha256": "7e27d6b88000298be7451b2db87226795bdb4cc7da690208292d000e530a01bc",
+  "limits": [
+    "Manifest indexSha256 identifies the prepared seed snapshot, not the subsequent SQLite backup header. Actual SDK-open logical index and config were checked against schema29 CPU preflight.",
+    "Baseline capture contextEvents are cumulative; candidate contextEvents are per request.",
+    "No late result contamination observed: all 36 candidate receipts complete and scoped to the expected generation/case. This does not exhaust every possible asynchronous callback race.",
+    "Full six-case baseline comparison fails; four complete pairs and candidate pre/post Ask invariance are complementary evidence."
+  ]
+}

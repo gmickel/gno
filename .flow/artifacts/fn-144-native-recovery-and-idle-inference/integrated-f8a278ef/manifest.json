@@ -1,0 +1,32 @@
+[
+  {
+    "path": "tests.log.gz",
+    "rawSha256": "5884f11d0460b98603068efac1b8aa4fb3b748c44aaa3664e9a772e6afc84b5d",
+    "source": "/home/gordon/.cache/agent-tmp/gno-final-f8a278ef/tests.log"
+  },
+  {
+    "path": "lint.log.gz",
+    "rawSha256": "b2beeafc8396af11a3db02bcd77ea645bd92c318f8583e0ceb9c6c99f809a2fb",
+    "source": "/home/gordon/.cache/agent-tmp/gno-final-f8a278ef/lint.log"
+  },
+  {
+    "path": "typecheck.log.gz",
+    "rawSha256": "0a7cbec9e31e5ab1dc3f62bf0e9994201b491a121c31235f27316f5151281817",
+    "source": "/home/gordon/.cache/agent-tmp/gno-final-f8a278ef/typecheck.log"
+  },
+  {
+    "path": "docs.log.gz",
+    "rawSha256": "7b554819d88cd16f5183e6b7938beb5505565736b65fe0c8cedc853497d0ced8",
+    "source": "/home/gordon/.cache/agent-tmp/gno-final-f8a278ef/docs.log"
+  },
+  {
+    "path": "package.log.gz",
+    "rawSha256": "86ca48fe7c8c03ba9b1efdecde2e80c31f6b35c31086fc337c3bf6c2bef548e1",
+    "source": "/home/gordon/.cache/agent-tmp/gno-final-f8a278ef/package.log"
+  },
+  {
+    "path": "package-taskcache.log.gz",
+    "rawSha256": "783fe92097215a802dcd0e0de81c90a9320ea461c88ba07ee664c96b92a26af2",
+    "source": "/home/gordon/.cache/agent-tmp/gno-final-f8a278ef/package-taskcache.log"
+  }
+]

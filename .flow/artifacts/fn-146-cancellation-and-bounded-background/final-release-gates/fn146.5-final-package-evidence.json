@@ -1,0 +1,37 @@
+{
+  "commit": "f64c41c97e196e3bffdba23bc1c006bca7489b28",
+  "version": "2.0.0",
+  "tarball": "/home/gordon/.cache/agent-tmp/gno-final-package-f64c41c9/pack/gmickel-gno-2.0.0.tgz",
+  "packageSha256": "56587f10c9969a795d6aa527c29fe8a057720a97d9f9e5de335daa996e706655",
+  "packageFiles": 909,
+  "packageBytes": 12865643,
+  "distribution": "/home/gordon/.cache/agent-tmp/gno-final-package-f64c41c9/distribution/package",
+  "sourceArchive": "/home/gordon/.cache/agent-tmp/gno-final-package-f64c41c9/source-f64c41c9.tar",
+  "sourceArchiveSha256": "b4b040e4e2259f4f56b5f86bd280ca40bcecc2209c1ded2c77f0082da22d0ec5",
+  "helperCommit": "8b45a54d9fab684fddb69175e8c836dad4b935b2",
+  "helperArchive": "/home/gordon/.cache/agent-tmp/gno-final-package-f64c41c9/helpers-8b45a54d.tar",
+  "helperArchiveSha256": "22db88f0d50558da2cb957950a56d791adae81f1865fc76841c70579f39cae04",
+  "srcFiles": 754,
+  "spaSourceHash": "180edb2ba3d23f9360c200b4bea1560ecf9cdc0133518d6f2125d882e282da25",
+  "failures": [
+    {
+      "stage": "initial verifier",
+      "error": "AssertionError: expected literal2.0.0 inside compiled SPA JS",
+      "finding": "Invalid verifier assumption; UI bundle does not embed application version. Package+clipper manifests2.0.0 and complete SPA source hash/archive bytes verified; no product mutation or rebuild."
+    }
+  ],
+  "manifest": "/home/gordon/.cache/agent-tmp/gno-final-package-f64c41c9/manifest.json",
+  "manifestSha256": "e7dec6a378bcde1de23fe97d91234fcb627f35d4b38847984ed97cbc382c9fa5",
+  "verifier": "/home/gordon/.cache/agent-tmp/gno-final-package-f64c41c9/verify.py",
+  "verifierSha256": "61a9361379a5c24ce1340ca692f8c4de80f0b46bdd9b27e1213db470299c9bea",
+  "tests": [
+    "Required clipper prepack exit0",
+    "npm pack --ignore-scripts after explicit prepack exit0",
+    "clipper reproducibility check exit0",
+    "packaged CLI--version2.0.0 exit0",
+    "all909 shipped bytes,754source bytes,22helper pins and freshSPA sourceHash verified"
+  ],
+  "nativeExecution": false,
+  "commits": [],
+  "prs": []
+}

@@ -1,0 +1,9 @@
+# Original Metal verified Ask: actual judge complete, historical parity failed
+
+One actual packed SDK Ask preserved the original30-document Metal fixture, qa-pinned model configuration, and exact request: `Who owns the meadow migration?`, `{collection:"probe",limit:3,noExpand:true,noRerank:true,graph:false}`. This scope intentionally does not exercise reranking; the separate original warm query proof does.
+
+The actual semantic verifier completed one model call with schema requested/enforced. The native child captured answer-generation and closed-evidence verifier prompts, schema, and outputs. The result is a valid abstention for insufficient supported coverage. Acceptance capture reports complete, no errors; governor reports zero warning seconds, peak2985.984375MiB, whole11.322157s. Cleanup confirms all observed test PIDs absent and pressure1. Parent dlopen/modules empty; Metal mapping coverage unavailable explicitly.
+
+Strict historical comparison remains FAILED:18 differences in the verifier prompt/schema claim IDs and capsule/config/retrieval/index/verifier identities. There is no generated answer change. No input normalization, ignored-field rule, or comparator waiver was introduced. The comparator hash is byte-identical to the frozen fn143/1f7e785d file. Raw original and candidate records are retained; attribution of the identity differences remains separate work. This is scoped actual-judge proof, not full historical prompt parity.
+
+`evidence.json`, `comparison.json`, and raw gzip replies preserve full results, prompts, tokens, identities, resource samples and cleanup. Original baseline record/manifest are included. Curation excludes only disposable Bun/isolated runtime caches, with excluded paths and original archive hash recorded. No source database or real-user data is included.

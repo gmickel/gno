@@ -1,0 +1,27 @@
+{
+  "role": "baseline",
+  "sourceRoot": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/baseline-source",
+  "configPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/warm30/config.json",
+  "dbPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/warm30/baseline/data/index-default.sqlite",
+  "cacheDir": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/warm30/baseline/cache",
+  "outputPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/observations/warm30-block1-serial-baseline/result.json",
+  "caseId": "rerank-en-1000-start",
+  "query": "What is the verified launch code for project Orion?",
+  "options": {
+    "collection": "rerank-en-1000-start",
+    "limit": 2,
+    "noExpand": true,
+    "noRerank": false,
+    "graph": false,
+    "explain": true
+  },
+  "mode": "serial",
+  "count": 24,
+  "concurrency": 1,
+  "productIdentity": {
+    "commit": "270c3a74f4f7a3aeb8a60462b4c8e1b4adf45462",
+    "packageSha256": null,
+    "helperCommit": "9244d715",
+    "driverSha256": "1b292ce47ae84c14fa36ab4e863b45feda3ed5137614ff239ed5b309849ef0da"
+  }
+}

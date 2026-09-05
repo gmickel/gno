@@ -1,0 +1,252 @@
+{
+  "config": {
+    "version": "1.0",
+    "ftsTokenizer": "snowball english",
+    "busyTimeoutMs": 60000,
+    "collections": [
+      {
+        "name": "notes",
+        "path": "/private/tmp/fn1445-capacity-control.LUEhqi/corpus/notes",
+        "pattern": "**/*",
+        "include": [],
+        "exclude": [
+          ".git",
+          "node_modules",
+          ".venv",
+          ".idea",
+          "dist",
+          "build",
+          "__pycache__",
+          ".DS_Store",
+          "Thumbs.db"
+        ]
+      },
+      {
+        "name": "src",
+        "path": "/private/tmp/fn1445-capacity-control.LUEhqi/corpus/src",
+        "pattern": "**/*",
+        "include": [],
+        "exclude": [
+          ".git",
+          "node_modules",
+          ".venv",
+          ".idea",
+          "dist",
+          "build",
+          "__pycache__",
+          ".DS_Store",
+          "Thumbs.db"
+        ]
+      },
+      {
+        "name": "papers",
+        "path": "/private/tmp/fn1445-capacity-control.LUEhqi/corpus/papers",
+        "pattern": "**/*",
+        "include": [],
+        "exclude": [
+          ".git",
+          "node_modules",
+          ".venv",
+          ".idea",
+          "dist",
+          "build",
+          "__pycache__",
+          ".DS_Store",
+          "Thumbs.db"
+        ]
+      },
+      {
+        "name": "office",
+        "path": "/private/tmp/fn1445-capacity-control.LUEhqi/corpus/office",
+        "pattern": "**/*",
+        "include": [],
+        "exclude": [
+          ".git",
+          "node_modules",
+          ".venv",
+          ".idea",
+          "dist",
+          "build",
+          "__pycache__",
+          ".DS_Store",
+          "Thumbs.db"
+        ]
+      }
+    ],
+    "contexts": [],
+    "contentTypes": [],
+    "projectAffinity": {
+      "enabled": true,
+      "contribution": 0.03
+    },
+    "models": {
+      "activePreset": "slim-tuned",
+      "warmModelTtl": 300000,
+      "presets": [
+        {
+          "id": "slim-tuned",
+          "name": "Pinned slim-tuned file URI equivalent",
+          "embed": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "rerank": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "expand": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+          "gen": "file:/Users/gordon/Library/Caches/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf"
+        }
+      ]
+    }
+  },
+  "manifest": {
+    "schemaVersion": "gno-acceptance-v1",
+    "role": "candidate",
+    "identity": {
+      "commit": "d0604b0d7b0c888653390618ab498187bf71b397",
+      "indexId": "ivan-original143-capacity-warning30-packed",
+      "indexSha256": "8e6d7b89a7db5df3bcfb1822eea589897cc89702b69136c50f5288cbc12d4650",
+      "bunVersion": "1.3.14",
+      "nativeDependencies": {
+        "node-llama-cpp": "3.19.1"
+      },
+      "platform": "darwin",
+      "architecture": "arm64"
+    },
+    "fixtureVersion": "fn1445-original143-corrected-slim-child-v1",
+    "fixtures": [
+      {
+        "path": "fixtures.json",
+        "sha256": "1c62a7609674d06645dadca3b6141fb4222a80eff61c21e5e8124ed7d1b15097"
+      }
+    ],
+    "models": [
+      {
+        "role": "embedding",
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+        "tokenizerSha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+      },
+      {
+        "role": "reranking",
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+        "tokenizerSha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48"
+      },
+      {
+        "role": "generation",
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338",
+        "tokenizerSha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+      },
+      {
+        "role": "generation",
+        "id": "file:/Users/gordon/Library/Caches/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
+        "tokenizerSha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897"
+      }
+    ],
+    "cases": [
+      {
+        "caseId": "original143-sdk-hybrid",
+        "fixtureSha256": "1c62a7609674d06645dadca3b6141fb4222a80eff61c21e5e8124ed7d1b15097",
+        "surface": "sdk",
+        "preset": "slim-tuned",
+        "configuration": {
+          "query": "what retry budget did we decide and why",
+          "operation": "hybrid",
+          "options": {
+            "limit": 5
+          },
+          "warmModelTtl": 300000
+        }
+      }
+    ],
+    "intendedDeltas": []
+  },
+  "sourceRoot": "/private/tmp/fn1445-capacity-control.LUEhqi/package",
+  "root": "/private/tmp/fn1445-capacity-control.LUEhqi",
+  "request": {
+    "manifest": {
+      "schemaVersion": "gno-acceptance-v1",
+      "role": "candidate",
+      "identity": {
+        "commit": "d0604b0d7b0c888653390618ab498187bf71b397",
+        "indexId": "ivan-original143-capacity-warning30-packed",
+        "indexSha256": "8e6d7b89a7db5df3bcfb1822eea589897cc89702b69136c50f5288cbc12d4650",
+        "bunVersion": "1.3.14",
+        "nativeDependencies": {
+          "node-llama-cpp": "3.19.1"
+        },
+        "platform": "darwin",
+        "architecture": "arm64"
+      },
+      "fixtureVersion": "fn1445-original143-corrected-slim-child-v1",
+      "fixtures": [
+        {
+          "path": "fixtures.json",
+          "sha256": "1c62a7609674d06645dadca3b6141fb4222a80eff61c21e5e8124ed7d1b15097"
+        }
+      ],
+      "models": [
+        {
+          "role": "embedding",
+          "id": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+          "tokenizerSha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+        },
+        {
+          "role": "reranking",
+          "id": "file:/Users/gordon/Library/Caches/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+          "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+          "tokenizerSha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48"
+        },
+        {
+          "role": "generation",
+          "id": "file:/Users/gordon/Library/Caches/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+          "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338",
+          "tokenizerSha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+        },
+        {
+          "role": "generation",
+          "id": "file:/Users/gordon/Library/Caches/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+          "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
+          "tokenizerSha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897"
+        }
+      ],
+      "cases": [
+        {
+          "caseId": "original143-sdk-hybrid",
+          "fixtureSha256": "1c62a7609674d06645dadca3b6141fb4222a80eff61c21e5e8124ed7d1b15097",
+          "surface": "sdk",
+          "preset": "slim-tuned",
+          "configuration": {
+            "query": "what retry budget did we decide and why",
+            "operation": "hybrid",
+            "options": {
+              "limit": 5
+            },
+            "warmModelTtl": 300000
+          }
+        }
+      ],
+      "intendedDeltas": []
+    },
+    "caseId": "original143-sdk-hybrid",
+    "query": "what retry budget did we decide and why",
+    "operation": "hybrid",
+    "options": {
+      "limit": 5
+    },
+    "expectedBackend": "metal"
+  },
+  "provenance": {
+    "sourceArchiveSha256": "f42dfdddd6296e527f3c4bf01d21bb8a685a33996edcfd1c7624e60fe13320bd",
+    "originalConfigSha256": "4892ce86ba9133d6de0b0152e282454d6b460eb8ea5484c70b811acb45f0b4af",
+    "relocatedConfigSha256": "25281d894b66af41abb427db248d38c4e1785a1128152a25409681c076dc7521",
+    "corpusFiles": 143,
+    "changedConfigFields": [
+      "collection paths relocated to identical copied synthetic bytes"
+    ],
+    "physicalNativeRun": false,
+    "resourcePolicyStratum": "capacity-warning30-v1",
+    "helperCommit": "021990ed",
+    "helperArchiveSha256": "49977024e001e7876e6a68f9be229efbe9ff9934c6819e3dc37a3c0739118ec1",
+    "governorSha256": "24713377c597313ddd1b0e68e4cd64ad7b50ee8bcce9b40173bb36f9feeba90f"
+  }
+}

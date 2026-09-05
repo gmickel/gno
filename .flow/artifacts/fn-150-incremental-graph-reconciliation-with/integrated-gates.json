@@ -1,0 +1,71 @@
+{
+  "reportedBy": "host /root; command exit success reported by host, log summaries inspected by graph_inventory",
+  "sourceStratum": "integrated-6e25153f with host final artifact-format correction",
+  "commands": [
+    {
+      "command": "bun test",
+      "result": "5132 pass,2 existing skips,0 fail,41089 assertions,601 files,276.17s"
+    },
+    {
+      "command": "bun run lint:check",
+      "result": "0 errors,23 existing warnings; formatting passes",
+      "log": "lint-artifact-fix.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "result": "pass"
+    },
+    {
+      "command": "bun run docs:verify",
+      "result": "15 pass,0 fail,2 skips"
+    },
+    {
+      "command": "bun scripts/package-smoke.ts",
+      "result": "pass; sentinel unchanged"
+    },
+    {
+      "command": "bun --bun evalite evals/memory.eval.ts --threshold 100 (external frozen source)",
+      "result": "100%,19 evals,1 file,threshold100 passed",
+      "log": "memory-selected.log",
+      "diagnostic": "memory.log discovered six archived copies (114 evals); diagnostic only, not the authoritative gate"
+    },
+    {
+      "command": "separate hybrid and vsearch lexical eval invocations",
+      "result": "hybrid86%,vsearch88%,threshold70 passed; initial combined lexical.log command rejected argument count and was superseded"
+    }
+  ],
+  "logs": [
+    {
+      "log": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/all-suites.log",
+      "sha256": "4a67c8f868af6c7ff571e0de17e621ca33a5512a2a87b972c2f4a1dfbec0e157"
+    },
+    {
+      "log": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/lint-artifact-fix.log",
+      "sha256": "a5b5dad28c6fedabc60b7bb1671abd4df2a2c27bb88dce0626acf8c4c3cc323b"
+    },
+    {
+      "log": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/typecheck.log",
+      "sha256": "0a7cbec9e31e5ab1dc3f62bf0e9994201b491a121c31235f27316f5151281817"
+    },
+    {
+      "log": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/docs.log",
+      "sha256": "7b554819d88cd16f5183e6b7938beb5505565736b65fe0c8cedc853497d0ced8"
+    },
+    {
+      "log": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/package.log",
+      "sha256": "a43711046c766f87d483374cddb223521452428ea65e74bc7827c2542db61bfa"
+    },
+    {
+      "log": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/memory-selected.log",
+      "sha256": "2ed281f8a6403119595101ab6696ff73d6c6aa842ee8b238070cf575c8934345"
+    },
+    {
+      "log": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/hybrid.log",
+      "sha256": "358fcec23c243299996edad98c3affacd75c169c0de379e3e61ec0dc4b2c2e80"
+    },
+    {
+      "log": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/vsearch.log",
+      "sha256": "5fcc015aac79a3f3561cbc755a8d3cec3dec3c117ef564a791a173587fc9ebbf"
+    }
+  ]
+}

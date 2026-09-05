@@ -1,0 +1,28 @@
+{
+  "commit": "a30da4423ec5604f46d2b050af8a2cba51c66e07",
+  "packageSha256": "592c38574b9b88d4da3488256b49d7421c2f2f44223090d5cd98e78736cdebc0",
+  "packageFiles": 906,
+  "packageBytes": 12858293,
+  "sourceArchiveSha256": "324448f8c6e4a2ef92942209b0b7a6a76928f9d50a62c69bb91423d3b1026a7d",
+  "productSourceDifferences": [],
+  "packaging": "Frozen archive prepack completed; prepare lefthook install fails without .git. Final npm pack --ignore-scripts reuses exact completed prepack files. All logs retained; initial shared-cwd pack unaccepted.",
+  "selectedIndexSha256BeforeNative": "bc696b82ee1337b4e808dee158822dc2c4a5a007e14e299cf2341ba5cf04148a",
+  "fixtureSha256": "49f16dc68a52ef027379a8a473f8089238e9b157881f053b14c820b38ff178e4",
+  "driverHashes": {
+    "run.ts": "3c6e6f5595687ff817d2916dac5c0ef23ca85144acb0c2e954b6ce040a3faa8a",
+    "phase-parent.ts": "ded108764c4ac35c5ae70f38a9b444e5cb16bcd0ff95b595ecc6f26a97ffec19",
+    "phase-child.ts": "692c18a4391dccebb35c9ff38745f12b5acb3dcfb6ff9e79615a56ef0cbf99a7",
+    "ownership-observer.ts": "d0fa8b0a4dca15fcde88481a6f9df635f6911b13640f59b516f2cfe7b33d1171",
+    "context-preflight.ts": "c92b384a8fb35cfd477602ae6054f03a8d4f2465773f2bbb95f69692eacdd5eb",
+    "context-preflight-overbroad.ts": "17a7cbd754e1239f4ffe20d7419af11f4da07bb395ca75cb09c087b15b24e7d6"
+  },
+  "predecessorFailedAttempt": "/home/gordon/.cache/agent-tmp/gno-fn146-native-cancellation",
+  "helper": "8b45a54d9fab684fddb69175e8c836dad4b935b2",
+  "helperArchiveSha256": "f0bbe3f097a75020ca6f7e34445c88ecc6a5326d2b0d80cff4975d06ecfda211",
+  "helperFiles": {
+    "native-capture.ts": "4dfac14dfb376d181c8f91b47a99f55d45246a2feef6a2a16a1405b0c5f51390",
+    "native-child-preload.ts": "e15912277f72dd3e4c0ae0ca6f2e22c04a5707059b60ac7022fca526b1e3d3e5",
+    "parent-capture.ts": "ea0506c429c9aae60fd0688839616728ac58594f6a70bdb72d94346258aa3aa9",
+    "capture-contract.ts": "bce804c45991c8e4e7ac4917dc4d8dbdd40552785ff9d62fc44b6ad7a3ab9ecc"
+  }
+}

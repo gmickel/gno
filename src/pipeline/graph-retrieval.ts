@@ -26,7 +26,7 @@ export interface GraphRetrievalMeta {
 }
 
 export interface GraphRetrievalResult {
-  candidates: Array<{ mirrorHash: string; seq: number }>;
+  candidates: Array<{ mirrorHash: string; seq: number; sourceDocid?: string }>;
   meta: GraphRetrievalMeta;
 }
 
@@ -246,7 +246,11 @@ export async function expandGraphCandidates(
     categories?: string[];
     author?: string;
     relPathPrefix?: string;
-  } = {}
+  } = {},
+  hydration: Pick<
+    StorePort,
+    "getChunksBatch" | "getDocumentsByMirrorHashes"
+  > = store
 ): Promise<GraphRetrievalResult> {
   const maxCandidates = Math.max(
     1,
@@ -282,10 +286,13 @@ export async function expandGraphCandidates(
       preferredSeqByHash.set(candidate.mirrorHash, candidate.seq);
     }
   }
-  const seedDocsResult = await store.getDocumentsByMirrorHashes(seedHashes, {
-    collection: options.collection,
-    activeOnly: true,
-  });
+  const seedDocsResult = await hydration.getDocumentsByMirrorHashes(
+    seedHashes,
+    {
+      collection: options.collection,
+      activeOnly: true,
+    }
+  );
   if (!seedDocsResult.ok || seedDocsResult.value.length === 0) {
     meta.fallbackReasons.push("graph_seed_lookup_empty");
     return { candidates: [], meta };
@@ -305,7 +312,10 @@ export async function expandGraphCandidates(
     }
     const rank =
       seedCandidates.findIndex(
-        (candidate) => candidate.mirrorHash === doc.mirrorHash
+        (candidate) =>
+          candidate.mirrorHash === doc.mirrorHash &&
+          (candidate.documentId === undefined ||
+            candidate.documentId === doc.id)
       ) + 1;
     if (rank <= 0) {
       continue;
@@ -409,7 +419,7 @@ export async function expandGraphCandidates(
   const hashes = rankedDocs
     .map((doc) => doc.mirrorHash)
     .filter((hash): hash is string => Boolean(hash));
-  const chunksResult = await store.getChunksBatch(hashes);
+  const chunksResult = await hydration.getChunksBatch(hashes);
   if (!chunksResult.ok) {
     meta.fallbackReasons.push("graph_neighbor_chunks_failed");
     return { candidates: [], meta };
@@ -424,7 +434,17 @@ export async function expandGraphCandidates(
         preferredSeqByHash,
         options.lang
       );
-      return seq === null ? null : { mirrorHash, seq };
+      return seq === null
+        ? null
+        : {
+            mirrorHash,
+            seq,
+            ...(fusedCandidates.some(
+              (candidate) => candidate.documentId !== undefined
+            )
+              ? { sourceDocid: doc.docid }
+              : {}),
+          };
     })
     .filter(
       (candidate): candidate is { mirrorHash: string; seq: number } =>

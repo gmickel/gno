@@ -89,14 +89,22 @@ describe("validateToken", () => {
       headers: { "X-GNO-Token": "some-token" },
     });
     expect(validateToken(req)).toBe(false);
-    process.env.GNO_API_TOKEN = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GNO_API_TOKEN;
+    } else {
+      process.env.GNO_API_TOKEN = originalEnv;
+    }
   });
 
   test("returns false when token header missing", () => {
     process.env.GNO_API_TOKEN = "secret-token";
     const req = new Request("http://localhost:3000/api/test");
     expect(validateToken(req)).toBe(false);
-    process.env.GNO_API_TOKEN = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GNO_API_TOKEN;
+    } else {
+      process.env.GNO_API_TOKEN = originalEnv;
+    }
   });
 
   test("returns false when token mismatch", () => {
@@ -105,7 +113,11 @@ describe("validateToken", () => {
       headers: { "X-GNO-Token": "wrong-token" },
     });
     expect(validateToken(req)).toBe(false);
-    process.env.GNO_API_TOKEN = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GNO_API_TOKEN;
+    } else {
+      process.env.GNO_API_TOKEN = originalEnv;
+    }
   });
 
   test("returns true when token matches", () => {
@@ -114,7 +126,11 @@ describe("validateToken", () => {
       headers: { "X-GNO-Token": "secret-token" },
     });
     expect(validateToken(req)).toBe(true);
-    process.env.GNO_API_TOKEN = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GNO_API_TOKEN;
+    } else {
+      process.env.GNO_API_TOKEN = originalEnv;
+    }
   });
 });
 

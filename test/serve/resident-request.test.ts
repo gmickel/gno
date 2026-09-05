@@ -35,7 +35,7 @@ function createRuntime(
 }
 
 describe("resident REST read boundary", () => {
-  test("bounds active and queued readers and balances request model leases", async () => {
+  test("bounds active and queued readers without acquiring model leases", async () => {
     const { admission, leases, runtime } = createRuntime();
     let releaseFirst!: () => void;
     const firstHeld = new Promise<void>((resolve) => {
@@ -67,7 +67,7 @@ describe("resident REST read boundary", () => {
     expect(runtime.readerGate.active).toBe(0);
     expect(runtime.readerGate.queued).toBe(0);
     expect(admission.active).toBe(0);
-    expect(leases).toEqual({ acquired: 2, released: 2 });
+    expect(leases).toEqual({ acquired: 0, released: 0 });
   });
 
   test("shutdown aborts queued REST reads before resource use", async () => {

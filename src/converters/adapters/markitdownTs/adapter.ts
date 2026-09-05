@@ -3,8 +3,6 @@
  * Uses convertBuffer() with bytes for determinism.
  */
 
-import { MarkItDown } from "markitdown-ts";
-
 import type {
   Converter,
   ConvertInput,
@@ -12,6 +10,7 @@ import type {
   ConvertWarning,
 } from "../../types";
 
+import { MarkItDown } from "../../../../vendor/converters/markitdown-ts";
 import {
   adapterError,
   corruptError,

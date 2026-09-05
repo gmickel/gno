@@ -61,9 +61,21 @@ async function harness(label: string) {
 }
 
 afterEach(async () => {
-  process.env.GNO_CONFIG_DIR = ORIGINAL_DIRS.config;
-  process.env.GNO_DATA_DIR = ORIGINAL_DIRS.data;
-  process.env.GNO_CACHE_DIR = ORIGINAL_DIRS.cache;
+  if (ORIGINAL_DIRS.config === undefined) {
+    delete process.env.GNO_CONFIG_DIR;
+  } else {
+    process.env.GNO_CONFIG_DIR = ORIGINAL_DIRS.config;
+  }
+  if (ORIGINAL_DIRS.data === undefined) {
+    delete process.env.GNO_DATA_DIR;
+  } else {
+    process.env.GNO_DATA_DIR = ORIGINAL_DIRS.data;
+  }
+  if (ORIGINAL_DIRS.cache === undefined) {
+    delete process.env.GNO_CACHE_DIR;
+  } else {
+    process.env.GNO_CACHE_DIR = ORIGINAL_DIRS.cache;
+  }
   if (ORIGINAL_DIRS.skillsHome === undefined) {
     delete process.env[ENV_SKILLS_HOME_OVERRIDE];
   } else {

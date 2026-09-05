@@ -46,9 +46,8 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Owned process cleanup and existing foreground SIGINT semantics pass.
 
 ## Done summary
-TBD
-
+Implemented one shared monotonic5s drain+5s abort settlement+up to1s owned-child exit; stop admission/producers before waits, join disposal, fence and roll back unfinished writes before close, retain durable backlog, revoke late callbacks, and return explicit bounded native OS termination failures while retaining unreaped ownership. Existing retirement deadline tightens in place without duplicate kills. Daemon signal registration precedes initial sync; detached parent grace12s. Coupled CLI/configuration/daemon/spec docs describe the event-loop and raw-DB boundaries. Focused final native17/133, runtime/store66/197, expanded156/1507 (overlapping), TSC/typedlint/format/docs green; actual synthetic child and source CLI SIGINT evidence retained in task4-gates. Packaged daemon SIGTERM/native/integrated CUDA+Metal remain task5; no physical claim from mocks. No formal reviews per user.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 9bb46bcaebd5fa5bcdea6e1cc6218a8b86c6e977
+- Tests: baseline: green - canonical quick command 17 pass / 56 assertions; notes/fn146.4-baseline.log, bun test test/serve/shutdown-lifecycle.test.ts test/serve/embed-scheduler.test.ts test/serve/resident-concurrency.test.ts - included in final verify 37 pass / 173 assertions; notes/fn146.4-final-verify.log, expanded affected regressions 156 pass / 1507 assertions; notes/fn146.4-regressions.log, combined affected verify 122 pass / 461 assertions; notes/fn146.4-verify.log, final focused store/native/runtime/detach 66 pass / 197 assertions; notes/fn146.4-final-focused.log, retirement and cancellation regression 42 pass / 230 assertions; notes/fn146.4-retirement-final.log, bun test test/llm/native-shutdown.test.ts test/llm/native-worker-lifecycle.test.ts - 17 pass / 133 assertions; notes/fn146.4-native-final.log, bun run typecheck - passed; notes/fn146.4-typecheck.log, owned oxlint --type-aware --type-check - 24 TS files, zero warnings/errors; notes/fn146.4-lint.log, owned oxfmt --check - 29 files passed; notes/fn146.4-format-check.log, bun run docs:verify - 15 passed, zero failed, 2 model-cache skips; notes/fn146.4-docs.log
 - PRs:

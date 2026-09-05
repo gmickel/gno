@@ -1,0 +1,90 @@
+- button "Search"
+- button
+- button "New Tab"
+- banner:
+  - button "GNO"
+  - button "Back"
+  - heading "Search" [level=1]
+  - text: Preset
+  - button "Missing local files QA"
+- complementary:
+  - heading "Tags" [level=3]
+  - button "noise 199"
+  - button "approved 1"
+  - button "release 1"
+- main:
+  - textbox "Search your documents... Use Shift+Enter for structured query documents": needle
+  - button "Search"
+  - paragraph:
+    - text: Press Enter to search. Use Shift+Enter for multi-line structured query documents with
+    - code: "term:"
+    - text: ","
+    - code: "intent:"
+    - text: ", and"
+    - code: "hyde:"
+    - text: .
+  - text: Depth
+  - radiogroup:
+    - radio "Fast BM25" [checked]
+    - radio "Balanced"
+    - radio "Thorough"
+  - text: Keyword search (BM25)
+  - button "Advanced Retrieval" [expanded]
+  - paragraph: Collection
+  - combobox: All collections
+  - button "Manage collections"
+  - button "Browse all"
+  - paragraph: Author
+  - textbox "gordon"
+  - paragraph: Intent
+  - textbox "Disambiguate ambiguous queries without searching on this text"
+  - paragraph: Exclude
+  - textbox "team reviews, hiring, onboarding"
+  - paragraph: Category
+  - textbox "engineering, research"
+  - paragraph: Since
+  - textbox: 2026-09-01
+  - paragraph: Until
+  - textbox: 2026-09-02
+  - paragraph: Candidate limit
+  - spinbutton "20"
+  - text: "Tag match:"
+  - button "Any"
+  - button "All"
+  - button "Clear advanced"
+  - paragraph: Query modes (term, intent, hyde)
+  - combobox: Term
+  - textbox "Add query mode text"
+  - button "Add mode"
+  - text: "Filters: since:2026-09-01 until:2026-09-02"
+  - button "Clear all"
+  - paragraph: 1 result
+  - heading "Target" [level=3]
+  - text: 100%
+  - paragraph:
+    - mark: needle
+    - text: deutsche Notiz
+    - mark: needle
+    - text: background background background background background background background background background background background background background background background background background background background background background background background background background background background background...
+  - paragraph: gno://notes/scope/target.md
+  - text: L1-1
+- contentinfo:
+  - text: ◆
+  - button "Collections"
+  - text: —
+  - button "Trace history"
+  - text: —
+  - link "GitHub":
+    - /url: https://github.com/gmickel/gno
+  - text: —
+  - link "Discord":
+    - /url: https://discord.gg/nHEmyJB5tg
+  - text: —
+  - link "gno.sh":
+    - /url: https://gno.sh
+  - text: —
+  - link "Twitter":
+    - /url: https://twitter.com/gmickel
+- button "Keyboard shortcuts": "?"
+- heading "Quick Switcher" [level=2]
+- paragraph: Jump to notes, open recent documents, or create a new note.

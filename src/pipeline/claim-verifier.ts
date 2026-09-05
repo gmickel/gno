@@ -9,6 +9,10 @@ import type {
 
 import { sha256Text } from "../core/context-capsule-validation";
 import {
+  assertInferenceActive,
+  assertInferenceResult,
+} from "../llm/inference-scope";
+import {
   semanticClaimJudgmentSchema,
   verifyClaimsDeterministically,
 } from "./claim-verification";
@@ -251,6 +255,7 @@ const parseEnvelope = (
   }
   const judgments: SemanticClaimJudgment[] = [];
   for (const rawJudgment of parsed.data.judgments) {
+    assertInferenceActive();
     const candidate = candidatesById.get(rawJudgment.claimId);
     const allowed = new Set(
       candidate?.evidence.map((item) => item.evidenceId) ?? []
@@ -416,6 +421,7 @@ export const verifyClaimsSemantically = async (
     maxTokens: MAX_OUTPUT_TOKENS,
     jsonSchema: schema,
   });
+  assertInferenceResult(generated);
   if (!generated.ok) {
     return failedResult(
       deterministic,

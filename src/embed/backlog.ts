@@ -1,25 +1,35 @@
+import type { EmbeddingPort } from "../llm/types";
 /**
  * Shared embedding backlog processor.
  * Used by CLI embed, Web scheduler, and MCP tools.
  *
  * @module src/embed/backlog
  */
-
-import type { EmbeddingPort } from "../llm/types";
 import type { StoreResult } from "../store/types";
 import type {
   BacklogItem,
   VectorIndexPort,
   VectorStatsPort,
 } from "../store/vector";
+import type { VectorVariantStore } from "../store/vector/variants";
 
+import {
+  assertInferenceActive,
+  isBackgroundInference,
+} from "../llm/inference-scope";
 import { err, ok } from "../store/types";
-import { getEmbeddingFingerprint } from "./fingerprint";
+import { getVectorStatsDatabase } from "../store/vector/stats";
+import { createVectorVariantStore } from "../store/vector/variants";
+import {
+  getEmbeddingFingerprint,
+  getVariantModelFingerprint,
+} from "./fingerprint";
 import {
   chunkRetryKey,
   embedAndStoreBatch,
   MAX_EMBED_CHUNK_ATTEMPTS,
 } from "./retry";
+import { embedVariantBacklog } from "./variant-backlog";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -32,6 +42,11 @@ export interface EmbedBacklogDeps {
   collection?: string;
   modelUri: string;
   batchSize?: number;
+  force?: boolean;
+  onProgress?: (embedded: number, errors: number) => void;
+  variantStore?: VectorVariantStore;
+  /** Recheck the effective runtime identity after asynchronous inference. */
+  identityStillCurrent?: () => boolean;
 }
 
 export interface EmbedBacklogResult {
@@ -62,8 +77,16 @@ interface Cursor {
 export async function embedBacklog(
   deps: EmbedBacklogDeps
 ): Promise<StoreResult<EmbedBacklogResult>> {
+  assertInferenceActive();
+  const prepared = await prepareEmbeddingBacklog(deps);
+  if (!prepared.ok) return prepared;
+  deps = prepared.value;
+  if (deps.variantStore) return embedVariantBacklog(deps, deps.variantStore);
   const { statsPort, embedPort, vectorIndex, modelUri, collection } = deps;
-  const batchSize = deps.batchSize ?? 32;
+  const background = isBackgroundInference();
+  const batchSize = background
+    ? Math.min(deps.batchSize ?? 32, 32)
+    : (deps.batchSize ?? 32);
   const embedFingerprint = getEmbeddingFingerprint({
     modelUri,
     dimensions: vectorIndex.dimensions,
@@ -77,6 +100,7 @@ export async function embedBacklog(
 
   const enqueueRetryItems = (items: BacklogItem[], attempts: number): void => {
     for (const item of items) {
+      assertInferenceActive();
       const key = chunkRetryKey(item);
       const existing = retryQueue.get(key);
       retryQueue.set(key, {
@@ -97,8 +121,10 @@ export async function embedBacklog(
     );
 
     for (let idx = 0; idx < entries.length; idx += batchSize) {
+      assertInferenceActive();
       const slice = entries.slice(idx, idx + batchSize);
       for (const entry of slice) {
+        assertInferenceActive();
         retryQueue.delete(chunkRetryKey(entry.item));
         entry.attempts += 1;
       }
@@ -109,6 +135,8 @@ export async function embedBacklog(
         items: slice.map((entry) => entry.item),
         modelUri,
         embedFingerprint,
+        identityStillCurrent: deps.identityStillCurrent,
+        statsPort,
       });
 
       embedded += retryResult.embedded;
@@ -120,6 +148,7 @@ export async function embedBacklog(
         retryResult.retryItems.map((item) => chunkRetryKey(item))
       );
       for (const entry of slice) {
+        assertInferenceActive();
         if (!retryByKey.has(chunkRetryKey(entry.item))) {
           continue;
         }
@@ -136,6 +165,7 @@ export async function embedBacklog(
 
   try {
     while (true) {
+      assertInferenceActive();
       // Get next batch using seek pagination
       const batchResult = await statsPort.getBacklog(
         modelUri,
@@ -169,10 +199,20 @@ export async function embedBacklog(
         items: batch,
         modelUri,
         embedFingerprint,
+        identityStillCurrent: deps.identityStillCurrent,
+        statsPort,
       });
       embedded += batchStoreResult.embedded;
       errors += batchStoreResult.errors;
       contentionErrors += batchStoreResult.contentionErrors;
+      if (background) {
+        errors += batchStoreResult.retryItems.length;
+        deps.onProgress?.(embedded, errors);
+        // Each cursor page is a turn. Failed early pages cannot starve later work.
+        await Bun.sleep(0);
+        if (deps.identityStillCurrent && !deps.identityStillCurrent()) break;
+        continue;
+      }
       enqueueRetryItems(batchStoreResult.retryItems, 1);
 
       if (embedded > beforeEmbedded) {
@@ -198,6 +238,7 @@ export async function embedBacklog(
       }
     }
 
+    assertInferenceActive();
     return ok({ embedded, errors, contentionErrors, syncError });
   } catch (e) {
     return err(
@@ -205,4 +246,66 @@ export async function embedBacklog(
       `Embedding failed: ${e instanceof Error ? e.message : String(e)}`
     );
   }
+}
+
+/** Resolve authority before counts, dry runs, forced work, or early returns. */
+export async function prepareEmbeddingBacklog(
+  deps: EmbedBacklogDeps
+): Promise<StoreResult<EmbedBacklogDeps>> {
+  if (deps.variantStore) return ok(deps);
+  const db = getVectorStatsDatabase(deps.statsPort);
+  if (db) {
+    try {
+      const initialized = await deps.embedPort.init();
+      if (!initialized.ok) return err("INTERNAL", initialized.error.message);
+      const identity = deps.embedPort.getIdentity?.();
+      if (identity) {
+        const identitySnapshot = JSON.stringify(identity);
+        const dimensions = deps.embedPort.dimensions();
+        const variantStore = await createVectorVariantStore(db, {
+          model: deps.modelUri,
+          modelFingerprint: getVariantModelFingerprint(
+            { modelUri: deps.modelUri, dimensions },
+            identity
+          ),
+          contextSize: identity.contextSize,
+          truncationPolicy: identity.truncationPolicy,
+          dimensions,
+        });
+        return ok({
+          ...deps,
+          variantStore,
+          identityStillCurrent: () =>
+            (deps.identityStillCurrent?.() ?? true) &&
+            deps.embedPort.modelUri === deps.modelUri &&
+            deps.embedPort.dimensions() === dimensions &&
+            JSON.stringify(deps.embedPort.getIdentity?.()) === identitySnapshot,
+        });
+      }
+      // Unverified/HTTP ports retain legacy behavior until variant authority exists.
+      if (
+        db
+          .query(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'vector_partitions'"
+          )
+          .get() &&
+        db
+          .query(
+            "SELECT 1 FROM vector_partitions WHERE model = ? AND state = ? AND activated_epoch IS NOT NULL LIMIT 1"
+          )
+          .get(deps.modelUri, "active")
+      ) {
+        return err(
+          "INVALID_INPUT",
+          "Effective embedding identity unavailable after variant activation"
+        );
+      }
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : String(cause)
+      );
+    }
+  }
+  return ok(deps);
 }

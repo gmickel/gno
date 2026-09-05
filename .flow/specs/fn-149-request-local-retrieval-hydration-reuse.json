@@ -1,5 +1,5 @@
 {
-  "branch_name": "fn-149-request-local-retrieval-hydration-reuse",
+  "branch_name": "fn-143-152-retrieval-resource-major",
   "completion_review_status": "unknown",
   "completion_reviewed_at": null,
   "created_at": "2026-09-04T22:26:22.697968Z",
@@ -17,7 +17,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-149-request-local-retrieval-hydration-reuse.md",
-  "status": "open",
+  "status": "done",
   "title": "Request-local retrieval hydration reuse",
   "tracker": {
     "baseHashFlow": null,
@@ -30,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T23:08:34.358873Z"
+  "updated_at": "2026-09-05T07:38:50.764379Z"
 }

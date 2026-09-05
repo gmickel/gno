@@ -23,6 +23,49 @@ function gatewayDeps() {
 }
 
 describe("daemon command", () => {
+  test("stop during stuck initial sync reaches teardown without awaiting startup", async () => {
+    const controller = new AbortController();
+    const entered = Promise.withResolvers<void>();
+    let disposed = false;
+    const running = daemon(
+      { signal: controller.signal, quiet: true },
+      {
+        ...gatewayDeps(),
+        startBackgroundRuntime: (async () => ({
+          success: true,
+          runtime: {
+            config: {
+              version: "1.0",
+              ftsTokenizer: "unicode61",
+              collections: [],
+              contexts: [],
+            },
+            syncAll: async () => {
+              entered.resolve();
+              await new Promise(() => {});
+            },
+            dispose: async () => {
+              disposed = true;
+            },
+            setListenerPort: () => {},
+            watchService: {
+              getState: () => ({
+                expectedCollections: [],
+                activeCollections: [],
+                failedCollections: [],
+              }),
+            },
+          },
+        })) as never,
+        logger: { log: () => {}, error: () => {} },
+      }
+    );
+    await entered.promise;
+    controller.abort();
+    expect(await running).toEqual({ success: true });
+    expect(disposed).toBe(true);
+  });
+
   test("denies path-bearing app status on non-loopback listeners", async () => {
     const response = await handleDaemonAppStatus({} as never, "0.0.0.0");
     expect(response.status).toBe(404);
@@ -199,7 +242,7 @@ describe("daemon command", () => {
       true
     );
     expect(logs.some((line) => line.includes("embed: 3 embedded"))).toBe(true);
-    expect(cleanupOrder).toEqual(["server", "gateway", "runtime"]);
+    expect(cleanupOrder).toEqual(["runtime", "server", "gateway"]);
   });
 
   test("skips initial sync when requested", async () => {

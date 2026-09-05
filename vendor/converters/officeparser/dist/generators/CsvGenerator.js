@@ -1,0 +1,245 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CsvGenerator = void 0;
+const fflate_1 = require("fflate");
+const types_js_1 = require("../types.js");
+const sheetUtils_js_1 = require("../utils/sheetUtils.js");
+const sanitize_js_1 = require("../utils/sanitize.js");
+const BaseGenerator_js_1 = require("./BaseGenerator.js");
+/**
+ * Generates CSV files from an AST.
+ */
+class CsvGenerator extends BaseGenerator_js_1.BaseGenerator {
+    constructor(ast, config) {
+        super('csv', ast, config);
+    }
+    /**
+     * Generates CSV content from the provided AST.
+     *
+     * @returns A CSV string or a ZIP archive containing multiple CSVs
+     */
+    async generate() {
+        const csvConfig = this.config.csvConfig;
+        const delimiter = csvConfig.columnDelimiter;
+        const mergeSheets = csvConfig.mergeSheets;
+        // 1. Collect all "sheet-like" nodes (sheets and tables)
+        const sheetNodes = await this.collectSheetLikeNodes(this.ast.content);
+        if (sheetNodes.length === 0) {
+            return { value: '', messages: this.messages };
+        }
+        const metadataHeader = this.config.renderMetadata ? this.renderMetadata(this.ast, delimiter) : '';
+        // 2. Filter sheets based on range
+        let selectedNodes = sheetNodes;
+        if (csvConfig.sheets) {
+            const indices = (0, sheetUtils_js_1.parseRangeString)(csvConfig.sheets);
+            selectedNodes = indices
+                .filter(i => i > 0 && i <= sheetNodes.length)
+                .map(i => sheetNodes[i - 1]);
+        }
+        if (selectedNodes.length === 0) {
+            this.warn(types_js_1.OfficeWarningType.SHEET_RANGE_NOT_FOUND, csvConfig.sheets);
+            return { value: '', messages: this.messages };
+        }
+        // 3. Generate CSV content for each selected node
+        const sheetData = [];
+        let globalMaxCols = 0;
+        for (let i = 0; i < selectedNodes.length; i++) {
+            const node = selectedNodes[i];
+            const name = node.metadata?.sheetName || `Sheet${i + 1}`;
+            const rows = await this.renderNodeToRows(node);
+            const maxCols = Math.max(...rows.map(r => r.length), 0);
+            if (mergeSheets) {
+                globalMaxCols = Math.max(globalMaxCols, maxCols);
+            }
+            sheetData.push({ name, rows });
+        }
+        // 4. Handle merging or separate files
+        if (mergeSheets) {
+            const mergedLines = [];
+            if (metadataHeader)
+                mergedLines.push(metadataHeader.trim());
+            for (const sheet of sheetData) {
+                if (sheetData.length > 1)
+                    mergedLines.push(`# Sheet: ${this.sanitizeComment(sheet.name, delimiter)}`);
+                for (const row of sheet.rows) {
+                    const paddedRow = [...row];
+                    // Don't pad comments
+                    if (row.length > 1 || (row.length === 1 && !row[0].startsWith('#'))) {
+                        while (paddedRow.length < globalMaxCols)
+                            paddedRow.push('');
+                    }
+                    mergedLines.push(paddedRow.map(v => this.escapeCsvValue(v, delimiter)).join(delimiter));
+                }
+                mergedLines.push(''); // Blank line between sheets
+            }
+            return {
+                value: mergedLines.join('\n'),
+                messages: this.messages
+            };
+        }
+        else if (sheetData.length > 1) {
+            // Create a ZIP archive for multiple sheets
+            const zipFiles = {};
+            for (const sheet of sheetData) {
+                const sheetMaxCols = Math.max(...sheet.rows.map(r => r.length), 0);
+                const csvLines = [];
+                if (metadataHeader)
+                    csvLines.push(metadataHeader.trim());
+                for (const row of sheet.rows) {
+                    const paddedRow = [...row];
+                    // Don't pad comments
+                    if (row.length > 1 || (row.length === 1 && !row[0].startsWith('#'))) {
+                        while (paddedRow.length < sheetMaxCols)
+                            paddedRow.push('');
+                    }
+                    csvLines.push(paddedRow.map(v => this.escapeCsvValue(v, delimiter)).join(delimiter));
+                }
+                const fileName = `${sheet.name.replace(/[^\w\s-]/g, '_')}.csv`;
+                zipFiles[fileName] = new TextEncoder().encode(csvLines.join('\n'));
+            }
+            const zipBuffer = (0, fflate_1.zipSync)(zipFiles);
+            return {
+                value: zipBuffer,
+                messages: this.messages
+            };
+        }
+        else {
+            // Single sheet: return as plain string
+            const sheet = sheetData[0];
+            const sheetMaxCols = Math.max(...sheet.rows.map(r => r.length), 0);
+            const csvLines = [];
+            if (metadataHeader)
+                csvLines.push(metadataHeader.trim());
+            for (const row of sheet.rows) {
+                const paddedRow = [...row];
+                // Don't pad comments
+                if (row.length > 1 || (row.length === 1 && !row[0].startsWith('#'))) {
+                    while (paddedRow.length < sheetMaxCols)
+                        paddedRow.push('');
+                }
+                csvLines.push(paddedRow.map(v => this.escapeCsvValue(v, delimiter)).join(delimiter));
+            }
+            return {
+                value: csvLines.join('\n'),
+                messages: this.messages
+            };
+        }
+    }
+    /**
+     * Recursively finds all nodes that can be treated as sheets (sheet or table).
+     */
+    async collectSheetLikeNodes(nodes) {
+        const result = [];
+        for (const node of nodes) {
+            const override = await this.handleOnNode(node);
+            if (override === false) {
+                continue;
+            }
+            if (node.type === 'sheet' || node.type === 'table') {
+                result.push(node);
+            }
+            else if (node.children) {
+                result.push(...(await this.collectSheetLikeNodes(node.children)));
+            }
+        }
+        return result;
+    }
+    /**
+     * Renders a sheet or table node to raw row data.
+     */
+    async renderNodeToRows(node) {
+        if (!node.children)
+            return [];
+        const rows = [];
+        const rowNodes = node.children.filter(c => c.type === 'row' || c.type === 'comment');
+        // Text processor for cell content
+        const cellProcessor = (n, co) => {
+            if (n.type === 'text' || n.type === 'code')
+                return n.text || '';
+            if (n.type === 'break')
+                return '\n';
+            return co;
+        };
+        for (const rowNode of rowNodes) {
+            const override = await this.handleOnNode(rowNode);
+            if (override === false) {
+                continue;
+            }
+            if (typeof override === 'string') {
+                rows.push([override]);
+                continue;
+            }
+            if (rowNode.type === 'comment') {
+                rows.push([rowNode.text || '']);
+                continue;
+            }
+            if (!rowNode.children) {
+                rows.push([]);
+                continue;
+            }
+            const cellNodes = rowNode.children.filter(c => c.type === 'cell');
+            const rowValues = [];
+            let lastCol = -1;
+            for (const cell of cellNodes) {
+                const currentCol = cell.metadata?.col ?? (lastCol + 1);
+                // Fill gaps with empty strings
+                while (lastCol < currentCol - 1) {
+                    rowValues.push('');
+                    lastCol++;
+                }
+                const cellText = await this.processNodeRecursive(cell, cellProcessor);
+                rowValues.push(cellText);
+                // Handle colSpan: move lastCol forward
+                const colSpan = cell.metadata?.colSpan || 1;
+                lastCol = currentCol + colSpan - 1;
+            }
+            rows.push(rowValues);
+        }
+        return rows;
+    }
+    /**
+     * Escapes a value for CSV formatting: RFC 4180 quoting plus a spreadsheet
+     * formula-injection guard (see csvSafeCell in ../utils/sanitize.js).
+     */
+    escapeCsvValue(val, delimiter) {
+        return (0, sanitize_js_1.csvSafeCell)(val, delimiter);
+    }
+    /** Sanitizes a value for a `#` comment line (document metadata or sheet name).
+     *  Comment lines are free text prefixed with `#`, not RFC-4180 cells, so they
+     *  can't be quoted; instead we (a) collapse newlines so the value can't break out
+     *  and inject a new row, and (b) replace the column delimiter with a space so a
+     *  value like `x,=1+1` can't split into a second cell that a spreadsheet would
+     *  evaluate as a formula (CSV formula/DDE injection). */
+    sanitizeComment(val, delimiter) {
+        let s = String(val ?? '').replace(/[\r\n]+/g, ' ');
+        if (delimiter)
+            s = s.split(delimiter).join(' ');
+        return s;
+    }
+    /**
+     * Renders metadata as comments.
+     */
+    renderMetadata(_ast, delimiter) {
+        // Via effectiveMetadata rather than the passed AST so `metadataOverrides` applies here
+        // as it does in every other generator.
+        const m = this.effectiveMetadata;
+        if (!m || Object.keys(m).length === 0)
+            return '';
+        let output = '';
+        if (m.title)
+            output += `# Title: ${this.sanitizeComment(m.title, delimiter)}\n`;
+        if (m.author)
+            output += `# Author: ${this.sanitizeComment(m.author, delimiter)}\n`;
+        if (m.created)
+            output += `# Created: ${this.sanitizeComment(new Date(m.created).toLocaleString(), delimiter)}\n`;
+        if (m.modified)
+            output += `# Modified: ${this.sanitizeComment(new Date(m.modified).toLocaleString(), delimiter)}\n`;
+        if (m.customProperties) {
+            for (const [k, v] of Object.entries(m.customProperties)) {
+                output += `# ${this.sanitizeComment(k, delimiter)}: ${this.sanitizeComment(String(v), delimiter)}\n`;
+            }
+        }
+        return output ? output + '\n' : '';
+    }
+}
+exports.CsvGenerator = CsvGenerator;

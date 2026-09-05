@@ -1,0 +1,27 @@
+[
+  {
+    "target": "/home/gordon/.claude/skills/gno",
+    "files": 15,
+    "mismatches": []
+  },
+  {
+    "target": "/home/gordon/.codex/skills/gno",
+    "files": 15,
+    "mismatches": []
+  },
+  {
+    "target": "/home/gordon/.config/opencode/skills/gno",
+    "files": 15,
+    "mismatches": []
+  },
+  {
+    "target": "/home/gordon/.openclaw/skills/gno",
+    "files": 15,
+    "mismatches": []
+  },
+  {
+    "target": "/home/gordon/.hermes/skills/gno",
+    "files": 15,
+    "mismatches": []
+  }
+]

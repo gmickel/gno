@@ -1,6 +1,7 @@
-/** Admission, bounded-reader, and model-lease boundary for resident REST reads. */
-
 import type { ResidentRuntime } from "./resident-runtime";
+/** Admission and bounded-reader boundary for resident REST reads. */
+
+import { withInferenceScope } from "../llm/inference-scope";
 
 function unavailableResponse(): Response {
   return Response.json(
@@ -100,8 +101,9 @@ export async function handleResidentRead(
   try {
     releaseReader = await runtime.readerGate.acquire(admitted.signal);
     if (admitted.signal.aborted) return unavailableResponse();
-    const response = await runtime.withModelLease(() =>
-      Promise.resolve(operation(admitted.signal))
+    const response = await withInferenceScope(
+      { signal: admitted.signal },
+      async () => operation(admitted.signal)
     );
     if (admitted.signal.aborted) return unavailableResponse();
     if (!isAuthorizationEpochCurrent()) {
@@ -109,7 +111,11 @@ export async function handleResidentRead(
     }
     if (response.headers.get("content-type")?.includes("text/event-stream")) {
       deferredFinish = true;
-      return wrapResidentStream(response, isAuthorizationEpochCurrent, finish);
+      return wrapResidentStream(
+        response,
+        () => !admitted.signal.aborted && isAuthorizationEpochCurrent(),
+        finish
+      );
     }
     return response;
   } catch (error) {

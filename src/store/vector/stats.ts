@@ -12,6 +12,15 @@ import type { BacklogItem, VectorStatsPort } from "./types";
 
 import { err, ok } from "../types";
 
+const statsDatabases = new WeakMap<VectorStatsPort, Database>();
+
+/** Internal bridge for exact-input backlog; mock/third-party stats have no database. */
+export function getVectorStatsDatabase(
+  stats: VectorStatsPort
+): Database | undefined {
+  return statsDatabases.get(stats);
+}
+
 /**
  * Create a VectorStatsPort for backlog detection and vector stats.
  * Uses EXISTS-based queries to avoid duplicates from multiple docs sharing mirror_hash.
@@ -44,7 +53,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
     };
   }
 
-  return {
+  const port: VectorStatsPort = {
     countVectors(model: string): Promise<StoreResult<number>> {
       try {
         const result = db
@@ -121,7 +130,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
         const sql = after
           ? `
           SELECT c.mirror_hash as mirrorHash, c.seq, c.text,
-            (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 LIMIT 1) as title,
+            (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 ORDER BY d.id LIMIT 1) as title,
             CASE
               WHEN NOT EXISTS (
                 SELECT 1 FROM content_vectors v
@@ -148,7 +157,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
         `
           : `
           SELECT c.mirror_hash as mirrorHash, c.seq, c.text,
-            (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 LIMIT 1) as title,
+            (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 ORDER BY d.id LIMIT 1) as title,
             CASE
               WHEN NOT EXISTS (
                 SELECT 1 FROM content_vectors v
@@ -206,4 +215,6 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
       }
     },
   };
+  statsDatabases.set(port, db);
+  return port;
 }

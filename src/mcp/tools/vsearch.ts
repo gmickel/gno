@@ -178,7 +178,7 @@ export function handleVsearch(
         const downloadProgress = createNonTtyProgressRenderer();
 
         // Create LLM adapter for embeddings
-        const llm = new LlmAdapter(ctx.config);
+        const llm = ctx.getModelAdapter?.() ?? new LlmAdapter(ctx.config);
         const embedResult = await llm.createEmbeddingPort(modelUri, {
           egressCollections: args.collection ? [args.collection] : "all",
           policy,

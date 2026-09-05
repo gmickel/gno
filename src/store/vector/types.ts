@@ -5,7 +5,25 @@
  * @module src/store/vector/types
  */
 
-import type { StoreResult } from "../types";
+import type { DocumentEligibilityOptions, StoreResult } from "../types";
+
+/** Full effective embedding identity, including truncation/runtime policy. */
+export interface VectorVariantIdentity {
+  model: string;
+  modelFingerprint: string;
+  contextSize: number;
+  truncationPolicy: string;
+  dimensions: number;
+}
+
+/** Snapshot carried through asynchronous embedding; write revalidates input. */
+export interface VectorOwnerInput {
+  documentId: number;
+  mirrorHash: string;
+  seq: number;
+  formattedInput: string;
+  inputHash: string;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Row Types
@@ -21,8 +39,18 @@ export interface VectorRow {
   // embeddedAt is set by DB via datetime('now')
 }
 
+export interface VectorSearchOptions {
+  embeddingIdentity?: VectorVariantIdentity;
+  minScore?: number;
+  allowedMirrorHashes?: string[];
+  /** Exact active owner/chunk domain, applied before the nearest-neighbor budget. */
+  eligibility?: DocumentEligibilityOptions & { language?: string };
+}
+
 /** Vector search result */
 export interface VectorSearchResult {
+  /** Exact current owners for variant hits; undefined preserves legacy semantics. */
+  documentIds?: number[];
   mirrorHash: string;
   seq: number;
   distance: number;
@@ -72,6 +100,11 @@ export interface VectorIndexPort {
 
   /** Upsert vectors into storage and vec index */
   upsertVectors(rows: VectorRow[]): Promise<StoreResult<void>>;
+  /** Internal checkpoint validation inside the storage transaction; returns committed rows. */
+  upsertVectorsChecked?(
+    rows: VectorRow[],
+    checkpoint: (rows: VectorRow[]) => VectorRow[]
+  ): Promise<StoreResult<number>>;
 
   /** Delete all vectors for a mirror hash (for this model) */
   deleteVectorsForMirror(mirrorHash: string): Promise<StoreResult<void>>;
@@ -84,7 +117,7 @@ export interface VectorIndexPort {
   searchNearest(
     embedding: Float32Array,
     k: number,
-    options?: { minScore?: number; allowedMirrorHashes?: string[] }
+    options?: VectorSearchOptions
   ): Promise<StoreResult<VectorSearchResult[]>>;
 
   // ─────────────────────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import type {
 } from "../../src/store/vector";
 
 import {
+  chunkRetryKey,
   embedAndStoreBatch,
   UPSERT_CONTENTION_BASE_DELAY_MS,
   UPSERT_CONTENTION_BACKOFF_FACTOR,
@@ -20,6 +21,21 @@ import {
 } from "../../src/embed/retry";
 
 const ZERO_DELAYS = [0, 0, 0, 0];
+
+test("retry keys retain owner and exact input identity", () => {
+  const owner = {
+    mirrorHash: "shared",
+    seq: 0,
+    documentId: 1,
+    inputHash: "alpha",
+  };
+  expect(chunkRetryKey(owner)).not.toBe(
+    chunkRetryKey({ ...owner, documentId: 2 })
+  );
+  expect(chunkRetryKey(owner)).not.toBe(
+    chunkRetryKey({ ...owner, inputHash: "beta" })
+  );
+});
 
 const ITEMS: BacklogItem[] = [
   {

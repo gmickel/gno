@@ -1,0 +1,96 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Found 2 results for \"cobalt observatory dawn\":\n\n[#6dc5c05b] gno://identity/Alpha.md (score: 1.000)\n  Title: Alpha\n  The <mark>cobalt</mark> <mark>observatory</mark> opens at <mark>dawn</mark>. \n\n[#98897c0b] gno://identity/copy/Beta.md (score: 0.000)\n  Title: Beta\n  The <mark>cobalt</mark> <mark>observatory</mark> opens at <mark>dawn</mark>. \n"
+    }
+  ],
+  "structuredContent": {
+    "results": [
+      {
+        "docid": "#6dc5c05b",
+        "score": 1,
+        "uri": "gno://identity/Alpha.md",
+        "title": "Alpha",
+        "contentType": "prose",
+        "categories": [
+          "prose"
+        ],
+        "line": 1,
+        "snippet": "The <mark>cobalt</mark> <mark>observatory</mark> opens at <mark>dawn</mark>.\n",
+        "snippetRange": {
+          "startLine": 1,
+          "endLine": 1
+        },
+        "source": {
+          "relPath": "Alpha.md",
+          "mime": "text/markdown",
+          "ext": ".md",
+          "modifiedAt": "2026-09-05T02:22:02.137Z",
+          "sizeBytes": 43,
+          "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+          "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/corpus/Alpha.md"
+        },
+        "conversion": {
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+        },
+        "egressLineage": {
+          "effectivePolicy": "local_only",
+          "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+          "sources": [
+            {
+              "collection": "identity",
+              "policy": "local_only",
+              "source": "config_default"
+            }
+          ]
+        }
+      },
+      {
+        "docid": "#98897c0b",
+        "score": 0,
+        "uri": "gno://identity/copy/Beta.md",
+        "title": "Beta",
+        "contentType": "prose",
+        "categories": [
+          "prose"
+        ],
+        "line": 1,
+        "snippet": "The <mark>cobalt</mark> <mark>observatory</mark> opens at <mark>dawn</mark>.\n",
+        "snippetRange": {
+          "startLine": 1,
+          "endLine": 1
+        },
+        "source": {
+          "relPath": "copy/Beta.md",
+          "mime": "text/markdown",
+          "ext": ".md",
+          "modifiedAt": "2026-09-05T02:22:07.004Z",
+          "sizeBytes": 38,
+          "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/corpus/copy/Beta.md"
+        },
+        "conversion": {
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+        },
+        "egressLineage": {
+          "effectivePolicy": "local_only",
+          "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+          "sources": [
+            {
+              "collection": "identity",
+              "policy": "local_only",
+              "source": "config_default"
+            }
+          ]
+        }
+      }
+    ],
+    "meta": {
+      "query": "cobalt observatory dawn",
+      "mode": "bm25",
+      "totalResults": 2,
+      "queryLanguage": "it"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+import {compareAcceptance} from '/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/package/evals/acceptance/compare.ts';
+import {canonicalJson} from '/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/package/evals/agentic/canonical.ts';
+const root=import.meta.dir;
+const read=async(role:string)=>{const plan=await Bun.file(`${root}/${role}/plan-contained.json`).json();return {plan,result:await Bun.file(plan.outputPath).json()};};
+const a=await read('baseline'),b=await read('candidate');
+const same=(a:unknown,b:unknown)=>a===undefined||b===undefined?a===b:canonicalJson(a)===canonicalJson(b);
+const pairs=a.result.results.map((x:any,index:number)=>{const y=b.result.results[index];return {caseId:x.caseId,coverage:[x.coverage,y.coverage],fullResultsEqual:same(x.raw?.results,y.raw?.results),deterministicRecordEqual:same(x.record.deterministic,y.record.deterministic),generatedAnswerEqual:same(x.record.generatedAnswer,y.record.generatedAnswer),modelInputsEqual:same(x.receipt.modelInputs,y.receipt.modelInputs),modelOutputsEqual:same(x.receipt.modelOutputs,y.receipt.modelOutputs)};});
+const strict=compareAcceptance(a.plan.manifest,b.plan.manifest,a.result.results.map((r:any)=>r.record),b.result.results.map((r:any)=>r.record));
+const before=b.result.results.find((r:any)=>r.caseId==='verified-before'),after=b.result.results.find((r:any)=>r.caseId==='verified-after-idle');
+const withinCandidateAsk={deterministicRecordEqual:same(before.record.deterministic,after.record.deterministic),generatedAnswerEqual:same(before.record.generatedAnswer,after.record.generatedAnswer),modelInputsEqual:same(before.receipt.modelInputs,after.receipt.modelInputs),modelOutputsEqual:same(before.receipt.modelOutputs,after.receipt.modelOutputs),semanticBefore:before.raw.verification.semantic,semanticAfter:after.raw.verification.semantic};
+const output={strict,pairs,withinCandidateAsk};
+await Bun.write(`${root}/comparison.json`,JSON.stringify(output,null,2));
+console.log(JSON.stringify(output));

@@ -1,0 +1,416 @@
+{
+  "rerank/cuda-native.json.gz": {
+    "sha256": "6b7f913fefc1ddc41c24152798f663d6b5cf4948ec1e81a1c1327c14be4c5085",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/cuda-native.json",
+    "sourceSha256": "00ef72a32af8c093efc0fa768beb0d6eb0ae1e21dd5eb35d7998f90a66bcefad",
+    "transform": "gzip-mtime0"
+  },
+  "rerank/cuda-native.receipt.json.gz": {
+    "sha256": "0c3653a413c477ca529cfe41504f47a803acc5220f5d244a96c4cc26884cd542",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/cuda-native.receipt.json",
+    "sourceSha256": "1510f0755bdfd46aa3dd7bb5d30ec3e91d70545a18d056d1c6791f552ce01723",
+    "transform": "gzip-mtime0"
+  },
+  "rerank/cuda-native.stdout.gz": {
+    "sha256": "33e00aa3232fd60b29eb88f357b9f3b2b5d3ced52e04c1a11f641b9c8706731d",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/cuda-native.stdout",
+    "sourceSha256": "ada899c48a6b0cdfb0e6aed326861874045a1a46ff0ada6f724b803fe03bd549",
+    "transform": "gzip-mtime0"
+  },
+  "rerank/cuda-native.stderr.gz": {
+    "sha256": "fbd127a217632b89eff2e9f975870b34b1abe3c08b7599ebc7132a469a1d1e4d",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/cuda-native.stderr",
+    "sourceSha256": "be8cb22a2e9cdbae4157287e61b6630e61e48a88e1d1dc33c8536d0315b37e45",
+    "transform": "gzip-mtime0"
+  },
+  "rerank/cuda-comparison.json.gz": {
+    "sha256": "b5f0cf51059f2a68bdc2fa342552140f7ff746b51040b2e0da3d4d3cc0ffd317",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/cuda-comparison.json",
+    "sourceSha256": "8bc45fe25ca154b88b9a148d42a9260c4a3b7ae39a3fa496a36215be956b44e1",
+    "transform": "gzip-mtime0"
+  },
+  "rerank/metal-native.json.gz": {
+    "sha256": "a1c4710b9d0074b89f543249f92a407d25a0db067f77ddff2aeea1aa941fba13",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/metal-native.json",
+    "sourceSha256": "58719c5ca1b9a34ccb69bfda5092b0be0710f469a5a99dc37dd0d44751861bf6",
+    "transform": "gzip-mtime0"
+  },
+  "rerank/metal-native.receipt.json.gz": {
+    "sha256": "c6653a19a2ecc2fc7f78f60f429ed9fa779d156e0f40121de7cbf414b4fe8549",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/metal-native.receipt.json",
+    "sourceSha256": "e0ff10dd0e9eab9c67ac0a5ae314427913642a042ba24a33db8db732144178a7",
+    "transform": "gzip-mtime0"
+  },
+  "rerank/metal-native.stdout.gz": {
+    "sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/metal-native.stdout",
+    "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "transform": "gzip-mtime0"
+  },
+  "rerank/metal-native.stderr.gz": {
+    "sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/metal-native.stderr",
+    "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "transform": "gzip-mtime0"
+  },
+  "rerank/source-receipt.json.gz": {
+    "sha256": "dd0af3784e9ffba63770dbf1281c63cf2c386c8a08118e046cc1935cf1f7edff",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/source-receipt.json",
+    "sourceSha256": "508c9dc596241bbf16a0f9fccebc4301b007cac4143f2bed850a4808731cae3d",
+    "transform": "gzip-mtime0"
+  },
+  "rerank/native.ts.gz": {
+    "sha256": "af7d0cb48564132f3f6dc0faa0b7c1f3883748ff7460f71cf1ab48d54c2aef07",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/native.ts",
+    "sourceSha256": "03fe3785090e155ee3da3beb3ffb09c75af1cdc9b6ff32657db897b749433598",
+    "transform": "gzip-mtime0"
+  },
+  "rerank/metal-native.ts.gz": {
+    "sha256": "c2aae61221775be52a03f3ed9af7f2651c6c36e94c026eb2afa80ea811be9335",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/metal-native.ts",
+    "sourceSha256": "9ed0a41b6164b7b01fcec62a27e17003b053a5e7357d79215ecfd11c7c4ce59c",
+    "transform": "gzip-mtime0"
+  },
+  "rerank/compare.ts.gz": {
+    "sha256": "e38b4cce30395153e409b6c0725b2f9218941eebcba876a2129c9ab158496f7d",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/compare.ts",
+    "sourceSha256": "b24ebf54a20741b27ee04fbf81e291e98d5ad6a34d9c1a07e5a6d76d86f01699",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/SUMMARY.md.gz": {
+    "sha256": "9d8d2b06e0ee1705bb9f6651d8d0a67425396c1286a7e46182e9778828307fd4",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/SUMMARY.md",
+    "sourceSha256": "10c5b6233521db562e83786336d7d7eefb69eaca1ce0f8be91d3c523be7be99b",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/source-identity.json.gz": {
+    "sha256": "d6d7384585d6b52c3317ff976ed2b5fb0361cac356409a0d0edf361611310ad3",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/source-identity.json",
+    "sourceSha256": "b3bc79ecc2b743e2b39682efd42bd20b0a88511e06040301e71ce197e4ace88b",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-plan-v2.json.gz": {
+    "sha256": "eb0d03cede02473ec70131b5a13655a5c6211284516c72f189fcf5149ae9c1a0",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-plan-v2.json",
+    "sourceSha256": "cfd4219f3f4cd6bdfc0195fb0f47353d3ddb845ab38aa55f7d61ffcf912c0fa6",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-plan.json.gz": {
+    "sha256": "6138a5c4152f3ce834dcd1e7876cc9ce964e1387f8568c4376a8e132f3207f5b",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-plan.json",
+    "sourceSha256": "cb2ff31a8b365e2e86d8299105af5cee18f0f9818fa697c6990878ba956cee09",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-comparison.json.gz": {
+    "sha256": "eb862ad7c15417414c94f492eaa4868637f8c1337dd8017bb87ecdab104934d6",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-comparison.json",
+    "sourceSha256": "d6ca31157e5938e567b6184c2b736d9f9170f51f4d6d8eb9c86eb004c4d97dc9",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-comparison.json.gz": {
+    "sha256": "9440f4d0fa676fe3765fa6ace05de807e8a0eb9e9fb69dedca0fbea14d00bbc6",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-comparison.json",
+    "sourceSha256": "4fd72b8498e5faab285249c7df0e78bc0c3c1ca2df534b3592050c6f500ed11d",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/retained-sdk.ts.gz": {
+    "sha256": "6f64cdb584b45b44f76f1a3b31e8cc59e48e30e696d4ae7d7c485795777862ca",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/retained-sdk.ts",
+    "sourceSha256": "7701bb7d5d146ddaa2f616a428b6ce56b01c5fc985f83cb3639cdb64fa66b548",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/prepare.py.gz": {
+    "sha256": "47e7dedd62da17630571dfdda793fd847436510b4d5bf7bc84e4d2a66c05d579",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/prepare.py",
+    "sourceSha256": "668b371dd06e9c68e660abb4d5ebd8dd00008a9651d6c766db8463a570186356",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/prepare-cuda.py.gz": {
+    "sha256": "d09e6d9536d11742a23c94c96c31d06e7f1a0337e0a397aac7d89c8228174eea",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/prepare-cuda.py",
+    "sourceSha256": "0450f7ac8ef9cb6d8fd9dfcba126aabaf602996e09caa01d8d9b01302342fd7b",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/revise-db-name.py.gz": {
+    "sha256": "5f6c9bfbda1258b218889a5a500c74c5ce5c8e5dc1b034ad6a4c832a2a4303ad",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/revise-db-name.py",
+    "sourceSha256": "e2c9a4cc81f0fe48b3c80accf7541ee7696ffc68eadb584d87c3039a3b3b838a",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/run-cuda-v2.py.gz": {
+    "sha256": "b888acfbe018912870e7dd60013fa6d5e658aa56671f2aa743bd1cbc83b72299",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/run-cuda-v2.py",
+    "sourceSha256": "7d3d017f1347c554b535a2031bdc7bfa639b27a95d556cb8698edd69375ff18b",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/run.py.gz": {
+    "sha256": "b76a0a5d4b654d0119667493d5e583cb3caf8b9cff05eb2f2b75ac163355169e",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/run.py",
+    "sourceSha256": "17d445064a3e934b7dd0c281fd9a386666c30563cfd512ceac6a1a10b99390c3",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/compare.ts.gz": {
+    "sha256": "126966b5ca7acf9a0020a1431e46e6954ffa1fc0907606682b7b32e3517da3d6",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/compare.ts",
+    "sourceSha256": "65475ad44a2cca08ef998b7eed246ad81301676b11ece7cfa724ad68864fbd6b",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-baseline-watchdog-v2.receipt.json.gz": {
+    "sha256": "0abdbfd92fb270fe75c5082e90c2b749f2096419afd1f38682b757ab7deea02c",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline-watchdog-v2.receipt.json",
+    "sourceSha256": "165c7a5990ec21fba8af357f6a58113e7f752ade36e9b4b9c99dbfc8c4b5b63f",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-baseline-watchdog-v2.stderr.gz": {
+    "sha256": "1802fad36e37e9c8dadbfa353ca2a9be3c66739a665a79cd804e4162ae6bb2ae",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline-watchdog-v2.stderr",
+    "sourceSha256": "2364eafb8f8253ce9514030f8b079eff05654c518e9270f582adfe40634e40e2",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-baseline-watchdog-v2.stdout.gz": {
+    "sha256": "33256eaf8aa2856901c8b8117f942322a3c85705806bc02146af263ba8e925de",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline-watchdog-v2.stdout",
+    "sourceSha256": "1e1013739724a20df228ecad84fd3124f410899cea312ade6c9bcba4cacc2129",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-baseline-watchdog.receipt.json.gz": {
+    "sha256": "052f9195446cacd71c433afd203b230456759ad29cc14b6ef76ffe053bf36242",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline-watchdog.receipt.json",
+    "sourceSha256": "be07462df35a1ef0aa7fa939d3feae7754d104362b82a48054d921bee5e1f046",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-baseline-watchdog.stderr.gz": {
+    "sha256": "389ef5866d31a7fe9f20ad5386d89c69763ac28a9b9f633ed24eab698daeb309",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline-watchdog.stderr",
+    "sourceSha256": "a700a21b5f7ca3329d69384287c4352d961cc5e9fe59abe1251d8bdeda962fc5",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-baseline-watchdog.stdout.gz": {
+    "sha256": "461e5e1bb802b65ed69fa53b531f2d2c2ef6b4d3f2f4d135bba18ab4a51525bd",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline-watchdog.stdout",
+    "sourceSha256": "70c4f65c5fc0e181c243d081f6e0f703725aa3284461f8d5f4d45df31398323e",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-candidate-watchdog-v2.receipt.json.gz": {
+    "sha256": "0deff3017a75912895f987e4c1412944a1713bd10c900ba59ee5e5a0daee6232",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-candidate-watchdog-v2.receipt.json",
+    "sourceSha256": "6e6ee0e0df601a722a7747d4b94932d4b12139ebaa9a36c993823c13486fc9f4",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-candidate-watchdog-v2.stderr.gz": {
+    "sha256": "fdb439804895f3a525c630fa3dd1847ebe332b87227ee9fdf86b96761afd085f",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-candidate-watchdog-v2.stderr",
+    "sourceSha256": "506bd15cdfe4d2069a6b5e156715596c9083e4292f1007f39bfecb56a2bb1165",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-candidate-watchdog-v2.stdout.gz": {
+    "sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-candidate-watchdog-v2.stdout",
+    "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/baseline-watchdog.receipt.json.gz": {
+    "sha256": "b5437a335a703c27245cba72bae90ec3689e2280ee7aab8eb47109924977e0df",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/baseline-watchdog.receipt.json",
+    "sourceSha256": "ce014af5661748e1fb1010ee98123c72fbe1fd59339f8d327404207698bad799",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/baseline-watchdog.stderr.gz": {
+    "sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/baseline-watchdog.stderr",
+    "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/baseline-watchdog.stdout.gz": {
+    "sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/baseline-watchdog.stdout",
+    "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/candidate-watchdog-v2.receipt.json.gz": {
+    "sha256": "000ff727760768f5f716847183fe834a84de36c84741fbee949cbe445abf8731",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-watchdog-v2.receipt.json",
+    "sourceSha256": "88e01caed7b4d6db766b068626f602993a14dbcc3fd0b90e127276f0465ceaa0",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/candidate-watchdog-v2.stderr.gz": {
+    "sha256": "389ef5866d31a7fe9f20ad5386d89c69763ac28a9b9f633ed24eab698daeb309",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-watchdog-v2.stderr",
+    "sourceSha256": "a700a21b5f7ca3329d69384287c4352d961cc5e9fe59abe1251d8bdeda962fc5",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/candidate-watchdog-v2.stdout.gz": {
+    "sha256": "ac82d0f77afff88d50978a031120c920b85513c88bebb8b9797ad1e8cfb1f108",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-watchdog-v2.stdout",
+    "sourceSha256": "507e5fb134426a58e546b1d929ac4400e35884f6ecd0ae8dceb19ff70cec118f",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/candidate-watchdog.receipt.json.gz": {
+    "sha256": "391237bd036599476d2df2a1d23614ffbb0de22d6d254ecde2a02cf5e7e564cf",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-watchdog.receipt.json",
+    "sourceSha256": "d298e460d360bce19724cea1e190cfeba2e1ce916f779a9f2afb4c19f89f010c",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/candidate-watchdog.stderr.gz": {
+    "sha256": "389ef5866d31a7fe9f20ad5386d89c69763ac28a9b9f633ed24eab698daeb309",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-watchdog.stderr",
+    "sourceSha256": "a700a21b5f7ca3329d69384287c4352d961cc5e9fe59abe1251d8bdeda962fc5",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/candidate-watchdog.stdout.gz": {
+    "sha256": "d300a169d585e116bc8cf147e7704aa30de41085e5d173daaa07eab5bb52920f",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-watchdog.stdout",
+    "sourceSha256": "0ef8629655ed9ba7fce360945863cd2d382f7dd0bd98f8442ebf92b9d2256193",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-baseline-v2/contexts.json.gz": {
+    "sha256": "afbfa53fcbdf78e33597531e9efe2a0d2130baa1dda5be0369be896a1ac92699",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline-v2/contexts.json",
+    "sourceSha256": "fa4f0d00d4c73a84eb4e027620ab3092957926854e9ff14cd281be14b3d507d4",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-baseline-v2/init.json.gz": {
+    "sha256": "665b23e01baa35ebe54ea3184005f253eb902896e37f685d3b1d4fc0f8fe1f67",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline-v2/init.json",
+    "sourceSha256": "468f583e86458e1dad9a0458705517c8f49ca4f854e2e60b8ab1933dca0f87fb",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-baseline-v2/long-resize.json.gz": {
+    "sha256": "3fdab24bfe6597fff450d6764f1ab9a02de0e28bf689effe424a4a28a2f9529b",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline-v2/long-resize.json.gz",
+    "sourceSha256": "3fdab24bfe6597fff450d6764f1ab9a02de0e28bf689effe424a4a28a2f9529b",
+    "transform": "identity"
+  },
+  "surfaces/cuda-baseline-v2/manifest.json.gz": {
+    "sha256": "ca7ccf570518693a1a37a4e8851240503e802ab71afc3b578d9a20825ed644e1",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline-v2/manifest.json",
+    "sourceSha256": "73941ec10df048bab4973a0f64ebbfd1155c3f516452e512893ff64afc77cc59",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-baseline-v2/short-after.json.gz": {
+    "sha256": "b07df9148db1a754617854c714fde56a62c2bff4e3558cbc8a2eb7562d8bbf92",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline-v2/short-after.json.gz",
+    "sourceSha256": "b07df9148db1a754617854c714fde56a62c2bff4e3558cbc8a2eb7562d8bbf92",
+    "transform": "identity"
+  },
+  "surfaces/cuda-baseline-v2/short-before.json.gz": {
+    "sha256": "1f8d92c61d4df1678fd92fee6d54b7ee29e5ed48d1d4a6077073c5f3224c1212",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline-v2/short-before.json.gz",
+    "sourceSha256": "1f8d92c61d4df1678fd92fee6d54b7ee29e5ed48d1d4a6077073c5f3224c1212",
+    "transform": "identity"
+  },
+  "surfaces/cuda-candidate-v2/init.json.gz": {
+    "sha256": "6a6eb2ee027e8d8ba697c732e58913eedcfed34e40f276d2ced59b6002b69801",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-candidate-v2/init.json",
+    "sourceSha256": "8d57d094220b2b1c25f61224733f946ddbab7390b3a71e91fb001c49e4992251",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/cuda-candidate-v2/manifest.json.gz": {
+    "sha256": "efee8111db4c8e5891089b0da6f3a66987546aa8548a867bfddbc12849db8373",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-candidate-v2/manifest.json",
+    "sourceSha256": "e794dddbf295a2d58cea9f8c41f3b1e7895cfd1d95cf8f3226d56d3a961583e5",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/baseline-evidence/contexts.json.gz": {
+    "sha256": "315ddcb38d0023cce52d55dcd870ebfc44d1101239821ec753c11975564d81b2",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/baseline-evidence/contexts.json",
+    "sourceSha256": "b3733f28bfb17bd4ade195ca4787dd65500c45de44cce232aca6f7be95c76f3e",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/baseline-evidence/init.json.gz": {
+    "sha256": "7c4c866d9e3d7c1141877941ee69f0eb1b2a71372535fd3d82f2f3ba72bb5ce5",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/baseline-evidence/init.json",
+    "sourceSha256": "090c9499fa5602e4e3e9134036d881a49092af2aaab48daa15b18a95687c2c0d",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/baseline-evidence/manifest.json.gz": {
+    "sha256": "0db2946688e44eac1ec5bf7aa6846c326c7019a2bb185b2f221eb6bcf4245f47",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/baseline-evidence/manifest.json",
+    "sourceSha256": "1ccbb754dd7f011d760b862e0e73ffe2ab1ce8f0aaf3a859e9d55742551ea88d",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/candidate-evidence-v2/contexts.json.gz": {
+    "sha256": "8426015de94a75f96afc2db270906b339a53fb6d4246cbfd95b2978c7b5f8554",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-evidence-v2/contexts.json",
+    "sourceSha256": "76de28101dc91e8d387f341ff812d6a1483231e89400352b1f6e245e1d72b1a7",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/candidate-evidence-v2/init.json.gz": {
+    "sha256": "751c9dbe85bcc32a0f939219fe1885c4cc988996756f14e163940bb94e99db46",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-evidence-v2/init.json",
+    "sourceSha256": "c809da85f9308dcab3935041b492e56310717634f0a3fb39af89f42c46a7a5b8",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/candidate-evidence-v2/long-resize.json.gz": {
+    "sha256": "10c3eb12ac0ba457fc51f2f70e04d9e0ad078310812e634319b2d8c84c1d524c",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-evidence-v2/long-resize.json.gz",
+    "sourceSha256": "10c3eb12ac0ba457fc51f2f70e04d9e0ad078310812e634319b2d8c84c1d524c",
+    "transform": "identity"
+  },
+  "surfaces/metal-raw/candidate-evidence-v2/manifest.json.gz": {
+    "sha256": "0ba191f8645df6fb06886d5946b862134f0e6a8fc8f456c783ac11fd5465ba73",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-evidence-v2/manifest.json",
+    "sourceSha256": "bc7aa2e2d88de65486f5e4b76968105dbf128c19673028c76c432a276c17f9fe",
+    "transform": "gzip-mtime0"
+  },
+  "surfaces/metal-raw/candidate-evidence-v2/short-after.json.gz": {
+    "sha256": "630df2c9587e342319b1ec0a663f6c8ff04ebe255e3f41837f4637c598854e7b",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-evidence-v2/short-after.json.gz",
+    "sourceSha256": "630df2c9587e342319b1ec0a663f6c8ff04ebe255e3f41837f4637c598854e7b",
+    "transform": "identity"
+  },
+  "surfaces/metal-raw/candidate-evidence-v2/short-before.json.gz": {
+    "sha256": "504fcb9fc5784f02836f1165d0436d27526fd4721335fd23b928e994f8df9ffc",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-evidence-v2/short-before.json.gz",
+    "sourceSha256": "504fcb9fc5784f02836f1165d0436d27526fd4721335fd23b928e994f8df9ffc",
+    "transform": "identity"
+  },
+  "surfaces/metal-raw/candidate-evidence-v2/verified-after-idle.json.gz": {
+    "sha256": "35bb14c7ebe32504689aba40bb36864abefa9933434ba018e965339420c4c0db",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-evidence-v2/verified-after-idle.json.gz",
+    "sourceSha256": "35bb14c7ebe32504689aba40bb36864abefa9933434ba018e965339420c4c0db",
+    "transform": "identity"
+  },
+  "surfaces/metal-raw/candidate-evidence-v2/verified-before.json.gz": {
+    "sha256": "b1c81ccbbab4a4241cac316fd9eeaede53dc0f517ce76ef214c98f6821500e21",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-evidence-v2/verified-before.json.gz",
+    "sourceSha256": "b1c81ccbbab4a4241cac316fd9eeaede53dc0f517ce76ef214c98f6821500e21",
+    "transform": "identity"
+  },
+  "surfaces/cuda-baseline/verified-before.json.gz": {
+    "sha256": "c775433e7f72b1fd978f37b8efaa50544e71438430013eaa462a52630d7db6ff",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/cuda-baseline/verified-before.json.gz",
+    "sourceSha256": "c775433e7f72b1fd978f37b8efaa50544e71438430013eaa462a52630d7db6ff",
+    "transform": "identity"
+  },
+  "surfaces/metal-raw/candidate-evidence/verified-before.json.gz": {
+    "sha256": "5d3955e6a9e2afea117c943242b533fc153ffad242c259f9f362a25477600830",
+    "source": "/home/gordon/work/gno/notes/fn145-qa/surfaces/metal-raw/candidate-evidence/verified-before.json.gz",
+    "sourceSha256": "5d3955e6a9e2afea117c943242b533fc153ffad242c259f9f362a25477600830",
+    "transform": "identity"
+  },
+  "fixtures/manifest.json.gz": {
+    "sha256": "b83c962c064f5c7731501d39cb046e83eb46f10f99b7e84687b1622dfa45a012",
+    "source": "/home/gordon/work/gno/evals/fixtures/acceptance/rerank-long-input/manifest.json",
+    "sourceSha256": "cbcf9b49b090ab567384a57ef38f556f0811cea552dccf7a2de5560bed731533",
+    "transform": "gzip-mtime0"
+  },
+  "fixtures/scenario-manifest.json.gz": {
+    "sha256": "3dd4b609c6fdeacbb539f8a11dbe8fb8b4ae8bc3ddcbe37809de1afbab76c13f",
+    "source": "/home/gordon/work/gno/evals/fixtures/acceptance/rerank-long-input/scenario-manifest.json",
+    "sourceSha256": "e33272c6e834adb079a0c251353738c5e415fc7bfb6ebab8f6555f1598271ee0",
+    "transform": "gzip-mtime0"
+  },
+  "reproduction/watchdog.py.gz": {
+    "sha256": "c2ad523aa74e619d7dfb660c391aaa619a08778f995e98b3d09f8311dd487e91",
+    "source": "/home/gordon/work/gno/notes/fn143-native-tmp/qa-prep/watchdog.py",
+    "sourceSha256": "4262eb259c6f86ecfd18e126ccc273433b7a5206ef2095fc1cf9746c1d34d3c4",
+    "transform": "gzip-mtime0"
+  },
+  "README.md": {
+    "sha256": "d7d6f9db18ce3c5b022ec93554e8944ce6e3f2162b12c4726c9076b51309a82b",
+    "source": "generated:fn-145.3 curation README",
+    "sourceSha256": null,
+    "transform": "generated"
+  }
+}

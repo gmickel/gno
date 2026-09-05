@@ -1,0 +1,2144 @@
+{
+  "before": "aae58c0a0662ea20d4e9ecdef1c9c4867c278833",
+  "after": "2d65bedbc5a28fb15231c010f7c071b9081cf7bf",
+  "scope": "97 completed overlapping groups only. Each request matched the same-run exhaustive oracle. Cross-run comparison projects only the verified synthetic collection root in source.absPath; raw full rows remain in original reports. Not the complete fn143 port/model-input paired acceptance gate.",
+  "pairs": [
+    {
+      "size": 201,
+      "key": [
+        "broad",
+        "lexical",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 5.101291999999972,
+        "p95": 5.963193999999987,
+        "max": 5.963193999999987
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.34404499999999416,
+        "p95": 0.35001499999998487,
+        "max": 0.35001499999998487
+      },
+      "beforeMaxTimerDelayMs": 5.032644999999974,
+      "afterMaxTimerDelayMs": 0.09665499999999838
+    },
+    {
+      "size": 201,
+      "key": [
+        "broad",
+        "lexical",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 20.432067000000018,
+        "p95": 22.30471399999999,
+        "max": 22.30471399999999
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.2197180000000003,
+        "p95": 1.2704280000000097,
+        "max": 1.2704280000000097
+      },
+      "beforeMaxTimerDelayMs": 21.331154000000026,
+      "afterMaxTimerDelayMs": 1.0668799999999976
+    },
+    {
+      "size": 201,
+      "key": [
+        "broad",
+        "lexical",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 5.3253950000000145,
+        "p95": 5.897723000000042,
+        "max": 5.897723000000042
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.5396870000000149,
+        "p95": 0.55283799999998,
+        "max": 0.55283799999998
+      },
+      "beforeMaxTimerDelayMs": 5.025035000000003,
+      "afterMaxTimerDelayMs": 0.0588950000000068
+    },
+    {
+      "size": 201,
+      "key": [
+        "broad",
+        "lexical",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 21.295299,
+        "p95": 22.565538000000004,
+        "max": 22.565538000000004
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.9876680000000135,
+        "p95": 2.4187550000000044,
+        "max": 2.4187550000000044
+      },
+      "beforeMaxTimerDelayMs": 21.683249999999987,
+      "afterMaxTimerDelayMs": 1.9440919999999835
+    },
+    {
+      "size": 201,
+      "key": [
+        "broad",
+        "vector",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.35332500000004075,
+        "p95": 0.40112599999997656,
+        "max": 0.40112599999997656
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.3502049999999599,
+        "p95": 0.4243959999999447,
+        "max": 0.4243959999999447
+      },
+      "beforeMaxTimerDelayMs": 0.7897649999999885,
+      "afterMaxTimerDelayMs": 0.05863499999998112
+    },
+    {
+      "size": 201,
+      "key": [
+        "broad",
+        "vector",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.07487500000002,
+        "p95": 1.146167000000105,
+        "max": 1.146167000000105
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.1605659999999602,
+        "p95": 1.2609479999999849,
+        "max": 1.2609479999999849
+      },
+      "beforeMaxTimerDelayMs": 0.8332849999999326,
+      "afterMaxTimerDelayMs": 0.9407979999999725
+    },
+    {
+      "size": 201,
+      "key": [
+        "broad",
+        "vector",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.47029600000007576,
+        "p95": 0.5242869999999584,
+        "max": 0.5242869999999584
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.47100699999998596,
+        "p95": 0.479266999999993,
+        "max": 0.479266999999993
+      },
+      "beforeMaxTimerDelayMs": 0.7311140000000478,
+      "afterMaxTimerDelayMs": 0.06567499999999882
+    },
+    {
+      "size": 201,
+      "key": [
+        "broad",
+        "vector",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.85736600000007,
+        "p95": 2.0439389999999094,
+        "max": 2.0439389999999094
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.8653060000000323,
+        "p95": 2.2464219999999955,
+        "max": 2.2464219999999955
+      },
+      "beforeMaxTimerDelayMs": 1.234982000000059,
+      "afterMaxTimerDelayMs": 1.34685300000001
+    },
+    {
+      "size": 201,
+      "key": [
+        "broad",
+        "hybrid",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 5.559958999999935,
+        "p95": 5.678119000000038,
+        "max": 5.678119000000038
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.9400229999999965,
+        "p95": 1.862955999999997,
+        "max": 1.862955999999997
+      },
+      "beforeMaxTimerDelayMs": 4.74040100000002,
+      "afterMaxTimerDelayMs": 1.1918909999999983
+    },
+    {
+      "size": 201,
+      "key": [
+        "broad",
+        "hybrid",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 24.050658999999996,
+        "p95": 31.694305999999983,
+        "max": 31.694305999999983
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.9094309999999837,
+        "p95": 3.1261949999999956,
+        "max": 3.1261949999999956
+      },
+      "beforeMaxTimerDelayMs": 30.725205999999957,
+      "afterMaxTimerDelayMs": 3.8954499999999825
+    },
+    {
+      "size": 201,
+      "key": [
+        "broad",
+        "hybrid",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 6.359539000000041,
+        "p95": 7.3224740000000565,
+        "max": 7.3224740000000565
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.4281409999999823,
+        "p95": 1.603633000000002,
+        "max": 1.603633000000002
+      },
+      "beforeMaxTimerDelayMs": 6.474006000000031,
+      "afterMaxTimerDelayMs": 1.1483910000000037
+    },
+    {
+      "size": 201,
+      "key": [
+        "broad",
+        "hybrid",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 25.656401999999957,
+        "p95": 27.81800199999998,
+        "max": 27.81800199999998
+      },
+      "afterSteadyResponseMs": {
+        "p50": 5.741251000000034,
+        "p95": 6.115976999999987,
+        "max": 6.115976999999987
+      },
+      "beforeMaxTimerDelayMs": 26.916762999999946,
+      "afterMaxTimerDelayMs": 5.760005999999976
+    },
+    {
+      "size": 201,
+      "key": [
+        "rare-tag",
+        "lexical",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.2969140000000152,
+        "p95": 0.40102600000000166,
+        "max": 0.40102600000000166
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.31103400000000647,
+        "p95": 0.3698049999999853,
+        "max": 0.3698049999999853
+      },
+      "beforeMaxTimerDelayMs": 1.0287579999999252,
+      "afterMaxTimerDelayMs": 0.061865000000011605
+    },
+    {
+      "size": 201,
+      "key": [
+        "rare-tag",
+        "lexical",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.8725220000000036,
+        "p95": 0.9371730000000298,
+        "max": 0.9371730000000298
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.9342440000000352,
+        "p95": 1.0196349999999939,
+        "max": 1.0196349999999939
+      },
+      "beforeMaxTimerDelayMs": 0.22714699999994536,
+      "afterMaxTimerDelayMs": 0.6250729999999862
+    },
+    {
+      "size": 201,
+      "key": [
+        "rare-tag",
+        "lexical",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.29397400000004836,
+        "p95": 0.3359249999999747,
+        "max": 0.3359249999999747
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.2908140000000117,
+        "p95": 0.30681400000003123,
+        "max": 0.30681400000003123
+      },
+      "beforeMaxTimerDelayMs": 0.6782739999999876,
+      "afterMaxTimerDelayMs": 0.05825500000003103
+    },
+    {
+      "size": 201,
+      "key": [
+        "rare-tag",
+        "lexical",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.8630319999999756,
+        "p95": 0.9074929999999313,
+        "max": 0.9074929999999313
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.9590430000000083,
+        "p95": 1.0482749999999896,
+        "max": 1.0482749999999896
+      },
+      "beforeMaxTimerDelayMs": 0.05742400000008274,
+      "afterMaxTimerDelayMs": 0.632474000000002
+    },
+    {
+      "size": 201,
+      "key": [
+        "rare-tag",
+        "vector",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.270774000000074,
+        "p95": 0.3254940000000488,
+        "max": 0.3254940000000488
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.274723999999992,
+        "p95": 0.3362239999999588,
+        "max": 0.3362239999999588
+      },
+      "beforeMaxTimerDelayMs": 0.05912399999999707,
+      "afterMaxTimerDelayMs": 0.06031499999994594
+    },
+    {
+      "size": 201,
+      "key": [
+        "rare-tag",
+        "vector",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.9171129999999721,
+        "p95": 1.0449149999999463,
+        "max": 1.0449149999999463
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.8363219999999956,
+        "p95": 0.9522330000000352,
+        "max": 0.9522330000000352
+      },
+      "beforeMaxTimerDelayMs": 0.7473039999999855,
+      "afterMaxTimerDelayMs": 0.7136140000000069
+    },
+    {
+      "size": 201,
+      "key": [
+        "rare-tag",
+        "vector",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.2633739999999989,
+        "p95": 0.27122399999996105,
+        "max": 0.27122399999996105
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.2611830000000168,
+        "p95": 0.28563499999995656,
+        "max": 0.28563499999995656
+      },
+      "beforeMaxTimerDelayMs": 0.05802500000004329,
+      "afterMaxTimerDelayMs": 0.05714499999999134
+    },
+    {
+      "size": 201,
+      "key": [
+        "rare-tag",
+        "vector",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.8226519999999482,
+        "p95": 0.8634720000000016,
+        "max": 0.8634720000000016
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.871323000000018,
+        "p95": 1.146017000000029,
+        "max": 1.146017000000029
+      },
+      "beforeMaxTimerDelayMs": 0.05761500000005526,
+      "afterMaxTimerDelayMs": 3.8056179999999813
+    },
+    {
+      "size": 201,
+      "key": [
+        "rare-tag",
+        "hybrid",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.6008080000000291,
+        "p95": 0.7451399999999921,
+        "max": 0.7451399999999921
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.7180800000000431,
+        "p95": 0.7671609999999873,
+        "max": 0.7671609999999873
+      },
+      "beforeMaxTimerDelayMs": 1.4115939999999227,
+      "afterMaxTimerDelayMs": 0.05939499999999498
+    },
+    {
+      "size": 201,
+      "key": [
+        "rare-tag",
+        "hybrid",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.8076549999999543,
+        "p95": 1.9532570000000078,
+        "max": 1.9532570000000078
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.269272000000001,
+        "p95": 2.337453000000039,
+        "max": 2.337453000000039
+      },
+      "beforeMaxTimerDelayMs": 1.2372520000000122,
+      "afterMaxTimerDelayMs": 1.6213869999999702
+    },
+    {
+      "size": 201,
+      "key": [
+        "rare-tag",
+        "hybrid",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.5552079999999933,
+        "p95": 0.5759279999999762,
+        "max": 0.5759279999999762
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.667808999999977,
+        "p95": 0.7200009999999679,
+        "max": 0.7200009999999679
+      },
+      "beforeMaxTimerDelayMs": 0.058685000000082255,
+      "afterMaxTimerDelayMs": 0.05853499999994938
+    },
+    {
+      "size": 201,
+      "key": [
+        "rare-tag",
+        "hybrid",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.764364999999998,
+        "p95": 1.87953600000003,
+        "max": 1.87953600000003
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.0157590000000027,
+        "p95": 2.2460820000000012,
+        "max": 2.2460820000000012
+      },
+      "beforeMaxTimerDelayMs": 0.9721570000000384,
+      "afterMaxTimerDelayMs": 1.5950669999999718
+    },
+    {
+      "size": 201,
+      "key": [
+        "whole-document-exclusion",
+        "lexical",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.6785089999999627,
+        "p95": 0.8070919999998978,
+        "max": 0.8070919999998978
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.7981710000000248,
+        "p95": 1.053594999999973,
+        "max": 1.053594999999973
+      },
+      "beforeMaxTimerDelayMs": 0.1532760000000053,
+      "afterMaxTimerDelayMs": 0.09079500000007101
+    },
+    {
+      "size": 201,
+      "key": [
+        "whole-document-exclusion",
+        "lexical",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 2.439803999999981,
+        "p95": 3.4720089999999573,
+        "max": 3.4720089999999573
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.452115000000049,
+        "p95": 2.5114959999999655,
+        "max": 2.5114959999999655
+      },
+      "beforeMaxTimerDelayMs": 2.4888089999999465,
+      "afterMaxTimerDelayMs": 1.940242000000012
+    },
+    {
+      "size": 201,
+      "key": [
+        "whole-document-exclusion",
+        "lexical",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.6272979999999961,
+        "p95": 0.7236509999999043,
+        "max": 0.7236509999999043
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.7163309999999683,
+        "p95": 1.6716139999999768,
+        "max": 1.6716139999999768
+      },
+      "beforeMaxTimerDelayMs": 0.05854499999998097,
+      "afterMaxTimerDelayMs": 0.701814000000013
+    },
+    {
+      "size": 201,
+      "key": [
+        "whole-document-exclusion",
+        "lexical",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 2.3672639999999774,
+        "p95": 2.5024849999999788,
+        "max": 2.5024849999999788
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.6344669999999724,
+        "p95": 2.800779000000034,
+        "max": 2.800779000000034
+      },
+      "beforeMaxTimerDelayMs": 2.052173000000039,
+      "afterMaxTimerDelayMs": 3.2399199999999837
+    },
+    {
+      "size": 201,
+      "key": [
+        "whole-document-exclusion",
+        "vector",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.6014989999999898,
+        "p95": 0.7600909999999885,
+        "max": 0.7600909999999885
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.5987179999999626,
+        "p95": 0.6481189999999515,
+        "max": 0.6481189999999515
+      },
+      "beforeMaxTimerDelayMs": 0.7341040000000021,
+      "afterMaxTimerDelayMs": 0.061235000000010587
+    },
+    {
+      "size": 201,
+      "key": [
+        "whole-document-exclusion",
+        "vector",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 2.4179139999998824,
+        "p95": 2.548426000000063,
+        "max": 2.548426000000063
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.2800829999999905,
+        "p95": 2.478044999999952,
+        "max": 2.478044999999952
+      },
+      "beforeMaxTimerDelayMs": 1.7425480000000562,
+      "afterMaxTimerDelayMs": 2.116614000000027
+    },
+    {
+      "size": 201,
+      "key": [
+        "whole-document-exclusion",
+        "vector",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.5847690000000512,
+        "p95": 0.6192880000000969,
+        "max": 0.6192880000000969
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.557578000000035,
+        "p95": 0.5754680000000008,
+        "max": 0.5754680000000008
+      },
+      "beforeMaxTimerDelayMs": 0.06044500000007247,
+      "afterMaxTimerDelayMs": 0.05782499999997981
+    },
+    {
+      "size": 201,
+      "key": [
+        "whole-document-exclusion",
+        "vector",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 2.24589200000014,
+        "p95": 2.3029720000001817,
+        "max": 2.3029720000001817
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.1681409999999914,
+        "p95": 2.5743870000000015,
+        "max": 2.5743870000000015
+      },
+      "beforeMaxTimerDelayMs": 1.374503999999888,
+      "afterMaxTimerDelayMs": 1.6796779999999671
+    },
+    {
+      "size": 201,
+      "key": [
+        "whole-document-exclusion",
+        "hybrid",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.4128299999999854,
+        "p95": 1.529561000000058,
+        "max": 1.529561000000058
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.505241999999953,
+        "p95": 1.6377630000000636,
+        "max": 1.6377630000000636
+      },
+      "beforeMaxTimerDelayMs": 0.9068070000000716,
+      "afterMaxTimerDelayMs": 0.8383060000001024
+    },
+    {
+      "size": 201,
+      "key": [
+        "whole-document-exclusion",
+        "hybrid",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 5.520158000000038,
+        "p95": 6.93230699999981,
+        "max": 6.93230699999981
+      },
+      "afterSteadyResponseMs": {
+        "p50": 5.8109719999999925,
+        "p95": 6.148916999999983,
+        "max": 6.148916999999983
+      },
+      "beforeMaxTimerDelayMs": 5.953246999999919,
+      "afterMaxTimerDelayMs": 5.521233000000052
+    },
+    {
+      "size": 201,
+      "key": [
+        "whole-document-exclusion",
+        "hybrid",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.5278910000001815,
+        "p95": 2.846860000000106,
+        "max": 2.846860000000106
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.4606999999999744,
+        "p95": 1.505121000000031,
+        "max": 1.505121000000031
+      },
+      "beforeMaxTimerDelayMs": 1.8759410000000116,
+      "afterMaxTimerDelayMs": 0.5314309999999978
+    },
+    {
+      "size": 201,
+      "key": [
+        "whole-document-exclusion",
+        "hybrid",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 5.731860999999981,
+        "p95": 10.21931399999994,
+        "max": 10.21931399999994
+      },
+      "afterSteadyResponseMs": {
+        "p50": 5.751100999999949,
+        "p95": 6.000175000000013,
+        "max": 6.000175000000013
+      },
+      "beforeMaxTimerDelayMs": 9.239463999999998,
+      "afterMaxTimerDelayMs": 5.293710000000033
+    },
+    {
+      "size": 201,
+      "key": [
+        "empty-scope",
+        "lexical",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.1481819999999061,
+        "p95": 0.19020199999999932,
+        "max": 0.19020199999999932
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.2030129999999417,
+        "p95": 0.21675299999992603,
+        "max": 0.21675299999992603
+      },
+      "beforeMaxTimerDelayMs": 0.061674999999922875,
+      "afterMaxTimerDelayMs": 0.059095000000070286
+    },
+    {
+      "size": 201,
+      "key": [
+        "empty-scope",
+        "lexical",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.5242680000001201,
+        "p95": 0.6780300000000352,
+        "max": 0.6780300000000352
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.6771300000000338,
+        "p95": 0.7400210000000698,
+        "max": 0.7400210000000698
+      },
+      "beforeMaxTimerDelayMs": 1.1518399999999929,
+      "afterMaxTimerDelayMs": 0.05850499999996828
+    },
+    {
+      "size": 201,
+      "key": [
+        "empty-scope",
+        "lexical",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.15179199999988668,
+        "p95": 0.24426400000015747,
+        "max": 0.24426400000015747
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.19243299999993724,
+        "p95": 0.1986330000000862,
+        "max": 0.1986330000000862
+      },
+      "beforeMaxTimerDelayMs": 0.06010500000002139,
+      "afterMaxTimerDelayMs": 0.05788499999994201
+    },
+    {
+      "size": 201,
+      "key": [
+        "empty-scope",
+        "lexical",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.5459079999998266,
+        "p95": 0.6936000000000604,
+        "max": 0.6936000000000604
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.8608319999999594,
+        "p95": 1.8406960000000936,
+        "max": 1.8406960000000936
+      },
+      "beforeMaxTimerDelayMs": 0.6413729999999305,
+      "afterMaxTimerDelayMs": 0.8457960000000639
+    },
+    {
+      "size": 201,
+      "key": [
+        "empty-scope",
+        "vector",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.19199300000013864,
+        "p95": 0.23953400000004876,
+        "max": 0.23953400000004876
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.21918300000004365,
+        "p95": 0.28096400000003996,
+        "max": 0.28096400000003996
+      },
+      "beforeMaxTimerDelayMs": 0.056344999999964784,
+      "afterMaxTimerDelayMs": 0.05795499999999265
+    },
+    {
+      "size": 201,
+      "key": [
+        "empty-scope",
+        "vector",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.6973789999999553,
+        "p95": 0.7452899999998408,
+        "max": 0.7452899999998408
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.7454210000000785,
+        "p95": 0.790251000000012,
+        "max": 0.790251000000012
+      },
+      "beforeMaxTimerDelayMs": 0.6764639999998963,
+      "afterMaxTimerDelayMs": 0.47864100000003873
+    },
+    {
+      "size": 201,
+      "key": [
+        "empty-scope",
+        "vector",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.18854299999998148,
+        "p95": 0.19575200000008408,
+        "max": 0.19575200000008408
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.2183629999999539,
+        "p95": 0.2306229999999232,
+        "max": 0.2306229999999232
+      },
+      "beforeMaxTimerDelayMs": 0.057514999999966676,
+      "afterMaxTimerDelayMs": 0.4779509999999618
+    },
+    {
+      "size": 201,
+      "key": [
+        "empty-scope",
+        "vector",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.6828490000000329,
+        "p95": 0.699628999999959,
+        "max": 0.699628999999959
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.7442309999998997,
+        "p95": 0.754120999999941,
+        "max": 0.754120999999941
+      },
+      "beforeMaxTimerDelayMs": 0.05805499999996755,
+      "afterMaxTimerDelayMs": 0.05742499999996653
+    },
+    {
+      "size": 201,
+      "key": [
+        "empty-scope",
+        "hybrid",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.3851150000000416,
+        "p95": 0.42968599999994694,
+        "max": 0.42968599999994694
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.4860069999999723,
+        "p95": 0.6087390000000141,
+        "max": 0.6087390000000141
+      },
+      "beforeMaxTimerDelayMs": 0.05802499999981592,
+      "afterMaxTimerDelayMs": 0.06031499999994594
+    },
+    {
+      "size": 201,
+      "key": [
+        "empty-scope",
+        "hybrid",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.3460689999999431,
+        "p95": 1.3880690000000868,
+        "max": 1.3880690000000868
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.5665820000000394,
+        "p95": 1.6297330000001011,
+        "max": 1.6297330000001011
+      },
+      "beforeMaxTimerDelayMs": 0.39265900000009424,
+      "afterMaxTimerDelayMs": 0.8627970000000005
+    },
+    {
+      "size": 201,
+      "key": [
+        "empty-scope",
+        "hybrid",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.37744500000007974,
+        "p95": 0.5199470000000019,
+        "max": 0.5199470000000019
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.4482359999999517,
+        "p95": 0.4602459999999837,
+        "max": 0.4602459999999837
+      },
+      "beforeMaxTimerDelayMs": 0.7791449999999713,
+      "afterMaxTimerDelayMs": 0.05737499999997908
+    },
+    {
+      "size": 201,
+      "key": [
+        "empty-scope",
+        "hybrid",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.2765580000000227,
+        "p95": 1.3291090000000167,
+        "max": 1.3291090000000167
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.5476620000000594,
+        "p95": 1.5653429999999844,
+        "max": 1.5653429999999844
+      },
+      "beforeMaxTimerDelayMs": 0.43295000000011896,
+      "afterMaxTimerDelayMs": 0.767105000000015
+    },
+    {
+      "size": 2001,
+      "key": [
+        "broad",
+        "lexical",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 224.75735399999985,
+        "p95": 236.87785499999973,
+        "max": 236.87785499999973
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.3356390000001284,
+        "p95": 1.5724820000000364,
+        "max": 1.5724820000000364
+      },
+      "beforeMaxTimerDelayMs": 246.02358800000002,
+      "afterMaxTimerDelayMs": 0.6868340000000899
+    },
+    {
+      "size": 2001,
+      "key": [
+        "broad",
+        "lexical",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 889.7612069999996,
+        "p95": 897.929502,
+        "max": 897.929502
+      },
+      "afterSteadyResponseMs": {
+        "p50": 5.273115000000189,
+        "p95": 5.70884100000012,
+        "max": 5.70884100000012
+      },
+      "beforeMaxTimerDelayMs": 900.8680079999999,
+      "afterMaxTimerDelayMs": 6.227293000000145
+    },
+    {
+      "size": 2001,
+      "key": [
+        "broad",
+        "lexical",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 225.96757100000104,
+        "p95": 228.39577800000006,
+        "max": 228.39577800000006
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.5778119999999944,
+        "p95": 1.6499830000000202,
+        "max": 1.6499830000000202
+      },
+      "beforeMaxTimerDelayMs": 227.62352099999953,
+      "afterMaxTimerDelayMs": 0.7810950000000503
+    },
+    {
+      "size": 2001,
+      "key": [
+        "broad",
+        "lexical",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 897.4856099999997,
+        "p95": 921.7361610000007,
+        "max": 921.7361610000007
+      },
+      "afterSteadyResponseMs": {
+        "p50": 6.828266999999869,
+        "p95": 9.236930999999913,
+        "max": 9.236930999999913
+      },
+      "beforeMaxTimerDelayMs": 920.8582420000002,
+      "afterMaxTimerDelayMs": 8.32815299999993
+    },
+    {
+      "size": 2001,
+      "key": [
+        "broad",
+        "vector",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 2.5518359999987297,
+        "p95": 2.6405570000006264,
+        "max": 2.6405570000006264
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.8310710000000654,
+        "p95": 3.337927000000036,
+        "max": 3.337927000000036
+      },
+      "beforeMaxTimerDelayMs": 2.164763999999195,
+      "afterMaxTimerDelayMs": 2.7537740000000213
+    },
+    {
+      "size": 2001,
+      "key": [
+        "broad",
+        "vector",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 10.901233000000502,
+        "p95": 11.669694000000163,
+        "max": 11.669694000000163
+      },
+      "afterSteadyResponseMs": {
+        "p50": 11.499843000000055,
+        "p95": 16.20105999999987,
+        "max": 16.20105999999987
+      },
+      "beforeMaxTimerDelayMs": 12.528200999999171,
+      "afterMaxTimerDelayMs": 15.22582999999986
+    },
+    {
+      "size": 2001,
+      "key": [
+        "broad",
+        "vector",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 2.743558000000121,
+        "p95": 2.97066199999972,
+        "max": 2.97066199999972
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.900331000000051,
+        "p95": 2.9495120000001407,
+        "max": 2.9495120000001407
+      },
+      "beforeMaxTimerDelayMs": 2.199094999999943,
+      "afterMaxTimerDelayMs": 2.3963690000000497
+    },
+    {
+      "size": 2001,
+      "key": [
+        "broad",
+        "vector",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 12.733350000000428,
+        "p95": 13.56003100000089,
+        "max": 13.56003100000089
+      },
+      "afterSteadyResponseMs": {
+        "p50": 12.514568000000054,
+        "p95": 12.839191999999912,
+        "max": 12.839191999999912
+      },
+      "beforeMaxTimerDelayMs": 12.723073999999542,
+      "afterMaxTimerDelayMs": 12.38330000000019
+    },
+    {
+      "size": 2001,
+      "key": [
+        "broad",
+        "hybrid",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 228.49653899999976,
+        "p95": 230.48617600000034,
+        "max": 230.48617600000034
+      },
+      "afterSteadyResponseMs": {
+        "p50": 4.979411000000027,
+        "p95": 5.12781300000006,
+        "max": 5.12781300000006
+      },
+      "beforeMaxTimerDelayMs": 229.54583699999966,
+      "afterMaxTimerDelayMs": 4.596608999999944
+    },
+    {
+      "size": 2001,
+      "key": [
+        "broad",
+        "hybrid",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 919.5580440000012,
+        "p95": 986.070330999999,
+        "max": 986.070330999999
+      },
+      "afterSteadyResponseMs": {
+        "p50": 22.116174,
+        "p95": 24.578448999999864,
+        "max": 24.578448999999864
+      },
+      "beforeMaxTimerDelayMs": 985.1099519999989,
+      "afterMaxTimerDelayMs": 23.60284899999988
+    },
+    {
+      "size": 2001,
+      "key": [
+        "broad",
+        "hybrid",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 232.34700299999895,
+        "p95": 243.63699199999974,
+        "max": 243.63699199999974
+      },
+      "afterSteadyResponseMs": {
+        "p50": 6.189737999999807,
+        "p95": 7.266112999999905,
+        "max": 7.266112999999905
+      },
+      "beforeMaxTimerDelayMs": 242.85806500000035,
+      "afterMaxTimerDelayMs": 6.408664999999928
+    },
+    {
+      "size": 2001,
+      "key": [
+        "broad",
+        "hybrid",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 922.9666350000007,
+        "p95": 935.1537360000002,
+        "max": 935.1537360000002
+      },
+      "afterSteadyResponseMs": {
+        "p50": 26.250623000000132,
+        "p95": 35.791269000000284,
+        "max": 35.791269000000284
+      },
+      "beforeMaxTimerDelayMs": 934.2800180000013,
+      "afterMaxTimerDelayMs": 34.88310000000001
+    },
+    {
+      "size": 2001,
+      "key": [
+        "rare-tag",
+        "lexical",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.6750800000008894,
+        "p95": 0.7302199999976438,
+        "max": 0.7302199999976438
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.077874999999949,
+        "p95": 1.150916000000052,
+        "max": 1.150916000000052
+      },
+      "beforeMaxTimerDelayMs": 0.6709430000009888,
+      "afterMaxTimerDelayMs": 0.2608979999999974
+    },
+    {
+      "size": 2001,
+      "key": [
+        "rare-tag",
+        "lexical",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 2.3993240000017977,
+        "p95": 2.697488000001613,
+        "max": 2.697488000001613
+      },
+      "afterSteadyResponseMs": {
+        "p50": 4.051046999999926,
+        "p95": 5.287394999999833,
+        "max": 5.287394999999833
+      },
+      "beforeMaxTimerDelayMs": 2.259436000000278,
+      "afterMaxTimerDelayMs": 4.302754999999706
+    },
+    {
+      "size": 2001,
+      "key": [
+        "rare-tag",
+        "lexical",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.6685099999995145,
+        "p95": 0.674539999999979,
+        "max": 0.674539999999979
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.0251650000000154,
+        "p95": 1.0609450000001743,
+        "max": 1.0609450000001743
+      },
+      "beforeMaxTimerDelayMs": 0.059225000000878936,
+      "afterMaxTimerDelayMs": 0.11584600000014689
+    },
+    {
+      "size": 2001,
+      "key": [
+        "rare-tag",
+        "lexical",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 2.3879739999974845,
+        "p95": 3.121903999999631,
+        "max": 3.121903999999631
+      },
+      "afterSteadyResponseMs": {
+        "p50": 3.948616000000129,
+        "p95": 4.328871999999592,
+        "max": 4.328871999999592
+      },
+      "beforeMaxTimerDelayMs": 2.138673999997991,
+      "afterMaxTimerDelayMs": 3.7473979999999756
+    },
+    {
+      "size": 2001,
+      "key": [
+        "rare-tag",
+        "vector",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.1095249999998487,
+        "p95": 1.1386060000004363,
+        "max": 1.1386060000004363
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.2004569999999148,
+        "p95": 1.258328000000347,
+        "max": 1.258328000000347
+      },
+      "beforeMaxTimerDelayMs": 0.6944540000004054,
+      "afterMaxTimerDelayMs": 0.8097960000000057
+    },
+    {
+      "size": 2001,
+      "key": [
+        "rare-tag",
+        "vector",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 6.466710999997304,
+        "p95": 6.776405000000523,
+        "max": 6.776405000000523
+      },
+      "afterSteadyResponseMs": {
+        "p50": 6.426132000000052,
+        "p95": 6.831627000000026,
+        "max": 6.831627000000026
+      },
+      "beforeMaxTimerDelayMs": 6.424944999998843,
+      "afterMaxTimerDelayMs": 5.850466999999753
+    },
+    {
+      "size": 2001,
+      "key": [
+        "rare-tag",
+        "vector",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.1177959999986342,
+        "p95": 1.1638959999982035,
+        "max": 1.1638959999982035
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.1781670000000304,
+        "p95": 1.298978000000261,
+        "max": 1.298978000000261
+      },
+      "beforeMaxTimerDelayMs": 0.492301000002044,
+      "afterMaxTimerDelayMs": 0.5117319999999381
+    },
+    {
+      "size": 2001,
+      "key": [
+        "rare-tag",
+        "vector",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 6.155316999997012,
+        "p95": 7.112869999997201,
+        "max": 7.112869999997201
+      },
+      "afterSteadyResponseMs": {
+        "p50": 5.213073999999779,
+        "p95": 12.715330999999878,
+        "max": 12.715330999999878
+      },
+      "beforeMaxTimerDelayMs": 6.891201999998884,
+      "afterMaxTimerDelayMs": 11.736630999999761
+    },
+    {
+      "size": 2001,
+      "key": [
+        "rare-tag",
+        "hybrid",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.7013440000009723,
+        "p95": 1.7852559999992081,
+        "max": 1.7852559999992081
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.7946200000001227,
+        "p95": 3.0622730000000047,
+        "max": 3.0622730000000047
+      },
+      "beforeMaxTimerDelayMs": 1.3774730000004638,
+      "afterMaxTimerDelayMs": 2.5022899999999026
+    },
+    {
+      "size": 2001,
+      "key": [
+        "rare-tag",
+        "hybrid",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 7.848501000000397,
+        "p95": 8.579431000001932,
+        "max": 8.579431000001932
+      },
+      "afterSteadyResponseMs": {
+        "p50": 13.46773099999973,
+        "p95": 13.597673000000214,
+        "max": 13.597673000000214
+      },
+      "beforeMaxTimerDelayMs": 8.211359000000812,
+      "afterMaxTimerDelayMs": 14.519300999999814
+    },
+    {
+      "size": 2001,
+      "key": [
+        "rare-tag",
+        "hybrid",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.6901339999967604,
+        "p95": 1.7502949999980046,
+        "max": 1.7502949999980046
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.980942000000141,
+        "p95": 3.163065000000188,
+        "max": 3.163065000000188
+      },
+      "beforeMaxTimerDelayMs": 1.2013610000030894,
+      "afterMaxTimerDelayMs": 2.3928680000003624
+    },
+    {
+      "size": 2001,
+      "key": [
+        "rare-tag",
+        "hybrid",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 7.711888000001636,
+        "p95": 9.232430000000022,
+        "max": 9.232430000000022
+      },
+      "afterSteadyResponseMs": {
+        "p50": 14.934933000000001,
+        "p95": 19.526738000000023,
+        "max": 19.526738000000023
+      },
+      "beforeMaxTimerDelayMs": 8.253020000000106,
+      "afterMaxTimerDelayMs": 18.551328000000012
+    },
+    {
+      "size": 2001,
+      "key": [
+        "whole-document-exclusion",
+        "lexical",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 4.314150999998674,
+        "p95": 5.075681000002078,
+        "max": 5.075681000002078
+      },
+      "afterSteadyResponseMs": {
+        "p50": 4.472483000000011,
+        "p95": 4.6843870000002426,
+        "max": 4.6843870000002426
+      },
+      "beforeMaxTimerDelayMs": 4.125162000000273,
+      "afterMaxTimerDelayMs": 4.128102000000126
+    },
+    {
+      "size": 2001,
+      "key": [
+        "whole-document-exclusion",
+        "lexical",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 18.96220700000049,
+        "p95": 19.89357000000018,
+        "max": 19.89357000000018
+      },
+      "afterSteadyResponseMs": {
+        "p50": 19.24695299999985,
+        "p95": 20.11541599999964,
+        "max": 20.11541599999964
+      },
+      "beforeMaxTimerDelayMs": 18.922930999997334,
+      "afterMaxTimerDelayMs": 19.362788999999793
+    },
+    {
+      "size": 2001,
+      "key": [
+        "whole-document-exclusion",
+        "lexical",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 4.013236999999208,
+        "p95": 4.307761000000028,
+        "max": 4.307761000000028
+      },
+      "afterSteadyResponseMs": {
+        "p50": 4.4020620000001145,
+        "p95": 4.478924000000006,
+        "max": 4.478924000000006
+      },
+      "beforeMaxTimerDelayMs": 3.9433699999972305,
+      "afterMaxTimerDelayMs": 3.7256569999999556
+    },
+    {
+      "size": 2001,
+      "key": [
+        "whole-document-exclusion",
+        "lexical",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 17.557677999997395,
+        "p95": 18.204635999998573,
+        "max": 18.204635999998573
+      },
+      "afterSteadyResponseMs": {
+        "p50": 18.39730099999997,
+        "p95": 20.40027000000009,
+        "max": 20.40027000000009
+      },
+      "beforeMaxTimerDelayMs": 17.24389700000029,
+      "afterMaxTimerDelayMs": 25.399014999999963
+    },
+    {
+      "size": 2001,
+      "key": [
+        "whole-document-exclusion",
+        "vector",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 5.252943999999843,
+        "p95": 6.122636000000057,
+        "max": 6.122636000000057
+      },
+      "afterSteadyResponseMs": {
+        "p50": 5.331945999999789,
+        "p95": 5.445706999999857,
+        "max": 5.445706999999857
+      },
+      "beforeMaxTimerDelayMs": 5.176887000001443,
+      "afterMaxTimerDelayMs": 4.719931000000088
+    },
+    {
+      "size": 2001,
+      "key": [
+        "whole-document-exclusion",
+        "vector",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 21.905988999998954,
+        "p95": 22.26960400000098,
+        "max": 22.26960400000098
+      },
+      "afterSteadyResponseMs": {
+        "p50": 25.2314879999999,
+        "p95": 26.80171100000007,
+        "max": 26.80171100000007
+      },
+      "beforeMaxTimerDelayMs": 21.507297000000108,
+      "afterMaxTimerDelayMs": 25.827860999999757
+    },
+    {
+      "size": 2001,
+      "key": [
+        "whole-document-exclusion",
+        "vector",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 4.945149999999558,
+        "p95": 6.102105999998457,
+        "max": 6.102105999998457
+      },
+      "afterSteadyResponseMs": {
+        "p50": 5.337315999999646,
+        "p95": 5.4449070000000575,
+        "max": 5.4449070000000575
+      },
+      "beforeMaxTimerDelayMs": 5.156456000000617,
+      "afterMaxTimerDelayMs": 4.497698000000128
+    },
+    {
+      "size": 2001,
+      "key": [
+        "whole-document-exclusion",
+        "vector",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 20.77635200000077,
+        "p95": 21.988059999999678,
+        "max": 21.988059999999678
+      },
+      "afterSteadyResponseMs": {
+        "p50": 22.029723000000104,
+        "p95": 22.65005199999996,
+        "max": 22.65005199999996
+      },
+      "beforeMaxTimerDelayMs": 21.013060000001133,
+      "afterMaxTimerDelayMs": 21.675643000000036
+    },
+    {
+      "size": 2001,
+      "key": [
+        "whole-document-exclusion",
+        "hybrid",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 10.604128999999375,
+        "p95": 11.280158999998093,
+        "max": 11.280158999998093
+      },
+      "afterSteadyResponseMs": {
+        "p50": 11.548283999999967,
+        "p95": 15.545090999999957,
+        "max": 15.545090999999957
+      },
+      "beforeMaxTimerDelayMs": 10.341560000000754,
+      "afterMaxTimerDelayMs": 14.601861999999983
+    },
+    {
+      "size": 2001,
+      "key": [
+        "whole-document-exclusion",
+        "hybrid",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 45.97592799999984,
+        "p95": 50.47372099999848,
+        "max": 50.47372099999848
+      },
+      "afterSteadyResponseMs": {
+        "p50": 46.0050839999999,
+        "p95": 52.68618900000001,
+        "max": 52.68618900000001
+      },
+      "beforeMaxTimerDelayMs": 49.49966199999835,
+      "afterMaxTimerDelayMs": 51.71328900000026
+    },
+    {
+      "size": 2001,
+      "key": [
+        "whole-document-exclusion",
+        "hybrid",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 10.633630000000267,
+        "p95": 11.4150899999986,
+        "max": 11.4150899999986
+      },
+      "afterSteadyResponseMs": {
+        "p50": 11.350452000000132,
+        "p95": 11.423631999999998,
+        "max": 11.423631999999998
+      },
+      "beforeMaxTimerDelayMs": 10.488781000000017,
+      "afterMaxTimerDelayMs": 10.468623000000207
+    },
+    {
+      "size": 2001,
+      "key": [
+        "whole-document-exclusion",
+        "hybrid",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 43.47696300000098,
+        "p95": 44.06690100000196,
+        "max": 44.06690100000196
+      },
+      "afterSteadyResponseMs": {
+        "p50": 43.2651350000001,
+        "p95": 50.66645000000017,
+        "max": 50.66645000000017
+      },
+      "beforeMaxTimerDelayMs": 43.09258100000079,
+      "afterMaxTimerDelayMs": 49.68931999999995
+    },
+    {
+      "size": 2001,
+      "key": [
+        "empty-scope",
+        "lexical",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.28390399999989313,
+        "p95": 0.8870329999990645,
+        "max": 0.8870329999990645
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.5751789999999346,
+        "p95": 0.6668090000002849,
+        "max": 0.6668090000002849
+      },
+      "beforeMaxTimerDelayMs": 2.287076000000525,
+      "afterMaxTimerDelayMs": 0.06209499999977197
+    },
+    {
+      "size": 2001,
+      "key": [
+        "empty-scope",
+        "lexical",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.9316129999970144,
+        "p95": 1.0284539999993285,
+        "max": 1.0284539999993285
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.378024000000096,
+        "p95": 3.07416400000011,
+        "max": 3.07416400000011
+      },
+      "beforeMaxTimerDelayMs": 0.5318509999997332,
+      "afterMaxTimerDelayMs": 2.0815640000000712
+    },
+    {
+      "size": 2001,
+      "key": [
+        "empty-scope",
+        "lexical",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 0.25977399999828776,
+        "p95": 0.48561699999845587,
+        "max": 0.48561699999845587
+      },
+      "afterSteadyResponseMs": {
+        "p50": 0.5254879999997684,
+        "p95": 0.7522709999998369,
+        "max": 0.7522709999998369
+      },
+      "beforeMaxTimerDelayMs": 0.930807000000641,
+      "afterMaxTimerDelayMs": 0.6128530000000865
+    },
+    {
+      "size": 2001,
+      "key": [
+        "empty-scope",
+        "lexical",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.1728670000011334,
+        "p95": 1.849476000003051,
+        "max": 1.849476000003051
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.4075339999999414,
+        "p95": 2.5762760000002345,
+        "max": 2.5762760000002345
+      },
+      "beforeMaxTimerDelayMs": 0.8534960000033607,
+      "afterMaxTimerDelayMs": 1.7422390000001542
+    },
+    {
+      "size": 2001,
+      "key": [
+        "empty-scope",
+        "vector",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.5575819999976375,
+        "p95": 1.6752830000004906,
+        "max": 1.6752830000004906
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.8399859999999535,
+        "p95": 2.7231289999999717,
+        "max": 2.7231289999999717
+      },
+      "beforeMaxTimerDelayMs": 2.927425999998377,
+      "afterMaxTimerDelayMs": 1.7368390000001455
+    },
+    {
+      "size": 2001,
+      "key": [
+        "empty-scope",
+        "vector",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 6.633254000000306,
+        "p95": 7.094789999999193,
+        "max": 7.094789999999193
+      },
+      "afterSteadyResponseMs": {
+        "p50": 7.268112999999175,
+        "p95": 7.443466000000171,
+        "max": 7.443466000000171
+      },
+      "beforeMaxTimerDelayMs": 6.737928999998985,
+      "afterMaxTimerDelayMs": 7.582702000000154
+    },
+    {
+      "size": 2001,
+      "key": [
+        "empty-scope",
+        "vector",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.5498520000001008,
+        "p95": 1.6105330000027607,
+        "max": 1.6105330000027607
+      },
+      "afterSteadyResponseMs": {
+        "p50": 1.8236660000002303,
+        "p95": 2.1503109999994194,
+        "max": 2.1503109999994194
+      },
+      "beforeMaxTimerDelayMs": 0.7021439999989525,
+      "afterMaxTimerDelayMs": 1.2758119999998598
+    },
+    {
+      "size": 2001,
+      "key": [
+        "empty-scope",
+        "vector",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 6.349770000000717,
+        "p95": 7.048579000002064,
+        "max": 7.048579000002064
+      },
+      "afterSteadyResponseMs": {
+        "p50": 7.233232999999927,
+        "p95": 8.350819000000229,
+        "max": 8.350819000000229
+      },
+      "beforeMaxTimerDelayMs": 6.056878999999753,
+      "afterMaxTimerDelayMs": 7.358288999999786
+    },
+    {
+      "size": 2001,
+      "key": [
+        "empty-scope",
+        "hybrid",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.8680860000022221,
+        "p95": 1.935977000001003,
+        "max": 1.935977000001003
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.286442999999963,
+        "p95": 2.661318000000392,
+        "max": 2.661318000000392
+      },
+      "beforeMaxTimerDelayMs": 1.735928000001877,
+      "afterMaxTimerDelayMs": 1.8171800000000076
+    },
+    {
+      "size": 2001,
+      "key": [
+        "empty-scope",
+        "hybrid",
+        1,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 8.037532999998803,
+        "p95": 9.115538999998535,
+        "max": 9.115538999998535
+      },
+      "afterSteadyResponseMs": {
+        "p50": 10.388027999999395,
+        "p95": 11.079107999999906,
+        "max": 11.079107999999906
+      },
+      "beforeMaxTimerDelayMs": 8.12409900000057,
+      "afterMaxTimerDelayMs": 10.085368000000017
+    },
+    {
+      "size": 2001,
+      "key": [
+        "empty-scope",
+        "hybrid",
+        10,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 1.8704060000018217,
+        "p95": 1.9275569999990694,
+        "max": 1.9275569999990694
+      },
+      "afterSteadyResponseMs": {
+        "p50": 2.6777179999999134,
+        "p95": 3.393377999999757,
+        "max": 3.393377999999757
+      },
+      "beforeMaxTimerDelayMs": 1.1641799999997602,
+      "afterMaxTimerDelayMs": 4.011400999999751
+    },
+    {
+      "size": 2001,
+      "key": [
+        "empty-scope",
+        "hybrid",
+        10,
+        4
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 8.229225999999471,
+        "p95": 8.460268999999244,
+        "max": 8.460268999999244
+      },
+      "afterSteadyResponseMs": {
+        "p50": 10.387547999999697,
+        "p95": 10.61431100000027,
+        "max": 10.61431100000027
+      },
+      "beforeMaxTimerDelayMs": 8.00145700000212,
+      "afterMaxTimerDelayMs": 9.83355500000016
+    },
+    {
+      "size": 10001,
+      "key": [
+        "broad",
+        "lexical",
+        1,
+        1
+      ],
+      "sameOrderedOutputAfterDeclaredRootProjection": true,
+      "beforeSteadyResponseMs": {
+        "p50": 5075.976381,
+        "p95": 5095.499426000002,
+        "max": 5095.499426000002
+      },
+      "afterSteadyResponseMs": {
+        "p50": 8.27032700000018,
+        "p95": 8.89402599999994,
+        "max": 8.89402599999994
+      },
+      "beforeMaxTimerDelayMs": 5094.579587,
+      "afterMaxTimerDelayMs": 9.485239000000547
+    }
+  ],
+  "candidateGroups": 144,
+  "candidateRequests": 1800,
+  "failures": []
+}

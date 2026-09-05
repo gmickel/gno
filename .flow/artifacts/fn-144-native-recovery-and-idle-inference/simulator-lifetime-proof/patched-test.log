@@ -1,0 +1,13 @@
+bun test v1.3.14 (0d9b296a)
+
+notes/fn144-simulator-patch/lifetime.test.ts:
+(pass) paused speculative context survives session disposal until memory read and context disposal [1.98ms]
+(pass) session disposal during asynchronous model creation cannot free an active context [0.19ms]
+(pass) LRU eviction waits for users; backend disposal drains evicted and cached handles [0.37ms]
+(pass) failed model creation releases native ownership and failed cache entry is retryable [0.32ms]
+(pass) backend handle acquisition failure releases the newly created raw model [0.14ms]
+
+ 5 pass
+ 0 fail
+ 19 expect() calls
+Ran 5 tests across 1 file. [184.00ms]

@@ -1,0 +1,12 @@
+[
+  {
+    "partition_id": "3a87ac2bc586250b0e4d83fe0cc728e59202de94e2773db4185de1b03bcc3d11",
+    "version": 1,
+    "model": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+    "fingerprint": "567ed8ab1bcc03dc8d9b471e5e08f1e02b094cb94f0313f9d788861f95f23483",
+    "dimensions": 1024,
+    "state": "active",
+    "activated_epoch": 997,
+    "current_epoch": 997
+  }
+]

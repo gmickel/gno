@@ -217,6 +217,7 @@ describe("gno_section MCP", () => {
     const names: string[] = [];
     const annotationsByName = new Map<string, unknown>();
     const fakeServer = {
+      server: { onclose: undefined as (() => void) | undefined },
       tool: (name: string) => {
         names.push(name);
       },

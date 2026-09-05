@@ -45,9 +45,12 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Fixed fixture/model identity mismatch fails before candidate scoring; generated-answer stochasticity is not hidden by dropping citations or input comparisons.
 
 ## Done summary
-TBD
+Implemented immutable versioned acceptance manifests and exact ordered deterministic evidence comparison. Controls reject result loss, scope leakage, false vector success, changed model input, score/citation drift, incompatible fixture/model/tokenizer identities, and missing/duplicate records. Generated prose variability is reported separately. Focused suite: 20 passed, 52 assertions. Targeted format and lint/typecheck passed. Native execution belongs to later dependent tasks.
 
+stage: impl-review - skipped(config: user requested no implementation reviews)
+stage: plan-sync - skipped(config: disabled)
+Implementation model: gpt-6-astra medium. Host owns batch commit on shared branch.
 ## Evidence
 - Commits:
-- Tests:
+- Tests: bun test test/eval/acceptance/compare.test.ts test/eval/memory-fixtures.test.ts — 20 pass, 0 fail; /tmp/fn1431-tests.log, file-scoped oxfmt and oxlint typecheck — passed
 - PRs:

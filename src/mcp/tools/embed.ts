@@ -85,7 +85,7 @@ export function handleEmbed(
             const lease = ctx.acquireModelLease?.();
             try {
               // Create LLM adapter with offline policy (fail-fast, no download)
-              const llm = new LlmAdapter(ctx.config);
+              const llm = ctx.getModelAdapter?.() ?? new LlmAdapter(ctx.config);
               const embedResult = await llm.createEmbeddingPort(modelUri, {
                 egressCollections: collection ? [collection.name] : "all",
                 policy: { offline: true, allowDownload: false },

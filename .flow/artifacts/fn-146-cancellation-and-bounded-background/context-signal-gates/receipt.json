@@ -1,0 +1,29 @@
+{
+  "helperCommit": "8b45a54d9fab684fddb69175e8c836dad4b935b2",
+  "productCommit": "a30da4423ec5604f46d2b050af8a2cba51c66e07",
+  "tests": 47,
+  "assertions": 198,
+  "status": "PASS",
+  "files": [
+    {
+      "file": "fn146.2-context-signal-summary.md.gz",
+      "sha256": "20dd943d2818fa7c6c15ea4f0d32f7faa2aac40458affdd0cb42e13e263d7153"
+    },
+    {
+      "file": "fn146.2-context-signal-evidence.json.gz",
+      "sha256": "9c13b640136a49931e835616d05eebf79e24e83c25602ca8ca7eddd2b3b5f0cb"
+    },
+    {
+      "file": "fn146.2-context-signal-test.log.gz",
+      "sha256": "435fd07ebd2c7fe3750e1abe7f53ce72ae65fc450df1690e79f1cf2b40645fb0"
+    },
+    {
+      "file": "fn146.2-context-signal-lint.log.gz",
+      "sha256": "5576d91095ce8270b750a263b6bd9dabec7ba9052fe008930402266ef487c886"
+    },
+    {
+      "file": "fn146.2-context-signal-typecheck.log.gz",
+      "sha256": "f6de834e3c048f3b285866da8282214f5d03ac320aa4169aee608709dc1c54da"
+    }
+  ]
+}

@@ -69,7 +69,7 @@ export async function runAgentDay(
         ok = outcome === expected;
         if (
           attempt.kind === "result" &&
-          attempt.outcome === "candidates" &&
+          attempt.result.outcome === "candidates" &&
           turn.likely
         ) {
           const wanted = labels.get(turn.likely);
@@ -82,7 +82,7 @@ export async function runAgentDay(
         }
         if (
           attempt.kind === "result" &&
-          attempt.outcome !== "candidates" &&
+          attempt.result.outcome !== "candidates" &&
           turn.label
         ) {
           labels.set(turn.label, attempt.result.record);
@@ -105,7 +105,7 @@ export async function runAgentDay(
         ok = outcome === expected;
         if (
           attempt.kind === "result" &&
-          attempt.outcome === "superseded" &&
+          attempt.result.outcome === "superseded" &&
           turn.label
         ) {
           labels.set(turn.label, attempt.result.record);

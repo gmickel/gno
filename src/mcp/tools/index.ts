@@ -1,10 +1,9 @@
+import type { McpServer } from "@modelcontextprotocol/server";
 /**
  * MCP tool registration and shared utilities.
  *
  * @module src/mcp/tools
  */
-
-import type { McpServer } from "@modelcontextprotocol/server";
 
 import { z } from "zod";
 
@@ -18,6 +17,10 @@ import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
 import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
 import { RETRIEVAL_TRACE_METADATA } from "../../core/retrieval-trace-session";
 import { normalizeTag } from "../../core/tags";
+import {
+  assertInferenceActive,
+  acquireInferencePermit,
+} from "../../llm/inference-scope";
 import { profileToolDescription } from "../tool-descriptions-core";
 import {
   createProfileToolRegistrar,
@@ -940,10 +943,11 @@ export async function runTool<T>(
   }
 
   // Sequential execution via mutex
-  const release = await ctx.toolMutex.acquire();
-  const modelLease = ctx.acquireModelLease?.();
+  const release = await acquireInferencePermit(() => ctx.toolMutex.acquire());
   try {
+    assertInferenceActive();
     const data = await (ctx.runWithSnapshot?.(fn) ?? fn());
+    assertInferenceActive();
     const traceMetadata =
       data !== null && typeof data === "object"
         ? (data as Record<PropertyKey, unknown>)[RETRIEVAL_TRACE_METADATA]
@@ -966,7 +970,6 @@ export async function runTool<T>(
       structuredContent: parsedError,
     };
   } finally {
-    modelLease?.release();
     release();
   }
 }
@@ -990,9 +993,10 @@ export async function runToolNoMutex<T>(
     };
   }
 
-  const modelLease = ctx.acquireModelLease?.();
   try {
+    assertInferenceActive();
     const data = await (ctx.runWithSnapshot?.(fn) ?? fn());
+    assertInferenceActive();
     return {
       content: [{ type: "text", text: formatText(data) }],
       structuredContent: data as { [x: string]: unknown },
@@ -1007,8 +1011,6 @@ export async function runToolNoMutex<T>(
       content: [{ type: "text", text: `Error: ${message}` }],
       structuredContent: parsedError,
     };
-  } finally {
-    modelLease?.release();
   }
 }
 

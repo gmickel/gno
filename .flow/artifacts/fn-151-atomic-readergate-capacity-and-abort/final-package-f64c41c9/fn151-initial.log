@@ -1,0 +1,15 @@
+GNO server running at http://127.0.0.1:34107
+Press Ctrl+C to stop
+ 9 | await Bun.write(`${root}/config.yml`, Bun.YAML.stringify(config));
+10 | let runtime: any;
+11 | let port = 0;
+12 | let maxActive = 0;
+13 | const statuses: number[] = [];
+14 | const waitUntil = async (predicate:()=>boolean) => { const deadline=Date.now()+4000; while(!predicate()) { if(Date.now()>deadline) throw new Error('QA deadline'); await Bun.sleep(2); } };
+                                                                                                                                                  ^
+error: QA deadline
+      at <anonymous> (/home/gordon/.cache/agent-tmp/fn151152-final-f64c41c9/fn151-live.ts:14:142)
+      at async <anonymous> (/home/gordon/.cache/agent-tmp/fn151152-final-f64c41c9/fn151-live.ts:57:11)
+      at async startServer (/home/gordon/.cache/agent-tmp/gno-final-package-f64c41c9/distribution/package/src/serve/server.ts:1527:24)
+
+Bun v1.3.14 (Linux x64)

@@ -1,0 +1,12 @@
+{
+  "status": "BLOCKED",
+  "timestamp": "2026-09-05T05:53:15Z",
+  "existingFirstHop": "heimdall",
+  "firstHopExitCode": 0,
+  "ivanProxyJumpExitCode": 255,
+  "error": "Connection closed by UNKNOWN port 65535",
+  "interpretation": "Forwarding restriction versus Ivan closure not distinguished",
+  "nativeInference": false,
+  "file": "README.md",
+  "sha256": "6b75d5d610bec35feae369e122241b310e23f62ed85e5993176d98fb231d9d48"
+}

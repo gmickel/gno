@@ -15,16 +15,22 @@ import type {
   RerankPort,
 } from "../llm/types";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
+import type { VectorIndexPort } from "../store/vector";
 import type { DocumentEventBus } from "./doc-events";
 import type { EmbedScheduler } from "./embed-scheduler";
 import type { CollectionWatchService } from "./watch-service";
 
 import { DEFAULT_INDEX_NAME } from "../app/constants";
 import { canonicalizeIndexName } from "../app/index-name";
+import {
+  lazyEmbeddingPort,
+  lazyGenerationPort,
+  lazyRerankPort,
+} from "../llm/lazy-ports";
 import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../llm/policy";
 import { getActivePreset } from "../llm/registry";
-import { createVectorIndexPort, type VectorIndexPort } from "../store/vector";
+import { createLazyVectorIndex } from "../store/vector/lazy";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Download State (in-memory, single user)
@@ -64,6 +70,7 @@ export function resetDownloadState(): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ServerContext {
+  llm?: LlmAdapter;
   store: SqliteAdapter;
   config: Config;
   /** Canonical identity of the already-open resident store. */
@@ -91,7 +98,7 @@ export interface CreateServerContextOptions {
 
 /**
  * Initialize server context with LLM ports.
- * Attempts to load models; missing models are logged but don't fail.
+ * Model resolution, downloads and loading wait until actual inference.
  */
 export async function createServerContext(
   store: SqliteAdapter,
@@ -104,9 +111,9 @@ export async function createServerContext(
   let rerankPort: RerankPort | null = null;
   let vectorIndex: VectorIndexPort | null = null;
 
+  const llm = new LlmAdapter(config);
   try {
     const preset = getActivePreset(config);
-    const llm = new LlmAdapter(config);
 
     // Resolve download policy from env (serve has no CLI flags)
     const policy = resolveDownloadPolicy(process.env, {
@@ -127,64 +134,40 @@ export async function createServerContext(
       },
     });
 
-    // Try to create embedding port
-    const embedResult = await llm.createEmbeddingPort(
-      preset.embed,
-      createPortOptions("embed")
-    );
-    if (embedResult.ok) {
-      embedPort = embedResult.value;
-      const initResult = await embedPort.init();
-      if (initResult.ok) {
-        // Create vector index
-        const dimensions = embedPort.dimensions();
-        const db = store.getRawDb();
-        const vectorResult = await createVectorIndexPort(db, {
-          model: preset.embed,
-          dimensions,
-        });
-        if (vectorResult.ok) {
-          vectorIndex = vectorResult.value;
-          console.log("Vector search enabled");
-        }
+    const resolvePort = async <T>(operation: () => Promise<T>): Promise<T> => {
+      try {
+        return await operation();
+      } finally {
+        downloadState.active = false;
+        downloadState.currentType = null;
       }
-    }
-
-    // Try to create expansion port
-    const expandResult = await llm.createExpansionPort(
-      preset.expand ?? preset.gen,
-      createPortOptions("expand")
+    };
+    embedPort = lazyEmbeddingPort(preset.embed, () =>
+      resolvePort(() =>
+        llm.createEmbeddingPort(preset.embed, createPortOptions("embed"))
+      )
     );
-    if (expandResult.ok) {
-      expandPort = expandResult.value;
-      console.log("Query expansion enabled");
-    }
-
-    // Try to create answer generation port
-    const answerResult = await llm.createGenerationPort(
-      preset.gen,
-      createPortOptions("gen")
+    vectorIndex = await createLazyVectorIndex(
+      store.getRawDb(),
+      preset.embed,
+      embedPort
     );
-    if (answerResult.ok) {
-      answerPort = answerResult.value;
-      console.log("AI answer generation enabled");
-    }
-
-    // Try to create rerank port
-    const rerankResult = await llm.createRerankPort(
-      preset.rerank,
-      createPortOptions("rerank")
+    const expandUri = preset.expand ?? preset.gen;
+    expandPort = lazyGenerationPort(expandUri, () =>
+      resolvePort(() =>
+        llm.createExpansionPort(expandUri, createPortOptions("expand"))
+      )
     );
-    if (rerankResult.ok) {
-      rerankPort = rerankResult.value;
-      console.log("Reranking enabled");
-    }
-
-    // Reset download state after initialization
-    if (downloadState.active) {
-      downloadState.active = false;
-      downloadState.currentType = null;
-    }
+    answerPort = lazyGenerationPort(preset.gen, () =>
+      resolvePort(() =>
+        llm.createGenerationPort(preset.gen, createPortOptions("gen"))
+      )
+    );
+    rerankPort = lazyRerankPort(preset.rerank, () =>
+      resolvePort(() =>
+        llm.createRerankPort(preset.rerank, createPortOptions("rerank"))
+      )
+    );
   } catch (e) {
     // Log but don't fail - models are optional
     console.log(
@@ -201,6 +184,7 @@ export async function createServerContext(
   };
 
   return {
+    llm,
     store,
     config,
     indexName: canonicalizeIndexName(options.indexName ?? DEFAULT_INDEX_NAME),
@@ -237,6 +221,7 @@ export async function disposeServerContext(ctx: ServerContext): Promise<void> {
       }
     }
   }
+  await ctx.llm?.dispose();
 }
 
 /**

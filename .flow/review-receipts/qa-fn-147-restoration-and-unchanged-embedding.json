@@ -1,0 +1,60 @@
+{
+  "branch": "fn-143-152-retrieval-resource-major",
+  "evidence": [
+    ".flow/artifacts/fn-147-restoration-and-unchanged-embedding",
+    ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-release-gates/README.md"
+  ],
+  "findings": {
+    "backend": "interactive",
+    "headSha": "302ffe79ed8aa9ddafc1531c264391430d1ab366",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-febbdf2208e93a328b4ed250940ada4f9b22ed3d10a9e57eb9bcc01035728c6c"
+  },
+  "head_sha": "302ffe79ed8aa9ddafc1531c264391430d1ab366",
+  "id": "fn-147-restoration-and-unchanged-embedding",
+  "limitations": [
+    "Acceptance combines the explicitly pinned captured checkpoints in the artifact reports. This receipt does not relabel all historical runs as f64.",
+    "Hosted gno.sh documentation and driven-page QA are queued after the aggregate PR under the explicit user sequencing override.",
+    "Formal plan-review and impl-review were disabled by the user."
+  ],
+  "mode": "interactive",
+  "model": "gpt-6-astra medium",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "timestamp": "2026-09-05T07:38:37Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

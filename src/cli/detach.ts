@@ -25,6 +25,7 @@ import type { ResidentStatus } from "../serve/status-model";
 import { VERSION, resolveDirs } from "../app/constants";
 import { toAbsolutePath } from "../config/paths";
 import { atomicWrite } from "../core/file-ops";
+import { RESIDENT_STOP_GRACE_MS } from "../core/shutdown-budget";
 import { isResidentStatus } from "../serve/resident-status";
 import { CliError } from "./errors";
 
@@ -877,7 +878,7 @@ export async function inspectForeignLive(options: {
 export interface StopOptions {
   kind: DetachKind;
   pidFile: string;
-  /** Grace period for SIGTERM before we escalate to SIGKILL. Default 10s. */
+  /** Grace period for SIGTERM before we escalate to SIGKILL. Default 12s. */
   timeoutMs?: number;
   /** Poll interval while waiting for the process to exit. Default 100ms. */
   pollIntervalMs?: number;
@@ -921,7 +922,7 @@ async function waitForExit(
  * unlinks stale pid-files it discovers on entry.
  */
 export async function stopProcess(options: StopOptions): Promise<StopOutcome> {
-  const timeoutMs = options.timeoutMs ?? 10_000;
+  const timeoutMs = options.timeoutMs ?? RESIDENT_STOP_GRACE_MS;
   const pollIntervalMs = options.pollIntervalMs ?? 100;
   const killTimeoutMs = options.killTimeoutMs ?? 2_000;
   const sleep = options.sleep ?? defaultSleep;

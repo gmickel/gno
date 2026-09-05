@@ -1,0 +1,11 @@
+{
+  "candidate": "23ba2c25",
+  "corpusSha256": "5b0c263fcfb938f5455e7ac415c9bd6833ccfde2dece8f0d7a238f7a58cfd472",
+  "documents": 201,
+  "target": "gno://notes/scope/target.md",
+  "root": "/home/gordon/.cache/agent-tmp/gno-fn148-public/runtime",
+  "manifest": {
+    "version": "eligible-top-k-v1",
+    "corpusSha256": "5b0c263fcfb938f5455e7ac415c9bd6833ccfde2dece8f0d7a238f7a58cfd472"
+  }
+}

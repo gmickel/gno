@@ -1,0 +1,50 @@
+$ bun run scripts/docs-verify.ts
+[1mGNO Documentation Verification[0m
+Verifying that documented commands work as expected.
+
+[1mCapabilities:[0m
+  BM25: [32myes[0m
+  sqlite-vec: [32myes[0m
+  Embed model: [33mno[0m
+  Rerank model: [33mno[0m
+  Gen model: [33mno[0m
+
+[1mPublic Truth[0m
+[32m✓[0m anchored public claims
+
+[1mProject Skill Parity[0m
+[32m✓[0m Claude project skill matches assets/skill
+[32m✓[0m Codex project skill matches assets/skill
+
+[1mHelp & Version[0m
+[32m✓[0m gno --help
+[32m✓[0m gno --version
+[32m✓[0m gno daemon --help
+
+[1mInit & Collection[0m
+[32m✓[0m gno init <path> --name <name>
+[32m✓[0m gno collection list --json
+
+[1mIndexing[0m
+[32m✓[0m gno update --yes
+[32m✓[0m gno ls (4 docs)
+
+[1mBM25 Search[0m
+[32m✓[0m gno search <query> --json
+[32m✓[0m gno search -n <limit>
+[32m✓[0m gno search --files
+
+[1mVector Search[0m
+[33m○[0m gno vsearch (skipped: embed model not cached)
+[33m○[0m gno query (hybrid) (skipped: embed model not cached)
+
+[1mDocument Retrieval[0m
+[32m✓[0m gno get <docid>
+
+[1mDiagnostics[0m
+[32m✓[0m gno doctor --json
+
+[1mSummary[0m
+  [32m15 passed[0m, 0 failed[0m, [33m2 skipped[0m
+
+[32mDocumentation verification passed![0m

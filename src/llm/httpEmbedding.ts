@@ -1,16 +1,17 @@
+import type { HttpInferenceOptions } from "./http-inference";
+import type { InferenceOptions } from "./types";
 /**
  * HTTP-based embedding port implementation.
  * Calls OpenAI-compatible embedding endpoints.
  *
  * @module src/llm/httpEmbedding
  */
-
-import type { HttpInferenceOptions } from "./http-inference";
 import type { EmbeddingPort, LlmResult } from "./types";
 
 import { EgressDeniedError } from "../core/egress-enforcement";
 import { egressDeniedInferenceError, inferenceFailedError } from "./errors";
 import { requestHttpInference } from "./http-inference";
+import { runHttpInference } from "./inference-scope";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -58,20 +59,35 @@ export class HttpEmbedding implements EmbeddingPort {
     }
   }
 
-  async init(): Promise<LlmResult<void>> {
+  async init(options?: InferenceOptions): Promise<LlmResult<void>> {
     // Test connection with a simple embedding
-    const result = await this.embed("test");
+    const result = await this.embed("test", options);
     if (!result.ok) {
       return result;
     }
     return { ok: true, value: undefined };
   }
 
-  async embed(text: string): Promise<LlmResult<number[]>> {
+  async embed(
+    text: string,
+    options?: InferenceOptions
+  ): Promise<LlmResult<number[]>> {
+    return runHttpInference(
+      options,
+      (operational) => this.embedRequest(text, operational),
+      this.requestOptions.inferenceTimeout
+    );
+  }
+
+  private async embedRequest(
+    text: string,
+    options: InferenceOptions
+  ): Promise<LlmResult<number[]>> {
     try {
       const response = await requestHttpInference(
         this.apiUrl,
         {
+          signal: options.signal,
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -128,11 +144,26 @@ export class HttpEmbedding implements EmbeddingPort {
     }
   }
 
-  async embedBatch(texts: string[]): Promise<LlmResult<number[][]>> {
+  async embedBatch(
+    texts: string[],
+    options?: InferenceOptions
+  ): Promise<LlmResult<number[][]>> {
+    return runHttpInference(
+      options,
+      (operational) => this.embedBatchRequest(texts, operational),
+      this.requestOptions.inferenceTimeout
+    );
+  }
+
+  private async embedBatchRequest(
+    texts: string[],
+    options: InferenceOptions
+  ): Promise<LlmResult<number[][]>> {
     try {
       const response = await requestHttpInference(
         this.apiUrl,
         {
+          signal: options.signal,
           method: "POST",
           headers: {
             "Content-Type": "application/json",
