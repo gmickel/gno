@@ -2005,6 +2005,15 @@ export interface StorePort {
     mirrorHashes: string[]
   ): Promise<StoreResult<Map<string, ChunkRow[]>>>;
 
+  /**
+   * Optional exact (mirrorHash, seq) batch hydration. Same mapping as
+   * getChunksBatch, but only requested sequences; missing pairs are omitted.
+   * Callers fall back to whole-hash batching when this capability is absent.
+   */
+  getChunksBySequenceBatch?(
+    keys: { mirrorHash: string; seq: number }[]
+  ): Promise<StoreResult<Map<string, ChunkRow[]>>>;
+
   // ─────────────────────────────────────────────────────────────────────────
   // FTS Search
   // ─────────────────────────────────────────────────────────────────────────

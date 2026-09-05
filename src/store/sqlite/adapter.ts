@@ -2639,6 +2639,52 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async getChunksBySequenceBatch(
+    keys: { mirrorHash: string; seq: number }[]
+  ): Promise<StoreResult<Map<string, ChunkRow[]>>> {
+    try {
+      const unique = new Map<string, { mirrorHash: string; seq: number }>();
+      for (const key of keys) {
+        if (key.mirrorHash)
+          unique.set(JSON.stringify([key.mirrorHash, key.seq]), key);
+      }
+      const pairs = [...unique.values()];
+      const result = new Map<string, ChunkRow[]>();
+      if (pairs.length === 0) return ok(result);
+      const db = this.ensureOpen();
+      const batchSize = Math.floor(SQLITE_SAFE_PARAMETER_BATCH_SIZE / 2);
+      for (let offset = 0; offset < pairs.length; offset += batchSize) {
+        const batch = pairs.slice(offset, offset + batchSize);
+        const values = batch.map(() => "(?, ?)").join(",");
+        const rows = db
+          .query<DbChunkRow, (string | number)[]>(`
+          WITH requested(mirror_hash, seq) AS (VALUES ${values})
+          SELECT c.* FROM requested r JOIN content_chunks c
+            ON c.mirror_hash = r.mirror_hash AND c.seq = r.seq
+          ORDER BY c.mirror_hash, c.seq
+        `)
+          .all(...batch.flatMap(({ mirrorHash, seq }) => [mirrorHash, seq]));
+        for (const row of rows) {
+          const mapped = mapChunkRow(row);
+          const chunks = result.get(mapped.mirrorHash) ?? [];
+          chunks.push(mapped);
+          result.set(mapped.mirrorHash, chunks);
+        }
+      }
+      for (const chunks of result.values())
+        chunks.sort((a, b) => a.seq - b.seq);
+      return ok(result);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get targeted chunks batch",
+        cause
+      );
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // FTS Search
   // ─────────────────────────────────────────────────────────────────────────

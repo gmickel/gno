@@ -158,8 +158,15 @@ export async function searchVectorWithEmbedding(
       mirrorHashes: uniqueHashes,
     });
 
-  // Pre-fetch all chunks in one batch query (eliminates N+1)
-  const chunksMapResult = await store.getChunksBatch(uniqueHashes);
+  // Exact sequences suffice unless selection needs whole-document evidence.
+  const chunksMapResult =
+    store.getChunksBySequenceBatch &&
+    !options.intent &&
+    !options.exclude?.length
+      ? await store.getChunksBySequenceBatch(
+          vecResults.map(({ mirrorHash, seq }) => ({ mirrorHash, seq }))
+        )
+      : await store.getChunksBatch(uniqueHashes);
   if (!chunksMapResult.ok) {
     return err("QUERY_FAILED", chunksMapResult.error.message);
   }

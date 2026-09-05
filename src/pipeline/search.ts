@@ -246,13 +246,22 @@ export async function searchBm25(
     }
   >();
 
-  // Pre-fetch all chunks in one batch query (eliminates N+1)
+  // Exact sequences suffice unless selection needs whole-document evidence.
   const uniqueHashes = [
     ...new Set(
       ftsResult.value.map((f) => f.mirrorHash).filter((h): h is string => !!h)
     ),
   ];
-  const chunksMapResult = await store.getChunksBatch(uniqueHashes);
+  const chunksMapResult =
+    store.getChunksBySequenceBatch &&
+    !options.intent &&
+    !options.exclude?.length
+      ? await store.getChunksBySequenceBatch(
+          ftsResult.value
+            .filter((row) => !!row.mirrorHash)
+            .map((row) => ({ mirrorHash: row.mirrorHash!, seq: row.seq }))
+        )
+      : await store.getChunksBatch(uniqueHashes);
   const getChunk = chunksMapResult.ok
     ? createChunkLookup(chunksMapResult.value)
     : () => undefined;

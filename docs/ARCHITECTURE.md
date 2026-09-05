@@ -156,6 +156,13 @@ User query
     ▼ [Optional] Answer stage (adaptive source selection + citation hygiene)
 ```
 
+Plain lexical and vector retrieval batch-load only the exact selected chunk
+sequences (sequence zero for document-level BM25). Intent steering and
+document-wide exclusions retain whole-hash chunk reads. Missing sequences keep
+the existing lexical snippet fallback and vector omission behavior; full output
+still reads the canonical document content separately. Stores without targeted
+chunk support retain whole-hash batching. No cross-request cache is introduced.
+
 ### Retrieval V2 Controls
 
 - **Structured query modes**: callers can pass explicit `term`, `intent`, and `hyde` entries.

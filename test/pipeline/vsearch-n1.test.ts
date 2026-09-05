@@ -624,3 +624,63 @@ describe("searchVectorWithEmbedding N+1 guard", () => {
     expect(result.value.results[1]?.source.relPath).toBe("hash_old.md");
   });
 });
+
+test("targeted vector reads preserve missing sequence omission and batch errors", async () => {
+  for (const fail of [false, true]) {
+    const baseline: Partial<StorePort> = {
+      getDocumentsByMirrorHashes: async () => ({
+        ok: true,
+        value: [makeDoc(1, "hash")],
+      }),
+      getCollections: async () => ({ ok: true, value: TEST_COLLECTIONS }),
+      getChunksBatch: async () =>
+        fail
+          ? {
+              ok: false,
+              error: { code: "QUERY_FAILED", message: "read failed" },
+            }
+          : { ok: true, value: new Map([["hash", [makeChunk("hash", 0)]]]) },
+    };
+    let calls = 0;
+    const candidate: Partial<StorePort> = {
+      ...baseline,
+      getChunksBySequenceBatch: async (keys) => {
+        calls++;
+        expect(keys).toEqual([{ mirrorHash: "hash", seq: 9 }]);
+        return fail
+          ? {
+              ok: false,
+              error: { code: "QUERY_FAILED", message: "read failed" },
+            }
+          : { ok: true, value: new Map() };
+      },
+      getChunksBatch: () => {
+        throw new Error("unexpected full hydration");
+      },
+    };
+    const vectorIndex = {
+      searchAvailable: true,
+      searchNearest: async () => ({
+        ok: true,
+        value: [{ mirrorHash: "hash", seq: 9, distance: 0.1 }],
+      }),
+    } as unknown as VectorIndexPort;
+    const run = (store: Partial<StorePort>) =>
+      searchVectorWithEmbedding(
+        {
+          store: store as StorePort,
+          vectorIndex,
+          embedPort: {} as EmbeddingPort,
+          config: {} as Config,
+        },
+        "query",
+        new Float32Array([1])
+      );
+    const expected = await run(baseline);
+    const actual = await run(candidate);
+    expect(actual).toEqual(expected);
+    expect(calls).toBe(1);
+    if (actual.ok) expect(actual.value.results).toHaveLength(0);
+    else expect(actual.error.message).toBe("read failed");
+  }
+});
