@@ -1,0 +1,2 @@
+{"elapsed": 0.0613093376159668, "rootPid": 99970, "owned": ["99970   99969   99970 47712 bun /home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/source/src/index.ts update --json"], "gpu": "1475083, /app/libexec/stremio/stremio, 925 MiB\n4007014, bun, 428 MiB\n"}
+{"elapsed": 0.6181209087371826, "rootPid": 99970, "owned": ["99970   99969   99970 285388 bun /home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/source/src/index.ts update --json"], "gpu": "1475083, /app/libexec/stremio/stremio, 925 MiB\n4007014, bun, 428 MiB\n"}

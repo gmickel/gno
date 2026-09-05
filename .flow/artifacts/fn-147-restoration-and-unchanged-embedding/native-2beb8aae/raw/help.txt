@@ -1,0 +1,74 @@
+Usage: gno [options] [command]
+
+GNO - Local Knowledge Index and Retrieval
+
+Options:
+  -V, --version                   show version
+  --index <name>                  index name (default: "default")
+  --config <path>                 config file path
+  --no-color                      disable colors
+  --verbose                       verbose logging
+  --yes                           non-interactive mode
+  -q, --quiet                     suppress non-essential output
+  --json                          JSON output (for errors and supported
+                                  commands)
+  --offline                       offline mode (use cached models only)
+  --no-pager                      disable automatic paging of long output
+  -h, --help                      display help for command
+
+Commands:
+  search [options] [query]        BM25 keyword search
+  vsearch [options] <query>       Vector similarity search
+  query [options] [query...]      Hybrid search with expansion and reranking
+  bench [options] <fixture>       Run retrieval quality benchmarks from a
+                                  fixture
+  ask [options] <query>           Human-friendly query with grounded answer
+  profile                         Inspect a project-local retrieval profile
+  init [options] [path]           Initialize GNO configuration
+  setup [options] <folder>        Add and verify a folder with a real lexical
+                                  retrieval
+  index [options] [collection]    Index files from collections
+  audit [options] [category]      Run read-only workspace integrity audits
+  status [options]                Show index status
+  peek [options]                  Show a cheap index snapshot for integrations
+  doctor [options]                Diagnose configuration issues
+  capture [options] [content...]  Capture a note with provenance
+  remember [options] <text>       Store a fact in a memory-managed collection
+  recall [options] <query>        Recall current facts from a memory-managed
+                                  collection
+  collection                      Manage collections
+  egress-audit                    Manage local content-free egress audit
+                                  receipts
+  context                         Manage context items
+  models                          Manage LLM models
+  update [options]                Sync files from disk into the index
+  embed [options] [collection]    Generate embeddings for indexed documents
+  cleanup [options]               Clean orphaned data from index
+  reset [options]                 Delete all GNO data and start fresh
+  trace                           Inspect and manage private local retrieval
+                                  traces
+  publish                         Export publish artifacts for gno.sh
+  vec                             Vector index maintenance
+  get [options] <ref>             Get document by URI or docid
+  multi-get [options] <refs...>   Get multiple documents by URI or docid
+  ls [options] [scope]            List indexed documents
+  tags                            Manage document tags
+  links                           Document link commands
+  backlinks [options] <doc>       List documents linking to this document
+  similar [options] <doc>         Find semantically similar documents
+  graph [options]                 Output knowledge graph of document links
+  changes [options]               List retained metadata-only document changes
+  diff [options] <doc>            Show one retained metadata-only structural
+                                  change
+  impact [options] <doc>          Find bounded inbound knowledge dependencies
+  mcp                             MCP server and configuration
+  skill                           Manage GNO agent skill
+  agents                          Manage the GNO protocol block in global
+                                  harness instruction files
+  daemon [options]                Start headless continuous indexing
+  serve [options]                 Start web UI server
+  completion                      Shell completion scripts
+  help [command]                  display help for command
+
+Documentation: https://github.com/gmickel/gno#readme
+Report issues: https://github.com/gmickel/gno/issues

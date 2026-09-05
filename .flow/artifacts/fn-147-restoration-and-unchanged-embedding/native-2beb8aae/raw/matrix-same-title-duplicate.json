@@ -1,0 +1,1227 @@
+{
+  "name": "same-title-duplicate",
+  "before": {
+    "owners": [
+      {
+        "rel_path": "Alpha.md",
+        "collection": "identity",
+        "source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "title": "Alpha",
+        "seq": 0,
+        "text": "The cobalt observatory opens at dawn.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+        "embedding": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b"
+      },
+      {
+        "rel_path": "copy/Alpha.md",
+        "collection": "identity",
+        "source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "title": "Alpha",
+        "seq": 0,
+        "text": "The cobalt observatory opens at dawn.\n",
+        "partition_id": null,
+        "input_hash": null,
+        "embedding": null
+      },
+      {
+        "rel_path": "Delta.md",
+        "collection": "other",
+        "source_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "mirror_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "title": "Delta",
+        "seq": 0,
+        "text": "The copper laboratory closes at midnight.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+        "embedding": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579"
+      }
+    ],
+    "partitions": [
+      {
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "version": 1,
+        "model": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "fingerprint": "86d8471a2798d32638f92addcaa80a6578c93b366f730ab9accb67a4853ba5e8",
+        "dimensions": 1024,
+        "state": "active",
+        "activated_epoch": 26
+      }
+    ],
+    "events": [
+      {
+        "change_kind": "create",
+        "new_rel_path": "Alpha.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "Delta.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f"
+      },
+      {
+        "change_kind": "update",
+        "new_rel_path": "Alpha.md",
+        "old_active": 1,
+        "new_active": 1,
+        "old_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "inactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 1,
+        "new_active": 0,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "reactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 0,
+        "new_active": 1,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "inactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 1,
+        "new_active": 0,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "reactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 0,
+        "new_active": 1,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "copy/Alpha.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      }
+    ]
+  },
+  "embed": {
+    "ok": true,
+    "value": {
+      "embedded": 1,
+      "errors": 0,
+      "contentionErrors": 0,
+      "duration": 0.025,
+      "model": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "searchAvailable": true
+    }
+  },
+  "keyword": {
+    "ok": true,
+    "value": {
+      "results": [
+        {
+          "docid": "#6dc5c05b",
+          "score": 1,
+          "uri": "gno://identity/Alpha.md",
+          "title": "Alpha",
+          "contentType": "prose",
+          "categories": [
+            "prose"
+          ],
+          "line": 1,
+          "snippet": "The <mark>cobalt</mark> <mark>observatory</mark> opens at <mark>dawn</mark>.\n",
+          "snippetRange": {
+            "startLine": 1,
+            "endLine": 1
+          },
+          "source": {
+            "relPath": "Alpha.md",
+            "mime": "text/markdown",
+            "ext": ".md",
+            "modifiedAt": "2026-09-05T02:22:02.137Z",
+            "sizeBytes": 43,
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+            "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/corpus/Alpha.md"
+          },
+          "conversion": {
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+          },
+          "egressLineage": {
+            "effectivePolicy": "local_only",
+            "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+            "sources": [
+              {
+                "collection": "identity",
+                "policy": "local_only",
+                "source": "config_default"
+              }
+            ]
+          }
+        },
+        {
+          "docid": "#98897c0b",
+          "score": 0,
+          "uri": "gno://identity/copy/Alpha.md",
+          "title": "Alpha",
+          "contentType": "prose",
+          "categories": [
+            "prose"
+          ],
+          "line": 1,
+          "snippet": "The <mark>cobalt</mark> <mark>observatory</mark> opens at <mark>dawn</mark>.\n",
+          "snippetRange": {
+            "startLine": 1,
+            "endLine": 1
+          },
+          "source": {
+            "relPath": "copy/Alpha.md",
+            "mime": "text/markdown",
+            "ext": ".md",
+            "modifiedAt": "2026-09-05T02:22:07.004Z",
+            "sizeBytes": 38,
+            "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/corpus/copy/Alpha.md"
+          },
+          "conversion": {
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+          },
+          "egressLineage": {
+            "effectivePolicy": "local_only",
+            "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+            "sources": [
+              {
+                "collection": "identity",
+                "policy": "local_only",
+                "source": "config_default"
+              }
+            ]
+          }
+        }
+      ],
+      "meta": {
+        "query": "cobalt observatory dawn",
+        "mode": "bm25",
+        "totalResults": 2,
+        "queryLanguage": "it"
+      }
+    }
+  },
+  "semantic": {
+    "ok": true,
+    "value": {
+      "results": [
+        {
+          "docid": "#6dc5c05b",
+          "score": 0.8845320791006088,
+          "uri": "gno://identity/Alpha.md",
+          "title": "Alpha",
+          "contentType": "prose",
+          "categories": [
+            "prose"
+          ],
+          "line": 1,
+          "snippet": "The cobalt observatory opens at dawn.\n",
+          "snippetRange": {
+            "startLine": 1,
+            "endLine": 1
+          },
+          "source": {
+            "relPath": "Alpha.md",
+            "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/corpus/Alpha.md",
+            "mime": "text/markdown",
+            "ext": ".md",
+            "modifiedAt": "2026-09-05T02:22:02.137Z",
+            "sizeBytes": 43,
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2"
+          },
+          "conversion": {
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "converterId": "native/markdown",
+            "converterVersion": "1.0.0"
+          },
+          "egressLineage": {
+            "effectivePolicy": "local_only",
+            "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+            "sources": [
+              {
+                "collection": "identity",
+                "policy": "local_only",
+                "source": "config_default"
+              }
+            ]
+          }
+        },
+        {
+          "docid": "#98897c0b",
+          "score": 0.8845320791006088,
+          "uri": "gno://identity/copy/Alpha.md",
+          "title": "Alpha",
+          "contentType": "prose",
+          "categories": [
+            "prose"
+          ],
+          "line": 1,
+          "snippet": "The cobalt observatory opens at dawn.\n",
+          "snippetRange": {
+            "startLine": 1,
+            "endLine": 1
+          },
+          "source": {
+            "relPath": "copy/Alpha.md",
+            "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/corpus/copy/Alpha.md",
+            "mime": "text/markdown",
+            "ext": ".md",
+            "modifiedAt": "2026-09-05T02:22:07.004Z",
+            "sizeBytes": 38,
+            "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+          },
+          "conversion": {
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "converterId": "native/markdown",
+            "converterVersion": "1.0.0"
+          },
+          "egressLineage": {
+            "effectivePolicy": "local_only",
+            "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+            "sources": [
+              {
+                "collection": "identity",
+                "policy": "local_only",
+                "source": "config_default"
+              }
+            ]
+          }
+        },
+        {
+          "docid": "#ca2c1633",
+          "score": 0.701312780380249,
+          "uri": "gno://other/Delta.md",
+          "title": "Delta",
+          "contentType": "prose",
+          "categories": [
+            "prose"
+          ],
+          "line": 1,
+          "snippet": "The copper laboratory closes at midnight.\n",
+          "snippetRange": {
+            "startLine": 1,
+            "endLine": 1
+          },
+          "source": {
+            "relPath": "Delta.md",
+            "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/other/Delta.md",
+            "mime": "text/markdown",
+            "ext": ".md",
+            "modifiedAt": "2026-09-05T02:18:55.736Z",
+            "sizeBytes": 42,
+            "sourceHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f"
+          },
+          "conversion": {
+            "mirrorHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+            "converterId": "native/markdown",
+            "converterVersion": "1.0.0"
+          },
+          "egressLineage": {
+            "effectivePolicy": "local_only",
+            "digest": "713099f0668e0eec9cbc4066570f3ef37e32aff76fff1ca6df5769776862142d",
+            "sources": [
+              {
+                "collection": "other",
+                "policy": "local_only",
+                "source": "config_default"
+              }
+            ]
+          }
+        }
+      ],
+      "meta": {
+        "query": "cobalt observatory dawn",
+        "mode": "vector",
+        "vectorsUsed": true,
+        "totalResults": 3,
+        "queryLanguage": "it"
+      }
+    }
+  },
+  "changes": {
+    "ok": true,
+    "value": {
+      "schemaVersion": "1.0",
+      "changes": [
+        {
+          "id": "gno-change-v1.eyJzZXF1ZW5jZSI6MX0=",
+          "kind": "create",
+          "collection": "identity",
+          "observedAt": "2026-09-05T02:18:56.480Z",
+          "previous": null,
+          "current": {
+            "relPath": "Alpha.md",
+            "docid": "#98897c0b",
+            "uri": "gno://identity/Alpha.md",
+            "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "active": true
+          },
+          "structureDelta": {
+            "headings": {
+              "added": [],
+              "removed": []
+            },
+            "links": {
+              "added": [],
+              "removed": []
+            },
+            "typedEdges": {
+              "added": [],
+              "removed": []
+            },
+            "dates": {
+              "added": [],
+              "removed": [],
+              "changed": []
+            },
+            "truncated": false
+          }
+        },
+        {
+          "id": "gno-change-v1.eyJzZXF1ZW5jZSI6Mn0=",
+          "kind": "create",
+          "collection": "other",
+          "observedAt": "2026-09-05T02:18:56.484Z",
+          "previous": null,
+          "current": {
+            "relPath": "Delta.md",
+            "docid": "#ca2c1633",
+            "uri": "gno://other/Delta.md",
+            "sourceHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+            "mirrorHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+            "active": true
+          },
+          "structureDelta": {
+            "headings": {
+              "added": [],
+              "removed": []
+            },
+            "links": {
+              "added": [],
+              "removed": []
+            },
+            "typedEdges": {
+              "added": [],
+              "removed": []
+            },
+            "dates": {
+              "added": [],
+              "removed": [],
+              "changed": []
+            },
+            "truncated": false
+          }
+        },
+        {
+          "id": "gno-change-v1.eyJzZXF1ZW5jZSI6M30=",
+          "kind": "update",
+          "collection": "identity",
+          "observedAt": "2026-09-05T02:21:13.880Z",
+          "previous": {
+            "relPath": "Alpha.md",
+            "docid": "#98897c0b",
+            "uri": "gno://identity/Alpha.md",
+            "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "active": true
+          },
+          "current": {
+            "relPath": "Alpha.md",
+            "docid": "#6dc5c05b",
+            "uri": "gno://identity/Alpha.md",
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "active": true
+          },
+          "structureDelta": {
+            "headings": {
+              "added": [],
+              "removed": []
+            },
+            "links": {
+              "added": [],
+              "removed": []
+            },
+            "typedEdges": {
+              "added": [],
+              "removed": []
+            },
+            "dates": {
+              "added": [],
+              "removed": [],
+              "changed": []
+            },
+            "truncated": false
+          }
+        },
+        {
+          "id": "gno-change-v1.eyJzZXF1ZW5jZSI6NH0=",
+          "kind": "inactivate",
+          "collection": "identity",
+          "observedAt": "2026-09-05T02:21:35.538Z",
+          "previous": {
+            "relPath": "Alpha.md",
+            "docid": "#6dc5c05b",
+            "uri": "gno://identity/Alpha.md",
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "active": true
+          },
+          "current": {
+            "relPath": "Alpha.md",
+            "docid": "#6dc5c05b",
+            "uri": "gno://identity/Alpha.md",
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "active": false
+          },
+          "structureDelta": {
+            "headings": {
+              "added": [],
+              "removed": []
+            },
+            "links": {
+              "added": [],
+              "removed": []
+            },
+            "typedEdges": {
+              "added": [],
+              "removed": []
+            },
+            "dates": {
+              "added": [],
+              "removed": [],
+              "changed": []
+            },
+            "truncated": false
+          }
+        },
+        {
+          "id": "gno-change-v1.eyJzZXF1ZW5jZSI6NX0=",
+          "kind": "reactivate",
+          "collection": "identity",
+          "observedAt": "2026-09-05T02:21:52.530Z",
+          "previous": {
+            "relPath": "Alpha.md",
+            "docid": "#6dc5c05b",
+            "uri": "gno://identity/Alpha.md",
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "active": false
+          },
+          "current": {
+            "relPath": "Alpha.md",
+            "docid": "#6dc5c05b",
+            "uri": "gno://identity/Alpha.md",
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "active": true
+          },
+          "structureDelta": {
+            "headings": {
+              "added": [],
+              "removed": []
+            },
+            "links": {
+              "added": [],
+              "removed": []
+            },
+            "typedEdges": {
+              "added": [],
+              "removed": []
+            },
+            "dates": {
+              "added": [],
+              "removed": [],
+              "changed": []
+            },
+            "truncated": false
+          }
+        },
+        {
+          "id": "gno-change-v1.eyJzZXF1ZW5jZSI6Nn0=",
+          "kind": "inactivate",
+          "collection": "identity",
+          "observedAt": "2026-09-05T02:21:57.280Z",
+          "previous": {
+            "relPath": "Alpha.md",
+            "docid": "#6dc5c05b",
+            "uri": "gno://identity/Alpha.md",
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "active": true
+          },
+          "current": {
+            "relPath": "Alpha.md",
+            "docid": "#6dc5c05b",
+            "uri": "gno://identity/Alpha.md",
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "active": false
+          },
+          "structureDelta": {
+            "headings": {
+              "added": [],
+              "removed": []
+            },
+            "links": {
+              "added": [],
+              "removed": []
+            },
+            "typedEdges": {
+              "added": [],
+              "removed": []
+            },
+            "dates": {
+              "added": [],
+              "removed": [],
+              "changed": []
+            },
+            "truncated": false
+          }
+        },
+        {
+          "id": "gno-change-v1.eyJzZXF1ZW5jZSI6N30=",
+          "kind": "reactivate",
+          "collection": "identity",
+          "observedAt": "2026-09-05T02:22:02.138Z",
+          "previous": {
+            "relPath": "Alpha.md",
+            "docid": "#6dc5c05b",
+            "uri": "gno://identity/Alpha.md",
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "active": false
+          },
+          "current": {
+            "relPath": "Alpha.md",
+            "docid": "#6dc5c05b",
+            "uri": "gno://identity/Alpha.md",
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "active": true
+          },
+          "structureDelta": {
+            "headings": {
+              "added": [],
+              "removed": []
+            },
+            "links": {
+              "added": [],
+              "removed": []
+            },
+            "typedEdges": {
+              "added": [],
+              "removed": []
+            },
+            "dates": {
+              "added": [],
+              "removed": [],
+              "changed": []
+            },
+            "truncated": false
+          }
+        },
+        {
+          "id": "gno-change-v1.eyJzZXF1ZW5jZSI6OH0=",
+          "kind": "create",
+          "collection": "identity",
+          "observedAt": "2026-09-05T02:22:07.006Z",
+          "previous": null,
+          "current": {
+            "relPath": "copy/Alpha.md",
+            "docid": "#98897c0b",
+            "uri": "gno://identity/copy/Alpha.md",
+            "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "active": true
+          },
+          "structureDelta": {
+            "headings": {
+              "added": [],
+              "removed": []
+            },
+            "links": {
+              "added": [],
+              "removed": []
+            },
+            "typedEdges": {
+              "added": [],
+              "removed": []
+            },
+            "dates": {
+              "added": [],
+              "removed": [],
+              "changed": []
+            },
+            "truncated": false
+          }
+        }
+      ],
+      "page": {
+        "nextCursor": null,
+        "earliestCursor": "gno-change-v1.eyJzZXF1ZW5jZSI6MH0=",
+        "latestCursor": "gno-change-v1.eyJzZXF1ZW5jZSI6OH0=",
+        "cursorExpired": false,
+        "truncated": false,
+        "retentionTruncated": false
+      },
+      "warnings": []
+    }
+  },
+  "current": {
+    "owners": [
+      {
+        "rel_path": "Alpha.md",
+        "collection": "identity",
+        "source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "title": "Alpha",
+        "seq": 0,
+        "text": "The cobalt observatory opens at dawn.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+        "embedding": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b"
+      },
+      {
+        "rel_path": "copy/Alpha.md",
+        "collection": "identity",
+        "source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "title": "Alpha",
+        "seq": 0,
+        "text": "The cobalt observatory opens at dawn.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+        "embedding": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b"
+      },
+      {
+        "rel_path": "Delta.md",
+        "collection": "other",
+        "source_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "mirror_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "title": "Delta",
+        "seq": 0,
+        "text": "The copper laboratory closes at midnight.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+        "embedding": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579"
+      }
+    ],
+    "partitions": [
+      {
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "version": 1,
+        "model": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "fingerprint": "86d8471a2798d32638f92addcaa80a6578c93b366f730ab9accb67a4853ba5e8",
+        "dimensions": 1024,
+        "state": "active",
+        "activated_epoch": 32
+      }
+    ],
+    "events": [
+      {
+        "change_kind": "create",
+        "new_rel_path": "Alpha.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "Delta.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f"
+      },
+      {
+        "change_kind": "update",
+        "new_rel_path": "Alpha.md",
+        "old_active": 1,
+        "new_active": 1,
+        "old_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "inactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 1,
+        "new_active": 0,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "reactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 0,
+        "new_active": 1,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "inactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 1,
+        "new_active": 0,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "reactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 0,
+        "new_active": 1,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "copy/Alpha.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      }
+    ]
+  },
+  "cleanUpdate": {
+    "collections": [
+      {
+        "collection": "identity",
+        "filesProcessed": 2,
+        "filesAdded": 2,
+        "filesUpdated": 0,
+        "filesUnchanged": 0,
+        "filesErrored": 0,
+        "filesSkipped": 0,
+        "filesMarkedInactive": 0,
+        "durationMs": 4,
+        "files": [
+          {
+            "relPath": "Alpha.md",
+            "status": "added",
+            "docid": "#6dc5c05b",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "contentType": "prose",
+            "contentTypeSource": "fallback"
+          },
+          {
+            "relPath": "copy/Alpha.md",
+            "status": "added",
+            "docid": "#98897c0b",
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "contentType": "prose",
+            "contentTypeSource": "fallback"
+          }
+        ],
+        "errors": []
+      },
+      {
+        "collection": "other",
+        "filesProcessed": 1,
+        "filesAdded": 1,
+        "filesUpdated": 0,
+        "filesUnchanged": 0,
+        "filesErrored": 0,
+        "filesSkipped": 0,
+        "filesMarkedInactive": 0,
+        "durationMs": 2,
+        "files": [
+          {
+            "relPath": "Delta.md",
+            "status": "added",
+            "docid": "#ca2c1633",
+            "mirrorHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+            "contentType": "prose",
+            "contentTypeSource": "fallback"
+          }
+        ],
+        "errors": []
+      }
+    ],
+    "totalDurationMs": 9,
+    "totalFilesProcessed": 3,
+    "totalFilesAdded": 3,
+    "totalFilesUpdated": 0,
+    "totalFilesErrored": 0,
+    "totalFilesSkipped": 0
+  },
+  "cleanEmbed": {
+    "ok": true,
+    "value": {
+      "embedded": 3,
+      "errors": 0,
+      "contentionErrors": 0,
+      "duration": 0.085,
+      "model": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "searchAvailable": true
+    }
+  },
+  "cleanKeyword": {
+    "ok": true,
+    "value": {
+      "results": [
+        {
+          "docid": "#6dc5c05b",
+          "score": 1,
+          "uri": "gno://identity/Alpha.md",
+          "title": "Alpha",
+          "contentType": "prose",
+          "categories": [
+            "prose"
+          ],
+          "line": 1,
+          "snippet": "The <mark>cobalt</mark> <mark>observatory</mark> opens at <mark>dawn</mark>.\n",
+          "snippetRange": {
+            "startLine": 1,
+            "endLine": 1
+          },
+          "source": {
+            "relPath": "Alpha.md",
+            "mime": "text/markdown",
+            "ext": ".md",
+            "modifiedAt": "2026-09-05T02:22:02.137Z",
+            "sizeBytes": 43,
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+            "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/corpus/Alpha.md"
+          },
+          "conversion": {
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+          },
+          "egressLineage": {
+            "effectivePolicy": "local_only",
+            "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+            "sources": [
+              {
+                "collection": "identity",
+                "policy": "local_only",
+                "source": "config_default"
+              }
+            ]
+          }
+        },
+        {
+          "docid": "#98897c0b",
+          "score": 0,
+          "uri": "gno://identity/copy/Alpha.md",
+          "title": "Alpha",
+          "contentType": "prose",
+          "categories": [
+            "prose"
+          ],
+          "line": 1,
+          "snippet": "The <mark>cobalt</mark> <mark>observatory</mark> opens at <mark>dawn</mark>.\n",
+          "snippetRange": {
+            "startLine": 1,
+            "endLine": 1
+          },
+          "source": {
+            "relPath": "copy/Alpha.md",
+            "mime": "text/markdown",
+            "ext": ".md",
+            "modifiedAt": "2026-09-05T02:22:07.004Z",
+            "sizeBytes": 38,
+            "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/corpus/copy/Alpha.md"
+          },
+          "conversion": {
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+          },
+          "egressLineage": {
+            "effectivePolicy": "local_only",
+            "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+            "sources": [
+              {
+                "collection": "identity",
+                "policy": "local_only",
+                "source": "config_default"
+              }
+            ]
+          }
+        }
+      ],
+      "meta": {
+        "query": "cobalt observatory dawn",
+        "mode": "bm25",
+        "totalResults": 2,
+        "queryLanguage": "it"
+      }
+    }
+  },
+  "cleanSemantic": {
+    "ok": true,
+    "value": {
+      "results": [
+        {
+          "docid": "#6dc5c05b",
+          "score": 0.8845320791006088,
+          "uri": "gno://identity/Alpha.md",
+          "title": "Alpha",
+          "contentType": "prose",
+          "categories": [
+            "prose"
+          ],
+          "line": 1,
+          "snippet": "The cobalt observatory opens at dawn.\n",
+          "snippetRange": {
+            "startLine": 1,
+            "endLine": 1
+          },
+          "source": {
+            "relPath": "Alpha.md",
+            "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/corpus/Alpha.md",
+            "mime": "text/markdown",
+            "ext": ".md",
+            "modifiedAt": "2026-09-05T02:22:02.137Z",
+            "sizeBytes": 43,
+            "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2"
+          },
+          "conversion": {
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "converterId": "native/markdown",
+            "converterVersion": "1.0.0"
+          },
+          "egressLineage": {
+            "effectivePolicy": "local_only",
+            "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+            "sources": [
+              {
+                "collection": "identity",
+                "policy": "local_only",
+                "source": "config_default"
+              }
+            ]
+          }
+        },
+        {
+          "docid": "#98897c0b",
+          "score": 0.8845320791006088,
+          "uri": "gno://identity/copy/Alpha.md",
+          "title": "Alpha",
+          "contentType": "prose",
+          "categories": [
+            "prose"
+          ],
+          "line": 1,
+          "snippet": "The cobalt observatory opens at dawn.\n",
+          "snippetRange": {
+            "startLine": 1,
+            "endLine": 1
+          },
+          "source": {
+            "relPath": "copy/Alpha.md",
+            "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/corpus/copy/Alpha.md",
+            "mime": "text/markdown",
+            "ext": ".md",
+            "modifiedAt": "2026-09-05T02:22:07.004Z",
+            "sizeBytes": 38,
+            "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+          },
+          "conversion": {
+            "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+            "converterId": "native/markdown",
+            "converterVersion": "1.0.0"
+          },
+          "egressLineage": {
+            "effectivePolicy": "local_only",
+            "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+            "sources": [
+              {
+                "collection": "identity",
+                "policy": "local_only",
+                "source": "config_default"
+              }
+            ]
+          }
+        },
+        {
+          "docid": "#ca2c1633",
+          "score": 0.701312780380249,
+          "uri": "gno://other/Delta.md",
+          "title": "Delta",
+          "contentType": "prose",
+          "categories": [
+            "prose"
+          ],
+          "line": 1,
+          "snippet": "The copper laboratory closes at midnight.\n",
+          "snippetRange": {
+            "startLine": 1,
+            "endLine": 1
+          },
+          "source": {
+            "relPath": "Delta.md",
+            "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/other/Delta.md",
+            "mime": "text/markdown",
+            "ext": ".md",
+            "modifiedAt": "2026-09-05T02:18:55.736Z",
+            "sizeBytes": 42,
+            "sourceHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f"
+          },
+          "conversion": {
+            "mirrorHash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+            "converterId": "native/markdown",
+            "converterVersion": "1.0.0"
+          },
+          "egressLineage": {
+            "effectivePolicy": "local_only",
+            "digest": "713099f0668e0eec9cbc4066570f3ef37e32aff76fff1ca6df5769776862142d",
+            "sources": [
+              {
+                "collection": "other",
+                "policy": "local_only",
+                "source": "config_default"
+              }
+            ]
+          }
+        }
+      ],
+      "meta": {
+        "query": "cobalt observatory dawn",
+        "mode": "vector",
+        "vectorsUsed": true,
+        "totalResults": 3,
+        "queryLanguage": "it"
+      }
+    }
+  },
+  "rebuilt": {
+    "owners": [
+      {
+        "rel_path": "Alpha.md",
+        "collection": "identity",
+        "source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "title": "Alpha",
+        "seq": 0,
+        "text": "The cobalt observatory opens at dawn.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+        "embedding": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b"
+      },
+      {
+        "rel_path": "copy/Alpha.md",
+        "collection": "identity",
+        "source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "title": "Alpha",
+        "seq": 0,
+        "text": "The cobalt observatory opens at dawn.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+        "embedding": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b"
+      },
+      {
+        "rel_path": "Delta.md",
+        "collection": "other",
+        "source_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "mirror_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "title": "Delta",
+        "seq": 0,
+        "text": "The copper laboratory closes at midnight.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+        "embedding": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579"
+      }
+    ],
+    "partitions": [
+      {
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "version": 1,
+        "model": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "fingerprint": "86d8471a2798d32638f92addcaa80a6578c93b366f730ab9accb67a4853ba5e8",
+        "dimensions": 1024,
+        "state": "active",
+        "activated_epoch": 22
+      }
+    ],
+    "events": [
+      {
+        "change_kind": "create",
+        "new_rel_path": "Alpha.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "copy/Alpha.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "Delta.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f"
+      }
+    ]
+  },
+  "ownerExactEquality": true,
+  "keywordResultsEquality": true,
+  "semanticResultsEquality": true
+}

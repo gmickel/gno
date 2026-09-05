@@ -1,0 +1,14 @@
+{
+  "command": [
+    "bun",
+    "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/source/src/index.ts",
+    "vsearch",
+    "cobalt observatory dawn",
+    "-n",
+    "10",
+    "--json"
+  ],
+  "pid": 101422,
+  "exitCode": 2,
+  "elapsed": 2.2221615314483643
+}

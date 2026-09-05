@@ -1,0 +1,74 @@
+[
+  {
+    "name": "initial",
+    "ownerExactEquality": true,
+    "keywordResultsEquality": true,
+    "semanticResultsEquality": true
+  },
+  {
+    "name": "whitespace",
+    "ownerExactEquality": true,
+    "keywordResultsEquality": true,
+    "semanticResultsEquality": true
+  },
+  {
+    "name": "unchanged",
+    "ownerExactEquality": false,
+    "keywordResultsEquality": true,
+    "semanticResultsEquality": false
+  },
+  {
+    "name": "absent-1",
+    "ownerExactEquality": true,
+    "keywordResultsEquality": true,
+    "semanticResultsEquality": true
+  },
+  {
+    "name": "restored-1",
+    "ownerExactEquality": true,
+    "keywordResultsEquality": true,
+    "semanticResultsEquality": true
+  },
+  {
+    "name": "absent-2",
+    "ownerExactEquality": true,
+    "keywordResultsEquality": true,
+    "semanticResultsEquality": true
+  },
+  {
+    "name": "restored-2",
+    "ownerExactEquality": true,
+    "keywordResultsEquality": true,
+    "semanticResultsEquality": true
+  },
+  {
+    "name": "same-title-duplicate",
+    "ownerExactEquality": true,
+    "keywordResultsEquality": true,
+    "semanticResultsEquality": true
+  },
+  {
+    "name": "title-rename",
+    "ownerExactEquality": false,
+    "keywordResultsEquality": true,
+    "semanticResultsEquality": false
+  },
+  {
+    "name": "force",
+    "ownerExactEquality": true,
+    "keywordResultsEquality": true,
+    "semanticResultsEquality": true
+  },
+  {
+    "name": "materialization-repair",
+    "ownerExactEquality": true,
+    "keywordResultsEquality": true,
+    "semanticResultsEquality": true
+  },
+  {
+    "name": "collection-global-catchup",
+    "ownerExactEquality": true,
+    "keywordResultsEquality": true,
+    "semanticResultsEquality": true
+  }
+]

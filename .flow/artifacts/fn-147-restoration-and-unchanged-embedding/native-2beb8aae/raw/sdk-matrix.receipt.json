@@ -1,0 +1,9 @@
+{
+  "command": [
+    "bun",
+    "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/matrix.ts"
+  ],
+  "pid": 105668,
+  "exitCode": 0,
+  "elapsed": 95.46495485305786
+}

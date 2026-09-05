@@ -1,0 +1,114 @@
+{
+  "status": 200,
+  "body": {
+    "results": [
+      {
+        "docid": "#6dc5c05b",
+        "score": 1,
+        "uri": "gno://identity/Alpha.md",
+        "title": "Alpha",
+        "contentType": "prose",
+        "categories": [
+          "prose"
+        ],
+        "line": 1,
+        "snippet": "The cobalt observatory opens at dawn.\n",
+        "snippetRange": {
+          "startLine": 1,
+          "endLine": 1
+        },
+        "source": {
+          "relPath": "Alpha.md",
+          "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/corpus/Alpha.md",
+          "mime": "text/markdown",
+          "ext": ".md",
+          "modifiedAt": "2026-09-05T02:22:02.137Z",
+          "sizeBytes": 43,
+          "sourceHash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2"
+        },
+        "conversion": {
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "converterId": "native/markdown",
+          "converterVersion": "1.0.0"
+        },
+        "egressLineage": {
+          "effectivePolicy": "local_only",
+          "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+          "sources": [
+            {
+              "collection": "identity",
+              "policy": "local_only",
+              "source": "config_default"
+            }
+          ]
+        }
+      },
+      {
+        "docid": "#98897c0b",
+        "score": 1,
+        "uri": "gno://identity/copy/Beta.md",
+        "title": "Beta",
+        "contentType": "prose",
+        "categories": [
+          "prose"
+        ],
+        "line": 1,
+        "snippet": "The cobalt observatory opens at dawn.\n",
+        "snippetRange": {
+          "startLine": 1,
+          "endLine": 1
+        },
+        "source": {
+          "relPath": "copy/Beta.md",
+          "absPath": "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/corpus/copy/Beta.md",
+          "mime": "text/markdown",
+          "ext": ".md",
+          "modifiedAt": "2026-09-05T02:22:07.004Z",
+          "sizeBytes": 38,
+          "sourceHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+        },
+        "conversion": {
+          "mirrorHash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+          "converterId": "native/markdown",
+          "converterVersion": "1.0.0"
+        },
+        "egressLineage": {
+          "effectivePolicy": "local_only",
+          "digest": "a6b10c5b8d46f23047f934a968c39315ebf296adc9d231ddc828f2ea523fd0b2",
+          "sources": [
+            {
+              "collection": "identity",
+              "policy": "local_only",
+              "source": "config_default"
+            }
+          ]
+        }
+      }
+    ],
+    "meta": {
+      "query": "cobalt observatory dawn",
+      "mode": "bm25_only",
+      "expanded": false,
+      "reranked": false,
+      "vectorsUsed": false,
+      "totalResults": 2,
+      "candidateLimit": 20,
+      "graphExpansion": {
+        "enabled": false,
+        "seedCount": 2,
+        "candidateCount": 0,
+        "maxCandidates": 20,
+        "edgeConfidence": {
+          "explicit": 0,
+          "inferred": 0,
+          "ambiguous": 0,
+          "similarity": 0
+        },
+        "fallbackReasons": [
+          "graph_empty"
+        ]
+      },
+      "queryLanguage": "it"
+    }
+  }
+}

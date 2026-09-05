@@ -1,0 +1,13 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Error: Vector search failed: Effective embedding identity unavailable after variant activation"
+    }
+  ],
+  "structuredContent": {
+    "error": "RUNTIME",
+    "message": "Vector search failed: Effective embedding identity unavailable after variant activation"
+  },
+  "isError": true
+}

@@ -1,0 +1,9 @@
+{
+  "command": [
+    "bun",
+    "/home/gordon/.cache/agent-tmp/gno-fn147-nativeqa/surfaces.ts"
+  ],
+  "pid": 114881,
+  "exitCode": 0,
+  "elapsed": 4.471481800079346
+}
