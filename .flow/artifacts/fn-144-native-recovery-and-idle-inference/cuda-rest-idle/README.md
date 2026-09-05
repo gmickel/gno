@@ -77,3 +77,18 @@ hooks were not enabled; CUDA intent, per-PID NVIDIA allocations, child command
 identity and preflight model hashes are separate evidence. Original Ivan3/3,
 full native-port equivalence, CLI/MCP coverage and task144.5 child-aware capture
 remain separate acceptance gates. No overall spec-complete verdict.
+
+## Bounded fn143 response comparison
+
+`bun .flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-rest-idle/compare-responses.ts`
+replays the existing fn143 comparator against the complete unmodified public
+results in these eight stages. Result:8 cases passed; a deliberately changed
+first result score is rejected. `fn143-response-comparison.json` is the small
+summary; `.json.gz` retains complete manifests and projected records.
+`index-pins.json` identifies the post-run synthetic SQLite snapshot files.
+
+This is a posthoc response-only projection, with semantic/native coverage marked
+**incomplete**. It is not a preregistered baseline/candidate native-acceptance run.
+The first candidate response is the equality reference for subsequent stages;
+there is no cross-host provenance normalization or historical-baseline equality
+claim. Every original result field is retained in the projected provenance.

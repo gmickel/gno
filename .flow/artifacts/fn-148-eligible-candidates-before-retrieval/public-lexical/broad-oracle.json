@@ -1,0 +1,426 @@
+[
+  {
+    "surface": "cli",
+    "limit": 1,
+    "actual": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ]
+    ],
+    "expected": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "surface": "rest",
+    "limit": 1,
+    "actual": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ]
+    ],
+    "expected": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "surface": "cli",
+    "limit": 10,
+    "actual": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-1.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-2.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-3.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-4.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-5.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-6.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-7.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-8.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-9.md",
+        1
+      ]
+    ],
+    "expected": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-1.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-2.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-3.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-4.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-5.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-6.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-7.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-8.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-9.md",
+        1
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "surface": "rest",
+    "limit": 10,
+    "actual": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-1.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-2.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-3.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-4.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-5.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-6.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-7.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-8.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-9.md",
+        1
+      ]
+    ],
+    "expected": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-1.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-2.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-3.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-4.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-5.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-6.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-7.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-8.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-9.md",
+        1
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "limit": 1,
+    "actual": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ]
+    ],
+    "expected": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "limit": 10,
+    "actual": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-1.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-2.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-3.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-4.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-5.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-6.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-7.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-8.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-9.md",
+        1
+      ]
+    ],
+    "expected": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-1.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-2.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-3.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-4.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-5.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-6.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-7.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-8.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-9.md",
+        1
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "surface": "http-mcp",
+    "limit": 1,
+    "actual": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ]
+    ],
+    "expected": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "surface": "http-mcp",
+    "limit": 10,
+    "actual": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-1.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-2.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-3.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-4.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-5.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-6.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-7.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-8.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-9.md",
+        1
+      ]
+    ],
+    "expected": [
+      [
+        "gno://notes/scope/noise-0.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-1.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-2.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-3.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-4.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-5.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-6.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-7.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-8.md",
+        1
+      ],
+      [
+        "gno://notes/scope/noise-9.md",
+        1
+      ]
+    ],
+    "pass": true
+  }
+]

@@ -26,7 +26,7 @@ export interface GraphRetrievalMeta {
 }
 
 export interface GraphRetrievalResult {
-  candidates: Array<{ mirrorHash: string; seq: number }>;
+  candidates: Array<{ mirrorHash: string; seq: number; sourceDocid?: string }>;
   meta: GraphRetrievalMeta;
 }
 
@@ -312,7 +312,10 @@ export async function expandGraphCandidates(
     }
     const rank =
       seedCandidates.findIndex(
-        (candidate) => candidate.mirrorHash === doc.mirrorHash
+        (candidate) =>
+          candidate.mirrorHash === doc.mirrorHash &&
+          (candidate.documentId === undefined ||
+            candidate.documentId === doc.id)
       ) + 1;
     if (rank <= 0) {
       continue;
@@ -431,7 +434,17 @@ export async function expandGraphCandidates(
         preferredSeqByHash,
         options.lang
       );
-      return seq === null ? null : { mirrorHash, seq };
+      return seq === null
+        ? null
+        : {
+            mirrorHash,
+            seq,
+            ...(fusedCandidates.some(
+              (candidate) => candidate.documentId !== undefined
+            )
+              ? { sourceDocid: doc.docid }
+              : {}),
+          };
     })
     .filter(
       (candidate): candidate is { mirrorHash: string; seq: number } =>

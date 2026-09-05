@@ -1,0 +1,482 @@
+[
+  {
+    "surface": "cli",
+    "scenario": "tag",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "tag",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "tag",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "tag",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "tag-any",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "tag-any",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "tag-any",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "tag-any",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "date",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "date",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "date",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "date",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "author",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "author",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "author",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "author",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "category",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "category",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "category",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "category",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "exclude",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "exclude",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "exclude",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "exclude",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "combined",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "combined",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "combined",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "combined",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "zero",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "zero",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "zero",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "zero",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "broad",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "broad",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "broad",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "broad",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "invalid-date",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "invalid-date",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "cli",
+    "scenario": "invalid-date",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "rest",
+    "scenario": "invalid-date",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "tag",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "tag",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "tag-any",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "tag-any",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "date",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "date",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "author",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "author",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "category",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "category",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "exclude",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "exclude",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "combined",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "combined",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "zero",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "zero",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "broad",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "broad",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "invalid-date",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "scenario": "invalid-date",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "tag",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "tag",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "tag-any",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "tag-any",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "date",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "date",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "author",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "author",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "category",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "category",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "exclude",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "exclude",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "combined",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "combined",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "zero",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "zero",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "broad",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "broad",
+    "limit": 10,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "invalid-date",
+    "limit": 1,
+    "exactResultParity": true
+  },
+  {
+    "surface": "http-mcp",
+    "scenario": "invalid-date",
+    "limit": 10,
+    "exactResultParity": true
+  }
+]

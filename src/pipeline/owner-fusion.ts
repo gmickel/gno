@@ -51,6 +51,7 @@ export async function resolveFusionOwners(
       for (const doc of eligible.value) memoryIds.add(doc.id);
     }
   }
+  const docids = new Map(documents.value.map((doc) => [doc.id, doc.docid]));
   const owners = new Map<string, number[]>();
   for (const doc of documents.value) {
     if (!doc.mirrorHash || (memoryIds && !memoryIds.has(doc.id))) continue;
@@ -73,9 +74,13 @@ export async function resolveFusionOwners(
     results: input.results.flatMap((result) => {
       const ids = owners.get(`${result.mirrorHash}:${result.seq}`) ?? [];
       return ids
-        .filter(
-          (id) => result.documentId === undefined || result.documentId === id
-        )
+        .filter((id) => {
+          if (result.documentId !== undefined) return result.documentId === id;
+          if (result.sourceDocid !== undefined)
+            return result.sourceDocid === docids.get(id);
+          // Older custom stores without provenance cannot lend a rank to ambiguous owners.
+          return ids.length === 1;
+        })
         .map((documentId) => ({ ...result, documentId }));
     }),
   }));

@@ -15,6 +15,7 @@ import type { FusionCandidate, FusionSource, RrfConfig } from "./types";
 export interface RankedInput {
   source: FusionSource;
   results: Array<{
+    sourceDocid?: string;
     documentId?: number;
     mirrorHash: string;
     seq: number;
@@ -221,13 +222,19 @@ export function rrfFuse(
  */
 export function toRankedInput(
   source: FusionSource,
-  results: Array<{ mirrorHash: string; seq: number; documentIds?: number[] }>
+  results: Array<{
+    mirrorHash: string;
+    seq: number;
+    documentIds?: number[];
+    sourceDocid?: string;
+  }>
 ): RankedInput {
   return {
     source,
     results: results.flatMap((r, i) =>
       (r.documentIds ?? [undefined]).map((documentId) => ({
         ...(documentId === undefined ? {} : { documentId }),
+        ...(r.sourceDocid === undefined ? {} : { sourceDocid: r.sourceDocid }),
         mirrorHash: r.mirrorHash,
         seq: r.seq,
         rank: i + 1,

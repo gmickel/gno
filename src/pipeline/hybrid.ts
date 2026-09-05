@@ -193,6 +193,7 @@ async function checkBm25Strength(
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface ChunkId {
+  sourceDocid?: string;
   documentIds?: number[];
   mirrorHash: string;
   seq: number;
@@ -251,6 +252,7 @@ async function searchFtsChunks(
   return {
     ok: true,
     chunks: result.value.map((r) => ({
+      sourceDocid: r.docid,
       mirrorHash: r.mirrorHash,
       seq: r.seq,
       score: r.score,

@@ -1,0 +1,5 @@
+GNO server running at http://127.0.0.1:3349
+Press Ctrl+C to stop
+[MCP] gno_vsearch error: Failed to load embedding model: Model not found: File not found: /home/gordon/.cache/agent-tmp/gno-fn148-public/startup-runtime/missing-embed.gguf. Ensure models are downloaded with: gno models pull
+
+Shutting down...

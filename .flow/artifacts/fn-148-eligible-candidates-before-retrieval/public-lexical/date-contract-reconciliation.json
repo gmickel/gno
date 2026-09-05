@@ -1,0 +1,42 @@
+[
+  {
+    "surface": "cli",
+    "limit": 1,
+    "ignoredBoundMatchesBroad": true
+  },
+  {
+    "surface": "rest",
+    "limit": 1,
+    "ignoredBoundMatchesBroad": true
+  },
+  {
+    "surface": "cli",
+    "limit": 10,
+    "ignoredBoundMatchesBroad": true
+  },
+  {
+    "surface": "rest",
+    "limit": 10,
+    "ignoredBoundMatchesBroad": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "limit": 1,
+    "ignoredBoundMatchesBroad": true
+  },
+  {
+    "surface": "stdio-mcp",
+    "limit": 10,
+    "ignoredBoundMatchesBroad": true
+  },
+  {
+    "surface": "http-mcp",
+    "limit": 1,
+    "ignoredBoundMatchesBroad": true
+  },
+  {
+    "surface": "http-mcp",
+    "limit": 10,
+    "ignoredBoundMatchesBroad": true
+  }
+]

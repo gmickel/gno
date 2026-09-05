@@ -1,0 +1,69 @@
+- generic [ref=e1] clickable [onclick]
+  - button "Search" [ref=e2]
+  - button [ref=e3]
+  - button "New Tab" [ref=e4]
+  - banner
+    - button "GNO" [ref=e6]
+    - button "Back" [ref=e7]
+    - heading "Search" [level=1, ref=e8]
+    - StaticText "PRESET"
+    - button "Slim Tuned" [ref=e18]
+      - StaticText "Slim Tuned"
+  - main
+    - form
+      - generic
+        - generic
+          - textbox "Search your documents... Use Shift+Enter for structured query documents" [ref=e24]: "unterminated
+            - StaticText "\"unterminated"
+          - button "Search" [ref=e25]
+      - paragraph
+        - StaticText "Press Enter to search. Use Shift+Enter for multi-line structured query documents with "
+        - code
+          - StaticText "term:"
+        - StaticText ", "
+        - code
+          - StaticText "intent:"
+        - StaticText ", and "
+        - code
+          - StaticText "hyde:"
+        - StaticText "."
+      - StaticText "DEPTH"
+      - radiogroup
+        - radio "Fast BM25" [checked=true, ref=e20]
+          - StaticText "Fast"
+          - StaticText "BM25"
+        - radio "Balanced" [checked=false, ref=e21]
+          - StaticText "Balanced"
+        - radio "Thorough" [checked=false, ref=e22]
+          - StaticText "Thorough"
+      - StaticText "Keyword search (BM25)"
+      - button "Advanced Retrieval" [expanded=false, ref=e23]
+    - button "Tags" [expanded=false, ref=e19]
+    - StaticText "Filters:"
+    - StaticText "candidates:10"
+    - StaticText "exclude:noise-"
+    - StaticText "category:release"
+    - StaticText "author:absent-author"
+    - button "any:approved" [ref=e9]
+      - StaticText "any:approved"
+    - button "Clear all" [ref=e10]
+    - StaticText "Invalid search query: Lexical query has an unmatched double quote (\"). Add the closing quote or remove it."
+  - contentinfo
+    - StaticText "◆"
+    - button "Collections" [ref=e11]
+    - StaticText "—"
+    - button "Trace history" [ref=e12]
+    - StaticText "—"
+    - link "GitHub" [ref=e13]
+    - StaticText "—"
+    - link "Discord" [ref=e14]
+    - StaticText "—"
+    - link "gno.sh" [ref=e15]
+    - StaticText "—"
+    - link "Twitter" [ref=e16]
+  - button "Keyboard shortcuts" [ref=e5]
+    - StaticText "?"
+  - generic
+    - heading "Quick Switcher" [level=2, ref=e17]
+    - paragraph
+      - StaticText "Jump to notes, open recent documents, or create a new note."

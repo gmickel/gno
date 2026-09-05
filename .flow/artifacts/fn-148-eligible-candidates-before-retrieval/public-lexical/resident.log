@@ -1,0 +1,114 @@
+[?25l[?25l⠋ Gathering information
+[2K[1A[2K[G⠙ Gathering information
+[2K[1A[2K[G⠹ Gathering information
+[2K[1A[2K[G⠸ Gathering information
+[2K[1A[2K[G⠼ Gathering information
+[2K[1A[2K[G⠴ Gathering information
+[2K[1A[2K[G[?25h[?25hDownloading to ~/.cache/agent-tmp/gno-fn148-public/runtime/cache/models
+[?25l[?25l⏵ hf_Qwen_Q...8_0.gguf  0.001% (12.36kB/639.15MB)  0.00B/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  1.946% (12.44MB/639.15MB)  1.24MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  10.55% (67.49MB/639.15MB)  6.75MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  23.07% (147.46MB/639.15MB)  14.75MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  36.18% (231.26MB/639.15MB)  23.12MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  46.83% (299.34MB/639.15MB)  29.93MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  59.66% (381.38MB/639.15MB)  38.14MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  67.27% (429.97MB/639.15MB)  43.00MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  73.57% (470.24MB/639.15MB)  47.02MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  75.47% (482.40MB/639.15MB)  48.24MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  79.18% (506.10MB/639.15MB)  50.61MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  83.89% (536.24MB/639.15MB)  53.62MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  87.02% (556.20MB/639.15MB)  55.62MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  92.93% (593.99MB/639.15MB)  59.40MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  95.93% (613.16MB/639.15MB)  61.31MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  96.20% (614.89MB/639.15MB)  61.49MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  97.66% (624.20MB/639.15MB)  62.42MB/s
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  98.48% (629.48MB/639.15MB)  62.95MB/s |  0s left
+[2K[1A[2K[G⏵ hf_Qwen_Q...8_0.gguf  99.53% (636.16MB/639.15MB)  63.62MB/s |  0s left
+[2K[1A[2K[G✔ hf_Qwen_Q...8_0.gguf downloaded 639.15MB in 2s
+[?25h[?25hDownloaded to ~/.cache/agent-tmp/gno-fn148-public/runtime/cache/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf
+[?25l[?25l⠋ Gathering information
+[2K[1A[2K[G⠙ Gathering information
+[2K[1A[2K[G⠹ Gathering information
+[2K[1A[2K[G⠸ Gathering information
+[2K[1A[2K[G⠼ Gathering information
+[2K[1A[2K[G⠴ Gathering information
+[2K[1A[2K[G⠦ Gathering information
+[2K[1A[2K[G[?25h[?25hDownloading to ~/.cache/agent-tmp/gno-fn148-public/runtime/cache/models
+[?25l[?25l⏵ hf_guilty...95-.gguf  0.000% (16.38kB/3.45GB)  0.00B/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  0.956% (32.97MB/3.45GB)  3.30MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  2.100% (72.42MB/3.45GB)  7.24MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  2.689% (92.72MB/3.45GB)  9.27MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  3.325% (114.64MB/3.45GB)  11.46MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  4.052% (139.71MB/3.45GB)  13.97MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  4.937% (170.21MB/3.45GB)  17.02MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  5.943% (204.90MB/3.45GB)  20.49MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  7.111% (245.16MB/3.45GB)  24.51MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  8.391% (289.27MB/3.45GB)  28.92MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  9.316% (321.17MB/3.45GB)  32.12MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  10.22% (352.39MB/3.45GB)  35.24MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  11.11% (383.22MB/3.45GB)  38.32MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  12.02% (414.53MB/3.45GB)  41.45MB/s
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  12.71% (438.50MB/3.45GB)  43.85MB/s |  1m left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  13.57% (468.03MB/3.45GB)  46.80MB/s |  1m left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  14.57% (502.36MB/3.45GB)  50.23MB/s | 58s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  15.60% (538.03MB/3.45GB)  53.80MB/s | 54s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  16.52% (569.73MB/3.45GB)  56.97MB/s | 50s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  17.43% (601.02MB/3.45GB)  60.10MB/s | 47s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  18.27% (630.12MB/3.45GB)  63.01MB/s | 44s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  19.23% (663.09MB/3.45GB)  66.31MB/s | 41s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  20.03% (690.57MB/3.45GB)  69.05MB/s | 39s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  20.91% (721.12MB/3.45GB)  72.11MB/s | 37s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  21.87% (754.16MB/3.45GB)  75.41MB/s | 35s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  22.80% (786.11MB/3.45GB)  78.61MB/s | 33s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  23.70% (817.33MB/3.45GB)  81.73MB/s | 32s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  24.36% (840.10MB/3.45GB)  84.01MB/s | 31s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  25.42% (876.49MB/3.45GB)  87.65MB/s | 29s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  26.20% (903.37MB/3.45GB)  90.34MB/s | 28s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  27.25% (939.73MB/3.45GB)  93.97MB/s | 26s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  28.15% (970.65MB/3.45GB)  97.06MB/s | 25s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  29.03% (1.00GB/3.45GB)   100.08MB/s | 24s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  29.84% (1.03GB/3.45GB)   102.88MB/s | 23s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  30.83% (1.06GB/3.45GB)   106.30MB/s | 22s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  31.55% (1.09GB/3.45GB)   108.78MB/s | 21s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  32.36% (1.12GB/3.45GB)   111.57MB/s | 20s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  33.48% (1.15GB/3.45GB)   115.44MB/s | 19s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  34.42% (1.19GB/3.45GB)   118.69MB/s | 19s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  35.33% (1.22GB/3.45GB)   121.81MB/s | 18s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  36.07% (1.24GB/3.45GB)   124.35MB/s | 17s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  37.07% (1.28GB/3.45GB)   127.80MB/s | 16s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  37.57% (1.30GB/3.45GB)   129.54MB/s | 16s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  38.87% (1.34GB/3.45GB)   134.03MB/s | 15s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  39.76% (1.37GB/3.45GB)   137.10MB/s | 15s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  40.63% (1.40GB/3.45GB)   140.08MB/s | 14s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  41.40% (1.43GB/3.45GB)   142.74MB/s | 14s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  42.46% (1.46GB/3.45GB)   146.40MB/s | 13s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  43.28% (1.49GB/3.45GB)   149.21MB/s | 13s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  44.10% (1.52GB/3.45GB)   152.04MB/s | 12s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  45.13% (1.56GB/3.45GB)   155.58MB/s | 12s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  46.03% (1.59GB/3.45GB)   158.68MB/s | 11s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  46.89% (1.62GB/3.45GB)   161.68MB/s | 11s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  47.67% (1.64GB/3.45GB)   164.33MB/s | 10s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  48.44% (1.67GB/3.45GB)   167.00MB/s | 10s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  49.32% (1.70GB/3.45GB)   170.04MB/s | 10s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  50.34% (1.74GB/3.45GB)   173.57MB/s |  9s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  51.33% (1.77GB/3.45GB)   176.96MB/s |  9s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  52.21% (1.80GB/3.45GB)   179.99MB/s |  9s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  52.98% (1.83GB/3.45GB)   182.64MB/s |  8s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  53.88% (1.86GB/3.45GB)   185.77MB/s |  8s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  54.74% (1.89GB/3.45GB)   188.72MB/s |  8s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  55.58% (1.92GB/3.45GB)   191.61MB/s |  7s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  56.42% (1.95GB/3.45GB)   194.52MB/s |  7s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  57.44% (1.98GB/3.45GB)   198.02MB/s |  7s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  58.36% (2.01GB/3.45GB)   201.19MB/s |  7s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  59.05% (2.04GB/3.45GB)   203.57MB/s |  6s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  60.11% (2.07GB/3.45GB)   207.25MB/s |  6s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  60.52% (2.09GB/3.45GB)   208.64MB/s |  6s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  61.26% (2.11GB/3.45GB)   211.19MB/s |  6s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  62.73% (2.16GB/3.45GB)   216.26MB/s |  5s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  63.62% (2.19GB/3.45GB)   219.33MB/s |  5s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  64.50% (2.22GB/3.45GB)   222.37MB/s |  5s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  65.13% (2.25GB/3.45GB)   224.52MB/s |  5s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  66.08% (2.28GB/3.45GB)   227.80MB/s |  5s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  67.13% (2.31GB/3.45GB)   231.43MB/s |  4s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  67.91% (2.34GB/3.45GB)   234.13MB/s |  4s left
+[2K[1A[2K[G⏵ hf_guilty...95-.gguf  68.86% (2.37GB/3.45GB)   237.39MB/s |  4s left

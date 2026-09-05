@@ -7,7 +7,10 @@ import type { StorePort } from "../../src/store/types";
 
 import { eligibleTopKFixture } from "../../evals/fixtures/acceptance/eligible-top-k/fixture";
 import { rrfFuse, toRankedInput } from "../../src/pipeline/fusion";
+import { expandGraphCandidates } from "../../src/pipeline/graph-retrieval";
 import { searchHybrid } from "../../src/pipeline/hybrid";
+import { RequestHydration } from "../../src/pipeline/hydration";
+import { resolveFusionOwners } from "../../src/pipeline/owner-fusion";
 import { DEFAULT_PIPELINE_CONFIG } from "../../src/pipeline/types";
 import { searchVectorWithEmbedding } from "../../src/pipeline/vsearch";
 import { migration } from "../../src/store/migrations/028-vector-variants";
@@ -154,105 +157,147 @@ test("variant ranks remain separate per owner through RRF", () => {
   expect(fused[0]!.fusionScore).toBeGreaterThan(fused[2]!.fusionScore);
 });
 
-test("vsearch materializes every matching owner without widening Alpha to Beta", async () => {
-  const f = await fixture();
-  f.fill();
-  f.variants.activate(f.variants.epoch());
-  const source = eligibleTopKFixture()[0]!;
-  const docs = [1, 2, 3].map((id) => ({
-    ...source.doc,
-    id,
-    mirrorHash: "body",
-    title: id === 2 ? "Beta" : "Alpha",
-    docid: `#owner-${id}`,
-    uri: `gno://notes/${id}.md`,
-  }));
-  const store = {
-    getCollections: async () => ({
-      ok: true as const,
-      value: [
-        {
-          name: "notes",
-          path: "/synthetic",
-          egressPolicy: "local_only",
-          egressPolicySource: "legacy_default",
-        },
-      ],
-    }),
-    getDocumentsByMirrorHashes: async () => ({
-      ok: true as const,
-      value: docs,
-    }),
-    getChunksBatch: async () => ({
-      ok: true as const,
-      value: new Map([
-        [
-          "body",
-          [{ ...source.chunks[0]!, mirrorHash: "body", text: "Shared body" }],
+test.each([false, true])(
+  "owner materialization preserves exact vector and lexical ranks (lexical=%s)",
+  async (lexical) => {
+    const f = await fixture();
+    f.fill();
+    f.variants.activate(f.variants.epoch());
+    const source = eligibleTopKFixture()[0]!;
+    const docs = [1, 2, 3].map((id) => ({
+      ...source.doc,
+      id,
+      mirrorHash: "body",
+      title: id === 2 ? "Beta" : "Alpha",
+      docid: `#owner-${id}`,
+      uri: `gno://notes/${id}.md`,
+    }));
+    const store = {
+      getCollections: async () => ({
+        ok: true as const,
+        value: [
+          {
+            name: "notes",
+            path: "/synthetic",
+            egressPolicy: "local_only",
+            egressPolicySource: "legacy_default",
+          },
         ],
-      ]),
-    }),
-  } as unknown as StorePort;
-  const result = await searchVectorWithEmbedding(
-    {
-      store,
-      vectorIndex: {
-        ...f.index,
-        searchNearest: (embedding, k, options) =>
-          f.index.searchNearest(embedding, k, {
-            ...options,
-            embeddingIdentity: identity,
+      }),
+      getDocumentsByMirrorHashes: async () => ({
+        ok: true as const,
+        value: docs,
+      }),
+      getChunksBatch: async () => ({
+        ok: true as const,
+        value: new Map([
+          [
+            "body",
+            [{ ...source.chunks[0]!, mirrorHash: "body", text: "Shared body" }],
+          ],
+        ]),
+      }),
+    } as unknown as StorePort;
+    const result = await searchVectorWithEmbedding(
+      {
+        store,
+        vectorIndex: {
+          ...f.index,
+          searchNearest: (embedding, k, options) =>
+            f.index.searchNearest(embedding, k, {
+              ...options,
+              embeddingIdentity: identity,
+            }),
+        },
+        embedPort: {} as EmbeddingPort,
+        config: {} as Config,
+      },
+      "alpha",
+      new Float32Array([1, 0]),
+      { limit: 3 }
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.ok).toBe(true);
+    expect(result.value.results.map((row) => [row.docid, row.score])).toEqual([
+      ["#owner-1", 1],
+      ["#owner-3", 1],
+      ["#owner-2", 0.5],
+    ]);
+    f.db
+      .exec(`CREATE VIRTUAL TABLE title_fts USING fts5(docid UNINDEXED, title, body);
+    INSERT INTO title_fts VALUES ('#owner-1','Alpha','Shared body'),('#owner-2','Beta','Shared body'),('#owner-3','Alpha','Shared body');`);
+    const lexicalRows = f.db
+      .query<{ docid: string }, [string]>(
+        "SELECT docid FROM title_fts WHERE title_fts MATCH ? ORDER BY rowid"
+      )
+      .all("Alpha");
+    expect(lexicalRows.map((row) => row.docid)).toEqual([
+      "#owner-1",
+      "#owner-3",
+    ]);
+    const hybrid = await searchHybrid(
+      {
+        store: {
+          ...store,
+          searchFts: async () => ({
+            ok: true as const,
+            value: lexical
+              ? lexicalRows.map((row) => ({
+                  ...row,
+                  mirrorHash: "body",
+                  seq: 0,
+                  score: -1,
+                }))
+              : [],
           }),
+        },
+        vectorIndex: {
+          ...f.index,
+          searchNearest: (embedding, k, options) =>
+            f.index.searchNearest(embedding, k, {
+              ...options,
+              embeddingIdentity: identity,
+            }),
+        },
+        embedPort: {
+          modelUri: identity.model,
+          embed: async () => ({ ok: true as const, value: [1, 0] }),
+        } as unknown as EmbeddingPort,
+        expandPort: null,
+        rerankPort: null,
+        config: {} as Config,
       },
-      embedPort: {} as EmbeddingPort,
-      config: {} as Config,
-    },
-    "alpha",
-    new Float32Array([1, 0]),
-    { limit: 3 }
-  );
-  if (!result.ok) throw new Error(result.error.message);
-  expect(result.ok).toBe(true);
-  expect(result.value.results.map((row) => [row.docid, row.score])).toEqual([
-    ["#owner-1", 1],
-    ["#owner-3", 1],
-    ["#owner-2", 0.5],
-  ]);
-  const hybrid = await searchHybrid(
-    {
-      store: {
-        ...store,
-        searchFts: async () => ({ ok: true as const, value: [] }),
-      },
-      vectorIndex: {
-        ...f.index,
-        searchNearest: (embedding, k, options) =>
-          f.index.searchNearest(embedding, k, {
-            ...options,
-            embeddingIdentity: identity,
-          }),
-      },
-      embedPort: {
-        modelUri: identity.model,
-        embed: async () => ({ ok: true as const, value: [1, 0] }),
-      } as unknown as EmbeddingPort,
-      expandPort: null,
-      rerankPort: null,
-      config: {} as Config,
-    },
-    "alpha",
-    { limit: 3, noExpand: true, noRerank: true, noGraph: true, explain: true }
-  );
-  if (!hybrid.ok) throw new Error(hybrid.error.message);
-  expect(hybrid.value.results.map((row) => row.docid)).toEqual([
-    "#owner-1",
-    "#owner-3",
-    "#owner-2",
-  ]);
-  expect(hybrid.value.results[0]!.score).toBeGreaterThan(
-    hybrid.value.results[2]!.score
-  );
-});
+      "alpha",
+      { limit: 3, noExpand: true, noRerank: true, noGraph: true, explain: true }
+    );
+    if (!hybrid.ok) throw new Error(hybrid.error.message);
+    expect(hybrid.value.results.map((row) => row.docid)).toEqual([
+      "#owner-1",
+      "#owner-3",
+      "#owner-2",
+    ]);
+    if (lexical) {
+      expect(
+        hybrid.value.meta.explain?.results?.find(
+          (row) => row.docid === "#owner-2"
+        )?.bm25Score
+      ).toBeUndefined();
+      expect(
+        hybrid.value.meta.explain?.results?.find(
+          (row) => row.docid === "#owner-1"
+        )?.bm25Score
+      ).toBe(1 / 61);
+      expect(
+        hybrid.value.meta.explain?.results.find(
+          (row) => row.docid === "#owner-3"
+        )?.bm25Score
+      ).toBe(1 / 62);
+    }
+    expect(hybrid.value.results[0]!.score).toBeGreaterThan(
+      hybrid.value.results[2]!.score
+    );
+  }
+);
 
 test("activated owner metadata errors cannot become unrestricted legacy hits", async () => {
   const f = await fixture();
@@ -263,4 +308,76 @@ test("activated owner metadata errors cannot become unrestricted legacy hits", a
   expect(result.ok).toBe(false);
   if (result.ok) throw new Error("Expected owner metadata failure");
   expect(result.error.code).toBe("VEC_SEARCH_FAILED");
+});
+
+test("graph seeds and neighbor ranks preserve exact owners in variant fusion", async () => {
+  const base = eligibleTopKFixture()[0]!;
+  const docs = [1, 2, 3, 4].map((id) => ({
+    ...base.doc,
+    id,
+    docid: `#graph-${id}`,
+    mirrorHash: id < 3 ? "seed" : "neighbor",
+  }));
+  let seeds: number[] = [];
+  const store = {
+    getDocumentsByMirrorHashes: async (hashes: string[]) => ({
+      ok: true as const,
+      value: docs.filter((doc) => hashes.includes(doc.mirrorHash)),
+    }),
+    getDocumentsByDocids: async (ids: string[]) => ({
+      ok: true as const,
+      value: docs.filter((doc) => ids.includes(doc.docid)),
+    }),
+    getChunksBatch: async (hashes: string[]) => ({
+      ok: true as const,
+      value: new Map(
+        hashes.map((hash) => [hash, [{ ...base.chunks[0]!, mirrorHash: hash }]])
+      ),
+    }),
+    getGraphNeighborsForSeeds: async (options: {
+      seedDocumentIds: number[];
+    }) => {
+      seeds = options.seedDocumentIds;
+      return {
+        ok: true as const,
+        value: {
+          links: [
+            {
+              source: "#graph-1",
+              target: "#graph-3",
+              type: "wiki",
+              confidence: "explicit",
+              weight: 1,
+            },
+          ],
+        },
+      };
+    },
+  } as unknown as StorePort;
+  const vector = toRankedInput("vector", [
+    { mirrorHash: "seed", seq: 0, documentIds: [1] },
+  ]);
+  const hydration = new RequestHydration(store);
+  try {
+    const graph = await expandGraphCandidates(
+      store,
+      rrfFuse([vector], DEFAULT_PIPELINE_CONFIG.rrf),
+      {},
+      hydration
+    );
+    expect(seeds).toEqual([1]);
+    expect(graph.candidates).toEqual([
+      { mirrorHash: "neighbor", seq: 0, sourceDocid: "#graph-3" },
+    ]);
+    const inputs = await resolveFusionOwners(
+      [vector, toRankedInput("graph", graph.candidates)],
+      store,
+      hydration,
+      "needle",
+      {}
+    );
+    expect(inputs[1]!.results.map((row) => row.documentId)).toEqual([3]);
+  } finally {
+    hydration.release();
+  }
 });
