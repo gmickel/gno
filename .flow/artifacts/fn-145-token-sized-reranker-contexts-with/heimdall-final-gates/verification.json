@@ -1,0 +1,78 @@
+{
+  "head": "32aa6d99e22307a1ecc1ad7b41c5b4ed18891974",
+  "source": "f64c41c97e196e3bffdba23bc1c006bca7489b28",
+  "tests": {
+    "pass": 5216,
+    "skip": 2,
+    "fail": 0,
+    "assertions": 41596,
+    "files": 613,
+    "seconds": 293.86
+  },
+  "docs": {
+    "pass": 15,
+    "skip": 2,
+    "fail": 0
+  },
+  "lint": "pass",
+  "typecheck": "pass",
+  "files": [
+    {
+      "file": "lint.log.gz",
+      "sha256": "615782bea9182cf8d13c0aea533260d7a4013fc1978c776a49f582f23a0a3cbb",
+      "rawSha256": "58c1b51e2b61dbe9bdf24c0ee0de4dc3181c8f189033ffdefe3c869a39a0fd9d",
+      "rawBytes": 12218,
+      "exitCode": 0
+    },
+    {
+      "file": "tests.log.gz",
+      "sha256": "c5517d6aeec095e321562ebbfc2e4759aa7d7088fd3f0fe10e94c9fe615845bc",
+      "rawSha256": "bb273b7cf75183a01559812612e949daaff80381271463e694e184958d426803",
+      "rawBytes": 540138,
+      "exitCode": 0
+    },
+    {
+      "file": "typecheck.log.gz",
+      "sha256": "f6de834e3c048f3b285866da8282214f5d03ac320aa4169aee608709dc1c54da",
+      "rawSha256": "0a7cbec9e31e5ab1dc3f62bf0e9994201b491a121c31235f27316f5151281817",
+      "rawBytes": 20,
+      "exitCode": 0
+    },
+    {
+      "file": "docs.log.gz",
+      "sha256": "74e96758115749cb50b267c6133cd80a36a6ba4b35b40c354fdb54946edad6c0",
+      "rawSha256": "7b554819d88cd16f5183e6b7938beb5505565736b65fe0c8cedc853497d0ced8",
+      "rawBytes": 1267,
+      "exitCode": 0
+    },
+    {
+      "file": "gno-pr217-ci-ubuntu-failed.log.gz",
+      "sha256": "0be035b5db71fdce42cc3877999247192bc319cb02ff6a92a90b6b68779eb798",
+      "rawSha256": "71757abc2cccaaa33f7df83add84c60ddd0d254f0b479d388006e28eeb19daf9",
+      "rawBytes": 853383,
+      "exitCode": null
+    },
+    {
+      "file": "gno-pr217-ledger-baseline.log.gz",
+      "sha256": "16c904bf9b0c9ca94c216ea20335e5382634d96a33fde9100c6147e8d7bf6b48",
+      "rawSha256": "1f77593bddb9c80ea73f6c0503c5ddaad70ccd7f7a89b0d6c1a0bdf74aebb1d7",
+      "rawBytes": 572,
+      "exitCode": null
+    },
+    {
+      "file": "gno-pr217-ledger-focused.log.gz",
+      "sha256": "745f46bd076a92d299f257e7c603b0c24b4d2ffe34f3604852ca0a2ee7091715",
+      "rawSha256": "970479f8d06856256c4e7d1ba971a45a305899dafc7263e580ad316eda586349",
+      "rawBytes": 572,
+      "exitCode": null
+    },
+    {
+      "file": "gno-pr217-ledger-lint.log.gz",
+      "sha256": "c2665cacd1120acb6ce46e465f706c92b179548e7048799664093ea85ccad855",
+      "rawSha256": "69f6e2a3ff23a72769ca255f6a6d5a31df09503ddb23101717064c30afbf9b2c",
+      "rawBytes": 92,
+      "exitCode": null
+    }
+  ],
+  "ciFailure": "Original run33955083229 failed only Bun-specific JSON parse message assertion; fixed test now requires SyntaxError. CI result for latest head remains pending."
+}

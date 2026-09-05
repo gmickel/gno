@@ -1,0 +1,37 @@
+{
+  "verifiedAt": "2026-09-05T08:48:47.671371+00:00",
+  "nativeManifestPayloads": 40,
+  "allRawCompressedChecksumsExact": true,
+  "analysisReproducedExactly": true,
+  "originalCudaSixInputFixtureExact": true,
+  "localCanonicalPackageFilesVerified": 909,
+  "hostHookTests": {
+    "pass": 4,
+    "fail": 0,
+    "assertions": 21
+  },
+  "nativeAllocationSavedBytes": {
+    "cpuRam": 41156608,
+    "gpuVram": 4648599552
+  },
+  "parity": {
+    "fullPreparedInputs": true,
+    "fullNativeFormattedTokens": true,
+    "unroundedNativeScores": true,
+    "publicScoresRanksIndices": true,
+    "coldWarmWithinArm": true,
+    "modelNativeAllocationEqual": true,
+    "resolvedOtherSettingsEqual": true,
+    "onlyContextSizeOverrideRemoved": true,
+    "aggregateMatchesDirectNativeCounter": true,
+    "nativeCountersStableAfterColdWarm": true,
+    "disposedReturnsToModelOnly": true,
+    "mutatedScoreRejected": true,
+    "truncatedTokenStreamRejected": true
+  },
+  "cleanup": {
+    "sized": true,
+    "auto": true
+  },
+  "nativeManifestSha256": "ce71e1c32cbad37da79dac02568e8e1acace2055a51f90ced199d38c92dcbc12"
+}
