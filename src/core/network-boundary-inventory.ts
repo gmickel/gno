@@ -150,6 +150,16 @@ export const NETWORK_BOUNDARY_INVENTORY = [
     enforcement: "collection_policy",
   },
   {
+    // Collection text crosses owned local IPC only. The child receives approved
+    // model paths and a restricted environment with downloads/builds disabled.
+    id: "native-inference-worker",
+    key: "src/llm/native-worker/client.ts::child_process#1",
+    path: "src/llm/native-worker/client.ts",
+    primitive: "child_process",
+    action: null,
+    enforcement: "local_process_only",
+  },
+  {
     id: "pinned-http-fetch",
     key: "src/llm/pinned-http-connection.ts::fetch#1",
     path: "src/llm/pinned-http-connection.ts",
