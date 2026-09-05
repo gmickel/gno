@@ -457,7 +457,7 @@ describe("SqliteAdapter links", () => {
       const secondBackfill = await adapter.backfillDocEdges();
       expect(secondBackfill.ok).toBe(true);
       if (!secondBackfill.ok) return;
-      expect(secondBackfill.value.inserted).toBe(1);
+      expect(secondBackfill.value.inserted).toBe(0);
     });
   });
 

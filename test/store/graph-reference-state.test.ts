@@ -178,3 +178,60 @@ test("interrupted durable projection and failed inventory transaction cannot cla
     await safeRm(root);
   }
 });
+
+test("edge diffs preserve retained identity and timestamp, update confidence only, and roll back invalid targets", async () => {
+  const store = await open();
+  try {
+    const source = await add(store, "outside", "Source");
+    const target = await add(store, "targets", "Target");
+    const edge = {
+      targetDocId: target.id,
+      edgeType: "Knows",
+      confidence: "manual" as const,
+    };
+    expect(
+      (await store.setDocEdges(source.id, [edge], "frontmatter-relation")).ok
+    ).toBe(true);
+    const db = store.getRawDb();
+    db.run("UPDATE doc_edges SET created_at = '2001-01-01 00:00:00'");
+    const original = db.query("SELECT * FROM doc_edges").all();
+    db.exec(`CREATE TEMP TABLE diff_mutations (operation TEXT);
+      CREATE TEMP TRIGGER diff_insert AFTER INSERT ON doc_edges BEGIN INSERT INTO diff_mutations VALUES ('insert'); END;
+      CREATE TEMP TRIGGER diff_delete AFTER DELETE ON doc_edges BEGIN INSERT INTO diff_mutations VALUES ('delete'); END;
+      CREATE TEMP TRIGGER diff_update AFTER UPDATE ON doc_edges BEGIN INSERT INTO diff_mutations VALUES ('update'); END;`);
+    expect(
+      (await store.setDocEdges(source.id, [edge, edge], "frontmatter-relation"))
+        .ok
+    ).toBe(true);
+    expect(db.query("SELECT * FROM doc_edges").all()).toEqual(original);
+    expect(db.query("SELECT * FROM diff_mutations").all()).toEqual([]);
+    expect(
+      (
+        await store.setDocEdges(
+          source.id,
+          [{ ...edge, confidence: "configured" }],
+          "frontmatter-relation"
+        )
+      ).ok
+    ).toBe(true);
+    expect(db.query("SELECT * FROM diff_mutations").all()).toEqual([
+      { operation: "update" },
+    ]);
+    const updated = db.query("SELECT * FROM doc_edges").all();
+    expect(updated).toEqual(
+      original.map((row) => ({ ...(row as object), confidence: "configured" }))
+    );
+    expect(
+      (
+        await store.setDocEdges(
+          source.id,
+          [{ ...edge, targetDocId: 999999 }],
+          "frontmatter-relation"
+        )
+      ).ok
+    ).toBe(false);
+    expect(db.query("SELECT * FROM doc_edges").all()).toEqual(updated);
+  } finally {
+    await store.close();
+  }
+});

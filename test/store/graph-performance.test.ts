@@ -10,7 +10,7 @@ const LINK_COUNT = 750;
 const GRAPH_STALL_REGRESSION_BUDGET_MS = 1500;
 
 for (const size of sizes) {
-  test(`global reconciliation baseline counts actual reads and row mutations for ${size} docs`, async () => {
+  test(`unchanged sync and full repair retain edge rows for ${size} docs`, async () => {
     const fixture = await openFixture();
     const { store } = fixture;
     try {
@@ -53,14 +53,21 @@ for (const size of sizes) {
           "SELECT operation, count(*) AS count FROM edge_counts GROUP BY operation ORDER BY operation"
         )
         .all();
-      // Characterize the measured legacy full pass, not the desired incremental budget.
+      // Current production budget; frozen fn150.1 baseline artifacts retain the
+      // original size reads and 2*(size-1) DELETE/INSERT measurements.
       expect({ reads, counts }).toEqual({
-        reads: size,
-        counts: [
-          { operation: "delete", count: size - 1 },
-          { operation: "insert", count: size - 1 },
-        ],
+        reads: 0,
+        counts: [],
       });
+      const originalRows = db
+        .query("SELECT * FROM doc_edges ORDER BY id")
+        .all();
+      expect(await service.reconcileTypedEdges(store)).toEqual([]);
+      expect(reads).toBe(size);
+      expect(db.query("SELECT * FROM edge_counts").all()).toEqual([]);
+      expect(db.query("SELECT * FROM doc_edges ORDER BY id").all()).toEqual(
+        originalRows
+      );
       expect(
         db
           .query<{ count: number }, []>(

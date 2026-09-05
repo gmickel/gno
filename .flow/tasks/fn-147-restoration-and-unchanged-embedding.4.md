@@ -48,9 +48,41 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Ordinary single-title corpus deterministic ranking/input outputs remain pinned.
 
 ## Done summary
-TBD
+# fn147.4 owner-aware retrieval handover
 
+Status: in_progress; host owns Git/Flow and final acceptance. Implementation is ready for the host's final checkpoint. Initial joint hybrid changes landed in host commit 7274d5fe; dependency checkpoint 8330a58a. Final edits remain for the host to commit. No worker Git, Flow, bridge, subagents, native model runs, GPU workloads or hosted-site edits.
+
+### Implementation
+
+`src/store/vector/variant-search.ts` selects a partition from actual initialized EmbeddingPort metadata via the existing getVariantModelFingerprint contract. sqlite-vec routes search through this helper before the legacy path. A SQLite read transaction covers owner eligibility, bulk exact-current-formatter hashing and distance ranking. Filters and exact-input validation precede K. Results carry internal documentIds for the matching input's owners; canonical public hashes/IDs/URIs and JSON result shapes stay unchanged.
+
+Incomplete first shadow migration retains legacy authority. A durable active marker, independent of ordinary mutation epoch, prevents legacy fallback after promotion. Missing effective metadata, changed/unactivated selected partition, missing vec0 table or inconsistent vec0 materialization returns VEC_SEARCH_FAILED; hybrid records semantic fallback. Constructor no longer clears durable authority on table loss: it invalidates epoch completeness while preserving authority. Corrected the earlier foundation test's conflicting expectation (its false-activation assertion failed after this fix; recorded iteration.log).
+
+Vsearch filters materialization to exact document IDs and retains all eligible identical-input owners. Hybrid propagates IDs into owner-keyed RRF; legacy lexical/graph inputs resolve eligible current owners only when variant hits are present. Per-owner ranks survive blending and result assembly. Rerank chooses chunks independently per owner while retaining existing body-text formatting and identical-text inference deduplication. Explain lookup retains legacy keys without owners and resolves owner-specific ranks when present. No title-format policy changed. Owner metadata failures return structured QUERY_FAILED without changing unrelated hydration exception behavior.
+
+### Owned final paths
+
+- src/store/vector/variant-search.ts, variants.ts, types.ts, sqlite-vec.ts
+- src/pipeline/vsearch.ts, hybrid.ts, types.ts, fusion.ts, owner-fusion.ts, rerank.ts, explain.ts
+- test/pipeline/vector-input-identity.test.ts, test/store/vector/variants.test.ts
+- spec/cli.md, docs/API.md, docs/ARCHITECTURE.md
+
+No edits to reserved src/store/types.ts, sqlite/adapter.ts, freshness.ts, lazy.ts, or ingestion files. All task ownership is released to the host with this handover.
+
+### Evidence
+
+Baseline: green, existing task pipeline tests before editing. Final exact focused gate: `TMPDIR=/home/gordon/.cache/agent-tmp/gno-fn147-retrieval bun test ./test/pipeline/vector-input-identity.test.ts ./test/pipeline/vsearch-n1.test.ts ./test/pipeline/hybrid-doc-lookup.test.ts ./test/store/vector/variants.test.ts ./test/pipeline/fusion.test.ts ./test/pipeline/rerank-normalization.test.ts ./test/pipeline/eligible-top-k.test.ts ./test/store/eligible-top-k.test.ts ./test/embed/variant-backlog.test.ts` — 113 passed, 0 failed, 653 assertions. Typed Oxlint passed on 13 code/test paths; Oxfmt check passed on all 16 owned code/test/docs paths. Logs in /home/gordon/.cache/agent-tmp/gno-fn147-retrieval/{baseline,iteration,final-tests,lint,format}.log.
+
+Focused new tests cover R4 Alpha/Beta matching owners, identical-input duplicates, owner filters before K, owner-specific fusion ranks, vsearch and hybrid materialization; R5 deletion versus clean current rebuild, partial migration legacy authority, stale title invalidation after promotion, missing identity, changed context partition, missing/recreated index, and owner metadata failures. Existing frozen hydration/eligible-top-K fixtures and fusion/rerank baselines remain green; no baseline refreshed. Full aggregate gates and running CLI/API acceptance remain host work.
+
+### Integration required by fn147.5
+
+A lost variant table is recreated empty while durable storage bindings remain. Current embedVariantBacklog sees no pending owner bindings and calls activate without syncIndex, which correctly rejects incomplete materialization. Task5 must repair materialization from authoritative stored variants before activation, including the zero-backlog path. Direct CLI/SDK embed entrypoints also remain task5 work per prior handover. CLI/API docs describe gno embed as coverage repair; ensure that integration before claiming the full feature complete.
+
+Cost: each variant query bulk-hashes eligible owner/chunk formatted inputs and performs exact distance ranking in that eligible domain. No global overfetch approximation; CPU/hash cost scales with eligible bindings. Native latency and frozen full retrieval comparator remain aggregate QA, not claimed here. gno.sh docs are queued only after aggregate PR as instructed.
+
+stage: impl-review - skipped(policy: user disabled formal reviews; host owns acceptance)
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 7274d5fe, 8330a58a, 3adcb6bcdc60641365962bd655e796eeb1168abd
+- Tests: baseline: green (existing task pipeline tests), TMPDIR=/home/gordon/.cache/agent-tmp/gno-fn147-retrieval bun test ./test/pipeline/vector-input-identity.test.ts ./test/pipeline/vsearch-n1.test.ts ./test/pipeline/hybrid-doc-lookup.test.ts ./test/store/vector/variants.test.ts ./test/pipeline/fusion.test.ts ./test/pipeline/rerank-normalization.test.ts ./test/pipeline/eligible-top-k.test.ts ./test/store/eligible-top-k.test.ts ./test/embed/variant-backlog.test.ts — 113 pass, 0 fail, 653 assertions, bunx oxlint --type-aware --type-check (13 owned code/test paths) — green, bunx oxfmt --check (16 owned code/test/docs paths) — green
 - PRs:

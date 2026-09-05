@@ -35,6 +35,11 @@ when the reference inventory is complete. Missing or interrupted inventory and
 collection or graph-rule configuration changes trigger full reconciliation;
 failed projection remains eligible for retry.
 
+Graph application retains existing edge identities and timestamps when the
+relationship is unchanged. A failed or interrupted projection keeps its durable
+retry marker; the next sync reconciles the graph before recording completion.
+Source changes committed before the interruption remain in the change journal.
+
 These guarantees are exercised on supported local filesystems across macOS,
 Linux, and Windows. They do not claim universal watcher semantics for network,
 removable, or coarse-timestamp filesystems.

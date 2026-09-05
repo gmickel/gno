@@ -186,13 +186,21 @@ export async function projectGraph(
     if (state && epoch !== state.epoch + 1)
       throw new Error("Graph inputs changed while computing affected sources");
     const work = async () => {
-      const backfill = await store.backfillDocEdges(
-        selected ? [...selected] : undefined
-      );
-      if (!backfill.ok) throw new Error(backfill.error.message);
       const targets = selected
         ? documents.value.filter((doc) => selected.has(doc.id))
         : documents.value;
+      // Configured sources get their final sets below. Applying defaults first
+      // would delete/recreate an unchanged configured edge on every repair pass.
+      const defaults = targets.filter((doc) => {
+        const hint = options.contentTypeRules?.find(
+          (rule) => rule.id === doc.contentType
+        )?.graphHints?.[0];
+        return !doc.active || !hint || !EDGE_TYPE.test(hint);
+      });
+      const backfill = await store.backfillDocEdges(
+        defaults.map((doc) => doc.id)
+      );
+      if (!backfill.ok) throw new Error(backfill.error.message);
       for (const [index, doc] of targets.entries()) {
         if (index > 0 && index % 25 === 0) await Bun.sleep(0);
         if (!doc.active) {

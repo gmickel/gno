@@ -181,6 +181,10 @@ import {
   getLatestFileRefactorReceiptByPlanDigest as getStoredLatestFileRefactorReceiptByPlanDigest,
 } from "./file-refactor-journal-store";
 import { loadFts5Snowball } from "./fts5-snowball";
+import {
+  applyGraphEdges,
+  type DesiredGraphEdge,
+} from "./graph-edge-application";
 import { resolveGraphLinkTargets } from "./graph-link-resolver";
 import { queryGraphNeighborsForSeeds } from "./graph-neighbors";
 import { createGraphReferenceStore } from "./graph-reference-state";
@@ -4245,36 +4249,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     try {
       const db = this.ensureOpen();
 
-      const transaction = db.transaction(() => {
-        db.run("DELETE FROM doc_edges WHERE src_doc_id = ? AND source = ?", [
-          documentId,
+      applyGraphEdges(
+        db,
+        edges.map((edge) => ({
+          sourceId: documentId,
+          targetId: edge.targetDocId,
+          edgeType: normalizeDocEdgeType(edge.edgeType),
+          confidence: edge.confidence,
           source,
-        ]);
-
-        if (edges.length === 0) {
-          return;
-        }
-
-        const stmt = db.prepare(`
-          INSERT INTO doc_edges (
-            src_doc_id, dst_doc_id, edge_type, confidence, source
-          ) VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT(src_doc_id, dst_doc_id, edge_type, source) DO UPDATE SET
-            confidence = excluded.confidence
-        `);
-
-        for (const edge of edges) {
-          stmt.run(
-            documentId,
-            edge.targetDocId,
-            normalizeDocEdgeType(edge.edgeType),
-            edge.confidence,
-            source
-          );
-        }
-      });
-
-      transaction();
+        })),
+        [source],
+        [documentId]
+      );
       return ok(undefined);
     } catch (cause) {
       return err(
@@ -4939,74 +4925,42 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       if (sourceIds?.length === 0) {
         return ok({ inserted: 0 });
       }
-      const sourcePlaceholders = sourceIds
-        ? sourceIds.map(() => "?").join(", ")
-        : "";
       const sourceFilter = sourceIds
-        ? `AND src.id IN (${sourcePlaceholders})`
+        ? "AND src.id IN (SELECT value FROM json_each(?))"
         : "";
-      let inserted = 0;
-
-      const transaction = db.transaction(() => {
-        db.run(
-          `DELETE FROM doc_edges
-           WHERE source IN (?, ?)
-           ${sourceIds ? `AND src_doc_id IN (${sourcePlaceholders})` : ""}`,
-          ["wikilink", "markdown-link", ...(sourceIds ?? [])]
-        );
-
-        const insertWiki = db.run(
-          `
-          INSERT OR IGNORE INTO doc_edges (
-            src_doc_id, dst_doc_id, edge_type, confidence, source
-          )
-          SELECT
-            src.id,
-            tgt.id,
-            'mentions',
-            'parsed',
-            'wikilink'
-          FROM documents src
-          JOIN doc_links dl ON dl.source_doc_id = src.id
+      const params = sourceIds ? [JSON.stringify(sourceIds)] : [];
+      const inserted = db.transaction(() => {
+        const wiki = db
+          .query<DesiredGraphEdge, string[]>(`
+          SELECT DISTINCT src.id AS sourceId, tgt.id AS targetId,
+            'mentions' AS edgeType, 'parsed' AS confidence, 'wikilink' AS source
+          FROM documents src JOIN doc_links dl ON dl.source_doc_id = src.id
           JOIN documents tgt ON tgt.id = (${buildWikiBestMatchSubquery(
             "COALESCE(dl.target_collection, src.collection)",
             "dl.target_ref_norm"
           )})
-          WHERE src.active = 1
-            AND tgt.active = 1
-            AND dl.link_type = 'wiki'
-            ${sourceFilter}
-        `,
-          sourceIds ?? []
-        );
-
-        const insertMarkdown = db.run(
-          `
-          INSERT OR IGNORE INTO doc_edges (
-            src_doc_id, dst_doc_id, edge_type, confidence, source
-          )
-          SELECT
-            src.id,
-            tgt.id,
-            'related_to',
-            'parsed',
-            'markdown-link'
-          FROM documents src
-          JOIN doc_links dl ON dl.source_doc_id = src.id
+          WHERE src.active = 1 AND tgt.active = 1 AND dl.link_type = 'wiki'
+          ${sourceFilter}
+        `)
+          .all(...params);
+        const markdown = db
+          .query<DesiredGraphEdge, string[]>(`
+          SELECT DISTINCT src.id AS sourceId, tgt.id AS targetId,
+            'related_to' AS edgeType, 'parsed' AS confidence, 'markdown-link' AS source
+          FROM documents src JOIN doc_links dl ON dl.source_doc_id = src.id
           JOIN documents tgt ON tgt.active = 1
             AND tgt.collection = COALESCE(dl.target_collection, src.collection)
             AND tgt.rel_path = dl.target_ref_norm
-          WHERE src.active = 1
-            AND dl.link_type = 'markdown'
-            ${sourceFilter}
-        `,
-          sourceIds ?? []
+          WHERE src.active = 1 AND dl.link_type = 'markdown' ${sourceFilter}
+        `)
+          .all(...params);
+        return applyGraphEdges(
+          db,
+          [...wiki, ...markdown],
+          ["wikilink", "markdown-link"],
+          sourceIds
         );
-
-        inserted = insertWiki.changes + insertMarkdown.changes;
-      });
-
-      transaction();
+      })();
       return ok({ inserted });
     } catch (cause) {
       return err(
