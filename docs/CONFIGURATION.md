@@ -1008,6 +1008,27 @@ models:
   warmModelTtl: 300000 # Keep-warm duration (ms)
 ```
 
+`loadTimeout` and `inferenceTimeout` accept integer milliseconds from 1 through
+2,147,483,647; zero, negative, fractional and overflowing values fail configuration
+validation. Neither setting has a disabled-by-zero mode.
+
+The cancellation contract defines `inferenceTimeout` from native evaluation
+start, after model/context loading. A caller's absolute `deadlineAt` also covers
+queueing and loading, through response publication. Integration of this contract
+is in progress: the current native parent watchdog still uses
+`loadTimeout + inferenceTimeout` from dispatch, and the new optional port
+controls are not yet enforced across adapters/transports. These are not current
+end-to-end query guarantees. Generation can receive an evaluation abort signal;
+embedding/reranking evaluation may be noncooperative, so canceled active work
+must remain owned until settlement or controlled child exit.
+
+The resident shutdown contract allocates a shared five-second drain, five-second
+abort-settlement period, then at most one second awaiting forced owned-child
+exit. Carrying that budget through background jobs, scheduling and native child
+ownership is still being integrated; the existing admission drain alone does
+not bound total shutdown. These are operational shutdown bounds, not a universal
+query latency promise.
+
 Native embedding, generation and reranking share one child per LLM adapter.
 `warmModelTtl` is the native inactivity grace (five minutes by default).
 Active inference, pending responses and model-use leases prevent idle retirement;

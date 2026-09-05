@@ -38,7 +38,28 @@ const params = z.strictObject({
   jsonSchema: z.record(z.string(), z.json()).optional(),
 });
 const envelope = { version: z.literal(1), generation: id, requestId: id };
-const model = { ...envelope, modelId: z.string().min(1) };
+// AbortSignal is process-local. The deadline travels with the request; subsequent
+// cancellation targets the same generation/request identity on the control lane.
+const model = {
+  ...envelope,
+  modelId: z.string().min(1),
+  deadlineAt: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(Number.MAX_SAFE_INTEGER)
+    .optional(),
+};
+export const NativeCancellationSchema = z.strictObject({
+  ...envelope,
+  cancel: z.enum(["abort", "timeout"]),
+});
+export type NativeCancellation = z.infer<typeof NativeCancellationSchema>;
+/** Execution starts after load/context creation, never at queue admission. */
+export const NativeExecutionStartedSchema = z.strictObject({
+  ...envelope,
+  executionStarted: z.literal(true),
+});
 export const NativeRequestSchema = z.discriminatedUnion("op", [
   z.strictObject({ ...model, op: z.literal("init") }),
   z.strictObject({ ...model, op: z.literal("embed"), text: z.string() }),

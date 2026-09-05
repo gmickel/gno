@@ -15,6 +15,15 @@ export type LlmResult<T> =
   | { ok: true; value: T }
   | { ok: false; error: LlmError };
 
+/** Optional caller lifetime; distinct from the configured native execution timeout.
+ * Adapters must retain native ownership until work settles, even after abort.
+ */
+export interface InferenceOptions {
+  signal?: AbortSignal;
+  /** Absolute Unix epoch milliseconds; includes admission, queue and model load. */
+  deadlineAt?: number;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Model Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -92,9 +101,12 @@ export interface EmbeddingIdentity {
 export interface EmbeddingPort {
   readonly modelUri: string;
   /** Initialize the embedding context (loads model). Call before dimensions(). */
-  init(): Promise<LlmResult<void>>;
-  embed(text: string): Promise<LlmResult<number[]>>;
-  embedBatch(texts: string[]): Promise<LlmResult<number[][]>>;
+  init(options?: InferenceOptions): Promise<LlmResult<void>>;
+  embed(text: string, options?: InferenceOptions): Promise<LlmResult<number[]>>;
+  embedBatch(
+    texts: string[],
+    options?: InferenceOptions
+  ): Promise<LlmResult<number[][]>>;
   /** Returns embedding dimensions. Must call init() first. */
   dimensions(): number;
   /** Verified native identity after init; absent for unverified/HTTP backends. */
@@ -106,13 +118,21 @@ export interface GenerationPort {
   readonly modelUri: string;
   /** Undefined is treated as unsupported for backwards-compatible ports. */
   readonly structuredOutput?: StructuredOutputCapability;
-  generate(prompt: string, params?: GenParams): Promise<LlmResult<string>>;
+  generate(
+    prompt: string,
+    params?: GenParams,
+    options?: InferenceOptions
+  ): Promise<LlmResult<string>>;
   dispose(): Promise<void>;
 }
 
 export interface RerankPort {
   readonly modelUri: string;
-  rerank(query: string, documents: string[]): Promise<LlmResult<RerankScore[]>>;
+  rerank(
+    query: string,
+    documents: string[],
+    options?: InferenceOptions
+  ): Promise<LlmResult<RerankScore[]>>;
   dispose(): Promise<void>;
 }
 

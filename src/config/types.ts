@@ -425,9 +425,9 @@ export const ModelConfigSchema = z.object({
   /** Model presets */
   presets: z.array(ModelPresetSchema).default(DEFAULT_MODEL_PRESETS),
   /** Model load timeout in ms */
-  loadTimeout: z.number().default(60_000),
-  /** Inference timeout in ms */
-  inferenceTimeout: z.number().default(30_000),
+  loadTimeout: z.number().int().min(1).max(2_147_483_647).default(60_000),
+  /** Inference timeout in ms, measured from native evaluation start. */
+  inferenceTimeout: z.number().int().min(1).max(2_147_483_647).default(30_000),
   /** Context size used for query expansion generation */
   expandContextSize: z.number().int().min(256).default(2_048),
   /** Keep warm model TTL in ms (5 min) */
