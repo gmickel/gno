@@ -1,0 +1,13 @@
+Browser clipper package: /home/gordon/.cache/agent-tmp/gno-fn146-native-cancellation/freeze/source/browser-extension/artifacts/gno-browser-clipper-v1.46.0.zip
+SHA-256: 5433109560f1b3c67414132e0b027c0622f73e940b4c3e8e29d6f058f649aa85
+│  > git rev-parse --path-format=absolute --show-toplevel --git-path hooks --git-path info --git-dir
+│    fatal: not a git repository (or any parent up to mount point /)                                
+│    Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).                     
+│                                                                                                   
+{
+  "error": {
+    "code": 1,
+    "summary": "command failed",
+    "detail": "sh -c lefthook install"
+  }
+}

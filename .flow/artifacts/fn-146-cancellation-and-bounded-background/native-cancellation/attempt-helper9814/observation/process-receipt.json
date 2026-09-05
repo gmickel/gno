@@ -1,0 +1,13 @@
+{
+  "command": [
+    "bun",
+    "--no-env-file",
+    "/home/gordon/.cache/agent-tmp/gno-fn146-native-cancellation/run.ts",
+    "/home/gordon/.cache/agent-tmp/gno-fn146-native-cancellation/plan.json"
+  ],
+  "pid": 362505,
+  "exitCode": 0,
+  "stopReason": null,
+  "wallMs": 4992.734585888684,
+  "firstResponse": []
+}

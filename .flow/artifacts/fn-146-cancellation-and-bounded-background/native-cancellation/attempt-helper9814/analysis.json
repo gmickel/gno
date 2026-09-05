@@ -1,0 +1,122 @@
+{
+  "status": "incomplete-harness-failure",
+  "product": "a30da4423ec5604f46d2b050af8a2cba51c66e07",
+  "helper": "9814b800097c89e1a9085eb51fc5e91c2a06b2c4",
+  "packageSha256": "592c38574b9b88d4da3488256b49d7421c2f2f44223090d5cd98e78736cdebc0",
+  "cases": [
+    {
+      "label": "control",
+      "exercised": null,
+      "didDrain": true,
+      "nativeRequests": 3,
+      "errors": [
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "Unsupported native context argument object"
+      ],
+      "cancelled": null,
+      "preAbortRequestIdUnchanged": null
+    },
+    {
+      "label": "pre-aborted",
+      "exercised": null,
+      "didDrain": true,
+      "nativeRequests": 3,
+      "errors": [
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "Unsupported native context argument object"
+      ],
+      "cancelled": {
+        "resolved": false,
+        "error": {
+          "name": "AbortError",
+          "message": "Inference cancelled",
+          "code": 20
+        }
+      },
+      "preAbortRequestIdUnchanged": true
+    },
+    {
+      "label": "queued",
+      "exercised": false,
+      "didDrain": true,
+      "nativeRequests": 4,
+      "errors": [
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "Unsupported native context argument object",
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "Unsupported native context argument object"
+      ],
+      "cancelled": null,
+      "preAbortRequestIdUnchanged": null
+    },
+    {
+      "label": "active-rerank",
+      "exercised": false,
+      "didDrain": true,
+      "nativeRequests": 4,
+      "errors": [
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "Unsupported native context argument object",
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "Unsupported native context argument object"
+      ],
+      "cancelled": {
+        "resolved": true,
+        "value": {
+          "ok": false,
+          "error": {
+            "code": "INFERENCE_FAILED",
+            "message": "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "retryable": true,
+            "modelUri": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+            "cause": {
+              "name": "Error",
+              "message": "Unsupported native context argument object"
+            }
+          }
+        }
+      },
+      "preAbortRequestIdUnchanged": null
+    },
+    {
+      "label": "active-generate",
+      "exercised": false,
+      "didDrain": true,
+      "nativeRequests": 4,
+      "errors": [
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "Unsupported native context argument object",
+        "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "Unsupported native context argument object"
+      ],
+      "cancelled": {
+        "resolved": true,
+        "value": {
+          "ok": false,
+          "error": {
+            "code": "INFERENCE_FAILED",
+            "message": "Inference failed for model: file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "retryable": true,
+            "modelUri": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+            "cause": {
+              "name": "Error",
+              "message": "Unsupported native context argument object"
+            }
+          }
+        }
+      },
+      "preAbortRequestIdUnchanged": null
+    }
+  ],
+  "postRun": {
+    "ownedPids": [
+      362505,
+      362553,
+      362602
+    ],
+    "remaining": []
+  }
+}

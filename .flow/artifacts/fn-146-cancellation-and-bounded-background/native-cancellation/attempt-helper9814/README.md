@@ -1,0 +1,15 @@
+# Native cancellation attempt — canonical helper9814 failure
+
+**Incomplete native acceptance.** The declared sequence ran once against actual product package a30da442 with helper9814. Context capture rejects the newly forwarded `AbortSignal` in native creation options with `Unsupported native context argument object`. This prevents actual evaluation. Queued and active cases are unexercised, not passes; public control/recovery fallback results cannot establish equivalence. The pre-aborted public query rejects with AbortError and does not advance the native request ID, but this alone is not full task acceptance.
+
+All five declared strata, raw errors/fallback responses, child requests, phase logs and cleanup are retained. There was no native retry. Canonical helper correction and a separately authorized, separately named run are required. No product/native binary/model/input/precision changes were made to obtain this result.
+
+Product `a30da4423ec5604f46d2b050af8a2cba51c66e07`; package SHA256 `592c38574b9b88d4da3488256b49d7421c2f2f44223090d5cd98e78736cdebc0`, 906 files / 12,858,293 bytes. Helper `9814b800097c89e1a9085eb51fc5e91c2a06b2c4` forwards operational arguments correctly, but native context-event serialization still rejects the signal. `freeze/pins.json` retains exact archive/helper/driver hashes. Product src bytes were checked against the frozen archive.
+
+Packaging attempts are retained: the first pack accidentally inherited the shared checkout cwd and is not the accepted artifact. It ran prepack and prepare (`lefthook install`). Frozen-archive prepack completed successfully; prepare failed because the archive has no Git metadata, including one unsuccessful LEFTHOOK=0 attempt. Final `npm pack --ignore-scripts` packaged those already generated prepack outputs from the frozen source. No further packaging variant was used. The tarball, source/dependency trees and disposable databases/caches stay in scratch, outside this evidence subtree.
+
+CPU preflight used the actual package, schema29 and the existing synthetic orchid corpus. Native/spawn/fetch/dlopen counters were zero; real client-open logical state matched that preflight. Final selected index bytes and fixture hashes were captured before native execution. Cancellation scope is explicitly separate from the original fn143 equality scope.
+
+`analysis.json` records each outcome; `result.json.gz` contains full caller responses, native capture and ownership observations. `capture/` retains request-level child receipts, while `phases.jsonl.gz` proves requests reached the dispatcher but cannot establish evaluation where context creation failed. `observation/` retains process/resource sampling and exit receipt. Process exit 0 is not a coverage pass. Observed PIDs 362505, 362553 and 362602 are all absent after cleanup.
+
+Original root: `/home/gordon/.cache/agent-tmp/gno-fn146-native-cancellation`. Verify all retained bytes with `sha256sum -c SHA256SUMS`. No task completion, recovery quality pass, or transport cancellation acceptance is claimed.

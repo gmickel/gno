@@ -1,0 +1,15 @@
+
+> @gmickel/gno@1.46.0 prepack
+> bun run package:clipper
+
+$ bun browser-extension/package-cli.ts
+
+> @gmickel/gno@1.46.0 prepare
+> lefthook install
+
+exit status 128
+npm error code 1
+npm error path /home/gordon/.cache/agent-tmp/gno-fn146-native-cancellation/freeze/source
+npm error command failed
+npm error command sh -c lefthook install
+npm error A complete log of this run can be found in: /home/gordon/.npm/_logs/2026-09-05T05_19_48_852Z-debug-0.log

@@ -1,0 +1,52 @@
+{
+  "source": ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/rerank/cuda-native.json.gz",
+  "sourceSha256": "6b7f913fefc1ddc41c24152798f663d6b5cf4948ec1e81a1c1327c14be4c5085",
+  "rows": [
+    {
+      "caseId": "long-query-full-pair",
+      "side": "baseline",
+      "durationMs": 489.5366329999961,
+      "contexts": [
+        {
+          "options": null,
+          "size": 40960,
+          "createMs": 27.536154999994324
+        }
+      ],
+      "result": {
+        "ok": true,
+        "value": [
+          {
+            "index": 0,
+            "score": 0.001127836061641574,
+            "rank": 1
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "long-query-full-pair",
+      "side": "candidate",
+      "durationMs": 603.3150439999954,
+      "contexts": [
+        {
+          "options": {
+            "contextSize": 6400
+          },
+          "size": 6400,
+          "createMs": 127.2617739999987
+        }
+      ],
+      "result": {
+        "ok": true,
+        "value": [
+          {
+            "index": 0,
+            "score": 0.001127836061641574,
+            "rank": 1
+          }
+        ]
+      }
+    }
+  ]
+}
