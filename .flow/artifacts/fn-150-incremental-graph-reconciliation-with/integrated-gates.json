@@ -24,8 +24,10 @@
       "result": "pass; sentinel unchanged"
     },
     {
-      "command": "bun run eval:memory",
-      "result": "100%,114 evals,threshold100 passed"
+      "command": "bun --bun evalite evals/memory.eval.ts --threshold 100 (external frozen source)",
+      "result": "100%,19 evals,1 file,threshold100 passed",
+      "log": "memory-selected.log",
+      "diagnostic": "memory.log discovered six archived copies (114 evals); diagnostic only, not the authoritative gate"
     },
     {
       "command": "separate hybrid and vsearch lexical eval invocations",
@@ -54,8 +56,8 @@
       "sha256": "a43711046c766f87d483374cddb223521452428ea65e74bc7827c2542db61bfa"
     },
     {
-      "log": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/memory.log",
-      "sha256": "ad7e865e9a01252c9906fe690f887198f6ed274d31e67b07d9a8c3dbec9f9b8e"
+      "log": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/memory-selected.log",
+      "sha256": "2ed281f8a6403119595101ab6696ff73d6c6aa842ee8b238070cf575c8934345"
     },
     {
       "log": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/hybrid.log",
