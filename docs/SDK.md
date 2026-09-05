@@ -13,16 +13,28 @@ No CLI subprocesses. No local server required.
 Native GGUF inference runs in an owned persistent Bun child; indexing, policy,
 model selection and downloads stay in the SDK process. Embedding, generation
 and reranking share that child within each LLM adapter. Warm calls reuse it;
-after native inactivity it retires and the next call loads models again.
+after five minutes of native inactivity by default, it retires and the next call
+loads models again. Actual native work, pending delivery and model-use leases
+prevent retirement; metadata reads do not extend that deadline.
 HTTP inference keeps its existing direct adapter path.
 
 Always call `client.close()` when finished. Adapter owners call
 `LlmAdapter.dispose()` to terminate their native child. An abnormal native exit
 or invalid response becomes a structured inference failure; GNO does not replay
 the failed operation automatically. A later explicit call can acquire a fresh
-child. Native ports expose verified embedding identity after initialization
-when available; HTTP and custom ports may omit it. Identity becomes unavailable
-after retirement until initialization refreshes it.
+child.
+
+Native embedding ports establish current identity during initialization and before
+direct single or batch embedding. The child verifies the model artifact and
+reports dimensions, effective context/truncation policy and runtime identity.
+The parent binds that metadata to the worker generation; it becomes unavailable
+after retirement until initialization refreshes it. HTTP and custom ports may
+omit verified identity. Retrieval does not reuse an activated vector partition
+under an unverified or different identity.
+
+A cold call includes worker startup, model loading and context creation. Its
+latency depends on the model, backend and hardware. Include the native child in
+resource measurements: the SDK parent's memory alone omits native allocations.
 
 ## Project hints
 

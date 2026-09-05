@@ -85,7 +85,7 @@ rebuilds.
 
 `gno serve` and `gno daemon` are mutually exclusive modes of one resident core
 per data directory. That core owns store/writer coordination, bounded readers,
-the watcher and scheduler, jobs, model manager, session/request admission,
+the watcher and scheduler, jobs, native-worker ownership, session/request admission,
 generation counters, and graceful shutdown. Serve adds Web UI and the full
 loopback REST API; daemon stays headless. Both mount the same stateful MCP
 surface at `/mcp` and safe lifecycle status endpoints.
@@ -97,7 +97,31 @@ active work within the configured capacity without stranding waiting requests.
 Stdio MCP and direct CLI commands remain truthful standalone processes. They
 reuse the same pure MCP tool/resource definitions but do not claim attachment
 to the resident listener. Every HTTP MCP session owns independent SDK
-server/transport state while borrowing resident stores and model leases.
+server/transport state while borrowing resident stores. MCP requests reuse the
+adapter for their configuration snapshot, retaining their collection scope and
+egress policy. Model-use leases cover actual inference work; status and document
+reads do not acquire a broad model lease.
+
+Native GGUF inference runs in an owned Bun child. Its ModelManager, model contexts
+and backend allocations stay in that child; the parent retains policy, downloads,
+stores and transports. Serve and daemon defer model-file resolution, downloads
+and native initialization until inference is needed. Validated stored dimensions
+allow vector-index setup without loading an embedding model; an empty index
+discovers dimensions on its first vector operation. Capability flags describe
+configured functionality, not proof that a model is loaded or first use will
+succeed.
+
+The default native inactivity grace is five minutes. Active work, pending response
+delivery and model-use leases prevent retirement; metadata polling does not renew
+it. Retirement exits the child, and subsequent inference acquires a new generation
+and reloads its models. Resident model counters are the latest child-reported
+snapshot, not live memory readings. Retired generations expose zero active/loaded
+counts; their historical counters remain until the next generation.
+
+Resource accounting includes the parent, owned native child and any short-lived
+binding probes. Parent RSS alone omits native costs. Observe child exit and
+platform allocation evidence when measuring reclamation; a zero loaded-model
+counter does not measure bytes freed.
 
 ### Ingestion Pipeline
 
@@ -334,7 +358,10 @@ GNO uses content-addressed storage:
 - `sourceHash` = SHA-256 of original file content
 - `mirrorHash` = SHA-256 of canonical markdown
 
-Multiple source files with identical canonical content share the same chunks and vectors. This deduplicates storage and speeds up indexing.
+Identical canonical content shares chunk storage. Verified vectors share storage
+only when the complete formatted embedding input and model/runtime identity match;
+different title context can require separate variants. Providers without verified
+identity use the legacy ownership rules described below.
 
 ### LLM Models
 
@@ -358,7 +385,10 @@ and backend until context disposal finishes. Installation verifies the exact
 The guard changes only the in-memory simulator factory, including in npm installs.
 It does not rewrite dependency files, replace native binaries, change model inputs
 or disable predictive resource selection. This repair does not establish that
-every historical native crash has the same cause.
+every historical native crash has the same cause. A frozen 12-case CUDA
+embedding/restoration probe completed with exact incremental-versus-clean results;
+that scope does not establish generation, reranking, Metal crash resolution or a
+performance gain.
 
 The native rerank port retains one ranking context for its loaded model generation,
 formatter configuration and token-capacity bucket. Batches execute serially within
@@ -367,12 +397,16 @@ A model lease protects loading, context replacement and scoring from idle expiry
 Expired model generations and failed contexts are never reused; port disposal drains
 accepted batches before releasing the retained context.
 
-The pinned native formatter counts complete prepared pairs, adds the audited
-256-token margin and rounds to a 256-token bucket within the model limit. Unknown
-formatters or unproven padded boundaries use native automatic sizing. Neither path
-clips inputs to fit; capacity and incomplete-scoring failures return the existing
-inference error, allowing retrieval to fall back to fusion. This policy does not
-promise a fixed memory reduction or latency gain across devices.
+Explicit rerank sizing is limited to node-llama-cpp 3.19.1, Qwen3 architecture,
+BPE vocabulary and the exact audited rerank template. GNO counts complete prepared
+query/document pairs, takes the largest pair, adds 256 tokens and rounds up to a
+256-token bucket. A complete pair beyond the known model limit fails explicitly.
+
+Other versions, architectures, vocabularies or templates use native automatic
+sizing. Unknown model limits and padded capacities beyond the known limit also
+use that path. GNO does not impose an unvalidated smaller context or add input
+clipping. Incomplete or invalid scores fail reranking and retain the existing
+fusion fallback. Allocation and latency effects depend on the workload and device.
 
 ### Search Modes
 

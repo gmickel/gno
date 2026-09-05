@@ -299,6 +299,24 @@ GNO_NO_AUTO_DOWNLOAD=1 gno daemon
 - `GNO_NO_AUTO_DOWNLOAD=1` disables automatic download while still allowing
   explicit `gno models pull`
 
+## Native Inference Lifetime
+
+The daemon can bind and serve lexical and metadata requests with an empty model
+cache. Model-file resolution, downloads and native loading wait until inference
+is required, including background embedding work. Offline/manual policy still
+applies to that first use.
+
+Native inference runs in an owned child shared by the matching resident adapter.
+Its default idle grace is five minutes. Status polling, filesystem metadata and
+open MCP sessions do not keep native models resident. Pending native work prevents
+retirement; after the child exits, the next inference request reloads its models.
+The daemon parent, watcher, jobs and transports remain running.
+
+Resident model counters are cached child-reported lifecycle snapshots, not GPU
+memory measurements. Capability flags describe configured functionality. A native
+failure follows each operation's error or fallback contract; a later explicit
+request can acquire a fresh child without replacing the daemon parent.
+
 ## Windows
 
 Native `--detach` is **not supported** on Windows. The flag returns a clean

@@ -546,6 +546,24 @@ gno search "test"
 gno doctor
 ```
 
+### Results Disappear After Idle
+
+Native inference normally retires its child after five minutes of inactivity and
+reloads on the next model request. That request may be slower, but retirement
+must not silently turn a successful semantic query into an empty result set.
+
+Inspect query metadata and explain diagnostics. Hybrid retrieval may use lexical
+fallback when embedding or vector search fails. `vectorsUsed` is false if no
+vector search succeeded; wholly lexical fallback reports `mode: "bm25_only"`.
+A successful vector search with no matches can legitimately report
+`vectorsUsed: true`.
+
+Compare the same request, collection and query options before and after idle.
+Preserve full responses, relevant stderr, model URIs, runtime version and child
+lifecycle state. A later explicit request can acquire a fresh worker after native
+failure. A successful fresh-process workaround alone does not explain the
+original failure.
+
 ### Poor Relevance
 
 **Diagnose with --explain:**
@@ -850,7 +868,17 @@ gno models pull --all
 
 ### Model Load Timeout
 
-Models may take time to load first time.
+First use and the first request after native retirement include worker startup,
+model loading and context creation. Compare complete cold requests separately
+from warm calls before changing timeouts. Model-load and generation-inference
+timeouts are separate: raising `loadTimeout` does not extend `inferenceTimeout`.
+
+Cold expanded queries have hit the expansion stage's five-second budget on macOS.
+This pipeline budget is separate from `models.loadTimeout` and
+`models.inferenceTimeout`; raising either model timeout does not extend it. Child
+recovery and successful embedding do not guarantee that cold expansion completes.
+Inspect expansion diagnostics rather than treating a successful hybrid fallback
+as proof that expansion ran.
 
 ```bash
 # Increase timeout in config
@@ -858,9 +886,30 @@ Models may take time to load first time.
 #   loadTimeout: 120000  # 2 minutes
 ```
 
+### Native Resource Estimation Failure
+
+GNO installs a simulator lifetime guard for the pinned node-llama-cpp 3.19.1
+package before native initialization. It retains active simulator model/backend
+handles until context disposal completes, without rewriting dependency files or
+changing model inputs. Unexpected package/source changes fail explicitly with
+`Unsupported node-llama-cpp simulator source` rather than bypassing the guard.
+Use the dependency version supplied with the GNO package; do not patch installed
+native files to suppress this error.
+
+The guard and owned-child failure containment do not establish that every native
+crash has the same cause. The historical Metal `GGML_ASSERT(buft)` case remains a
+separate validation concern; do not infer its resolution from idle recovery or
+Linux success alone.
+
 ### Out of Memory
 
-Large models need RAM. Try smaller preset:
+The parent, native child and short-lived binding probes have separate allocations.
+Include the owned child when measuring RSS or GPU usage; parent-only readings and
+resident loaded-model counts do not measure total native memory. Backend flags
+express selection intent, so verify the actual runtime backend when diagnosing
+allocation failures.
+
+Large models need RAM. A smaller preset is an explicit tradeoff:
 
 ```yaml
 # In config

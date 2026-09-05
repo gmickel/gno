@@ -896,6 +896,11 @@ Model provisioning follows one of three modes:
 - manual: no auto-download, but explicit `gno models pull` still works (`GNO_NO_AUTO_DOWNLOAD=1`)
 
 The dashboard bootstrap panel reflects the active mode in plain language.
+Starting serve or daemon does not resolve or download models. An empty or offline
+model cache does not block listener startup, lexical search or metadata access.
+The first operation requiring inference, including background embedding, resolves
+its model under the policy captured for that context. Missing models or blocked
+downloads follow the operation's existing error or fallback contract.
 
 ### Using A Fine-Tuned Local Model
 
@@ -1005,13 +1010,20 @@ models:
 
 Native embedding, generation and reranking share one child per LLM adapter.
 `warmModelTtl` is the native inactivity grace (five minutes by default).
-Active inference, pending responses and request leases prevent idle retirement;
+Active inference, pending responses and model-use leases prevent idle retirement;
 metadata-only access does not refresh native activity. Retirement exits the
 child to reclaim its native process allocations. The next inference reloads
-models, adding cold-start latency; the amount depends on the model and hardware.
+models. That complete cold request includes worker startup, model loading and
+context creation; its cost depends on the model, backend and hardware. Changing
+the idle grace does not change candidate counts, precision or input text.
 Command/SDK disposal terminates the owned child. Explicit model disposal retires
 the shared child, so other native roles reload lazily too. HTTP inference is
 unaffected by this child lifecycle.
+
+Resident model counters are cached child-reported lifecycle snapshots. Reading
+status sends no native request and does not extend the idle deadline. Loaded-model
+counts describe residency, not GPU-memory usage; capability flags describe
+configured functionality.
 
 Native worker startup or inference failure returns a structured error without
 automatically replaying the operation. The npm package and desktop source
