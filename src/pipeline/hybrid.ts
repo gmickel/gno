@@ -49,6 +49,7 @@ import {
 import { evaluateDocumentChunkFilters } from "./filters";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
+import { RequestHydration } from "./hydration";
 import { selectBestChunkForSteering } from "./intent";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
@@ -86,6 +87,8 @@ export interface HybridSearchDeps {
   expandPort: GenerationPort | null;
   rerankPort: RerankPort | null;
   pipelineConfig?: PipelineConfig;
+  /** Internal request owner; the creating caller releases it. */
+  hydration?: RequestHydration;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -306,11 +309,25 @@ function candidatesToTrace(
 /**
  * Execute hybrid search with full pipeline.
  */
-// oxlint-disable-next-line max-lines-per-function -- search orchestration with BM25, vector, fusion, reranking
 export async function searchHybrid(
   deps: HybridSearchDeps,
   query: string,
   options: HybridSearchOptions = {}
+): Promise<ReturnType<typeof ok<SearchResults>>> {
+  const hydration = deps.hydration ?? new RequestHydration(deps.store);
+  try {
+    return await searchHybridWithHydration(deps, query, options, hydration);
+  } finally {
+    if (!deps.hydration) hydration.release();
+  }
+}
+
+// oxlint-disable-next-line max-lines-per-function -- search orchestration with BM25, vector, fusion, reranking
+async function searchHybridWithHydration(
+  deps: HybridSearchDeps,
+  query: string,
+  options: HybridSearchOptions,
+  hydration: RequestHydration
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
   const runStartedAt = performance.now();
   const { store, vectorIndex, embedPort, expandPort, rerankPort } = deps;
@@ -651,21 +668,26 @@ export async function searchHybrid(
 
   timings.fusionMs = performance.now() - fusionStartedAt;
   const graphStartedAt = performance.now();
-  const graphExpansion = await expandGraphCandidates(store, fusedCandidates, {
-    collection: options.collection,
-    includeSimilar: vectorAvailable,
-    limit,
-    candidateLimit,
-    disabled: options.graph === false || options.noGraph === true,
-    relPathPrefix: options.retrievalScope?.relPathPrefix,
-    lang: options.lang,
-    tagsAll: options.tagsAll,
-    tagsAny: options.tagsAny,
-    since: temporalRange.since,
-    until: temporalRange.until,
-    categories: options.categories,
-    author: options.author,
-  });
+  const graphExpansion = await expandGraphCandidates(
+    store,
+    fusedCandidates,
+    {
+      collection: options.collection,
+      includeSimilar: vectorAvailable,
+      limit,
+      candidateLimit,
+      disabled: options.graph === false || options.noGraph === true,
+      relPathPrefix: options.retrievalScope?.relPathPrefix,
+      lang: options.lang,
+      tagsAll: options.tagsAll,
+      tagsAny: options.tagsAny,
+      since: temporalRange.since,
+      until: temporalRange.until,
+      categories: options.categories,
+      author: options.author,
+    },
+    hydration
+  );
   timings.graphMs = performance.now() - graphStartedAt;
   if (graphExpansion.candidates.length > 0) {
     const graphFusionStartedAt = performance.now();
@@ -713,13 +735,14 @@ export async function searchHybrid(
       ) => number)
     | undefined;
   if (auxiliaryRankingActive) {
-    const prefetchedDocumentsResult = await store.getDocumentsByMirrorHashes(
-      [...new Set(fusedCandidates.map((candidate) => candidate.mirrorHash))],
-      {
-        collection: options.collection,
-        activeOnly: true,
-      }
-    );
+    const prefetchedDocumentsResult =
+      await hydration.getDocumentsByMirrorHashes(
+        [...new Set(fusedCandidates.map((candidate) => candidate.mirrorHash))],
+        {
+          collection: options.collection,
+          activeOnly: true,
+        }
+      );
     if (!prefetchedDocumentsResult.ok) {
       return err("QUERY_FAILED", prefetchedDocumentsResult.error.message);
     }
@@ -767,7 +790,7 @@ export async function searchHybrid(
   // ─────────────────────────────────────────────────────────────────────────
   const rerankStartedAt = performance.now();
   const rerankResult = await rerankCandidates(
-    { rerankPort: options.noRerank ? null : rerankPort, store },
+    { rerankPort: options.noRerank ? null : rerankPort, store, hydration },
     query,
     fusedCandidates,
     {
@@ -819,7 +842,7 @@ export async function searchHybrid(
   // Fetch only needed documents and collections.
   let documents = prefetchedDocuments;
   if (!documents) {
-    const docsResult = await store.getDocumentsByMirrorHashes(
+    const docsResult = await hydration.getDocumentsByMirrorHashes(
       [...neededHashes],
       {
         collection: options.collection,
@@ -939,7 +962,7 @@ export async function searchHybrid(
   }
 
   // Pre-fetch all chunks in one batch query (eliminates N+1)
-  const chunksMapResult = await store.getChunksBatch([...neededHashes]);
+  const chunksMapResult = await hydration.getChunksBatch([...neededHashes]);
   if (!chunksMapResult.ok) {
     return err("QUERY_FAILED", chunksMapResult.error.message);
   }
@@ -1014,7 +1037,7 @@ export async function searchHybrid(
       // Get or fetch full content for this mirrorHash
       let contentResult = contentCache.get(candidate.mirrorHash);
       if (!contentResult) {
-        contentResult = await store.getContent(candidate.mirrorHash);
+        contentResult = await hydration.getContent(candidate.mirrorHash);
         contentCache.set(candidate.mirrorHash, contentResult);
       }
 

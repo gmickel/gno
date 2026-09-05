@@ -7,6 +7,7 @@
 
 import type { RerankPort } from "../llm/types";
 import type { ChunkRow, StorePort } from "../store/types";
+import type { RequestHydration } from "./hydration";
 import type { BlendingTier, FusionCandidate, RerankedCandidate } from "./types";
 
 import {
@@ -42,6 +43,8 @@ export interface RerankResult {
 export interface RerankDeps {
   rerankPort: RerankPort | null;
   store: StorePort;
+  /** Shared raw chunks only; model inputs are prepared per invocation. */
+  hydration?: RequestHydration;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,7 +100,7 @@ function isProtectedLexicalTopHit(candidate: FusionCandidate): boolean {
  * Fetch chunk texts for reranking.
  */
 async function fetchChunkTexts(
-  store: StorePort,
+  store: Pick<StorePort, "getChunksBatch">,
   toRerank: FusionCandidate[],
   query: string,
   intent: string | undefined
@@ -234,7 +237,7 @@ export async function rerankCandidates(
 
   // Extract best chunk per document for efficient reranking
   const { texts, hashToIndex } = await fetchChunkTexts(
-    store,
+    deps.hydration ?? store,
     toRerank,
     query,
     options.intent

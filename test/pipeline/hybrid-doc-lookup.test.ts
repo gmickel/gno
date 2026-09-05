@@ -1,10 +1,7 @@
-/**
- * Regression tests for hybrid search document lookup path.
- * Ensures targeted doc fetch is used instead of full scans.
- */
-
 import { describe, expect, test } from "bun:test";
 
+import type { AcceptanceManifest } from "../../evals/acceptance/manifest";
+import type { DeterministicRecord } from "../../evals/acceptance/records";
 import type { Config } from "../../src/config/types";
 import type { RerankPort } from "../../src/llm/types";
 import type {
@@ -16,14 +13,25 @@ import type {
   StorePort,
 } from "../../src/store/types";
 
+import { compareAcceptance } from "../../evals/acceptance/compare";
+import { acceptanceManifestFingerprint } from "../../evals/acceptance/manifest";
+import { deterministicRecordSchema } from "../../evals/acceptance/records";
+/**
+ * Regression tests for hybrid search document lookup path.
+ * Ensures targeted doc fetch is used instead of full scans.
+ */
+import { hydrationLongDocument } from "../../evals/fixtures/acceptance/hydration-long-doc/fixture";
+import pin from "../../evals/fixtures/acceptance/hydration-long-doc/manifest.json";
 import { getContentTypeBoostMetadata } from "../../src/pipeline/content-type-boost";
 import { expandGraphCandidates } from "../../src/pipeline/graph-retrieval";
 import { searchHybrid } from "../../src/pipeline/hybrid";
+import { RequestHydration } from "../../src/pipeline/hydration";
 import { getProjectAffinityMetadata } from "../../src/pipeline/project-affinity";
 import {
   DEFAULT_PIPELINE_CONFIG,
   SEARCH_RESULT_PLANNER_METADATA,
 } from "../../src/pipeline/types";
+import baselineHydration from "../fixtures/pipeline/hybrid-hydration-baseline.json";
 
 const NOW = "2026-02-22T00:00:00.000Z";
 
@@ -1733,3 +1741,208 @@ describe("searchHybrid targeted document lookup", () => {
     );
   });
 });
+
+test("hybrid complete hydration matches frozen model inputs and outputs with fewer rows", async () => {
+  const fixture = hydrationLongDocument();
+  expect(
+    new Bun.CryptoHasher("sha256").update(JSON.stringify(fixture)).digest("hex")
+  ).toBe(pin.sha256);
+  const hash = "hydration-long-doc-v1";
+  const outputs = [];
+  const modelInputs: DeterministicRecord["modelInputs"] = [];
+  const counts = { reads: 0, rows: 0, bytes: 0 };
+  for (const options of [
+    {},
+    { intent: "needle evidence" },
+    { exclude: ["needle"] },
+  ]) {
+    const base = createGraphStore(
+      [
+        {
+          source: `#${hash}`,
+          target: "#neighbor",
+          type: "wiki",
+          weight: 1,
+          confidence: "explicit",
+          audit: { resolution: "exact-title", matchCount: 1 },
+        },
+      ],
+      { docs: [hash, "neighbor"], fts: [hash] }
+    );
+    const store = {
+      ...base,
+      searchFts: async () => ({
+        ok: true as const,
+        value: [0, 777, 999].map((seq) => makeFtsResult(hash, seq)),
+      }),
+      getChunksBatch: async (hashes: string[]) => {
+        counts.reads++;
+        const values = new Map(
+          hashes.map((h) => [
+            h,
+            h === hash ? structuredClone(fixture.chunks) : [makeChunk(h, 0)],
+          ])
+        );
+        for (const rows of values.values()) {
+          counts.rows += rows.length;
+          counts.bytes += rows.reduce(
+            (sum, row) => sum + Buffer.byteLength(row.text),
+            0
+          );
+        }
+        return { ok: true as const, value: values };
+      },
+    } as StorePort;
+    const output = await searchHybrid(
+      {
+        store,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: {
+          modelUri: "test:hydration",
+          rerank: async (query, documents) => {
+            modelInputs.push({
+              role: "reranking",
+              modelId: "test:hydration",
+              input: { query, documents },
+            });
+            return {
+              ok: true as const,
+              value: documents.map((_, index) => ({
+                index,
+                score: index + 1,
+                rank: index + 1,
+              })),
+            };
+          },
+          dispose: async () => {},
+        },
+      },
+      "needle evidence",
+      { noExpand: true, graph: true, limit: 5, ...options }
+    );
+    expect(output.ok).toBe(true);
+    outputs.push(JSON.parse(JSON.stringify(output)));
+  }
+  const manifest = (role: "baseline" | "candidate"): AcceptanceManifest => ({
+    schemaVersion: "gno-acceptance-v1",
+    role,
+    identity: {
+      commit: "0".repeat(40),
+      indexId: "hybrid-hydration-unit",
+      indexSha256: pin.sha256,
+      bunVersion: Bun.version,
+      nativeDependencies: {},
+      platform: process.platform,
+      architecture: process.arch,
+    },
+    fixtureVersion: pin.version,
+    fixtures: [
+      { path: "hydration-long-doc/generated.json", sha256: pin.sha256 },
+    ],
+    models: [],
+    cases: [
+      {
+        caseId: "hybrid",
+        fixtureSha256: pin.sha256,
+        surface: "sdk",
+        preset: "unit",
+        configuration: {},
+      },
+    ],
+    intendedDeltas: [],
+  });
+  const deterministic: DeterministicRecord = {
+    scope: { outputs },
+    modelInputs,
+    results: [],
+    citations: [],
+    semanticState: {
+      status: "ok",
+      vectorsUsed: false,
+      vectorStatus: "not-requested",
+      error: null,
+      fallbacks: [],
+      verification: null,
+    },
+  };
+  const record = (
+    role: "baseline" | "candidate",
+    value: DeterministicRecord
+  ) => ({
+    schemaVersion: "gno-acceptance-v1",
+    manifestSha256: acceptanceManifestFingerprint(manifest(role)),
+    caseId: "hybrid",
+    deterministic: value,
+    generatedAnswer: null,
+    transport: {},
+  });
+  expect(
+    compareAcceptance(
+      manifest("baseline"),
+      manifest("candidate"),
+      [
+        record(
+          "baseline",
+          deterministicRecordSchema.parse(baselineHydration.deterministic)
+        ),
+      ],
+      [record("candidate", deterministic)]
+    )
+  ).toMatchObject({ passed: true });
+  expect(baselineHydration.counts).toEqual({
+    reads: 9,
+    rows: 6009,
+    bytes: 13919514,
+  });
+  expect(counts.reads).toBe(6);
+  expect(counts.rows).toBe(3003);
+  expect(counts.bytes).toBe(6959733);
+  expect(baselineHydration.inputFixtureSha256).toBe(pin.sha256);
+});
+
+test.each(["complete", "throw", "abort"] as const)(
+  "hybrid %s preserves caller-owned hydration lifetime",
+  async (ending) => {
+    const controller = new AbortController();
+    const store = createGraphStore([], { docs: ["seed"] }) as StorePort;
+    const hydration = new RequestHydration(store, controller.signal);
+    const retained = await hydration.getChunksBatch(["seed"]);
+    const run = searchHybrid(
+      {
+        store,
+        hydration,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: {
+          modelUri: "test:lifetime",
+          rerank: async () => {
+            if (ending === "throw") throw new Error("reranker failed");
+            if (ending === "abort") controller.abort();
+            return {
+              ok: true as const,
+              value: [{ index: 0, score: 1, rank: 1 }],
+            };
+          },
+          dispose: async () => {},
+        },
+      },
+      "seed",
+      { noExpand: true, noGraph: true }
+    );
+    if (ending === "throw") expect(run).rejects.toThrow("reranker failed");
+    else expect((await run).ok).toBe(ending !== "abort");
+    expect(retained.ok && retained.value.get("seed")?.[0]?.text).toBe(
+      "Chunk seed:0"
+    );
+    expect((await hydration.getChunksBatch(["seed"])).ok).toBe(
+      ending !== "abort"
+    );
+    hydration.release();
+    expect((await hydration.getChunksBatch(["seed"])).ok).toBe(false);
+  }
+);

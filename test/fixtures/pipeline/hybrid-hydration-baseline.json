@@ -1,0 +1,498 @@
+{
+  "deterministic": {
+    "scope": {
+      "outputs": [
+        {
+          "ok": true,
+          "value": {
+            "results": [
+              {
+                "docid": "#hydration-long-doc-v1",
+                "score": 0.75,
+                "uri": "gno://notes/hydration-long-doc-v1.md",
+                "title": "Doc hydration-long-doc-v1",
+                "line": 1,
+                "snippet": "background 0\r\nr\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence ",
+                "snippetLanguage": "markdown",
+                "snippetRange": {
+                  "startLine": 1,
+                  "endLine": 2
+                },
+                "source": {
+                  "relPath": "hydration-long-doc-v1.md",
+                  "absPath": "/tmp/notes/hydration-long-doc-v1.md",
+                  "mime": "text/markdown",
+                  "ext": ".md",
+                  "modifiedAt": "2026-02-22T00:00:00.000Z",
+                  "sizeBytes": 100,
+                  "sourceHash": "source_hydration-long-doc-v1"
+                },
+                "conversion": {
+                  "mirrorHash": "hydration-long-doc-v1",
+                  "converterId": "md",
+                  "converterVersion": "1.0.0"
+                },
+                "egressLineage": {
+                  "effectivePolicy": "local_only",
+                  "digest": "5411913ed073bc9d18a0cc00c578923231d28586aca7016a062873813805d974",
+                  "sources": [
+                    {
+                      "collection": "notes",
+                      "policy": "local_only",
+                      "source": "legacy_default"
+                    }
+                  ]
+                }
+              },
+              {
+                "docid": "#neighbor",
+                "score": 0.4,
+                "uri": "gno://notes/neighbor.md",
+                "title": "Doc neighbor",
+                "line": 1,
+                "snippet": "Chunk neighbor:0",
+                "snippetLanguage": "en",
+                "snippetRange": {
+                  "startLine": 1,
+                  "endLine": 1
+                },
+                "source": {
+                  "relPath": "neighbor.md",
+                  "absPath": "/tmp/notes/neighbor.md",
+                  "mime": "text/markdown",
+                  "ext": ".md",
+                  "modifiedAt": "2026-02-22T00:00:00.000Z",
+                  "sizeBytes": 100,
+                  "sourceHash": "source_neighbor"
+                },
+                "conversion": {
+                  "mirrorHash": "neighbor",
+                  "converterId": "md",
+                  "converterVersion": "1.0.0"
+                },
+                "egressLineage": {
+                  "effectivePolicy": "local_only",
+                  "digest": "5411913ed073bc9d18a0cc00c578923231d28586aca7016a062873813805d974",
+                  "sources": [
+                    {
+                      "collection": "notes",
+                      "policy": "local_only",
+                      "source": "legacy_default"
+                    }
+                  ]
+                }
+              },
+              {
+                "docid": "#hydration-long-doc-v1",
+                "score": 0.37065841802916477,
+                "uri": "gno://notes/hydration-long-doc-v1.md",
+                "title": "Doc hydration-long-doc-v1",
+                "line": 1555,
+                "snippet": "needle evidence 777\r\nr\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence ",
+                "snippetLanguage": "markdown",
+                "snippetRange": {
+                  "startLine": 1555,
+                  "endLine": 1556
+                },
+                "source": {
+                  "relPath": "hydration-long-doc-v1.md",
+                  "absPath": "/tmp/notes/hydration-long-doc-v1.md",
+                  "mime": "text/markdown",
+                  "ext": ".md",
+                  "modifiedAt": "2026-02-22T00:00:00.000Z",
+                  "sizeBytes": 100,
+                  "sourceHash": "source_hydration-long-doc-v1"
+                },
+                "conversion": {
+                  "mirrorHash": "hydration-long-doc-v1",
+                  "converterId": "md",
+                  "converterVersion": "1.0.0"
+                },
+                "egressLineage": {
+                  "effectivePolicy": "local_only",
+                  "digest": "5411913ed073bc9d18a0cc00c578923231d28586aca7016a062873813805d974",
+                  "sources": [
+                    {
+                      "collection": "notes",
+                      "policy": "local_only",
+                      "source": "legacy_default"
+                    }
+                  ]
+                }
+              },
+              {
+                "docid": "#hydration-long-doc-v1",
+                "score": 0.3674494455316373,
+                "uri": "gno://notes/hydration-long-doc-v1.md",
+                "title": "Doc hydration-long-doc-v1",
+                "line": 1999,
+                "snippet": "background 999\r\nr\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence ",
+                "snippetLanguage": "markdown",
+                "snippetRange": {
+                  "startLine": 1999,
+                  "endLine": 2000
+                },
+                "source": {
+                  "relPath": "hydration-long-doc-v1.md",
+                  "absPath": "/tmp/notes/hydration-long-doc-v1.md",
+                  "mime": "text/markdown",
+                  "ext": ".md",
+                  "modifiedAt": "2026-02-22T00:00:00.000Z",
+                  "sizeBytes": 100,
+                  "sourceHash": "source_hydration-long-doc-v1"
+                },
+                "conversion": {
+                  "mirrorHash": "hydration-long-doc-v1",
+                  "converterId": "md",
+                  "converterVersion": "1.0.0"
+                },
+                "egressLineage": {
+                  "effectivePolicy": "local_only",
+                  "digest": "5411913ed073bc9d18a0cc00c578923231d28586aca7016a062873813805d974",
+                  "sources": [
+                    {
+                      "collection": "notes",
+                      "policy": "local_only",
+                      "source": "legacy_default"
+                    }
+                  ]
+                }
+              }
+            ],
+            "meta": {
+              "query": "needle evidence",
+              "mode": "bm25_only",
+              "expanded": false,
+              "reranked": true,
+              "vectorsUsed": false,
+              "totalResults": 4,
+              "candidateLimit": 20,
+              "graphExpansion": {
+                "enabled": true,
+                "seedCount": 1,
+                "candidateCount": 1,
+                "maxCandidates": 20,
+                "edgeConfidence": {
+                  "explicit": 1,
+                  "inferred": 0,
+                  "ambiguous": 0,
+                  "similarity": 0
+                },
+                "fallbackReasons": []
+              },
+              "queryLanguage": "en"
+            }
+          }
+        },
+        {
+          "ok": true,
+          "value": {
+            "results": [
+              {
+                "docid": "#hydration-long-doc-v1",
+                "score": 0.75,
+                "uri": "gno://notes/hydration-long-doc-v1.md",
+                "title": "Doc hydration-long-doc-v1",
+                "line": 1555,
+                "snippet": "needle evidence 777\r\nr\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence ",
+                "snippetLanguage": "markdown",
+                "snippetRange": {
+                  "startLine": 1555,
+                  "endLine": 1556
+                },
+                "source": {
+                  "relPath": "hydration-long-doc-v1.md",
+                  "absPath": "/tmp/notes/hydration-long-doc-v1.md",
+                  "mime": "text/markdown",
+                  "ext": ".md",
+                  "modifiedAt": "2026-02-22T00:00:00.000Z",
+                  "sizeBytes": 100,
+                  "sourceHash": "source_hydration-long-doc-v1"
+                },
+                "conversion": {
+                  "mirrorHash": "hydration-long-doc-v1",
+                  "converterId": "md",
+                  "converterVersion": "1.0.0"
+                },
+                "egressLineage": {
+                  "effectivePolicy": "local_only",
+                  "digest": "5411913ed073bc9d18a0cc00c578923231d28586aca7016a062873813805d974",
+                  "sources": [
+                    {
+                      "collection": "notes",
+                      "policy": "local_only",
+                      "source": "legacy_default"
+                    }
+                  ]
+                }
+              },
+              {
+                "docid": "#neighbor",
+                "score": 0.4,
+                "uri": "gno://notes/neighbor.md",
+                "title": "Doc neighbor",
+                "line": 1,
+                "snippet": "Chunk neighbor:0",
+                "snippetLanguage": "en",
+                "snippetRange": {
+                  "startLine": 1,
+                  "endLine": 1
+                },
+                "source": {
+                  "relPath": "neighbor.md",
+                  "absPath": "/tmp/notes/neighbor.md",
+                  "mime": "text/markdown",
+                  "ext": ".md",
+                  "modifiedAt": "2026-02-22T00:00:00.000Z",
+                  "sizeBytes": 100,
+                  "sourceHash": "source_neighbor"
+                },
+                "conversion": {
+                  "mirrorHash": "neighbor",
+                  "converterId": "md",
+                  "converterVersion": "1.0.0"
+                },
+                "egressLineage": {
+                  "effectivePolicy": "local_only",
+                  "digest": "5411913ed073bc9d18a0cc00c578923231d28586aca7016a062873813805d974",
+                  "sources": [
+                    {
+                      "collection": "notes",
+                      "policy": "local_only",
+                      "source": "legacy_default"
+                    }
+                  ]
+                }
+              },
+              {
+                "docid": "#hydration-long-doc-v1",
+                "score": 0.37065841802916477,
+                "uri": "gno://notes/hydration-long-doc-v1.md",
+                "title": "Doc hydration-long-doc-v1",
+                "line": 1555,
+                "snippet": "needle evidence 777\r\nr\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence ",
+                "snippetLanguage": "markdown",
+                "snippetRange": {
+                  "startLine": 1555,
+                  "endLine": 1556
+                },
+                "source": {
+                  "relPath": "hydration-long-doc-v1.md",
+                  "absPath": "/tmp/notes/hydration-long-doc-v1.md",
+                  "mime": "text/markdown",
+                  "ext": ".md",
+                  "modifiedAt": "2026-02-22T00:00:00.000Z",
+                  "sizeBytes": 100,
+                  "sourceHash": "source_hydration-long-doc-v1"
+                },
+                "conversion": {
+                  "mirrorHash": "hydration-long-doc-v1",
+                  "converterId": "md",
+                  "converterVersion": "1.0.0"
+                },
+                "egressLineage": {
+                  "effectivePolicy": "local_only",
+                  "digest": "5411913ed073bc9d18a0cc00c578923231d28586aca7016a062873813805d974",
+                  "sources": [
+                    {
+                      "collection": "notes",
+                      "policy": "local_only",
+                      "source": "legacy_default"
+                    }
+                  ]
+                }
+              },
+              {
+                "docid": "#hydration-long-doc-v1",
+                "score": 0.3674494455316373,
+                "uri": "gno://notes/hydration-long-doc-v1.md",
+                "title": "Doc hydration-long-doc-v1",
+                "line": 1555,
+                "snippet": "needle evidence 777\r\nr\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence ",
+                "snippetLanguage": "markdown",
+                "snippetRange": {
+                  "startLine": 1555,
+                  "endLine": 1556
+                },
+                "source": {
+                  "relPath": "hydration-long-doc-v1.md",
+                  "absPath": "/tmp/notes/hydration-long-doc-v1.md",
+                  "mime": "text/markdown",
+                  "ext": ".md",
+                  "modifiedAt": "2026-02-22T00:00:00.000Z",
+                  "sizeBytes": 100,
+                  "sourceHash": "source_hydration-long-doc-v1"
+                },
+                "conversion": {
+                  "mirrorHash": "hydration-long-doc-v1",
+                  "converterId": "md",
+                  "converterVersion": "1.0.0"
+                },
+                "egressLineage": {
+                  "effectivePolicy": "local_only",
+                  "digest": "5411913ed073bc9d18a0cc00c578923231d28586aca7016a062873813805d974",
+                  "sources": [
+                    {
+                      "collection": "notes",
+                      "policy": "local_only",
+                      "source": "legacy_default"
+                    }
+                  ]
+                }
+              }
+            ],
+            "meta": {
+              "query": "needle evidence",
+              "mode": "bm25_only",
+              "expanded": false,
+              "reranked": true,
+              "vectorsUsed": false,
+              "totalResults": 4,
+              "intent": "needle evidence",
+              "candidateLimit": 20,
+              "graphExpansion": {
+                "enabled": true,
+                "seedCount": 1,
+                "candidateCount": 1,
+                "maxCandidates": 20,
+                "edgeConfidence": {
+                  "explicit": 1,
+                  "inferred": 0,
+                  "ambiguous": 0,
+                  "similarity": 0
+                },
+                "fallbackReasons": []
+              },
+              "queryLanguage": "en"
+            }
+          }
+        },
+        {
+          "ok": true,
+          "value": {
+            "results": [
+              {
+                "docid": "#neighbor",
+                "score": 0.4,
+                "uri": "gno://notes/neighbor.md",
+                "title": "Doc neighbor",
+                "line": 1,
+                "snippet": "Chunk neighbor:0",
+                "snippetLanguage": "en",
+                "snippetRange": {
+                  "startLine": 1,
+                  "endLine": 1
+                },
+                "source": {
+                  "relPath": "neighbor.md",
+                  "absPath": "/tmp/notes/neighbor.md",
+                  "mime": "text/markdown",
+                  "ext": ".md",
+                  "modifiedAt": "2026-02-22T00:00:00.000Z",
+                  "sizeBytes": 100,
+                  "sourceHash": "source_neighbor"
+                },
+                "conversion": {
+                  "mirrorHash": "neighbor",
+                  "converterId": "md",
+                  "converterVersion": "1.0.0"
+                },
+                "egressLineage": {
+                  "effectivePolicy": "local_only",
+                  "digest": "5411913ed073bc9d18a0cc00c578923231d28586aca7016a062873813805d974",
+                  "sources": [
+                    {
+                      "collection": "notes",
+                      "policy": "local_only",
+                      "source": "legacy_default"
+                    }
+                  ]
+                }
+              }
+            ],
+            "meta": {
+              "query": "needle evidence",
+              "mode": "bm25_only",
+              "expanded": false,
+              "reranked": true,
+              "vectorsUsed": false,
+              "totalResults": 1,
+              "exclude": ["needle"],
+              "candidateLimit": 20,
+              "graphExpansion": {
+                "enabled": true,
+                "seedCount": 1,
+                "candidateCount": 1,
+                "maxCandidates": 20,
+                "edgeConfidence": {
+                  "explicit": 1,
+                  "inferred": 0,
+                  "ambiguous": 0,
+                  "similarity": 0
+                },
+                "fallbackReasons": []
+              },
+              "queryLanguage": "en"
+            }
+          }
+        }
+      ]
+    },
+    "modelInputs": [
+      {
+        "role": "reranking",
+        "modelId": "test:hydration",
+        "input": {
+          "query": "needle evidence",
+          "documents": [
+            "needle evidence 777\r\nr\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence ",
+            "Chunk neighbor:0"
+          ]
+        }
+      },
+      {
+        "role": "reranking",
+        "modelId": "test:hydration",
+        "input": {
+          "query": "Intent: needle evidence\nQuery: needle evidence",
+          "documents": [
+            "needle evidence 777\r\nr\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence ",
+            "Chunk neighbor:0"
+          ]
+        }
+      },
+      {
+        "role": "reranking",
+        "modelId": "test:hydration",
+        "input": {
+          "query": "needle evidence",
+          "documents": [
+            "needle evidence 777\r\nr\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence r\u00e9sum\u00e9 evidence ",
+            "Chunk neighbor:0"
+          ]
+        }
+      }
+    ],
+    "results": [],
+    "citations": [],
+    "semanticState": {
+      "status": "ok",
+      "vectorsUsed": false,
+      "vectorStatus": "not-requested",
+      "error": null,
+      "fallbacks": [],
+      "verification": null
+    }
+  },
+  "counts": {
+    "reads": 9,
+    "rows": 6009,
+    "bytes": 13919514
+  },
+  "sourceCommit": "bdb2aae8c9c776a59a1e72072a26cfd7258be7cb",
+  "sourceFiles": {
+    "src/pipeline/hybrid.ts": "f1bcd0e3546f85861dcea5f4ee3d6e01ed405e90faa3ec8ff6e61c052987d50b",
+    "src/pipeline/rerank.ts": "aaf99b499c15aac7b5de6839c95ef27e533350420ba57f4ef074331c6a1f1c2e"
+  },
+  "inputFixtureSha256": "fd7fd4ba729385ffefcf59b423b9ca2b73891956f92cc97ac121e2fcae0d8c9e"
+}

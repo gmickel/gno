@@ -246,7 +246,11 @@ export async function expandGraphCandidates(
     categories?: string[];
     author?: string;
     relPathPrefix?: string;
-  } = {}
+  } = {},
+  hydration: Pick<
+    StorePort,
+    "getChunksBatch" | "getDocumentsByMirrorHashes"
+  > = store
 ): Promise<GraphRetrievalResult> {
   const maxCandidates = Math.max(
     1,
@@ -282,10 +286,13 @@ export async function expandGraphCandidates(
       preferredSeqByHash.set(candidate.mirrorHash, candidate.seq);
     }
   }
-  const seedDocsResult = await store.getDocumentsByMirrorHashes(seedHashes, {
-    collection: options.collection,
-    activeOnly: true,
-  });
+  const seedDocsResult = await hydration.getDocumentsByMirrorHashes(
+    seedHashes,
+    {
+      collection: options.collection,
+      activeOnly: true,
+    }
+  );
   if (!seedDocsResult.ok || seedDocsResult.value.length === 0) {
     meta.fallbackReasons.push("graph_seed_lookup_empty");
     return { candidates: [], meta };
@@ -409,7 +416,7 @@ export async function expandGraphCandidates(
   const hashes = rankedDocs
     .map((doc) => doc.mirrorHash)
     .filter((hash): hash is string => Boolean(hash));
-  const chunksResult = await store.getChunksBatch(hashes);
+  const chunksResult = await hydration.getChunksBatch(hashes);
   if (!chunksResult.ok) {
     meta.fallbackReasons.push("graph_neighbor_chunks_failed");
     return { candidates: [], meta };
