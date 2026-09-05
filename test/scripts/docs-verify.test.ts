@@ -1,14 +1,22 @@
 import { describe, expect, test } from "bun:test";
+// node:fs/promises provides temporary-directory creation; Bun has no equivalent.
+import { mkdtemp } from "node:fs/promises";
+// node:os and node:path provide platform paths; Bun has no equivalents.
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import packageMetadata from "../../package.json";
 import { validateDoctorExit } from "../../scripts/docs-doctor-contract";
 import {
   formatPublicTruthMismatch,
   PUBLIC_TRUTH,
+  REQUIRED_PUBLIC_TRUTH_ANCHORS,
+  verifyRepositoryPublicTruth,
   validatePublicTruthEvidence,
   verifyAnchoredPublicTruth,
   verifyRequiredAnchorCoverage,
 } from "../../scripts/public-truth";
+import { safeRm } from "../helpers/cleanup";
 
 const anchored = (claimClass: string, content: string): string =>
   `<!-- public-truth:${claimClass} -->\n${content}\n<!-- /public-truth -->`;
@@ -333,4 +341,55 @@ describe("public truth verification", () => {
       []
     );
   });
+});
+
+test("default truth scan ignores retired snapshots but checks active README and consumed OG templates", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "gno-truth-surfaces-"));
+  try {
+    const { incumbent, qwen } = PUBLIC_TRUTH.benchmarks.generalEmbedding;
+    const cjk = PUBLIC_TRUTH.benchmarks.cjkLexical;
+    const paths = new Set([
+      ...REQUIRED_PUBLIC_TRUTH_ANCHORS.map((anchor) => anchor.path),
+      incumbent.dataPath,
+      incumbent.evidencePath,
+      qwen.dataPath,
+      qwen.evidencePath,
+      cjk.dataPath,
+      cjk.evidencePath,
+      cjk.gatesDataPath,
+      cjk.gatesPath,
+    ]);
+    for (const path of paths) {
+      await Bun.write(
+        join(rootDir, path),
+        Bun.file(join(import.meta.dir, "../..", path))
+      );
+    }
+    const stale = anchored("current-version", "Current release: v0.0.0");
+    await Bun.write(join(rootDir, "website/_config.yml"), stale);
+    await Bun.write(join(rootDir, "website/features/benchmarks.md"), stale);
+    expect(await verifyRepositoryPublicTruth({ rootDir })).toEqual([]);
+    const readmePath = join(rootDir, "README.md");
+    const readme = await Bun.file(readmePath).text();
+    await Bun.write(readmePath, `${readme}\n${stale}`);
+    expect(await verifyRepositoryPublicTruth({ rootDir })).toEqual([
+      expect.objectContaining({
+        path: "README.md",
+        claimClass: "current-version",
+      }),
+    ]);
+    await Bun.write(readmePath, readme);
+    await Bun.write(
+      join(rootDir, "website/assets/images/og/active.html"),
+      stale
+    );
+    expect(await verifyRepositoryPublicTruth({ rootDir })).toEqual([
+      expect.objectContaining({
+        path: "website/assets/images/og/active.html",
+        claimClass: "current-version",
+      }),
+    ]);
+  } finally {
+    await safeRm(rootDir);
+  }
 });

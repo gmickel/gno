@@ -39,9 +39,8 @@ const BENCHMARK_DECIMAL_REGEX = /\b(?:0|1)\.\d+\b/g;
 const DEFAULT_SURFACE_GLOBS = [
   "README.md",
   "docs/**/*.md",
-  "website/**/*.md",
-  "website/**/*.html",
-  "website/**/*.yml",
+  // The Jekyll site is a retired snapshot; only OG templates are still consumed.
+  "website/assets/images/og/**/*.html",
 ] as const;
 
 const defaultEmbedUris = [
