@@ -15,7 +15,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-143-paired-retrieval-quality-and-resource.md",
-  "status": "open",
+  "status": "done",
   "title": "Paired retrieval quality and resource acceptance",
   "tracker": {
     "baseHashFlow": null,
@@ -28,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T23:40:07.251721Z"
+  "updated_at": "2026-09-05T01:04:13.676773Z"
 }

@@ -1,0 +1,107 @@
+{
+  "branch": "fn-143-152-retrieval-resource-major",
+  "evidence": [
+    ".flow/artifacts/fn-143-paired-retrieval-quality-and-resource/README.md",
+    "notes/fn143-native-tmp/qa-prep/QA-SUMMARY.md",
+    "notes/fn143-native-tmp/full-tests-owned.log",
+    "notes/fn143-native-tmp/negative-controls-live.json"
+  ],
+  "findings": {
+    "backend": "interactive",
+    "headSha": "7da899ae36a0db7f4540c5f0e670c82b89106341",
+    "items": [
+      {
+        "body": "Frozen product commit 270c3a74 produced native aborts in repeated paired runs: CUDA 50/60 completed records and Metal 57/60. Metal CLI also lost one paired response to a Bun segfault. All failed rows remain in the reports, which suppress performance summaries. A matched uninstrumented CUDA 10-process diagnostic passed; it narrows hypotheses but does not establish instrumentation causality. Root cause remains unresolved. Existing fn-144 owns recovery; fn-145 owns reranker capacity. Evidence: notes/fn143-native-tmp/qa-prep/QA-SUMMARY.md and runs/{cuda-control-01,metal-control-01}/warm30*/report.json.",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f261c5ee2ca4d49d9aa0b6b8e4535e768ad0070a062c131f7627ad6a7276daee",
+        "id": "finding-62e5a4ad68389ea31607a857108053ea",
+        "lastSeenReceiptId": "review-f261c5ee2ca4d49d9aa0b6b8e4535e768ad0070a062c131f7627ad6a7276daee",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P1",
+        "status": "open",
+        "title": "Native baseline reliability remains incomplete"
+      },
+      {
+        "body": "Frozen-source CUDA expanded orchid requests both produced truncated expansion JSON and expansion_error. Ivan's expanded/default-rerank probes reached pressure level 2 and were stopped by the owned watchdog. Explicit embedding-only controls and successful verified answers do not replace the original expanded-query gate. Existing fn-144/fn-145 retain this acceptance obligation. Evidence: notes/fn143-native-tmp/qa-prep/runs/cuda-orchid-01/expanded-semantic-comparison.json and QA-SUMMARY.md.",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f261c5ee2ca4d49d9aa0b6b8e4535e768ad0070a062c131f7627ad6a7276daee",
+        "id": "finding-d686511d068b4e153bb9a8478e8b7384",
+        "lastSeenReceiptId": "review-f261c5ee2ca4d49d9aa0b6b8e4535e768ad0070a062c131f7627ad6a7276daee",
+        "ordinal": 2,
+        "rIds": [],
+        "severity": "P1",
+        "status": "open",
+        "title": "Expanded native acceptance remains unmet"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-f261c5ee2ca4d49d9aa0b6b8e4535e768ad0070a062c131f7627ad6a7276daee"
+  },
+  "head_sha": "b50bf6ccd4cb2861ea24a0c6c8d9fc596bb57734",
+  "id": "fn-143-paired-retrieval-quality-and-resource",
+  "limitations": [
+    "Harness completion is not native platform promotion. All native comparisons used frozen product source 270c3a74; optimized successor acceptance remains ahead.",
+    "Coverage means captured running scenarios, not every scenario passing. Repeated native rows remain incomplete; small lifecycle samples remain inconclusive; no p99 or stable performance claim.",
+    "Metal complete controls explicitly disable rerank. Default rerank and original expanded workload remain unmet; no shortened fixture substitutes for their gates.",
+    "Full docs gate skips two uncached-model checks in its isolated environment. Separate physical cached-model evidence supplies native observations."
+  ],
+  "mode": "interactive",
+  "model": "gpt-6-astra medium",
+  "open_p0p1": [
+    {
+      "classification": "pre_existing",
+      "confidence": 100,
+      "file": "notes/fn143-native-tmp/qa-prep/QA-SUMMARY.md",
+      "id": "Native baseline reliability remains incomplete",
+      "reason": "Frozen-source repeated CUDA/Metal sessions include native aborts; incomplete reports suppress all performance summaries. Existing fn-144/fn-145 retain recovery obligations.",
+      "severity": "P1"
+    },
+    {
+      "classification": "pre_existing",
+      "confidence": 100,
+      "file": "notes/fn143-native-tmp/qa-prep/QA-SUMMARY.md",
+      "id": "Expanded native acceptance remains unmet",
+      "reason": "Frozen CUDA expanded requests fail expansion parsing; physical Ivan expanded/default-rerank probes hit pressure watchdog. Original acceptance remains required under fn-144/fn-145.",
+      "severity": "P1"
+    }
+  ],
+  "qa_outcome": "NEEDS_WORK",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "timestamp": "2026-09-05T01:03:05.817308+00:00",
+  "type": "qa_verdict",
+  "verdict": "NEEDS_WORK"
+}
