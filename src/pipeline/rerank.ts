@@ -99,6 +99,10 @@ function isProtectedLexicalTopHit(candidate: FusionCandidate): boolean {
 /**
  * Fetch chunk texts for reranking.
  */
+function rerankOwnerKey(candidate: FusionCandidate): string {
+  return `${candidate.mirrorHash}${candidate.documentId === undefined ? "" : `:${candidate.documentId}`}`;
+}
+
 async function fetchChunkTexts(
   store: Pick<StorePort, "getChunksBatch">,
   toRerank: FusionCandidate[],
@@ -113,13 +117,20 @@ async function fetchChunkTexts(
     ? chunksBatchResult.value
     : new Map();
   const preferredSeqByHash = new Map<string, number>();
+  const ownerHashes = new Map(
+    toRerank.map((candidate) => [
+      rerankOwnerKey(candidate),
+      candidate.mirrorHash,
+    ])
+  );
 
   for (const candidate of toRerank) {
-    const existingSeq = preferredSeqByHash.get(candidate.mirrorHash);
+    const existingSeq = preferredSeqByHash.get(rerankOwnerKey(candidate));
     if (existingSeq !== undefined) {
       const existingCandidate = toRerank.find(
         (entry) =>
-          entry.mirrorHash === candidate.mirrorHash && entry.seq === existingSeq
+          rerankOwnerKey(entry) === rerankOwnerKey(candidate) &&
+          entry.seq === existingSeq
       );
       if (
         existingCandidate &&
@@ -128,12 +139,12 @@ async function fetchChunkTexts(
         continue;
       }
     }
-    preferredSeqByHash.set(candidate.mirrorHash, candidate.seq);
+    preferredSeqByHash.set(rerankOwnerKey(candidate), candidate.seq);
   }
 
   const chunkTexts = new Map<string, string>();
-  for (const hash of uniqueHashes) {
-    const chunks = chunksByHash.get(hash);
+  for (const [hash, mirrorHash] of ownerHashes) {
+    const chunks = chunksByHash.get(mirrorHash);
     const bestChunk = selectBestChunkForSteering(chunks ?? [], query, intent, {
       preferredSeq: preferredSeqByHash.get(hash) ?? null,
       intentWeight: 0.5,
@@ -149,7 +160,7 @@ async function fetchChunkTexts(
 
   const hashToIndex = new Map<string, number>();
   const texts: string[] = [];
-  for (const hash of uniqueHashes) {
+  for (const hash of ownerHashes.keys()) {
     hashToIndex.set(hash, texts.length);
     texts.push(chunkTexts.get(hash) ?? "");
   }
@@ -307,7 +318,7 @@ export async function rerankCandidates(
 
   // Build reranked candidates with blended scores
   const rerankedCandidates: RerankedCandidate[] = toRerank.map((c, i) => {
-    const docIndex = hashToIndex.get(c.mirrorHash) ?? -1;
+    const docIndex = hashToIndex.get(rerankOwnerKey(c)) ?? -1;
     const rerankScore = scoreByDocIndex.get(docIndex) ?? null;
     const normalizedRerankScore =
       rerankScore !== null ? normalizeRerankScore(rerankScore) : null;

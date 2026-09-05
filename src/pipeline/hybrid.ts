@@ -55,7 +55,7 @@ import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
 import { RequestHydration } from "./hydration";
 import { selectBestChunkForSteering } from "./intent";
-import { resolveFusionOwners } from "./owner-fusion";
+import { OwnerMetadataError, resolveFusionOwners } from "./owner-fusion";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import {
@@ -352,6 +352,10 @@ export async function searchHybrid(
   const hydration = deps.hydration ?? new RequestHydration(deps.store);
   try {
     return await searchHybridWithHydration(deps, query, options, hydration);
+  } catch (cause) {
+    if (cause instanceof OwnerMetadataError)
+      return err("QUERY_FAILED", cause.message);
+    throw cause;
   } finally {
     if (!deps.hydration) hydration.release();
   }
@@ -1167,7 +1171,7 @@ async function searchHybridWithHydration(
       ) {
         continue;
       }
-      const docidKey = `${candidate.mirrorHash}:${candidate.seq}:${candidate.documentId ?? ""}`;
+      const docidKey = `${candidate.mirrorHash}:${candidate.seq}${candidate.documentId === undefined ? "" : `:${candidate.documentId}`}`;
       if (!docidMap.has(docidKey)) docidMap.set(docidKey, doc.docid);
       const collectionPath = collectionPaths.get(doc.collection);
       if (options.full && !auxiliaryRankingActive) {

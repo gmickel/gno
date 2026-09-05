@@ -119,13 +119,24 @@ export async function searchVectorWithEmbedding(
     return err("VEC_SEARCH_UNAVAILABLE", vectorUnavailableMessage(vectorIndex));
   }
 
+  let embeddingIdentity;
+  try {
+    embeddingIdentity = resolveVectorSearchIdentity(deps.embedPort);
+  } catch (cause) {
+    return err(
+      "QUERY_FAILED",
+      cause instanceof Error ? cause.message : String(cause)
+    );
+  }
   // Search nearest neighbors
   const searchResult = await vectorIndex.searchNearest(
     queryEmbedding,
     retrievalLimit,
     {
-      embeddingIdentity: resolveVectorSearchIdentity(deps.embedPort),
+      embeddingIdentity,
       eligibility: {
+        excludeMetadata: true,
+        semanticMetadata: true,
         collection: options.collection,
         memoryScopesAny: options.memoryFilter?.scopes,
         excludeSuperseded: options.memoryFilter?.excludeSuperseded,
@@ -244,7 +255,10 @@ export async function searchVectorWithEmbedding(
     if (!matchingDocs || matchingDocs.length === 0) {
       continue;
     }
-    const docs = auxiliaryRankingActive || vec.documentIds !== undefined ? matchingDocs : [matchingDocs.at(-1)!];
+    const docs =
+      auxiliaryRankingActive || vec.documentIds !== undefined
+        ? matchingDocs
+        : [matchingDocs.at(-1)!];
     for (const doc of docs) {
       const collectionPath = collectionPaths.get(doc.collection);
       const sourceRelPath = doc.recordSourcePath ?? doc.relPath;

@@ -1,8 +1,15 @@
 import { Database } from "bun:sqlite";
 import { afterEach, expect, test } from "bun:test";
 
+import type { Config } from "../../src/config/types";
+import type { EmbeddingPort } from "../../src/llm/types";
+import type { StorePort } from "../../src/store/types";
+
+import { eligibleTopKFixture } from "../../evals/fixtures/acceptance/eligible-top-k/fixture";
 import { rrfFuse, toRankedInput } from "../../src/pipeline/fusion";
+import { searchHybrid } from "../../src/pipeline/hybrid";
 import { DEFAULT_PIPELINE_CONFIG } from "../../src/pipeline/types";
+import { searchVectorWithEmbedding } from "../../src/pipeline/vsearch";
 import { migration } from "../../src/store/migrations/028-vector-variants";
 import { createVectorIndexPort } from "../../src/store/vector/sqlite-vec";
 import { createVectorVariantStore } from "../../src/store/vector/variants";
@@ -47,14 +54,12 @@ async function fixture() {
   const variants = await createVectorVariantStore(db, identity);
   const fill = () =>
     variants.write(
-      variants
-        .pending()
-        .map((owner) => ({
-          owner,
-          embedding: new Float32Array(
-            owner.formattedInput.includes("Beta") ? [0, 1] : [1, 0]
-          ),
-        }))
+      variants.pending().map((owner) => ({
+        owner,
+        embedding: new Float32Array(
+          owner.formattedInput.includes("Beta") ? [0, 1] : [1, 0]
+        ),
+      }))
     );
   const search = (options = {}) =>
     index.searchNearest(new Float32Array([1, 0]), 1, {
@@ -147,4 +152,115 @@ test("variant ranks remain separate per owner through RRF", () => {
   ]);
   expect(fused[0]!.fusionScore).toBe(fused[1]!.fusionScore);
   expect(fused[0]!.fusionScore).toBeGreaterThan(fused[2]!.fusionScore);
+});
+
+test("vsearch materializes every matching owner without widening Alpha to Beta", async () => {
+  const f = await fixture();
+  f.fill();
+  f.variants.activate(f.variants.epoch());
+  const source = eligibleTopKFixture()[0]!;
+  const docs = [1, 2, 3].map((id) => ({
+    ...source.doc,
+    id,
+    mirrorHash: "body",
+    title: id === 2 ? "Beta" : "Alpha",
+    docid: `#owner-${id}`,
+    uri: `gno://notes/${id}.md`,
+  }));
+  const store = {
+    getCollections: async () => ({
+      ok: true as const,
+      value: [
+        {
+          name: "notes",
+          path: "/synthetic",
+          egressPolicy: "local_only",
+          egressPolicySource: "legacy_default",
+        },
+      ],
+    }),
+    getDocumentsByMirrorHashes: async () => ({
+      ok: true as const,
+      value: docs,
+    }),
+    getChunksBatch: async () => ({
+      ok: true as const,
+      value: new Map([
+        [
+          "body",
+          [{ ...source.chunks[0]!, mirrorHash: "body", text: "Shared body" }],
+        ],
+      ]),
+    }),
+  } as unknown as StorePort;
+  const result = await searchVectorWithEmbedding(
+    {
+      store,
+      vectorIndex: {
+        ...f.index,
+        searchNearest: (embedding, k, options) =>
+          f.index.searchNearest(embedding, k, {
+            ...options,
+            embeddingIdentity: identity,
+          }),
+      },
+      embedPort: {} as EmbeddingPort,
+      config: {} as Config,
+    },
+    "alpha",
+    new Float32Array([1, 0]),
+    { limit: 3 }
+  );
+  if (!result.ok) throw new Error(result.error.message);
+  expect(result.ok).toBe(true);
+  expect(result.value.results.map((row) => [row.docid, row.score])).toEqual([
+    ["#owner-1", 1],
+    ["#owner-3", 1],
+    ["#owner-2", 0.5],
+  ]);
+  const hybrid = await searchHybrid(
+    {
+      store: {
+        ...store,
+        searchFts: async () => ({ ok: true as const, value: [] }),
+      },
+      vectorIndex: {
+        ...f.index,
+        searchNearest: (embedding, k, options) =>
+          f.index.searchNearest(embedding, k, {
+            ...options,
+            embeddingIdentity: identity,
+          }),
+      },
+      embedPort: {
+        modelUri: identity.model,
+        embed: async () => ({ ok: true as const, value: [1, 0] }),
+      } as unknown as EmbeddingPort,
+      expandPort: null,
+      rerankPort: null,
+      config: {} as Config,
+    },
+    "alpha",
+    { limit: 3, noExpand: true, noRerank: true, noGraph: true, explain: true }
+  );
+  if (!hybrid.ok) throw new Error(hybrid.error.message);
+  expect(hybrid.value.results.map((row) => row.docid)).toEqual([
+    "#owner-1",
+    "#owner-3",
+    "#owner-2",
+  ]);
+  expect(hybrid.value.results[0]!.score).toBeGreaterThan(
+    hybrid.value.results[2]!.score
+  );
+});
+
+test("activated owner metadata errors cannot become unrestricted legacy hits", async () => {
+  const f = await fixture();
+  f.fill();
+  f.variants.activate(f.variants.epoch());
+  f.db.exec("DROP TABLE doc_tags");
+  const result = await f.search({ eligibility: { tagsAll: ["beta"] } });
+  expect(result.ok).toBe(false);
+  if (result.ok) throw new Error("Expected owner metadata failure");
+  expect(result.error.code).toBe("VEC_SEARCH_FAILED");
 });

@@ -32,6 +32,22 @@ attaches to this resident API. Web/Desktop onboarding uses the collection,
 sync, model, and connector endpoints below; those separate operations do not
 produce `FolderSetupReceipt@1.0` or `setup-activation-result@1.0`.
 
+## Semantic document ownership
+
+Semantic retrieval binds vectors to exact formatted inputs and the actual
+model/runtime identity. After the partition activates, same-body documents with
+different titles retain their own vector ranks; only current owners satisfying
+request filters enter the nearest-neighbor budget. Public result IDs, URIs,
+mirror hashes and JSON shapes are unchanged.
+
+During incomplete shadow backfill the legacy path remains authoritative. Initial
+activation requires complete current coverage and an atomic mutation-epoch
+check. After activation, ordinary edits can leave affected owners awaiting
+embedding but cannot restore legacy authority. Missing identity, an unactivated
+selected partition or a missing/corrupt variant index produces semantic failure;
+hybrid retrieval may continue lexically with explicit fallback diagnostics.
+`gno embed` completes or repairs semantic coverage.
+
 ## Project hints
 
 Search, vector search, hybrid query, Ask, diagnose, and context request bodies

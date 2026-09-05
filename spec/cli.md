@@ -1345,6 +1345,21 @@ gno vsearch <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <d
 **Options:** Same as `gno search` (including temporal/category/author, tag, and
 project-affinity controls).
 
+**Embedding ownership:** After an exact-input partition activates, vector hits
+resolve only to eligible current document owners of that formatted input.
+Same-body documents with different title-derived inputs retain separate vector
+ranks. Collection, path, tag, memory, metadata and language eligibility apply
+before the nearest-neighbor limit. Public document IDs, URIs and mirror hashes
+keep their existing meaning.
+
+Incomplete shadow backfill retains the legacy retrieval path. Initial promotion
+requires complete active coverage and an atomic mutation-epoch check. Once
+promoted, later mutations never permit fallback to unproven legacy vectors:
+stale owners await embedding; missing runtime identity, an unactivated selected
+partition or an unavailable variant index reports semantic failure. Hybrid query
+may continue lexically with fallback diagnostics. Run `gno embed` to complete or
+repair coverage; no historical vector is treated as proof of its formatted input.
+
 **Scoring:**
 
 Vector similarity scores are normalized to a 0-1 range:

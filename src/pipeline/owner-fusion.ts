@@ -5,6 +5,8 @@ import type { HybridSearchOptions } from "./types";
 
 import { evaluateRetrievalEligibility } from "./filters";
 
+export class OwnerMetadataError extends Error {}
+
 /** Materialize legacy lexical/graph owner domains only when variant retrieval is active. */
 export async function resolveFusionOwners(
   inputs: RankedInput[],
@@ -32,7 +34,7 @@ export async function resolveFusionOwners(
   });
   const chunks = await hydration.getChunksBatch(hashes);
   if (!documents.ok || !chunks.ok)
-    throw new Error("Vector owner metadata unavailable");
+    throw new OwnerMetadataError("Vector owner metadata unavailable");
   let memoryIds: Set<number> | undefined;
   if (options.memoryFilter) {
     memoryIds = new Set();
@@ -44,7 +46,8 @@ export async function resolveFusionOwners(
         scopes: options.memoryFilter.scopes,
         excludeSuperseded: options.memoryFilter.excludeSuperseded,
       });
-      if (!eligible.ok) throw new Error("Memory owner metadata unavailable");
+      if (!eligible.ok)
+        throw new OwnerMetadataError("Memory owner metadata unavailable");
       for (const doc of eligible.value) memoryIds.add(doc.id);
     }
   }

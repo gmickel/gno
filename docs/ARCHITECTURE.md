@@ -465,3 +465,25 @@ For implementation details, see:
 - [How Search Works](HOW-SEARCH-WORKS.md) - Deep dive into query expansion, HyDE, and RRF fusion
 - [spec/cli.md](../spec/cli.md) - CLI specification
 - [spec/mcp.md](../spec/mcp.md) - MCP specification
+
+### Exact-input vector ownership
+
+Vector partitions identify the exact formatted embedding input and actual
+model/runtime identity. Current document-owner eligibility and formatted-input
+validation precede the nearest-neighbor limit. Same-body Alpha/Beta titles retain
+separate vector ranks through hybrid fusion; public mirror hashes and URIs remain
+canonical. Identical-input owners can share vector storage without inheriting
+another owner's filters or title-specific evidence.
+
+Legacy retrieval remains authoritative during incomplete shadow backfill. Initial
+activation requires complete current coverage and an atomic mutation-epoch check.
+The activation marker remains authoritative after ordinary mutations: stale
+owners await embedding rather than falling back to unproven legacy vectors. A
+missing runtime identity, unactivated selected partition, or unavailable/corrupt
+variant index produces semantic failure and explicit hybrid fallback diagnostics.
+Losing an index table does not erase that durable authority.
+
+Retrieval bulk-validates current eligible formatted inputs before distance ranking;
+it does not approximate filtered top-K through global overfetch. This adds CPU
+hashing proportional to eligible owner/chunk bindings. The ranking pass uses the
+same eligible-domain exact-distance approach as other filtered vector queries.

@@ -33,7 +33,7 @@ export function resolveVectorSearchIdentity(
 }
 
 /** Null means legacy authority. Once promoted, unavailable provenance fails closed. */
-export function searchVectorVariants(
+function searchVectorVariantsInSnapshot(
   db: Database,
   model: string,
   dimensions: number,
@@ -175,4 +175,18 @@ export function searchVectorVariants(
       ...row,
       documentIds: JSON.parse(row.documentIds) as number[],
     }));
+}
+
+/** Keep eligibility, provenance validation and ranking on one SQLite snapshot. */
+export function searchVectorVariants(
+  db: Database,
+  model: string,
+  dimensions: number,
+  embedding: Float32Array,
+  k: number,
+  options: VectorSearchOptions = {}
+): VectorSearchResult[] | null {
+  return db.transaction(() =>
+    searchVectorVariantsInSnapshot(db, model, dimensions, embedding, k, options)
+  )();
 }

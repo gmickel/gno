@@ -234,7 +234,11 @@ export function buildExplainResults(
       const candidate = candidates.find(
         (entry) =>
           entry.mirrorHash === result.conversion?.mirrorHash &&
-          entry.seq === (planner?.retrievalSeq ?? planner?.seq)
+          entry.seq === (planner?.retrievalSeq ?? planner?.seq) &&
+          (entry.documentId === undefined ||
+            docidMap.get(
+              `${entry.mirrorHash}:${entry.seq}:${entry.documentId}`
+            ) === result.docid)
       );
       return {
         ...buildExplainResult(result.docid, result.score, index, candidate),
@@ -244,7 +248,7 @@ export function buildExplainResults(
     });
   }
   return candidates.slice(0, 20).map((candidate, index) => {
-    const key = `${candidate.mirrorHash}:${candidate.seq}`;
+    const key = `${candidate.mirrorHash}:${candidate.seq}${candidate.documentId === undefined ? "" : `:${candidate.documentId}`}`;
     return buildExplainResult(
       docidMap.get(key) ?? "#unknown",
       candidate.blendedScore,
