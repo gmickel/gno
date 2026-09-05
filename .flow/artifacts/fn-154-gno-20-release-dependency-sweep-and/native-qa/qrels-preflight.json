@@ -1,0 +1,16 @@
+{
+  "files": {
+    "de/deployment-anleitung.md": "0e3978ba5b8a7ff5544ee7124644c6030e4363e3ffb7310d53e91e576b10491b",
+    "de/fehlerbehandlung.md": "804c26f560a8dd8fb47bc6127cef83e93b3f29b7604591c1cff9c0c111e34f48",
+    "en/api-reference.md": "9a8562714b7bba0f1172dc0c44721cb4800cc8759dc8b6166c74ec2fb9dee11e",
+    "en/architecture-decisions.md": "f2c6963ad336858bd8ab462b7b197a42c74f7ac4a4877be3df9b4fe6b9007086",
+    "en/troubleshooting-guide.md": "29803944692b56977f0340e741ee2b833301bc73f482ed7d1de27eef62c07269",
+    "fr/guide-debutant.md": "9c5813d9b9bb063b32fe2d3d1da75d7726401f887016c388a3eaf206217b3e97",
+    "fr/securite-applications.md": "aecb080b1fb1bd05b23f82a9d07e02b39a9209da48e47c08a24f5dba8e19510b",
+    "it/configurazione-sistema.md": "36d279da10b3de70fc0ccc9c16a792b48e92e60eb6056d3d136a06a703896a48",
+    "it/ottimizzazione-performance.md": "a25b012f55816b751012f854c4416441482cb1a150a49c480071a9f2cda83f44"
+  },
+  "queries": 29,
+  "allQrelsMapToFiles": true,
+  "queriesSha256": "46d7e7a0d4719307ad895e1bcecaf03b59ffd2d814ff38413b1aefd1591fa237"
+}

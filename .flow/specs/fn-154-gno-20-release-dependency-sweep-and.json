@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-154-gno-20-release-dependency-sweep-and.md",
-  "status": "open",
+  "status": "done",
   "title": "GNO 2.0 release dependency sweep and gates",
   "tracker": {
     "baseHashFlow": null,
@@ -20,5 +20,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-05T11:25:43.550703Z"
+  "updated_at": "2026-09-05T11:59:58.095568Z"
 }

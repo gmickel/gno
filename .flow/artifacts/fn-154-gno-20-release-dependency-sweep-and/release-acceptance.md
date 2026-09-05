@@ -1,21 +1,10 @@
----
-satisfies: [R1, R2, R3, R4]
----
-# fn-154-gno-20-release-dependency-sweep-and.1 Audit dependencies, apply selected upgrades and validate release candidate
-
-## Description
-Complete authorized dependency sweep and release gates on PR 217; preserve native ownership and retrieval quality, exclude PR 183.
-
-## Acceptance
-Document live audit decisions, exact pins and residual advisory exposure. Frozen install, lint, typecheck, tests, docs and actual package gates pass. Fresh native CUDA and Heimdall comparisons and relevant CI checks pass. Reconcile PR217 and hosted docs queue with the final candidate. PR183 remains untouched. Report ready only after the gates establish readiness.
-## Done summary
 # GNO 2.0 dependency migration acceptance
 
 Host acceptance: dependency migration is ready for release, subject to final branch CI remaining green. No merge, tag, publication or production mutation is represented by this receipt.
 
 Shipped source: `64400ffeffa59ddb58dfd10f1e6386a7eb81f6a6`. Archive SHA256 `94581ea58f100a6d1e50c311d14addb158b0defa3771e87aace603df4f52e224`; 1,011 files. Later CI and evidence commits do not alter shipped bytes. CI run [33964187917](https://github.com/gmickel/gno/actions/runs/33964187917) passed Ubuntu, macOS, full Windows, six watcher combinations and clipper E2E at `086008b98330058f3fa3dbe3b191b9289759af85`. Security and dependency checks passed. Final evidence-only push is checked independently before handoff.
 
-### Acceptance and limits
+## Acceptance and limits
 
 - R1/R2: [Dependency audit](dependency-audit.md) records adopted versions, scripts, compatibility and deferrals. Fresh full npm/Bun consumers resolve repaired parsers, execute XLSX/PPTX/PDF conversion and report zero production advisories. Two development-only advisory families remain visible. No golden, relevance label or threshold changed.
 - R3 local: [Complete gate evidence](local-gates/README.md): 5,222 tests passed, two explicit skips, zero failures; lint, typecheck, docs, frozen installs, clipper and actual model-backed installed-package smoke passed. Memory100%, hybrid86%, BM2588%. Actual Evalite HTTP/WebSocket and browser/PDF scenarios captured. The original package-sentinel failure remains unexplained and retained; the isolated final run establishes its own unchanged sentinel.
@@ -26,7 +15,3 @@ Shipped source: `64400ffeffa59ddb58dfd10f1e6386a7eb81f6a6`. Archive SHA256 `9458
 - R4: PR217 is the single aggregate release. Hosted docs queue fn3 in gno.sh is pushed at `fd2374b`, four dependent tasks, covering the final dependency/native behavior and all hosted projections. Site implementation/deployment remains queued as requested.
 
 No plan-review or impl-review was run as an acceptance gate. Superseded fn138/fn141 and PR183 remain untouched. After release, close Dependabot PRs made unnecessary by the shipped graph; preserve useful deferred migrations. This cleanup must wait for publication so open upgrades are not discarded before their replacement ships.
-## Evidence
-- Commits: 64400ffeffa59ddb58dfd10f1e6386a7eb81f6a6, 54b506929df2677dc3a301ff6b430049ea6111b1, 086008b98330058f3fa3dbe3b191b9289759af85
-- Tests: bun install --frozen-lockfile, bun run lint:check, bun run typecheck, bun test: 5222 pass, 2 skip, 0 fail, bun run docs:verify, bun run test:package with isolated HOME/XDG and explicit cached model, fresh npm/Bun full-package converter and production audit checks, scoped Evalite memory/hybrid/vsearch plus HTTP/WebSocket smoke, physical CUDA and Heimdall paired native quality, idle, cancellation and active shutdown, GitHub Actions CI 33964187917: all jobs passed including full Windows
-- PRs: https://github.com/gmickel/gno/pull/217

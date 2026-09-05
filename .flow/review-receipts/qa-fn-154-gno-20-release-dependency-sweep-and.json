@@ -1,0 +1,88 @@
+{
+  "branch": "fn-143-152-retrieval-resource-major",
+  "evidence": [
+    ".flow/artifacts/fn-154-gno-20-release-dependency-sweep-and/local-gates/README.md",
+    ".flow/artifacts/fn-154-gno-20-release-dependency-sweep-and/native-qa/README.md"
+  ],
+  "findings": {
+    "backend": "autonomous",
+    "headSha": "ba23b28d434e62939c6dcb75d28545a341cbe081",
+    "items": [
+      {
+        "body": "Actual href projects/roadmap.md resolved against app origin to /projects/roadmap.md; same Not Found in both. Evidence: local-gates/frontend/web-baseline-idle/markdown-link-target.png.gz and local-gates/frontend/web-observed-idle/markdown-link-target.png.gz",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-05cb69e8ed361a6c57c8408d7cc89a64e1be160b1db5f0e382a8ad5b9c69210a",
+        "id": "finding-6677e0d355f5601e989754d6fdf99c4c",
+        "lastSeenReceiptId": "review-05cb69e8ed361a6c57c8408d7cc89a64e1be160b1db5f0e382a8ad5b9c69210a",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "fn154-P2-1: Relative Markdown link opens404"
+      },
+      {
+        "body": "18seconds idle on document page produces /api/events net::ERR_INCOMPLETE_CHUNKED_ENCODING on both Bun1.3.14 and1.4.2. 15s heartbeat/no explicit server idleTimeout is a diagnostic clue, not a proven root cause. Evidence: local-gates/frontend/web-baseline-idle/web-events.json.gz and local-gates/frontend/web-observed-idle/web-events.json.gz",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-05cb69e8ed361a6c57c8408d7cc89a64e1be160b1db5f0e382a8ad5b9c69210a",
+        "id": "finding-52cffd70ae32e28e2b4f2d2a556815fb",
+        "lastSeenReceiptId": "review-05cb69e8ed361a6c57c8408d7cc89a64e1be160b1db5f0e382a8ad5b9c69210a",
+        "ordinal": 2,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "fn154-P2-2: Idle document event stream disconnects"
+      },
+      {
+        "body": "375px viewport,465px document scrollWidth on both. Evidence: local-gates/frontend/web-baseline-idle/graph-mobile.png.gz and local-gates/frontend/web-observed-idle/graph-mobile.png.gz",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-05cb69e8ed361a6c57c8408d7cc89a64e1be160b1db5f0e382a8ad5b9c69210a",
+        "id": "finding-c27588f3a47ce8506eb41d6c1ca6531e",
+        "lastSeenReceiptId": "review-05cb69e8ed361a6c57c8408d7cc89a64e1be160b1db5f0e382a8ad5b9c69210a",
+        "ordinal": 3,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "fn154-P2-3: Known mobile graph overflow persists"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-05cb69e8ed361a6c57c8408d7cc89a64e1be160b1db5f0e382a8ad5b9c69210a"
+  },
+  "head_sha": "ba23b28d434e62939c6dcb75d28545a341cbe081",
+  "id": "fn-154-gno-20-release-dependency-sweep-and",
+  "mode": "autonomous",
+  "open_p0p1": [],
+  "product_source_sha": "64400ffeffa59ddb58dfd10f1e6386a7eb81f6a6",
+  "qa_outcome": "NEEDS_WORK",
+  "reason": "Retains frontend NEEDS_WORK and three reproduced pre-existing P2 findings. No new dependency P0/P1 observed; host accepts the bounded migration evidence.",
+  "rid_coverage": {
+    "covered": 4,
+    "rids": [
+      {
+        "coverage": "subtracted",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      }
+    ],
+    "total": 4
+  },
+  "timestamp": "2026-09-05T11:59:20Z",
+  "type": "qa_verdict",
+  "verdict": "NEEDS_WORK"
+}

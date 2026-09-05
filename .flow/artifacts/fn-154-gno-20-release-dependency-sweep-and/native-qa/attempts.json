@@ -1,0 +1,154 @@
+[
+  {
+    "platform": "cuda",
+    "run": "baseline-qrels-v1",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 29883.905892027542
+  },
+  {
+    "platform": "cuda",
+    "run": "baseline-quality-v1",
+    "exitCode": 1,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 6516.693704063073
+  },
+  {
+    "platform": "cuda",
+    "run": "baseline-quality-v2",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 10072.548976168036
+  },
+  {
+    "platform": "cuda",
+    "run": "baseline-rerank-v1",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 2180.0217439886183
+  },
+  {
+    "platform": "cuda",
+    "run": "candidate-cancel-v2",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 8384.536480996758
+  },
+  {
+    "platform": "cuda",
+    "run": "candidate-idle-v2",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 11738.288213964552
+  },
+  {
+    "platform": "cuda",
+    "run": "candidate-qrels-v1",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 32894.54829483293
+  },
+  {
+    "platform": "cuda",
+    "run": "candidate-quality-v2",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 13079.68024793081
+  },
+  {
+    "platform": "cuda",
+    "run": "candidate-rerank-v1",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 2127.2943248040974
+  },
+  {
+    "platform": "cuda",
+    "run": "candidate-shutdown-v2",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 15143.051815917715
+  },
+  {
+    "platform": "cuda",
+    "run": "candidate-shutdown-v3",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 19096.321061020717
+  },
+  {
+    "platform": "metal",
+    "run": "baseline-quality-v1",
+    "exitCode": 1,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 2302.410207921639
+  },
+  {
+    "platform": "metal",
+    "run": "baseline-quality-v2",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 9269.501167000271
+  },
+  {
+    "platform": "metal",
+    "run": "baseline-rerank-v1",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 1737.1586670633405
+  },
+  {
+    "platform": "metal",
+    "run": "candidate-cancel-v2",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 8724.535665940493
+  },
+  {
+    "platform": "metal",
+    "run": "candidate-idle-v2",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 8626.411708071828
+  },
+  {
+    "platform": "metal",
+    "run": "candidate-quality-v2",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 9535.705374903046
+  },
+  {
+    "platform": "metal",
+    "run": "candidate-rerank-v1",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 10708.219832973555
+  },
+  {
+    "platform": "metal",
+    "run": "candidate-shutdown-v3",
+    "exitCode": 0,
+    "stopReason": null,
+    "allOwnedAbsent": true,
+    "wallMs": 13803.124084020965
+  }
+]

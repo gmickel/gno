@@ -1,0 +1,28 @@
+{
+  "cuda": {
+    "tokensExact": true,
+    "nativeScoresExact": false,
+    "publicExact": false,
+    "baselineScoreMs": [
+      343.77195499999993,
+      110.67561799999999
+    ],
+    "candidateScoreMs": [
+      351.56626700000015,
+      111.94683699999996
+    ]
+  },
+  "metal": {
+    "tokensExact": true,
+    "nativeScoresExact": true,
+    "publicExact": true,
+    "baselineScoreMs": [
+      345.77720899999997,
+      269.35079199999996
+    ],
+    "candidateScoreMs": [
+      506.6129579999997,
+      274.109457999999
+    ]
+  }
+}

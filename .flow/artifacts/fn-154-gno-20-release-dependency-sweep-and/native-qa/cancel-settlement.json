@@ -1,0 +1,38 @@
+{
+  "cuda": [
+    {
+      "op": "rerank",
+      "pid": 1069487,
+      "requestId": 18,
+      "abortAt": 1788608612750,
+      "dispatcherEndAt": 1788608613233,
+      "nativeDispatcherAfterAbortMs": 483
+    },
+    {
+      "op": "generate",
+      "pid": 1069487,
+      "requestId": 24,
+      "abortAt": 1788608615337,
+      "dispatcherEndAt": 1788608615366,
+      "nativeDispatcherAfterAbortMs": 29
+    }
+  ],
+  "metal": [
+    {
+      "op": "rerank",
+      "pid": 13623,
+      "requestId": 18,
+      "abortAt": 1788608691077,
+      "dispatcherEndAt": 1788608692333,
+      "nativeDispatcherAfterAbortMs": 1256
+    },
+    {
+      "op": "generate",
+      "pid": 13623,
+      "requestId": 24,
+      "abortAt": 1788608693845,
+      "dispatcherEndAt": 1788608694056,
+      "nativeDispatcherAfterAbortMs": 211
+    }
+  ]
+}
