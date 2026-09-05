@@ -338,7 +338,9 @@ Multiple source files with identical canonical content share the same chunks and
 
 ### LLM Models
 
-All models run locally via node-llama-cpp:
+Local GGUF models run through node-llama-cpp in the owned native child. HTTP
+models use their configured endpoint and collection egress policy. The default
+local models are:
 
 | Model  | Purpose                    | Default                 |
 | ------ | -------------------------- | ----------------------- |
@@ -346,7 +348,17 @@ All models run locally via node-llama-cpp:
 | Rerank | Cross-encoder scoring      | Qwen3-Reranker-0.6B-Q8  |
 | Gen    | Answer generation          | Qwen3-1.7B-Q4           |
 
-Models are GGUF-quantized for efficiency. First use triggers automatic download.
+Models are GGUF-quantized for efficiency. First inference resolves model files;
+downloads occur only when the configured policy permits them.
+
+Before native initialization, GNO installs simulator lifetime guards backported
+from node-llama-cpp PR 636. Active resource estimates retain their simulator model
+and backend until context disposal finishes. Installation verifies the exact
+3.19.1 package and simulator source; unexpected dependency changes fail explicitly.
+The guard changes only the in-memory simulator factory, including in npm installs.
+It does not rewrite dependency files, replace native binaries, change model inputs
+or disable predictive resource selection. This repair does not establish that
+every historical native crash has the same cause.
 
 The native rerank port retains one ranking context for its loaded model generation,
 formatter configuration and token-capacity bucket. Batches execute serially within

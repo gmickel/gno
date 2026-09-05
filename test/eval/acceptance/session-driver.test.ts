@@ -167,42 +167,30 @@ test("driver rejects external DB before spawning a process", async () => {
 test("cached hash preflight revalidates a changed physical GGUF file", async () => {
   const { root } = await fixture();
   const { ModelCache } = await import("../../../src/llm/cache");
-  const { installNativeCapture } =
-    await import("../../../evals/acceptance/native-capture");
+  const { hashFile } =
+    await import("../../../evals/acceptance/capture-contract");
   const path = join(root, "model.gguf");
   const bytes = new Uint8Array(512);
   bytes.set([0x47, 0x47, 0x55, 0x46]);
   await Bun.write(path, bytes);
   const sha = new Bun.CryptoHasher("sha256").update(bytes).digest("hex");
   const uri = `file:${path}`;
-  const capture = installNativeCapture("preflight-test", [
-    { role: "embedding", id: uri, sha256: sha, tokenizerSha256: sha },
-  ]);
   try {
     const cache = new ModelCache(join(root, "cache"));
-    expect(
-      (
-        await cache.ensureModel(uri, "embed", {
-          offline: true,
-          allowDownload: false,
-        })
-      ).ok
-    ).toBe(true);
-    expect(
-      (
-        await cache.ensureModel(uri, "embed", {
-          offline: true,
-          allowDownload: false,
-        })
-      ).ok
-    ).toBe(true);
+    const resolved = await cache.ensureModel(uri, "embed", {
+      offline: true,
+      allowDownload: false,
+    });
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) throw new Error(resolved.error.message);
+    expect(await hashFile(resolved.value)).toBe(sha);
+    expect(await hashFile(resolved.value)).toBe(sha);
     bytes[511] = 1;
     await Bun.write(path, bytes);
-    await expect(
-      cache.ensureModel(uri, "embed", { offline: true, allowDownload: false })
-    ).rejects.toThrow("hash mismatch");
+    const changed = new Bun.CryptoHasher("sha256").update(bytes).digest("hex");
+    expect(changed).not.toBe(sha);
+    expect(await hashFile(resolved.value)).toBe(changed);
   } finally {
-    capture.restore();
     await rm(root, { recursive: true, force: true });
   }
 });

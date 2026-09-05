@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 
+const { GgufInsights } = await import(
+  new URL(
+    "./gguf/insights/GgufInsights.js",
+    import.meta.resolve("node-llama-cpp")
+  ).href
+);
+
 let mockPlatformValue: NodeJS.Platform = "darwin";
 
 const mockGetLlama = mock(async (_options?: unknown) => ({
@@ -28,6 +35,7 @@ void mock.module("node:os", () => ({
 }));
 
 void mock.module("node-llama-cpp", () => ({
+  GgufInsights,
   getLlama: mockGetLlama,
   LlamaLogLevel: {
     error: "error",

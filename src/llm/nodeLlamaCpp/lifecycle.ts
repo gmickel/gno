@@ -18,6 +18,7 @@ import type { ModelConfig } from "../../config/types";
 import type { LlmResult, LoadedModel, ModelType } from "../types";
 
 import { loadFailedError, outOfMemoryError, timeoutError } from "../errors";
+import { installSimulatorLifetimeGuard } from "./simulator-install";
 
 // Types
 
@@ -85,6 +86,7 @@ export class ModelManager {
     await Promise.allSettled(this.lateCleanup);
     if (this.closing) throw new Error("Model manager is disposing");
     if (!this.llama) {
+      await installSimulatorLifetimeGuard();
       const { getLlama, LlamaLogLevel } = await import("node-llama-cpp");
       const gpu = resolveLlamaGpuMode();
       const build = resolveLlamaBuildMode();
