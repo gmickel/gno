@@ -1,0 +1,22 @@
+{
+  "command": [
+    "bun",
+    "--no-env-file",
+    "/home/gordon/.cache/agent-tmp/gno-fn145-public-reload-9d0b57e3/capture-control.ts",
+    "/home/gordon/.cache/agent-tmp/gno-fn145-public-reload-9d0b57e3/candidate/plan-contained.json"
+  ],
+  "pid": 320312,
+  "exitCode": 0,
+  "stopReason": null,
+  "wallMs": 22802.9575929977,
+  "firstResponse": [
+    {
+      "spawnToFirstResponseMs": 7433.746877824888,
+      "event": {
+        "event": "first-response",
+        "caseId": "short-before",
+        "coverage": "complete"
+      }
+    }
+  ]
+}
