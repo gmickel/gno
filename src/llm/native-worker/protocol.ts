@@ -408,6 +408,12 @@ export class NativeRequestLedger {
     this.pending.set(request.requestId, snapshot);
   }
 
+  /** Only the client queue owner may remove an operation never dispatched. */
+  cancelQueued(requestId: number): void {
+    if (!this.pending.delete(requestId))
+      throw new NativeWorkerError("protocol");
+  }
+
   settle(input: unknown): NativeResponse {
     const identity = parse(z.object(envelope), input);
     if (identity.generation !== this.generation)

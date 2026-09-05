@@ -1,13 +1,14 @@
+import type { NativeEvaluationOptions } from "../native-worker/evaluation";
+import type { GenerationPort, GenParams, LlmResult } from "../types";
 /**
  * Generation port implementation using node-llama-cpp.
  *
  * @module src/llm/nodeLlamaCpp/generation
  */
-
-import type { GenerationPort, GenParams, LlmResult } from "../types";
 import type { ModelManager } from "./lifecycle";
 
 import { inferenceFailedError } from "../errors";
+import { checkEvaluation, startEvaluation } from "../native-worker/evaluation";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -33,6 +34,8 @@ export interface StructuredPromptSession {
       seed: number;
       maxTokens: number;
       grammar?: JsonSchemaGrammarLike;
+      signal?: AbortSignal;
+      stopOnAbortSignal?: boolean;
     }
   ): Promise<string>;
 }
@@ -44,6 +47,8 @@ export const promptWithJsonSchemaGrammar = async (
     temperature: number;
     seed: number;
     maxTokens: number;
+    signal?: AbortSignal;
+    stopOnAbortSignal?: boolean;
   },
   grammar?: JsonSchemaGrammarLike
 ): Promise<string> => {
@@ -101,12 +106,15 @@ export class NodeLlamaCppGeneration implements GenerationPort {
 
   async generate(
     prompt: string,
-    params?: GenParams
+    params?: GenParams,
+    options?: NativeEvaluationOptions
   ): Promise<LlmResult<string>> {
+    checkEvaluation(options);
     const model = await this.manager.loadModel(
       this.modelPath,
       this.modelUri,
-      "gen"
+      "gen",
+      options?.signal
     );
     if (!model.ok) {
       return model;
@@ -115,6 +123,7 @@ export class NodeLlamaCppGeneration implements GenerationPort {
     const llamaModel = model.value.model as LlamaModel;
     let context: Awaited<ReturnType<LlamaModel["createContext"]>> | null = null;
     try {
+      checkEvaluation(options);
       const grammar = params?.jsonSchema
         ? await (
             await this.manager.getLlama()
@@ -127,7 +136,10 @@ export class NodeLlamaCppGeneration implements GenerationPort {
           maxTokens: params?.maxTokens ?? DEFAULT_MAX_TOKENS,
           trainContextSize: llamaModel.trainContextSize,
         });
-      context = await llamaModel.createContext({ contextSize });
+      context = await llamaModel.createContext({
+        contextSize,
+        createSignal: options?.signal,
+      });
       // Import LlamaChatSession dynamically
       const { LlamaChatSession } = await import("node-llama-cpp");
       const session = new LlamaChatSession({
@@ -135,10 +147,13 @@ export class NodeLlamaCppGeneration implements GenerationPort {
       });
 
       // Note: stop sequences not yet supported - requires stopOnTrigger API
+      startEvaluation(options);
       const response = await promptWithJsonSchemaGrammar(
         session as StructuredPromptSession,
         prompt,
         {
+          signal: options?.signal,
+          stopOnAbortSignal: false,
           temperature: params?.temperature ?? DEFAULT_TEMPERATURE,
           seed: params?.seed ?? DEFAULT_SEED,
           maxTokens: params?.maxTokens ?? DEFAULT_MAX_TOKENS,
@@ -146,6 +161,7 @@ export class NodeLlamaCppGeneration implements GenerationPort {
         grammar
       );
 
+      checkEvaluation(options);
       return { ok: true, value: response };
     } catch (e) {
       return { ok: false, error: inferenceFailedError(this.modelUri, e) };

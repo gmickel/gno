@@ -1,11 +1,10 @@
+import type { EmbeddingPort } from "../llm/types";
 /**
  * Shared embedding backlog processor.
  * Used by CLI embed, Web scheduler, and MCP tools.
  *
  * @module src/embed/backlog
  */
-
-import type { EmbeddingPort } from "../llm/types";
 import type { StoreResult } from "../store/types";
 import type {
   BacklogItem,
@@ -14,6 +13,7 @@ import type {
 } from "../store/vector";
 import type { VectorVariantStore } from "../store/vector/variants";
 
+import { assertInferenceActive } from "../llm/inference-scope";
 import { err, ok } from "../store/types";
 import { getVectorStatsDatabase } from "../store/vector/stats";
 import { createVectorVariantStore } from "../store/vector/variants";
@@ -74,6 +74,7 @@ interface Cursor {
 export async function embedBacklog(
   deps: EmbedBacklogDeps
 ): Promise<StoreResult<EmbedBacklogResult>> {
+  assertInferenceActive();
   const prepared = await prepareEmbeddingBacklog(deps);
   if (!prepared.ok) return prepared;
   deps = prepared.value;
@@ -93,6 +94,7 @@ export async function embedBacklog(
 
   const enqueueRetryItems = (items: BacklogItem[], attempts: number): void => {
     for (const item of items) {
+      assertInferenceActive();
       const key = chunkRetryKey(item);
       const existing = retryQueue.get(key);
       retryQueue.set(key, {
@@ -113,8 +115,10 @@ export async function embedBacklog(
     );
 
     for (let idx = 0; idx < entries.length; idx += batchSize) {
+      assertInferenceActive();
       const slice = entries.slice(idx, idx + batchSize);
       for (const entry of slice) {
+        assertInferenceActive();
         retryQueue.delete(chunkRetryKey(entry.item));
         entry.attempts += 1;
       }
@@ -136,6 +140,7 @@ export async function embedBacklog(
         retryResult.retryItems.map((item) => chunkRetryKey(item))
       );
       for (const entry of slice) {
+        assertInferenceActive();
         if (!retryByKey.has(chunkRetryKey(entry.item))) {
           continue;
         }
@@ -152,6 +157,7 @@ export async function embedBacklog(
 
   try {
     while (true) {
+      assertInferenceActive();
       // Get next batch using seek pagination
       const batchResult = await statsPort.getBacklog(
         modelUri,
@@ -214,6 +220,7 @@ export async function embedBacklog(
       }
     }
 
+    assertInferenceActive();
     return ok({ embedded, errors, contentionErrors, syncError });
   } catch (e) {
     return err(

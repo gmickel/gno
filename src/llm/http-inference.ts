@@ -21,6 +21,8 @@ import { classifyHttpDestination, prepareHttpDestination } from "./http-policy";
 const REDIRECT_STATUSES = new Set([301, 302, 307, 308]);
 
 export interface HttpInferenceOptions {
+  /** Resolved models.inferenceTimeout; measured across the complete HTTP call. */
+  inferenceTimeout?: number;
   collections: readonly Collection[];
   collectionNames: readonly string[];
   authenticated?: boolean;
@@ -64,6 +66,7 @@ export const requestHttpInference = async (
   init: BunFetchRequestInit,
   options: HttpInferenceOptions
 ): Promise<Response> => {
+  init.signal?.throwIfAborted();
   const states = scopedStates(options);
   if (states.length === 0) {
     enforce(states, "remote", options);
@@ -118,6 +121,7 @@ export const requestHttpInference = async (
 
   let currentUrl = url;
   for (;;) {
+    init.signal?.throwIfAborted();
     enforce(states, prepared.value.classification.zone, options);
     const connection = await prepared.value.acquireConnection();
     if (!connection.ok) {
@@ -134,7 +138,9 @@ export const requestHttpInference = async (
         })
       );
     }
+    init.signal?.throwIfAborted();
     const response = await connection.value.request(init, options.fetchFn);
+    init.signal?.throwIfAborted();
     if (!REDIRECT_STATUSES.has(response.status)) return response;
 
     const location = response.headers.get("location");

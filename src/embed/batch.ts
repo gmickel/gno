@@ -1,13 +1,16 @@
+import type { EmbeddingPort, LlmResult } from "../llm/types";
 /**
  * Shared embedding batch helpers.
  *
  * @module src/embed/batch
  */
 
-import type { EmbeddingPort, LlmResult } from "../llm/types";
-
 import { getEmbeddingCompatibilityProfile } from "../llm/embedding-compatibility";
 import { inferenceFailedError } from "../llm/errors";
+import {
+  assertInferenceActive,
+  assertInferenceResult,
+} from "../llm/inference-scope";
 
 export interface EmbedBatchRecoveryResult {
   vectors: Array<number[] | null>;
@@ -72,6 +75,7 @@ export async function embedTextsWithRecovery(
   const profile = getEmbeddingCompatibilityProfile(embedPort.modelUri);
   if (profile.batchEmbeddingTrusted) {
     let batchResult = await embedPort.embedBatch(texts);
+    assertInferenceResult(batchResult);
     if (!batchResult.ok) {
       const formattedBatchError = formatFailureMessage(batchResult.error);
       if (isDisposedFailure(formattedBatchError)) {
@@ -80,6 +84,7 @@ export async function embedTextsWithRecovery(
           return reset;
         }
         batchResult = await embedPort.embedBatch(texts);
+        assertInferenceResult(batchResult);
       }
     }
     if (batchResult.ok && batchResult.value.length === texts.length) {
@@ -166,6 +171,7 @@ async function recoverWithAdaptiveBatches(
 
       if (rangeTexts.length === 1) {
         const result = await embedPort.embed(rangeTexts[0] ?? "");
+        assertInferenceResult(result);
         if (result.ok) {
           vectors[offset] = result.value;
           return;
@@ -179,6 +185,7 @@ async function recoverWithAdaptiveBatches(
         null;
       if (!batchAlreadyFailed) {
         batchResult = await embedPort.embedBatch(rangeTexts);
+        assertInferenceResult(batchResult);
       }
       if (
         batchResult &&
@@ -186,6 +193,7 @@ async function recoverWithAdaptiveBatches(
         batchResult.value.length === rangeTexts.length
       ) {
         for (const [index, vector] of batchResult.value.entries()) {
+          assertInferenceActive();
           vectors[offset + index] = vector;
         }
         return;
@@ -223,6 +231,12 @@ async function recoverWithAdaptiveBatches(
       },
     };
   } catch (error) {
+    assertInferenceActive();
+    if (
+      error instanceof Error &&
+      ["AbortError", "TimeoutError"].includes(error.name)
+    )
+      throw error;
     return {
       ok: false,
       error: inferenceFailedError(
@@ -245,7 +259,9 @@ async function recoverIndividually(
     let fallbackErrors = 0;
 
     for (const text of texts) {
+      assertInferenceActive();
       const result = await embedPort.embed(text);
+      assertInferenceResult(result);
       if (result.ok) {
         vectors.push(result.value);
       } else {
@@ -266,6 +282,12 @@ async function recoverIndividually(
       },
     };
   } catch (error) {
+    assertInferenceActive();
+    if (
+      error instanceof Error &&
+      ["AbortError", "TimeoutError"].includes(error.name)
+    )
+      throw error;
     return {
       ok: false,
       error: inferenceFailedError(

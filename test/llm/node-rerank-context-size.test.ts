@@ -224,3 +224,27 @@ test("known over-model-limit input fails before allocation with no partial scori
   expect(f.inputs).toHaveLength(0);
   expect(f.leases).toBe(0);
 });
+
+test("cancelled noncooperative ranking keeps its lease until native settlement", async () => {
+  const f = fixture();
+  const released = Promise.withResolvers<void>();
+  const started = Promise.withResolvers<void>();
+  f.beforeScore = async () => {
+    started.resolve();
+    await released.promise;
+  };
+  const controller = new AbortController();
+  const pending = f.port.rerank("query", ["best document"], {
+    signal: controller.signal,
+  });
+  await started.promise;
+  controller.abort();
+  expect(f.leases).toBe(1);
+  expect(f.contexts[0]?.disposed).toBe(false);
+  released.resolve();
+  const result = await pending;
+  expect(result.ok).toBe(false);
+  expect(f.leases).toBe(0);
+  expect(f.contexts[0]?.disposed).toBe(true);
+  await f.port.dispose();
+});

@@ -1,11 +1,11 @@
+import type { HttpInferenceOptions } from "./http-inference";
+import type { InferenceOptions } from "./types";
 /**
  * HTTP-based generation port implementation.
  * Calls OpenAI-compatible chat completion endpoints.
  *
  * @module src/llm/httpGeneration
  */
-
-import type { HttpInferenceOptions } from "./http-inference";
 import type { GenerationPort, GenParams, LlmResult } from "./types";
 
 import { EgressDeniedError } from "../core/egress-enforcement";
@@ -15,6 +15,7 @@ import {
   structuredOutputUnavailableError,
 } from "./errors";
 import { requestHttpInference } from "./http-inference";
+import { runHttpInference } from "./inference-scope";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -71,7 +72,20 @@ export class HttpGeneration implements GenerationPort {
 
   async generate(
     prompt: string,
-    params?: GenParams
+    params?: GenParams,
+    options?: InferenceOptions
+  ): Promise<LlmResult<string>> {
+    return runHttpInference(
+      options,
+      (operational) => this.generateRequest(prompt, params, operational),
+      this.requestOptions.inferenceTimeout
+    );
+  }
+
+  private async generateRequest(
+    prompt: string,
+    params: GenParams | undefined,
+    options: InferenceOptions
   ): Promise<LlmResult<string>> {
     if (params?.jsonSchema) {
       return {
@@ -83,6 +97,7 @@ export class HttpGeneration implements GenerationPort {
       const response = await requestHttpInference(
         this.apiUrl,
         {
+          signal: options.signal,
           method: "POST",
           headers: {
             "Content-Type": "application/json",

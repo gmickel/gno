@@ -2,6 +2,7 @@ import type { StoreResult } from "../store/types";
 import type { VectorVariantStore } from "../store/vector/variants";
 import type { EmbedBacklogDeps, EmbedBacklogResult } from "./backlog";
 
+import { assertInferenceActive } from "../llm/inference-scope";
 import { err, ok } from "../store/types";
 import { getVectorStatsDatabase } from "../store/vector/stats";
 import { variantBacklogPage } from "./variant-plan";
@@ -31,6 +32,7 @@ export async function embedVariantBacklog(
   let after: { documentId: number; seq: number } | undefined;
   try {
     while (identityStillCurrent()) {
+      assertInferenceActive();
       const pending = variantBacklogPage(deps, store, batchSize, after);
       if (!pending.length) break;
       const last = pending.at(-1)!;
@@ -69,6 +71,7 @@ export async function embedVariantBacklog(
       }
       deps.onProgress?.(total.embedded, total.errors);
     }
+    assertInferenceActive();
     // Capture the epoch before checking completeness; activate rechecks under write lock.
     const epoch = store.epoch();
     if (identityStillCurrent() && !store.pending({ limit: 1 }).length) {
@@ -83,6 +86,7 @@ export async function embedVariantBacklog(
         });
       }
     }
+    assertInferenceActive();
     return ok(total);
   } catch (cause) {
     return err(

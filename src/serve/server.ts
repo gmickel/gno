@@ -1134,8 +1134,11 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleQuery(ctxHolder.current, req)
+              await handleResidentRead(
+                runtime as ResidentRuntime,
+                req,
+                (signal) =>
+                  handleQuery(ctxHolder.current, new Request(req, { signal }))
               ),
               isDev
             );
@@ -1147,8 +1150,14 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleContextBuild(ctxHolder.current, req)
+              await handleResidentRead(
+                runtime as ResidentRuntime,
+                req,
+                (signal) =>
+                  handleContextBuild(
+                    ctxHolder.current,
+                    new Request(req, { signal })
+                  )
               ),
               isDev
             );
@@ -1160,8 +1169,14 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleContextVerify(ctxHolder.current, req)
+              await handleResidentRead(
+                runtime as ResidentRuntime,
+                req,
+                (signal) =>
+                  handleContextVerify(
+                    ctxHolder.current,
+                    new Request(req, { signal })
+                  )
               ),
               isDev
             );
@@ -1173,8 +1188,14 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleQueryDiagnose(ctxHolder.current, req)
+              await handleResidentRead(
+                runtime as ResidentRuntime,
+                req,
+                (signal) =>
+                  handleQueryDiagnose(
+                    ctxHolder.current,
+                    new Request(req, { signal })
+                  )
               ),
               isDev
             );
@@ -1186,8 +1207,11 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleAsk(ctxHolder.current, req)
+              await handleResidentRead(
+                runtime as ResidentRuntime,
+                req,
+                (signal) =>
+                  handleAsk(ctxHolder.current, new Request(req, { signal }))
               ),
               isDev
             );

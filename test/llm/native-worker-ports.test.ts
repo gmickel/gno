@@ -58,6 +58,7 @@ let timer;
 process.on('disconnect', () => process.exit(0));
 process.on('message', async message => {
  if (message === 'shutdown') process.exit(0);
+ if (message?.cancel) return;
  if (message?.register) { config.models.push(message.register); return; }
  if (message?.ack) { timer = setTimeout(() => process.send('idle'), config.warmModelTtl); return; }
  clearTimeout(timer);

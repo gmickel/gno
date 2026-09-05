@@ -2,9 +2,11 @@
 import { realpath } from "node:fs/promises";
 
 import type { LlmResult } from "../types";
+import type { NativeEvaluationOptions } from "./evaluation";
 import type { ApprovedModel, NativeRequest, NativeResponse } from "./protocol";
 import type { NativeRuntimeConfig } from "./runtime-config";
 
+import { inferenceFailedError } from "../errors";
 import { NodeLlamaCppEmbedding } from "../nodeLlamaCpp/embedding";
 import { NodeLlamaCppGeneration } from "../nodeLlamaCpp/generation";
 import { ModelManager } from "../nodeLlamaCpp/lifecycle";
@@ -15,6 +17,7 @@ import {
   fingerprintRuntime,
 } from "./embedding-identity";
 import { NativeWorkerError } from "./errors";
+import { checkEvaluation } from "./evaluation";
 import { splitEmbeddingRequest } from "./protocol";
 import { wireError } from "./runtime-config";
 
@@ -32,14 +35,17 @@ export class NativeDispatcher {
   private readonly lease;
 
   constructor(private readonly config: NativeRuntimeConfig) {
-    this.manager = new ModelManager({
-      activePreset: "native-worker",
-      presets: [],
-      expandContextSize: 2048,
-      loadTimeout: config.loadTimeout,
-      inferenceTimeout: config.inferenceTimeout,
-      warmModelTtl: config.warmModelTtl,
-    });
+    this.manager = new ModelManager(
+      {
+        activePreset: "native-worker",
+        presets: [],
+        expandContextSize: 2048,
+        loadTimeout: config.loadTimeout,
+        inferenceTimeout: config.inferenceTimeout,
+        warmModelTtl: config.warmModelTtl,
+      },
+      true
+    );
     this.lease = this.manager.acquireLease();
   }
 
@@ -77,14 +83,20 @@ export class NativeDispatcher {
   }
 
   async execute(
-    request: NativeRequest
+    request: NativeRequest,
+    options?: NativeEvaluationOptions
   ): Promise<{ response: NativeResponse; activity: boolean }> {
     const model = this.config.models.find(
       (entry) => entry.id === request.modelId
     );
     if (!model) throw new NativeWorkerError("protocol");
     const before = this.manager.getLifecycleStats().loadAttempts;
-    const result = await this.run(request, model);
+    const result = await this.run(request, model, options).catch(
+      (cause: unknown) => ({
+        ok: false as const,
+        error: inferenceFailedError(model.modelUri, cause),
+      })
+    );
     // Lazy loads and inference may outlive a file mutation. Never publish their
     // completion under provenance that no longer matches the approved artifact.
     if (
@@ -113,7 +125,8 @@ export class NativeDispatcher {
 
   private async run(
     request: NativeRequest,
-    model: ApprovedModel
+    model: ApprovedModel,
+    options?: NativeEvaluationOptions
   ): Promise<
     LlmResult<Extract<NativeResponse["result"], { ok: true }>["value"]>
   > {
@@ -122,11 +135,13 @@ export class NativeDispatcher {
       this.ports.delete(model.id);
       return { ok: true, value: null };
     }
+    checkEvaluation(options);
     const port = await this.port(model);
+    checkEvaluation(options);
     switch (request.op) {
       case "init": {
         if (port instanceof NodeLlamaCppEmbedding) {
-          const result = await port.init();
+          const result = await port.init(options);
           if (!result.ok) return result;
           const file = this.files.get(model.modelUri);
           if (
@@ -164,13 +179,13 @@ export class NativeDispatcher {
       }
       case "embed":
         if (port instanceof NodeLlamaCppEmbedding)
-          return port.embed(request.text);
+          return port.embed(request.text, options);
         break;
       case "embedBatch":
         if (port instanceof NodeLlamaCppEmbedding) {
           const vectors: number[][] = [];
           for (const texts of splitEmbeddingRequest(request)) {
-            const result = await port.embedBatch(texts);
+            const result = await port.embedBatch(texts, options);
             if (!result.ok) return result;
             for (const vector of result.value) vectors.push(vector);
           }
@@ -179,11 +194,11 @@ export class NativeDispatcher {
         break;
       case "generate":
         if (port instanceof NodeLlamaCppGeneration)
-          return port.generate(request.prompt, request.params);
+          return port.generate(request.prompt, request.params, options);
         break;
       case "rerank":
         if (port instanceof NodeLlamaCppRerank)
-          return port.rerank(request.query, request.documents);
+          return port.rerank(request.query, request.documents, options);
         break;
       default:
         break;

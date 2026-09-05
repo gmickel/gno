@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { InferenceOptions } from "../types";
 import type {
   EmbeddingPort,
   EmbeddingIdentity,
@@ -12,6 +13,7 @@ import type {
 import type { NativeWorkerClient } from "./client";
 import type { NativeResponse } from "./protocol";
 
+import { inferenceOptions, finishInferenceCleanup } from "../inference-scope";
 import { NativeWorkerError } from "./errors";
 import { EmbeddingIdentitySchema } from "./protocol";
 
@@ -49,11 +51,13 @@ class NativePort {
   async dispose(): Promise<void> {
     // Disposing an unused/retired port must not launch a child.
     if (this.client.processId === undefined) return;
-    const result = await this.client.request({
-      op: "dispose",
-      modelId: this.modelId,
+    return finishInferenceCleanup(async () => {
+      const result = await this.client.request({
+        op: "dispose",
+        modelId: this.modelId,
+      });
+      if (!result.ok) throw new Error(result.error.message);
     });
-    if (!result.ok) throw new Error(result.error.message);
   }
 }
 
@@ -66,13 +70,23 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
   private version = 0;
   private disposing = false;
 
-  async init(): Promise<LlmResult<void>> {
-    return this.withIdentity(async () => ({ ok: true, value: undefined }));
+  async init(options?: InferenceOptions): Promise<LlmResult<void>> {
+    return this.withIdentity(
+      async () => ({ ok: true, value: undefined }),
+      options
+    );
   }
 
-  private async loadIdentity(version: number): Promise<LlmResult<void>> {
+  private async loadIdentity(
+    version: number,
+    options?: InferenceOptions
+  ): Promise<LlmResult<void>> {
     const result = decode(
-      await this.client.request({ op: "init", modelId: this.modelId }),
+      await this.client.request(
+        { op: "init", modelId: this.modelId },
+        undefined,
+        options
+      ),
       metadata
     );
     if (!result.ok) return result;
@@ -91,8 +105,12 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
     return { ok: true, value: undefined };
   }
 
-  private async ensureIdentity(): Promise<LlmResult<void>> {
+  private async ensureIdentity(
+    options?: InferenceOptions
+  ): Promise<LlmResult<void>> {
     if (this.getIdentity()) return { ok: true, value: undefined };
+    if (options?.signal || options?.deadlineAt !== undefined)
+      return this.loadIdentity(this.version, options);
     if (this.initializing) return this.initializing;
     this.identity = undefined;
     this.dims = undefined;
@@ -106,7 +124,8 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
   }
 
   private async withIdentity<T>(
-    operation: (generation: number) => Promise<LlmResult<T>>
+    operation: (generation: number) => Promise<LlmResult<T>>,
+    options?: InferenceOptions
   ): Promise<LlmResult<T>> {
     let lease: { release(): void } | undefined;
     const version = this.version;
@@ -117,7 +136,8 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
           ok: false,
           error: new NativeWorkerError("stale_generation").detail,
         };
-      const initialized = await this.ensureIdentity();
+      options = inferenceOptions(options);
+      const initialized = await this.ensureIdentity(options);
       if (!initialized.ok) return initialized;
       if (version !== this.version || this.disposing)
         return {
@@ -164,12 +184,16 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
     );
   }
 
-  async embed(text: string): Promise<LlmResult<number[]>> {
+  async embed(
+    text: string,
+    options?: InferenceOptions
+  ): Promise<LlmResult<number[]>> {
     return this.withIdentity(async (generation) => {
       const result = decode(
         await this.client.request(
           { op: "embed", modelId: this.modelId, text },
-          generation
+          generation,
+          options
         ),
         vector
       );
@@ -178,10 +202,13 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
         return { ok: false, error: new NativeWorkerError("protocol").detail };
       }
       return result;
-    });
+    }, options);
   }
 
-  async embedBatch(texts: string[]): Promise<LlmResult<number[][]>> {
+  async embedBatch(
+    texts: string[],
+    options?: InferenceOptions
+  ): Promise<LlmResult<number[][]>> {
     if (!texts.length) return { ok: true, value: [] };
     return this.withIdentity(async (generation) => {
       const result = decode(
@@ -191,7 +218,8 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
             modelId: this.modelId,
             texts,
           },
-          generation
+          generation,
+          options
         ),
         z.array(vector).length(texts.length)
       );
@@ -203,7 +231,7 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
         return { ok: false, error: new NativeWorkerError("protocol").detail };
       }
       return result;
-    });
+    }, options);
   }
 
   dimensions(): number {
@@ -241,7 +269,8 @@ export class NativeGenerationPort extends NativePort implements GenerationPort {
 
   async generate(
     prompt: string,
-    params?: GenParams
+    params?: GenParams,
+    options?: InferenceOptions
   ): Promise<LlmResult<string>> {
     const schema = z
       .record(z.string(), z.json())
@@ -250,12 +279,16 @@ export class NativeGenerationPort extends NativePort implements GenerationPort {
     if (!schema.success)
       return { ok: false, error: new NativeWorkerError("protocol").detail };
     return decode(
-      await this.client.request({
-        op: "generate",
-        modelId: this.modelId,
-        prompt,
-        params: params && { ...params, jsonSchema: schema.data },
-      }),
+      await this.client.request(
+        {
+          op: "generate",
+          modelId: this.modelId,
+          prompt,
+          params: params && { ...params, jsonSchema: schema.data },
+        },
+        undefined,
+        options
+      ),
       z.string()
     );
   }
@@ -264,15 +297,20 @@ export class NativeGenerationPort extends NativePort implements GenerationPort {
 export class NativeRerankPort extends NativePort implements RerankPort {
   async rerank(
     query: string,
-    documents: string[]
+    documents: string[],
+    options?: InferenceOptions
   ): Promise<LlmResult<RerankScore[]>> {
     return decode(
-      await this.client.request({
-        op: "rerank",
-        modelId: this.modelId,
-        query,
-        documents,
-      }),
+      await this.client.request(
+        {
+          op: "rerank",
+          modelId: this.modelId,
+          query,
+          documents,
+        },
+        undefined,
+        options
+      ),
       scores.length(documents.length)
     );
   }

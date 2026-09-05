@@ -1,13 +1,24 @@
 import type { ModelLifecycleStats } from "../nodeLlamaCpp/lifecycle";
+import type { InferenceOptions } from "../types";
+import type { Owner, Pending } from "./owner";
 import type { ApprovedModel, NativeRequest, NativeResponse } from "./protocol";
 import type { NativeRuntimeConfig } from "./runtime-config";
 
+import { InferenceSettlement } from "../inference-cancellation";
+import { inferenceOptions, recordInferenceTimeout } from "../inference-scope";
 import { NativeWorkerError } from "./errors";
+import {
+  cancelPending,
+  wireResult,
+  waitForQuarantine,
+  releaseQuarantine,
+} from "./owner";
 import {
   frameNativeMessage,
   NativeFrameDecoder,
   NativeRequestLedger,
   parseNativeRequest,
+  NativeExecutionStartedSchema,
 } from "./protocol";
 import {
   nativeWorkerEnvironment,
@@ -21,24 +32,6 @@ type Input = NativeRequest extends infer R
     ? Omit<R, "version" | "generation" | "requestId">
     : never
   : never;
-type Child = ReturnType<typeof Bun.spawn>;
-interface Pending {
-  request: NativeRequest;
-  resolve(value: NativeResponse["result"]): void;
-}
-interface Owner {
-  generation: number;
-  child: Child;
-  ledger: NativeRequestLedger;
-  decoder: NativeFrameDecoder;
-  pending: Pending[];
-  ready: boolean;
-  busy: boolean;
-  retiring: boolean;
-  timer?: ReturnType<typeof setTimeout>;
-  retirement?: Promise<void>;
-  drain: Set<() => void>;
-}
 export interface NativeWorkerClientOptions {
   models: readonly ApprovedModel[];
   loadTimeout: number;
@@ -88,7 +81,7 @@ export class NativeWorkerClient {
       loadFailures: 0,
       inflightLoads: 0,
     };
-    return this.owner && !this.owner.retiring
+    return this.owner
       ? { ...snapshot }
       : {
           ...snapshot,
@@ -177,20 +170,79 @@ export class NativeWorkerClient {
 
   async request(
     input: Input,
-    expectedGeneration?: number
+    expectedGeneration?: number,
+    options?: InferenceOptions
+  ): Promise<NativeResponse["result"]> {
+    const operational = inferenceOptions({
+      ...options,
+      deadlineAt: options?.deadlineAt ?? input.deadlineAt,
+    });
+    const settlement = new InferenceSettlement<
+      Extract<NativeResponse["result"], { ok: true }>["value"]
+    >(operational, this.options.inferenceTimeout);
+    void this.enqueue(
+      { ...input, deadlineAt: operational.deadlineAt },
+      expectedGeneration,
+      settlement
+    ).catch(() => {
+      settlement.fail(new NativeWorkerError("exited").detail);
+    });
+    return settlement.completion.then((result) => {
+      if (!result.ok && result.error.code === "TIMEOUT")
+        recordInferenceTimeout();
+      return wireResult(result);
+    });
+  }
+
+  private async enqueue(
+    input: Input,
+    expectedGeneration: number | undefined,
+    settlement: Pending["settlement"]
+  ): Promise<void> {
+    const result = await this.admit(input, expectedGeneration, settlement);
+    if (settlement.phase === "queued") settlement.startNative();
+    settlement.nativeSettled(result);
+    settlement.publish();
+  }
+
+  private async admit(
+    input: Input,
+    expectedGeneration: number | undefined,
+    settlement: Pending["settlement"]
   ): Promise<NativeResponse["result"]> {
     await this.registration;
+    if (settlement.signal.aborted)
+      return settlement.completion.then(wireResult);
     if (this.closed)
       return {
         ok: false,
         error: wireError(new NativeWorkerError("exited").detail),
       };
+    while (this.owner?.quarantined && !this.owner.retiring) {
+      try {
+        await waitForQuarantine(this.owner, settlement);
+      } catch (cause) {
+        return {
+          ok: false,
+          error: wireError(
+            (cause instanceof NativeWorkerError
+              ? cause
+              : new NativeWorkerError("exited")
+            ).detail
+          ),
+        };
+      }
+      if (settlement.signal.aborted)
+        return settlement.completion.then(wireResult);
+    }
     if (this.owner?.retiring) await this.owner.retirement;
     if (this.closed)
       return {
         ok: false,
         error: wireError(new NativeWorkerError("exited").detail),
       };
+    if (settlement.signal.aborted)
+      return settlement.completion.then(wireResult);
     if (input.op === "dispose" && !this.owner) return { ok: true, value: null };
     try {
       // Metadata-dependent inference must never start/replay on a replacement
@@ -206,6 +258,7 @@ export class NativeWorkerClient {
       const request = parseNativeRequest(
         {
           ...input,
+          deadlineAt: input.deadlineAt,
           version: 1,
           generation: owner.generation,
           requestId: ++this.requestId,
@@ -215,7 +268,14 @@ export class NativeWorkerClient {
       );
       owner.ledger.admit(request);
       return new Promise((resolve) => {
-        owner.pending.push({ request, resolve });
+        const pending: Pending = { request, resolve, settlement };
+        owner.pending.push(pending);
+        settlement.signal.addEventListener(
+          "abort",
+          () => this.cancel(owner, pending),
+          { once: true }
+        );
+        if (settlement.signal.aborted) this.cancel(owner, pending);
         if (owner.pending.length === 1 && owner.ready) this.sendNext(owner);
       });
     } catch (cause) {
@@ -267,6 +327,8 @@ export class NativeWorkerClient {
       pending: [],
       ready: false,
       busy: false,
+      quarantined: false,
+      waiters: new Set(),
       retiring: false,
       drain: new Set(),
     };
@@ -298,6 +360,34 @@ export class NativeWorkerClient {
           void this.retire(owner);
         return;
       }
+      if (
+        typeof message === "object" &&
+        message !== null &&
+        "executionStarted" in message
+      ) {
+        const parsed = NativeExecutionStartedSchema.safeParse(message);
+        const pending = owner.pending[0];
+        if (
+          !parsed.success ||
+          !owner.busy ||
+          !pending ||
+          pending.executionStarted ||
+          ["init", "dispose"].includes(pending.request.op) ||
+          parsed.data.generation !== owner.generation ||
+          parsed.data.requestId !== pending.request.requestId
+        )
+          throw new NativeWorkerError("protocol");
+        if (
+          pending.loadDeadline !== undefined &&
+          performance.now() >= pending.loadDeadline
+        )
+          pending.settlement.cancel("timeout");
+        pending.loadDeadline = undefined;
+        pending.executionStarted = true;
+        clearTimeout(owner.timer);
+        pending.settlement.startExecution();
+        return;
+      }
       if (!(message instanceof Uint8Array))
         throw new NativeWorkerError("protocol");
       const decoded = owner.decoder.push(message);
@@ -307,7 +397,14 @@ export class NativeWorkerClient {
       if (pending?.request.requestId !== response.requestId)
         throw new NativeWorkerError("protocol");
       clearTimeout(owner.timer);
+      if (
+        pending.loadDeadline !== undefined &&
+        performance.now() >= pending.loadDeadline
+      )
+        pending.settlement.cancel("timeout");
+      clearTimeout(pending.cancelTimer);
       owner.pending.shift();
+      releaseQuarantine(owner);
       if (response.lifecycle) this.lifecycle = response.lifecycle;
       pending.resolve(response.result);
       // Promise delivery has been queued before acknowledging settlement.
@@ -339,11 +436,16 @@ export class NativeWorkerClient {
     const pending = owner.pending[0];
     if (!pending || owner.retiring || owner.busy) return;
     this.idleOwner = undefined;
+    if (!pending.settlement.startNative()) {
+      this.cancel(owner, pending);
+      return;
+    }
     owner.busy = true;
+    pending.loadDeadline = performance.now() + this.options.loadTimeout;
     clearTimeout(owner.timer);
     owner.timer = setTimeout(
-      () => this.fail(owner, new NativeWorkerError("timeout")),
-      this.options.loadTimeout + this.options.inferenceTimeout
+      () => pending.settlement.cancel("timeout"),
+      this.options.loadTimeout
     );
     try {
       for (const frame of frameNativeMessage(pending.request))
@@ -353,16 +455,31 @@ export class NativeWorkerClient {
     }
   }
 
+  private cancel(owner: Owner, pending: Pending): void {
+    cancelPending(
+      owner,
+      pending,
+      (current, error) => this.fail(current, error),
+      (current) => this.sendNext(current)
+    );
+  }
+
   private fail(owner: Owner, error: NativeWorkerError): void {
-    if (!owner.retiring) {
+    if (owner.retiring) return;
+    // Delivery can fail now; ownership is acknowledged only after child exit.
+    for (const pending of owner.pending) {
+      clearTimeout(pending.cancelTimer);
+      pending.settlement.fail(error.detail);
+    }
+    void this.retire(owner, true).then(() => {
       for (const response of owner.ledger.failAll(error)) {
         owner.pending
           .find((entry) => entry.request.requestId === response.requestId)
           ?.resolve(response.result);
       }
       owner.pending.length = 0;
-      void this.retire(owner, true);
-    }
+      owner.busy = false;
+    });
   }
 
   private retire(owner: Owner, force = false): Promise<void> {
@@ -383,6 +500,7 @@ export class NativeWorkerClient {
         await owner.child.exited;
         clearTimeout(killTimer);
         if (this.owner === owner) this.owner = undefined;
+        releaseQuarantine(owner);
       }
     })();
     return owner.retirement;
@@ -393,14 +511,17 @@ export class NativeWorkerClient {
     process.removeListener("exit", this.onParentExit);
     const owner = this.owner;
     if (!owner) return;
-    for (const response of owner.ledger.failAll(
-      new NativeWorkerError("exited")
-    )) {
+    const failure = new NativeWorkerError("exited");
+    for (const pending of owner.pending) {
+      clearTimeout(pending.cancelTimer);
+      pending.settlement.fail(failure.detail);
+    }
+    await this.retire(owner);
+    for (const response of owner.ledger.failAll(failure))
       owner.pending
         .find((entry) => entry.request.requestId === response.requestId)
         ?.resolve(response.result);
-    }
     owner.pending.length = 0;
-    await this.retire(owner);
+    owner.busy = false;
   }
 }

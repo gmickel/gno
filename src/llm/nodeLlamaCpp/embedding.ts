@@ -1,15 +1,16 @@
+import { platform, totalmem } from "node:os";
+
+import type { NativeEvaluationOptions } from "../native-worker/evaluation";
 /**
  * Embedding port implementation using node-llama-cpp.
  *
  * @module src/llm/nodeLlamaCpp/embedding
  */
-
-import { platform, totalmem } from "node:os";
-
 import type { EmbeddingPort, LlmResult } from "../types";
 import type { ModelManager } from "./lifecycle";
 
 import { inferenceFailedError } from "../errors";
+import { checkEvaluation, startEvaluation } from "../native-worker/evaluation";
 
 // LlamaModel type from node-llama-cpp
 type LlamaModel = Awaited<
@@ -159,16 +160,23 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     this.modelPath = modelPath;
   }
 
-  async init(): Promise<LlmResult<void>> {
-    const contexts = await this.getContexts();
+  async init(options?: NativeEvaluationOptions): Promise<LlmResult<void>> {
+    checkEvaluation(options);
+    const contexts = await this.getContexts(options);
+    checkEvaluation(options);
     if (!contexts.ok) {
       return contexts;
     }
     return { ok: true, value: undefined };
   }
 
-  async embed(text: string): Promise<LlmResult<number[]>> {
-    const contexts = await this.getContexts();
+  async embed(
+    text: string,
+    options?: NativeEvaluationOptions
+  ): Promise<LlmResult<number[]>> {
+    checkEvaluation(options);
+    const contexts = await this.getContexts(options);
+    checkEvaluation(options);
     if (!contexts.ok) {
       return contexts;
     }
@@ -178,9 +186,11 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       if (!prepared.ok) {
         return { ok: false, error: prepared.error };
       }
+      startEvaluation(options);
       const embedding = await this.runOnWorker((worker) =>
         worker.context.getEmbeddingFor(prepared.value.input)
       );
+      checkEvaluation(options);
       const vector = embeddingVectorToArray(embedding.vector);
 
       // Cache dimensions on first call
@@ -194,8 +204,13 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     }
   }
 
-  async embedBatch(texts: string[]): Promise<LlmResult<number[][]>> {
-    const contexts = await this.getContexts();
+  async embedBatch(
+    texts: string[],
+    options?: NativeEvaluationOptions
+  ): Promise<LlmResult<number[][]>> {
+    checkEvaluation(options);
+    const contexts = await this.getContexts(options);
+    checkEvaluation(options);
     if (!contexts.ok) {
       return contexts;
     }
@@ -223,6 +238,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       const settled = await Promise.allSettled(
         this.workers.map(async (worker) => {
           while (true) {
+            checkEvaluation(options);
             const index = nextIndex;
             nextIndex += 1;
             if (index >= preparedInputs.length) {
@@ -233,6 +249,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
             if (input === undefined) {
               return;
             }
+            startEvaluation(options);
             const embedding = await this.runOnSpecificWorker(
               worker,
               (current) => current.context.getEmbeddingFor(input)
@@ -253,6 +270,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
         };
       }
 
+      checkEvaluation(options);
       // Cache dimensions from first result
       const firstResult = allResults[0];
       if (this.dims === null && firstResult !== undefined) {
@@ -349,7 +367,9 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     return bestWorker;
   }
 
-  private async getContexts(): Promise<LlmResult<LlamaEmbeddingContext[]>> {
+  private async getContexts(
+    options?: NativeEvaluationOptions
+  ): Promise<LlmResult<LlamaEmbeddingContext[]>> {
     if (this.workers.some((worker) => worker.context.disposed)) {
       await this.dispose();
     }
@@ -364,7 +384,7 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       return this.contextsPromise;
     }
 
-    this.contextsPromise = this.createContexts();
+    this.contextsPromise = this.createContexts(options);
     return this.contextsPromise;
   }
 
@@ -390,12 +410,15 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     return Math.max(1, Math.floor(Math.max(1, llama.cpuMathCores) / poolSize));
   }
 
-  private async createContexts(): Promise<LlmResult<LlamaEmbeddingContext[]>> {
+  private async createContexts(
+    options?: NativeEvaluationOptions
+  ): Promise<LlmResult<LlamaEmbeddingContext[]>> {
     const lifecycleVersion = this.lifecycleVersion;
     const model = await this.manager.loadModel(
       this.modelPath,
       this.modelUri,
-      "embed"
+      "embed",
+      options?.signal
     );
     if (!model.ok) {
       this.contextsPromise = null;
@@ -424,10 +447,19 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
 
       for (let i = 0; i < targetPoolSize; i += 1) {
         try {
-          const context =
-            await llamaModel.createEmbeddingContext(contextOptions);
+          const context = await llamaModel.createEmbeddingContext({
+            ...contextOptions,
+            createSignal: options?.signal,
+          });
           contexts.push(context);
         } catch (error) {
+          if (options?.signal?.aborted) {
+            await Promise.allSettled(
+              contexts.map((context) => context.dispose())
+            );
+            this.contextsPromise = null;
+            throw error;
+          }
           if (contexts.length === 0) {
             this.contextsPromise = null;
             return {

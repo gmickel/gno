@@ -28,8 +28,8 @@ export const NativeRuntimeConfigSchema = z
   .strictObject({
     generation: z.number().int().positive(),
     models: z.array(ApprovedModelSchema),
-    loadTimeout: z.number().finite().positive(),
-    inferenceTimeout: z.number().finite().positive(),
+    loadTimeout: z.number().int().min(1).max(2_147_483_647),
+    inferenceTimeout: z.number().int().min(1).max(2_147_483_647),
     warmModelTtl: z.number().finite().nonnegative().default(300_000),
   })
   .refine(controlFits, "Native bootstrap exceeds control capacity")

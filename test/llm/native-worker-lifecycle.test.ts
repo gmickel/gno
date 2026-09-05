@@ -61,16 +61,18 @@ import {NativeFrameDecoder,frameNativeMessage} from ${JSON.stringify(protocol)};
 const config=JSON.parse(process.argv[2]);
 const decoder=new NativeFrameDecoder(config.generation);
 let timer;
+let hanging=false;
 process.on('disconnect',()=>process.exit(0));
 process.on('message',async message=>{
  if(message==='shutdown') process.exit(0);
+ if(message?.cancel){ if (message.cancel && hanging) process.exit(0); return; }
  if(message?.register){config.models.push(message.register);return;}
  if(message?.ack){clearTimeout(timer);timer=setTimeout(()=>process.send('idle'),config.warmModelTtl);return;}
  clearTimeout(timer);
  const request=decoder.push(message);if(!request)return;
  console.log('native stdout is not protocol');
  if(request.text==='crash')process.exit(42);
- if(request.text==='hang')return;
+ if(request.text==='hang'){hanging=true;process.send({version:1,generation:request.generation,requestId:request.requestId,executionStarted:true});return;}
  if(request.text==='malformed'){process.send('broken');return;}
  await Bun.sleep(5);
  const value=request.op==='embedBatch'?request.texts.map(t=>[t.length]):[request.text.length];

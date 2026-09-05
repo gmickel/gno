@@ -111,6 +111,24 @@ discovers dimensions on its first vector operation. Capability flags describe
 configured functionality, not proof that a model is loaded or first use will
 succeed.
 
+Cancellation metadata uses a request-local `AsyncLocalStorage` scope (Bun has
+no separate async-context API), alongside explicit port `InferenceOptions`.
+Nested scopes combine signals and tighten deadlines; they cannot relax the
+parent caller's limit. This carries cancellation through Capsule/answer/verifier
+calls without adding operational fields to model inputs or public JSON schemas.
+REST uses the admitted request signal; MCP combines transport and protocol
+cancellation. Accepted asynchronous jobs detach from the accepting request and
+own a separate cancel signal.
+
+Caller delivery and native settlement are independent. Canceling queued work
+removes only its own entry. Canceling active work sends a validated control
+message while keeping its child slot occupied until a real completion or
+confirmed child exit. Generation cooperatively aborts evaluation; embedding and
+ranking may only stop between evaluations. Child model loading also awaits actual
+native settlement instead of acknowledging a timeout race. A stuck canceled
+operation gets five seconds to settle before its single-operation child is
+retired. Cleanup remains owned even when caller delivery has already ended.
+
 The default native inactivity grace is five minutes. Active work, pending response
 delivery and model-use leases prevent retirement; metadata polling does not renew
 it. Retirement exits the child, and subsequent inference acquires a new generation

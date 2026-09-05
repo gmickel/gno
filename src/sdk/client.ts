@@ -1,10 +1,9 @@
+import { mkdir } from "node:fs/promises";
 /**
  * GNO SDK client.
  *
  * @module src/sdk/client
  */
-
-import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import type { Config } from "../config/types";
@@ -160,6 +159,10 @@ import {
   withContentTypeRules,
 } from "../ingestion";
 import { updateFrontmatterTags } from "../ingestion/frontmatter";
+import {
+  withInferenceScope,
+  finishInferenceCleanup,
+} from "../llm/inference-scope";
 import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../llm/policy";
 import { resolveModelUri } from "../llm/registry";
@@ -592,6 +595,10 @@ class GnoClientImpl implements GnoClient {
   }
 
   private async disposeRuntimePorts(ports: RuntimePorts): Promise<void> {
+    return finishInferenceCleanup(() => this.disposeRuntimePortsOwned(ports));
+  }
+
+  private async disposeRuntimePortsOwned(ports: RuntimePorts): Promise<void> {
     if (ports.embedPort) {
       await ports.embedPort.dispose();
     }
@@ -619,6 +626,15 @@ class GnoClientImpl implements GnoClient {
   async search(
     query: string,
     options: GnoSearchOptions = {}
+  ): Promise<SearchResults> {
+    return withInferenceScope(options, () =>
+      this.searchRequest(query, options)
+    );
+  }
+
+  private async searchRequest(
+    query: string,
+    options: GnoSearchOptions
   ): Promise<SearchResults> {
     this.assertOpen();
     let traceSession: RetrievalTraceSession | null = null;
@@ -662,6 +678,15 @@ class GnoClientImpl implements GnoClient {
   async vsearch(
     query: string,
     options: GnoVectorSearchOptions = {}
+  ): Promise<SearchResults> {
+    return withInferenceScope(options, () =>
+      this.vsearchRequest(query, options)
+    );
+  }
+
+  private async vsearchRequest(
+    query: string,
+    options: GnoVectorSearchOptions
   ): Promise<SearchResults> {
     this.assertOpen();
 
@@ -746,6 +771,13 @@ class GnoClientImpl implements GnoClient {
   async query(
     query: string,
     options: GnoQueryOptions = {}
+  ): Promise<SearchResults> {
+    return withInferenceScope(options, () => this.queryRequest(query, options));
+  }
+
+  private async queryRequest(
+    query: string,
+    options: GnoQueryOptions
   ): Promise<SearchResults> {
     this.assertOpen();
 
@@ -853,6 +885,13 @@ class GnoClientImpl implements GnoClient {
   }
 
   async ask(query: string, options: GnoAskOptions = {}): Promise<AskResult> {
+    return withInferenceScope(options, () => this.askRequest(query, options));
+  }
+
+  private async askRequest(
+    query: string,
+    options: GnoAskOptions
+  ): Promise<AskResult> {
     this.assertOpen();
 
     const normalizedInput = normalizeStructuredQueryInput(

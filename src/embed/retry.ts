@@ -3,6 +3,7 @@ import type { StoreResult } from "../store/types";
 import type { BacklogItem, VectorIndexPort, VectorRow } from "../store/vector";
 
 import { isSqliteLockContention } from "../core/file-lock";
+import { assertInferenceActive } from "../llm/inference-scope";
 import { formatDocForEmbedding } from "../pipeline/contextual";
 import { embedTextsWithRecovery } from "./batch";
 
@@ -56,6 +57,7 @@ export function chunkRetryKey(
 
 export function addUniqueSamples(target: string[], samples: string[]): void {
   for (const sample of samples) {
+    assertInferenceActive();
     if (target.length >= MAX_EMBED_FAILURE_SAMPLES) {
       break;
     }
@@ -135,6 +137,7 @@ export async function upsertVectorsWithContentionRetry(
   vectors: VectorRow[],
   delays?: number[]
 ): Promise<StoreResult<void>> {
+  assertInferenceActive();
   let storeResult = await vectorIndex.upsertVectors(vectors);
   let attempts = 1;
   while (
@@ -146,6 +149,7 @@ export async function upsertVectorsWithContentionRetry(
     if (delayMs > 0) {
       await Bun.sleep(delayMs);
     }
+    assertInferenceActive();
     storeResult = await vectorIndex.upsertVectors(vectors);
     attempts += 1;
   }
@@ -188,6 +192,7 @@ export async function embedAndStoreBatch(params: {
   const vectors: VectorRow[] = [];
   const retryItems: BacklogItem[] = [];
   for (const [idx, item] of items.entries()) {
+    assertInferenceActive();
     const embedding = embedResult.value.vectors[idx];
     if (!embedding) {
       retryItems.push(item);

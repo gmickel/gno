@@ -15,6 +15,16 @@ gno serve
 
 ---
 
+## Request cancellation
+
+Disconnecting a REST query or Ask request, or aborting its admitted resident
+request, propagates through retrieval, expansion, generation and verification.
+The API suppresses late results and successful fallback after caller cancellation.
+Remote inference uses HTTP fetch cancellation. Native generation receives an
+evaluation abort; noncooperative embedding/ranking retains native capacity until
+settlement or controlled child exit. Cancellation does not replay inference.
+The existing unavailable/error response schema is unchanged.
+
 ## Overview
 
 The GNO REST API provides programmatic access to your local knowledge index. Use it to:

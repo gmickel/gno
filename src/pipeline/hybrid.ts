@@ -1,11 +1,10 @@
+import type { Config } from "../config/types";
 /**
  * Hybrid search orchestrator.
  * Combines BM25, vector search, expansion, fusion, and reranking.
  *
  * @module src/pipeline/hybrid
  */
-
-import type { Config } from "../config/types";
 import type { EmbeddingPort, GenerationPort, RerankPort } from "../llm/types";
 import type { DocumentRow, StorePort } from "../store/types";
 import type {
@@ -26,6 +25,11 @@ import type {
 import { normalizeContentTypes } from "../config/content-types";
 import { projectRecordEvidenceMetadata } from "../core/record-metadata";
 import { embedTextsWithRecovery } from "../embed/batch";
+import {
+  assertInferenceActive,
+  assertInferenceResult,
+  withInferenceScope,
+} from "../llm/inference-scope";
 import { err, ok } from "../store/types";
 import { resolveVectorSearchIdentity } from "../store/vector/variant-search";
 import { createChunkLookup } from "./chunk-lookup";
@@ -283,6 +287,7 @@ async function searchVectorChunks(
   const embedResult = await embedPort.embed(
     formatQueryForEmbedding(query, embedPort.modelUri)
   );
+  assertInferenceResult(embedResult);
   if (!embedResult.ok) {
     return { ok: false, reason: "vector_embed_error" };
   }
@@ -353,7 +358,9 @@ export async function searchHybrid(
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
   const hydration = deps.hydration ?? new RequestHydration(deps.store);
   try {
-    return await searchHybridWithHydration(deps, query, options, hydration);
+    return await withInferenceScope(options, () =>
+      searchHybridWithHydration(deps, query, options, hydration)
+    );
   } catch (cause) {
     if (cause instanceof OwnerMetadataError)
       return err("QUERY_FAILED", cause.message);
@@ -591,6 +598,7 @@ async function searchHybridWithHydration(
     );
 
     for (const settled of lexicalVariantResults) {
+      assertInferenceActive();
       if (settled.status !== "fulfilled") {
         continue;
       }
@@ -667,6 +675,7 @@ async function searchHybridWithHydration(
         )
       );
 
+      assertInferenceResult(embedResult);
       if (!embedResult.ok) {
         counters.fallbackEvents.push("vector_embed_error");
       } else {
@@ -675,6 +684,7 @@ async function searchHybridWithHydration(
         }
 
         for (const [index, variant] of batchedQueries.entries()) {
+          assertInferenceActive();
           const embedding = embedResult.value.vectors[index];
           if (!embedding || !variant) {
             continue;
@@ -996,6 +1006,7 @@ async function searchHybridWithHydration(
   const candidateDocs: DocumentRow[] = [];
 
   for (const doc of documents) {
+    assertInferenceActive();
     if (!doc.mirrorHash) {
       continue;
     }
@@ -1015,6 +1026,7 @@ async function searchHybridWithHydration(
     if (tagsResult.ok) {
       const tagsByDocId = tagsResult.value;
       for (const doc of candidateDocs) {
+        assertInferenceActive();
         const docTags = new Set(
           (tagsByDocId.get(doc.id) ?? []).map((t) => t.tag)
         );
@@ -1039,6 +1051,7 @@ async function searchHybridWithHydration(
   }
 
   for (const docs of docsByMirrorHash.values()) {
+    assertInferenceActive();
     docs.sort((left, right) => {
       if (left.uri < right.uri) return -1;
       if (left.uri > right.uri) return 1;
@@ -1049,6 +1062,7 @@ async function searchHybridWithHydration(
   const collectionPaths = new Map<string, string>();
   if (collectionsResult.ok) {
     for (const c of collectionsResult.value) {
+      assertInferenceActive();
       collectionPaths.set(c.name, c.path);
     }
   }
@@ -1075,6 +1089,7 @@ async function searchHybridWithHydration(
 
   // Iterate until we have enough results (don't slice early - deduping may skip candidates)
   for (const [candidateIndex, candidate] of filteredCandidates.entries()) {
+    assertInferenceActive();
     // Stop when we have enough results
     if (!auxiliaryRankingActive && results.length >= assemblyLimit) {
       break;
@@ -1160,6 +1175,7 @@ async function searchHybridWithHydration(
     }
 
     for (const doc of candidateDocs) {
+      assertInferenceActive();
       if (!auxiliaryRankingActive && results.length >= assemblyLimit) break;
       const filterEval = evaluateDocumentChunkFilters(
         query,
@@ -1295,6 +1311,7 @@ async function searchHybridWithHydration(
 
   const finalResults = dedupedResults.slice(0, limit);
   for (const [index, result] of finalResults.entries()) {
+    assertInferenceActive();
     const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
     if (metadata) metadata.retrievalRank = index + 1;
   }
@@ -1429,6 +1446,7 @@ async function searchHybridWithHydration(
 function dedupeFullResultsByDocid(results: SearchResult[]): SearchResult[] {
   const bestByDocid = new Map<string, SearchResult>();
   for (const result of results) {
+    assertInferenceActive();
     const existing = bestByDocid.get(result.docid);
     if (!existing || result.score > existing.score) {
       bestByDocid.set(result.docid, result);

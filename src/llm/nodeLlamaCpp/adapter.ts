@@ -100,6 +100,7 @@ export class LlmAdapter {
     // Use HTTP embedding for remote endpoints
     if (isHttpModelUri(uri)) {
       const httpEmbed = new HttpEmbedding(uri, {
+        inferenceTimeout: getModelConfig(this.config).inferenceTimeout,
         collections: this.config.collections,
         collectionNames: resolveEgressCollectionNames(
           this.config,
@@ -148,6 +149,7 @@ export class LlmAdapter {
     // Use HTTP generation for remote endpoints
     if (isHttpGenUri(uri)) {
       const httpGen = new HttpGeneration(uri, {
+        inferenceTimeout: getModelConfig(this.config).inferenceTimeout,
         collections: this.config.collections,
         collectionNames: resolveEgressCollectionNames(
           this.config,
@@ -189,6 +191,7 @@ export class LlmAdapter {
 
     if (isHttpGenUri(uri)) {
       const httpGen = new HttpGeneration(uri, {
+        inferenceTimeout: getModelConfig(this.config).inferenceTimeout,
         collections: this.config.collections,
         collectionNames: resolveEgressCollectionNames(
           this.config,
@@ -232,6 +235,7 @@ export class LlmAdapter {
     // Use HTTP rerank for remote endpoints
     if (isHttpRerankUri(uri)) {
       const httpRerank = new HttpRerank(uri, {
+        inferenceTimeout: getModelConfig(this.config).inferenceTimeout,
         collections: this.config.collections,
         collectionNames: resolveEgressCollectionNames(
           this.config,

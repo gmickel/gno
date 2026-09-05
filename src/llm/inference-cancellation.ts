@@ -108,6 +108,11 @@ export class InferenceSettlement<T> {
     return true;
   }
 
+  /** Fail caller delivery while retaining native ownership until exit/settlement. */
+  fail(error: LlmError): void {
+    if (!this.delivered) this.deliver({ ok: false, error });
+  }
+
   cancel(reason: "abort" | "timeout"): void {
     if (this.delivered) return;
     const cause = new DOMException(

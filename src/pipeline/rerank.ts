@@ -1,15 +1,18 @@
+import type { RerankPort } from "../llm/types";
 /**
  * Reranking and position-aware blending.
  * Uses RerankPort to reorder candidates.
  *
  * @module src/pipeline/rerank
  */
-
-import type { RerankPort } from "../llm/types";
 import type { ChunkRow, StorePort } from "../store/types";
 import type { RequestHydration } from "./hydration";
 import type { BlendingTier, FusionCandidate, RerankedCandidate } from "./types";
 
+import {
+  assertInferenceActive,
+  assertInferenceResult,
+} from "../llm/inference-scope";
 import {
   buildIntentAwareRerankQuery,
   selectBestChunkForSteering,
@@ -125,6 +128,7 @@ async function fetchChunkTexts(
   );
 
   for (const candidate of toRerank) {
+    assertInferenceActive();
     const existingSeq = preferredSeqByHash.get(rerankOwnerKey(candidate));
     if (existingSeq !== undefined) {
       const existingCandidate = toRerank.find(
@@ -144,6 +148,7 @@ async function fetchChunkTexts(
 
   const chunkTexts = new Map<string, string>();
   for (const [hash, mirrorHash] of ownerHashes) {
+    assertInferenceActive();
     const chunks = chunksByHash.get(mirrorHash);
     const bestChunk = selectBestChunkForSteering(chunks ?? [], query, intent, {
       preferredSeq: preferredSeqByHash.get(hash) ?? null,
@@ -161,6 +166,7 @@ async function fetchChunkTexts(
   const hashToIndex = new Map<string, number>();
   const texts: string[] = [];
   for (const hash of ownerHashes.keys()) {
+    assertInferenceActive();
     hashToIndex.set(hash, texts.length);
     texts.push(chunkTexts.get(hash) ?? "");
   }
@@ -260,6 +266,7 @@ export async function rerankCandidates(
   const textToUniqueIndex = new Map<string, number>();
 
   for (const [docIndex, text] of texts.entries()) {
+    assertInferenceActive();
     const existingIndex = textToUniqueIndex.get(text);
     if (existingIndex !== undefined) {
       docIndexToUniqueIndex.set(docIndex, existingIndex);
@@ -282,6 +289,7 @@ export async function rerankCandidates(
     uniqueTexts
   );
 
+  assertInferenceResult(rerankResult);
   if (!rerankResult.ok) {
     return {
       candidates: sortAdjustedCandidates(
@@ -299,8 +307,10 @@ export async function rerankCandidates(
   // Normalize rerank scores using min-max
   const scoreByDocIndex = new Map<number, number>();
   for (const score of rerankResult.value) {
+    assertInferenceActive();
     const docIndices = uniqueIndexToDocIndices.get(score.index) ?? [];
     for (const docIndex of docIndices) {
+      assertInferenceActive();
       scoreByDocIndex.set(docIndex, score.score);
     }
   }

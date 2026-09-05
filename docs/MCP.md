@@ -12,6 +12,21 @@ Use GNO as a local MCP server for Claude Desktop, Cursor, Zed, Windsurf, Amp, Ra
 
 ![GNO MCP in Claude Desktop](../assets/screenshots/mcp.jpg)
 
+## Cancellation
+
+Protocol request cancellation and connection loss propagate into each request's
+retrieval, expansion, generation and verification stages, including remote HTTP
+inference. Canceled requests cannot publish a late successful or partial result.
+Queued cancellation removes only the caller's work; an active native operation
+retains capacity until settlement or controlled child exit.
+
+An accepted asynchronous indexing/embedding job owns its lifetime after returning
+a job ID. Closing the accepting transport does not cancel that persistent job.
+Owner-initiated job cancellation stops further inference retries and checkpoint
+publication; interrupted work is reported as failed under the existing job schema,
+with unfinished backlog left pending. Finite shutdown orchestration is a separate
+lifecycle boundary.
+
 ## Filtered retrieval limits
 
 Search candidate budgets apply after supported owner filters (collection, path,

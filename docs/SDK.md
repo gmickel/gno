@@ -46,19 +46,27 @@ options as its third argument, after sampling parameters; embedding methods
 accept them as the second argument and `init` as the first. Reranking accepts
 them as the third argument. Existing calls remain valid.
 
-This contract is being integrated into the adapters and transports; the interface
-alone does **not** make existing adapters cancelable. Do not yet rely on these
-options for end-to-end cancellation. The internal settlement contract delivers
-one caller outcome, suppresses late publication, and retains native ownership
-after cancellation until the native operation settles or its owned child exits.
+SDK `search`, `query`, `ask`, and `vsearch` accept the same operational options.
+They propagate through nested retrieval, expansion, answer generation and semantic
+verification into native inference or the remote HTTP fetch. Cancellation
+suppresses late publication and fallback success. Native ownership remains held
+until the operation actually settles or its owned child exits; port cleanup does
+not make the canceled caller wait for noncooperative evaluation.
+
 Caller cancellation uses `INFERENCE_FAILED` with an `AbortError` cause; deadline
 expiry uses `TIMEOUT` with a `TimeoutError` cause. Native failures retain their
 original structured error. Cancellation is not an automatic retry request.
 
+For remote HTTP inference, `inferenceTimeout` measures the complete request
+from policy/DNS preparation through fetch and response-body consumption. The
+client cannot observe the remote model's load/evaluation boundary. The caller's
+`deadlineAt` remains the tighter outer limit. `loadTimeout` applies only to local
+native loading; it does not configure a remote server.
+
 Native generation supports an evaluation abort signal. Embedding and reranking
 support signals during context creation, but do not promise interruption of
 active evaluation. Stopping the caller's wait does not release native capacity.
-The configured inference timeout starts at evaluation, after loading; it is not
+The configured native inference timeout starts at evaluation, after loading; it is not
 an end-to-end query deadline.
 
 ## Project hints

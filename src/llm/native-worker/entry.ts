@@ -4,6 +4,7 @@ import {
   frameNativeMessage,
   NativeFrameDecoder,
   parseNativeRequest,
+  NativeCancellationSchema,
 } from "./protocol";
 import {
   NativeAckSchema,
@@ -18,6 +19,7 @@ if (!process.send) throw new Error("Native worker requires parent IPC");
 const dispatcher = new NativeDispatcher(config);
 const decoder = new NativeFrameDecoder(config.generation);
 let active: Promise<void> | undefined;
+let activeRequest: { id: number; controller: AbortController } | undefined;
 let awaitingAck: number | undefined;
 let closing: Promise<void> | undefined;
 let lastActivity = Date.now();
@@ -59,6 +61,26 @@ process.on("SIGTERM", () => {
 });
 process.on("message", (message: unknown) => {
   if (closing) return;
+  if (typeof message === "object" && message !== null && "cancel" in message) {
+    const parsed = NativeCancellationSchema.safeParse(message);
+    if (
+      !parsed.success ||
+      parsed.data.generation !== config.generation ||
+      (parsed.data.requestId !== activeRequest?.id &&
+        parsed.data.requestId !== awaitingAck)
+    ) {
+      void shutdown();
+      return;
+    }
+    if (activeRequest?.id === parsed.data.requestId)
+      activeRequest.controller.abort(
+        new DOMException(
+          "Inference cancelled",
+          parsed.data.cancel === "timeout" ? "TimeoutError" : "AbortError"
+        )
+      );
+    return;
+  }
   if (message === "shutdown") {
     void shutdown();
     return;
@@ -113,8 +135,24 @@ process.on("message", (message: unknown) => {
       config.generation,
       config.models
     );
+    const controller = new AbortController();
+    activeRequest = { id: request.requestId, controller };
+    let executionStarted = false;
     active = (async () => {
-      const result = await dispatcher.execute(request);
+      const result = await dispatcher.execute(request, {
+        signal: controller.signal,
+        deadlineAt: request.deadlineAt,
+        onExecutionStart: () => {
+          if (executionStarted) return;
+          executionStarted = true;
+          process.send?.({
+            version: 1,
+            generation: config.generation,
+            requestId: request.requestId,
+            executionStarted: true,
+          });
+        },
+      });
       activity = result.activity;
       awaitingAck = request.requestId;
       for (const frame of frameNativeMessage(result.response))
@@ -125,6 +163,7 @@ process.on("message", (message: unknown) => {
       })
       .finally(() => {
         active = undefined;
+        activeRequest = undefined;
       });
   } catch {
     void shutdown();

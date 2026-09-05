@@ -68,7 +68,10 @@ export class ModelManager {
   private loadSuccesses = 0;
   private loadFailures = 0;
 
-  constructor(config: ModelConfig) {
+  constructor(
+    config: ModelConfig,
+    private readonly awaitNativeLoadSettlement = false
+  ) {
     this.config = config;
   }
 
@@ -145,10 +148,14 @@ export class ModelManager {
   ): Promise<Llama> {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let expired = false;
+    const initializationDeadline = performance.now() + timeoutMs;
     const initialization = getLlama(options).then(async (llama) => {
-      if (expired) {
+      if (expired || performance.now() >= initializationDeadline) {
         await llama.dispose();
-        throw new Error("Backend initialization expired");
+        throw new DOMException(
+          "Backend initialization expired",
+          "TimeoutError"
+        );
       }
       return llama;
     });
@@ -159,25 +166,27 @@ export class ModelManager {
     this.lateCleanup.add(cleanup);
     void cleanup.finally(() => this.lateCleanup.delete(cleanup));
     try {
-      return await Promise.race([
-        initialization,
-        new Promise<never>((_, reject) => {
-          timeoutId = setTimeout(() => {
-            expired = true;
-            if (!backendTimeoutWarned) {
-              backendTimeoutWarned = true;
-              console.warn(
-                `[llama] Backend initialization timed out after ${timeoutMs}ms`
-              );
-            }
-            const error = new Error(
-              `Backend init timeout after ${timeoutMs}ms`
+      const deadline = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          expired = true;
+          if (!backendTimeoutWarned) {
+            backendTimeoutWarned = true;
+            console.warn(
+              `[llama] Backend initialization timed out after ${timeoutMs}ms`
             );
-            error.name = "TimeoutError";
-            reject(error);
-          }, timeoutMs);
-        }),
-      ]);
+          }
+          const error = new Error(`Backend init timeout after ${timeoutMs}ms`);
+          error.name = "TimeoutError";
+          reject(error);
+        }, timeoutMs);
+      });
+      // Native child completion must wait for actual backend settlement even
+      // after the init budget expires. Expiry still rejects and forbids fallback.
+      if (this.awaitNativeLoadSettlement) {
+        void deadline.catch(() => {});
+        return await initialization;
+      }
+      return await Promise.race([initialization, deadline]);
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -188,7 +197,8 @@ export class ModelManager {
   loadModel(
     modelPath: string,
     uri: string,
-    type: ModelType
+    type: ModelType,
+    signal?: AbortSignal
   ): Promise<LlmResult<LoadedModel>> {
     if (this.closing)
       return Promise.resolve({
@@ -217,11 +227,14 @@ export class ModelManager {
     }
 
     // Start new load with cleanup
-    const loadPromise = this.loadModelInternal(modelPath, uri, type).finally(
-      () => {
-        this.inflightLoads.delete(uri);
-      }
-    );
+    const loadPromise = this.loadModelInternal(
+      modelPath,
+      uri,
+      type,
+      signal
+    ).finally(() => {
+      this.inflightLoads.delete(uri);
+    });
     this.inflightLoads.set(uri, loadPromise);
     return loadPromise;
   }
@@ -229,29 +242,51 @@ export class ModelManager {
   private async loadModelInternal(
     modelPath: string,
     uri: string,
-    type: ModelType
+    type: ModelType,
+    signal?: AbortSignal
   ): Promise<LlmResult<LoadedModel>> {
     this.loadAttempts += 1;
     const timeoutMs = this.config.loadTimeout;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let timedOut = false;
+    const controller = new AbortController();
+    const loadSignal = signal
+      ? AbortSignal.any([signal, controller.signal])
+      : controller.signal;
 
     // Capture loadPromise outside try block so we can dispose it on timeout
     let loadPromise: Promise<LlamaModel> | null = null;
 
     try {
       const llama = await this.getLlama();
-      loadPromise = llama.loadModel({ modelPath });
+      loadSignal.throwIfAborted();
+      const loadDeadline = performance.now() + timeoutMs;
+      loadPromise = llama.loadModel({ modelPath, loadSignal });
 
       // Create timeout with proper cleanup
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
           timedOut = true;
+          controller.abort(
+            new DOMException("Model load timed out", "TimeoutError")
+          );
           reject(new Error(`Load timeout after ${timeoutMs}ms`));
         }, timeoutMs);
       });
 
-      const model = await Promise.race([loadPromise, timeoutPromise]);
+      // The isolated child cannot report completion while a noncooperative
+      // loader still owns native allocations. Parent cancellation delivers early.
+      if (this.awaitNativeLoadSettlement) void timeoutPromise.catch(() => {});
+      const model = this.awaitNativeLoadSettlement
+        ? await loadPromise
+        : await Promise.race([loadPromise, timeoutPromise]);
+      if (this.awaitNativeLoadSettlement && performance.now() >= loadDeadline)
+        timedOut = true;
+      if (this.awaitNativeLoadSettlement && (timedOut || loadSignal.aborted)) {
+        await model.dispose();
+        if (timedOut) throw new Error("Model load timeout");
+        loadSignal.throwIfAborted();
+      }
 
       // Clear timeout on success
       if (timeoutId) {
@@ -291,7 +326,7 @@ export class ModelManager {
       }
 
       // Dispose late-arriving model after timeout to prevent memory leak
-      if (timedOut && loadPromise) {
+      if (timedOut && loadPromise && !this.awaitNativeLoadSettlement) {
         const cleanup = loadPromise.then(
           (model) => {
             // Dispose model that arrived after timeout
@@ -308,7 +343,11 @@ export class ModelManager {
       }
 
       if (e instanceof Error) {
-        if (e.message.includes("timeout")) {
+        if (
+          timedOut ||
+          e.name === "TimeoutError" ||
+          e.message.includes("timeout")
+        ) {
           return {
             ok: false,
             error: timeoutError(uri, "load", this.config.loadTimeout),

@@ -1,11 +1,10 @@
+import type { Config } from "../config/types";
 /**
  * Vector search pipeline.
  * Wraps VectorIndexPort.searchNearest() to produce SearchResults.
  *
  * @module src/pipeline/vsearch
  */
-
-import type { Config } from "../config/types";
 import type { EmbeddingPort } from "../llm/types";
 import type { DocumentRow, StorePort } from "../store/types";
 import type { VectorIndexPort } from "../store/vector/types";
@@ -13,6 +12,11 @@ import type { SearchOptions, SearchResult, SearchResults } from "./types";
 
 import { normalizeContentTypes } from "../config/content-types";
 import { projectRecordEvidenceMetadata } from "../core/record-metadata";
+import {
+  assertInferenceActive,
+  assertInferenceResult,
+  withInferenceScope,
+} from "../llm/inference-scope";
 import { getContentBatch } from "../store/content-batch";
 import { err, ok } from "../store/types";
 import { resolveVectorSearchIdentity } from "../store/vector/variant-search";
@@ -84,6 +88,17 @@ function vectorUnavailableMessage(vectorIndex: VectorIndexPort): string {
  */
 // oxlint-disable-next-line max-lines-per-function -- search pipeline with expansion, reranking, scoring
 export async function searchVectorWithEmbedding(
+  deps: VectorSearchDeps,
+  query: string,
+  queryEmbedding: Float32Array,
+  options: SearchOptions = {}
+): Promise<ReturnType<typeof ok<SearchResults>>> {
+  return withInferenceScope(options, () =>
+    searchVectorWithEmbeddingOwned(deps, query, queryEmbedding, options)
+  );
+}
+
+async function searchVectorWithEmbeddingOwned(
   deps: VectorSearchDeps,
   query: string,
   queryEmbedding: Float32Array,
@@ -167,6 +182,7 @@ export async function searchVectorWithEmbedding(
   const collectionPaths = new Map<string, string>();
   if (collectionsResult.ok) {
     for (const c of collectionsResult.value) {
+      assertInferenceActive();
       collectionPaths.set(c.name, c.path);
     }
   }
@@ -216,6 +232,7 @@ export async function searchVectorWithEmbedding(
   >();
 
   for (const vec of vecResults) {
+    assertInferenceActive();
     const baseScore = normalizeVectorScore(vec.distance);
     if (!projectAffinityActive && baseScore < minScore) {
       continue;
@@ -260,6 +277,7 @@ export async function searchVectorWithEmbedding(
         ? matchingDocs
         : [matchingDocs.at(-1)!];
     for (const doc of docs) {
+      assertInferenceActive();
       const collectionPath = collectionPaths.get(doc.collection);
       const sourceRelPath = doc.recordSourcePath ?? doc.relPath;
       const excluded =
@@ -379,6 +397,7 @@ export async function searchVectorWithEmbedding(
     const fullContentByHash = fullContentResult.value;
 
     for (const { doc, chunk, rawDistance, score } of bestByDocid.values()) {
+      assertInferenceActive();
       const fullContent = doc.mirrorHash
         ? fullContentByHash.get(doc.mirrorHash)
         : undefined;
@@ -474,6 +493,7 @@ export async function searchVectorWithEmbedding(
 
   const finalResults = results.slice(0, limit);
   for (const [index, result] of finalResults.entries()) {
+    assertInferenceActive();
     const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
     if (metadata) metadata.retrievalRank = index + 1;
   }
@@ -532,6 +552,16 @@ export async function searchVector(
   query: string,
   options: SearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
+  return withInferenceScope(options, () =>
+    searchVectorOwned(deps, query, options)
+  );
+}
+
+async function searchVectorOwned(
+  deps: VectorSearchDeps,
+  query: string,
+  options: SearchOptions = {}
+): Promise<ReturnType<typeof ok<SearchResults>>> {
   const { vectorIndex, embedPort } = deps;
 
   // Check if vector search is available
@@ -543,6 +573,7 @@ export async function searchVector(
   const embedResult = await embedPort.embed(
     formatQueryForEmbedding(query, embedPort.modelUri)
   );
+  assertInferenceResult(embedResult);
   if (!embedResult.ok) {
     return err(
       "QUERY_FAILED",
@@ -676,6 +707,7 @@ async function buildDocumentMap(
       const tagsByDocId = tagsResult.value;
 
       for (const doc of activeDocs) {
+        assertInferenceActive();
         const docTags = new Set(
           (tagsByDocId.get(doc.id) ?? []).map((t) => t.tag)
         );
@@ -698,6 +730,7 @@ async function buildDocumentMap(
   }
 
   for (const doc of activeDocs) {
+    assertInferenceActive();
     const sourceRelPath = doc.recordSourcePath ?? doc.relPath;
     if (
       options.relPathPrefix !== undefined &&

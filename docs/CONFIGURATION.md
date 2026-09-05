@@ -1012,15 +1012,26 @@ models:
 2,147,483,647; zero, negative, fractional and overflowing values fail configuration
 validation. Neither setting has a disabled-by-zero mode.
 
-The cancellation contract defines `inferenceTimeout` from native evaluation
-start, after model/context loading. A caller's absolute `deadlineAt` also covers
-queueing and loading, through response publication. Integration of this contract
-is in progress: the current native parent watchdog still uses
-`loadTimeout + inferenceTimeout` from dispatch, and the new optional port
-controls are not yet enforced across adapters/transports. These are not current
-end-to-end query guarantees. Generation can receive an evaluation abort signal;
-embedding/reranking evaluation may be noncooperative, so canceled active work
-must remain owned until settlement or controlled child exit.
+`inferenceTimeout` starts at native evaluation, after model/context loading.
+The child reports evaluation start using the current generation and request ID;
+metadata and queued requests do not start that timer. `loadTimeout` bounds the
+dispatched request's loading phase independently; the two timers are never added.
+A caller's absolute `deadlineAt` covers queueing and loading through response
+publication. Generation receives an evaluation abort signal. Embedding/reranking
+evaluation may be noncooperative, so canceled active work retains capacity until
+actual settlement. After five seconds without settlement, the parent retires its
+isolated child; queued operations fail explicitly and are never replayed.
+
+For remote HTTP inference, `inferenceTimeout` measures the complete request
+from policy/DNS preparation through fetch and response-body consumption. The
+client cannot observe the remote model's load/evaluation boundary. The caller's
+`deadlineAt` remains the tighter outer limit. `loadTimeout` applies only to local
+native loading; it does not configure a remote server.
+
+The separate expansion-stage budget still falls back without expansion when it
+expires, while aborting its generation. A caller abort/deadline cannot become a
+successful lexical fallback. Operational cancellation options do not change
+sampling, model selection, candidate counts, or ranking.
 
 The resident shutdown contract allocates a shared five-second drain, five-second
 abort-settlement period, then at most one second awaiting forced owned-child
