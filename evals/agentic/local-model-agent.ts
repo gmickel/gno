@@ -12,7 +12,10 @@ import type {
 import type { FinalEnvelope } from "./types";
 
 import { CONFIG_VERSION, DEFAULT_FTS_TOKENIZER } from "../../src/config/types";
-import { LlmAdapter } from "../../src/llm/nodeLlamaCpp/adapter";
+import { ModelCache } from "../../src/llm/cache";
+import { NodeLlamaCppGeneration } from "../../src/llm/nodeLlamaCpp/generation";
+import { ModelManager } from "../../src/llm/nodeLlamaCpp/lifecycle";
+import { getModelConfig } from "../../src/llm/registry";
 import { AgenticAgentError, AgenticHarnessError } from "./adapter";
 import {
   assertSha256,
@@ -271,18 +274,19 @@ const createDefaultRuntime: LocalModelRuntimeFactory = async (
       warmModelTtl: 300_000,
     },
   };
-  const adapter = new LlmAdapter(config);
-  const portResult = await adapter.createGenerationPort(fileUri, {
-    policy: { offline: true, allowDownload: false },
-    egressCollections: "all",
+  const resolved = await new ModelCache().ensureModel(fileUri, "gen", {
+    offline: true,
+    allowDownload: false,
   });
-  if (!portResult.ok) {
-    throw new AgenticHarnessError(
-      "model_port_failed",
-      portResult.error.message
-    );
+  if (!resolved.ok) {
+    throw new AgenticHarnessError("model_port_failed", resolved.error.message);
   }
-  const manager = adapter.getManager();
+  // This opt-in development benchmark owns its native coordinator runtime.
+  // Exact synchronous token counts use the same locked GGUF as generation.
+  // Product adapters remain child-isolated; do not restore their native manager
+  // access or replace this tokenizer with an estimate/proxy generation call.
+  const manager = new ModelManager(getModelConfig(config));
+  const port = new NodeLlamaCppGeneration(manager, fileUri, resolved.value);
   return {
     async load(signal) {
       signal.throwIfAborted();
@@ -296,7 +300,7 @@ const createDefaultRuntime: LocalModelRuntimeFactory = async (
     },
     async generate(prompt, seed, maxTokens, signal) {
       signal.throwIfAborted();
-      const generated = await portResult.value.generate(prompt, {
+      const generated = await port.generate(prompt, {
         temperature: 0,
         seed,
         maxTokens,
@@ -311,7 +315,7 @@ const createDefaultRuntime: LocalModelRuntimeFactory = async (
       return generated.value;
     },
     countTokens(text) {
-      const model = adapter.getManager().getLoadedModel(fileUri)?.model as
+      const model = manager.getLoadedModel(fileUri)?.model as
         | { tokenize(value: string): unknown[] }
         | undefined;
       if (!model)
@@ -322,7 +326,8 @@ const createDefaultRuntime: LocalModelRuntimeFactory = async (
       return model.tokenize(text).length;
     },
     async dispose() {
-      await adapter.dispose();
+      await port.dispose();
+      await manager.disposeAll();
     },
   };
 };
@@ -435,7 +440,12 @@ export class LocalModelAgentFactory implements OuterAgentFactory {
     const lock = await this.getLock();
     const runtime = await this.runtimeFactory(this.modelPath as string, lock);
     const started = performance.now();
-    await runtime.load(signal);
+    try {
+      await runtime.load(signal);
+    } catch (cause) {
+      await runtime.dispose();
+      throw cause;
+    }
     const outerRuntime: OuterAgentRuntime = {
       async createSession(context: AgentCreateContext) {
         return new LocalModelSession(context, lock, runtime);
