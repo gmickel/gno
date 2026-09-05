@@ -1,5 +1,5 @@
 {
-  "qa_verdict": "NO",
+  "qa_verdict": "YES",
   "scope": "fn150 synthetic graph consumers on635293b6; browser ondd38f777",
   "mechanical_equivalence": "PASS",
   "existing_findings": [
@@ -18,6 +18,33 @@
       "evidence": "public-matrix.json and postfix/public-matrix.json"
     }
   ],
-  "full_gates": "host pending",
-  "hosted_site": "queued only"
+  "full_gates": "PASS; integrated-gates.json",
+  "hosted_site": "Explicit user deferral until after aggregate PR; outside this acceptance checkpoint",
+  "qa_outcome": "SHIP",
+  "open_p0p1": [],
+  "disposition": "Known P2 retained without severity change; QA workflow6.1 uses open P0/P1 or uncovered live criteria as blockers. Previous NO was conservative pending integration; scoped fn150 coverage now complete.",
+  "evidence_commits": [
+    "9d6c73a9",
+    "635293b6"
+  ],
+  "rid_coverage": [
+    {
+      "rid": "R4",
+      "status": "covered",
+      "evidence": [
+        "postfix/public-matrix.json",
+        "postfix/checks.json",
+        "recovery-task4-evidence.json"
+      ]
+    },
+    {
+      "rid": "R5",
+      "status": "covered",
+      "evidence": [
+        "scaling.json",
+        "browser-evidence.json",
+        "integrated-gates.json"
+      ]
+    }
+  ]
 }

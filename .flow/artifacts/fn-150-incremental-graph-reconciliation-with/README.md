@@ -1,8 +1,10 @@
 # fn150 final graph QA
 
-Task remains in progress pending the host's integrated gates. Mechanical graph
+Task acceptance is complete; the host owns Flow completion. Mechanical graph
 equivalence passes after the document-ID lookup fix. Browser QA retains the
-existing graph-header overflow finding tracked with fn151/fn152.
+existing non-blocking P2 graph-header overflow finding tracked with fn151/fn152.
+Scoped QA is YES/SHIP with no open P0/P1. See integrated-gates.json for the
+host’s green full-gate evidence; original runtime captures remain unchanged.
 
 ## Identities and isolation
 
@@ -94,6 +96,11 @@ The owned browser session and server were closed after capture.
 
 Focused initial graph gates passed 17 tests/167 assertions (`baseline.log`).
 Typed lint and formatting passed for changed source/tests; docs verification
-passed 15 checks with two existing skips. Final repository lint/typecheck/full
-tests belong to the host after concurrent work integrates. Hosted gno.sh changes
-remain queued until the PR stage; no hosted edits or deployment were performed.
+passed 15 checks with two existing skips. Host final repository lint/typecheck/full tests now pass: 5,132 tests, two
+existing skips, zero failures and 41,089 assertions across 601 files. Lint has
+zero errors and 23 existing warnings; formatting, docs, package smoke, memory
+and separate lexical evals pass. The initial combined lexical invocation failed
+argument parsing and was superseded by separate successful runs. Logs and hashes
+appear in integrated-gates.json. Hosted gno.sh changes and site QA are explicitly
+deferred by the user until after the aggregate PR; no hosted edits or deployment
+were performed.

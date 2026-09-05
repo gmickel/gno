@@ -140,6 +140,10 @@
     "sha256": "475e8d049e8aeb2eeb2fdbea45f263e0a59162022f07f881efffcb77f24748de"
   },
   {
+    "path": "integrated-gates.json",
+    "sha256": "0a6691a21e32a15c74b97812153681bae181c1703443e50e4bf22d1ff63ec410"
+  },
+  {
     "path": "lint.log",
     "sha256": "c2dc747d62e422a16f41aa2f67d45060c7b3e838b035a50f21ac84ebd77a15fb"
   },
@@ -325,11 +329,11 @@
   },
   {
     "path": "qa-verdict.json",
-    "sha256": "dd3c16c5b6ab5e3fd6f331e4c05e4f9358a2aa7df5b065404ec45f1635a03871"
+    "sha256": "d4c88d6de70c27db4ea1be49000a8904a9960f306d9c5df756e0af93d7741811"
   },
   {
     "path": "README.md",
-    "sha256": "f2ca719293a2bc37e4cdb7161d2999894a845570fcb07872e84b7c91954882cf"
+    "sha256": "190b6a3df6c8d50e0a9971c694a78f61a0fb338ace75b89b93b3ead2d5960d32"
   },
   {
     "path": "recovery-task4-evidence.json",
