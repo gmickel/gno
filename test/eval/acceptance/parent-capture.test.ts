@@ -162,7 +162,9 @@ test("atomic child ledger growth bypasses BunFile cached length; only missing fi
     expect(await readChildEventLedger(path)).toEqual(second);
     await Bun.write(`${path}.next`, "{");
     await rename(`${path}.next`, path);
-    await expect(readChildEventLedger(path)).rejects.toThrow("parse JSON");
+    expect(
+      await readChildEventLedger(path).catch((error: unknown) => error)
+    ).toBeInstanceOf(SyntaxError);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
