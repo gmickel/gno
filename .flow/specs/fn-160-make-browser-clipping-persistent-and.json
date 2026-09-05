@@ -1,0 +1,26 @@
+{
+  "branch_name": "fn-160-make-browser-clipping-persistent-and",
+  "created_at": "2026-09-05T15:51:09.737599Z",
+  "depends_on_epics": [
+    "fn-106-browser-clipper-with-provenance"
+  ],
+  "id": "fn-160-make-browser-clipping-persistent-and",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-160-make-browser-clipping-persistent-and.md",
+  "status": "open",
+  "title": "Make browser clipping persistent and remember collection choices",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-05T15:52:02.569496Z"
+}
