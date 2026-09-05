@@ -3,6 +3,7 @@
 import { realpath, stat } from "node:fs/promises";
 import { z } from "zod";
 
+import type { SearchResultsTraceMetadata } from "../../src/pipeline/types";
 import type { DeterministicRecord } from "./records";
 export interface NativeCapture {
   runId: string;
@@ -15,6 +16,13 @@ export interface NativeCapture {
   errors: string[];
   /** Raw child attribution and context/tokenizer telemetry, never flattened for comparison. */
   nativeRequests?: unknown[];
+  /** Actual pipeline result before SDK decoration drops non-enumerable metadata. */
+  searchResults?: Array<{
+    source: string;
+    method: string;
+    result: unknown;
+    trace: SearchResultsTraceMetadata | null;
+  }>;
   parentNative?: {
     pid: number;
     bindingLoads: string[];

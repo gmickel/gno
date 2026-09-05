@@ -101,9 +101,9 @@ export async function projectAcceptance(
       reasons.push(`model_identity_unverified:${input.modelId}`);
   }
   const trace =
-    raw && SEARCH_RESULTS_TRACE_METADATA in raw
+    (raw && SEARCH_RESULTS_TRACE_METADATA in raw
       ? raw[SEARCH_RESULTS_TRACE_METADATA]
-      : undefined;
+      : undefined) ?? receipt.searchResults?.at(-1)?.trace;
   const capabilities = trace?.capabilityOutcomes ?? receipt.capabilities;
   const vector = capabilities.findLast(
     (item) => item.capability === "semantic_search"
@@ -266,6 +266,46 @@ export type NativeAcceptanceInit = GnoClientInitOptions & {
   config: NonNullable<GnoClientInitOptions["config"]>;
 };
 
+/** Observe the selected SDK instance's actual pipeline result without changing it. */
+export function captureSdkSearchResults(
+  client: object,
+  capture: NativeCapture
+): () => void {
+  const method = "decorateSearchResults";
+  const original = Reflect.get(client, method) as unknown;
+  if (typeof original !== "function")
+    throw new Error("Unsupported SDK search-result capture boundary");
+  const descriptor = Object.getOwnPropertyDescriptor(client, method);
+  const observer = function (
+    this: object,
+    result: SearchResults
+  ): SearchResults {
+    const trace = result?.[SEARCH_RESULTS_TRACE_METADATA];
+    (capture.searchResults ??= []).push({
+      source: "src/sdk/client.ts",
+      method,
+      result: structuredClone(result),
+      trace: trace ? structuredClone(trace) : null,
+    });
+    if (!trace || !Array.isArray(trace.capabilityOutcomes))
+      capture.errors.push(
+        "SDK pipeline capability metadata unavailable at decoration boundary"
+      );
+    return Reflect.apply(original, this, [result]) as SearchResults;
+  };
+  Object.defineProperty(client, method, {
+    value: observer,
+    configurable: true,
+    writable: true,
+  });
+  return () => {
+    if (Reflect.get(client, method) !== observer)
+      throw new Error("SDK capture boundary changed before restore");
+    if (descriptor) Object.defineProperty(client, method, descriptor);
+    else Reflect.deleteProperty(client, method);
+  };
+}
+
 /** Retain this session for warm/post-idle strata; close explicitly at block end.
  * One capture owner per process. Calls on a session must not overlap. */
 export async function createNativeAcceptanceSession(
@@ -291,14 +331,20 @@ export async function createNativeAcceptanceSession(
       crypto.randomUUID(),
       manifest.models
     );
-  let client: Awaited<ReturnType<typeof createGnoClient>>;
+  let client!: Awaited<ReturnType<typeof createGnoClient>>;
+  let restoreSearchResults: (() => void) | undefined;
   try {
     client = await createGnoClient({
       ...init,
       downloadPolicy: { offline: true, allowDownload: false },
     });
+    restoreSearchResults = captureSdkSearchResults(client, session.capture);
   } catch (error) {
-    session.restore();
+    try {
+      await client?.close();
+    } finally {
+      session.restore();
+    }
     throw error;
   }
   let busy = false;
@@ -325,6 +371,7 @@ export async function createNativeAcceptanceSession(
       session.capture.modelInputs = [];
       session.capture.modelOutputs = [];
       session.capture.capabilities = [];
+      session.capture.searchResults = [];
       session.capture.errors = [];
       let raw: SearchResults | AskResult | null = null;
       let failure: string | undefined;
@@ -373,7 +420,11 @@ export async function createNativeAcceptanceSession(
       try {
         await client.close();
       } finally {
-        session.restore();
+        try {
+          restoreSearchResults?.();
+        } finally {
+          session.restore();
+        }
       }
     },
   };

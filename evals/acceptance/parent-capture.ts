@@ -254,6 +254,7 @@ export async function installParentCapture(
   function collect(final = false): NativeCapture {
     const next = emptyCapture(runId);
     next.capabilities = capture.capabilities;
+    next.searchResults = capture.searchResults;
     receipts.length = 0;
     for (const item of requests.filter((item) => item.scope === scope)) {
       try {
@@ -301,6 +302,7 @@ export async function installParentCapture(
       caseId = label;
       scopeOpen = true;
       capture.capabilities = [];
+      capture.searchResults = [];
       collect();
     },
     finish() {

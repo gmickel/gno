@@ -4,6 +4,7 @@ import { compareAcceptance } from "../../../evals/acceptance/compare";
 import { ACCEPTANCE_SCHEMA_VERSION } from "../../../evals/acceptance/manifest";
 import {
   projectAcceptance,
+  captureSdkSearchResults,
   replayAcceptance,
   type AdapterRequest,
 } from "../../../evals/acceptance/native-adapter";
@@ -437,3 +438,59 @@ test("owned CLI output cannot turn uninstrumented vectorsUsed into native covera
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test.each(["used", "false-vector", "fallback", "missing-trace"] as const)(
+  "SDK decoration captures actual hidden outcomes with tracing off: %s",
+  async (scenario) => {
+    const capture = receipt();
+    const incoming = structuredClone(raw);
+    const trace = structuredClone(raw[SEARCH_RESULTS_TRACE_METADATA]!);
+    if (scenario === "false-vector") incoming.meta.vectorsUsed = false;
+    if (scenario === "fallback") {
+      trace.capabilityOutcomes.push({
+        capability: "query_expansion",
+        status: "failed",
+        reasonCode: "expansion_timeout",
+      });
+      trace.fallbackCodes.push("expansion_timeout");
+    }
+    if (scenario !== "missing-trace")
+      Object.defineProperty(incoming, SEARCH_RESULTS_TRACE_METADATA, {
+        value: trace,
+        enumerable: false,
+      });
+    class SelectedClient {
+      decorateSearchResults(result: SearchResults): SearchResults {
+        return {
+          ...result,
+          results: result.results.map((item) => ({ ...item })),
+        };
+      }
+    }
+    const client = new SelectedClient();
+    const original = client.decorateSearchResults;
+    const restore = captureSdkSearchResults(client, capture);
+    const output = client.decorateSearchResults(incoming);
+    expect(output[SEARCH_RESULTS_TRACE_METADATA]).toBeUndefined();
+    expect(output.meta).toBe(incoming.meta);
+    expect(capture.capabilities).toEqual([]);
+    expect(capture.searchResults?.[0]).toEqual({
+      source: "src/sdk/client.ts",
+      method: "decorateSearchResults",
+      result: structuredClone(incoming),
+      trace: scenario === "missing-trace" ? null : trace,
+    });
+    const projected = await projectAcceptance(request, output, capture, read);
+    expect(projected.coverage).toBe(
+      scenario === "used" ? "complete" : "incomplete"
+    );
+    if (scenario === "fallback")
+      expect(projected.reasons).toContain("native_fallback");
+    restore();
+    expect(client.decorateSearchResults).toBe(original);
+    expect(Object.hasOwn(client, "decorateSearchResults")).toBe(false);
+    expect(() => captureSdkSearchResults({}, capture)).toThrow(
+      "Unsupported SDK"
+    );
+  }
+);
