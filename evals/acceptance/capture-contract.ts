@@ -106,9 +106,9 @@ export function emptyCapture(runId: string): NativeCapture {
 export function captureContextArguments(
   args: unknown[]
 ): z.infer<ReturnType<typeof z.json>> {
-  function encode(value: unknown): unknown {
+  function encode(value: unknown, contextOptions = false): unknown {
     if (value === undefined) return { $undefined: true };
-    if (Array.isArray(value)) return value.map(encode);
+    if (Array.isArray(value)) return value.map((entry) => encode(entry));
     if (value !== null && typeof value === "object") {
       if (
         Object.getPrototypeOf(value) !== Object.prototype &&
@@ -116,10 +116,54 @@ export function captureContextArguments(
       )
         throw new Error("Unsupported native context argument object");
       return Object.fromEntries(
-        Object.entries(value).map(([key, entry]) => [key, encode(entry)])
+        Object.entries(value).map(([key, entry]) => [
+          key,
+          contextOptions &&
+          (key === "createSignal" || key === "signal") &&
+          entry instanceof AbortSignal
+            ? {
+                $operational: "AbortSignal",
+                aborted: entry.aborted,
+                reason: captureAbortReason(entry.reason),
+              }
+            : encode(entry),
+        ])
       );
     }
     return value;
   }
-  return exactJson(encode(args));
+  return exactJson(args.map((argument) => encode(argument, true)));
+}
+
+function captureAbortReason(reason: unknown): unknown {
+  if (reason === undefined) return { $undefined: true };
+  if (reason instanceof Error || reason instanceof DOMException)
+    return { name: reason.name, message: reason.message };
+  try {
+    return exactJson(reason);
+  } catch {
+    return { $unsupportedReason: typeof reason };
+  }
+}
+
+/** Operational controls are recorded in contextEvents, never model-input parity. */
+export function captureContextModelArguments(args: unknown[]): unknown[] {
+  return args.map((argument) => {
+    if (
+      argument === null ||
+      typeof argument !== "object" ||
+      (Object.getPrototypeOf(argument) !== Object.prototype &&
+        Object.getPrototypeOf(argument) !== null)
+    )
+      return argument;
+    return Object.fromEntries(
+      Object.entries(argument).filter(
+        ([key, value]) =>
+          !(
+            (key === "createSignal" || key === "signal") &&
+            (value === undefined || value instanceof AbortSignal)
+          )
+      )
+    );
+  });
 }

@@ -23,6 +23,7 @@ import {
   captureArguments,
   hashFile,
   captureContextArguments,
+  captureContextModelArguments,
   exactJson,
   type NativeCapture,
 } from "./capture-contract";
@@ -169,6 +170,7 @@ export function installNativeCapture(
         model,
         "createEmbeddingContext",
         async function (this: LlamaModel, ...contextArgs) {
+          contextEvent("createEmbeddingContext", contextArgs);
           const context = await create.apply(this, contextArgs);
           const embed = context.getEmbeddingFor;
           replace(context, "getEmbeddingFor", async function (...input) {
@@ -177,7 +179,9 @@ export function installNativeCapture(
               modelId: result.value.uri,
               input: {
                 nativeMethod: "getEmbeddingFor",
-                context: captureArguments(contextArgs),
+                context: captureArguments(
+                  captureContextModelArguments(contextArgs)
+                ),
                 arguments: captureArguments(input),
               },
             });

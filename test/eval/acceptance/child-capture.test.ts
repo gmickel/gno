@@ -8,6 +8,7 @@ import {
   emptyCapture,
   captureArguments,
   captureContextArguments,
+  captureContextModelArguments,
 } from "../../../evals/acceptance/capture-contract";
 import {
   appendChildCapture,
@@ -15,6 +16,7 @@ import {
   type ChildIdentity,
   type ChildReceipt,
 } from "../../../evals/acceptance/child-receipt";
+import { installNativeCapture } from "../../../evals/acceptance/native-capture";
 import { installParentCapture } from "../../../evals/acceptance/parent-capture";
 import {
   frameNativeMessage,
@@ -22,6 +24,7 @@ import {
   type NativeRequest,
 } from "../../../src/llm/native-worker/protocol";
 import { nativeWorkerEnvironment } from "../../../src/llm/native-worker/runtime-config";
+import { ModelManager } from "../../../src/llm/nodeLlamaCpp/lifecycle";
 
 const identity: ChildIdentity = {
   runId: "test",
@@ -490,6 +493,125 @@ test("native context options preserve nested undefined fields from ranking conte
       _ranking: true,
     },
   ]);
+});
+
+test("context signal telemetry preserves semantic inputs and rejects unknown objects", () => {
+  const controller = new AbortController();
+  const semantic = {
+    contextSize: 2048,
+    batchSize: 128,
+    threads: 6,
+    sequences: 2,
+    _ranking: true,
+    flashAttention: false,
+  };
+  const options = { ...semantic, createSignal: controller.signal };
+  const before = captureContextArguments([options]);
+  expect(before).toEqual([
+    {
+      ...semantic,
+      createSignal: {
+        $operational: "AbortSignal",
+        aborted: false,
+        reason: { $undefined: true },
+      },
+    },
+  ]);
+  controller.abort(new DOMException("caller left", "AbortError"));
+  expect(captureContextArguments([options])).toEqual([
+    {
+      ...semantic,
+      createSignal: {
+        $operational: "AbortSignal",
+        aborted: true,
+        reason: { name: "AbortError", message: "caller left" },
+      },
+    },
+  ]);
+  expect(before).toEqual([
+    {
+      ...semantic,
+      createSignal: {
+        $operational: "AbortSignal",
+        aborted: false,
+        reason: { $undefined: true },
+      },
+    },
+  ]);
+  expect(captureContextModelArguments([options])).toEqual([semantic]);
+  expect(
+    captureContextModelArguments([{ ...semantic, signal: undefined }])
+  ).toEqual([semantic]);
+  expect(options.createSignal).toBe(controller.signal);
+  expect(() => captureContextArguments([{ other: controller.signal }])).toThrow(
+    "Unsupported native context argument object"
+  );
+  expect(() => captureContextArguments([{ createSignal: new Date() }])).toThrow(
+    "Unsupported native context argument object"
+  );
+  expect(() => captureContextArguments([{ callback: () => {} }])).toThrow();
+});
+
+test("embedding context capture forwards original cancellation options and preserves model context", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gno-context-control-"));
+  const path = join(root, "model.gguf");
+  await Bun.write(path, "synthetic capture fixture");
+  const sha256 = new Bun.CryptoHasher("sha256")
+    .update(await Bun.file(path).arrayBuffer())
+    .digest("hex");
+  const semantic = {
+    contextSize: 2048,
+    batchSize: 128,
+    threads: 6,
+    sequences: 2,
+  };
+  const controller = new AbortController();
+  const options = { ...semantic, createSignal: controller.signal };
+  let forwarded: unknown;
+  const model = {
+    createEmbeddingContext(value: unknown) {
+      forwarded = value;
+      return Promise.resolve({
+        getEmbeddingFor: () => Promise.resolve({ vector: [0.125] }),
+      });
+    },
+  };
+  const original = ModelManager.prototype.loadModel;
+  ModelManager.prototype.loadModel = (() =>
+    Promise.resolve({
+      ok: true,
+      value: { uri: "fixture", model, type: "embed", loadedAt: Date.now() },
+    })) as typeof original;
+  const session = installNativeCapture("context-controls", [
+    { role: "embedding", id: "fixture", sha256, tokenizerSha256: sha256 },
+  ]);
+  try {
+    const manager = Object.create(ModelManager.prototype) as ModelManager;
+    await manager.loadModel(path, "fixture", "embed");
+    const context = await model.createEmbeddingContext(options);
+    await context.getEmbeddingFor();
+    expect(forwarded).toBe(options);
+    expect((forwarded as typeof options).createSignal).toBe(controller.signal);
+    expect(session.capture.modelInputs[0]?.input).toEqual({
+      nativeMethod: "getEmbeddingFor",
+      context: [semantic],
+      arguments: [],
+    });
+    expect(session.capture.contextEvents?.[0]?.arguments).toEqual([
+      {
+        ...semantic,
+        createSignal: {
+          $operational: "AbortSignal",
+          aborted: false,
+          reason: { $undefined: true },
+        },
+      },
+    ]);
+  } finally {
+    session.restore();
+    ModelManager.prototype.loadModel = original;
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("actual worker removes only its QA preload before dependency fork; nonentry inherited preload is harmless", async () => {
