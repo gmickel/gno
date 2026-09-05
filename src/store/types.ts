@@ -653,6 +653,8 @@ export interface GraphReferenceStore {
   state(version: number, configFingerprint: string): GraphProjectionState;
   begin(version: number, configFingerprint: string): number;
   readInventory(): GraphReferenceInventory[];
+  /** Active parsed-link sources matching any old/new target candidate. */
+  incomingLinkSources(identities: GraphReferenceDocument[]): number[];
   writeInventory(inventory: GraphReferenceInventory): void;
   complete(expectedEpoch: number): void;
 }

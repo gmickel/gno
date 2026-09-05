@@ -7,6 +7,9 @@ import type {
   GraphReferenceStore,
 } from "../types";
 
+import { buildWikiMatchExpression } from "../../core/graph-resolver";
+import { normalizeWikiName } from "../../core/links";
+
 const SNAPSHOT_COLUMNS = `document_id AS documentId, collection, rel_path AS relPath,
   docid, uri, title, mirror_hash AS mirrorHash, source_hash AS sourceHash,
   content_type AS contentType`;
@@ -86,6 +89,44 @@ export function createGraphReferenceStore(db: Database): GraphReferenceStore {
           .get(ref.sourceId)
           ?.references.push({ edgeType: ref.edgeType, target: ref.target });
       return [...inventories.values()];
+    },
+    incomingLinkSources(identities) {
+      if (identities.length === 0) return [];
+      const targets = identities.map((d) => ({
+        collection: d.collection,
+        rel_path: d.relPath,
+        title: d.title,
+        wiki_title: normalizeWikiName(
+          d.title ?? d.relPath.split("/").pop() ?? d.relPath
+        ),
+        wiki_rel: normalizeWikiName(d.relPath),
+        wiki_stem: normalizeWikiName(d.relPath.replace(/\.[^/.]+$/, "")),
+      }));
+      return db
+        .query<{ sourceId: number }, [string]>(`
+        WITH targets AS (
+          SELECT json_extract(value, '$.collection') AS collection,
+            json_extract(value, '$.rel_path') AS rel_path,
+            json_extract(value, '$.title') AS title,
+            json_extract(value, '$.wiki_title') AS wiki_title,
+            json_extract(value, '$.wiki_rel') AS wiki_rel,
+            json_extract(value, '$.wiki_stem') AS wiki_stem
+          FROM json_each(?)
+        )
+        SELECT DISTINCT dl.source_doc_id AS sourceId
+        FROM doc_links dl JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
+        JOIN targets t ON (
+          (t.collection = COALESCE(dl.target_collection, src.collection) AND (
+            (dl.link_type = 'markdown' AND dl.target_ref_norm = t.rel_path) OR
+            (dl.link_type = 'wiki' AND ${buildWikiMatchExpression("t", "dl.target_ref_norm")})
+          )) OR
+          (dl.link_type = 'wiki' AND dl.target_ref_norm IN (t.wiki_title, t.wiki_rel, t.wiki_stem))
+          OR (dl.link_type = 'markdown' AND t.collection = src.collection AND dl.target_ref_norm = t.rel_path)
+        )
+        ORDER BY dl.source_doc_id
+      `)
+        .all(JSON.stringify(targets))
+        .map((row) => row.sourceId);
     },
     writeInventory({ document: d, references }) {
       db.transaction(() => {

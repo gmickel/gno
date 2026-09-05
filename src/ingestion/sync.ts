@@ -14,7 +14,6 @@ import type { NormalizedContentTypeRule } from "../config";
 import type { Collection } from "../config/types";
 import type {
   ChunkInput,
-  DocEdgeInput,
   DocLinkInput,
   DocumentInput,
   DocumentRow,
@@ -49,16 +48,12 @@ import { DEFAULT_LIMITS, type RecordAdapter } from "../converters/types";
 import {
   diffDocumentStructure,
   extractDocumentStructure,
-  isRelationMap,
-  normalizeRelationEdgeType,
-  normalizeRelationTarget,
 } from "../core/change-diff";
 import { enforceCollectionEgress } from "../core/egress-enforcement";
 import {
   normalizeMarkdownPath,
   normalizeWikiName,
   parseLinks,
-  parseTargetParts,
 } from "../core/links";
 import { extractMemoryScopes } from "../core/memory-record";
 import { normalizeTag, validateTag } from "../core/tags";
@@ -68,6 +63,7 @@ import {
   parseFrontmatter,
   stripFrontmatter,
 } from "./frontmatter";
+import { projectGraph } from "./graph-reconciliation";
 import { buildLineOffsets } from "./position";
 import { processRecordContainer } from "./record-container";
 import {
@@ -104,106 +100,12 @@ const MAX_CONCURRENCY = 16;
 export const INGEST_VERSION = 6;
 const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT =
   fingerprintContentTypeMetadataRules([]);
-const RELATION_EDGE_TYPE_PATTERN = /^[a-z][a-z0-9_]*$/;
-const PROJECTION_YIELD_INTERVAL = 25;
 const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
   "CORRUPT",
   "PERMISSION",
   "TOO_LARGE",
   "UNSUPPORTED",
 ]);
-
-function findDocByWikiRef(
-  docs: DocumentRow[],
-  targetRef: string,
-  collection?: string
-): DocumentRow | undefined {
-  const normalized = normalizeWikiName(targetRef);
-  const candidates = collection
-    ? docs.filter((doc) => doc.collection === collection)
-    : docs;
-
-  return candidates.find((doc) => {
-    const title = doc.title ?? doc.relPath.split("/").pop() ?? doc.relPath;
-    const relStem = doc.relPath.replace(/\.[^/.]+$/, "");
-    return (
-      normalizeWikiName(title) === normalized ||
-      normalizeWikiName(doc.relPath) === normalized ||
-      normalizeWikiName(relStem) === normalized
-    );
-  });
-}
-
-function resolveRelationTarget(
-  docs: DocumentRow[],
-  sourceDoc: DocumentRow,
-  rawTarget: string
-): DocumentRow | undefined {
-  const target = normalizeRelationTarget(rawTarget);
-  if (!target) {
-    return undefined;
-  }
-
-  if (target.startsWith("#")) {
-    return docs.find((doc) => doc.docid === target);
-  }
-
-  if (target.startsWith("gno://")) {
-    return docs.find((doc) => doc.uri === target);
-  }
-
-  const parts = parseTargetParts(target);
-  const targetCollection = parts.collection;
-  const targetRef = parts.ref;
-  if (!targetRef) {
-    return undefined;
-  }
-
-  if (targetCollection) {
-    const exact = docs.find(
-      (doc) => doc.collection === targetCollection && doc.relPath === targetRef
-    );
-    return exact ?? findDocByWikiRef(docs, targetRef, targetCollection);
-  }
-
-  const sameCollectionPath = normalizeMarkdownPath(
-    targetRef,
-    sourceDoc.relPath
-  );
-  if (sameCollectionPath) {
-    const exact = docs.find(
-      (doc) =>
-        doc.collection === sourceDoc.collection &&
-        doc.relPath === sameCollectionPath
-    );
-    if (exact) {
-      return exact;
-    }
-  }
-
-  const explicitCollPath = docs.find(
-    (doc) => `${doc.collection}/${doc.relPath}` === targetRef
-  );
-  if (explicitCollPath) {
-    return explicitCollPath;
-  }
-
-  return (
-    findDocByWikiRef(docs, targetRef, sourceDoc.collection) ??
-    findDocByWikiRef(docs, targetRef)
-  );
-}
-
-function getPrimaryGraphHint(
-  contentType: string | null | undefined,
-  rules: NormalizedContentTypeRule[]
-): string | undefined {
-  if (!contentType) {
-    return undefined;
-  }
-  const rule = rules.find((candidate) => candidate.id === contentType);
-  return rule?.graphHints?.[0];
-}
 
 /**
  * Decide whether to process a file or skip it.
@@ -218,6 +120,11 @@ function decideAction(
   // No existing doc - must process
   if (!existing) {
     return { kind: "process", reason: "new file" };
+  }
+  // Identical bytes can reappear after deletion; restore through the normal
+  // conversion/upsert path so identity, derived data and journal agree.
+  if (!existing.active) {
+    return { kind: "repair", reason: "source restored" };
   }
 
   // Source hash changed - must process
@@ -1784,182 +1691,12 @@ export class SyncService {
     return null;
   }
 
-  private async projectTypedEdges(
+  private projectTypedEdges(
     store: StorePort,
     options: SyncOptions,
     sourceDocumentIds?: Set<number>
   ): Promise<Array<{ relPath: string; code: string; message: string }>> {
-    const errors: Array<{ relPath: string; code: string; message: string }> =
-      [];
-
-    const selectedSourceIds = sourceDocumentIds
-      ? [...sourceDocumentIds]
-      : undefined;
-    const backfillResult = await store.backfillDocEdges(selectedSourceIds);
-    if (!backfillResult.ok) {
-      return [
-        {
-          relPath: "(typed edge backfill)",
-          code: backfillResult.error.code,
-          message: backfillResult.error.message,
-        },
-      ];
-    }
-
-    const docsResult = await store.listDocuments();
-    if (!docsResult.ok) {
-      return [
-        {
-          relPath: "(typed edge projection)",
-          code: docsResult.error.code,
-          message: docsResult.error.message,
-        },
-      ];
-    }
-
-    const activeDocs = docsResult.value.filter((doc) => doc.active);
-    const activeIds = new Set(activeDocs.map((doc) => doc.id));
-    if (selectedSourceIds) {
-      for (const documentId of selectedSourceIds) {
-        if (!activeIds.has(documentId)) {
-          // Clear typed edges for inactivated projection sources.
-          const clearResult = await store.setDocEdges(
-            documentId,
-            [],
-            "frontmatter-relation"
-          );
-          if (!clearResult.ok) {
-            errors.push({
-              relPath: `(doc:${documentId})`,
-              code: clearResult.error.code,
-              message: clearResult.error.message,
-            });
-          }
-        }
-      }
-    }
-    const projectedDocs = sourceDocumentIds
-      ? activeDocs.filter((doc) => sourceDocumentIds.has(doc.id))
-      : activeDocs;
-
-    for (const [docIndex, doc] of projectedDocs.entries()) {
-      if (docIndex > 0 && docIndex % PROJECTION_YIELD_INTERVAL === 0) {
-        await Bun.sleep(0);
-      }
-      if (!doc.mirrorHash) {
-        continue;
-      }
-
-      const contentResult = await store.getContent(doc.mirrorHash);
-      if (!contentResult.ok || contentResult.value === null) {
-        continue;
-      }
-
-      const relationsValue = parseFrontmatter(contentResult.value).metadata
-        .relations;
-      const relationEdges: DocEdgeInput[] = [];
-
-      if (isRelationMap(relationsValue)) {
-        for (const [rawEdgeType, targets] of Object.entries(relationsValue)) {
-          const edgeType = normalizeRelationEdgeType(rawEdgeType);
-          if (!RELATION_EDGE_TYPE_PATTERN.test(edgeType)) {
-            continue;
-          }
-          for (const target of targets) {
-            const targetDoc = resolveRelationTarget(activeDocs, doc, target);
-            if (targetDoc) {
-              relationEdges.push({
-                targetDocId: targetDoc.id,
-                edgeType,
-                confidence: "manual",
-              });
-            }
-          }
-        }
-      }
-      const relationTargetIds = new Set(
-        relationEdges.map((edge) => edge.targetDocId)
-      );
-
-      const relationsResult = await store.setDocEdges(
-        doc.id,
-        relationEdges,
-        "frontmatter-relation"
-      );
-      if (!relationsResult.ok) {
-        errors.push({
-          relPath: doc.relPath,
-          code: relationsResult.error.code,
-          message: relationsResult.error.message,
-        });
-      }
-
-      const primaryHint = getPrimaryGraphHint(
-        doc.contentType,
-        options.contentTypeRules ?? []
-      );
-      if (!primaryHint || !RELATION_EDGE_TYPE_PATTERN.test(primaryHint)) {
-        continue;
-      }
-
-      const linksResult = await store.getLinksForDoc(doc.id);
-      if (!linksResult.ok) {
-        errors.push({
-          relPath: doc.relPath,
-          code: linksResult.error.code,
-          message: linksResult.error.message,
-        });
-        continue;
-      }
-
-      const wikiEdges: DocEdgeInput[] = [];
-      const markdownEdges: DocEdgeInput[] = [];
-      for (const link of linksResult.value) {
-        const targetRef =
-          link.linkType === "markdown"
-            ? `${doc.collection}/${link.targetRefNorm}`
-            : link.targetCollection
-              ? `${link.targetCollection}:${link.targetRef}`
-              : link.targetRefNorm;
-        const targetDoc = resolveRelationTarget(activeDocs, doc, targetRef);
-        if (!targetDoc || relationTargetIds.has(targetDoc.id)) {
-          continue;
-        }
-        const edge = {
-          targetDocId: targetDoc.id,
-          edgeType: primaryHint,
-          confidence: "configured" as const,
-        };
-        if (link.linkType === "wiki") {
-          wikiEdges.push(edge);
-        } else {
-          markdownEdges.push(edge);
-        }
-      }
-
-      const wikiResult = await store.setDocEdges(doc.id, wikiEdges, "wikilink");
-      if (!wikiResult.ok) {
-        errors.push({
-          relPath: doc.relPath,
-          code: wikiResult.error.code,
-          message: wikiResult.error.message,
-        });
-      }
-      const markdownResult = await store.setDocEdges(
-        doc.id,
-        markdownEdges,
-        "markdown-link"
-      );
-      if (!markdownResult.ok) {
-        errors.push({
-          relPath: doc.relPath,
-          code: markdownResult.error.code,
-          message: markdownResult.error.message,
-        });
-      }
-    }
-
-    return errors;
+    return projectGraph(store, options, sourceDocumentIds);
   }
 
   /** Run an exact global typed-edge reconciliation with cooperative yields. */
@@ -1967,7 +1704,7 @@ export class SyncService {
     store: StorePort,
     options: SyncOptions = {}
   ): Promise<Array<{ relPath: string; code: string; message: string }>> {
-    return this.projectTypedEdges(store, options);
+    return projectGraph(store, options, undefined, true);
   }
 
   /**

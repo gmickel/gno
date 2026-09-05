@@ -29,7 +29,7 @@ describe("incremental sync orchestration", () => {
     await safeRm(tempDir);
   });
 
-  test("syncAll performs one global projection after all collections", async () => {
+  test("syncAll projects once and an unchanged scoped sync skips projection", async () => {
     const firstDir = join(tempDir, "first");
     const secondDir = join(tempDir, "second");
     await mkdir(firstDir);
@@ -65,7 +65,7 @@ describe("incremental sync orchestration", () => {
 
     backfill.mockClear();
     await service.syncCollection(collections[0]!, store);
-    expect(backfill).toHaveBeenCalledTimes(1);
+    expect(backfill).toHaveBeenCalledTimes(0);
   });
 
   test("syncPaths updates changed and backlink sources without walking", async () => {

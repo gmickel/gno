@@ -193,6 +193,18 @@ matching `contentTypes[].graphHints` value as the projected edge type for plain
 links. Reads join active source and target documents so inactive renamed files
 do not surface stale edges.
 
+Sync retains unresolved frontmatter targets and prior document identities in a
+durable reference inventory; parsed links remain in `doc_links`. Scoped sync
+reprojects changed sources plus incoming sources matching old and new target
+identities, including sources in other collections. Relation lookup indexes
+preserve URI, path, title and ambiguity precedence. An unchanged sync with a
+complete projection skips global content reads and edge backfill.
+
+Missing or interrupted inventory, projection-version changes, and collection
+or graph-rule configuration changes select full reconciliation. Projection
+completion is recorded only after successful work; an identical source that
+reappears after deletion is restored through normal ingestion.
+
 Ingestion respects per-collection `sourceAvailability` (`any` default, or
 opt-in `local`). Local mode shares one guarded content-read boundary across
 full walk, targeted sync, sniff/hash/conversion, record import, and
@@ -231,9 +243,10 @@ Watcher queues, snapshots, suppression history, and retry timing are capped;
 sustained churn has a hard flush deadline. Windows retains end-state
 correctness through full-collection escalation because native anchored handles
 are unavailable. Network, removable, and coarse-timestamp filesystems are not
-universally guaranteed. Changed sources and known backlinks are reprojected;
-periodic/full sync remains the exact fallback for previously unresolved
-frontmatter targets. Projection yields to the event loop in bounded intervals
+universally guaranteed. Changed sources and incoming references are reprojected,
+including previously unresolved frontmatter targets outside the watched
+collection. Full reconciliation remains the recovery path when reference
+inventory is incomplete. Projection yields to the event loop in bounded intervals
 so HTTP requests remain responsive during larger graph rebuilds.
 
 `gno graph query`, REST `/api/graph/query`, and MCP `gno_graph_query` all wrap

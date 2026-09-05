@@ -27,6 +27,14 @@ projection, or file sync retain durable retry authority; bounded overflow or a
 platform without native anchored directory handles escalates to a full
 collection sync.
 
+Graph updates include incoming references from other collections, including
+frontmatter references whose target did not exist when the source was indexed.
+Target additions, removals, renames and title changes use both previous and
+current identities. An unchanged scoped sync skips global graph content reads
+when the reference inventory is complete. Missing or interrupted inventory and
+collection or graph-rule configuration changes trigger full reconciliation;
+failed projection remains eligible for retry.
+
 These guarantees are exercised on supported local filesystems across macOS,
 Linux, and Windows. They do not claim universal watcher semantics for network,
 removable, or coarse-timestamp filesystems.

@@ -2235,13 +2235,17 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         if (activeRows.length === 0) {
           return 0;
         }
-        const result = db.run(
+        db.run(
           `UPDATE documents SET active = 0, updated_at = datetime('now')
            WHERE collection = ?
              AND active = 1
              AND rel_path IN (${placeholders})`,
           [collection, ...uniquePaths]
         );
+        // Bun run().changes includes trigger writes; report logical document rows.
+        const changed =
+          db.query<{ count: number }, []>("SELECT changes() AS count").get()
+            ?.count ?? 0;
         const observedAtMs = Date.now();
         for (const activeRow of activeRows) {
           const previous = snapshotDocumentChange(mapDocumentRow(activeRow));
@@ -2254,7 +2258,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             observedAtMs,
           });
         }
-        return result.changes;
+        return changed;
       });
 
       return ok(transaction());
@@ -2723,8 +2727,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             ) as score
           FROM documents_fts
           WHERE documents_fts MATCH ?
-          AND rowid IN (
-            SELECT id FROM (${eligible.sql})
+          AND EXISTS (
+            SELECT 1 FROM (${eligible.sql}) eligible_docs
+            WHERE eligible_docs.id = documents_fts.rowid
           )
           ORDER BY score
           LIMIT ?
@@ -3330,6 +3335,17 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const db = this.ensureOpen();
 
       const transaction = db.transaction(() => {
+        // Link edits without a changed source identity cannot be located from
+        // the prior document inventory, especially alongside unrelated changes.
+        // Persist full-recovery authority in the same transaction as those edits.
+        db.run(
+          `UPDATE graph_projection_state SET dirty = 1, in_progress = 1
+          WHERE id = 1 AND EXISTS (
+            SELECT 1 FROM graph_reference_documents r JOIN documents d ON d.id = r.document_id
+            WHERE d.id = ? AND r.source_hash IS d.source_hash AND r.mirror_hash IS d.mirror_hash
+          )`,
+          [documentId]
+        );
         // Delete existing links from this source
         db.run("DELETE FROM doc_links WHERE source_doc_id = ? AND source = ?", [
           documentId,
