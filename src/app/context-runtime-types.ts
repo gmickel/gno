@@ -4,6 +4,7 @@ import type { ContextEvidenceCompilerDeps } from "../core/context-evidence";
 import type { ContextVerifierDeps } from "../core/context-verifier";
 import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { EmbeddingPort, RerankPort } from "../llm/types";
+import type { RequestHydration } from "../pipeline/hydration";
 import type { ProjectAffinityScoringInput } from "../pipeline/project-affinity";
 import type { QueryModeInput } from "../pipeline/types";
 import type { StorePort } from "../store/types";
@@ -43,6 +44,8 @@ export interface ContextCapsuleRuntimeDeps {
   store: StorePort &
     ContextEvidenceCompilerDeps<ContextCapsuleV1>["store"] &
     ContextVerifierDeps["store"];
+  /** Internal owner supplied by Ask; verification always reads the live store. */
+  hydration?: RequestHydration;
   config: Config;
   indexName?: string;
   vectorIndex?: VectorIndexPort | null;

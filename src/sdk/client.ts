@@ -170,6 +170,7 @@ import {
 } from "../pipeline/answer";
 import { formatQueryForEmbedding } from "../pipeline/contextual";
 import { searchHybrid } from "../pipeline/hybrid";
+import { RequestHydration } from "../pipeline/hydration";
 import { searchBm25 } from "../pipeline/search";
 import { searchVectorWithEmbedding } from "../pipeline/vsearch";
 import { SqliteAdapter } from "../store/sqlite/adapter";
@@ -911,6 +912,7 @@ class GnoClientImpl implements GnoClient {
     let ports: RuntimePorts | null = null;
     let traceSession: RetrievalTraceSession | null = null;
 
+    const hydration = new RequestHydration(this.store);
     try {
       const { projectHints, ...askOptions } = options;
       const projectAffinity = await resolveSdkProjectAffinity(
@@ -960,6 +962,7 @@ class GnoClientImpl implements GnoClient {
           { ...askOptions, projectAffinity },
           {
             store: this.store,
+            hydration,
             config: this.config,
             indexName: this.indexName,
             vectorIndex: ports.vectorIndex,
@@ -987,6 +990,7 @@ class GnoClientImpl implements GnoClient {
         await searchHybrid(
           {
             store: this.store,
+            hydration,
             config: this.config,
             vectorIndex: ports.vectorIndex,
             embedPort: ports.embedPort,
@@ -1033,7 +1037,7 @@ class GnoClientImpl implements GnoClient {
       ) {
         await traceSession?.recordCapability("answer_generation", "attempted");
         const rawAnswer = await generateGroundedAnswer(
-          { genPort: ports.answerPort, store: this.store },
+          { genPort: ports.answerPort, store: this.store, hydration },
           query,
           searchResult.results,
           options.maxAnswerTokens ?? 512
@@ -1100,6 +1104,7 @@ class GnoClientImpl implements GnoClient {
       await finishRetrievalTraceAfterError(traceSession, cause);
       throw cause;
     } finally {
+      hydration.release();
       if (ports) await this.disposeRuntimePorts(ports);
     }
   }

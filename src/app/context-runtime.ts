@@ -96,11 +96,13 @@ export const buildContextCapsule = async (
     },
     {
       store: deps.store,
+      hydration: deps.hydration,
       retrieve: async (request) => {
         const requestNoRerank = noRerank || request.noRerank === true;
         const result = await searchHybrid(
           {
             store: deps.store,
+            hydration: deps.hydration,
             config: deps.config,
             vectorIndex: deps.vectorIndex ?? null,
             embedPort: deps.embedPort ?? null,

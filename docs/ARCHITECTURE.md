@@ -163,6 +163,14 @@ the existing lexical snippet fallback and vector omission behavior; full output
 still reads the canonical document content separately. Stores without targeted
 chunk support retain whole-hash batching. No cross-request cache is introduced.
 
+CLI and SDK Ask own one immutable hydration cache across retrieval, reranking,
+answer preparation, and verified Capsule materialization. Raw mirror/chunk reads
+are reused; model prompts and selected passages are still prepared and validated
+by each stage. The owner is released in `finally`, including failures. Capsule
+freshness verification reads the current store independently, preserving existing
+index/hash drift checks. This does not add filesystem rereads or a post-generation
+freshness check. Request snapshots are never reused by a later Ask.
+
 ### Retrieval V2 Controls
 
 - **Structured query modes**: callers can pass explicit `term`, `intent`, and `hyde` entries.

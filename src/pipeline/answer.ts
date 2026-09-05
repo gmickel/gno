@@ -8,6 +8,7 @@
 import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { GenerationPort } from "../llm/types";
 import type { StorePort } from "../store/types";
+import type { RequestHydration } from "./hydration";
 import type {
   AnswerContextEntry,
   AnswerContextExplain,
@@ -231,6 +232,8 @@ export interface AnswerGenerationResult {
 export interface AnswerGenerationDeps {
   genPort: GenerationPort;
   store: StorePort | null;
+  /** Raw request-owned content only; passage/hash validation still runs. */
+  hydration?: Pick<RequestHydration, "getContent">;
 }
 
 function normalizeScore(score: number): number {
@@ -508,7 +511,9 @@ export async function generateGroundedAnswer(
 
     // Try to fetch full document content if store available
     if (store && mirrorHash) {
-      const contentResult = await store.getContent(mirrorHash);
+      const contentResult = await (deps.hydration ?? store).getContent(
+        mirrorHash
+      );
       if (contentResult.ok && contentResult.value) {
         if (sha256(contentResult.value) === mirrorHash) {
           passage =

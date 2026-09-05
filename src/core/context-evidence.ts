@@ -1,6 +1,7 @@
 /** Strict indexed-evidence loading for Context Capsule compilation. */
 
 import type { EgressPolicy } from "../config/types";
+import type { RequestHydration } from "../pipeline/hydration";
 import type { SearchResults } from "../pipeline/types";
 import type {
   ActivationIndexSnapshot,
@@ -127,6 +128,7 @@ export interface ContextEvidenceProjectionContext {
 
 export interface ContextEvidenceCompilerDeps<P> {
   store: ContextEvidenceStore;
+  hydration?: Pick<RequestHydration, "getContentBatch" | "getChunksBatch">;
   retrieve: (request: ContextRetrievalRequest) => Promise<SearchResults>;
   projectCanonical: (
     draft: ContextCanonicalPlanDraft<ContextEvidenceValue>,
@@ -329,7 +331,8 @@ const referenceDocument = (
 export const materializeContextEvidenceCandidates = async (
   store: ContextEvidenceStore,
   candidates: ContextRetrievalCandidate[],
-  indexNameInput: string
+  indexNameInput: string,
+  hydration?: ContextEvidenceCompilerDeps<unknown>["hydration"]
 ): Promise<ContextMaterialization<ContextEvidenceValue>[]> => {
   if (candidates.length === 0) return [];
   const indexName = canonicalizeIndexName(indexNameInput);
@@ -363,8 +366,8 @@ export const materializeContextEvidenceCandidates = async (
     ),
   ];
   const [contentResult, chunksResult] = await Promise.all([
-    store.getContentBatch(mirrorHashes),
-    store.getChunksBatch(mirrorHashes),
+    (hydration ?? store).getContentBatch(mirrorHashes),
+    (hydration ?? store).getChunksBatch(mirrorHashes),
   ]);
   const contentByHash = unwrapStore(
     contentResult,
@@ -517,7 +520,8 @@ export const compileContextEvidence = async <P>(
         materializeContextEvidenceCandidates(
           deps.store,
           candidates,
-          input.indexName
+          input.indexName,
+          deps.hydration
         ),
       projectCanonical: (draft) => deps.projectCanonical(draft, fingerprints),
     }
