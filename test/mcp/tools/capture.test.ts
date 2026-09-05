@@ -80,6 +80,7 @@ describe("gno_capture MCP", () => {
   test("does not register write tools when writes are disabled", () => {
     const names: string[] = [];
     const fakeServer = {
+      server: { onclose: undefined as (() => void) | undefined },
       tool: (name: string) => {
         names.push(name);
       },

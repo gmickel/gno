@@ -87,7 +87,6 @@ try {
       code: "INFERENCE_FAILED",
       message: "Native worker failure: exited",
       retryable: true,
-      cause: undefined,
     },
   });
 } finally {
@@ -144,7 +143,6 @@ try {
         code: "INFERENCE_FAILED",
         message: "Native worker failure: exited",
         retryable: true,
-        cause: undefined,
       },
     }))
   );
