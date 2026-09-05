@@ -16,12 +16,40 @@ const runtimeFiles = [
   "vendor",
 ] as const;
 
-async function stageRuntime(): Promise<void> {
-  await rm(stagingRoot, { force: true, recursive: true });
-  await mkdir(stagingRoot, { recursive: true });
+/** Electrobun executes hooks with its own Bun, independently of build.bunVersion. */
+export async function getStagingBun(sourceRoot: string): Promise<string> {
+  const pkg = await Bun.file(join(sourceRoot, "package.json")).json();
+  const expected = pkg.devDependencies?.bun;
+  if (typeof expected !== "string" || !/^\d+\.\d+\.\d+$/.test(expected)) {
+    throw new Error(
+      "Desktop staging requires an exact root Bun development pin"
+    );
+  }
+  const binary = join(sourceRoot, "node_modules", "bun", "bin", "bun.exe");
+  const result = Bun.spawnSync([binary, "--version"], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const actual = new TextDecoder().decode(result.stdout).trim();
+  if (result.exitCode !== 0 || actual !== expected) {
+    throw new Error(
+      `Desktop staging Bun mismatch: expected ${expected}, got ${actual || result.exitCode}`
+    );
+  }
+  return binary;
+}
+
+export async function stageRuntime(
+  sourceRoot = repoRoot,
+  targetRoot = stagingRoot
+): Promise<void> {
+  const bun = await getStagingBun(sourceRoot);
+
+  await rm(targetRoot, { force: true, recursive: true });
+  await mkdir(targetRoot, { recursive: true });
 
   for (const relPath of runtimeFiles) {
-    await cp(join(repoRoot, relPath), join(stagingRoot, relPath), {
+    await cp(join(sourceRoot, relPath), join(targetRoot, relPath), {
       dereference: true,
       force: true,
       recursive: true,
@@ -29,15 +57,9 @@ async function stageRuntime(): Promise<void> {
   }
 
   const install = Bun.spawnSync(
-    [
-      process.execPath,
-      "install",
-      "--production",
-      "--frozen-lockfile",
-      "--ignore-scripts",
-    ],
+    [bun, "install", "--production", "--frozen-lockfile", "--ignore-scripts"],
     {
-      cwd: stagingRoot,
+      cwd: targetRoot,
       stderr: "inherit",
       stdout: "inherit",
     }
@@ -50,9 +72,11 @@ async function stageRuntime(): Promise<void> {
   }
 
   await Bun.write(
-    join(stagingRoot, "desktop-runtime-manifest.json"),
+    join(targetRoot, "desktop-runtime-manifest.json"),
     JSON.stringify(
       {
+        bunVersion: (await Bun.file(join(sourceRoot, "package.json")).json())
+          .devDependencies.bun,
         generatedAt: new Date().toISOString(),
         platform: process.platform,
         arch: process.arch,
@@ -63,7 +87,7 @@ async function stageRuntime(): Promise<void> {
     )
   );
 
-  console.log(`[gno-electrobun] staged runtime at ${stagingRoot}`);
+  console.log(`[gno-electrobun] staged runtime at ${targetRoot}`);
 }
 
-await stageRuntime();
+if (import.meta.main) await stageRuntime();

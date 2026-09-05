@@ -32,6 +32,8 @@ export default {
     gnoControlPort: 3928,
   },
   build: {
+    // The launcher and GNO child must use the same tested runtime as staging.
+    bunVersion: pkg.devDependencies.bun,
     copy: {
       ".generated/gno-runtime": DEFAULT_GNO_RUNTIME_FOLDER,
     },
