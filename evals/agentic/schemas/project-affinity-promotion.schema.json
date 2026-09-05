@@ -479,6 +479,7 @@
               "maximum": 1
             },
             "getChunksBatch": {
+              "description": "Historical v1 logical chunk-batch consumption: combined getChunksBatch and getChunksBySequenceBatch calls. Runtime independently checks exact candidate request keys, uniqueness and aggregate request count; violations are unexpectedCalls. Raw API method counts remain available in runtime observations.",
               "type": "integer",
               "minimum": 0,
               "maximum": 1

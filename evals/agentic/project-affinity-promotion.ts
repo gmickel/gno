@@ -4,6 +4,7 @@ import type { ProjectAffinityProvenance } from "./project-affinity-provenance";
 import { canonicalFingerprint } from "./canonical";
 
 export const PROJECT_AFFINITY_STORE_CALL_LIMITS = {
+  // Historical v1 logical batch budget: bulk OR exact-sequence read, combined.
   getChunksBatch: 1,
   getCollections: 1,
   getContextGeneration: 2,

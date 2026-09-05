@@ -25,6 +25,10 @@ export interface CallObservation {
   candidateCount: number;
   requestedCount: number;
   outputLimit: number;
+  /** Raw API observations stay separate from the historical logical consumption receipt. */
+  rawCalls?: Record<string, number>;
+  selectedChunks?: readonly { mirrorHash: string; seq: number }[];
+  chunkRequests?: number;
 }
 
 export interface SearchRun {
@@ -32,9 +36,9 @@ export interface SearchRun {
   observation: CallObservation;
 }
 
-const instrumentStore = (
+export const instrumentProjectAffinityStore = (
   store: StorePort,
-  observation: Pick<CallObservation, "calls" | "unexpectedCalls">
+  observation: CallObservation
 ): StorePort =>
   new Proxy(store, {
     get(target, property, receiver) {
@@ -42,7 +46,47 @@ const instrumentStore = (
       if (typeof value !== "function") return value;
       return (...args: unknown[]) => {
         const name = String(property);
-        if (name in PROJECT_AFFINITY_STORE_CALL_LIMITS) {
+        observation.rawCalls ??= {};
+        observation.rawCalls[name] = (observation.rawCalls[name] ?? 0) + 1;
+        const chunkRead =
+          name === "getChunksBatch" || name === "getChunksBySequenceBatch";
+        if (chunkRead) {
+          const requests: unknown[] = Array.isArray(args[0]) ? args[0] : [];
+          observation.chunkRequests =
+            (observation.chunkRequests ?? 0) + requests.length;
+          const selected = observation.selectedChunks ?? [];
+          const expected = new Set(
+            selected.map((chunk) =>
+              name === "getChunksBatch"
+                ? chunk.mirrorHash
+                : `${chunk.mirrorHash}:${chunk.seq}`
+            )
+          );
+          const keys = requests.map((request) => {
+            if (name === "getChunksBatch")
+              return typeof request === "string" ? request : null;
+            if (!request || typeof request !== "object") return null;
+            const chunk = request as { mirrorHash?: unknown; seq?: unknown };
+            return typeof chunk.mirrorHash === "string" &&
+              typeof chunk.seq === "number" &&
+              Number.isSafeInteger(chunk.seq) &&
+              chunk.seq >= 0
+              ? `${chunk.mirrorHash}:${chunk.seq}`
+              : null;
+          });
+          if (
+            !Array.isArray(args[0]) ||
+            keys.some((key) => key === null || !expected.has(key)) ||
+            new Set(keys).size !== keys.length ||
+            observation.chunkRequests > observation.candidateCount
+          ) {
+            const violation = `${name}:chunk_request_domain`;
+            observation.unexpectedCalls[violation] =
+              (observation.unexpectedCalls[violation] ?? 0) + 1;
+          }
+          // v1 receipt counts logical chunk-batch consumption, not the API spelling.
+          observation.calls.getChunksBatch += 1;
+        } else if (name in PROJECT_AFFINITY_STORE_CALL_LIMITS) {
           const callName = name as ProjectAffinityStoreCallName;
           observation.calls[callName] += 1;
         } else {
@@ -77,6 +121,7 @@ const vectorIndex = (
       observation.requestedCount = requested;
       const value = candidates.slice(0, requested);
       observation.candidateCount = value.length;
+      observation.selectedChunks = value;
       return { ok: true as const, value };
     },
   }) as VectorIndexPort;
@@ -143,7 +188,7 @@ export const runProjectAffinitySearch = async (
   };
   const result = await searchVectorWithEmbedding(
     {
-      store: instrumentStore(store, observation),
+      store: instrumentProjectAffinityStore(store, observation),
       vectorIndex: vectorIndex(candidates, observation),
       embedPort: {} as never,
       config,
@@ -199,6 +244,7 @@ export const isStructurallyBounded = (observation: CallObservation): boolean =>
   ) &&
   Object.keys(observation.unexpectedCalls).length === 0 &&
   observation.requestedCount <= 3 * observation.outputLimit &&
+  (observation.chunkRequests ?? 0) <= observation.candidateCount &&
   observation.candidateCount <= observation.requestedCount &&
   observation.candidateCount <= 3 * observation.outputLimit;
 

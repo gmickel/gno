@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
+import type { StorePort } from "../../../src/store/types";
+
 import { canonicalJson } from "../../../evals/agentic/canonical";
-import { loadAgenticFixture } from "../../../evals/agentic/fixture-db";
+import {
+  loadAgenticFixture,
+  prepareGnoNativeIndex,
+  cleanupNativeIndexPreparation,
+} from "../../../evals/agentic/fixture-db";
 import {
   bindProjectAffinityCases,
   loadProjectAffinityCases,
@@ -9,10 +15,17 @@ import {
 import { runProjectAffinityOutcomeBenchmark } from "../../../evals/agentic/project-affinity-outcome";
 import {
   isStructurallyBounded,
+  instrumentProjectAffinityStore,
+  corpusVectorCandidates,
+  projectAffinityEvalConfig,
+  runProjectAffinitySearch,
   type CallObservation,
 } from "../../../evals/agentic/project-affinity-runtime";
 import { validateProjectAffinityPromotionArtifact } from "../../../evals/agentic/project-affinity-validation";
 import { validateAgenticSchema } from "../../../evals/agentic/validation";
+import { DEFAULT_FTS_TOKENIZER } from "../../../src/config/types";
+import { resolveCliProjectAffinity } from "../../../src/core/project-affinity-surface";
+import { SqliteAdapter } from "../../../src/store";
 
 describe("project-affinity promotion cases", () => {
   test("hash-bind fn-97 identities and flip both controlled losing targets", async () => {
@@ -178,3 +191,109 @@ describe("project-affinity promotion cases", () => {
     ).toContain("artifact_fingerprint_mismatch");
   });
 });
+
+test("targeted chunk receipts preserve full legacy payload and citations for every fixture task", async () => {
+  const fixture = await loadAgenticFixture();
+  const native = await prepareGnoNativeIndex(fixture.snapshot);
+  const store = new SqliteAdapter();
+  try {
+    const opened = await store.open(native.dbPath, DEFAULT_FTS_TOKENIZER);
+    if (!opened.ok) throw new Error(opened.error.message);
+    const documents = await store.listDocuments();
+    const config = projectAffinityEvalConfig(fixture, native.rootPath);
+    const legacy = new Proxy(store, {
+      get(target, property) {
+        if (property === "getChunksBySequenceBatch") return undefined;
+        const value = Reflect.get(target, property);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+    for (const task of fixture.tasks.values()) {
+      const collection = task.corpus.collections[0]!;
+      const candidates = corpusVectorCandidates(documents, [collection]);
+      const affinity = await resolveCliProjectAffinity(config, {
+        cwd: config.collections.find((item) => item.name === collection)!.path,
+      });
+      for (const lane of [undefined, affinity]) {
+        const options = { collection, limit: 5, affinity: lane };
+        const targeted = await runProjectAffinitySearch(
+          store,
+          config,
+          task.brief.goal,
+          candidates,
+          options
+        );
+        const bulk = await runProjectAffinitySearch(
+          legacy,
+          config,
+          task.brief.goal,
+          candidates,
+          options
+        );
+        expect(canonicalJson(JSON.parse(JSON.stringify(targeted.output)))).toBe(
+          canonicalJson(JSON.parse(JSON.stringify(bulk.output)))
+        );
+        expect(targeted.observation.calls).toEqual(bulk.observation.calls);
+        expect(targeted.observation.rawCalls?.getChunksBySequenceBatch).toBe(1);
+        expect(targeted.observation.rawCalls?.getChunksBatch).toBeUndefined();
+        expect(bulk.observation.rawCalls?.getChunksBatch).toBe(1);
+        expect(isStructurallyBounded(targeted.observation)).toBeTrue();
+      }
+    }
+  } finally {
+    await store.close();
+    await cleanupNativeIndexPreparation(native);
+  }
+});
+
+test.each([
+  "valid",
+  "mixed",
+  "outside",
+  "duplicate",
+  "oversized",
+  "malformed",
+  "hidden",
+])(
+  "logical batch receipt keeps independent raw request guard: %s",
+  async (mode) => {
+    const observation: CallObservation = {
+      calls: {
+        getChunksBatch: 0,
+        getCollections: 0,
+        getContextGeneration: 0,
+        getContexts: 0,
+        getDocumentsByMirrorHashes: 0,
+        getTagsBatch: 0,
+        listDocuments: 0,
+      },
+      unexpectedCalls: {},
+      candidateCount: 1,
+      requestedCount: 1,
+      outputLimit: 1,
+      selectedChunks: [{ mirrorHash: "selected", seq: 0 }],
+    };
+    const backing = {
+      getChunksBySequenceBatch: async () => ({
+        ok: true as const,
+        value: new Map(),
+      }),
+      getChunksBatch: async () => ({ ok: true as const, value: new Map() }),
+      getContent: async () => ({ ok: true as const, value: null }),
+    } as unknown as StorePort;
+    const instrumented = instrumentProjectAffinityStore(backing, observation);
+    const selected = { mirrorHash: "selected", seq: 0 };
+    let requests = [selected];
+    if (mode === "outside") requests = [{ mirrorHash: "outside", seq: 0 }];
+    if (mode === "duplicate") requests = [selected, selected];
+    if (mode === "oversized")
+      requests = [selected, { mirrorHash: "selected", seq: 1 }];
+    if (mode === "malformed") requests = [{ mirrorHash: "selected", seq: NaN }];
+    await instrumented.getChunksBySequenceBatch!(requests);
+    if (mode === "mixed") await instrumented.getChunksBatch(["selected"]);
+    if (mode === "hidden") await instrumented.getContent("selected");
+    expect(isStructurallyBounded(observation)).toBe(mode === "valid");
+    expect(observation.rawCalls?.getChunksBySequenceBatch).toBe(1);
+    expect(observation.calls.getChunksBatch).toBe(mode === "mixed" ? 2 : 1);
+  }
+);
