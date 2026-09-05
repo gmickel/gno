@@ -9,10 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- SDK inference cancellation through `signal` and absolute `deadlineAt`
+  options. Cancellation reaches retrieval, answer verification, native workers,
+  and HTTP inference without changing model-generation parameters.
+- Paired retrieval acceptance tooling that retains complete results, native
+  model inputs and outputs, resource samples, and unsuccessful runs.
+
 ### Changed
+
+- Local GGUF inference runs in an owned persistent Bun child. Warm requests
+  reuse the child; idle native allocation can be reclaimed and loaded again on
+  the next request. Child failures return structured errors without replaying
+  failed requests or writes.
+- Supported rerankers size their context from the complete prepared input and
+  native formatter, reusing compatible capacity. Unsupported formatters retain
+  automatic sizing; candidate depth and existing input preparation stay intact.
+- Embedding storage tracks exact formatted inputs and verified model/runtime
+  identities. Unchanged inputs can reuse vectors while distinct title-derived
+  inputs retain separate ownership.
+- Vector retrieval applies collection, document and exclusion eligibility before
+  top-K selection. Request-local hydration reuses fetched content while keeping
+  answer verification's live source-hash checks independent.
+- Graph reconciliation updates affected owners and referrers incrementally,
+  falling back to full reconciliation when incremental state cannot be trusted.
+- Local inference timeouts start at evaluation after model loading; HTTP
+  inference timeouts cover preparation, fetch and response-body consumption.
+  Caller deadlines cover queueing through publication. Cancelled native work
+  retains capacity until actual settlement or controlled child exit, and
+  accepted asynchronous jobs retain their own lifetime after client disconnect.
 
 ### Fixed
 
+- Native model disposal waits for in-flight context-budget estimates, avoiding
+  disposal while those estimates still read the model's native allocation.
+- Restoring unchanged source bytes at the same path reactivates the document,
+  preserves eligible embeddings, and records one reactivation event. Changed
+  input and ambiguous legacy vector ownership cannot reuse stale vectors.
+- Graph backlinks select the active document after delete/restore and rename
+  cycles instead of an inactive row with the same document identifier.
 - Resident reader admission preserves its capacity during queued handoff and
   cancellation, preventing excess concurrent readers and stranded requests.
 - Leaving the indexing progress view stops polling, including when an earlier
