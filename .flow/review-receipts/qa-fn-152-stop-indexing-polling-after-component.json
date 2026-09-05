@@ -1,0 +1,57 @@
+{
+  "branch": "fn-143-152-retrieval-resource-major",
+  "evidence": [
+    ".flow/tmp/qa-fn-152-stop-indexing-polling-after-component/support.log",
+    ".flow/tmp/qa-fn-152-stop-indexing-polling-after-component/mobile-repeat-summary.log"
+  ],
+  "findings": {
+    "backend": "interactive",
+    "headSha": "6c1b7e82441b1f7eb968b06c94488d3c5db071b0",
+    "items": [
+      {
+        "body": "Two fresh mobile observations show document width465 at viewport375. Tested lifecycle controls work. Existing attribution inferred from unchanged layout; root cause unconfirmed. Evidence: .flow/tmp/qa-fn-152-stop-indexing-polling-after-component/mobile-repeat-layout.png and mobile-repeat-dimensions.log. Filed bug/ui/mobile-collections-page-overflows-a-2026-09-05. Header overlap did not reproduce on fresh load and is not a finding.",
+        "classification": "pre_existing",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-17a801c35ef97033880fb1b3688aa46849a06d95092c13a0ef5a972b0ffc87bf",
+        "id": "finding-e380b22c58d3765e987c5822e04063e3",
+        "lastSeenReceiptId": "review-17a801c35ef97033880fb1b3688aa46849a06d95092c13a0ef5a972b0ffc87bf",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "Mobile Collections horizontal overflow"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-17a801c35ef97033880fb1b3688aa46849a06d95092c13a0ef5a972b0ffc87bf"
+  },
+  "head_sha": "6c1b7e82441b1f7eb968b06c94488d3c5db071b0",
+  "id": "fn-152-stop-indexing-polling-after-component",
+  "mode": "interactive",
+  "model": "gpt-6-astra medium",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-09-05T00:05:32Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
