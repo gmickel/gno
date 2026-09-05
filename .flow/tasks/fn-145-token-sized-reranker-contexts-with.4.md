@@ -47,8 +47,8 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Full project gates and changed-page QA pass; missing physical coverage remains incomplete.
 
 ## Done summary
-TBD
-
+Blocked:
+Physical Metal R3 allocation control remains incomplete. Prior auto-sized40,960 context runs stopped under memory pressure before cold/warm scoring and recorded no native allocation-byte counters. The read-only Ivan snapshot2026-09-05T06:26:20–25Z found16GiB physical RAM,1.73–1.77GiB free and4004.31MiB swap used; no materially new safe-fit condition was established. The actual native context+compute counter is identified and a pinned conditional control plan is retained in .flow/artifacts/fn-145-token-sized-reranker-contexts-with/allocation-feasibility/. A new matched CUDA control at44cf2a1d passed full input/token/score parity and measured4.3313GiB GPU context+compute reduction, with slower timings preserved, in allocation-native-cuda/. It does not satisfy the physical Metal requirement. Resume only after measured safe Metal headroom supports the unchanged full workload and existing governor, or an explicit user scope decision. No thresholds, inputs, precision or baseline rows changed to force acceptance. All other aggregate work continues; draft PR will expose this item.
 ## Evidence
 - Commits:
 - Tests:
