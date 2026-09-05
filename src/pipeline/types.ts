@@ -332,6 +332,8 @@ export type FusionSource =
 
 /** Fusion candidate with ranks from different sources */
 export interface FusionCandidate {
+  /** Internal exact document owner; canonical public chunk identity is unchanged. */
+  documentId?: number;
   mirrorHash: string;
   seq: number;
   bm25Rank: number | null;

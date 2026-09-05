@@ -15,6 +15,7 @@ import { normalizeContentTypes } from "../config/content-types";
 import { projectRecordEvidenceMetadata } from "../core/record-metadata";
 import { getContentBatch } from "../store/content-batch";
 import { err, ok } from "../store/types";
+import { resolveVectorSearchIdentity } from "../store/vector/variant-search";
 import { createChunkLookup } from "./chunk-lookup";
 import {
   applyContentTypeBoost,
@@ -123,6 +124,7 @@ export async function searchVectorWithEmbedding(
     queryEmbedding,
     retrievalLimit,
     {
+      embeddingIdentity: resolveVectorSearchIdentity(deps.embedPort),
       eligibility: {
         collection: options.collection,
         memoryScopesAny: options.memoryFilter?.scopes,
@@ -233,11 +235,16 @@ export async function searchVectorWithEmbedding(
     }
 
     // Get document (cached)
-    const matchingDocs = docsByMirrorHash.get(vec.mirrorHash);
+    const matchingDocs = docsByMirrorHash
+      .get(vec.mirrorHash)
+      ?.filter(
+        (doc) =>
+          vec.documentIds === undefined || vec.documentIds.includes(doc.id)
+      );
     if (!matchingDocs || matchingDocs.length === 0) {
       continue;
     }
-    const docs = auxiliaryRankingActive ? matchingDocs : [matchingDocs.at(-1)!];
+    const docs = auxiliaryRankingActive || vec.documentIds !== undefined ? matchingDocs : [matchingDocs.at(-1)!];
     for (const doc of docs) {
       const collectionPath = collectionPaths.get(doc.collection);
       const sourceRelPath = doc.recordSourcePath ?? doc.relPath;
@@ -547,6 +554,7 @@ interface ChunkInfo {
 }
 
 interface DocumentInfo {
+  id: number;
   docid: string;
   uri: string;
   title: string | null;
@@ -703,6 +711,7 @@ async function buildDocumentMap(
     }
 
     const documentInfo: DocumentInfo = {
+      id: doc.id,
       docid: doc.docid,
       uri: doc.uri,
       title: doc.title,

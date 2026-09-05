@@ -108,7 +108,7 @@ test("shadow resumes without blessing any legacy vector, including unique owners
   expect(resumed.isActive()).toBe(true);
   db.exec(`DROP TABLE ${resumed.tableName}`);
   const rebuilt = await createVectorVariantStore(db, identity);
-  expect(rebuilt.hasActivated()).toBe(false);
+  expect(rebuilt.hasActivated()).toBe(true);
   expect(rebuilt.isActive()).toBe(false);
   expect(db.query("SELECT count(*) AS n FROM content_vectors").get()).toEqual({
     n: 1,

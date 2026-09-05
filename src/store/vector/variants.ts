@@ -78,15 +78,13 @@ export class VectorVariantStore {
         ]
       );
       if (searchAvailable) {
-        const existing = db
-          .query<{ name: string }, [string]>(
-            "SELECT name FROM sqlite_master WHERE name = ?"
-          )
-          .get(this.tableName);
-        if (!existing)
+        if (
+          !db
+            .query("SELECT 1 FROM sqlite_master WHERE name = ?")
+            .get(this.tableName)
+        )
           db.run(
-            "UPDATE vector_partitions SET state = 'shadow', activated_epoch = NULL WHERE partition_id = ?",
-            [this.partitionId]
+            "UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1"
           );
         db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS ${this.tableName} USING vec0(
           variant_id INTEGER PRIMARY KEY,

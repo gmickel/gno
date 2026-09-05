@@ -19,6 +19,7 @@ import type {
 
 import { err, ok } from "../types";
 import { buildEligibleVectorQuery } from "./eligibility";
+import { searchVectorVariants } from "./variant-search";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BLOB Encoding Helpers (avoid Buffer.buffer footgun)
@@ -274,6 +275,15 @@ export async function createVectorIndexPort(
       }
 
       try {
+        const variants = searchVectorVariants(
+          db,
+          model,
+          dimensions,
+          embedding,
+          k,
+          searchOptions
+        );
+        if (variants !== null) return Promise.resolve(ok(variants));
         if (searchOptions?.eligibility) {
           const eligible = buildEligibleVectorQuery(db, searchOptions);
           const distanceFunction =

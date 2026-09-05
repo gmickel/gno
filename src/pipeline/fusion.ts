@@ -15,6 +15,7 @@ import type { FusionCandidate, FusionSource, RrfConfig } from "./types";
 export interface RankedInput {
   source: FusionSource;
   results: Array<{
+    documentId?: number;
     mirrorHash: string;
     seq: number;
     rank: number; // 1-based rank
@@ -73,11 +74,14 @@ export function rrfFuse(
         : config.bm25Weight * 0.5;
 
     for (const result of input.results) {
-      const key = `${result.mirrorHash}:${result.seq}`;
+      const key = `${result.mirrorHash}:${result.seq}:${result.documentId ?? ""}`;
       let candidate = candidates.get(key);
 
       if (!candidate) {
         candidate = {
+          ...(result.documentId === undefined
+            ? {}
+            : { documentId: result.documentId }),
           mirrorHash: result.mirrorHash,
           seq: result.seq,
           bm25Rank: null,
@@ -112,11 +116,14 @@ export function rrfFuse(
     }
 
     for (const result of input.results) {
-      const key = `${result.mirrorHash}:${result.seq}`;
+      const key = `${result.mirrorHash}:${result.seq}:${result.documentId ?? ""}`;
       let candidate = candidates.get(key);
 
       if (!candidate) {
         candidate = {
+          ...(result.documentId === undefined
+            ? {}
+            : { documentId: result.documentId }),
           mirrorHash: result.mirrorHash,
           seq: result.seq,
           bm25Rank: null,
@@ -145,11 +152,14 @@ export function rrfFuse(
     const weight = config.bm25Weight * 0.8;
 
     for (const result of input.results) {
-      const key = `${result.mirrorHash}:${result.seq}`;
+      const key = `${result.mirrorHash}:${result.seq}:${result.documentId ?? ""}`;
       let candidate = candidates.get(key);
 
       if (!candidate) {
         candidate = {
+          ...(result.documentId === undefined
+            ? {}
+            : { documentId: result.documentId }),
           mirrorHash: result.mirrorHash,
           seq: result.seq,
           bm25Rank: null,
@@ -211,14 +221,17 @@ export function rrfFuse(
  */
 export function toRankedInput(
   source: FusionSource,
-  results: Array<{ mirrorHash: string; seq: number }>
+  results: Array<{ mirrorHash: string; seq: number; documentIds?: number[] }>
 ): RankedInput {
   return {
     source,
-    results: results.map((r, i) => ({
-      mirrorHash: r.mirrorHash,
-      seq: r.seq,
-      rank: i + 1,
-    })),
+    results: results.flatMap((r, i) =>
+      (r.documentIds ?? [undefined]).map((documentId) => ({
+        ...(documentId === undefined ? {} : { documentId }),
+        mirrorHash: r.mirrorHash,
+        seq: r.seq,
+        rank: i + 1,
+      }))
+    ),
   };
 }

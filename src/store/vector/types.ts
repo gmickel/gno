@@ -40,6 +40,7 @@ export interface VectorRow {
 }
 
 export interface VectorSearchOptions {
+  embeddingIdentity?: VectorVariantIdentity;
   minScore?: number;
   allowedMirrorHashes?: string[];
   /** Exact active owner/chunk domain, applied before the nearest-neighbor budget. */
@@ -48,6 +49,8 @@ export interface VectorSearchOptions {
 
 /** Vector search result */
 export interface VectorSearchResult {
+  /** Exact current owners for variant hits; undefined preserves legacy semantics. */
+  documentIds?: number[];
   mirrorHash: string;
   seq: number;
   distance: number;
