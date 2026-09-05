@@ -1,3 +1,4 @@
+import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 
 import type { ToolContext } from "../../src/mcp/server";
@@ -85,69 +86,123 @@ describe("Context Capsule MCP model ownership", () => {
     ]);
   });
 
-  test("takes ownership before embedding init and cleans partial construction", async () => {
-    const calls: string[] = [];
-    const initError = new Error("embedding init failed");
-    const context = {
-      config: {
-        version: "1.0",
-        ftsTokenizer: "unicode61",
-        collections: [],
-        contexts: [],
-      },
-    } as unknown as ToolContext;
-    const factory = {
-      acquireModelLease() {
-        calls.push("acquire-lease");
-        return {
-          release() {
-            calls.push("release-lease");
-          },
+  test.each(["partial construction", "lazy embedding init"] as const)(
+    "cleans owned model ports after %s failure without masking the cause",
+    async (stage) => {
+      const calls: string[] = [];
+      const initError = new Error("embedding init failed");
+      const constructionError = new Error("rerank construction failed");
+      const db = new Database(":memory:");
+      db.run("CREATE TABLE content_vectors(model TEXT, embedding BLOB)");
+      const factory = {
+        acquireModelLease() {
+          calls.push("acquire-lease");
+          return {
+            release() {
+              calls.push("release-lease");
+            },
+          };
+        },
+        async createEmbeddingPort() {
+          calls.push("create-embed");
+          return {
+            ok: true as const,
+            value: {
+              modelUri: "test:embed",
+              async init() {
+                calls.push("init-embed");
+                throw initError;
+              },
+              async embed() {
+                return { ok: true as const, value: [] };
+              },
+              async embedBatch() {
+                return { ok: true as const, value: [] };
+              },
+              dimensions() {
+                return 1;
+              },
+              async dispose() {
+                calls.push("dispose-embed");
+                throw new Error("cleanup must not mask init error");
+              },
+            },
+          };
+        },
+        async createRerankPort() {
+          calls.push("create-rerank");
+          if (stage === "partial construction") throw constructionError;
+          return {
+            ok: true as const,
+            value: {
+              modelUri: "test:rerank",
+              async rerank() {
+                return { ok: true as const, value: [] };
+              },
+              async dispose() {
+                calls.push("dispose-rerank");
+              },
+            },
+          };
+        },
+      };
+      const context = {
+        config: {
+          version: "1.0",
+          ftsTokenizer: "unicode61",
+          collections: [],
+          contexts: [],
+        },
+        store: { getRawDb: () => db },
+        getModelAdapter: () => factory,
+      } as unknown as ToolContext;
+      try {
+        const operation = async () => {
+          const ports = await createMcpModelPorts(context, undefined, factory);
+          try {
+            // Construction must remain native-free with no stored dimensions.
+            expect(calls).toEqual([
+              "acquire-lease",
+              "create-embed",
+              "create-rerank",
+            ]);
+            if (!ports.vectorIndex)
+              throw new Error("lazy vector index missing");
+            await ports.vectorIndex.searchNearest(new Float32Array([1]), 1);
+          } finally {
+            // The MCP handler owns this same request-finally cleanup boundary.
+            await ports.dispose();
+          }
         };
-      },
-      async createEmbeddingPort() {
-        calls.push("create-embed");
-        return {
-          ok: true as const,
-          value: {
-            modelUri: "test:embed",
-            async init() {
-              calls.push("init-embed");
-              throw initError;
-            },
-            async embed() {
-              return { ok: true as const, value: [] };
-            },
-            async embedBatch() {
-              return { ok: true as const, value: [] };
-            },
-            dimensions() {
-              return 1;
-            },
-            async dispose() {
-              calls.push("dispose-embed");
-              throw new Error("cleanup must not mask init error");
-            },
-          },
-        };
-      },
-      async createRerankPort() {
-        calls.push("create-rerank");
-        throw new Error("rerank must not be reached");
-      },
-    };
-
-    const error = await createMcpModelPorts(context, undefined, factory).then(
-      () => null,
-      (cause: unknown) => cause
-    );
-    expect(error).toBe(initError);
-    expect(calls).toEqual([
-      "acquire-lease",
-      "create-embed",
-      "init-embed",
-      "dispose-embed",
-      "release-lease",
-    ]);
-  });
+        const error = await operation().then(
+          () => null,
+          (cause: unknown) => cause
+        );
+        expect(error).toBe(
+          stage === "partial construction" ? constructionError : initError
+        );
+        expect(calls).toEqual(
+          stage === "partial construction"
+            ? [
+                "acquire-lease",
+                "create-embed",
+                "create-rerank",
+                "dispose-embed",
+                "release-lease",
+              ]
+            : [
+                "acquire-lease",
+                "create-embed",
+                "create-rerank",
+                "init-embed",
+                "dispose-embed",
+                "dispose-rerank",
+                "release-lease",
+              ]
+        );
+      } finally {
+        db.close();
+      }
+    }
+  );
 });
