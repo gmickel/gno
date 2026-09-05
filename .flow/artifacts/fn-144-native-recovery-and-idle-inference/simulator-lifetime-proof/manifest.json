@@ -1,0 +1,23 @@
+{
+  "upstream": "https://github.com/withcatai/node-llama-cpp/commit/3f686d75aa9cda1b20b80465883f5f7358e42880",
+  "package": "node-llama-cpp@3.19.1",
+  "native_release": "b10068",
+  "license": "MIT, Copyright (c) 2023 Gilad S.",
+  "changed_package_files": [
+    "dist/gguf/insights/GgufInsights.js"
+  ],
+  "original_sha256": "d848a262376282ec803817bde6a3083dd0d5a1607fecef937a7357ee29f74490",
+  "patched_sha256": "814dd31d083aa93b09acbcad144ff3c04c2dd29b9e2bde7de62a5361656e5f13",
+  "patch_sha256": "8101d8683d2a3485a20acb82ff76b5089bd0bd0e015a3eb4e49c9d5220d15cbd",
+  "upstream_source_sha256": "002412f452460d371bf730e3842205e175b4463408f32ffc27e8c341c6d3d372",
+  "tests": {
+    "original": "SIMULATOR_SIDE=original bun --no-env-file test ./notes/fn144-simulator-patch/lifetime.test.ts -t 'paused speculative context'",
+    "original_exit": 1,
+    "original_result": "1 expected failure: model free occurred while context init was paused",
+    "patched": "SIMULATOR_SIDE=patched bun --no-env-file test ./notes/fn144-simulator-patch/lifetime.test.ts",
+    "patched_exit": 0,
+    "patched_result": "5 pass, 0 fail, 19 assertions"
+  },
+  "native_probe": "none",
+  "installed_mutations": "none"
+}

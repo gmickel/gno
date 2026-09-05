@@ -1,0 +1,30 @@
+{
+  "commits": ["3d9c0ec49c502ab0c3470c7df14ddac8123ad8d9"],
+  "base_commit": "2beb8aaeafd0fd84d16111cbda3d8ec35a44ee6e",
+  "tests": [
+    "SIMULATOR_SIDE=original bun --no-env-file test ./notes/fn144-simulator-patch/lifetime.test.ts -t \"paused speculative context\": expected original failure retained",
+    "SIMULATOR_SIDE=patched bun --no-env-file test ./notes/fn144-simulator-patch/lifetime.test.ts: 5 pass, 19 assertions",
+    "python3 /home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/run.py cli-update update --json: exit 0",
+    "python3 /home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/run.py cli-embed embed --json: exit 2, retained instrumentation fault before inference",
+    "python3 /home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/run.py cli-embed-capture-scope-fixed embed --json: exit 0, 2 embedded, 0 errors",
+    "python3 /home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/run.py sdk-matrix script matrix.ts: exit 0, 12 complete exact parity pairs, 138 complete native requests, CUDA",
+    "bun /home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/compare-candidate.ts: exit 0, 12 observable-state comparisons passed",
+    "python3 /home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/run.py cli-vsearch vsearch \"cobalt observatory dawn\" --json: exit 0",
+    "python3 /home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/run.py mcp script mcp-only.ts: exit 0, CLI/MCP exact public equality",
+    "python3 /home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/analyze.py: exit 0, all observed owned PIDs absent, no unfinished phases"
+  ],
+  "prs": [],
+  "summary": "notes/fn144.5-native-validation-summary.md",
+  "raw_root": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr",
+  "curated_manifests": [
+    "notes/fn144-native-artifacts/simulator-lifetime-proof.sha256.json",
+    "notes/fn144-native-artifacts/cuda-3d9c0ec4.sha256.json"
+  ],
+  "status": "in_progress",
+  "limitations": [
+    "Parent owns full gates and acceptance",
+    "CLI/MCP capture classifier flags pure JS lifecycle import; actual bindingLoads and mappedModels empty",
+    "No Metal, five-minute idle, generation, rerank or performance acceptance",
+    "Matrix native receipt has whole-matrix case scope"
+  ]
+}

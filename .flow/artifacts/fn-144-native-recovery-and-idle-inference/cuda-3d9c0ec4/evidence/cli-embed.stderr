@@ -1,0 +1,30 @@
+[node-llama-cpp] Failed to load a prebuilt binary for platform "linux" "x64" with CUDA support. Error: 162 |             }, testTimeout);
+163 |         }),
+164 |         new Promise((resolve, reject) => {
+165 |             function done() {
+166 |                 if (!forkSucceeded)
+167 |                     reject(new Error(`Binding binary test failed to run a test process via file "${__filename}"`));
+                                     ^
+error: Binding binary test failed to run a test process via file "/home/gordon/.cache/agent-tmp/gno-native-baseline-dependencies/node_modules/node-llama-cpp/dist/bindings/utils/testBindingBinary.js"
+      at done (/home/gordon/.cache/agent-tmp/gno-native-baseline-dependencies/node_modules/node-llama-cpp/dist/bindings/utils/testBindingBinary.js:167:32)
+      at onExit (/home/gordon/.cache/agent-tmp/gno-native-baseline-dependencies/node_modules/node-llama-cpp/dist/bindings/utils/testBindingBinary.js:200:21)
+      at <anonymous> (/home/gordon/.cache/agent-tmp/gno-native-baseline-dependencies/node_modules/node-llama-cpp/dist/bindings/utils/testBindingBinary.js:115:13)
+      at emit (node:events:98:22)
+      at #handleOnExit (node:child_process:520:14)
+
+[llama] GPU backend "cuda" failed, retrying with CPU: NoBinaryFoundError
+[node-llama-cpp] Failed to load a prebuilt binary for platform "linux" "x64". Error: 162 |             }, testTimeout);
+163 |         }),
+164 |         new Promise((resolve, reject) => {
+165 |             function done() {
+166 |                 if (!forkSucceeded)
+167 |                     reject(new Error(`Binding binary test failed to run a test process via file "${__filename}"`));
+                                     ^
+error: Binding binary test failed to run a test process via file "/home/gordon/.cache/agent-tmp/gno-native-baseline-dependencies/node_modules/node-llama-cpp/dist/bindings/utils/testBindingBinary.js"
+      at done (/home/gordon/.cache/agent-tmp/gno-native-baseline-dependencies/node_modules/node-llama-cpp/dist/bindings/utils/testBindingBinary.js:167:32)
+      at onExit (/home/gordon/.cache/agent-tmp/gno-native-baseline-dependencies/node_modules/node-llama-cpp/dist/bindings/utils/testBindingBinary.js:200:21)
+      at <anonymous> (/home/gordon/.cache/agent-tmp/gno-native-baseline-dependencies/node_modules/node-llama-cpp/dist/bindings/utils/testBindingBinary.js:115:13)
+      at emit (node:events:98:22)
+      at #handleOnExit (node:child_process:520:14)
+
+{"error":{"code":"RUNTIME","message":"Failed to load model: file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"}}

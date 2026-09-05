@@ -1,0 +1,147 @@
+import { expect, test } from "bun:test";
+import { EventRelay } from "lifecycle-utils";
+
+import { DisposeGuard } from "../../node_modules/node-llama-cpp/dist/utils/DisposeGuard.js";
+
+const side = process.env.SIMULATOR_SIDE ?? "patched";
+const { GgufInsightsSimulatorSession } = await import(`./${side}-fixture.js`);
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((accept) => { resolve = accept; });
+  return { promise, resolve };
+}
+
+function fake(options: { pauseModel?: boolean; failModel?: boolean } = {}) {
+  const events: string[] = [];
+  const contextEntered = deferred();
+  const contextResume = deferred();
+  const modelEntered = deferred();
+  const modelResume = deferred();
+  const backend = new DisposeGuard();
+  let freeCount = 0;
+  let modelCount = 0;
+  let first = true;
+  class AddonModel {
+    freed = false;
+    id = ++modelCount;
+    async init() {
+      events.push(`modelInit:${this.id}`);
+      modelEntered.resolve();
+      if (options.pauseModel) await modelResume.promise;
+      if (options.failModel && first) { first = false; throw Error("controlled model initialization failure"); }
+      return true;
+    }
+    getMemoryBreakdown() {
+      if (this.freed) throw Error("model freed during memory read");
+      return { cpuRam: 12, gpuVram: 34 };
+    }
+    async dispose() {
+      if (this.freed) throw Error("duplicate model free");
+      this.freed = true;
+      freeCount++;
+      events.push(`modelFree:${this.id}`);
+    }
+  }
+  class AddonContext {
+    constructor(readonly model: AddonModel) {}
+    async init() {
+      events.push(`contextInit:${this.model.id}`);
+      contextEntered.resolve();
+      if (this.model.id === 1) await contextResume.promise;
+      return true;
+    }
+    getMemoryBreakdown() {
+      events.push(`memoryRead:${this.model.id}`);
+      return this.model.getMemoryBreakdown();
+    }
+    async dispose() { events.push(`contextDispose:${this.model.id}`); }
+  }
+  const llama = {
+    gpu: "cuda", supportsMmap: true, _memoryLock: {},
+    _bindings: { AddonModel, AddonContext }, _backendDisposeGuard: backend,
+    onDispose: new EventRelay(), _createLogLevelOverride: () => () => {},
+    _shouldLog: () => false,
+  };
+  const session = new GgufInsightsSimulatorSession(llama, 1);
+  const estimate = (gpuLayers = 1) => session.estimateContextResources({ modelSource: "same-pinned-model", gpuLayers, contextSize: 2048, batchSize: 512, sequences: 1 });
+  return { session, estimate, llama, backend, events, contextEntered, contextResume, modelEntered, modelResume, freeCount: () => freeCount };
+}
+
+// Drain only queued Promise continuations, never a timer or native operation.
+async function microtasks() { for (let i = 0; i < 32; i++) await Promise.resolve(); }
+
+test("paused speculative context survives session disposal until memory read and context disposal", async () => {
+  const state = fake();
+  const estimation = state.estimate();
+  await state.contextEntered.promise;
+  const disposal = state.session.dispose();
+  try {
+    await microtasks();
+    expect(state.freeCount()).toBe(0);
+  } finally {
+    state.contextResume.resolve();
+    await Promise.allSettled([estimation, disposal]);
+  }
+  expect(await estimation).toEqual({ cpuRam: 12, gpuVram: 34 });
+  expect(state.events).toEqual(["modelInit:1", "contextInit:1", "memoryRead:1", "contextDispose:1", "modelFree:1"]);
+  expect(state.backend._preventionHandles).toBe(0);
+});
+
+test("session disposal during asynchronous model creation cannot free an active context", async () => {
+  const state = fake({ pauseModel: true });
+  const estimation = state.estimate();
+  await state.modelEntered.promise;
+  const disposal = state.session.dispose();
+  state.modelResume.resolve();
+  await state.contextEntered.promise;
+  state.contextResume.resolve();
+  await Promise.all([estimation, disposal]);
+  expect(state.events.indexOf("modelFree:1")).toBeGreaterThan(state.events.indexOf("contextDispose:1"));
+  expect(state.freeCount()).toBe(1);
+  expect(state.backend._preventionHandles).toBe(0);
+});
+
+test("LRU eviction waits for users; backend disposal drains evicted and cached handles", async () => {
+  const state = fake();
+  const first = state.estimate();
+  await state.contextEntered.promise;
+  await state.estimate(2);
+  state.llama.onDispose.dispatchEvent();
+  let backendDisposed = false;
+  const disposal = state.backend.acquireDisposeLock().then(() => { backendDisposed = true; });
+  await microtasks();
+  expect(backendDisposed).toBe(false);
+  expect(state.events).not.toContain("modelFree:1");
+  state.contextResume.resolve();
+  await first;
+  await disposal;
+  await state.session.dispose();
+  expect(state.freeCount()).toBe(2);
+  expect(state.backend._preventionHandles).toBe(0);
+});
+
+test("failed model creation releases native ownership and failed cache entry is retryable", async () => {
+  const state = fake({ failModel: true });
+  const failure = await state.estimate().then(() => null, (error: unknown) => error);
+  expect(failure).toBeInstanceOf(Error);
+  expect(state.freeCount()).toBe(1);
+  state.contextResume.resolve();
+  expect(await state.estimate()).toEqual({ cpuRam: 12, gpuVram: 34 });
+  await state.session.dispose();
+  expect(state.freeCount()).toBe(2);
+  expect(state.backend._preventionHandles).toBe(0);
+});
+
+test("backend handle acquisition failure releases the newly created raw model", async () => {
+  const state = fake({ pauseModel: true });
+  const result = state.estimate().then(() => null, (error: unknown) => error);
+  await state.modelEntered.promise;
+  const backendDisposal = state.backend.acquireDisposeLock();
+  state.modelResume.resolve();
+  expect(await result).toBeInstanceOf(Error);
+  await backendDisposal;
+  await state.session.dispose();
+  expect(state.freeCount()).toBe(1);
+  expect(state.backend._preventionHandles).toBe(0);
+});

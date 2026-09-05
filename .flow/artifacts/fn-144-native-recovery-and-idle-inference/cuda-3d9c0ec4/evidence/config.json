@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "ftsTokenizer": "unicode61",
+  "busyTimeoutMs": 60000,
+  "collections": [
+    {
+      "name": "identity",
+      "path": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/corpus",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "other",
+      "path": "/home/gordon/.cache/agent-tmp/gno-simulator-native-3d9c0ec4-y0wz09qr/other",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    }
+  ],
+  "contexts": [],
+  "projectAffinity": {
+    "enabled": false,
+    "contribution": 0.03
+  },
+  "models": {
+    "activePreset": "synthetic",
+    "presets": [
+      {
+        "id": "synthetic",
+        "name": "Synthetic embedding only",
+        "embed": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "rerank": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "gen": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+      }
+    ],
+    "warmModelTtl": 300000
+  }
+}

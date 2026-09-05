@@ -1,0 +1,20 @@
+{
+  "UPSTREAM-LICENSE": "a1ca3969baa10f09da46a0e834851c8150c35c729e88f8e756435fac02d1cd6d",
+  "upstream-pr636-files.json": "e728b9094659a70ae7991c79f54318ea60e3373cd037b7a801cd2c7d16f0586a",
+  "upstream-GgufInsights.ts": "002412f452460d371bf730e3842205e175b4463408f32ffc27e8c341c6d3d372",
+  "simulator-upstream.js": "b37684b16e3b88c510117737ddbc298f06bb55fcdf9ca7e41c63d048b978353a",
+  "prepare.ts": "eaefd3b92ba933e8dcc7fa7bcb4c0a83ad3a5fdb8a57550bfc4f7ae96e8da5a2",
+  "original-fixture.js": "4d655344780d31b4c3dce5627aef91627221baa88668c6c68af6b71fae47ca53",
+  "patched-fixture.js": "6dc247418d8766914efe61aa5bcdef9893351b4c984c3a39ec72550900673db4",
+  "lifetime.test.ts": "cda1c50399409b4aed3465fcad95709f9e1cc030180831695e5e9f0b80154349",
+  "patched-test.log": "d5b49fb824b0a4978e34e3afdd3465088ba9c79efbfdaaca01034ea2afce64f7",
+  "original-test.log": "03d76e0cfcde2e4ff386509518037cf7f47b4240cab5a7c8393ba064efe2c9f3",
+  "installed-identity.sha256": "89e998870e1f928516f9a335c20475e54c56aea016a27ef9691a15f031dca4ec",
+  "make-patch.py": "5b38e19ac9c54ddc4cba7d92d6bee233717815d6489f1273948e9ca358d6cb22",
+  "node-llama-cpp@3.19.1.patch": "8101d8683d2a3485a20acb82ff76b5089bd0bd0e015a3eb4e49c9d5220d15cbd",
+  "manifest.json": "430aafccb9999cf1f11863454ee0dd0ee3bd3d00a47f0fd69896cd50a76fa2b4",
+  "README.md": "da84d03a5c3311eb161e30ea60d7121e60969ed70cd443faa3d539ea63457c45",
+  "original/dist/gguf/insights/GgufInsights.js": "d848a262376282ec803817bde6a3083dd0d5a1607fecef937a7357ee29f74490",
+  "patched/dist/gguf/insights/GgufInsights.js": "814dd31d083aa93b09acbcad144ff3c04c2dd29b9e2bde7de62a5361656e5f13",
+  "verify/dist/gguf/insights/GgufInsights.js": "814dd31d083aa93b09acbcad144ff3c04c2dd29b9e2bde7de62a5361656e5f13"
+}

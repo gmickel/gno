@@ -1,0 +1,404 @@
+{
+  "scopeBefore": {
+    "owners": [
+      {
+        "rel_path": "Alpha.md",
+        "collection": "identity",
+        "source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "title": "Alpha",
+        "seq": 0,
+        "text": "The cobalt observatory opens at dawn.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+        "embedding": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b"
+      },
+      {
+        "rel_path": "Scope.md",
+        "collection": "identity",
+        "source_hash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+        "mirror_hash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+        "title": "Scope",
+        "seq": 0,
+        "text": "The cobalt observatory telescope uses a quartz lens.\n",
+        "partition_id": null,
+        "input_hash": null,
+        "embedding": null
+      },
+      {
+        "rel_path": "copy/Beta.md",
+        "collection": "identity",
+        "source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "title": "Beta",
+        "seq": 0,
+        "text": "The cobalt observatory opens at dawn.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "0f773436d21df5a1ded2566159157c2e78934149c05f95f030f71ff9df8750b1",
+        "embedding": "651490d2fae7c60e32053f5040bbd08c9b9321d1baddc0e690aa6e6440b889f2"
+      },
+      {
+        "rel_path": "Delta.md",
+        "collection": "other",
+        "source_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "mirror_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "title": "Delta",
+        "seq": 0,
+        "text": "The copper laboratory closes at midnight.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+        "embedding": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579"
+      },
+      {
+        "rel_path": "Scope.md",
+        "collection": "other",
+        "source_hash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+        "mirror_hash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+        "title": "Scope",
+        "seq": 0,
+        "text": "The copper laboratory uses an argon chamber.\n",
+        "partition_id": null,
+        "input_hash": null,
+        "embedding": null
+      }
+    ],
+    "partitions": [
+      {
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "version": 1,
+        "model": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "fingerprint": "86d8471a2798d32638f92addcaa80a6578c93b366f730ab9accb67a4853ba5e8",
+        "dimensions": 1024,
+        "state": "active",
+        "activated_epoch": 50
+      }
+    ],
+    "events": [
+      {
+        "change_kind": "create",
+        "new_rel_path": "Alpha.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "Delta.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f"
+      },
+      {
+        "change_kind": "update",
+        "new_rel_path": "Alpha.md",
+        "old_active": 1,
+        "new_active": 1,
+        "old_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "inactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 1,
+        "new_active": 0,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "reactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 0,
+        "new_active": 1,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "inactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 1,
+        "new_active": 0,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "reactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 0,
+        "new_active": 1,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "copy/Alpha.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "copy/Beta.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "inactivate",
+        "new_rel_path": "copy/Alpha.md",
+        "old_active": 1,
+        "new_active": 0,
+        "old_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "Scope.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "Scope.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36"
+      }
+    ]
+  },
+  "scopeEmbed": {
+    "embedded": 1,
+    "errors": 0,
+    "contentionErrors": 0,
+    "duration": 0.049,
+    "model": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+    "searchAvailable": true
+  },
+  "scopeAfter": {
+    "owners": [
+      {
+        "rel_path": "Alpha.md",
+        "collection": "identity",
+        "source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "title": "Alpha",
+        "seq": 0,
+        "text": "The cobalt observatory opens at dawn.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "1c1e255cb1b0b691329c904899aea4b3c8c200a9b403b3f52c310990ef99ce3f",
+        "embedding": "0a2d29cbbbbed300ada53dc2c950aeb23c613df06731f888c0ef0ba46c1c440b"
+      },
+      {
+        "rel_path": "Scope.md",
+        "collection": "identity",
+        "source_hash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+        "mirror_hash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+        "title": "Scope",
+        "seq": 0,
+        "text": "The cobalt observatory telescope uses a quartz lens.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "6a3dbbe07ca2e108038c46df6fdbda3f7884a19365dcf7f7e5128b264cf06292",
+        "embedding": "016a77209bd22414e0035b09f01019c506b8701ad5e1784731b29aaaf969b89d"
+      },
+      {
+        "rel_path": "copy/Beta.md",
+        "collection": "identity",
+        "source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "title": "Beta",
+        "seq": 0,
+        "text": "The cobalt observatory opens at dawn.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "0f773436d21df5a1ded2566159157c2e78934149c05f95f030f71ff9df8750b1",
+        "embedding": "651490d2fae7c60e32053f5040bbd08c9b9321d1baddc0e690aa6e6440b889f2"
+      },
+      {
+        "rel_path": "Delta.md",
+        "collection": "other",
+        "source_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "mirror_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "title": "Delta",
+        "seq": 0,
+        "text": "The copper laboratory closes at midnight.\n",
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "input_hash": "97e01ec03118f999a7758b4e809ac82b175b3622b930d0fa8f044ae5452d81ba",
+        "embedding": "e3ca72fd4e2d4b9e12260fa12c9614992b944f06bd4fab58f995c7e289a2d579"
+      },
+      {
+        "rel_path": "Scope.md",
+        "collection": "other",
+        "source_hash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+        "mirror_hash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+        "title": "Scope",
+        "seq": 0,
+        "text": "The copper laboratory uses an argon chamber.\n",
+        "partition_id": null,
+        "input_hash": null,
+        "embedding": null
+      }
+    ],
+    "partitions": [
+      {
+        "partition_id": "ac40ed20eb97929ed18c30e6fef9f89c043a2091ae7ce10adaa136a5ee667679",
+        "version": 1,
+        "model": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "fingerprint": "86d8471a2798d32638f92addcaa80a6578c93b366f730ab9accb67a4853ba5e8",
+        "dimensions": 1024,
+        "state": "active",
+        "activated_epoch": 50
+      }
+    ],
+    "events": [
+      {
+        "change_kind": "create",
+        "new_rel_path": "Alpha.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "Delta.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "ca2c163363e28d63bda73f5cf6c83e0b7d8445ebd67f26295564f2c48d753e7f"
+      },
+      {
+        "change_kind": "update",
+        "new_rel_path": "Alpha.md",
+        "old_active": 1,
+        "new_active": 1,
+        "old_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "inactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 1,
+        "new_active": 0,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "reactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 0,
+        "new_active": 1,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "inactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 1,
+        "new_active": 0,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "reactivate",
+        "new_rel_path": "Alpha.md",
+        "old_active": 0,
+        "new_active": 1,
+        "old_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "new_source_hash": "6dc5c05b6892801ba49521f20d85691c218425659949c9df3687f59aacadada2",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "copy/Alpha.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "copy/Beta.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "inactivate",
+        "new_rel_path": "copy/Alpha.md",
+        "old_active": 1,
+        "new_active": 0,
+        "old_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_source_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "old_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc",
+        "new_mirror_hash": "98897c0b09e72a985612b60ede53122b133130f78795180fc97aff7911667abc"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "Scope.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "60145b3156b2fe3d9f1e11c391fc2db666d3a29dd453fb494233eeb26c61b946"
+      },
+      {
+        "change_kind": "create",
+        "new_rel_path": "Scope.md",
+        "old_active": null,
+        "new_active": 1,
+        "old_source_hash": null,
+        "new_source_hash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36",
+        "old_mirror_hash": null,
+        "new_mirror_hash": "77cf571dfd43e715edcf1b894245bf00e28111bad72a8d9ac22cf83fef3bef36"
+      }
+    ]
+  }
+}

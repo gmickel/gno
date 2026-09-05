@@ -1,0 +1,44 @@
+{
+  "source": "3d9c0ec49c502ab0c3470c7df14ddac8123ad8d9",
+  "attempts": [
+    {
+      "name": "cli-update",
+      "exitCode": 0,
+      "classification": "successful setup"
+    },
+    {
+      "name": "cli-embed",
+      "exitCode": 2,
+      "classification": "instrumentation failure before model inference",
+      "reason": "Worker-only Bun preload arguments propagated into node-llama-cpp testBindingBinary child_process.fork; its argv is not the worker bootstrap. Both CUDA and automatic CPU binding probes failed. No successful CPU fallback or model inference occurred.",
+      "retained": "cli-embed.stdout, cli-embed.stderr, cli-embed.receipt.json, cli-embed.process.jsonl, cli-embed.capture.json"
+    },
+    {
+      "name": "cli-embed-capture-scope-fixed",
+      "exitCode": 0,
+      "classification": "successful CUDA setup after scratch instrumentation correction",
+      "change": "phase-child.ts removes only the paired worker phase/native capture --preload arguments from process.execArgv before node-llama-cpp can fork its binding tester; worker capture remains installed. Product/dependency files unchanged. Final helper hashes are in analysis.json. Initial pre-correction hashes remain in provenance.json."
+    },
+    {
+      "name": "sdk-matrix",
+      "exitCode": 0,
+      "classification": "one exact 12-case CUDA matrix, no retries"
+    },
+    {
+      "name": "cli-vsearch",
+      "exitCode": 0,
+      "classification": "one fresh CLI semantic query"
+    },
+    {
+      "name": "mcp",
+      "exitCode": 0,
+      "classification": "one fresh MCP process, lexical/vector/change calls"
+    }
+  ],
+  "captureLimitations": [
+    "Frozen capture flags public CLI/MCP lifecycle.ts import as a native artifact. src/index.ts statically imports resetModelManager. All these captures have empty bindingLoads and mappedModels. The SDK parent capture is fully clean. The flagged CLI/MCP capture is not presented as a clean native-parent acceptance receipt.",
+    "All SDK child requests share scope caseId sdk-matrix; per-case public results and sequential request order are retained, but automatic per-case child grouping was not added.",
+    "Phase capture records simulator estimate/dispose and actual model/backend boundaries, not the individual C++ GetMemoryBreakdown caller. No abort occurred in this run.",
+    "Instrumented elapsed time and sampled owned-process RSS are descriptive only, not a performance threshold comparison. No five-minute idle or Metal acceptance was exercised."
+  ]
+}
