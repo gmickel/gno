@@ -1,0 +1,14 @@
+[
+  {
+    "platform": "cuda",
+    "archives": 8,
+    "verifiedRawFiles": 1242,
+    "checksumsPassed": true
+  },
+  {
+    "platform": "metal",
+    "archives": 2,
+    "verifiedRawFiles": 5046,
+    "checksumsPassed": true
+  }
+]
