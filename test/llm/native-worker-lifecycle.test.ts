@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
-// Bun has no temporary-directory creation API.
-import { mkdtemp } from "node:fs/promises";
+// Bun has no temporary-directory creation or realpath API.
+import { mkdtemp, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -17,7 +17,9 @@ import {
 } from "../../src/llm/native-worker/runtime-config";
 
 const clients: NativeWorkerClient[] = [];
-const root = await mkdtemp(join(tmpdir(), "gno-native-runtime-"));
+const root = await realpath(
+  await mkdtemp(join(tmpdir(), "gno-native-runtime-"))
+);
 const fixture = join(root, "fake.ts");
 
 test("native environment retains only canonical CUDA directory and control sizes are bounded", () => {

@@ -407,13 +407,13 @@ test("capture forbids overlap and restores native prototypes after missing cache
 });
 
 test("owned CLI output cannot turn uninstrumented vectorsUsed into native coverage", async () => {
-  // Bun has no directory creation/removal API.
-  const { mkdtemp, rm } = await import("node:fs/promises");
+  // Bun has no directory creation/removal or canonicalization API.
+  const { mkdtemp, realpath, rm } = await import("node:fs/promises");
   const { runSurfaceAcceptance } =
     await import("../../../evals/acceptance/surface-adapter");
   // Bun has no platform temporary-directory utility.
   const { tmpdir } = await import("node:os");
-  const root = await mkdtemp(`${tmpdir()}/gno-acceptance-cli-`);
+  const root = await realpath(await mkdtemp(`${tmpdir()}/gno-acceptance-cli-`));
   const req = structuredClone(request);
   req.manifest.cases[0]!.surface = "cli";
   try {

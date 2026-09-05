@@ -1,6 +1,6 @@
 import { afterEach, expect, spyOn, test } from "bun:test";
-// Bun has no temporary-directory creation API.
-import { mkdtemp } from "node:fs/promises";
+// Bun has no temporary-directory creation or realpath API.
+import { mkdtemp, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -23,7 +23,7 @@ import { EmbeddingIdentitySchema } from "../../src/llm/native-worker/protocol";
 import { LlmAdapter } from "../../src/llm/nodeLlamaCpp/adapter";
 import { NodeLlamaCppEmbedding } from "../../src/llm/nodeLlamaCpp/embedding";
 
-const root = await mkdtemp(join(tmpdir(), "gno-port-ipc-"));
+const root = await realpath(await mkdtemp(join(tmpdir(), "gno-port-ipc-")));
 const fixture = join(root, "child.ts");
 const capture = join(root, "capture.json");
 const clients: NativeWorkerClient[] = [];

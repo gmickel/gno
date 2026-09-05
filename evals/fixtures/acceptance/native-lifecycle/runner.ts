@@ -1,12 +1,13 @@
 /** Synthetic fault contract; target imports always resolve inside the tested package. */
-// node:assert/path/fs: Bun has no strict assertion, path join or mkdir API.
+// node:assert/path/fs: Bun has no strict assertion, path join, mkdir or realpath API.
 import assert from "node:assert/strict";
-import { mkdir } from "node:fs/promises";
+import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 
 const packageRoot = process.argv[2]!;
-const scratch = join(process.argv[3]!, "native-lifecycle");
-await mkdir(scratch, { recursive: true });
+const scratchPath = join(process.argv[3]!, "native-lifecycle");
+await mkdir(scratchPath, { recursive: true });
+const scratch = await realpath(scratchPath);
 const moduleRoot = join(packageRoot, "src/llm/native-worker");
 const { NativeWorkerClient } = (await import(
   join(moduleRoot, "client.ts")

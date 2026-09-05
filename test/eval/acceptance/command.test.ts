@@ -1,6 +1,14 @@
 import { expect, test } from "bun:test";
-// Bun has no directory lifecycle API or OS/path helpers.
-import { mkdir, mkdtemp, rm, symlink, unlink, utimes } from "node:fs/promises";
+// Bun has no directory lifecycle/canonicalization APIs or OS/path helpers.
+import {
+  mkdir,
+  mkdtemp,
+  realpath,
+  rm,
+  symlink,
+  unlink,
+  utimes,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -19,7 +27,9 @@ import { verifyAcceptanceSource } from "../../../scripts/retrieval-acceptance-so
 
 const hash = "a".repeat(64);
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), "acceptance-command-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "acceptance-command-"))
+  );
   const baseline: AcceptanceManifest = {
     schemaVersion: ACCEPTANCE_SCHEMA_VERSION,
     role: "baseline",
@@ -234,7 +244,9 @@ test("executable returns a nonpassing exit for invalid config without a receipt"
 });
 
 test("source identity rejects actual runtime and archive link mutations, tolerating extraction timestamps", async () => {
-  const root = await mkdtemp(join(tmpdir(), "acceptance-source-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "acceptance-source-"))
+  );
   const sourceRoot = join(root, "source");
   const extracted = join(root, "extracted");
   const git = (...args: string[]) => {

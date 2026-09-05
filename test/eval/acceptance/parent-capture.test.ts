@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-// Bun has no temporary-directory/removal APIs.
-import { mkdtemp, rename, rm } from "node:fs/promises";
+// Bun has no temporary-directory lifecycle or canonicalization APIs.
+import { mkdtemp, realpath, rename, rm } from "node:fs/promises";
 import { tmpdir } from "node:os"; // Bun has no OS temp-directory API.
 import { join } from "node:path"; // Bun has no path helpers.
 
@@ -11,7 +11,9 @@ test("selected pipeline attachment captures direct-surface metadata without trac
     await import("../../../src/pipeline/trace-metadata");
   const { SEARCH_RESULTS_TRACE_METADATA } =
     await import("../../../src/pipeline/types");
-  const root = await mkdtemp(join(tmpdir(), "gno-pipeline-attachment-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-pipeline-attachment-"))
+  );
   const original = Object.defineProperty;
   const capture = await installParentCapture("direct-surface", [], root);
   try {
@@ -134,7 +136,9 @@ test.each([0, 7])(
 test("atomic child ledger growth bypasses BunFile cached length; only missing files are absent", async () => {
   const { readChildEventLedger } =
     await import("../../../evals/acceptance/surface-adapter");
-  const root = await mkdtemp(join(tmpdir(), "gno-ledger-rename-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-ledger-rename-"))
+  );
   const path = join(root, "children.json");
   try {
     expect(await readChildEventLedger(path)).toBeNull();

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-// node:fs/promises/os/path: Bun has no temp-directory or symlink creation/path APIs.
-import { mkdtemp, symlink } from "node:fs/promises";
+// Bun has no temp-directory, realpath, symlink creation or path APIs.
+import { mkdtemp, realpath, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -9,7 +9,9 @@ import { verifyPackedNativeWorker } from "../../scripts/package-smoke-native-wor
 const root = new URL("../../", import.meta.url).pathname;
 
 test("packed native entry and client preserve lifecycle, fault, framing and request identity contracts", async () => {
-  const temp = await mkdtemp(join(tmpdir(), "gno-native-package-"));
+  const temp = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-native-package-"))
+  );
   const archive = join(temp, "package.tgz");
   const pack = Bun.spawn(
     [

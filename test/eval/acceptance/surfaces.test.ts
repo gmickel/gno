@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-// Bun has no temporary-directory creation/removal APIs.
-import { mkdtemp, rm } from "node:fs/promises";
+// Bun has no temporary-directory lifecycle or canonicalization APIs.
+import { mkdtemp, realpath, rm } from "node:fs/promises";
 // Bun has no OS temporary-directory API.
 import { tmpdir } from "node:os";
 // Bun has no path manipulation API.
@@ -66,7 +66,9 @@ if (mode === "stdio") {
 `;
 
 async function fixture(mode: string) {
-  const root = await mkdtemp(join(tmpdir(), "acceptance-surface-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "acceptance-surface-"))
+  );
   const portReservation = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,

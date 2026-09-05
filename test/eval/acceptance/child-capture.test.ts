@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-// Bun has no temporary-directory/symlink/removal APIs.
-import { mkdtemp, rm, symlink } from "node:fs/promises";
+// Bun has no temporary-directory, canonicalization, or symlink APIs.
+import { mkdtemp, realpath, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os"; // Bun has no OS temp-directory API.
 import { join } from "node:path"; // Bun has no path helpers.
 
@@ -37,7 +37,9 @@ const identity: ChildIdentity = {
 
 test("child capture transparently forwards operational arguments and exact request", async () => {
   const { chmod, readdir } = await import("node:fs/promises");
-  const root = await mkdtemp(join(tmpdir(), "gno-capture-forward-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-capture-forward-"))
+  );
   const entry = join(process.cwd(), "src/llm/native-worker/entry.ts");
   const preload = join(
     process.cwd(),
@@ -211,7 +213,9 @@ test.each([
 );
 
 test("actual selected child captures input and hash failure without loading a backend; unrelated spawn unchanged", async () => {
-  const root = await mkdtemp(join(tmpdir(), "gno-child-capture-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-child-capture-"))
+  );
   const path = join(root, "not-a-model.gguf");
   await Bun.write(path, "deliberately not a native model");
   const modelUri = `file:${path}`;
@@ -334,7 +338,7 @@ test("actual selected child captures input and hash failure without loading a ba
 }, 15000);
 
 test("capture rejects symlink roots before installing a spawn hook", async () => {
-  const root = await mkdtemp(join(tmpdir(), "gno-child-path-"));
+  const root = await realpath(await mkdtemp(join(tmpdir(), "gno-child-path-")));
   const link = `${root}-link`;
   try {
     await symlink(root, link);
@@ -443,7 +447,9 @@ test("resource scope samples validated actual descendants and leaves unrelated p
 }, 10000);
 
 test("candidate adapter import and parent capture do not load native leaf modules or bindings", async () => {
-  const root = await mkdtemp(join(tmpdir(), "gno-native-free-parent-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-native-free-parent-"))
+  );
   try {
     const adapter = join(process.cwd(), "evals/acceptance/native-adapter.ts");
     const bridge = join(process.cwd(), "evals/acceptance/parent-capture.ts");
@@ -553,7 +559,9 @@ test("context signal telemetry preserves semantic inputs and rejects unknown obj
 });
 
 test("embedding context capture forwards original cancellation options and preserves model context", async () => {
-  const root = await mkdtemp(join(tmpdir(), "gno-context-control-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-context-control-"))
+  );
   const path = join(root, "model.gguf");
   await Bun.write(path, "synthetic capture fixture");
   const sha256 = new Bun.CryptoHasher("sha256")
@@ -616,7 +624,9 @@ test("embedding context capture forwards original cancellation options and prese
 
 test("actual worker removes only its QA preload before dependency fork; nonentry inherited preload is harmless", async () => {
   const { chmod } = await import("node:fs/promises");
-  const root = await mkdtemp(join(tmpdir(), "gno-capture-fork-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-capture-fork-"))
+  );
   const preload = join(
     process.cwd(),
     "evals/acceptance/native-child-preload.ts"

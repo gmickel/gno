@@ -1,6 +1,13 @@
 import { expect, test } from "bun:test";
-// Bun has no directory creation/copy/link API; all copies are test-owned.
-import { cp, mkdir, mkdtemp, readdir, symlink } from "node:fs/promises";
+// Bun has no directory creation/copy/link or realpath API; all copies are test-owned.
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  realpath,
+  symlink,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 // Bun has no file URL conversion API for package-relative filesystem operations.
@@ -35,7 +42,9 @@ test("factory installation is shared and creates the guarded session before nati
 });
 
 test("dependency source and version drift fail closed", async () => {
-  const root = await mkdtemp(join(tmpdir(), "gno-simulator-drift-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-simulator-drift-"))
+  );
   await mkdir(join(root, "dist/gguf/insights"), { recursive: true });
   const entry = pathToFileURL(join(root, "dist/index.js")).href;
   for (const version of ["3.20.0", "3.19.1"]) {
@@ -59,7 +68,9 @@ test("dependency source and version drift fail closed", async () => {
 });
 
 test("factory installs from an extracted GNO location with a nested dependency copy", async () => {
-  const root = await mkdtemp(join(tmpdir(), "gno-simulator-package-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-simulator-package-"))
+  );
   const repository = fileURLToPath(new URL("../../", import.meta.url));
   const modules = join(root, "node_modules");
   const gno = join(modules, "@gmickel/gno");

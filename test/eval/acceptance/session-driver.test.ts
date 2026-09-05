@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-// Bun has no directory copy/creation/removal or symlink APIs.
+// Bun has no directory lifecycle, canonicalization, or symlink APIs.
 import { cp, mkdir, mkdtemp, realpath, rm, symlink } from "node:fs/promises";
 // Bun has no OS/path utility equivalents.
 import { tmpdir } from "node:os";
@@ -16,7 +16,9 @@ async function fixture(): Promise<{
   options: SessionDriverOptions;
   root: string;
 }> {
-  const root = await mkdtemp(join(tmpdir(), "gno-session-driver-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-session-driver-"))
+  );
   const config = createDefaultConfig();
   config.collections = [];
   config.retrievalTraces = {
@@ -200,7 +202,9 @@ test.each([
   "../agentic/canonical.ts",
   "../../scripts/package-smoke-isolation.ts",
 ])("snapshot harness installation preserves differing %s", async (name) => {
-  const root = await mkdtemp(join(tmpdir(), "gno-session-snapshot-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-session-snapshot-"))
+  );
   const { installSessionHarness } =
     await import("../../../evals/acceptance/session-driver");
   try {
@@ -281,7 +285,9 @@ test("driver pins declared backend/build policy and only explicit canonical CUDA
 });
 
 test("installed harness imports inside a fresh selected product root without native access", async () => {
-  const root = await mkdtemp(join(tmpdir(), "gno-session-portable-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-session-portable-"))
+  );
   const source = new URL("../../../", import.meta.url).pathname;
   const { installSessionHarness } =
     await import("../../../evals/acceptance/session-driver");
@@ -358,7 +364,9 @@ console.log(JSON.stringify({ driver: true, childImports: true, attempts }));
 }, 10000);
 
 test("helper installation rejects a companion-directory symlink outside the selected root", async () => {
-  const root = await mkdtemp(join(tmpdir(), "gno-session-contained-"));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-session-contained-"))
+  );
   const source = join(root, "selected");
   const outside = join(root, "outside");
   const { installSessionHarness } =
