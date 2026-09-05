@@ -1,8 +1,10 @@
 # fn143–152 final evidence map
 
-Frozen aggregate product f64c41c97e196e3bffdba23bc1c006bca7489b28, version2.0.0, canonical package SHA56587f10c9969a795d6aa527c29fe8a057720a97d9f9e5de335daa996e706655. Final CUDA/Metal fn1465 host accepted; final CPU HTTP/production browser passed. Gates at76743bd6:5216pass/2skip/0fail,41596assertions; memory100%, hybrid86%, BM2588%. Nine specs closed;40/41tasks done, fn1454 blocked. Historical fn143 QA NEEDS_WORK/two inherited P1 baseline controls persists; no blanket all-QA PASS, publication or universal performance claim.
+Frozen product f64c41c97e196e3bffdba23bc1c006bca7489b28, version2.0.0 and canonical package56587f10 remain unchanged. All41tasks done and10specs closed after Heimdall physical Metal allocation acceptance. Full local gates at32aa6d99:5216pass/2skip/0fail,41596assertions; prior memory100%,hybrid86%,BM2588% unchanged. Historical fn143 QA NEEDS_WORK/two inherited P1 baseline controls persist; no blanket historical QA pass, release or universal performance claim.
 
-Runtime snapshot: 2026-09-05T08:14:24.821895+00:00. Read-only .git/flow-state/tasks runtime records and canonical .flow/specs records;41 tasks verified40done/1blocked,9specs done. Evidence synthesis, not a replacement formal QA verdict.
+Runtime snapshot: 2026-09-05T08:52:58.280739+00:00. Live flowctl show for all10 selected specs:41tasks done,10specs closed; full refreshed exports retained separately from the original blocked snapshot.
+
+Latest full exports: [Heimdall completion manifest](exports-heimdall/manifest.json). Original exports remain an immutable pre-completion snapshot. [Hosted docs queue](https://github.com/gmickel/gno.sh/blob/main/.flow/specs/fn-3-reconcile-hosted-gno-20-documentation.md).
 
 ## fn-143-paired-retrieval-quality-and-resource — Paired retrieval quality and resource acceptance
 
@@ -50,7 +52,7 @@ Boundaries and remaining work:
 
 ## fn-145-token-sized-reranker-contexts-with — Token-sized reranker contexts with score parity
 
-Spec `open`; tasks: 1 `done`, 2 `done`, 3 `done`, 4 `blocked`.
+Spec `done`; tasks: 1 `done`, 2 `done`, 3 `done`, 4 `done`.
 
 Implementation commits: `df9ffe64a89bcae3fdd13701d0914dd3b3a8c2c3`.
 
@@ -70,8 +72,10 @@ Preserved negatives:
 
 Boundaries and remaining work:
 
-- Task4 blocked: R3 physical Metal allocation reduction remains unmeasured. Historical auto40960 context creation returned, but scoring was pressure-stopped and no allocation-byte denominator was captured. New independently declared CUDA counter proof does not supply the missing Metal pair.
+- Task4 completed after a new controlled physical Metal pair on Heimdall M4 Max128GiB. GPU native context/compute allocation fell by4,648,599,552bytes and CPU by41,156,608bytes; six full input/token/native-score/public-rank comparisons match cold and warm. Prior Ivan failures remain unchanged.
 - No universal memory reduction or six-case baseline parity claim; pressure-stopped original remains immutable.
+
+[Full Heimdall evidence](https://github.com/gmickel/gno/blob/fn-143-152-retrieval-resource-major/.flow/artifacts/fn-145-token-sized-reranker-contexts-with/allocation-native-metal-heimdall/README.md). Host verified40 raw/compressed payloads and all909 package pins. Sized warm scoring2.28475ms slower; one ordered pair, no universal latency claim.
 
 ## fn-146-cancellation-and-bounded-background — Cancellation and bounded background inference
 

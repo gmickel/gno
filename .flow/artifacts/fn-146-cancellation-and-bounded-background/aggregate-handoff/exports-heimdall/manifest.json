@@ -1,0 +1,79 @@
+{
+  "at": "2026-09-05T08:52:58.280739+00:00",
+  "head": "56ece85a4ea6020db8b2f1772846e0e7b3e7a393",
+  "specs": 10,
+  "tasks": 41,
+  "allDone": true,
+  "files": [
+    {
+      "spec": "fn-143-paired-retrieval-quality-and-resource",
+      "path": "exports-heimdall/fn-143-paired-retrieval-quality-and-resource.json.gz",
+      "sha256": "bd7df62a1e4396c20c7257c581005bf4a0aff86121389e9e4e0dcc0bb4de2ec1",
+      "sourceSha256": "c907e79e9a630cb47be7a2090f09ea57394e98679e8391a1d59a252b3c5c178f",
+      "sourceBytes": 1319758
+    },
+    {
+      "spec": "fn-144-native-recovery-and-idle-inference",
+      "path": "exports-heimdall/fn-144-native-recovery-and-idle-inference.json.gz",
+      "sha256": "63748971fedceea0ac3d42e56cf2d97f0156ddc515e163d1c2151846d910acd1",
+      "sourceSha256": "b3f7aaf66ffbe45e49b2ad0e31fad3a09f81f890d72de043446e4f47a467990d",
+      "sourceBytes": 1331470
+    },
+    {
+      "spec": "fn-145-token-sized-reranker-contexts-with",
+      "path": "exports-heimdall/fn-145-token-sized-reranker-contexts-with.json.gz",
+      "sha256": "807b44ba2871a17da1bcac2b4c4a7e5486fcbceff76440448a02626d40a40020",
+      "sourceSha256": "a795d01faa140433b95b41a2eee895200646144e75de134117e5293da02e5830",
+      "sourceBytes": 1314122
+    },
+    {
+      "spec": "fn-146-cancellation-and-bounded-background",
+      "path": "exports-heimdall/fn-146-cancellation-and-bounded-background.json.gz",
+      "sha256": "ea50bbdd7e352a685f93c734231465dd14dcb8cd0e68c2256de90dab6cb7cd39",
+      "sourceSha256": "bac10cd72b738c9e790e7e8d481ffe107496ad749f8154c5ed6685dea463f966",
+      "sourceBytes": 1330060
+    },
+    {
+      "spec": "fn-147-restoration-and-unchanged-embedding",
+      "path": "exports-heimdall/fn-147-restoration-and-unchanged-embedding.json.gz",
+      "sha256": "420d1aa358aaeb8ff5c3a46c74508af3fab32ba0fb291f02bbc352b53132d6b5",
+      "sourceSha256": "649f2b68956d346fec7601cae6d4ab001dbbd676b5efcad07c404f6755ebb95a",
+      "sourceBytes": 1336140
+    },
+    {
+      "spec": "fn-148-eligible-candidates-before-retrieval",
+      "path": "exports-heimdall/fn-148-eligible-candidates-before-retrieval.json.gz",
+      "sha256": "43cb13603c023fcda6f94209210a05e21b34eaf84ce42e1a6f829686f2ae0e59",
+      "sourceSha256": "3af6ca863016cfb7402a83ab33208dff63ccf045e727ee019c65feffb1fddb03",
+      "sourceBytes": 1319451
+    },
+    {
+      "spec": "fn-149-request-local-retrieval-hydration-reuse",
+      "path": "exports-heimdall/fn-149-request-local-retrieval-hydration-reuse.json.gz",
+      "sha256": "1bf8f9d7645add1d937fd1fadb97768bfc05d32f638cc8d341511db01f1c9ebd",
+      "sourceSha256": "5780989d7c3b8ab4d5a615a4b98b290ecbea41a72e7a222bb6ebaa6b675329eb",
+      "sourceBytes": 1316217
+    },
+    {
+      "spec": "fn-150-incremental-graph-reconciliation-with",
+      "path": "exports-heimdall/fn-150-incremental-graph-reconciliation-with.json.gz",
+      "sha256": "e147f4583be2b6f60fc64bc1c0d5256cff8dc5530222dca2ecf938e1e223b48c",
+      "sourceSha256": "584028896f8ad8423821404b7c10d684400dd080be49f71f128ac0396c576134",
+      "sourceBytes": 1332227
+    },
+    {
+      "spec": "fn-151-atomic-readergate-capacity-and-abort",
+      "path": "exports-heimdall/fn-151-atomic-readergate-capacity-and-abort.json.gz",
+      "sha256": "854308f45f8d518d4cf6c201a8f6c1975886ae1439d088fa68ff61ba78928b07",
+      "sourceSha256": "541fe2e350becbf7adb73adcbdfde81c56efb6545f2f8f94071919bfa6a5e69e",
+      "sourceBytes": 1303811
+    },
+    {
+      "spec": "fn-152-stop-indexing-polling-after-component",
+      "path": "exports-heimdall/fn-152-stop-indexing-polling-after-component.json.gz",
+      "sha256": "750a7a0dab7d8a65eee188b54f00f8c1490bd88e2187013225edf8eabe99a4a2",
+      "sourceSha256": "9427d82bd7ffc8493d4b8df1715610c152fff7b2ad71d7fb18a26fc716671d33",
+      "sourceBytes": 1303950
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "head": "f64c41c97e196e3bffdba23bc1c006bca7489b28",
-  "statusCheckedAt": "2026-09-05T08:14:24.821895+00:00",
-  "statusSource": "Read-only .git/flow-state/tasks runtime records and canonical .flow/specs records;41 tasks verified40done/1blocked,9specs done",
+  "statusCheckedAt": "2026-09-05T08:52:58.280739+00:00",
+  "statusSource": "Live flowctl show for all10 selected specs:41tasks done,10specs closed; full refreshed exports retained separately from the original blocked snapshot.",
   "specs": [
     {
       "spec": "fn-143-paired-retrieval-quality-and-resource",
@@ -96,12 +96,12 @@
     {
       "spec": "fn-145-token-sized-reranker-contexts-with",
       "title": "Token-sized reranker contexts with score parity",
-      "status": "open",
+      "status": "done",
       "tasks": {
         "1": "done",
         "2": "done",
         "3": "done",
-        "4": "blocked"
+        "4": "done"
       },
       "implementationCommits": [
         "df9ffe64a89bcae3fdd13701d0914dd3b3a8c2c3"
@@ -109,7 +109,8 @@
       "observedProducts": [
         "df9ffe64",
         "9d0b57e3",
-        "44cf2a1d"
+        "44cf2a1d",
+        "f64c41c9 (Heimdall physical Metal allocation)"
       ],
       "evidence": [
         [
@@ -117,7 +118,7 @@
           ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/README.md"
         ],
         [
-          "New packed public6-call resize/reload:768→3840→768, real child expiry; Ask before/after exact, judge1 each",
+          "New packed public6-call resize/reload:768\u21923840\u2192768, real child expiry; Ask before/after exact, judge1 each",
           ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/public-reload/README.md"
         ],
         [
@@ -131,16 +132,25 @@
         [
           "Actual CUDA context/compute allocation counters: sized768 vs auto40960; six exact input/token/score/rank cases, cold/warm",
           ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/allocation-native-cuda/README.md"
+        ],
+        [
+          "Heimdall M4 Max128GiB: direct native allocation, exact six-input/token/score/rank cold/warm parity",
+          ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/allocation-native-metal-heimdall/README.md"
+        ],
+        [
+          "Host checksum/analysis/fixture/package verification and final local gates after CI assertion repair",
+          ".flow/artifacts/fn-145-token-sized-reranker-contexts-with/heimdall-final-gates/README.md"
         ]
       ],
       "negatives": [
         "Original Metal direct old-auto denominator pressure-stopped with zero rows; no favorable retry.",
         "Public baseline long rerank fails and postidle Ask lacks capsule; full6-case comparison fails,4 complete pairs exact. Historical disposed/native aborts remain.",
-        "New allocation stratum sized context was slower in its single ordered pair. GPU context/compute savings 4,650,696,704 bytes and CPU 41,156,608 bytes are CUDA counters, not RSS, whole-device usage or Metal unified-memory measurements."
+        "New allocation stratum sized context was slower in its single ordered pair. GPU context/compute savings 4,650,696,704 bytes and CPU 41,156,608 bytes are CUDA counters, not RSS, whole-device usage or Metal unified-memory measurements.",
+        "First Heimdall launch failed before native execution because the Bun mise shim could not resolve under isolated HOME. Actual same-version binary used in separate v2; both actual native arms completed once. Sized warm scoring256.782334ms vs auto254.497584ms is slower."
       ],
       "gaps": [
-        "Task4 blocked: R3 physical Metal allocation reduction remains unmeasured. Historical auto40960 context creation returned, but scoring was pressure-stopped and no allocation-byte denominator was captured. New independently declared CUDA counter proof does not supply the missing Metal pair.",
-        "No universal memory reduction or six-case baseline parity claim; pressure-stopped original remains immutable."
+        "Task4 and spec complete. R3 physical Metal measured on Heimdall, separately from the unchanged prior Ivan pressure failures.",
+        "One ordered pair; no universal memory or throughput claim. Sized warm scoring was 2.28475ms slower and remains retained. Historical baseline failures remain immutable."
       ]
     },
     {
@@ -210,7 +220,7 @@
         "Both platforms verified Ask abstains with one unresolved claim and one actual semantic judge per call; exact parity is not supported-answer quality. Only semantic.durationMs telemetry removed by original response projection."
       ],
       "gaps": [
-        "Task5 and spec accepted by host. Both platforms: idle/background full query and Ask/native IO exact;12/12 foreground responses exact; background selected at eight completed foreground credits; batches≤32.",
+        "Task5 and spec accepted by host. Both platforms: idle/background full query and Ask/native IO exact;12/12 foreground responses exact; background selected at eight completed foreground credits; batches\u226432.",
         "Durable restart: CUDA418 committed background owners plus670 physically missing; Metal98 plus30. Missing passage IDs resumed exactly once; all committed rows and30 legacy vectors survived. Active shadow-partition eligibility missing counts are distinct from physically unembedded counts.",
         "Final scope excludes stuck GPU kernels, native forced-kill branch, saturation64, historical original143-query acceptance and default Metal reranking. CUDA noRerank:false, Metal noRerank:true; both noExpand:true. Task4 synthetic noncooperative-child coverage stays separate.",
         "Shared5+5+1second policy assumes runnable parent event loop. Actual partial-backlog shutdown5404ms CUDA/5097ms Metal; CLI daemon/serve SIGTERM781/789ms CUDA,1450/1452ms Metal are observations, not universal timing guarantees."
@@ -259,7 +269,7 @@
         "Old run lacks per-call transcript; new capture cannot retroactively prove old raw tokens."
       ],
       "gaps": [
-        "No full mutation×protocol×platform matrix claimed. New cancellation/background/shutdown belongs fn146; hosted docs deferred."
+        "No full mutation\u00d7protocol\u00d7platform matrix claimed. New cancellation/background/shutdown belongs fn146; hosted docs deferred."
       ]
     },
     {
@@ -378,7 +388,7 @@
       ],
       "evidence": [
         [
-          "Real CLI/REST/HTTP MCP five graph consumers ×10 mutations vs fresh full oracle; postfix all equal; browser/scoped scaling",
+          "Real CLI/REST/HTTP MCP five graph consumers \u00d710 mutations vs fresh full oracle; postfix all equal; browser/scoped scaling",
           ".flow/artifacts/fn-150-incremental-graph-reconciliation-with/README.md"
         ]
       ],
@@ -460,8 +470,8 @@
       ]
     }
   ],
-  "productBoundary": "Frozen aggregate product f64c41c97e196e3bffdba23bc1c006bca7489b28, version2.0.0, canonical package SHA56587f10c9969a795d6aa527c29fe8a057720a97d9f9e5de335daa996e706655. Final CUDA/Metal fn1465 host accepted; final CPU HTTP/production browser passed. Gates at76743bd6:5216pass/2skip/0fail,41596assertions; memory100%, hybrid86%, BM2588%. Nine specs closed;40/41tasks done, fn1454 blocked. Historical fn143 QA NEEDS_WORK/two inherited P1 baseline controls persists; no blanket all-QA PASS, publication or universal performance claim.",
-  "hostSteering": "Final host acceptance complete except fn1454 physical Metal allocation; downstream four-task queue remains preparation until aggregate PR.",
+  "productBoundary": "Frozen product f64c41c97e196e3bffdba23bc1c006bca7489b28, version2.0.0 and canonical package56587f10 remain unchanged. All41tasks done and10specs closed after Heimdall physical Metal allocation acceptance. Full local gates at32aa6d99:5216pass/2skip/0fail,41596assertions; prior memory100%,hybrid86%,BM2588% unchanged. Historical fn143 QA NEEDS_WORK/two inherited P1 baseline controls persist; no blanket historical QA pass, release or universal performance claim.",
+  "hostSteering": "Heimdall authorized to finish physical Metal allocation. PR217 remains aggregate draft. Hosted docs queued in gno.sh fn-3; queue reconciled with new evidence, implementation/deployment separate.",
   "newEvidenceCommits": {
     "1240c079": "actual a30 CUDA cancellation ownership/recovery",
     "f661cf44": "recovered local Metal public/warm/strict matched29 Ask",
@@ -473,17 +483,31 @@
     "9bb46bca": "bounded shutdown product",
     "16eebd53": "shutdown/durable restart implementation acceptance",
     "f64c41c9": "aggregate2.0 frozen package with fresh SPA/CSS",
-    "71115186": "final core QA/gates evidence; later final-native archive receipt retains6288 raw members host-verified"
+    "71115186": "final core QA/gates evidence; later final-native archive receipt retains6288 raw members host-verified",
+    "32aa6d99": "portable malformed-ledger SyntaxError assertion and repeated full green local gates",
+    "56ece85a": "Heimdall physical Metal native allocation and exact parity; independent host verification"
   },
   "taskTotals": {
-    "done": 40,
-    "blocked": 1
+    "done": 41,
+    "blocked": 0
   },
-  "closedSpecs": 9,
+  "closedSpecs": 10,
   "packageComparison": {
     "canonicalSha256": "56587f10c9969a795d6aa527c29fe8a057720a97d9f9e5de335daa996e706655",
     "independentSmokeSha256": "75db15882854390d0730d4406847dbb73b289d5a6b14d0c0cab652f52f338e38",
     "evidence": ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-release-gates/package-comparison.json",
     "boundary": "All754src identical; identical clipper JavaScript bytes have different generated chunk filename, changing HTML reference and clipper ZIP/checksum. Archives remain distinct."
+  },
+  "heimdallAllocation": {
+    "source": "f64c41c97e196e3bffdba23bc1c006bca7489b28",
+    "host": "Heimdall M4 Max128GiB",
+    "gpuBytesSaved": 4648599552,
+    "cpuBytesSaved": 41156608,
+    "contextSizes": {
+      "sized": 768,
+      "auto": 40960
+    },
+    "parity": "exact six full inputs/tokens/unrounded native scores/public scores/ranks/indices, cold and warm",
+    "scope": "native context+compute counters; excludes model/runtime/driver extras; Metal unified accounting, not independent physical pools"
   }
 }

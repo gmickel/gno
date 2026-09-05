@@ -17,7 +17,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-145-token-sized-reranker-contexts-with.md",
-  "status": "open",
+  "status": "done",
   "title": "Token-sized reranker contexts with score parity",
   "tracker": {
     "baseHashFlow": null,
@@ -30,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T23:40:07.796723Z"
+  "updated_at": "2026-09-05T08:49:45.958024Z"
 }
