@@ -1,0 +1,13 @@
+{
+  "scope": "1948 tracked selected-spec artifact files at a24ecec3, then targeted correction verification",
+  "status": "PASS after metadata corrections; original failed snapshot retained in audit.json.gz",
+  "rawAuditSha256": "e8f8c62d4a5745720965ee71c8fe9fa896455039b45be49348612367e2811ca2",
+  "gzipFiles": 800,
+  "jsonFiles": 1217,
+  "databasePayloads": 0,
+  "corrections": [
+    "exclude40 ignored Bun caches from CUDA retained manifest; preserve excluded hashes",
+    "recover historical fn148 driver with exact SHA and independently pin current runner"
+  ],
+  "newRawInference": false
+}

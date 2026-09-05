@@ -5,9 +5,10 @@
   "run": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/",
   "files": [
     {
-      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/driver.ts",
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/preparation-driver-original.ts",
       "sha256": "d83c2b9416ec1bb2aead3f52d43b572cdf56ba45598b55052993d967ef9035d4",
-      "bytes": 8239
+      "bytes": 8239,
+      "originalPath": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/driver.ts"
     },
     {
       "path": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/manifest.json",
@@ -25,5 +26,26 @@
     "Typed Oxlint: 1 file,105 rules,0 warnings,0 errors",
     "Standalone strict TypeScript passed",
     "Oxfmt stdin formatted (artifact ignored by normal target glob)"
+  ],
+  "historicalDriverRecovery": {
+    "method": "Byte reconstruction from retained cuda-driver-captured.ts by reversing exactly the recorded wire-serialization comparator hunk; resulting complete8239-byte SHA256 equals the preexisting preparation pin. Original standalone file was not located.",
+    "sourcePath": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda-driver-captured.ts",
+    "sourceSha256": "117f3ef85043a047405acae3c832bd4fbf464456e3bd6f6a74c130fb9aba1dd9",
+    "restoredSha256": "d83c2b9416ec1bb2aead3f52d43b572cdf56ba45598b55052993d967ef9035d4",
+    "reversedFrom": "canonicalFingerprint(JSON.parse(JSON.stringify(vector.results))) !==\n          canonicalFingerprint(JSON.parse(JSON.stringify(expected)))",
+    "reversedTo": "canonicalFingerprint(vector.results) !== canonicalFingerprint(expected)",
+    "execution": "No execution or inference; historical source bytes only"
+  },
+  "laterRunnerPins": [
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/driver.ts",
+      "sha256": "9a14793f1ebe2a2c4407c2f9e9e6ad4dd0056e1beb8b02a54e77c4bbec16e97f",
+      "bytes": 8509
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda-driver-captured.ts",
+      "sha256": "117f3ef85043a047405acae3c832bd4fbf464456e3bd6f6a74c130fb9aba1dd9",
+      "bytes": 8305
+    }
   ]
 }
