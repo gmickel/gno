@@ -1,0 +1,15 @@
+{
+  "source": "b3db6ae2808a8aecc766c1e073d0ab0da1372cf6",
+  "artifacts": [
+    {
+      "name": "gno-desktop-beta-2.0.0.zip",
+      "bytes": 257461388,
+      "sha256": "ce4f9a10972bd4be7f9c290866e083660c9a8485a615c4c7562b21ebb4439736"
+    },
+    {
+      "name": "gno-desktop-beta-2.0.0.dmg",
+      "bytes": 399506654,
+      "sha256": "a4ccab56c52d55347a4a5c65b01c478eb9b0d6d4b9d1e1545d8577df27239659"
+    }
+  ]
+}

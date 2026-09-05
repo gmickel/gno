@@ -1,0 +1,146 @@
+[
+  {
+    "source": "/home/gordon/.cache/agent-tmp/release200-macos-failed.log",
+    "artifact": "release200-macos-failed.log.gz",
+    "sha256": "9c5ab5f334a85bea0ceeda9ce3f8b4c8aa889d6787787bdc97ffd0f60f0ea5e1",
+    "bytes": 39499
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/release200-windows-failed.log",
+    "artifact": "release200-windows-failed.log.gz",
+    "sha256": "30a7302f557440030cdd8fafa95f6e3e8e1d4600b5f5f1c920ccaf7945cd537a",
+    "bytes": 29864
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/gno-published-2.0.0-comparison.json",
+    "artifact": "gno-published-2.0.0-comparison.json.gz",
+    "sha256": "dca318b58964710e9e583924ae6a28e27444a9ef42e7c29a51ac5bc9fca75ef7",
+    "bytes": 254
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-bun-recovery/summary.md",
+    "artifact": "summary.md.gz",
+    "sha256": "b14fb1fa7603983f4b445bbbc11546d520e9a36a44300f67beadd8b4d7e3fbdd",
+    "bytes": 1645
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-bun-recovery/old-bun-origin.json",
+    "artifact": "old-bun-origin.json.gz",
+    "sha256": "df8b5a3f3ceae1a22e8026d95e7ac6db5d57a2cfac1c15788d5370673b5f87ee",
+    "bytes": 287
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-bun-recovery/stage.log",
+    "artifact": "stage.log.gz",
+    "sha256": "717086b52b5a104a39079eb3e5524779842c8b42cfc79c8c4d75b412a7f6b0ab",
+    "bytes": 1645
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-bun-recovery/stage.ts",
+    "artifact": "stage.ts.gz",
+    "sha256": "852ae0f35fa9deaa2a8e8bcccae9c21a186c5ae157c87a0fb1b99edf45de71b0",
+    "bytes": 216
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-bun-recovery/cli-proof.json",
+    "artifact": "cli-proof.json.gz",
+    "sha256": "c62d1c55ee049e53357ec989b126e9926ce15862415de6de1130c30777fd16b5",
+    "bytes": 197
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-bun-recovery/version.stdout",
+    "artifact": "version.stdout.gz",
+    "sha256": "c28fcca53637bc88e124af1725df13cb98c69dedefd62fb3cdbe1cdb6b760624",
+    "bytes": 6
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-bun-recovery/init.stdout",
+    "artifact": "init.stdout.gz",
+    "sha256": "5aa0e4d125023aeb7064c42563f100065b6877ebff2b1e7be6de1e064e2c5acc",
+    "bytes": 219
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-bun-recovery/update.stdout",
+    "artifact": "update.stdout.gz",
+    "sha256": "bfaa858b61c33f76cd2c6c0fa2d981f7bf75b8d6098f9a9645b63edd3d1a3c38",
+    "bytes": 85
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-bun-recovery/search.stdout",
+    "artifact": "search.stdout.gz",
+    "sha256": "856954fee05b0f36c60366c0770ea77fb6f2aac25c859396ad1a2e18dade7bdc",
+    "bytes": 1337
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-recovery-lint.log",
+    "artifact": "desktop-recovery-lint.log.gz",
+    "sha256": "15c63364b009628bd6faddf1f829dcbb286813cedbf8e1d59524583ed583dce5",
+    "bytes": 12218
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-recovery-docs.log",
+    "artifact": "desktop-recovery-docs.log.gz",
+    "sha256": "7b554819d88cd16f5183e6b7938beb5505565736b65fe0c8cedc853497d0ced8",
+    "bytes": 1267
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-recovery-tests.log",
+    "artifact": "desktop-recovery-tests.log.gz",
+    "sha256": "06db7af9c808a7d1feedb8ad966c5c5089cfbc4f21303984b0366e1877bfc871",
+    "bytes": 335869
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/desktop-recovery-tests-pinned.log",
+    "artifact": "desktop-recovery-tests-pinned.log.gz",
+    "sha256": "cc246e004acfdacc9b47dabf33482afec2d9b199482a6fafbdda0b9d5bdff2d5",
+    "bytes": 540483
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/release200-macos/evidence/build.log",
+    "artifact": "macos-build.log.gz",
+    "sha256": "617bbf42766c3402c6a3a5a87c3e26803dde8ad4d4a35f0d288b419844a190f4",
+    "bytes": 2670
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/release200-macos/evidence/bun-postinstall.log",
+    "artifact": "macos-bun-postinstall.log.gz",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/release200-macos/evidence/gui-keychain-probe.json",
+    "artifact": "macos-gui-keychain-probe.json.gz",
+    "sha256": "53a628a60c357f0fb257c01f7d0afe85a70a2a9bf8a690c9b9962e47f0ff1989",
+    "bytes": 142
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/release200-macos/evidence/gui-release-status.json",
+    "artifact": "macos-gui-release-status.json.gz",
+    "sha256": "e0a764d75323d39ce09e4a9a6f1f500542ca9ced5b6dc84f50312d9d2ab50ff4",
+    "bytes": 354
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/release200-macos/evidence/packaged-runtime-proof-darwin.json",
+    "artifact": "macos-packaged-runtime-proof-darwin.json.gz",
+    "sha256": "31852ea06762080b8a7e856de7129854a23ded46ac6d806407952da2f75973f6",
+    "bytes": 8193
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/release200-macos/evidence/root-deps.log",
+    "artifact": "macos-root-deps.log.gz",
+    "sha256": "1eb9611ea086a43432c4e1dbbc1375fcb03b27b834ace3decb37015624963ae4",
+    "bytes": 2098
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/release200-macos/evidence/signed-release.log",
+    "artifact": "macos-signed-release.log.gz",
+    "sha256": "1b05f6726c9ce5530ca40726a2ebd07044b3d40050898ca41f92335f77ce5a59",
+    "bytes": 18764
+  },
+  {
+    "source": "/home/gordon/.cache/agent-tmp/release200-macos/receipt.json",
+    "artifact": "macos-receipt.json.gz",
+    "sha256": "38f9f4e6966fe875a582ae4890aefe6d2490ee5e5ab0ec9b4e0f52c577be799d",
+    "bytes": 1023
+  }
+]

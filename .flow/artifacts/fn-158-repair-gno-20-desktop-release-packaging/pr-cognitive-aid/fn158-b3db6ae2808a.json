@@ -1,0 +1,217 @@
+{
+  "artifactId": "fn158-b3db6ae2808a",
+  "baseSha": "402a5b7538d0b183662f36441925b0d47109ffe2",
+  "changeWalkthrough": {
+    "groups": [
+      {
+        "files": [
+          {
+            "additions": 2,
+            "attentionClass": "canonical",
+            "changeType": "modified",
+            "deletions": 0,
+            "path": "desktop/electrobun-shell/electrobun.config.ts",
+            "rIds": [],
+            "sourceRefs": [
+              "diff"
+            ],
+            "summary": "Check the staging executable version before replacing staging output; configure the bundled runtime from the same root pin.",
+            "taskIds": []
+          },
+          {
+            "additions": 39,
+            "attentionClass": "canonical",
+            "changeType": "modified",
+            "deletions": 15,
+            "path": "desktop/electrobun-shell/scripts/stage-gno-runtime.ts",
+            "rIds": [],
+            "sourceRefs": [
+              "diff"
+            ],
+            "summary": "Check the staging executable version before replacing staging output; configure the bundled runtime from the same root pin.",
+            "taskIds": []
+          }
+        ],
+        "kind": "step",
+        "ordinal": 1,
+        "rIds": [],
+        "sourceRefs": [
+          "diff",
+          "task"
+        ],
+        "summary": "Check the staging executable version before replacing staging output; configure the bundled runtime from the same root pin.",
+        "taskIds": [
+          "fn-158-repair-gno-20-desktop-release-packaging.1"
+        ],
+        "title": "Use the root Bun pin"
+      },
+      {
+        "files": [
+          {
+            "additions": 7,
+            "attentionClass": "canonical",
+            "changeType": "modified",
+            "deletions": 0,
+            "path": "desktop/electrobun-shell/README.md",
+            "rIds": [],
+            "sourceRefs": [
+              "diff"
+            ],
+            "summary": "Check packaged Bun before CLI probes; add focused staging regressions and document the hook/runtime distinction.",
+            "taskIds": []
+          },
+          {
+            "additions": 47,
+            "attentionClass": "canonical",
+            "changeType": "added",
+            "deletions": 0,
+            "path": "desktop/electrobun-shell/scripts/stage-gno-runtime.test.ts",
+            "rIds": [],
+            "sourceRefs": [
+              "diff"
+            ],
+            "summary": "Check packaged Bun before CLI probes; add focused staging regressions and document the hook/runtime distinction.",
+            "taskIds": []
+          },
+          {
+            "additions": 14,
+            "attentionClass": "canonical",
+            "changeType": "modified",
+            "deletions": 0,
+            "path": "desktop/electrobun-shell/scripts/verify-packaged-runtime.ts",
+            "rIds": [],
+            "sourceRefs": [
+              "diff"
+            ],
+            "summary": "Check packaged Bun before CLI probes; add focused staging regressions and document the hook/runtime distinction.",
+            "taskIds": []
+          }
+        ],
+        "kind": "step",
+        "ordinal": 2,
+        "rIds": [],
+        "sourceRefs": [
+          "diff",
+          "task"
+        ],
+        "summary": "Check packaged Bun before CLI probes; add focused staging regressions and document the hook/runtime distinction.",
+        "taskIds": [
+          "fn-158-repair-gno-20-desktop-release-packaging.1"
+        ],
+        "title": "Verify the package contract"
+      },
+      {
+        "files": [
+          {
+            "additions": 6,
+            "attentionClass": "mechanical",
+            "changeType": "copied",
+            "deletions": 6,
+            "path": ".flow/specs/fn-158-repair-gno-20-desktop-release-packaging.json",
+            "rIds": [],
+            "sourceRefs": [
+              "diff"
+            ],
+            "summary": "Keep the release-recovery task open while actual platform artifacts are validated.",
+            "taskIds": []
+          },
+          {
+            "additions": 18,
+            "attentionClass": "mechanical",
+            "changeType": "added",
+            "deletions": 0,
+            "path": ".flow/specs/fn-158-repair-gno-20-desktop-release-packaging.md",
+            "rIds": [],
+            "sourceRefs": [
+              "diff"
+            ],
+            "summary": "Keep the release-recovery task open while actual platform artifacts are validated.",
+            "taskIds": []
+          },
+          {
+            "additions": 14,
+            "attentionClass": "mechanical",
+            "changeType": "added",
+            "deletions": 0,
+            "path": ".flow/tasks/fn-158-repair-gno-20-desktop-release-packaging.1.json",
+            "rIds": [],
+            "sourceRefs": [
+              "diff"
+            ],
+            "summary": "Keep the release-recovery task open while actual platform artifacts are validated.",
+            "taskIds": []
+          },
+          {
+            "additions": 15,
+            "attentionClass": "mechanical",
+            "changeType": "added",
+            "deletions": 0,
+            "path": ".flow/tasks/fn-158-repair-gno-20-desktop-release-packaging.1.md",
+            "rIds": [],
+            "sourceRefs": [
+              "diff"
+            ],
+            "summary": "Keep the release-recovery task open while actual platform artifacts are validated.",
+            "taskIds": []
+          }
+        ],
+        "kind": "step",
+        "ordinal": 3,
+        "rIds": [],
+        "sourceRefs": [
+          "diff",
+          "task"
+        ],
+        "summary": "Keep the release-recovery task open while actual platform artifacts are validated.",
+        "taskIds": [
+          "fn-158-repair-gno-20-desktop-release-packaging.1"
+        ],
+        "title": "Track release recovery"
+      }
+    ],
+    "proof": [
+      {
+        "label": "Task status",
+        "sourceRefs": [
+          "task"
+        ],
+        "value": "0/1 tasks done; draft opened while platform artifact acceptance remains in progress."
+      },
+      {
+        "label": "Version scope",
+        "sourceRefs": [
+          "diff",
+          "commit"
+        ],
+        "value": "The diff leaves the root version and npm release unchanged."
+      }
+    ],
+    "thesis": "Use and verify the repository-pinned Bun during desktop staging and in the packaged app, even when Electrobun invokes its pre-build hook through an older Bun."
+  },
+  "generatedAt": "2026-09-05T14:43:31.696029Z",
+  "headSha": "b3db6ae2808a8aecc766c1e073d0ab0da1372cf6",
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "id": "spec",
+      "kind": "spec",
+      "ref": "fn-158-repair-gno-20-desktop-release-packaging"
+    },
+    {
+      "id": "task",
+      "kind": "task",
+      "ref": "fn-158-repair-gno-20-desktop-release-packaging.1"
+    },
+    {
+      "id": "diff",
+      "kind": "diff_metadata",
+      "ref": "402a5b7538d0b183662f36441925b0d47109ffe2..b3db6ae2808a8aecc766c1e073d0ab0da1372cf6"
+    },
+    {
+      "id": "commit",
+      "kind": "commit",
+      "ref": "b3db6ae2808a8aecc766c1e073d0ab0da1372cf6"
+    }
+  ],
+  "specId": "fn-158-repair-gno-20-desktop-release-packaging"
+}
