@@ -21,6 +21,7 @@
     "order": "asc",
   },
   "ignorePatterns": [
+    "vendor/converters/**",
     "invalid-yaml-syntax.yml",
     ".flow/**",
     "AGENTS.md",

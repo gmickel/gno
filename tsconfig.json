@@ -25,6 +25,7 @@
     }
   },
   "exclude": [
+    "vendor/converters",
     "node_modules",
     "notes",
     "src/serve/public",

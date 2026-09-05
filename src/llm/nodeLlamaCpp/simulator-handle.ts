@@ -10,8 +10,8 @@ import type {
   SimulatorModel,
 } from "./simulator-types";
 
-// lifecycle-utils 3.1.1 lacks registerFinalizer. Retain the upstream weak lifetime
-// behavior without importing a newer dependency or retaining the model target.
+// Keep the local weak finalizer helper so repeated disposal joins the same
+// promise without retaining the model target.
 const finalizers = new FinalizationRegistry<SimulatorDisposable>((target) => {
   try {
     void Promise.resolve(target.dispose()).catch(() => {});

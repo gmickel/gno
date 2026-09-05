@@ -1,4 +1,4 @@
-/** Private compatibility shapes pinned to node-llama-cpp 3.19.1. */
+/** Private compatibility shapes pinned to node-llama-cpp 3.20.0. */
 export interface SimulatorDisposable {
   dispose(): void | Promise<void>;
 }

@@ -3,8 +3,6 @@
  * Uses parseOffice() v7 API with Buffer for in-memory extraction.
  */
 
-import { parseOffice } from "officeparser";
-
 import type {
   Converter,
   ConvertInput,
@@ -12,6 +10,7 @@ import type {
   ConvertWarning,
 } from "../../types";
 
+import { parseOffice } from "../../../../vendor/converters/officeparser";
 import { adapterError, corruptError, tooLargeError } from "../../errors";
 import { basenameWithoutExt } from "../../path";
 import { ADAPTER_VERSIONS } from "../../versions";

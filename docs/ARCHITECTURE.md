@@ -425,10 +425,11 @@ local models are:
 Models are GGUF-quantized for efficiency. First inference resolves model files;
 downloads occur only when the configured policy permits them.
 
-Before native initialization, GNO installs simulator lifetime guards backported
-from node-llama-cpp PR 636. Active resource estimates retain their simulator model
+Before native initialization, GNO installs a simulator lifetime guard based on
+node-llama-cpp PR 636. Version 3.20.0 includes the upstream race fix; GNO retains
+additional cleanup after failed model initialization and joined disposal calls. Active resource estimates retain their simulator model
 and backend until context disposal finishes. Installation verifies the exact
-3.19.1 package and simulator source; unexpected dependency changes fail explicitly.
+3.20.0 package and simulator source; unexpected dependency changes fail explicitly.
 The guard changes only the in-memory simulator factory, including in npm installs.
 It does not rewrite dependency files, replace native binaries, change model inputs
 or disable predictive resource selection. This repair does not establish that
@@ -444,7 +445,7 @@ A model lease protects loading, context replacement and scoring from idle expiry
 Expired model generations and failed contexts are never reused; port disposal drains
 accepted batches before releasing the retained context.
 
-Explicit rerank sizing is limited to node-llama-cpp 3.19.1, Qwen3 architecture,
+Explicit rerank sizing is limited to node-llama-cpp 3.20.0, Qwen3 architecture,
 BPE vocabulary and the exact audited rerank template. GNO counts complete prepared
 query/document pairs, takes the largest pair, adds 256 tokens and rounds up to a
 256-token bucket. A complete pair beyond the known model limit fails explicitly.

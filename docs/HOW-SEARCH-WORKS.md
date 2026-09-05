@@ -408,7 +408,7 @@ allocation and hardware. Compare complete warm, resize and post-idle requests on
 the same corpus before attributing a speedup to context reuse.
 
 **Native context capacity:** Explicit sizing applies only to node-llama-cpp
-3.19.1 with Qwen3 architecture, BPE vocabulary and the exact audited rerank
+3.20.0 with Qwen3 architecture, BPE vocabulary and the exact audited rerank
 template. GNO counts complete prepared query/document pairs, takes the largest,
 adds 256 tokens and rounds up to a 256-token capacity bucket. It reuses a matching
 context and replaces it between batches when that bucket changes. Native empty

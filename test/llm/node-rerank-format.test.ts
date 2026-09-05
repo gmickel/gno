@@ -134,7 +134,7 @@ test("capacity uses maximum complete pair and rounds with audited padding at bou
 
 test("unsupported version, template, vocabulary or model uses auto; empty bypasses all model reads", () => {
   expect(getRerankCapacity({} as Model, "q", []).kind).toBe("empty");
-  expect(getRerankCapacity(model(), "q", ["d"], "3.20.0").kind).toBe("auto");
+  expect(getRerankCapacity(model(), "q", ["d"], "3.21.0").kind).toBe("auto");
   for (const change of [
     { vocabularyType: "wpm" },
     { trainContextSize: Number.NaN },

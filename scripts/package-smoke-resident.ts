@@ -106,15 +106,32 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
     }
 
     if (input.embeddingModelPath) {
+      const vsearch = {
+        name: "gno_vsearch",
+        arguments: { query: "Package smoke", collection: "package-smoke" },
+      };
+      // Resident startup is lazy. A completed real query establishes the warm
+      // state, including port disposal, before the concurrent reuse measurement.
+      const primer = await first.client.callTool(vsearch);
+      if (primer.isError === true) {
+        throw new Error("Packed model-backed primer failed");
+      }
       const semanticBefore = await validateResidentStatusSurface(
         baseUrl,
         "serve",
         [input.cwd, input.env.GNO_DATA_DIR ?? "", "package-smoke-secret"]
       );
-      const vsearch = {
-        name: "gno_vsearch",
-        arguments: { query: "Package smoke", collection: "package-smoke" },
-      };
+      if (
+        !isValidPackedWarmModelReuse(
+          semanticBefore.models,
+          semanticBefore.models,
+          0
+        )
+      ) {
+        throw new Error(
+          `Packed model-backed primer did not settle: ${JSON.stringify(semanticBefore.models)}`
+        );
+      }
       const semanticResults = await Promise.all([
         first.client.callTool(vsearch),
         second.client.callTool(vsearch),
@@ -124,8 +141,7 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
       if (
         semanticResults.some((result) => result.isError === true) ||
         !semanticResults.every(
-          (result) =>
-            JSON.stringify(result) === JSON.stringify(semanticResults[0])
+          (result) => JSON.stringify(result) === JSON.stringify(primer)
         )
       ) {
         throw new Error(
@@ -137,11 +153,14 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
         "serve",
         [input.cwd, input.env.GNO_DATA_DIR ?? "", "package-smoke-secret"]
       );
+      // Each vsearch sends init, embed and dispose. Every operation holds one
+      // dispatcher lease and one native embedding-port lease in the child.
+      const leasesPerVectorSearch = 3 * 2;
       if (
         !isValidPackedWarmModelReuse(
           semanticBefore.models,
           semanticAfter.models,
-          semanticResults.length
+          semanticResults.length * leasesPerVectorSearch
         )
       ) {
         throw new Error(

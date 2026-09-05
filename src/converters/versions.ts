@@ -2,10 +2,9 @@
  * Centralized converter version tracking.
  *
  * Native converters use our own versioning.
- * Adapter versions MUST match the wrapped npm package version.
- *
- * When updating npm dependencies, update these versions too.
- * Run `bun pm ls markitdown-ts officeparser` to check current versions.
+ * Adapter versions identify upstream code and security-sensitive parser versions.
+ * Update them when changing the vendored distributions or parser dependencies.
+ * Upstream identities live in vendor/converters/upstream-manifest.json.
  */
 
 /** Native converter versions (our own) */
@@ -15,10 +14,9 @@ export const NATIVE_VERSIONS = {
 } as const;
 
 /**
- * Adapter versions - MUST match npm package versions.
- * Update these when running `bun update`.
+ * Include repaired parser versions so existing converted content is invalidated.
  */
 export const ADAPTER_VERSIONS = {
-  "markitdown-ts": "0.0.8",
-  officeparser: "6.0.4",
+  "markitdown-ts": "0.0.10+xlsx.0.20.3",
+  officeparser: "7.8.0+pdfjs.6.3.289",
 } as const;

@@ -1,6 +1,7 @@
 /** Guarded simulator section from node-llama-cpp PR636 (MIT, Gilad S.).
  * See simulator-handle.ts and THIRD_PARTY_NOTICES.md for source attribution.
- * Preserve 3.19.1 estimation inputs, locking and predictive selection unchanged.
+ * Retained on 3.20.0 for failed-load cleanup and joined session disposal,
+ * beyond upstream PR636. Estimation inputs and selection remain unchanged.
  */
 import type {
   SimulatorBackend,
@@ -28,7 +29,8 @@ export class GuardedSimulatorSession {
   constructor(
     private readonly llama: SimulatorBackend,
     private readonly dependencies: SimulatorDependencies,
-    lruCacheSize = 10
+    lruCacheSize = 10,
+    private readonly loadModelError?: Error
   ) {
     this.models = new dependencies.LruCache(lruCacheSize, {
       async onDelete(_key, value) {
@@ -161,6 +163,7 @@ export class GuardedSimulatorSession {
     useMmap = this.llama.supportsMmap,
   }: SimulatorModelOptions): Promise<SimulatorModelHandle> {
     if (this.isDisposed) throw new Error("simulator session is disposed");
+    if (this.loadModelError) throw this.loadModelError;
     let backendHandle: SimulatorDisposable;
     try {
       backendHandle =

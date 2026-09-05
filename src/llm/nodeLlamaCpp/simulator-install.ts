@@ -7,7 +7,7 @@ import type {
 import { GuardedSimulatorSession } from "./simulator-session";
 
 const SOURCE_SHA256 =
-  "d848a262376282ec803817bde6a3083dd0d5a1607fecef937a7357ee29f74490";
+  "8bd7b140540eda598d18313eeb17d72d737c39280252449b2b9a5a43db8927b2";
 const INSTALLATION = Symbol.for("gno.node-llama-cpp.simulator-lifetime.v1");
 const FACTORY_SHAPE =
   /new\s+GgufInsightsSimulatorSession\s*\(\s*this\._llama\s*,\s*lruCacheSize\s*\)/;
@@ -15,7 +15,7 @@ let installation: Promise<void> | undefined;
 
 function unsupported(): Error {
   return new Error(
-    "Unsupported node-llama-cpp simulator source: expected unmodified 3.19.1 for the native lifetime guard"
+    "Unsupported node-llama-cpp simulator source: expected unmodified 3.20.0 for the native lifetime guard"
   );
 }
 
@@ -34,7 +34,7 @@ export async function verifySimulatorPackage(
     !("name" in metadata) ||
     !("version" in metadata) ||
     metadata.name !== "node-llama-cpp" ||
-    metadata.version !== "3.19.1"
+    metadata.version !== "3.20.0"
   )
     throw unsupported();
   const source = await Bun.file(
@@ -92,10 +92,20 @@ async function install(): Promise<void> {
     throw unsupported();
   const dependencies = await loadSimulatorDependencies(entry);
   const factory = function (
-    this: { _llama: SimulatorBackend },
+    this: {
+      _llama: SimulatorBackend;
+      ggufFileInfo?: { metadata: { general: { architecture?: string } } };
+    },
     lruCacheSize = 10
   ) {
-    return new GuardedSimulatorSession(this._llama, dependencies, lruCacheSize);
+    return new GuardedSimulatorSession(
+      this._llama,
+      dependencies,
+      lruCacheSize,
+      this.ggufFileInfo?.metadata.general.architecture === "clip"
+        ? new Error("Cannot simulate CLIP architecture models")
+        : undefined
+    );
   };
   Object.defineProperty(prototype, "_createSimulatorSession", {
     configurable: true,

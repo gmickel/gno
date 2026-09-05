@@ -92,8 +92,9 @@ export class NativeDispatcher {
       model.modelUri,
       !["init", "dispose"].includes(request.op)
     );
+    const before = this.manager.getLifecycleStats().loadAttempts;
+    let response: Omit<NativeResponse, "lifecycle">;
     try {
-      const before = this.manager.getLifecycleStats().loadAttempts;
       const result = await this.run(request, model, options).catch(
         (cause: unknown) => ({
           ok: false as const,
@@ -109,24 +110,26 @@ export class NativeDispatcher {
             (await fileIdentity(model.path)))
       )
         throw new NativeWorkerError("stale_generation");
-      return {
-        response: {
-          version: 1,
-          generation: request.generation,
-          requestId: request.requestId,
-          op: request.op,
-          lifecycle: this.manager.getLifecycleStats(),
-          result: result.ok
-            ? result
-            : { ok: false, error: wireError(result.error) },
-        },
-        activity:
-          this.manager.getLifecycleStats().loadAttempts !== before ||
-          !["init", "dispose"].includes(request.op),
+      response = {
+        version: 1,
+        generation: request.generation,
+        requestId: request.requestId,
+        op: request.op,
+        result: result.ok
+          ? result
+          : { ok: false, error: wireError(result.error) },
       };
     } finally {
       lease.release();
     }
+    // Publish settled ownership, not the request lease held during evaluation.
+    const lifecycle = this.manager.getLifecycleStats();
+    return {
+      response: { ...response, lifecycle },
+      activity:
+        lifecycle.loadAttempts !== before ||
+        !["init", "dispose"].includes(request.op),
+    };
   }
 
   private async run(

@@ -22,7 +22,7 @@ function manifest(role: "baseline" | "candidate"): AcceptanceManifest {
       indexId: "synthetic",
       indexSha256: hash,
       bunVersion: Bun.version,
-      nativeDependencies: { "node-llama-cpp": "3.19.1" },
+      nativeDependencies: { "node-llama-cpp": "3.20.0" },
       platform: "mock",
       architecture: "mock",
     },

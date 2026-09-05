@@ -14,6 +14,7 @@ import { safeRm } from "../helpers/cleanup";
 // Use temp directory for isolated tests
 const TEST_ROOT = join(tmpdir(), "gno-test-init");
 let testCounter = 0;
+let originalEnv: Partial<Record<string, string>> = {};
 
 function getTestDir(): string {
   const dir = join(TEST_ROOT, `test-${Date.now()}-${testCounter}`);
@@ -22,6 +23,11 @@ function getTestDir(): string {
 }
 
 async function setupTestEnv(testDir: string) {
+  originalEnv = {
+    GNO_CONFIG_DIR: process.env.GNO_CONFIG_DIR,
+    GNO_DATA_DIR: process.env.GNO_DATA_DIR,
+    GNO_CACHE_DIR: process.env.GNO_CACHE_DIR,
+  };
   await mkdir(testDir, { recursive: true });
 
   // Override env vars for this test
@@ -35,9 +41,21 @@ async function cleanupTestEnv(testDir: string) {
   await safeRm(testDir);
 
   // Restore env vars
-  process.env.GNO_CONFIG_DIR = undefined;
-  process.env.GNO_DATA_DIR = undefined;
-  process.env.GNO_CACHE_DIR = undefined;
+  if (originalEnv.GNO_CONFIG_DIR === undefined) {
+    delete process.env.GNO_CONFIG_DIR;
+  } else {
+    process.env.GNO_CONFIG_DIR = originalEnv.GNO_CONFIG_DIR;
+  }
+  if (originalEnv.GNO_DATA_DIR === undefined) {
+    delete process.env.GNO_DATA_DIR;
+  } else {
+    process.env.GNO_DATA_DIR = originalEnv.GNO_DATA_DIR;
+  }
+  if (originalEnv.GNO_CACHE_DIR === undefined) {
+    delete process.env.GNO_CACHE_DIR;
+  } else {
+    process.env.GNO_CACHE_DIR = originalEnv.GNO_CACHE_DIR;
+  }
 }
 
 describe("init command", () => {

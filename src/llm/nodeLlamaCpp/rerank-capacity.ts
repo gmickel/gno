@@ -5,7 +5,7 @@ import { getModuleVersion } from "node-llama-cpp";
 
 const installedVersion = await getModuleVersion();
 
-export const RERANK_NATIVE_VERSION = "3.19.1";
+export const RERANK_NATIVE_VERSION = "3.20.0";
 export const RERANK_TEMPLATE =
   '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n<Instruct>: Given a web search query, retrieve relevant passages that answer the query\n<Query>: {query}\n<Document>: {document}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n';
 
@@ -34,7 +34,8 @@ function supported(model: CapacityModel, version: string): boolean {
   );
 }
 
-/** Mirrors 3.19.1 _getEvaluationInput for the one audited template/vocabulary. */
+/** 3.20.0 LlamaRankingContext.js is byte-identical to the audited 3.19.1 source.
+ * Mirrors 3.20.0 _getEvaluationInput for the one audited template/vocabulary. */
 export function formatRerankPair(
   model: CapacityModel,
   query: string,
@@ -59,7 +60,7 @@ export function formatRerankPair(
     input.unshift(bos);
   }
   if (shouldAppendEosToken && eos != null && input.at(-1) !== eos) {
-    // Native 3.19.1 prepends here despite calling this an end token. Preserve parity.
+    // Native 3.20.0 prepends here despite calling this an end token. Preserve parity.
     input.unshift(eos);
   }
   return input;
@@ -97,7 +98,7 @@ export function getRerankCapacity(
       `Rerank input requires ${requiredTokens} tokens; model supports ${maximum}`
     );
   }
-  // 3.19.1 config.contextSizePad is 256. The frozen native audit scored
+  // 3.20.0 config.contextSizePad is 256. The frozen native audit scored
   // ceil((full pair + 256) / 256) * 256 at exact parity; no smaller guard is proven.
   const contextSize = Math.ceil((requiredTokens + 256) / 256) * 256;
   if (contextSize > maximum) {

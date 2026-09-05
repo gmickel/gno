@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Update node-llama-cpp to 3.20.0 and the development runtime to Bun 1.4.2,
+  retaining GNO's additional simulator failure cleanup and joined disposal.
+- Refresh document parsing, PDF rendering, Markdown editing and streaming
+  dependencies. Ship audited, unchanged converter distributions with corrected
+  SheetJS and PDF.js dependencies so fixes also reach installed npm consumers.
+- Retain the compatible AI SDK 6 maintenance line and existing MCP wire schema;
+  refresh supported parser and test-tool patches.
 - Background embedding yields between turns of at most 32 pending chunks;
   foreground native dispatches take priority with bounded background fairness.
   Failed chunks remain resumable, and model-specific leases let idle generation
@@ -46,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Native lifecycle status reports request leases after release, so completed
+  requests no longer leave a stale active-lease count in resident diagnostics.
 - Resident shutdown shares one drain, cancellation and owned-child-exit budget
   across requests and background work. Suspended writes roll back before store
   close; incomplete jobs stay failed and embedding backlog resumes on restart.

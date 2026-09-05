@@ -892,7 +892,7 @@ as proof that expansion ran.
 
 ### Native Resource Estimation Failure
 
-GNO installs a simulator lifetime guard for the pinned node-llama-cpp 3.19.1
+GNO installs a simulator lifetime guard for the pinned node-llama-cpp 3.20.0
 package before native initialization. It retains active simulator model/backend
 handles until context disposal completes, without rewriting dependency files or
 changing model inputs. Unexpected package/source changes fail explicitly with

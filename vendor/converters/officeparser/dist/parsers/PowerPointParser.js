@@ -1,0 +1,950 @@
+"use strict";
+/**
+ * PowerPoint Presentation (PPTX) Parser
+ *
+ * **PPTX Format Overview:**
+ * PPTX is the default format for Microsoft PowerPoint since Office 2007, based on OOXML.
+ *
+ * **File Structure:**
+ * - `ppt/presentation.xml` - Presentation structure and slide list
+ * - `ppt/slides/slide1.xml` - Individual slide content
+ * - `ppt/notesSlides/notesSlide1.xml` - Speaker notes
+ * - `ppt/slideLayouts/*` - Slide layout definitions
+ * - `ppt/media/*` - Embedded images and media
+ *
+ * **Key Elements:**
+ * - `<p:sld>` - Slide
+ * - `<p:txBody>` - Text body containing paragraphs
+ * - `<a:p>` - Paragraph
+ * - `<a:r>` - Text run with formatting
+ * - `<a:t>` - Text content
+ *
+ * @module PowerPointParser
+ * @see https://www.ecma-international.org/publications-and-standards/standards/ecma-376/
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.parsePowerPoint = void 0;
+const types_js_1 = require("../types.js");
+const astUtils_js_1 = require("../utils/astUtils.js");
+const chartUtils_js_1 = require("../utils/chartUtils.js");
+const errorUtils_js_1 = require("../utils/errorUtils.js");
+const imageUtils_js_1 = require("../utils/imageUtils.js");
+const mathUtils_js_1 = require("../utils/mathUtils.js");
+const ocrUtils_js_1 = require("../utils/ocrUtils.js");
+const xmlUtils_js_1 = require("../utils/xmlUtils.js");
+const zipUtils_js_1 = require("../utils/zipUtils.js");
+/**
+ * Parses a PowerPoint presentation (.pptx) and extracts slides and notes.
+ *
+ * @param buffer - The PPTX file as a Buffer
+ * @param config - Parser configuration
+ * @returns A promise resolving to the parsed AST
+ */
+const parsePowerPoint = async (buffer, config) => {
+    // Honour cancellation requests immediately — before extracting the ZIP archive.
+    // PPTX presentations can have many slides with media/charts and optional OCR per image,
+    // so an early abort prevents decompressing and traversing data that will be discarded.
+    (0, errorUtils_js_1.checkAbortSignal)(config.abortSignal);
+    const allFilesRegex = /ppt\/(notesSlides|slides)\/(notesSlide|slide)\d+.xml/g;
+    const slidesRegex = /ppt\/slides\/slide\d+.xml/g;
+    const slideRelsRegex = /ppt\/slides\/_rels\/slide\d+\.xml\.rels/;
+    const slideNumberRegex = /lide(\d+)\.xml/;
+    const mediaFileRegex = /ppt\/media\/.*/;
+    const chartFileRegex = /ppt\/charts\/chart\d+\.xml/;
+    const corePropsFileRegex = /docProps\/core\.xml/;
+    const customPropsFileRegex = /docProps\/custom\.xml/;
+    const appPropsFileRegex = /docProps\/app\.xml/;
+    const commentsFileRegex = /ppt\/comments\/comment\d+\.xml/;
+    const commentAuthorsRegex = /ppt\/commentAuthors\.xml/;
+    const slideMastersRegex = /ppt\/slideMasters\/slideMaster\d+\.xml/;
+    const presentationFileRegex = /ppt\/presentation\.xml/;
+    const files = await (0, zipUtils_js_1.extractFiles)(buffer, x => !!x.match(config.ignoreNotes ? slidesRegex : allFilesRegex) ||
+        !!x.match(corePropsFileRegex) ||
+        !!x.match(customPropsFileRegex) ||
+        !!x.match(appPropsFileRegex) ||
+        !!x.match(slideRelsRegex) ||
+        (!config.ignoreComments && (!!x.match(commentsFileRegex) || !!x.match(commentAuthorsRegex))) ||
+        (!config.ignoreSlideMasters && !!x.match(slideMastersRegex)) ||
+        !!x.match(presentationFileRegex) ||
+        (!!config.extractAttachments && (!!x.match(mediaFileRegex) || !!x.match(chartFileRegex))), config.decompressionLimits, config);
+    // ppt/presentation.xml is the part that makes an archive a presentation, and unlike the
+    // slides it is always present: PowerPoint can save a deck with no slides at all, so an
+    // empty ppt/slides/ is a warning rather than a failure.
+    (0, zipUtils_js_1.findRequiredPart)(files, path => !!path.match(presentationFileRegex), config, { fileType: 'pptx', part: 'ppt/presentation.xml' });
+    if (!files.some(file => !!file.path.match(slidesRegex)))
+        (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.NO_SLIDES_FOUND, config);
+    // Extract metadata
+    const corePropsFile = files.find(f => f.path.match(corePropsFileRegex));
+    const metadata = corePropsFile ? (0, xmlUtils_js_1.parseOfficeMetadata)(corePropsFile.content.toString()) : {};
+    const customPropsFile = files.find(f => f.path.match(customPropsFileRegex));
+    if (customPropsFile) {
+        const customProperties = (0, xmlUtils_js_1.parseOOXMLCustomProperties)(customPropsFile.content.toString());
+        if (Object.keys(customProperties).length > 0)
+            metadata.customProperties = customProperties;
+    }
+    const appPropsFile = files.find(f => f.path.match(appPropsFileRegex));
+    if (appPropsFile) {
+        const appProperties = (0, xmlUtils_js_1.parseOOXMLAppProperties)(appPropsFile.content.toString());
+        if (Object.keys(appProperties).length > 0)
+            metadata.nativeProperties = appProperties;
+    }
+    // Sort files
+    files.sort((a, b) => {
+        const aMatch = a.path.match(slideNumberRegex);
+        const bMatch = b.path.match(slideNumberRegex);
+        const aNum = aMatch ? parseInt(aMatch[1]) : 0;
+        const bNum = bMatch ? parseInt(bMatch[1]) : 0;
+        return aNum - bNum;
+    });
+    const content = [];
+    const slideRelsMap = {};
+    const authorMap = {};
+    if (!config.ignoreComments) {
+        const authorsFile = files.find(f => f.path === 'ppt/commentAuthors.xml');
+        if (authorsFile) {
+            const authorsXml = (0, xmlUtils_js_1.parseXmlString)(authorsFile.content.toString());
+            const authorNodes = (0, xmlUtils_js_1.getElementsByTagName)(authorsXml, "p:cmAuthor");
+            for (const aNode of authorNodes) {
+                const id = aNode.getAttribute("id");
+                if (id !== null) {
+                    authorMap[id] = {
+                        author: aNode.getAttribute("name") || undefined,
+                        initials: aNode.getAttribute("initials") || undefined
+                    };
+                }
+            }
+        }
+    }
+    let currentListId = 0;
+    let runningListIndex = 0;
+    let lastWasList = false;
+    let lastListType = null;
+    let lastListIndent = 0;
+    // per indent counters (for nested lists)
+    const levelCounters = {};
+    // Helper to parse a table node
+    const parseTable = (tblNode, xmlContentString) => {
+        const rows = [];
+        const trNodes = (0, xmlUtils_js_1.getElementsByTagName)(tblNode, "a:tr");
+        for (let rIndex = 0; rIndex < trNodes.length; rIndex++) {
+            const trNode = trNodes[rIndex];
+            const cells = [];
+            const tcNodes = (0, xmlUtils_js_1.getElementsByTagName)(trNode, "a:tc");
+            for (let cIndex = 0; cIndex < tcNodes.length; cIndex++) {
+                const tcNode = tcNodes[cIndex];
+                const cellChildren = [];
+                let cellText = '';
+                // Cells contain text bodies (txBody) which contain paragraphs
+                const txBody = (0, xmlUtils_js_1.getFirstElementByTagName)(tcNode, "a:txBody");
+                if (txBody) {
+                    const paragraphs = (0, xmlUtils_js_1.getElementsByTagName)(txBody, "a:p");
+                    for (const p of paragraphs) {
+                        // Reuse paragraph parsing logic if possible, or duplicate for now
+                        // For simplicity, duplicating basic logic here as the main loop one is tied to shapes
+                        const pNode = {
+                            type: 'paragraph',
+                            text: '',
+                            children: [],
+                            metadata: {}
+                        };
+                        if (config.includeRawContent) {
+                            pNode.rawContent = (0, xmlUtils_js_1.getRawContent)(p, xmlContentString, config);
+                        }
+                        const runs = (0, xmlUtils_js_1.getElementsByTagName)(p, "a:r");
+                        for (const r of runs) {
+                            const t = (0, xmlUtils_js_1.getFirstElementByTagName)(r, "a:t");
+                            if (t && t.childNodes[0]) {
+                                const textContent = t.childNodes[0].nodeValue || '';
+                                pNode.text += textContent;
+                                const rPr = (0, xmlUtils_js_1.getFirstElementByTagName)(r, "a:rPr");
+                                const formatting = {};
+                                if (rPr) {
+                                    if (rPr.getAttribute("b") === "1")
+                                        formatting.bold = true;
+                                    if (rPr.getAttribute("i") === "1")
+                                        formatting.italic = true;
+                                    if (rPr.getAttribute("u") === "sng")
+                                        formatting.underline = true;
+                                    if (rPr.getAttribute("strike") === "sngStrike")
+                                        formatting.strikethrough = true;
+                                    const sz = rPr.getAttribute("sz");
+                                    if (sz)
+                                        formatting.size = (parseInt(sz) / 100).toString() + 'pt';
+                                    const solidFill = (0, xmlUtils_js_1.getFirstElementByTagName)(rPr, "a:solidFill");
+                                    if (solidFill) {
+                                        const srgbClr = (0, xmlUtils_js_1.getFirstElementByTagName)(solidFill, "a:srgbClr");
+                                        if (srgbClr) {
+                                            const val = srgbClr.getAttribute("val");
+                                            if (val)
+                                                formatting.color = '#' + val;
+                                        }
+                                    }
+                                    const latin = (0, xmlUtils_js_1.getFirstElementByTagName)(rPr, "a:latin");
+                                    if (latin) {
+                                        const typeface = latin.getAttribute("typeface");
+                                        if (typeface)
+                                            formatting.font = typeface;
+                                    }
+                                }
+                                pNode.children?.push({
+                                    type: 'text',
+                                    text: textContent,
+                                    formatting: formatting
+                                });
+                            }
+                        }
+                        cellChildren.push(pNode);
+                        cellText += pNode.text;
+                    }
+                }
+                let backgroundColor;
+                const tcPr = (0, xmlUtils_js_1.getFirstElementByTagName)(tcNode, "a:tcPr");
+                if (tcPr) {
+                    for (const child of Array.from(tcPr.childNodes)) {
+                        if ((0, xmlUtils_js_1.isElement)(child) && child.nodeName === "a:solidFill") {
+                            const srgbClr = (0, xmlUtils_js_1.getFirstElementByTagName)(child, "a:srgbClr");
+                            if (srgbClr) {
+                                const val = srgbClr.getAttribute("val");
+                                if (val)
+                                    backgroundColor = "#" + val;
+                            }
+                            break;
+                        }
+                    }
+                }
+                const cellNode = {
+                    type: 'cell',
+                    text: cellText,
+                    children: cellChildren,
+                    metadata: { row: rIndex, col: cIndex, ...(backgroundColor ? { backgroundColor } : {}) }
+                };
+                cells.push(cellNode);
+            }
+            const rowNode = {
+                type: 'row',
+                children: cells
+            };
+            rows.push(rowNode);
+        }
+        return {
+            type: 'table',
+            children: rows
+        };
+    };
+    /** Extract an AST node for p:pic */
+    const extractImageNode = (imageNode, slideNumber, xmlContentString) => {
+        const blip = (0, xmlUtils_js_1.getFirstElementByTagName)(imageNode, "a:blip");
+        if (!blip)
+            return null;
+        const rId = blip.getAttribute("r:embed");
+        if (!rId)
+            return null;
+        const rel = slideRelsMap[slideNumber]?.[rId];
+        if (!rel || rel.type !== "image")
+            return null;
+        const attachmentName = rel.target;
+        const nvPicPr = (0, xmlUtils_js_1.getFirstElementByTagName)(imageNode, "p:nvPicPr");
+        const cNvPr = nvPicPr ? (0, xmlUtils_js_1.getFirstElementByTagName)(nvPicPr, "p:cNvPr") : null;
+        const altText = cNvPr?.getAttribute("descr") || undefined;
+        return {
+            type: "image",
+            text: '',
+            metadata: {
+                attachmentName,
+                altText,
+            }
+        };
+    };
+    /**
+     * Extract an AST node for p:graphicFrame that contains a chart.
+     * ... (comments omitted for brevity) ...
+     */
+    const extractChartNode = (frameNode, slideNumber, xmlContentString) => {
+        // Step 1: Find <a:graphicData>
+        const graphicData = (0, xmlUtils_js_1.getFirstElementByTagName)(frameNode, "a:graphicData");
+        if (!graphicData) {
+            return null;
+        }
+        // Step 2: Verify chart namespace
+        // Must be: http://schemas.openxmlformats.org/drawingml/2006/chart
+        const uri = graphicData.getAttribute("uri");
+        const isChartGraphic = uri === "http://schemas.openxmlformats.org/drawingml/2006/chart";
+        if (!isChartGraphic) {
+            return null;
+        }
+        // Step 3: Find <c:chart>
+        const cChart = (0, xmlUtils_js_1.getFirstElementByTagName)(graphicData, "c:chart");
+        if (!cChart) {
+            return null;
+        }
+        // Step 4: Extract r:id (relationship id)
+        const rId = cChart.getAttribute("r:id");
+        if (!rId) {
+            return null;
+        }
+        // Step 5: Resolve relationship target from slideRelsMap
+        const rel = slideRelsMap[slideNumber]?.[rId];
+        if (!rel || rel.type !== "chart") {
+            return null;
+        }
+        // rel.target will be something like "chart1.xml"
+        const attachmentName = rel.target;
+        // Step 6: Build AST node
+        const chartNode = {
+            type: "chart",
+            text: "", // chart text gets filled later
+            metadata: {
+                attachmentName // name used to link to attachments & chartData
+            }
+        };
+        // Optional: include raw XML of the whole frame
+        if (config.includeRawContent) {
+            chartNode.rawContent = (0, xmlUtils_js_1.getRawContent)(frameNode, xmlContentString, config);
+        }
+        return chartNode;
+    };
+    /** Extract an AST node for p:graphicFrame */
+    const extractGraphicFrameNode = (frameNode, slideNumber, xmlContentString) => {
+        const tbl = (0, xmlUtils_js_1.getFirstElementByTagName)(frameNode, "a:tbl");
+        if (tbl) {
+            const tableNode = parseTable(tbl, xmlContentString);
+            if (config.includeRawContent) {
+                tableNode.rawContent = (0, xmlUtils_js_1.getRawContent)(frameNode, xmlContentString, config);
+            }
+            if (tableNode.children && tableNode.children.length > 0) {
+                return tableNode;
+            }
+        }
+        if (frameNode.getElementsByTagName("c:chart").length > 0) {
+            const chartNode = extractChartNode(frameNode, slideNumber, xmlContentString);
+            if (chartNode) {
+                return chartNode;
+            }
+        }
+        return null;
+    };
+    /** Extract text and hyperlinks from a p:sp shape. */
+    const extractShapeNodes = (spNode, slideNumber, xmlContentString) => {
+        const nodes = [];
+        // Check for placeholder type (title, body, etc.)
+        const nvSpPr = (0, xmlUtils_js_1.getFirstElementByTagName)(spNode, "p:nvSpPr");
+        const nvPr = nvSpPr ? (0, xmlUtils_js_1.getFirstElementByTagName)(nvSpPr, "p:nvPr") : null;
+        const ph = nvPr ? (0, xmlUtils_js_1.getFirstElementByTagName)(nvPr, "p:ph") : null;
+        const type = ph ? ph.getAttribute("type") : "body";
+        const isTitle = type === "title" || type === "ctrTitle";
+        const txBody = (0, xmlUtils_js_1.getFirstElementByTagName)(spNode, "p:txBody");
+        if (txBody) {
+            const paragraphs = (0, xmlUtils_js_1.getElementsByTagName)(txBody, "a:p");
+            for (let i = 0; i < paragraphs.length; i++) {
+                const p = paragraphs[i];
+                let pNode;
+                if (isTitle) {
+                    pNode = {
+                        type: 'heading',
+                        text: '',
+                        children: [],
+                        metadata: { level: 1 }
+                    };
+                }
+                else {
+                    pNode = {
+                        type: 'paragraph',
+                        text: '',
+                        children: [],
+                        metadata: {}
+                    };
+                }
+                // Paragraph Alignment and List Detection
+                const pPr = (0, xmlUtils_js_1.getFirstElementByTagName)(p, "a:pPr");
+                let isList = false;
+                let listType = 'unordered';
+                let lvl = 0;
+                if (pPr) {
+                    const lvlAttr = pPr.getAttribute("lvl");
+                    if (lvlAttr)
+                        lvl = parseInt(lvlAttr);
+                    const buAutoNum = (0, xmlUtils_js_1.getFirstElementByTagName)(pPr, "a:buAutoNum");
+                    const buChar = (0, xmlUtils_js_1.getFirstElementByTagName)(pPr, "a:buChar");
+                    const buBlip = (0, xmlUtils_js_1.getFirstElementByTagName)(pPr, "a:buBlip");
+                    const buNode = (0, xmlUtils_js_1.getFirstElementByTagName)(pPr, "a:bu");
+                    if (buAutoNum) {
+                        isList = true;
+                        listType = 'ordered';
+                    }
+                    else if (buChar || buBlip) {
+                        isList = true;
+                        listType = 'unordered';
+                    }
+                    else if (buNode) {
+                        // inherited bullet from a list style
+                        isList = true;
+                        listType = 'unordered';
+                    }
+                    const algn = pPr.getAttribute("algn");
+                    if (algn) {
+                        const alignMap = {
+                            'l': 'left',
+                            'ctr': 'center',
+                            'r': 'right',
+                            'just': 'justify'
+                        };
+                        if (alignMap[algn]) {
+                            pNode.metadata.alignment = alignMap[algn];
+                        }
+                    }
+                }
+                if (isList) {
+                    const ilvl = lvl;
+                    // detect a new list when bullet type changes or previous was not a list
+                    const newList = !lastWasList ||
+                        listType !== lastListType;
+                    if (newList) {
+                        // new list → new ID
+                        currentListId++;
+                        // clear counters for nested levels
+                        for (const k in levelCounters) {
+                            delete levelCounters[k];
+                        }
+                        // start item index at 1
+                        runningListIndex = 0;
+                        levelCounters[ilvl] = 0;
+                    }
+                    else {
+                        // same listId, but indentation may change
+                        // if going deeper → start at 1 for that level
+                        if (ilvl > lastListIndent) {
+                            runningListIndex = 0;
+                            levelCounters[ilvl] = 0;
+                        }
+                        // if going shallower → restore previous level counter + 1
+                        else if (ilvl < lastListIndent) {
+                            // remove deeper counters
+                            for (const lvlKey in levelCounters) {
+                                const lv = parseInt(lvlKey);
+                                if (lv > ilvl)
+                                    delete levelCounters[lv];
+                            }
+                            // continue counter at this level
+                            const prev = levelCounters[ilvl] || 0;
+                            runningListIndex = prev + 1;
+                            levelCounters[ilvl] = runningListIndex;
+                        }
+                        // same level → increment
+                        else {
+                            const prev = levelCounters[ilvl] || 0;
+                            runningListIndex = prev + 1;
+                            levelCounters[ilvl] = runningListIndex;
+                        }
+                    }
+                    // update tracking state
+                    lastWasList = true;
+                    lastListType = listType;
+                    lastListIndent = ilvl;
+                    // metadata output
+                    pNode = {
+                        type: 'list',
+                        text: pNode.text,
+                        children: pNode.children,
+                        metadata: {
+                            listType,
+                            indentation: ilvl,
+                            listId: currentListId.toString(),
+                            itemIndex: runningListIndex,
+                            alignment: pNode.metadata?.alignment || 'left',
+                        }
+                    };
+                }
+                else {
+                    lastWasList = false;
+                    lastListType = null;
+                    lastListIndent = 0;
+                }
+                if (isTitle && pNode.type === 'heading') {
+                    pNode.metadata = { ...pNode.metadata, level: 1 };
+                }
+                if (config.includeRawContent) {
+                    pNode.rawContent = (0, xmlUtils_js_1.getRawContent)(p, xmlContentString, config);
+                }
+                // Process all children of <a:p> in order (runs, breaks, fields)
+                const children = Array.from(p.childNodes);
+                let activeNode = pNode;
+                nodes.push(activeNode);
+                for (const childNode of children) {
+                    if (!(0, xmlUtils_js_1.isElement)(childNode))
+                        continue;
+                    const element = childNode;
+                    const tag = element.tagName;
+                    if (tag === "a:r" || tag === "a:fld") {
+                        const t = (0, xmlUtils_js_1.getFirstElementByTagName)(element, "a:t");
+                        if (t && t.childNodes[0]) {
+                            const textContent = t.childNodes[0].nodeValue || "";
+                            activeNode.text += textContent;
+                            const rPr = (0, xmlUtils_js_1.getFirstElementByTagName)(element, "a:rPr");
+                            const formatting = {};
+                            if (rPr) {
+                                if (rPr.getAttribute("b") === "1")
+                                    formatting.bold = true;
+                                if (rPr.getAttribute("i") === "1")
+                                    formatting.italic = true;
+                                if (rPr.getAttribute("u") === "sng")
+                                    formatting.underline = true;
+                                if (rPr.getAttribute("strike") === "sngStrike")
+                                    formatting.strikethrough = true;
+                                const sz = rPr.getAttribute("sz");
+                                if (sz)
+                                    formatting.size = (parseInt(sz) / 100).toString() + "pt";
+                                // Color extraction
+                                const solidFill = (0, xmlUtils_js_1.getFirstElementByTagName)(rPr, "a:solidFill");
+                                if (solidFill) {
+                                    const srgbClr = (0, xmlUtils_js_1.getFirstElementByTagName)(solidFill, "a:srgbClr");
+                                    if (srgbClr) {
+                                        const val = srgbClr.getAttribute("val");
+                                        if (val)
+                                            formatting.color = "#" + val;
+                                    }
+                                }
+                                // Highlight extraction
+                                const highlight = (0, xmlUtils_js_1.getFirstElementByTagName)(rPr, "a:highlight");
+                                if (highlight) {
+                                    const srgbClr = (0, xmlUtils_js_1.getFirstElementByTagName)(highlight, "a:srgbClr");
+                                    if (srgbClr) {
+                                        const val = srgbClr.getAttribute("val");
+                                        if (val)
+                                            formatting.backgroundColor = "#" + val;
+                                    }
+                                }
+                                // Font family
+                                const latin = (0, xmlUtils_js_1.getFirstElementByTagName)(rPr, "a:latin");
+                                if (latin) {
+                                    const typeface = latin.getAttribute("typeface");
+                                    if (typeface)
+                                        formatting.font = typeface;
+                                }
+                                // Subscript/Superscript
+                                const baseline = rPr.getAttribute("baseline");
+                                if (baseline) {
+                                    const baselineVal = parseInt(baseline);
+                                    if (baselineVal < 0)
+                                        formatting.subscript = true;
+                                    if (baselineVal > 0)
+                                        formatting.superscript = true;
+                                }
+                            }
+                            const textNode = {
+                                type: 'text',
+                                text: textContent,
+                                formatting: formatting
+                            };
+                            // Check for Hyperlinks
+                            const hlinkClick = (0, xmlUtils_js_1.getFirstElementByTagName)(element, "a:hlinkClick");
+                            if (hlinkClick) {
+                                const rId = hlinkClick.getAttribute("r:id");
+                                const action = hlinkClick.getAttribute("action");
+                                let link;
+                                let linkType;
+                                if (rId && slideRelsMap[slideNumber] && slideRelsMap[slideNumber][rId] && slideRelsMap[slideNumber][rId].type === "hyperlink") {
+                                    link = slideRelsMap[slideNumber][rId].target;
+                                    linkType = "external";
+                                }
+                                else if (rId && slideRelsMap[slideNumber] && slideRelsMap[slideNumber][rId] && slideRelsMap[slideNumber][rId].type === "slide") {
+                                    link = slideRelsMap[slideNumber][rId].target;
+                                    linkType = "internal";
+                                }
+                                else if (action) {
+                                    link = action;
+                                    linkType = "internal";
+                                }
+                                if (link) {
+                                    textNode.metadata = { link, linkType };
+                                }
+                            }
+                            activeNode.children?.push(textNode);
+                        }
+                    }
+                    else if (tag === "a:br") {
+                        if (isList) {
+                            // Split the list item on soft break into a paragraph node
+                            activeNode = {
+                                type: 'paragraph',
+                                text: '',
+                                children: [],
+                                metadata: {
+                                    paragraphIndentation: { left: lvl },
+                                    alignment: pNode.metadata?.alignment || 'left'
+                                }
+                            };
+                            if (config.includeRawContent) {
+                                activeNode.rawContent = (0, xmlUtils_js_1.getRawContent)(p, xmlContentString, config);
+                            }
+                            nodes.push(activeNode);
+                        }
+                        else {
+                            // In a normal paragraph, just add a newline
+                            activeNode.text += "\n";
+                            activeNode.children?.push({ type: 'text', text: "\n" });
+                        }
+                    }
+                    else {
+                        // Equations. This loop dispatches on `a:r`/`a:fld`, so an `m:oMath` -
+                        // which is a sibling of the runs, not one of them - was never visited at
+                        // all and the formula vanished from the slide without a warning.
+                        //
+                        // PowerPoint writes the equation either directly in the paragraph or
+                        // wrapped in `mc:AlternateContent`/`a14:m` for pre-2010 readers, so take
+                        // the element itself when it is the equation and search inside it
+                        // otherwise. `getElementsByTagName` returns document order, which is the
+                        // order the equations are read in.
+                        const isMath = tag === "m:oMath" || tag === "m:oMathPara";
+                        const equations = isMath ? [element] : (0, xmlUtils_js_1.getElementsByTagName)(element, "m:oMath");
+                        for (const equation of equations) {
+                            const latex = (0, mathUtils_js_1.ommlToLatex)(equation);
+                            if ((0, mathUtils_js_1.isEmptyMath)(latex))
+                                continue;
+                            activeNode.text += latex;
+                            activeNode.children?.push({
+                                type: 'code',
+                                text: latex,
+                                metadata: { math: tag === "m:oMathPara" ? 'block' : 'inline' }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        return nodes.filter(n => n.text?.trim() || (n.children && n.children.length > 0));
+    };
+    /**
+     * Recursively traverses a PowerPoint shape tree (p:spTree),
+     * including grouped shapes (p:grpSp), and dispatches each element
+     * to the appropriate handler (shape, image, chart, etc.).
+     *
+     * This function preserves the visual order because it processes
+     * children in the order they appear in the XML. It also accumulates
+     * transforms so nested groups inherit positional transforms.
+     *
+     * @param treeNode The XML node representing <p:spTree>
+     * @param slideNumber Current slide number for relationship resolution
+     * @param xmlContentString The source XML string for raw content extraction
+     */
+    function traverseSpTree(treeNode, slideNumber, xmlContentString) {
+        const nodes = [];
+        // Process children in XML order (this preserves Z-order)
+        for (const child of Array.from(treeNode?.childNodes || [])) {
+            if (!(0, xmlUtils_js_1.isElement)(child)) {
+                continue;
+            }
+            const element = child;
+            const tag = element.tagName;
+            // Case 1: Normal shape
+            if (tag === "p:sp") {
+                nodes.push(...extractShapeNodes(element, slideNumber, xmlContentString));
+            }
+            // Case 2: Inline picture
+            else if (tag === "p:pic") {
+                const imageNode = extractImageNode(element, slideNumber, xmlContentString);
+                if (imageNode) {
+                    nodes.push(imageNode);
+                }
+            }
+            // Case 3: Chart or other graphic frame
+            else if (tag === "p:graphicFrame") {
+                const tableNode = extractGraphicFrameNode(element, slideNumber, xmlContentString);
+                if (tableNode) {
+                    nodes.push(tableNode);
+                }
+            }
+            // Case 4: Grouped shape (recursive!)
+            else if (tag === "p:grpSp") {
+                // Recurse into the group element itself which holds the child shapes
+                nodes.push(...traverseSpTree(element, slideNumber, xmlContentString));
+            }
+        }
+        return nodes;
+    }
+    // First pass: Process relationships
+    for (const file of files) {
+        // Check whether this file is a slideX.xml.rels file
+        if (file.path.match(slideRelsRegex)) {
+            /**
+             * Builds a map of slide number to a map of relationship IDs containing:
+             * - type: The relationship category (image, hyperlink, chart, etc)
+             * - target: The fully normalized target path inside the PPTX zip
+             *
+             * Example structure:
+             * {
+             *     1: {
+             *         "rId2": { type: "image", target: "ppt/media/image3.png" },
+             *         "rId5": { type: "hyperlink", target: "https://example.com" }
+             *     }
+             * }
+             *
+             * @param files All extracted PPTX ZIP files.
+             * @param slideRelsMap A map of slide number to relationship info.
+             */
+            // Extract slide number from path
+            const match = file.path.match(/slide(\d+)\.xml\.rels/);
+            if (match) {
+                // Convert matched number to integer
+                const slideNum = parseInt(match[1]);
+                // Prepare map for this slide
+                slideRelsMap[slideNum] = {};
+                // Parse the rels XML
+                const relsXml = (0, xmlUtils_js_1.parseXmlString)(file.content.toString());
+                // Get all Relationship nodes
+                const relationships = (0, xmlUtils_js_1.getElementsByTagName)(relsXml, "Relationship");
+                // Loop through each relationship node
+                for (let i = 0; i < relationships.length; i++) {
+                    // Relationship ID, Example: "rId2"
+                    const id = relationships[i].getAttribute("Id");
+                    // Relationship Type, Example: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+                    const typeAttr = relationships[i].getAttribute("Type");
+                    // Raw Target, may be relative or absolute
+                    const targetRaw = relationships[i].getAttribute("Target");
+                    // Only proceed if ID and Type exist
+                    if (id && typeAttr && targetRaw) {
+                        // Simplify Type to a short keyword (image, hyperlink, chart, etc)
+                        // This is optional but very useful.
+                        let simplifiedType = "other";
+                        // Check image
+                        if (typeAttr.includes("relationships/image")) {
+                            simplifiedType = "image";
+                        }
+                        // Check hyperlink
+                        else if (typeAttr.includes("relationships/hyperlink")) {
+                            simplifiedType = "hyperlink";
+                        }
+                        // Check chart
+                        else if (typeAttr.includes("relationships/chart")) {
+                            simplifiedType = "chart";
+                        }
+                        // Check slide references
+                        else if (typeAttr.includes("relationships/slide")) {
+                            simplifiedType = "slide";
+                        }
+                        // Check notes
+                        else if (typeAttr.includes("relationships/notesSlide")) {
+                            simplifiedType = "notes";
+                        }
+                        // Check comments
+                        else if (typeAttr.includes("relationships/comments")) {
+                            simplifiedType = "comments";
+                        }
+                        // Now normalize the target only if it is a local file path.
+                        // Hyperlinks are external and should not be normalized.
+                        let normalizedTarget = targetRaw;
+                        // Local paths never contain "http" or "https"
+                        const isExternal = targetRaw.startsWith("http://") || targetRaw.startsWith("https://");
+                        // If not external, normalize the target which is just the name of the item.
+                        if (!isExternal) {
+                            normalizedTarget = normalizedTarget.split('/').pop() || '';
+                        }
+                        // Finally store full relationship info
+                        slideRelsMap[slideNum][id] = {
+                            type: simplifiedType,
+                            target: normalizedTarget
+                        };
+                    }
+                }
+            }
+        }
+    }
+    const slidesMap = {};
+    const slideMasters = [];
+    // Now for processing all the other files - slides and notes.
+    for (const file of files) {
+        (0, errorUtils_js_1.checkAbortSignal)(config.abortSignal);
+        if (file.path.match(mediaFileRegex))
+            continue;
+        if (file.path.match(chartFileRegex))
+            continue;
+        if (file.path.match(slideRelsRegex))
+            continue;
+        // All three document-property parts are extracted for metadata and were read earlier;
+        // only the core one was skipped here, leaving the other two to be parsed again as if
+        // they might be slides.
+        if (file.path.match(corePropsFileRegex))
+            continue;
+        if (file.path.match(appPropsFileRegex))
+            continue;
+        if (file.path.match(customPropsFileRegex))
+            continue;
+        if (file.path.includes("comment"))
+            continue;
+        // This loop treats every remaining file as a slide or note, so the presentation part
+        // has to be skipped explicitly: it carries no slide number and would otherwise be
+        // added to the deck as an empty slide.
+        if (file.path.match(presentationFileRegex))
+            continue;
+        const xmlContentString = file.content.toString();
+        const xml = (0, xmlUtils_js_1.parseXmlString)(xmlContentString, { locator: config.includeRawContent });
+        const slideMatch = file.path.match(slideNumberRegex);
+        const slideNumber = slideMatch ? parseInt(slideMatch[1]) : 0;
+        const masterMatch = file.path.match(/slideMaster(\d+)\.xml/);
+        const masterNumber = masterMatch ? parseInt(masterMatch[1]) : 0;
+        const isNote = file.path.includes("notesSlide");
+        const isMaster = file.path.includes("slideMaster");
+        const nodeType = isNote ? 'note' : (isMaster ? 'slideMaster' : 'slide');
+        const nodeNumber = isMaster ? masterNumber : slideNumber;
+        let slideNode;
+        if (isNote) {
+            slideNode = {
+                type: 'note',
+                children: [],
+                metadata: {
+                    slideNumber: nodeNumber,
+                    noteId: `slide-note-${slideNumber}`
+                }
+            };
+        }
+        else {
+            slideNode = {
+                type: isMaster ? 'slideMaster' : 'slide',
+                children: [],
+                metadata: {
+                    slideNumber: nodeNumber
+                }
+            };
+        }
+        if (config.includeRawContent) {
+            slideNode.rawContent = (0, xmlUtils_js_1.getRawContent)(xml, xmlContentString, config);
+        }
+        const spTree = (0, xmlUtils_js_1.getFirstElementByTagName)(xml, "p:spTree");
+        if (spTree) {
+            slideNode.children?.push(...traverseSpTree(spTree, nodeNumber, xmlContentString));
+        }
+        if (slideNode.children && slideNode.children.length > 0) {
+            if (isMaster) {
+                slideMasters.push(slideNode);
+            }
+            else if (isNote) {
+                if (!slidesMap[slideNumber])
+                    slidesMap[slideNumber] = { type: 'slide', children: [], metadata: { slideNumber } };
+                if (!slidesMap[slideNumber].notes)
+                    slidesMap[slideNumber].notes = [];
+                slidesMap[slideNumber].notes.push(slideNode);
+            }
+            else {
+                if (!slidesMap[slideNumber]) {
+                    slidesMap[slideNumber] = slideNode;
+                }
+                else {
+                    slidesMap[slideNumber].children = slideNode.children;
+                    slidesMap[slideNumber].rawContent = slideNode.rawContent;
+                }
+                // Process comments
+                if (!config.ignoreComments && slideRelsMap[slideNumber]) {
+                    const commentRels = Object.values(slideRelsMap[slideNumber]).filter(r => r.type === "comments");
+                    for (const rel of commentRels) {
+                        const cFile = files.find(f => f.path.endsWith(rel.target));
+                        if (cFile) {
+                            const cXml = (0, xmlUtils_js_1.parseXmlString)(cFile.content.toString());
+                            const commentNodes = (0, xmlUtils_js_1.getElementsByTagName)(cXml, "p:cm");
+                            for (const cNode of commentNodes) {
+                                const authorId = cNode.getAttribute("authorId");
+                                const authorData = authorId !== null ? authorMap[authorId] : undefined;
+                                const text = (0, xmlUtils_js_1.getElementsByTagName)(cNode, "a:t").map(t => t.textContent || '').join('');
+                                if (text) {
+                                    if (!slidesMap[slideNumber].comments)
+                                        slidesMap[slideNumber].comments = [];
+                                    slidesMap[slideNumber].comments.push({
+                                        type: 'comment',
+                                        text,
+                                        children: [{ type: 'text', text, formatting: {} }],
+                                        metadata: authorData && authorData.author ? { author: authorData.author } : undefined
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    const sortedSlideNumbers = Object.keys(slidesMap).map(Number).sort((a, b) => a - b);
+    for (const num of sortedSlideNumbers) {
+        content.push(slidesMap[num]);
+    }
+    const attachments = [];
+    const mediaFiles = files.filter(f => f.path.match(/ppt\/media\/.*/));
+    const chartFiles = files.filter(f => f.path.match(/ppt\/charts\/chart\d+\.xml/));
+    // First run to extract attachments and to assign ocr to image files.
+    if (config.extractAttachments) {
+        // Extract media files as attachments
+        for (const media of mediaFiles) {
+            const attachment = (0, imageUtils_js_1.createAttachment)(media.path.split('/').pop() || 'image', media.content);
+            attachments.push(attachment);
+            if (config.ocr) {
+                if (attachment.mimeType.startsWith('image/')) {
+                    try {
+                        attachment.ocrText = (await (0, ocrUtils_js_1.performOcr)(media.content, { ...config.ocrConfig })).trim();
+                    }
+                    catch (e) {
+                        (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.OCR_FAILED, config, attachment.name, e);
+                    }
+                }
+            }
+        }
+        // Extract chart files as attachments
+        for (const chart of chartFiles) {
+            const attachment = {
+                type: 'chart',
+                mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // Generic XML type for now
+                data: chart.content.toString('base64'),
+                name: chart.path.split('/').pop() || '',
+                extension: 'xml'
+            };
+            attachments.push(attachment);
+            // Extract text from chart XML
+            try {
+                const chartData = await (0, chartUtils_js_1.extractChartData)(chart.content);
+                // Assign chartData to attachment
+                attachment.chartData = chartData;
+            }
+            catch (e) {
+                (0, errorUtils_js_1.logWarning)(types_js_1.OfficeWarningType.CHART_DATA_EXTRACTION_FAILED, config, chart.path, e);
+            }
+        }
+        // Loop through nodes to find images and charts and link their text and chartData
+        const assignAttachmentData = (nodes) => {
+            for (const node of nodes) {
+                if ('attachmentName' in (node.metadata || {})) {
+                    const meta = node.metadata;
+                    const attachment = attachments.find(a => a.name === meta.attachmentName);
+                    if (attachment) {
+                        if (node.type === 'image') {
+                            attachment.altText = meta.altText;
+                            if (attachment.ocrText)
+                                node.text = attachment.ocrText;
+                        }
+                        if (node.type === 'chart') {
+                            node.text = attachment.chartData?.rawTexts.join(config.newlineDelimiter);
+                        }
+                    }
+                }
+                if (node.children) {
+                    assignAttachmentData(node.children);
+                }
+            }
+        };
+        assignAttachmentData(content);
+    }
+    // putNotesAtLast is deprecated. Notes are now structurally attached to their respective slides.
+    const toTextSync = () => content.map(c => {
+        // Recursive text extraction
+        const getText = (node) => {
+            let t = '';
+            if (node.children) {
+                t += node.children.map(getText).filter(t => t != '').join(!node.children[0]?.children ? '' : config.newlineDelimiter);
+            }
+            else
+                t += node.text || '';
+            return t;
+        };
+        return getText(c);
+    }).filter(t => t != '').join(config.newlineDelimiter);
+    const auxiliaryContent = slideMasters.length > 0 ? {
+        slideMasters
+    } : undefined;
+    return (0, astUtils_js_1.createAST)('pptx', metadata, content, attachments, config, auxiliaryContent, toTextSync);
+};
+exports.parsePowerPoint = parsePowerPoint;

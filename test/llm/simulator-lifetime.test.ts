@@ -22,7 +22,18 @@ function deferred() {
   return { promise, resolve };
 }
 
-function fake(options: { pauseModel?: boolean; failModel?: boolean } = {}) {
+const { GgufInsightsSimulatorSession } = await import(
+  new URL("./gguf/insights/GgufInsights.js", await verifySimulatorPackage())
+    .href
+);
+
+function fake(
+  options: {
+    pauseModel?: boolean;
+    failModel?: boolean;
+    upstream?: boolean;
+  } = {}
+) {
   const events: string[] = [];
   const contextEntered = deferred();
   const contextResume = deferred();
@@ -88,7 +99,9 @@ function fake(options: { pauseModel?: boolean; failModel?: boolean } = {}) {
     _shouldLog: () => false,
     _log: () => {},
   };
-  const session = new GuardedSimulatorSession(llama, dependencies, 1);
+  const session: GuardedSimulatorSession = options.upstream
+    ? new GgufInsightsSimulatorSession(llama, 1)
+    : new GuardedSimulatorSession(llama, dependencies, 1);
   const estimate = (gpuLayers = 1) =>
     session.estimateContextResources({
       modelSource: "same-pinned-model",
@@ -116,28 +129,31 @@ async function microtasks() {
   for (let i = 0; i < 32; i++) await Promise.resolve();
 }
 
-test("paused speculative context survives session disposal until memory read and context disposal", async () => {
-  const state = fake();
-  const estimation = state.estimate();
-  await state.contextEntered.promise;
-  const disposal = state.session.dispose();
-  try {
-    await microtasks();
-    expect(state.freeCount()).toBe(0);
-  } finally {
-    state.contextResume.resolve();
-    await Promise.allSettled([estimation, disposal]);
-  }
-  expect(await estimation).toEqual({ cpuRam: 12, gpuVram: 34 });
-  expect(state.events).toEqual([
-    "modelInit:1",
-    "contextInit:1",
-    "memoryRead:1",
-    "contextDispose:1",
-    "modelFree:1",
-  ]);
-  expect(state.backend._preventionHandles).toBe(0);
-});
+for (const upstream of [false, true]) {
+  test(`paused context survives ${upstream ? "upstream" : "GNO"} session disposal through memory read`, async () => {
+    const state = fake({ upstream });
+    const estimation = state.estimate();
+    await state.contextEntered.promise;
+    const disposal = state.session.dispose();
+    if (!upstream) expect(state.session.dispose()).toBe(disposal);
+    try {
+      await microtasks();
+      expect(state.freeCount()).toBe(0);
+    } finally {
+      state.contextResume.resolve();
+      await Promise.allSettled([estimation, disposal]);
+    }
+    expect(await estimation).toEqual({ cpuRam: 12, gpuVram: 34 });
+    expect(state.events).toEqual([
+      "modelInit:1",
+      "contextInit:1",
+      "memoryRead:1",
+      "contextDispose:1",
+      "modelFree:1",
+    ]);
+    expect(state.backend._preventionHandles).toBe(0);
+  });
+}
 
 test("session disposal during asynchronous model creation cannot free an active context", async () => {
   const state = fake({ pauseModel: true });

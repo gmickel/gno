@@ -1,0 +1,1272 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.parseMarkdown = void 0;
+const astUtils_js_1 = require("../utils/astUtils.js");
+const errorUtils_js_1 = require("../utils/errorUtils.js");
+const sanitize_js_1 = require("../utils/sanitize.js");
+// Sentinel node type for a standalone bookmark-anchor block (e.g. `<a id="x"></a>` on its
+// own line). A post-parse pass folds these into the following node's anchorIds so they
+// round-trip as real anchors rather than being escaped to visible text on regeneration.
+const ANCHOR_PLACEHOLDER = '__anchorPlaceholder__';
+/**
+ * Splits the inner content of a YAML flow array (`a, "b, c", d`) on top-level commas,
+ * ignoring commas inside single- or double-quoted items.
+ */
+const splitFlowArrayItems = (inner) => {
+    const items = [];
+    let current = '';
+    let quote = null;
+    for (const ch of inner) {
+        if (quote) {
+            current += ch;
+            if (ch === quote)
+                quote = null;
+        }
+        else if (ch === '"' || ch === '\'') {
+            quote = ch;
+            current += ch;
+        }
+        else if (ch === ',') {
+            items.push(current.trim());
+            current = '';
+        }
+        else {
+            current += ch;
+        }
+    }
+    if (current.trim() !== '')
+        items.push(current.trim());
+    return items;
+};
+/**
+ * Maps every accepted-on-import admonition type spelling (GitHub's five plus GLFM's
+ * `danger`) to the canonical AdmonitionMetadata type. Per MARKDOWN_DIALECT.md's
+ * Decisions, `danger` folds into `caution` - there is no separate danger type.
+ */
+const ADMONITION_TYPE_MAP = {
+    note: 'note',
+    tip: 'tip',
+    important: 'important',
+    warning: 'warning',
+    caution: 'caution',
+    danger: 'caution'
+};
+const parseMarkdown = async (buffer, config) => {
+    // Honour cancellation requests before the line-by-line Markdown scanning loop begins.
+    // Markdown parsing is entirely synchronous and CPU-bound, so failing fast avoids
+    // processing content whose result will be discarded anyway.
+    (0, errorUtils_js_1.checkAbortSignal)(config.abortSignal);
+    let textStr = buffer.toString('utf-8');
+    textStr = textStr.replace(/\r\n/g, '\n');
+    const content = [];
+    const metadata = {};
+    const attachments = [];
+    // Parse YAML Front Matter
+    if (/^---\n---[ \t]*(?:\n|$)/.test(textStr)) {
+        // Empty frontmatter block: strip it so `---\n---` isn't misread as a setext `## ---`
+        // heading (empty metadata used to emit exactly this shape, and other producers do too).
+        textStr = textStr.replace(/^---\n---[ \t]*(?:\n|$)/, '');
+    }
+    else if (textStr.startsWith('---\n')) {
+        const endIdx = textStr.indexOf('\n---\n', 4);
+        if (endIdx !== -1) {
+            const frontMatter = textStr.substring(4, endIdx);
+            textStr = textStr.substring(endIdx + 5);
+            const lines = frontMatter.split('\n');
+            const customProps = {};
+            const nativeProps = {};
+            for (const line of lines) {
+                const match = line.match(/^([^:]+):\s*(.*)$/);
+                if (match) {
+                    const key = match[1].trim();
+                    const rawVal = match[2].trim();
+                    // A quoted scalar is explicitly a string in YAML: strip the quotes but never
+                    // coerce it, so `version: "123"` / `flag: "true"` keep their string-ness across
+                    // a save/reload cycle instead of silently degrading to a number/boolean on the
+                    // next parse (which the generator would then re-emit unquoted, losing the type
+                    // permanently). Only bare, unquoted scalars coerce.
+                    const isQuoted = /^"(.*)"$/.test(rawVal) || /^'(.*)'$/.test(rawVal);
+                    const val = rawVal.replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
+                    let parsedVal = val;
+                    if (!isQuoted && rawVal.startsWith('[') && rawVal.endsWith(']')) {
+                        // Flow-array (`tags: [a, b]`) or JSON-array (`tags: ["a","b"]`) value -
+                        // parse into a real array instead of storing the literal bracket string,
+                        // so it round-trips symmetrically with MarkdownGenerator's frontmatter output.
+                        try {
+                            const jsonParsed = JSON.parse(rawVal);
+                            parsedVal = Array.isArray(jsonParsed) ? jsonParsed : val;
+                        }
+                        catch {
+                            const inner = rawVal.slice(1, -1).trim();
+                            parsedVal = inner === '' ? [] : splitFlowArrayItems(inner).map(item => item.replace(/^['"](.*)['"]$/, '$1'));
+                        }
+                    }
+                    else if (isQuoted)
+                        parsedVal = val;
+                    else if (val === 'true')
+                        parsedVal = true;
+                    else if (val === 'false')
+                        parsedVal = false;
+                    else if (!isNaN(Number(val)) && val !== '')
+                        parsedVal = Number(val);
+                    nativeProps[key] = parsedVal;
+                    if (key === 'title')
+                        metadata.title = val;
+                    else if (key === 'author')
+                        metadata.author = val;
+                    else if (key === 'created')
+                        metadata.created = new Date(val);
+                    else if (key === 'modified')
+                        metadata.modified = new Date(val);
+                    else if (key === 'description')
+                        metadata.description = val;
+                    else {
+                        customProps[key] = parsedVal;
+                    }
+                }
+            }
+            if (Object.keys(customProps).length > 0)
+                metadata.customProperties = customProps;
+            if (Object.keys(nativeProps).length > 0)
+                metadata.nativeProperties = nativeProps;
+        }
+    }
+    // Strip MDX/JSX component tags (parse-only - we never author MDX). Components are
+    // distinguished from plain HTML by an uppercase-leading tag name, matching React/MDX
+    // convention. Self-closing components are removed entirely; paired components keep
+    // their inner Markdown content. Iterate to a fixed point so nested components (of
+    // different names) are all unwrapped, not just the outermost one.
+    // Cap the passes: each iteration unwraps one nesting level, so a pathologically
+    // deep `<A><A>...</A></A>` input would otherwise be O(depth * n). Real documents
+    // nest only a handful of levels; anything past the cap is left as-is.
+    let previousTextStr;
+    let mdxPasses = 0;
+    const MAX_MDX_PASSES = 100;
+    do {
+        previousTextStr = textStr;
+        textStr = textStr.replace(/<[A-Z][A-Za-z0-9]*(?:\s+[^>]*?)?\/>/g, '');
+        textStr = textStr.replace(/<([A-Z][A-Za-z0-9]*)(?:\s+[^>]*?)?>([\s\S]*?)<\/\1>/g, (_m, _name, inner) => inner);
+    } while (textStr !== previousTextStr && ++mdxPasses < MAX_MDX_PASSES);
+    // Extract code blocks first to protect their contents. Accepts both backtick and
+    // tilde fences (CommonMark's two fence characters); the backreference on the fence
+    // run means a `~~~`-fenced block isn't closed early by a stray ``` inside it, and
+    // vice versa.
+    const codeBlocks = [];
+    textStr = textStr.replace(/^(`{3,}|~{3,})(\w*)\n([\s\S]*?)\n\1$/gm, (match, _fence, lang, code) => {
+        const id = `__CODE_BLOCK_${codeBlocks.length}__`;
+        codeBlocks.push(JSON.stringify({ lang, code }));
+        return `\n\n${id}\n\n`;
+    });
+    // Extract block math ($$\n...\n$$) before block splitting, mirroring the code-block
+    // pre-pass above - its body may contain blank lines that would otherwise fragment it.
+    // Inline math ($...$) is handled directly in parseInline below.
+    const mathBlocks = [];
+    textStr = textStr.replace(/^\$\$\n([\s\S]*?)\n\$\$$/gm, (_match, latex) => {
+        const id = `__MATH_BLOCK_${mathBlocks.length}__`;
+        mathBlocks.push(latex);
+        return `\n\n${id}\n\n`;
+    });
+    // Single-line `$$...$$` occupying its own line is display (block) math too. Without this it
+    // falls through to the inline `$...$` tokenizer, which matches the INNER `$\int$` and leaks
+    // the outer pair as two stray literal `$`. Runs after the multi-line pass, whose placeholders
+    // carry no `$$` and so can't be re-matched. `(?!\$)` rejects `$$$...`/empty `$$$$`.
+    textStr = textStr.replace(/^\$\$(?!\$)([^\n]+?)\$\$[ \t]*$/gm, (_match, latex) => {
+        const id = `__MATH_BLOCK_${mathBlocks.length}__`;
+        mathBlocks.push(latex);
+        return `\n\n${id}\n\n`;
+    });
+    // Extract GLFM-style fenced-div admonitions (`:::note ... :::`) before block splitting,
+    // since their body may itself contain blank lines that would otherwise fragment them.
+    // The `> [!NOTE]` GitHub form doesn't need this - it's detected inline in the blockquote
+    // branch below, since a `>`-prefixed block never contains a real blank line.
+    const admonitionBlocks = [];
+    textStr = textStr.replace(/^:::(\w+)[ \t]*\n([\s\S]*?)\n:::[ \t]*$/gm, (match, type, body) => {
+        const admonitionType = ADMONITION_TYPE_MAP[type.toLowerCase()];
+        if (!admonitionType)
+            return match; // Unrecognised type - leave as literal text.
+        const id = `__ADMONITION_${admonitionBlocks.length}__`;
+        admonitionBlocks.push(JSON.stringify({ admonitionType, body }));
+        return `\n\n${id}\n\n`;
+    });
+    // Extract footnote definitions (`[^id]: text`) before block splitting, since
+    // definitions conventionally live at the end of the document, after every place
+    // they're referenced - inline parsing below needs the full map upfront. The first line
+    // may be followed by continuation lines indented one level (4 spaces or a tab), which are
+    // dedented and joined onto the definition (Pandoc/GFM). A 4-space-indented block right after
+    // a definition is therefore read as its continuation rather than as a standalone code block.
+    // Supported (lossless) shape: contiguous continuation - the indented lines follow the
+    // definition with no blank line between them. Known limitation (6.E.1): a continuation
+    // separated from the definition by a BLANK line is not folded in - the regex below stops at
+    // the blank line, and the indented block after it re-parses as a fenced/indented code block on
+    // save. Multi-paragraph footnotes should therefore use the contiguous form.
+    const footnoteDefinitions = new Map();
+    // Every id a `[^id]` reference consumes, so definitions that are never referenced can be
+    // detected at the end and preserved rather than silently dropped (see the orphan sweep below).
+    const referencedFootnoteIds = new Set();
+    // One reused note node per referenced id. Repeated `[^id]` references are a single shared
+    // footnote in Markdown, so they must not each materialise a full copy of the body - the
+    // generators would otherwise renumber them to [^1]/[^2] and duplicate the definition. Office
+    // notes reach the generators as distinct objects even when they share a numeric id, so those
+    // stay separate; only genuinely shared Markdown references collapse.
+    const footnoteNodesById = new Map();
+    textStr = textStr.replace(/^\[\^([^\]]+)\]:[ \t]*(.*(?:\n(?: {4}|\t).*)*)$/gm, (_match, id, definition) => {
+        const dedented = String(definition)
+            .split('\n')
+            .map((line, i) => i === 0 ? line : line.replace(/^(?: {4}|\t)/, ''))
+            .join('\n')
+            .trim();
+        footnoteDefinitions.set(id, dedented);
+        return '';
+    });
+    // Extract Markdown Extra abbreviation definitions (`*[HTML]: Hypertext Markup Language`)
+    // before block splitting, for the same reason as footnotes: they conventionally live
+    // at the end of the document.
+    const abbreviationDefinitions = new Map();
+    textStr = textStr.replace(/^\*\[([^\]]+)\]:[ \t]*(.*)$/gm, (_match, abbr, definition) => {
+        abbreviationDefinitions.set(abbr, definition.trim());
+        return '';
+    });
+    // Extract link/image reference definitions (`[ref]: /url "title"`) before block
+    // splitting, for the same reason as footnotes/abbreviations: they conventionally
+    // live at the end of the document, after every place they're referenced. Keyed by
+    // trimmed/lowercased label, matching CommonMark's case-insensitive reference matching.
+    const linkDefinitions = new Map();
+    textStr = textStr.replace(/^\[([^\]]+)\]:[ \t]*(\S+)(?:[ \t]+"([^"]*)")?[ \t]*$/gm, (_match, label, url, title) => {
+        linkDefinitions.set(label.trim().toLowerCase(), { url, title });
+        return '';
+    });
+    // Parses a Pandoc-style attribute list body (the part inside `{...}`), e.g.
+    // `width=50% .centered` or `align=right`. Per MARKDOWN_DIALECT.md §15's Decisions,
+    // the vocabulary matches ImageMetadata/TableMetadata's own width/align fields;
+    // several class-name spellings are accepted on import for compatibility with
+    // hand-written content, but the generator only ever emits canonical `align=value`.
+    const parseAttributeList = (attrStr) => {
+        const result = {};
+        for (const token of attrStr.trim().split(/\s+/).filter(Boolean)) {
+            const kv = token.match(/^([a-zA-Z-]+)=(.+)$/);
+            if (kv) {
+                if (kv[1] === 'width')
+                    result.width = kv[2];
+                else if (kv[1] === 'align' && ['left', 'center', 'right'].includes(kv[2]))
+                    result.align = kv[2];
+            }
+            else if (token.startsWith('.')) {
+                const cls = token.slice(1).toLowerCase();
+                if (cls === 'left' || cls === 'align-left')
+                    result.align = 'left';
+                else if (cls === 'center' || cls === 'centered' || cls === 'align-center')
+                    result.align = 'center';
+                else if (cls === 'right' || cls === 'align-right')
+                    result.align = 'right';
+            }
+        }
+        return result;
+    };
+    // Attribute list for an embed leaf directive `{id=... src=... width=... height=... align=...}`.
+    // Superset of parseAttributeList (adds id/src/height); space-separated `k=v` tokens.
+    const parseEmbedDirectiveAttrs = (attrStr) => {
+        const result = {};
+        for (const token of attrStr.trim().split(/\s+/).filter(Boolean)) {
+            const kv = token.match(/^([a-zA-Z-]+)=(.+)$/);
+            if (!kv)
+                continue;
+            const [, key, val] = kv;
+            if (key === 'id')
+                result.id = val;
+            else if (key === 'src')
+                result.src = val;
+            else if (key === 'width')
+                result.width = val;
+            else if (key === 'height')
+                result.height = val;
+            else if (key === 'align' && ['left', 'center', 'right'].includes(val))
+                result.align = val;
+        }
+        return result;
+    };
+    // Extracts a YouTube video id from any of its URL shapes (watch?v=, youtu.be/, /embed/,
+    // img.youtube.com/vi/). Returns undefined for a non-YouTube URL. Used only by the opt-in
+    // folk-form import (embedFolkForms).
+    const extractYoutubeId = (url) => {
+        if (!url || !/(?:youtu\.be|youtube(?:-nocookie)?\.com)/.test(url))
+            return undefined;
+        const m = url.match(/(?:youtu\.be\/|\/embed\/|[?&]v=|\/vi\/)([A-Za-z0-9_-]+)/);
+        return m ? m[1] : undefined;
+    };
+    const parseInline = (text, currentFormatting = {}) => {
+        const nodes = [];
+        const plainText = (t) => ({ type: 'text', text: t, formatting: Object.keys(currentFormatting).length > 0 ? { ...currentFormatting } : undefined });
+        // Builds the same image/link node shape regardless of whether the URL came from
+        // an inline `(url)` or a resolved reference definition - shared by the inline
+        // image/link branch and the two reference-style branches below.
+        // Split a Markdown inline destination `url "title"` (also `'title'` / `(title)`) into its
+        // URL and optional title. The inline parser previously kept the whole thing as the URL, so
+        // `[t](u "T")` produced href `u "T"`; reference-style `[t][id]` already split it correctly.
+        const splitUrlTitle = (raw) => {
+            const m = raw.trim().match(/^(.*?)\s+(?:"([^"]*)"|'([^']*)'|\(([^)]*)\))\s*$/);
+            return m ? { url: m[1].trim(), title: m[2] ?? m[3] ?? m[4] } : { url: raw };
+        };
+        const buildLinkOrImageNodes = (isImage, altText, rawUrl, attrsStr) => {
+            const { url, title } = splitUrlTitle(rawUrl);
+            if (isImage) {
+                // Pandoc-style attribute list immediately after an image, e.g. {width=50% .centered}
+                const attrs = attrsStr !== undefined ? parseAttributeList(attrsStr) : undefined;
+                if (url.startsWith('data:')) {
+                    const dataMatch = url.match(/^data:([^;]+);base64,(.*)$/);
+                    if (dataMatch && config.extractAttachments) {
+                        const mimeType = dataMatch[1];
+                        const data = dataMatch[2];
+                        const name = `image_${attachments.length + 1}.${mimeType.split('/')[1]}`;
+                        attachments.push({
+                            type: 'image',
+                            mimeType,
+                            data,
+                            name,
+                            extension: mimeType.split('/')[1]
+                        });
+                        return [{ type: 'image', metadata: { attachmentName: name, altText, title, ...attrs } }];
+                    }
+                }
+                return [{ type: 'image', metadata: { url, altText, title, ...attrs } }];
+            }
+            const linkNodes = parseInline(altText, currentFormatting);
+            linkNodes.forEach(n => {
+                if (n.type === 'text') {
+                    n.metadata = { link: url, linkType: 'external', title };
+                }
+            });
+            return linkNodes;
+        };
+        // Regex matches (named groups): esc=escaped punctuation char | imgBang/imgAlt/imgUrl/imgAttrs=inline
+        // image or link | boldStar/boldUnderscore=bold | italicStar/italicUnderscore=italic | strike=strikethrough |
+        // codeFence/codeContent=inline code (backreferenced fence run, so a shorter embedded backtick run
+        // doesn't close the span early) | underline/subscript/superscript=HTML tag formatting |
+        // footnoteId | citationKey | wikiPage/wikiAlias | refBang/refText/refId=explicit or collapsed
+        // reference link/image `[text][ref]`/`[text][]` | shortBang/shortText=shortcut reference `[text]`
+        // (deliberately the most generic bracket pattern, so it must stay last among `[`-starting
+        // alternatives) | autolinkUrl=`<url>` autolink | mathInline.
+        //
+        // Named groups (rather than positional match[N] indices) mean adding a new alternative never
+        // requires renumbering every existing dispatch arm.
+        //
+        // Escape must be listed first since only a literal backslash can start that alternative, so it
+        // never shadows another branch; but a code span's match consumes its whole span atomically (the
+        // exec loop's lastIndex jumps past the entire matched span), so a backslash *inside* a code span
+        // is never independently offered to the escape branch regardless of listing order - CommonMark's
+        // "backslashes are not special inside code spans" rule holds by construction, not extra logic.
+        //
+        // Underscore emphasis has no CommonMark flanking-delimiter-run detection, so an intraword
+        // underscore (e.g. "foo_bar_baz") will incorrectly italicize - an accepted, documented
+        // simplification, not something this pass attempts to fix.
+        //
+        // Inline math requires no whitespace right after the opening $ or right before the
+        // closing $, the common heuristic (matching Pandoc/KaTeX) for avoiding false
+        // positives on currency like "$5 and $10".
+        const regex = /\\(?<esc>[!-\/:-@\[-`{-~])|(?<imgBang>!?)\[(?<imgAlt>.*?)\]\((?<imgUrl>.*?)\)(?:\{(?<imgAttrs>[^}]*)\})?|\*\*(?<boldStar>.+?)\*\*|__(?<boldUnderscore>.+?)__|\*(?<italicStar>.+?)\*|_(?<italicUnderscore>.+?)_|~~(?<strike>.+?)~~|==(?<highlight>.+?)==|(?<codeFence>`+)(?<codeContent>(?:(?!\k<codeFence>)[\s\S])+?)\k<codeFence>(?!`)|<u>(?<underline>.+?)<\/u>|<sub>(?<subscript>.+?)<\/sub>|<sup>(?<superscript>.+?)<\/sup>|(?<lineBreak><br\s*\/?>)|<span\s+style="(?<spanStyle>[^"]*)">(?<spanContent>.+?)<\/span>|\[\^(?<footnoteId>[^\]]+)\]|\[@(?<citationKey>[a-zA-Z0-9_:.-]+)\]|\[\[(?<wikiPage>[^\]|]+)(?:\|(?<wikiAlias>[^\]]+))?\]\]|(?<refBang>!?)\[(?<refText>[^\]]*)\]\[(?<refId>[^\]]*)\]|(?<shortBang>!?)\[(?<shortText>[^\]]+)\]|<(?<autolinkUrl>(?:https?|mailto):[^\s<>]+)>|\$(?!\s)(?<mathInline>[^$\n]+?)(?<!\s)\$/g;
+        let lastIndex = 0;
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            if (match.index > lastIndex) {
+                nodes.push(plainText(text.substring(lastIndex, match.index)));
+            }
+            const g = match.groups;
+            if (g.esc !== undefined) { // Backslash-escaped punctuation
+                nodes.push(plainText(g.esc));
+            }
+            else if (g.imgAlt !== undefined) { // Image or Link
+                nodes.push(...buildLinkOrImageNodes(g.imgBang === '!', g.imgAlt, g.imgUrl, g.imgAttrs));
+            }
+            else if (g.boldStar !== undefined) { // Bold (**)
+                nodes.push(...parseInline(g.boldStar, { ...currentFormatting, bold: true }));
+            }
+            else if (g.boldUnderscore !== undefined) { // Bold (__)
+                nodes.push(...parseInline(g.boldUnderscore, { ...currentFormatting, bold: true }));
+            }
+            else if (g.italicStar !== undefined) { // Italic (*)
+                nodes.push(...parseInline(g.italicStar, { ...currentFormatting, italic: true }));
+            }
+            else if (g.italicUnderscore !== undefined) { // Italic (_)
+                nodes.push(...parseInline(g.italicUnderscore, { ...currentFormatting, italic: true }));
+            }
+            else if (g.strike !== undefined) { // Strikethrough
+                nodes.push(...parseInline(g.strike, { ...currentFormatting, strikethrough: true }));
+            }
+            else if (g.highlight !== undefined) { // ==highlight== (Obsidian/extended); additive on import
+                nodes.push(...parseInline(g.highlight, { ...currentFormatting, backgroundColor: '#ffff00' }));
+            }
+            else if (g.codeContent !== undefined) { // Inline code (any matching backtick-run length)
+                nodes.push({ type: 'text', text: g.codeContent, formatting: { ...currentFormatting, font: 'monospace' } });
+            }
+            else if (g.underline !== undefined) { // Underline
+                nodes.push(...parseInline(g.underline, { ...currentFormatting, underline: true }));
+            }
+            else if (g.subscript !== undefined) { // Subscript
+                nodes.push(...parseInline(g.subscript, { ...currentFormatting, subscript: true }));
+            }
+            else if (g.superscript !== undefined) { // Superscript
+                nodes.push(...parseInline(g.superscript, { ...currentFormatting, superscript: true }));
+            }
+            else if (g.lineBreak !== undefined) { // Raw inline <br>/<br/>/<br /> - a hard line break.
+                // MarkdownGenerator emits a raw <br> for a line break inside a table cell (a GFM pipe
+                // cell can't hold a newline), so the parser must read it back symmetrically as a break
+                // node instead of escaping it to literal `&lt;br&gt;` text and destroying it.
+                nodes.push({ type: 'break', metadata: { breakType: 'carriageReturn' } });
+            }
+            else if (g.spanContent !== undefined) { // Inline styled span: color / highlight / font-size
+                const style = g.spanStyle || '';
+                const styled = { ...currentFormatting };
+                // Anchor each property to a declaration boundary so `color` doesn't match inside
+                // `background-color`.
+                const prop = (name) => {
+                    const m = style.match(new RegExp(`(?:^|;)\\s*${name}\\s*:\\s*([^;]+)`, 'i'));
+                    return m ? m[1].trim() : undefined;
+                };
+                const color = prop('color');
+                if (color)
+                    styled.color = color;
+                const background = prop('background-color');
+                if (background)
+                    styled.backgroundColor = background;
+                const size = prop('font-size');
+                if (size)
+                    styled.size = size;
+                nodes.push(...parseInline(g.spanContent, styled));
+            }
+            else if (g.footnoteId !== undefined) { // Footnote reference
+                const noteId = g.footnoteId;
+                referencedFootnoteIds.add(noteId);
+                // Reuse the same note object across every reference to this id (see the map's
+                // declaration): the first reference builds the body, the rest share it, so the
+                // generators assign one key and emit one definition.
+                let noteNode = footnoteNodesById.get(noteId);
+                if (!noteNode) {
+                    const definition = footnoteDefinitions.get(noteId);
+                    const noteChildren = definition !== undefined ? parseInline(definition) : [];
+                    noteNode = {
+                        type: 'note',
+                        text: noteChildren.map(c => c.text || '').join(''),
+                        children: noteChildren,
+                        metadata: { noteType: 'footnote', noteId }
+                    };
+                    footnoteNodesById.set(noteId, noteNode);
+                }
+                // Notes attach to the preceding text node (matches WordParser's convention);
+                // fall back to an empty text node if the reference opens the inline run.
+                if (nodes.length > 0) {
+                    const target = nodes[nodes.length - 1];
+                    if (!target.notes)
+                        target.notes = [];
+                    target.notes.push(noteNode);
+                }
+                else {
+                    nodes.push({ type: 'text', text: '', notes: [noteNode] });
+                }
+            }
+            else if (g.citationKey !== undefined) { // Citation reference
+                nodes.push({ type: 'text', text: g.citationKey, metadata: { citationKey: g.citationKey } });
+            }
+            else if (g.wikiPage !== undefined) { // Wikilink
+                const page = g.wikiPage.trim();
+                const alias = g.wikiAlias?.trim();
+                nodes.push({ type: 'text', text: alias || page, metadata: { link: page, linkType: 'internal', wikilink: true } });
+            }
+            else if (g.refText !== undefined) { // Explicit/collapsed reference link or image: [text][ref] / [text][]
+                const isImage = g.refBang === '!';
+                const label = g.refText;
+                const refId = (g.refId || label).trim().toLowerCase();
+                const def = linkDefinitions.get(refId);
+                if (def) {
+                    nodes.push(...buildLinkOrImageNodes(isImage, label, def.url));
+                }
+                else {
+                    // Not a known reference - preserve the literal bracketed text unchanged.
+                    nodes.push(plainText(text.substring(match.index, match.index + match[0].length)));
+                }
+            }
+            else if (g.shortText !== undefined) { // Shortcut reference: [text]
+                const isImage = g.shortBang === '!';
+                const label = g.shortText;
+                const def = linkDefinitions.get(label.trim().toLowerCase());
+                if (def) {
+                    nodes.push(...buildLinkOrImageNodes(isImage, label, def.url));
+                }
+                else {
+                    // Not a known reference - ordinary bracketed prose, preserve unchanged.
+                    nodes.push(plainText(`${g.shortBang}[${label}]`));
+                }
+            }
+            else if (g.autolinkUrl !== undefined) { // <url> autolink
+                const url = g.autolinkUrl;
+                nodes.push({ type: 'text', text: url, formatting: Object.keys(currentFormatting).length > 0 ? { ...currentFormatting } : undefined, metadata: { link: url, linkType: 'external' } });
+            }
+            else if (g.mathInline !== undefined) { // Inline math
+                nodes.push({ type: 'code', text: g.mathInline, metadata: { math: 'inline' } });
+            }
+            lastIndex = regex.lastIndex;
+        }
+        if (lastIndex < text.length) {
+            nodes.push(plainText(text.substring(lastIndex)));
+        }
+        return applyAbbreviations(decodeHtmlEntities(nodes));
+    };
+    const escapeRegExpChars = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // A deliberately small, common-entity lookup (not the full HTML5 named-character-
+    // reference table) - keeps this a plain object rather than needing a dependency.
+    const NAMED_HTML_ENTITIES = {
+        amp: '&', lt: '<', gt: '>', quot: '"', apos: '\'', nbsp: ' ',
+        copy: '©', reg: '®', mdash: '—', ndash: '–', hellip: '…'
+    };
+    // Decodes HTML named entities and numeric/hex character references (&#NN;/&#xHH;)
+    // in plain text nodes, skipping monospace (inline code) nodes since CommonMark does
+    // not decode entities inside code spans. The regex only ever matches syntactically
+    // well-formed &name;/&#NN;/&#xHH; tokens to begin with, so ordinary text containing
+    // a bare "&" (e.g. "Q&A", "Fish & Chips") never matches at all; an unrecognized-but-
+    // well-formed token (e.g. "&foo;") is left untouched on a lookup miss - no risk of
+    // double-decoding or corrupting text that merely resembles an entity.
+    const decodeHtmlEntities = (nodes) => {
+        return nodes.map(node => {
+            if (node.type !== 'text' || !node.text || node.formatting?.font === 'monospace')
+                return node;
+            const text = node.text.replace(/&(#\d+|#[xX][0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/g, (full, ref) => {
+                if (ref[0] === '#') {
+                    const codePoint = ref[1].toLowerCase() === 'x' ? parseInt(ref.slice(2), 16) : parseInt(ref.slice(1), 10);
+                    return (isNaN(codePoint) || codePoint < 0 || codePoint > 0x10FFFF) ? full : String.fromCodePoint(codePoint);
+                }
+                return NAMED_HTML_ENTITIES[ref] ?? full;
+            });
+            return text === node.text ? node : { ...node, text };
+        });
+    };
+    // Splits abbreviation occurrences out of plain text nodes so they carry
+    // TextMetadata.abbreviationTitle, rendered as <abbr title> in HTML/editor output.
+    const applyAbbreviations = (nodes) => {
+        if (abbreviationDefinitions.size === 0)
+            return nodes;
+        const pattern = new RegExp(`\\b(${[...abbreviationDefinitions.keys()].map(escapeRegExpChars).join('|')})\\b`, 'g');
+        const result = [];
+        for (const node of nodes) {
+            if (node.type !== 'text' || !node.text || node.metadata) {
+                result.push(node);
+                continue;
+            }
+            let lastIndex = 0;
+            let match;
+            let matched = false;
+            pattern.lastIndex = 0;
+            while ((match = pattern.exec(node.text)) !== null) {
+                matched = true;
+                if (match.index > lastIndex) {
+                    result.push({ type: 'text', text: node.text.substring(lastIndex, match.index), formatting: node.formatting });
+                }
+                result.push({
+                    type: 'text',
+                    text: match[0],
+                    formatting: node.formatting,
+                    metadata: { abbreviationTitle: abbreviationDefinitions.get(match[0]) }
+                });
+                lastIndex = pattern.lastIndex;
+            }
+            if (!matched) {
+                result.push(node);
+                continue;
+            }
+            if (lastIndex < node.text.length) {
+                result.push({ type: 'text', text: node.text.substring(lastIndex), formatting: node.formatting });
+            }
+        }
+        return result;
+    };
+    // Splits a paragraph-shaped block's internal lines into inline-parsed content,
+    // inserting a real 'break' node for a hard line break (a line ending in 2+ trailing
+    // spaces or a trailing backslash) instead of collapsing it to a space. A plain single
+    // newline with no such marker is still a soft break and collapses to a space,
+    // unchanged from before - CommonMark itself renders a soft break as a space/newline.
+    const splitParagraphLines = (block) => {
+        const lines = block.split('\n');
+        const children = [];
+        lines.forEach((line, i) => {
+            const hardBreak = /(?: {2,}|\\)$/.test(line);
+            children.push(...parseInline(line.replace(/(?: {2,}|\\)$/, '')));
+            if (i < lines.length - 1) {
+                if (hardBreak) {
+                    children.push({ type: 'break', metadata: { breakType: 'carriageReturn' } });
+                }
+                else {
+                    children.push({ type: 'text', text: ' ' });
+                }
+            }
+        });
+        return children;
+    };
+    // Builds an admonition node from its raw body text, splitting on blank lines into
+    // paragraph children. v1 only supports inline content inside admonitions (no nested
+    // lists/headings/code) - acceptable per the roadmap's first cut.
+    const buildAdmonitionNode = (admonitionType, body, sourceSyntax) => {
+        const paragraphs = body.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+        const children = paragraphs.map(p => ({
+            type: 'paragraph',
+            children: splitParagraphLines(p)
+        }));
+        return {
+            type: 'admonition',
+            metadata: { admonitionType, sourceSyntax },
+            children
+        };
+    };
+    const rawBlocks = textStr.split(/\n\n+/);
+    const blocks = [];
+    // Sub-split blocks that contain headings or lists without double newlines
+    for (const rawBlock of rawBlocks) {
+        if (!rawBlock.trim())
+            continue;
+        // Match headings or lists that might be joined with other text via single newline
+        const lines = rawBlock.split('\n');
+        let currentSubBlock = [];
+        // Tracks whether we're currently "inside" a list (a list-item line, or an
+        // indented continuation line right after one) so a continuation line doesn't
+        // itself get treated as the boundary that splits the list into a new block -
+        // see the "Lists" block dispatch below, which merges such a line into the
+        // previous item's content instead of dropping it.
+        let inList = false;
+        for (const line of lines) {
+            (0, errorUtils_js_1.checkAbortSignal)(config.abortSignal);
+            const isHeading = !!line.match(/^(?:<a[^>]*><\/a>)*\s*#{1,6}\s+/);
+            const isList = !!line.match(/^(\s*)([-*+]|\d+[.)])\s+/);
+            const isHtmlTag = !!line.match(/^<\/?div[^>]*>$/i);
+            // A non-list, non-blank, indented (>=2 columns or a tab) line encountered
+            // while already inside a list is a continuation of the current item, not a
+            // new construct. Scoped to a single such line at a time (no nested
+            // code/blockquote/sub-list/multi-paragraph items - those require un-splitting
+            // already-separated raw blocks, out of scope here).
+            const isContinuation = !isList && inList && /^(?: {2,}|\t)/.test(line) && line.trim().length > 0;
+            const staysInListMode = isList || isContinuation;
+            // Split if:
+            // 1. Current line is a heading
+            // 2. Current line enters or leaves "list mode" relative to the previous line
+            // 3. Current line is an HTML tag (div)
+            if ((isHeading || isHtmlTag || (staysInListMode !== inList)) && currentSubBlock.length > 0) {
+                blocks.push(currentSubBlock.join('\n'));
+                currentSubBlock = [];
+            }
+            currentSubBlock.push(line);
+            inList = staysInListMode;
+            // Headings and HTML tags are single-line blocks for our state machine
+            if (isHeading || isHtmlTag) {
+                blocks.push(currentSubBlock.join('\n'));
+                currentSubBlock = [];
+                inList = false;
+            }
+        }
+        if (currentSubBlock.length > 0) {
+            blocks.push(currentSubBlock.join('\n'));
+        }
+    }
+    // Re-join a list block that a blank line tore away from its parent. The generator's older
+    // loose output (`- a\n\n\n    - a1`) and foreign editors both split a nested item into its
+    // own block; left apart, the child's leading indent is stripped by the per-block `trim()`
+    // below and it reparses as a flat top-level item under a fresh listId. Merge a block back
+    // into the preceding one only when the previous block is itself a list (its FIRST line is a
+    // marker - the sub-splitter guarantees such a block holds only marker/continuation lines) and
+    // the current block OPENS with an INDENTED marker. An unindented `- b` after a blank line is
+    // deliberately left split (a flat loose list keeps its own listId), and anything that is not
+    // an indented marker (continuation text, indented code, placeholders) never triggers a merge.
+    const listMarkerStart = /^(\s*)([-*+]|\d+[.)])\s+/;
+    const indentedMarkerStart = /^(?: {2,}|\t)\s*(?:[-*+]|\d+[.)])\s+/;
+    const mergedBlocks = [];
+    for (const block of blocks) {
+        const prev = mergedBlocks[mergedBlocks.length - 1];
+        if (prev !== undefined
+            && listMarkerStart.test(prev.split('\n', 1)[0])
+            && indentedMarkerStart.test(block.split('\n', 1)[0])) {
+            mergedBlocks[mergedBlocks.length - 1] = `${prev}\n${block}`;
+        }
+        else {
+            mergedBlocks.push(block);
+        }
+    }
+    blocks.length = 0;
+    blocks.push(...mergedBlocks);
+    let listIdCounter = 1;
+    let currentAlignment = undefined;
+    for (let block of blocks) {
+        // Preserved before the generic trim() below, which strips the first line's
+        // leading indentation - the indented-code-block check further down needs every
+        // line's original indentation, including the first.
+        const untrimmedBlock = block;
+        block = block.trim();
+        if (!block)
+            continue;
+        // Standalone anchor-only block: one or more empty `<a name|id="…"></a>` tags on their
+        // own line (bookmark targets the MarkdownGenerator emits just before a heading/paragraph).
+        // Capture them as a placeholder so the post-loop pass can re-attach them to the following
+        // node's anchorIds — otherwise the tag-opening `<` is escaped and they render as visible text.
+        if (/^(?:\s*<a\s[^>]*>\s*<\/a>\s*)+$/i.test(block)) {
+            const anchorIds = [];
+            for (const m of block.matchAll(/<a\s[^>]*\b(?:name|id)="([^"]*)"/gi)) {
+                if (m[1])
+                    anchorIds.push(m[1]);
+            }
+            if (anchorIds.length > 0) {
+                content.push({ type: ANCHOR_PLACEHOLDER, metadata: { anchorIds }, children: [] });
+                continue;
+            }
+        }
+        // Check for alignment wrapper start/end
+        const alignStartMatch = block.match(/^<div\s+(?:style="text-align:\s*(left|center|right|justify);?"|align="(left|center|right|justify)")>$/i);
+        if (alignStartMatch) {
+            currentAlignment = (alignStartMatch[1] || alignStartMatch[2]).toLowerCase();
+            continue;
+        }
+        if (block.match(/^<\/div>$/i)) {
+            currentAlignment = undefined;
+            continue;
+        }
+        let alignment = currentAlignment;
+        // Check for single-line alignment wrapper (for compatibility)
+        const alignMatch = block.match(/^<div\s+(?:style="text-align:\s*(left|center|right|justify);?"|align="(left|center|right|justify)")>\s*([\s\S]*?)\s*<\/div>$/i);
+        if (alignMatch) {
+            alignment = (alignMatch[1] || alignMatch[2]).toLowerCase();
+            block = alignMatch[3];
+        }
+        // Embed leaf directive (remark-directive family): `::youtube[Label]{id=... width=... align=...}`
+        // or `::embed[Label]{src=... width=... height=... align=...}`. Only these two names are
+        // recognised; any other `::name` stays literal text (no catch-all). `::youtube` renders from
+        // a validated id via a fixed template, so it is unconditional; `::embed` carries an arbitrary
+        // src, so it is gated behind `preserveIframes` (the trust input) exactly like a raw <iframe>,
+        // and stays literal text otherwise. New input only; nothing that parsed before changes.
+        const embedDirectiveMatch = block.match(/^::(youtube|embed)(?:\[([^\]]*)\])?\{([^}]*)\}$/);
+        if (embedDirectiveMatch) {
+            const kind = embedDirectiveMatch[1];
+            const label = (embedDirectiveMatch[2] || '').trim() || undefined;
+            const attrs = parseEmbedDirectiveAttrs(embedDirectiveMatch[3]);
+            if (kind === 'youtube' && attrs.id) {
+                const embedUrl = `https://www.youtube.com/watch?v=${attrs.id}`;
+                content.push({
+                    type: 'embed',
+                    text: embedUrl,
+                    metadata: { embedType: 'youtube', videoId: attrs.id, url: embedUrl, width: attrs.width, align: attrs.align, label }
+                });
+                continue;
+            }
+            if (kind === 'embed' && attrs.src && (0, sanitize_js_1.iframeAllowed)(attrs.src, config.htmlParserConfig?.preserveIframes)) {
+                content.push({
+                    type: 'embed',
+                    text: attrs.src,
+                    metadata: { embedType: 'iframe', url: attrs.src, width: attrs.width, height: attrs.height, align: attrs.align, label }
+                });
+                continue;
+            }
+            // Recognised name but not a usable/allowed directive: fall through so the line becomes
+            // ordinary text rather than being dropped.
+        }
+        // Ambiguous "folk" embed forms, imported only under the opt-in (embedFolkForms), since
+        // auto-upgrading an image/link to an embed is a heuristic that could mangle a genuine image
+        // link. Both become a safe youtube embed (rendered from the validated id). A standalone line
+        // only; anything not matching falls through to ordinary image/link parsing.
+        if (config.htmlParserConfig?.embedFolkForms) {
+            // Clickable thumbnail: [![alt](thumb)](watch), youtube when either URL is a youtube link.
+            const thumbMatch = block.match(/^\[!\[([^\]]*)\]\(([^)\s]+)\)\]\(([^)\s]+)\)$/);
+            if (thumbMatch) {
+                const fid = extractYoutubeId(thumbMatch[2]) || extractYoutubeId(thumbMatch[3]);
+                if (fid) {
+                    const embedUrl = `https://www.youtube.com/watch?v=${fid}`;
+                    content.push({ type: 'embed', text: embedUrl, metadata: { embedType: 'youtube', videoId: fid, url: embedUrl, label: thumbMatch[1].trim() || undefined } });
+                    continue;
+                }
+            }
+            // Obsidian-style: a standalone image whose URL is a youtube link.
+            const obsMatch = block.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);
+            if (obsMatch) {
+                const fid = extractYoutubeId(obsMatch[2]);
+                if (fid) {
+                    const embedUrl = `https://www.youtube.com/watch?v=${fid}`;
+                    content.push({ type: 'embed', text: embedUrl, metadata: { embedType: 'youtube', videoId: fid, url: embedUrl, label: obsMatch[1].trim() || undefined } });
+                    continue;
+                }
+            }
+        }
+        // YouTube embed fallback: MarkdownGenerator's 'embed' case emits a single-line
+        // <div data-youtube-video="ID" data-width="…" data-align="…"></div> when fallbackToHtml
+        // is on; recognise it here so a saved-then-reopened .md keeps the video.
+        const youtubeMatch = block.match(/^<div\s+data-youtube-video="([^"]*)"([^>]*)>\s*<\/div>$/i);
+        if (youtubeMatch) {
+            const videoId = youtubeMatch[1];
+            const attrsStr = youtubeMatch[2];
+            const widthMatch = attrsStr.match(/data-width="([^"]*)"/i);
+            const youtubeAlignMatch = attrsStr.match(/data-align="([^"]*)"/i);
+            const youtubeLabelMatch = attrsStr.match(/data-embed-label="([^"]*)"/i);
+            const embedAlign = youtubeAlignMatch && ['left', 'center', 'right'].includes(youtubeAlignMatch[1]) ? youtubeAlignMatch[1] : undefined;
+            const embedUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : undefined;
+            content.push({
+                type: 'embed',
+                // Childless nodes need .text so generic AST consumers (toText, chunking)
+                // don't silently drop them.
+                text: embedUrl,
+                metadata: {
+                    embedType: 'youtube',
+                    videoId,
+                    url: embedUrl,
+                    width: widthMatch?.[1],
+                    align: embedAlign,
+                    label: youtubeLabelMatch?.[1]
+                }
+            });
+            continue;
+        }
+        // Generic iframe fallback: MarkdownGenerator's 'embed' case emits a single-line
+        // <iframe src="…"></iframe> for a preserved iframe when fallbackToHtml is on. Recognise
+        // it only when the caller opted into iframe preservation, so default parsing is unchanged.
+        const iframeMatch = block.match(/^<iframe\s+([^>]*?)\/?>(?:\s*<\/iframe>)?$/i);
+        if (iframeMatch) {
+            const attrsStr = iframeMatch[1];
+            // The emitted <iframe> HTML-escapes its attribute values (sanitizeUrl -> escapeHtml), so
+            // decode them back; otherwise the src double-escapes (`&amp;` -> `&amp;amp;`) and its
+            // query string is corrupted a little more on every save/reload cycle. `&amp;` is decoded
+            // last so a genuinely double-escaped value only unwinds one level per parse.
+            const decodeAttr = (s) => (s || '')
+                .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+                .replace(/&#39;/g, '\'').replace(/&amp;/g, '&');
+            const src = decodeAttr(attrsStr.match(/\bsrc="([^"]*)"/i)?.[1]);
+            const width = attrsStr.match(/\bwidth="([^"]*)"/i)?.[1];
+            const height = attrsStr.match(/\bheight="([^"]*)"/i)?.[1];
+            // A YouTube iframe is recognised the same way the HTML parser does it (host + id
+            // capture), BEFORE and INDEPENDENT of the preserveIframes gate, so the same iframe
+            // yields the same 'youtube' embed whichever parser sees it. Only a generic (non-YouTube)
+            // iframe is gated behind preserveIframes and kept as an 'iframe' embed.
+            const ytMatch = src && /youtube(?:-nocookie)?\.com/.test(src) ? src.match(/(?:embed\/|v=)([^&?/\s]+)/) : null;
+            if (ytMatch) {
+                const embedUrl = `https://www.youtube.com/watch?v=${ytMatch[1]}`;
+                content.push({
+                    type: 'embed',
+                    text: embedUrl,
+                    metadata: {
+                        embedType: 'youtube',
+                        videoId: ytMatch[1],
+                        url: embedUrl,
+                        width: width !== undefined ? decodeAttr(width) : undefined,
+                        height: height !== undefined ? decodeAttr(height) : undefined
+                    }
+                });
+                continue;
+            }
+            if (src && (0, sanitize_js_1.iframeAllowed)(src, config.htmlParserConfig?.preserveIframes)) {
+                content.push({
+                    type: 'embed',
+                    text: src,
+                    metadata: {
+                        embedType: 'iframe',
+                        url: src,
+                        width: width !== undefined ? decodeAttr(width) : undefined,
+                        height: height !== undefined ? decodeAttr(height) : undefined
+                    }
+                });
+                continue;
+            }
+        }
+        // Code Block
+        const codeMatch = block.match(/^__CODE_BLOCK_(\d+)__$/);
+        if (codeMatch) {
+            const data = JSON.parse(codeBlocks[parseInt(codeMatch[1])]);
+            content.push({
+                type: 'code',
+                text: data.code,
+                metadata: { language: data.lang }
+            });
+            continue;
+        }
+        // GLFM-style fenced-div admonition, extracted to a placeholder above
+        const admonitionBlockMatch = block.match(/^__ADMONITION_(\d+)__$/);
+        if (admonitionBlockMatch) {
+            const data = JSON.parse(admonitionBlocks[parseInt(admonitionBlockMatch[1])]);
+            content.push(buildAdmonitionNode(data.admonitionType, data.body, 'gitlab'));
+            continue;
+        }
+        // Block math ($$...$$), extracted to a placeholder above
+        const mathBlockMatch = block.match(/^__MATH_BLOCK_(\d+)__$/);
+        if (mathBlockMatch) {
+            content.push({
+                type: 'code',
+                text: mathBlocks[parseInt(mathBlockMatch[1])],
+                metadata: { math: 'block' }
+            });
+            continue;
+        }
+        // Heading (allowing for leading HTML anchors and trailing {#anchor})
+        const headingMatch = block.match(/^((?:<a[^>]*><\/a>)*)\s*(#{1,6})\s+(.*?)(?:\s+\{#([^}]+)\})?\s*$/s);
+        if (headingMatch) {
+            const leadingAnchorsRaw = headingMatch[1];
+            const rawText = headingMatch[3];
+            const explicitAnchor = headingMatch[4];
+            const anchorIds = [];
+            if (leadingAnchorsRaw) {
+                const idMatches = leadingAnchorsRaw.matchAll(/<a\s[^>]*\b(?:name|id)="([^"]+)"/gi);
+                for (const m of idMatches)
+                    anchorIds.push(m[1]);
+            }
+            if (explicitAnchor)
+                anchorIds.push(explicitAnchor);
+            const children = parseInline(rawText);
+            content.push({
+                type: 'heading',
+                text: children.map(c => c.text || '').join(''),
+                metadata: {
+                    level: headingMatch[2].length,
+                    alignment,
+                    anchorIds: anchorIds.length > 0 ? anchorIds : undefined
+                },
+                children
+            });
+            continue;
+        }
+        // Setext heading (Text\n===  or  Text\n---): a line of text immediately followed
+        // by a lone `=`/`-` underline with no blank line between them. By the time a
+        // block reaches this point, the sub-splitter above has already separated out any
+        // genuinely blank-line-preceded thematic break into its own isolated block (which
+        // has no preceding text line to combine with here), so this only fires for the
+        // ambiguous "text directly above a dash/equals-only line" shape setext needs.
+        // Scoped to a single line immediately above the underline becoming the heading
+        // text; multi-line setext text (CommonMark's "Foo\nbar\n===" merging into one
+        // heading) is an explicitly out-of-scope simplification - any earlier lines in
+        // the block are pushed as a separate paragraph first.
+        const setextMatch = block.match(/^([\s\S]*)\n([=]+|-+)[ \t]*$/);
+        if (setextMatch) {
+            const lines = setextMatch[1].split('\n');
+            const headingLine = lines[lines.length - 1];
+            const earlierLines = lines.slice(0, -1).join('\n').trim();
+            if (earlierLines) {
+                content.push({
+                    type: 'paragraph',
+                    metadata: { alignment },
+                    children: splitParagraphLines(earlierLines)
+                });
+            }
+            const children = parseInline(headingLine);
+            content.push({
+                type: 'heading',
+                text: children.map(c => c.text || '').join(''),
+                metadata: { level: setextMatch[2][0] === '=' ? 1 : 2, alignment },
+                children
+            });
+            continue;
+        }
+        // Blockquote
+        const quoteMatch = block.match(/^>\s+(.*)$/s);
+        if (quoteMatch) {
+            // [ \t]? (not \s+) so a bare ">" paragraph-separator line (used between
+            // multi-paragraph admonition bodies) also dequotes to an empty line. Repeat
+            // until no line still starts with ">" so arbitrarily-nested blockquotes
+            // (`> > quoted`, `> > > quoted`, ...) are fully unwrapped rather than only
+            // stripping one level.
+            let dequoted = quoteMatch[1];
+            while (/^>/m.test(dequoted)) {
+                dequoted = dequoted.replace(/^>[ \t]?/gm, '');
+            }
+            // GitHub-style admonition: `> [!NOTE]` on the first quoted line.
+            const admonitionHeaderMatch = dequoted.match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*\n?([\s\S]*)$/i);
+            if (admonitionHeaderMatch) {
+                const admonitionType = admonitionHeaderMatch[1].toLowerCase();
+                content.push(buildAdmonitionNode(admonitionType, admonitionHeaderMatch[2], 'github'));
+                continue;
+            }
+            content.push({
+                type: 'paragraph',
+                metadata: { style: 'Quote' },
+                children: parseInline(dequoted)
+            });
+            continue;
+        }
+        // Definition list (Markdown Extra / Pandoc / Kramdown): a term line followed by
+        // one or more ": definition" lines, e.g.:
+        //   Term
+        //   : Definition of the term.
+        const definitionListMatch = block.match(/^([^\n:][^\n]*)\n((?::[ \t]+.+(?:\n:[ \t]+.+)*))$/);
+        if (definitionListMatch) {
+            const term = definitionListMatch[1];
+            const definitions = definitionListMatch[2].split('\n').map(line => line.replace(/^:[ \t]+/, ''));
+            content.push({
+                type: 'definitionList',
+                children: [
+                    { type: 'definitionTerm', children: parseInline(term) },
+                    ...definitions.map(def => ({ type: 'definitionDescription', children: parseInline(def) }))
+                ]
+            });
+            continue;
+        }
+        // Lists
+        if (block.match(/^(\s*)([-*+]|\d+[.)])\s+/)) {
+            const lines = block.split('\n');
+            const listId = `md-list-${listIdCounter++}`;
+            const listCounters = new Map();
+            // Relative indent stack (not a fixed-width divisor) so nesting level is
+            // computed from what indentation actually appeared in this block, rather
+            // than assuming a specific indent width. This makes the parser agnostic to
+            // 2-space (hand-written), 4-space (this generator's own output), or
+            // tab-indented (normalized to a 4-column stop) nested lists.
+            const indentStack = [];
+            // The most recently pushed list-item node, so a following indented
+            // continuation line (see the sub-splitter above) can be merged into it
+            // instead of being silently dropped.
+            let lastListNode;
+            for (const line of lines) {
+                const match = line.match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+                if (match) {
+                    const rawIndent = match[1].replace(/\t/g, '    ').length;
+                    while (indentStack.length > 0 && rawIndent <= indentStack[indentStack.length - 1]) {
+                        indentStack.pop();
+                    }
+                    const level = indentStack.length;
+                    indentStack.push(rawIndent);
+                    // Purge any deeper levels' counters now that we're back at this
+                    // level - otherwise a nested sub-list under a later sibling item
+                    // would incorrectly continue a previous sibling's child numbering
+                    // instead of restarting at 0.
+                    for (const key of [...listCounters.keys()]) {
+                        if (key > level)
+                            listCounters.delete(key);
+                    }
+                    const marker = match[2];
+                    const isOrdered = !!marker.match(/\d+[.)]/);
+                    const listType = isOrdered ? 'ordered' : 'unordered';
+                    if (listCounters.get(level) === undefined) {
+                        if (isOrdered) {
+                            const startNum = parseInt(marker, 10);
+                            listCounters.set(level, isNaN(startNum) ? 0 : startNum - 1);
+                        }
+                        else {
+                            listCounters.set(level, 0);
+                        }
+                    }
+                    else {
+                        listCounters.set(level, listCounters.get(level) + 1);
+                    }
+                    let itemText = match[3];
+                    let isTask;
+                    let checked;
+                    const taskMatch = itemText.match(/^\[([ xX])\]\s+(.*)$/);
+                    if (taskMatch) {
+                        isTask = true;
+                        checked = taskMatch[1].toLowerCase() === 'x';
+                        itemText = taskMatch[2];
+                    }
+                    const children = parseInline(itemText);
+                    const listNode = {
+                        type: 'list',
+                        text: children.map(c => c.text || '').join(''),
+                        metadata: {
+                            listType,
+                            indentation: level,
+                            alignment: alignment || 'left',
+                            listId,
+                            itemIndex: listCounters.get(level),
+                            isTask,
+                            checked
+                        },
+                        children
+                    };
+                    content.push(listNode);
+                    lastListNode = listNode;
+                }
+                else if (lastListNode && line.trim().length > 0 && /^(?: {2,}|\t)/.test(line)) {
+                    // Indented continuation line: merge its inline content into the
+                    // previous item rather than dropping it. Scoped to a single such
+                    // line (no nested code/blockquote/sub-list/multi-paragraph items).
+                    const continuationChildren = parseInline(line.trim());
+                    lastListNode.children = [...(lastListNode.children || []), { type: 'text', text: ' ' }, ...continuationChildren];
+                    lastListNode.text = (lastListNode.children || []).map(c => c.text || '').join('');
+                }
+            }
+            continue;
+        }
+        // Table (Simple Pipe or HTML)
+        if ((block.includes('|') && block.match(/\n\s*\|?[-:| ]+\|?\s*\n/)) || block.includes('<table')) {
+            // Pandoc-style trailing attribute list (`{align=right}`) immediately after the
+            // table, or Kramdown's `{: align=right}` on its own following line - both land
+            // in this same raw block since there's no blank line separating them.
+            let tableAlign;
+            const tableAttrLineMatch = block.match(/\n\{:?\s*([^}]*)\}\s*$/);
+            if (tableAttrLineMatch) {
+                tableAlign = parseAttributeList(tableAttrLineMatch[1]).align;
+                block = block.slice(0, tableAttrLineMatch.index);
+            }
+            if (block.includes('<table')) {
+                // Basic HTML table recognition (extracting rows/cells)
+                const tableTagMatch = block.match(/<table([^>]*)>/i);
+                const tableAlignMatch = tableTagMatch?.[1]?.match(/data-align=["']?(left|center|right)["']?/i);
+                const rows = [];
+                const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+                let trMatch;
+                while ((trMatch = trRegex.exec(block)) !== null) {
+                    const tdRegex = /<(?:td|th)([^>]*)>([\s\S]*?)<\/(?:td|th)>/gi;
+                    let tdMatch;
+                    const cells = [];
+                    while ((tdMatch = tdRegex.exec(trMatch[1])) !== null) {
+                        const attrs = tdMatch[1];
+                        const contentStr = tdMatch[2].trim();
+                        const colSpanMatch = attrs.match(/colspan=["']?(\d+)["']?/i);
+                        const rowSpanMatch = attrs.match(/rowspan=["']?(\d+)["']?/i);
+                        cells.push({
+                            type: 'cell',
+                            metadata: {
+                                colSpan: colSpanMatch ? parseInt(colSpanMatch[1]) : undefined,
+                                rowSpan: rowSpanMatch ? parseInt(rowSpanMatch[1]) : undefined
+                            },
+                            children: parseInline(contentStr.replace(/<[^>]*>/g, ''))
+                        });
+                    }
+                    if (cells.length > 0)
+                        rows.push({ type: 'row', children: cells });
+                }
+                const resolvedAlign = tableAlign || (tableAlignMatch ? tableAlignMatch[1].toLowerCase() : undefined);
+                if (rows.length > 0) {
+                    content.push({
+                        type: 'table',
+                        metadata: resolvedAlign ? { align: resolvedAlign } : undefined,
+                        children: rows
+                    });
+                    continue;
+                }
+            }
+            else {
+                const lines = block.trim().split('\n');
+                const rows = [];
+                // Pre-scan the separator row for per-column GFM alignment (`:--` left, `:-:` center,
+                // `--:` right; a bare `--` column has none), so every cell can carry its column's
+                // alignment on CellMetadata.align (the header row precedes the separator, so a
+                // per-cell pass alone could not see it).
+                const sepLine = lines.find(l => l.match(/^\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?$/));
+                const columnAligns = sepLine
+                    ? sepLine.replace(/^\||\|$/g, '').split('|').map(c => {
+                        const t = c.trim();
+                        const l = t.startsWith(':'), r = t.endsWith(':');
+                        return (l && r) ? 'center' : r ? 'right' : l ? 'left' : null;
+                    })
+                    : [];
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].match(/^\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?$/))
+                        continue; // Separator row (per-cell `:?-+:?`, GFM-style; accepts short cells like `|-|-|`)
+                    const cellsStr = lines[i].replace(/^\||\|$/g, '').split('|');
+                    const cells = cellsStr.map((c, colIdx) => {
+                        // Recognize the MarkdownGenerator's own cell-alignment fallback,
+                        // `<div style="text-align: X">…</div>`, and lift it into an aligned
+                        // paragraph so it round-trips as alignment instead of being escaped to
+                        // visible text on regeneration. Unwrap wherever it sits (e.g. inside **…**).
+                        let cellText = c.trim();
+                        let cellAlign;
+                        cellText = cellText.replace(/<div\s+style="text-align:\s*(left|center|right|justify);?"\s*>([\s\S]*?)<\/div>/gi, (_m, a, inner) => { cellAlign = a.toLowerCase(); return inner; });
+                        const inline = parseInline(cellText, i === 0 ? { bold: true } : {});
+                        const colAlign = columnAligns[colIdx] ?? undefined;
+                        const cellMeta = colAlign ? { col: colIdx, align: colAlign } : undefined;
+                        if (cellAlign && cellAlign !== 'left') {
+                            return {
+                                type: 'cell',
+                                metadata: cellMeta,
+                                children: [{ type: 'paragraph', metadata: { alignment: cellAlign }, children: inline }]
+                            };
+                        }
+                        return { type: 'cell', metadata: cellMeta, children: inline };
+                    });
+                    rows.push({ type: 'row', children: cells });
+                }
+                // If every explicitly-aligned column agrees, also expose it as the table-level align,
+                // so an editor that models one alignment per table (and HTML data-align) round-trips.
+                const explicitAligns = columnAligns.filter((a) => a !== null);
+                const uniformAlign = explicitAligns.length > 0 && explicitAligns.every(a => a === explicitAligns[0]) ? explicitAligns[0] : undefined;
+                const resolvedTableAlign = tableAlign || uniformAlign;
+                content.push({ type: 'table', metadata: resolvedTableAlign ? { align: resolvedTableAlign } : undefined, children: rows });
+                continue;
+            }
+        }
+        // Indented code block (4-space or tab indent on every non-blank line). Only
+        // reaches this point once heading/blockquote/definition-list/list/table have
+        // already failed to claim the block; since list continuation lines are now
+        // handled inside the "Lists" branch above and the sub-splitter already isolates
+        // list/heading content into their own blocks, a block that's uniformly indented
+        // here is not a list by construction. A partially-indented block (some lines
+        // indented, some not) falls through to Paragraph unchanged.
+        {
+            const codeLines = untrimmedBlock.split('\n');
+            const nonBlankLines = codeLines.filter(l => l.trim().length > 0);
+            if (nonBlankLines.length > 0 && nonBlankLines.every(l => /^(?: {4}|\t)/.test(l))) {
+                const stripped = codeLines.map(l => l.replace(/^(?: {4}|\t)/, '')).join('\n');
+                content.push({ type: 'code', text: stripped });
+                continue;
+            }
+        }
+        // Hr - a thematic break (horizontal rule), not a page break, so it survives a save as
+        // `---` rather than collapsing to a bare newline.
+        if (block.match(/^---+$|^\*\*\*+$|^___+$/)) {
+            content.push({ type: 'break', metadata: { breakType: 'thematic' } });
+            continue;
+        }
+        // Paragraph
+        content.push({
+            type: 'paragraph',
+            metadata: { alignment },
+            children: splitParagraphLines(block)
+        });
+    }
+    // Fold standalone anchor placeholders into the following content node's anchorIds so a
+    // bookmark target emitted on its own line round-trips as a real anchor. A trailing placeholder
+    // with no following node attaches to the previous node instead; if the document is nothing but
+    // anchors, they are dropped (there is no node to host them).
+    if (content.some(n => n.type === ANCHOR_PLACEHOLDER)) {
+        const merged = [];
+        let carried = [];
+        for (const node of content) {
+            if (node.type === ANCHOR_PLACEHOLDER) {
+                carried.push(...(node.metadata?.anchorIds || []));
+                continue;
+            }
+            if (carried.length > 0) {
+                const meta = node.metadata || (node.metadata = {});
+                meta.anchorIds = [...carried, ...(meta.anchorIds || [])];
+                carried = [];
+            }
+            merged.push(node);
+        }
+        if (carried.length > 0 && merged.length > 0) {
+            const last = merged[merged.length - 1].metadata || (merged[merged.length - 1].metadata = {});
+            last.anchorIds = [...(last.anchorIds || []), ...carried];
+        }
+        content.length = 0;
+        content.push(...merged);
+    }
+    // Orphan footnote definitions (defined but never referenced) would otherwise vanish entirely -
+    // a user who deletes a `[^x]` reference but keeps its `[^x]: ...` definition loses the
+    // definition on the next save. Preserve them as trailing note nodes, marked `unreferenced` so
+    // the generators route them into their footnotes section (not inline) and emit no citation
+    // marker or dangling back-link. Both generators still emit the definition (md: a `[^x]:` line;
+    // html: a `div[data-footnote-id]` inside `section[data-footnotes]`, which re-parses on import).
+    for (const [id, definition] of footnoteDefinitions) {
+        if (referencedFootnoteIds.has(id))
+            continue;
+        const noteChildren = parseInline(definition);
+        content.push({
+            type: 'note',
+            text: noteChildren.map(c => c.text || '').join(''),
+            children: noteChildren,
+            metadata: { noteType: 'footnote', noteId: id, unreferenced: true },
+        });
+    }
+    const toTextSync = () => content.map(n => {
+        const getText = (node) => {
+            if (node.type === 'text' || node.type === 'code')
+                return node.text || '';
+            if (node.type === 'break')
+                return '\n';
+            // Childless nodes still carry meaningful text - fall back to it instead of
+            // silently vanishing from plain-text/RAG-chunk output.
+            if (node.type === 'embed')
+                return node.metadata?.url || '';
+            if (node.children) {
+                const isBlock = ['table', 'row', 'list', 'sheet', 'slide', 'admonition', 'definitionList'].includes(node.type);
+                return node.children.map(getText).join(isBlock ? config.newlineDelimiter : '');
+            }
+            return '';
+        };
+        return getText(n);
+    }).join(config.newlineDelimiter)
+        .replace(/\n{3,}/g, '\n\n'); // Normalize excessive whitespace
+    return (0, astUtils_js_1.createAST)('md', metadata, content, attachments, config, undefined, toTextSync);
+};
+exports.parseMarkdown = parseMarkdown;

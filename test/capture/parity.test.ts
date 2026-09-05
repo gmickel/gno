@@ -280,9 +280,21 @@ describe("capture surface parity", () => {
     for (const root of roots.splice(0)) {
       await safeRm(root);
     }
-    process.env.GNO_CONFIG_DIR = originalEnv.configDir;
-    process.env.GNO_DATA_DIR = originalEnv.dataDir;
-    process.env.GNO_CACHE_DIR = originalEnv.cacheDir;
+    if (originalEnv.configDir === undefined) {
+      delete process.env.GNO_CONFIG_DIR;
+    } else {
+      process.env.GNO_CONFIG_DIR = originalEnv.configDir;
+    }
+    if (originalEnv.dataDir === undefined) {
+      delete process.env.GNO_DATA_DIR;
+    } else {
+      process.env.GNO_DATA_DIR = originalEnv.dataDir;
+    }
+    if (originalEnv.cacheDir === undefined) {
+      delete process.env.GNO_CACHE_DIR;
+    } else {
+      process.env.GNO_CACHE_DIR = originalEnv.cacheDir;
+    }
   });
 
   test(

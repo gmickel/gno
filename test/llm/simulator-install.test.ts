@@ -41,13 +41,42 @@ test("factory installation is shared and creates the guarded session before nati
   await session.dispose();
 });
 
+test("3.20 CLIP simulator rejection precedes all native backend access", async () => {
+  await installSimulatorLifetimeGuard();
+  const { GgufInsights } = await import("node-llama-cpp");
+  const prototype = GgufInsights.prototype as unknown as {
+    _createSimulatorSession: (this: {
+      _llama: SimulatorBackend;
+      ggufFileInfo: { metadata: { general: { architecture: string } } };
+    }) => GuardedSimulatorSession;
+  };
+  const session = prototype._createSimulatorSession.call({
+    _llama: {} as SimulatorBackend,
+    ggufFileInfo: { metadata: { general: { architecture: "clip" } } },
+  });
+  const failure = await session
+    .estimateModelResources({
+      modelSource: "never-loaded",
+      gpuLayers: 0,
+    })
+    .then(
+      () => null,
+      (error: unknown) => error
+    );
+  expect(failure).toBeInstanceOf(Error);
+  expect((failure as Error).message).toBe(
+    "Cannot simulate CLIP architecture models"
+  );
+  await session.dispose();
+});
+
 test("dependency source and version drift fail closed", async () => {
   const root = await realpath(
     await mkdtemp(join(tmpdir(), "gno-simulator-drift-"))
   );
   await mkdir(join(root, "dist/gguf/insights"), { recursive: true });
   const entry = pathToFileURL(join(root, "dist/index.js")).href;
-  for (const version of ["3.20.0", "3.19.1"]) {
+  for (const version of ["3.19.1", "3.20.0"]) {
     await Bun.write(
       join(root, "package.json"),
       JSON.stringify({ name: "node-llama-cpp", version })

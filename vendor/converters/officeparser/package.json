@@ -1,0 +1,147 @@
+{
+  "name": "officeparser",
+  "version": "7.8.0",
+  "description": "A robust, strictly-typed Node.js and Browser library for parsing office files (.docx, .pptx, .xlsx, .odt, .odp, .ods, .pdf, .rtf, .csv, .md, .html, .epub) and generating high-fidelity outputs in Markdown, HTML, CSV, RTF, PDF, EPUB, and RAG-focused chunks.",
+  "funding": "https://github.com/sponsors/harshankur",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "browser": "./dist/officeparser.browser.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/officeparser.browser.mjs",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./slim": {
+      "types": "./dist/officeparser.browser.slim.d.ts",
+      "browser": "./dist/officeparser.browser.slim.mjs",
+      "import": "./dist/officeparser.browser.slim.mjs"
+    }
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run sync:versions && npm run build:node && npm run build:esm-wrapper && npm run build:browser:types && npm run build:browser",
+    "build:node": "tsc",
+    "build:esm-wrapper": "node scripts/generate-esm-wrapper.js",
+    "build:browser:types": "dts-bundle-generator --no-check -o dist/officeparser.browser.d.ts src/index.ts && node -e \"require('fs').copyFileSync('dist/officeparser.browser.d.ts','dist/officeparser.browser.slim.d.ts')\"",
+    "build:browser": "node build_browser.js && npm run sync:docs",
+    "sync:versions": "node scripts/sync-pdfjs-versions.js",
+    "sync:docs": "node -e \"const fs=require('fs');fs.mkdirSync('docs/dist',{recursive:true});for(const f of ['officeparser.browser.iife.js','officeparser.browser.mjs','officeparser.browser.slim.iife.js','officeparser.browser.slim.mjs'])fs.copyFileSync('dist/'+f,'docs/dist/'+f);fs.mkdirSync('docs/test/files',{recursive:true});fs.cpSync('test/files','docs/test/files',{recursive:true})\"",
+    "lint": "eslint src",
+    "test": "npm run lint && npm run test:clean && npm run build && npm run test:license && npm run test:artifacts && npm run test:parser && npm run test:exhaustive && npm run test:generator && npm run test:security && npm run test:cli",
+    "test:fast": "npm run lint && npm run test:parser:fast && npm run test:exhaustive && npm run test:generator:fast && npm run test:security && npm run test:cli:fast",
+    "test:exhaustive": "npx tsx test/testExhaustive.ts",
+    "test:security": "npx tsx test/security/testSanitization.ts",
+    "test:baseline": "npm run test:parser:baseline && npm run test:generator:baseline",
+    "test:parser": "npx tsx test/parser/testOfficeParser.ts",
+    "test:parser:fast": "npx tsx test/parser/testOfficeParser.ts fast",
+    "test:parser:baseline": "npx tsx test/parser/testOfficeParser.ts baseline",
+    "test:generator": "npx tsx test/generator/testOfficeGenerator.ts",
+    "test:generator:fast": "npx tsx test/generator/testOfficeGenerator.ts fast",
+    "test:generator:baseline": "npx tsx test/generator/testOfficeGenerator.ts baseline",
+    "test:artifacts": "npx tsx test/testShippingArtifacts.ts",
+    "test:cli": "npx tsx test/cli/testCli.ts",
+    "test:cli:fast": "npx tsx test/cli/testCli.ts fast",
+    "test:visualizer": "node test/testVisualizer.js",
+    "test:integration": "node test/testIntegration.js",
+    "test:license": "npm run sbom && node scripts/validate-licenses.js",
+    "test:clean": "node -e \"for(const d of ['test/results','test/generator/results','test/generator/output','test/parser/results','test/parser/output','test/cli/results'])require('fs').rmSync(d,{recursive:true,force:true})\"",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && npm run test:clean",
+    "sbom": "npx --yes @cyclonedx/cyclonedx-npm --output-format json --output-file dist/sbom.cdx.json --omit dev",
+    "prepublishOnly": "npm run build",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harshankur/officeParser.git"
+  },
+  "bin": {
+    "officeparser": "dist/cli.js"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "office",
+    "docx",
+    "pptx",
+    "xlsx",
+    "odt",
+    "odp",
+    "ods",
+    "pdf",
+    "rtf",
+    "csv",
+    "parser",
+    "text extraction",
+    "document parser",
+    "word",
+    "excel",
+    "powerpoint",
+    "spreadsheet",
+    "presentation",
+    "slides",
+    "ast",
+    "ocr",
+    "typescript",
+    "browser",
+    "metadata",
+    "formatting",
+    "attachments",
+    "tesseract",
+    "pdf.js",
+    "structured-data",
+    "openoffice",
+    "libreoffice",
+    "generator",
+    "rag",
+    "chunking",
+    "markdown",
+    "html",
+    "epub",
+    "ebook"
+  ],
+  "author": "Harsh Ankur",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/harshankur/officeParser/issues"
+  },
+  "homepage": "https://officeparser.harshankur.com",
+  "dependencies": {
+    "@xmldom/xmldom": "^0.9.10",
+    "fflate": "^0.8.3",
+    "file-type": "^22.0.1",
+    "pdfjs-dist": "6.1.200",
+    "tesseract.js": "^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "puppeteer": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "buffer": "^6.0.3",
+    "dts-bundle-generator": "^9.5.1",
+    "esbuild": "^0.28.1",
+    "esbuild-plugins-node-modules-polyfill": "^1.8.2",
+    "eslint": "^10.8.0",
+    "husky": "^9.1.7",
+    "postject": "^1.0.0-alpha.6",
+    "process": "^0.11.10",
+    "puppeteer": "^24.43.1",
+    "tsx": "^4.23.1",
+    "typescript": "^6.0.3"
+  }
+}
