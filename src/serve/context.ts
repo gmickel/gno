@@ -22,6 +22,11 @@ import type { CollectionWatchService } from "./watch-service";
 
 import { DEFAULT_INDEX_NAME } from "../app/constants";
 import { canonicalizeIndexName } from "../app/index-name";
+import {
+  lazyEmbeddingPort,
+  lazyGenerationPort,
+  lazyRerankPort,
+} from "../llm/lazy-ports";
 import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../llm/policy";
 import { getActivePreset } from "../llm/registry";
@@ -93,7 +98,7 @@ export interface CreateServerContextOptions {
 
 /**
  * Initialize server context with LLM ports.
- * Attempts to load models; missing models are logged but don't fail.
+ * Model resolution, downloads and loading wait until actual inference.
  */
 export async function createServerContext(
   store: SqliteAdapter,
@@ -129,55 +134,40 @@ export async function createServerContext(
       },
     });
 
-    // Try to create embedding port
-    const embedResult = await llm.createEmbeddingPort(
+    const resolvePort = async <T>(operation: () => Promise<T>): Promise<T> => {
+      try {
+        return await operation();
+      } finally {
+        downloadState.active = false;
+        downloadState.currentType = null;
+      }
+    };
+    embedPort = lazyEmbeddingPort(preset.embed, () =>
+      resolvePort(() =>
+        llm.createEmbeddingPort(preset.embed, createPortOptions("embed"))
+      )
+    );
+    vectorIndex = await createLazyVectorIndex(
+      store.getRawDb(),
       preset.embed,
-      createPortOptions("embed")
+      embedPort
     );
-    if (embedResult.ok) {
-      embedPort = embedResult.value;
-      vectorIndex = await createLazyVectorIndex(
-        store.getRawDb(),
-        preset.embed,
-        embedPort
-      );
-    }
-
-    // Try to create expansion port
-    const expandResult = await llm.createExpansionPort(
-      preset.expand ?? preset.gen,
-      createPortOptions("expand")
+    const expandUri = preset.expand ?? preset.gen;
+    expandPort = lazyGenerationPort(expandUri, () =>
+      resolvePort(() =>
+        llm.createExpansionPort(expandUri, createPortOptions("expand"))
+      )
     );
-    if (expandResult.ok) {
-      expandPort = expandResult.value;
-      console.log("Query expansion enabled");
-    }
-
-    // Try to create answer generation port
-    const answerResult = await llm.createGenerationPort(
-      preset.gen,
-      createPortOptions("gen")
+    answerPort = lazyGenerationPort(preset.gen, () =>
+      resolvePort(() =>
+        llm.createGenerationPort(preset.gen, createPortOptions("gen"))
+      )
     );
-    if (answerResult.ok) {
-      answerPort = answerResult.value;
-      console.log("AI answer generation enabled");
-    }
-
-    // Try to create rerank port
-    const rerankResult = await llm.createRerankPort(
-      preset.rerank,
-      createPortOptions("rerank")
+    rerankPort = lazyRerankPort(preset.rerank, () =>
+      resolvePort(() =>
+        llm.createRerankPort(preset.rerank, createPortOptions("rerank"))
+      )
     );
-    if (rerankResult.ok) {
-      rerankPort = rerankResult.value;
-      console.log("Reranking enabled");
-    }
-
-    // Reset download state after initialization
-    if (downloadState.active) {
-      downloadState.active = false;
-      downloadState.currentType = null;
-    }
   } catch (e) {
     // Log but don't fail - models are optional
     console.log(
@@ -215,10 +205,6 @@ export async function createServerContext(
  * Each port is disposed independently to prevent one failure from blocking others.
  */
 export async function disposeServerContext(ctx: ServerContext): Promise<void> {
-  if (ctx.llm) {
-    await ctx.llm.dispose();
-    return;
-  }
   const ports = [
     { name: "embed", port: ctx.embedPort },
     { name: "expand", port: ctx.expandPort },
@@ -235,6 +221,7 @@ export async function disposeServerContext(ctx: ServerContext): Promise<void> {
       }
     }
   }
+  await ctx.llm?.dispose();
 }
 
 /**

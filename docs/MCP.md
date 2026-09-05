@@ -1921,6 +1921,9 @@ refresh the inference idle deadline. Native work prevents idle retirement; the
 five-minute default idle grace ends by retiring the child, and the next model call
 reloads lazily. Shutdown disposes owned children after active work drains.
 
+Serve startup defers model-file resolution and downloads until actual inference;
+empty/offline caches do not block lexical or metadata service. The first model
+operation still enforces the configured offline/download and collection policy.
 Existing indexes can use validated stored vector dimensions without eagerly loading
 an embedding model. Capability availability is distinct from loaded-model state.
 For hybrid queries, embedding/index failures retain lexical fallback but cannot

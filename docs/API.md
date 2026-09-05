@@ -3737,10 +3737,12 @@ None. The API runs locally with no rate limiting. Performance depends on your ha
 
 ### Native inference lifetime and idle recovery
 
-The resident service owns native inference in a child process. Cached models are
-registered at startup; validated stored vector dimensions let an existing index
-start without loading the embedding model. A new index discovers dimensions on
-its first vector operation. Capability flags describe available functionality,
+The resident service owns native inference in a child process. Model-file resolution, downloads and native loading wait until the first
+inference operation. An empty/offline cache does not block the service from
+binding or serving lexical and metadata requests. Validated stored vector
+dimensions let an existing index start without loading the embedding model. A new index discovers dimensions on
+its first vector operation. First-use resolution retains the configured download
+and offline policy. Capability flags describe configured functionality,
 not whether a model is currently loaded.
 
 The child retires after five minutes of inference inactivity by default. Pending

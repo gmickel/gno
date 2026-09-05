@@ -1,0 +1,54 @@
+{
+  "normalizations": [],
+  "comparison": "exact full results arrays (all keys, scores, ordering, source IDs and provenance); metadata retained separately without normalization",
+  "rows": [
+    {
+      "stage": "default-first",
+      "count": 20,
+      "equal": true,
+      "vectorsUsed": true
+    },
+    {
+      "stage": "default-warm",
+      "count": 20,
+      "equal": true,
+      "vectorsUsed": true
+    },
+    {
+      "stage": "expiry-first",
+      "count": 20,
+      "equal": true,
+      "vectorsUsed": true
+    },
+    {
+      "stage": "expiry-warm",
+      "count": 20,
+      "equal": true,
+      "vectorsUsed": true
+    },
+    {
+      "stage": "expiry-cycle1",
+      "count": 20,
+      "equal": true,
+      "vectorsUsed": true
+    },
+    {
+      "stage": "expiry-cycle1-warm",
+      "count": 20,
+      "equal": true,
+      "vectorsUsed": true
+    },
+    {
+      "stage": "expiry-cycle2",
+      "count": 20,
+      "equal": true,
+      "vectorsUsed": true
+    },
+    {
+      "stage": "fresh-control",
+      "count": 20,
+      "equal": true,
+      "vectorsUsed": true
+    }
+  ]
+}
