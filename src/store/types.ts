@@ -616,7 +616,54 @@ export interface IngestErrorInput {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Existing SQL owner filters shared by lexical and chunk candidate selection. */
+export interface GraphReferenceDocument {
+  documentId: number;
+  collection: string;
+  relPath: string;
+  docid: string;
+  uri: string;
+  title: string | null;
+  mirrorHash: string | null;
+  sourceHash: string;
+  contentType: string | null;
+}
+
+export interface GraphFrontmatterReference {
+  edgeType: string;
+  target: string;
+}
+
+export interface GraphReferenceInventory {
+  document: GraphReferenceDocument;
+  references: GraphFrontmatterReference[];
+}
+
+export interface GraphProjectionState {
+  epoch: number;
+  version: number | null;
+  configFingerprint: string | null;
+  dirty: boolean;
+  /** Interrupted projection requires full recovery; ordinary input dirtiness does not. */
+  inProgress: boolean;
+  complete: boolean;
+}
+
+/** Synchronous internal operations compose with the adapter transaction. */
+export interface GraphReferenceStore {
+  state(version: number, configFingerprint: string): GraphProjectionState;
+  begin(version: number, configFingerprint: string): number;
+  readInventory(): GraphReferenceInventory[];
+  writeInventory(inventory: GraphReferenceInventory): void;
+  complete(expectedEpoch: number): void;
+}
+
 export interface DocumentEligibilityOptions {
+  /** Internal owner eligibility; public lexical language remains reserved. */
+  chunkLanguage?: string;
+  /** Include author, content type and categories in whole-owner exclusion. */
+  excludeMetadata?: boolean;
+  /** Internal vector/hybrid JavaScript metadata matching semantics. */
+  semanticMetadata?: boolean;
   /** Internal caller allowlist; undefined is unrestricted, empty denies all. */
   allowedMirrorHashes?: string[];
   /** Whole-document title/path/chunk exclusions, applied before the budget. */
@@ -2127,6 +2174,9 @@ export interface StorePort {
    * Get all outgoing links for a document.
    */
   getLinksForDoc(documentId: number): Promise<StoreResult<DocLinkRow[]>>;
+
+  /** Missing capability or stale state requires full graph reconciliation. */
+  graphReferenceStore?(): GraphReferenceStore;
 
   /**
    * Get backlinks pointing to a document.

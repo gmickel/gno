@@ -1,4 +1,35 @@
 -- GNO Database Schema v1
+-- Graph reference inventory (migration 029). Parsed links remain in doc_links.
+-- Snapshots deliberately survive document deletion: closure needs old identities.
+-- Missing inventory, changed version/config, or dirty state requires full recovery.
+-- Begin persists dirty before projection. Complete only after successful edge writes,
+-- unchanged input epoch, and coverage of every active source; compose in a transaction.
+CREATE TABLE graph_projection_state (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  epoch INTEGER NOT NULL DEFAULT 0,
+  version INTEGER,
+  config_fingerprint TEXT,
+  in_progress INTEGER NOT NULL DEFAULT 0 CHECK (in_progress IN (0, 1)),
+  dirty INTEGER NOT NULL DEFAULT 1 CHECK (dirty IN (0, 1))
+);
+INSERT INTO graph_projection_state(id) VALUES (1);
+CREATE TABLE graph_reference_documents (
+  document_id INTEGER PRIMARY KEY,
+  collection TEXT NOT NULL, rel_path TEXT NOT NULL, docid TEXT NOT NULL,
+  uri TEXT NOT NULL, title TEXT, mirror_hash TEXT, source_hash TEXT NOT NULL,
+  content_type TEXT
+);
+CREATE INDEX idx_graph_reference_uri ON graph_reference_documents(uri);
+CREATE INDEX idx_graph_reference_path ON graph_reference_documents(collection, rel_path);
+CREATE INDEX idx_graph_reference_title ON graph_reference_documents(title);
+CREATE TABLE graph_frontmatter_references (
+  source_doc_id INTEGER NOT NULL REFERENCES graph_reference_documents(document_id) ON DELETE CASCADE,
+  ordinal INTEGER NOT NULL,
+  edge_type TEXT NOT NULL,
+  target TEXT NOT NULL,
+  PRIMARY KEY(source_doc_id, ordinal)
+);
+CREATE INDEX idx_graph_reference_target ON graph_frontmatter_references(target);
 -- SQLite with FTS5
 --
 -- Tables:
@@ -914,3 +945,17 @@ CREATE INDEX IF NOT EXISTS idx_file_refactor_journal_plan_digest
 
 CREATE INDEX IF NOT EXISTS idx_file_refactor_journal_collection
   ON file_refactor_recovery_journal(collection, updated_at_ms DESC);
+
+-- Graph input/inventory invalidation (029); begin also advances epoch to fence older passes.
+CREATE TRIGGER graph_input_documents_insert AFTER INSERT ON documents BEGIN UPDATE graph_projection_state SET epoch = epoch + 1, dirty = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_input_documents_update AFTER UPDATE ON documents WHEN OLD.collection IS NOT NEW.collection OR OLD.rel_path IS NOT NEW.rel_path OR OLD.docid IS NOT NEW.docid OR OLD.uri IS NOT NEW.uri OR OLD.title IS NOT NEW.title OR OLD.mirror_hash IS NOT NEW.mirror_hash OR OLD.source_hash IS NOT NEW.source_hash OR OLD.content_type IS NOT NEW.content_type OR OLD.active IS NOT NEW.active BEGIN UPDATE graph_projection_state SET epoch = epoch + 1, dirty = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_input_documents_delete AFTER DELETE ON documents BEGIN UPDATE graph_projection_state SET epoch = epoch + 1, dirty = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_input_doc_links_insert AFTER INSERT ON doc_links BEGIN UPDATE graph_projection_state SET epoch = epoch + 1, dirty = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_input_doc_links_update AFTER UPDATE ON doc_links BEGIN UPDATE graph_projection_state SET epoch = epoch + 1, dirty = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_input_doc_links_delete AFTER DELETE ON doc_links BEGIN UPDATE graph_projection_state SET epoch = epoch + 1, dirty = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_inventory_graph_reference_documents_insert AFTER INSERT ON graph_reference_documents BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_inventory_graph_reference_documents_update AFTER UPDATE ON graph_reference_documents BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_inventory_graph_reference_documents_delete AFTER DELETE ON graph_reference_documents BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_inventory_graph_frontmatter_references_insert AFTER INSERT ON graph_frontmatter_references BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_inventory_graph_frontmatter_references_update AFTER UPDATE ON graph_frontmatter_references BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
+CREATE TRIGGER graph_inventory_graph_frontmatter_references_delete AFTER DELETE ON graph_frontmatter_references BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;

@@ -42,6 +42,7 @@ import { migration as m025 } from "./025-collection-egress-policy-revision";
 import { migration as m026 } from "./026-file-refactor-recovery-journal";
 import { migration as m027 } from "./027-memory-scopes";
 import { migration as m028 } from "./028-vector-variants";
+import { migration as m029 } from "./029-graph-reference-state";
 
 /** All migrations in order */
 export const migrations = [
@@ -73,4 +74,5 @@ export const migrations = [
   m026,
   m027,
   m028,
+  m029,
 ];

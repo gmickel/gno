@@ -183,6 +183,7 @@ import {
 import { loadFts5Snowball } from "./fts5-snowball";
 import { resolveGraphLinkTargets } from "./graph-link-resolver";
 import { queryGraphNeighborsForSeeds } from "./graph-neighbors";
+import { createGraphReferenceStore } from "./graph-reference-state";
 import {
   appendExportManifest as appendStoredTraceExportManifest,
   getBoundedTrace as getBoundedStoredTrace,
@@ -708,6 +709,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
    */
   getRawDb(): Database {
     return this.ensureOpen();
+  }
+
+  graphReferenceStore() {
+    return createGraphReferenceStore(this.ensureOpen());
   }
 
   private ensureOpen(): Database {
@@ -2726,7 +2731,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         )
         SELECT
           d.mirror_hash,
-          0 as seq,
+          ${options.chunkLanguage ? "(SELECT min(lc.seq) FROM content_chunks lc WHERE lc.mirror_hash = d.mirror_hash AND lc.language = ?) as seq," : "0 as seq,"}
           fm.score as score,
           ${options.snippet ? "fm.snippet as snippet," : ""}
           d.docid,
@@ -2787,7 +2792,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         record_adapter_fingerprint: string | null;
       }
 
-      const queryParams = [builtQuery.query, ...eligible.params, limit, limit];
+      const queryParams = [
+        builtQuery.query,
+        ...eligible.params,
+        limit,
+        ...(options.chunkLanguage ? [options.chunkLanguage] : []),
+        limit,
+      ];
       const rows = db
         .query<FtsRow, (string | number)[]>(sql)
         .all(...queryParams);

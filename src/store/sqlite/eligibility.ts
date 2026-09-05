@@ -14,6 +14,12 @@ export function buildEligibleDocumentQuery(
   // Build tag filter conditions using EXISTS subqueries
   const conditions: string[] = ["d.active = 1"];
   const params: (string | number)[] = [];
+  if (options.chunkLanguage) {
+    conditions.push(
+      "EXISTS (SELECT 1 FROM content_chunks lc WHERE lc.mirror_hash = d.mirror_hash AND lc.language = ?)"
+    );
+    params.push(options.chunkLanguage);
+  }
 
   // tagsAny: document has at least one of these tags
   if (options.tagsAny && options.tagsAny.length > 0) {
@@ -42,14 +48,18 @@ export function buildEligibleDocumentQuery(
     conditions.push("d.source_mtime <= ?");
     params.push(options.until);
   }
-  if (options.categories && options.categories.length > 0) {
+  if (
+    !options.semanticMetadata &&
+    options.categories &&
+    options.categories.length > 0
+  ) {
     const placeholders = options.categories.map(() => "?").join(",");
     conditions.push(
       `(d.content_type IN (${placeholders}) OR EXISTS (SELECT 1 FROM json_each(COALESCE(d.categories, '[]')) jc WHERE jc.value IN (${placeholders})))`
     );
     params.push(...options.categories, ...options.categories);
   }
-  if (options.author) {
+  if (!options.semanticMetadata && options.author) {
     conditions.push("LOWER(COALESCE(d.author, '')) LIKE ?");
     params.push(`%${options.author.toLowerCase()}%`);
   }
@@ -84,27 +94,72 @@ export function buildEligibleDocumentQuery(
       "NOT EXISTS (SELECT 1 FROM doc_edges se JOIN documents sd ON sd.id = se.src_doc_id AND sd.active = 1 WHERE se.dst_doc_id = d.id AND se.edge_type = 'supersedes')"
     );
   }
-  if (options.exclude?.length) {
+  if (
+    options.exclude?.length ||
+    (options.semanticMetadata && (options.author || options.categories?.length))
+  ) {
     if (!db)
       throw new Error("Exclusion eligibility requires document metadata");
     // One bulk read, preserving JavaScript Unicode case folding and exclusions
     // across every chunk, including chunks outside a later language selection.
     const rows = db
       .query<
-        { id: number; title: string | null; path: string; text: string | null },
+        {
+          id: number;
+          title: string | null;
+          path: string;
+          text: string | null;
+          author: string | null;
+          content_type: string | null;
+          categories: string | null;
+        },
         (string | number)[]
       >(`
-      SELECT d.id, d.title, COALESCE(d.record_source_path, d.rel_path) AS path, cc.text
+      SELECT d.id, d.title, d.author, d.content_type, d.categories, COALESCE(d.record_source_path, d.rel_path) AS path, cc.text
       FROM documents d LEFT JOIN content_chunks cc ON cc.mirror_hash = d.mirror_hash
       WHERE ${conditions.join(" AND ")}
     `)
       .iterate(...params);
     const denied = new Set<number>();
     for (const row of rows) {
+      const categories: unknown =
+        options.semanticMetadata || options.excludeMetadata
+          ? JSON.parse(row.categories ?? "[]")
+          : [];
+      if (
+        !Array.isArray(categories) ||
+        !categories.every((value): value is string => typeof value === "string")
+      ) {
+        denied.add(row.id);
+        continue;
+      }
+      if (options.semanticMetadata) {
+        const wanted = options.categories?.map((value) => value.toLowerCase());
+        if (
+          (options.author &&
+            !(row.author ?? "")
+              .toLowerCase()
+              .includes(options.author.toLowerCase())) ||
+          (wanted?.length &&
+            ![row.content_type ?? "", ...categories].some((value) =>
+              wanted.includes(value.toLowerCase())
+            ))
+        ) {
+          denied.add(row.id);
+          continue;
+        }
+      }
       if (
         matchesExcludedText(
-          [row.title ?? "", row.path, row.text ?? ""],
-          options.exclude
+          [
+            row.title ?? "",
+            row.path,
+            row.text ?? "",
+            ...(options.excludeMetadata
+              ? [row.author ?? "", row.content_type ?? "", ...categories]
+              : []),
+          ],
+          options.exclude ?? []
         )
       )
         denied.add(row.id);
