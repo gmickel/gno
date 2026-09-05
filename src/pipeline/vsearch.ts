@@ -123,6 +123,20 @@ export async function searchVectorWithEmbedding(
     queryEmbedding,
     retrievalLimit,
     {
+      eligibility: {
+        collection: options.collection,
+        memoryScopesAny: options.memoryFilter?.scopes,
+        excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+        relPathPrefix: options.retrievalScope?.relPathPrefix,
+        tagsAll: options.tagsAll,
+        tagsAny: options.tagsAny,
+        since: temporalRange.since,
+        until: temporalRange.until,
+        categories: options.categories,
+        author: options.author,
+        exclude: options.exclude,
+        language: options.lang,
+      },
       minScore: projectAffinityActive ? undefined : minScore,
       allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     }
@@ -198,7 +212,9 @@ export async function searchVectorWithEmbedding(
     const rawChunk = getChunk(vec.mirrorHash, vec.seq);
     const chunk = options.intent
       ? (selectBestChunkForSteering(
-          chunksMap.get(vec.mirrorHash) ?? [],
+          (chunksMap.get(vec.mirrorHash) ?? []).filter(
+            (chunk) => !options.lang || chunk.language === options.lang
+          ),
           query,
           options.intent,
           {
@@ -632,6 +648,7 @@ async function buildDocumentMap(
     const docIds = activeDocs.map((d) => d.id);
     const tagsResult = await store.getTagsBatch(docIds);
 
+    if (!tagsResult.ok) return { documents, ownershipDocuments };
     if (tagsResult.ok) {
       allowedDocIds = new Set<number>();
       const tagsByDocId = tagsResult.value;

@@ -5,7 +5,7 @@
  * @module src/store/vector/types
  */
 
-import type { StoreResult } from "../types";
+import type { DocumentEligibilityOptions, StoreResult } from "../types";
 
 /** Full effective embedding identity, including truncation/runtime policy. */
 export interface VectorVariantIdentity {
@@ -37,6 +37,13 @@ export interface VectorRow {
   embedFingerprint: string;
   embedding: Float32Array;
   // embeddedAt is set by DB via datetime('now')
+}
+
+export interface VectorSearchOptions {
+  minScore?: number;
+  allowedMirrorHashes?: string[];
+  /** Exact active owner/chunk domain, applied before the nearest-neighbor budget. */
+  eligibility?: DocumentEligibilityOptions & { language?: string };
 }
 
 /** Vector search result */
@@ -102,7 +109,7 @@ export interface VectorIndexPort {
   searchNearest(
     embedding: Float32Array,
     k: number,
-    options?: { minScore?: number; allowedMirrorHashes?: string[] }
+    options?: VectorSearchOptions
   ): Promise<StoreResult<VectorSearchResult[]>>;
 
   // ─────────────────────────────────────────────────────────────────────────

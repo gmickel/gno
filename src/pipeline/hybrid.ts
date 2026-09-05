@@ -8,7 +8,10 @@
 import type { Config } from "../config/types";
 import type { EmbeddingPort, GenerationPort, RerankPort } from "../llm/types";
 import type { DocumentRow, StorePort } from "../store/types";
-import type { VectorIndexPort } from "../store/vector/types";
+import type {
+  VectorIndexPort,
+  VectorSearchOptions,
+} from "../store/vector/types";
 import type {
   ExpansionResult,
   ExplainLine,
@@ -140,6 +143,10 @@ async function checkBm25Strength(
     categories?: string[];
     author?: string;
     relPathPrefix?: string;
+    allowedMirrorHashes?: string[];
+    exclude?: string[];
+    memoryScopesAny?: string[];
+    excludeSuperseded?: boolean;
   }
 ): Promise<boolean> {
   const result = await store.searchFts(query, {
@@ -147,6 +154,13 @@ async function checkBm25Strength(
     collection: options?.collection,
     relPathPrefix: options?.relPathPrefix,
     language: options?.lang,
+    chunkLanguage: options?.lang,
+    allowedMirrorHashes: options?.allowedMirrorHashes,
+    exclude: options?.exclude,
+    excludeMetadata: true,
+    semanticMetadata: true,
+    memoryScopesAny: options?.memoryScopesAny,
+    excludeSuperseded: options?.excludeSuperseded,
     tagsAll: options?.tagsAll,
     tagsAny: options?.tagsAny,
     since: options?.since,
@@ -200,6 +214,10 @@ async function searchFtsChunks(
     categories?: string[];
     author?: string;
     relPathPrefix?: string;
+    allowedMirrorHashes?: string[];
+    exclude?: string[];
+    memoryScopesAny?: string[];
+    excludeSuperseded?: boolean;
   }
 ): Promise<FtsChunksResult> {
   const result = await store.searchFts(query, {
@@ -207,6 +225,13 @@ async function searchFtsChunks(
     collection: options.collection,
     relPathPrefix: options.relPathPrefix,
     language: options.lang,
+    chunkLanguage: options.lang,
+    excludeMetadata: true,
+    semanticMetadata: true,
+    memoryScopesAny: options.memoryScopesAny,
+    excludeSuperseded: options.excludeSuperseded,
+    exclude: options.exclude,
+    allowedMirrorHashes: options.allowedMirrorHashes,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
     since: options.since,
@@ -242,6 +267,7 @@ async function searchVectorChunks(
     limit: number;
     minScore?: number;
     allowedMirrorHashes?: string[];
+    eligibility?: VectorSearchOptions["eligibility"];
   }
 ): Promise<ChunkId[]> {
   if (!vectorIndex.searchAvailable) {
@@ -263,6 +289,7 @@ async function searchVectorChunks(
     {
       minScore: options.minScore,
       allowedMirrorHashes: options.allowedMirrorHashes,
+      eligibility: options.eligibility,
     }
   );
 
@@ -425,6 +452,10 @@ async function searchHybridWithHydration(
       : await checkBm25Strength(store, query, {
           collection: options.collection,
           lang: options.lang,
+          memoryScopesAny: options.memoryFilter?.scopes,
+          excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+          exclude: options.exclude,
+          allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
           tagsAll: options.tagsAll,
           tagsAny: options.tagsAny,
           since: temporalRange.since,
@@ -468,11 +499,31 @@ async function searchHybridWithHydration(
     ? { stages: [] }
     : undefined;
 
+  const vectorEligibility: VectorSearchOptions["eligibility"] = {
+    collection: options.collection,
+    memoryScopesAny: options.memoryFilter?.scopes,
+    excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+    relPathPrefix: options.retrievalScope?.relPathPrefix,
+    tagsAll: options.tagsAll,
+    tagsAny: options.tagsAny,
+    since: temporalRange.since,
+    until: temporalRange.until,
+    categories: options.categories,
+    author: options.author,
+    exclude: options.exclude,
+    excludeMetadata: true,
+    semanticMetadata: true,
+    language: options.lang,
+  };
   const bm25StartedAt = performance.now();
 
   // BM25: original query
   const bm25Result = await searchFtsChunks(store, query, {
     limit: limit * 2 * retrievalMultiplier,
+    memoryScopesAny: options.memoryFilter?.scopes,
+    excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+    exclude: options.exclude,
+    allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     collection: options.collection,
     lang: options.lang,
     tagsAll: options.tagsAll,
@@ -508,6 +559,10 @@ async function searchHybridWithHydration(
       expansion.lexicalQueries.map((variant) =>
         searchFtsChunks(store, variant, {
           limit: limit * retrievalMultiplier,
+          memoryScopesAny: options.memoryFilter?.scopes,
+          excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+          exclude: options.exclude,
+          allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
           collection: options.collection,
           lang: options.lang,
           tagsAll: options.tagsAll,
@@ -565,6 +620,7 @@ async function searchHybridWithHydration(
         {
           limit: limit * 2 * retrievalMultiplier,
           allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
+          eligibility: vectorEligibility,
         }
       );
 
@@ -611,6 +667,7 @@ async function searchHybridWithHydration(
             variant.limit,
             {
               allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
+              eligibility: vectorEligibility,
             }
           );
           if (!searchResult.ok || searchResult.value.length === 0) {
@@ -1017,7 +1074,9 @@ async function searchHybridWithHydration(
       options.full || !options.intent?.trim()
         ? chunk
         : (selectBestChunkForSteering(
-            chunksMap.get(candidate.mirrorHash) ?? [],
+            (chunksMap.get(candidate.mirrorHash) ?? []).filter(
+              (chunk) => !options.lang || chunk.language === options.lang
+            ),
             query,
             options.intent,
             {

@@ -11,6 +11,21 @@ name answers JSON-RPC `-32602`)
 
 This document specifies the MCP server interface for GNO.
 
+## Filtered retrieval limits
+
+Search candidate budgets apply after supported owner filters (collection, path,
+tags, dates, author, categories and exclusions). Semantic retrieval and hybrid
+retrieval also select matching-language chunks before their budgets; standalone
+lexical language remains reserved. A nearby out-of-scope vector cannot displace
+an eligible hit. Caller scope intersects user filters; empty allowlists deny all.
+Whole-document exclusions inspect every chunk, including other languages;
+hybrid exclusions also inspect author and category metadata.
+
+Results can remain shorter than the requested limit after score thresholds,
+deduplication or limited eligible coverage. Ranking/fusion and output schemas
+are unchanged. This correction does not change independent natural-language
+memory recall matching.
+
 ## Server Information
 
 | Property  | Value                |

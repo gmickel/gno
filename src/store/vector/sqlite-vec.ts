@@ -10,9 +10,15 @@ import type { Database } from "bun:sqlite";
 import { createHash } from "node:crypto";
 
 import type { StoreResult } from "../types";
-import type { VectorIndexPort, VectorRow, VectorSearchResult } from "./types";
+import type {
+  VectorIndexPort,
+  VectorRow,
+  VectorSearchOptions,
+  VectorSearchResult,
+} from "./types";
 
 import { err, ok } from "../types";
+import { buildEligibleVectorQuery } from "./eligibility";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BLOB Encoding Helpers (avoid Buffer.buffer footgun)
@@ -254,10 +260,7 @@ export async function createVectorIndexPort(
     searchNearest(
       embedding: Float32Array,
       k: number,
-      searchOptions?: {
-        minScore?: number;
-        allowedMirrorHashes?: string[];
-      }
+      searchOptions?: VectorSearchOptions
     ): Promise<StoreResult<VectorSearchResult[]>> {
       if (!(searchAvailable && searchStmt)) {
         return Promise.resolve(
@@ -271,6 +274,34 @@ export async function createVectorIndexPort(
       }
 
       try {
+        if (searchOptions?.eligibility) {
+          const eligible = buildEligibleVectorQuery(db, searchOptions);
+          const distanceFunction =
+            distanceMetric === "cosine"
+              ? "vec_distance_cosine"
+              : "vec_distance_L2";
+          const rows = db
+            .query<
+              { mirrorHash: string; seq: number; distance: number },
+              (Uint8Array | string | number)[]
+            >(`
+            SELECT v.mirror_hash AS mirrorHash, v.seq,
+              ${distanceFunction}(v.embedding, ?) AS distance
+            FROM content_vectors v
+            WHERE v.model = ? AND EXISTS (${eligible.sql})
+            ORDER BY distance, v.mirror_hash, v.seq LIMIT ?
+          `)
+            .all(encodeEmbedding(embedding), model, ...eligible.params, k);
+          return Promise.resolve(
+            ok(
+              rows.filter(
+                (row) =>
+                  searchOptions.minScore === undefined ||
+                  1 - row.distance >= searchOptions.minScore
+              )
+            )
+          );
+        }
         const allowed = searchOptions?.allowedMirrorHashes;
         if (allowed) {
           const hashes = [

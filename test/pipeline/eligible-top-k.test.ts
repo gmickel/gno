@@ -1,14 +1,21 @@
-import { expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 
+import type { Config } from "../../src/config/types";
+import type { EmbeddingPort } from "../../src/llm/types";
 import type { HybridSearchOptions } from "../../src/pipeline/types";
 import type { StorePort, TagRow } from "../../src/store/types";
+import type { VectorSearchResult } from "../../src/store/vector/types";
 
 import {
   eligibleTopKFixture,
   exhaustiveEligibleVectors,
 } from "../../evals/fixtures/acceptance/eligible-top-k/fixture";
 import { evaluateRetrievalEligibility } from "../../src/pipeline/filters";
+import { searchHybrid } from "../../src/pipeline/hybrid";
+import { searchVectorWithEmbedding } from "../../src/pipeline/vsearch";
 import { err, ok } from "../../src/store/types";
+import { buildEligibleVectorQuery } from "../../src/store/vector/eligibility";
+import { createEligibleVectorFixture } from "../helpers/eligible-vector-fixture";
 
 const fixture = eligibleTopKFixture();
 const target = fixture[200]!;
@@ -210,4 +217,226 @@ test("exhaustive ties are stable, duplicate owners retain distinct eligibility",
     expected
   );
   expect(exhaustiveEligibleVectors(fixture, new Set(), 10)).toEqual([]);
+});
+
+let live: Awaited<ReturnType<typeof createEligibleVectorFixture>>;
+let adapter: typeof live.adapter;
+let db: typeof live.db;
+let vectorIndex: typeof live.vectorIndex;
+beforeAll(async () => {
+  live = await createEligibleVectorFixture();
+  ({ adapter, db, vectorIndex } = live);
+});
+afterAll(async () => {
+  await live?.close();
+});
+
+const vectorQuery = new Float32Array([1, 0]);
+const config = {} as Config;
+const embedPort: EmbeddingPort = {
+  modelUri: "test",
+  dimensions: () => 2,
+  init: async () => ({ ok: true, value: undefined }),
+  dispose: async () => {},
+  embed: async () => ({ ok: true, value: [1, 0] }),
+  embedBatch: async (texts) => ({ ok: true, value: texts.map(() => [1, 0]) }),
+};
+
+test.each([1, 10])(
+  "real sqlite-vec and public vector/hybrid calls find rare eligible chunk at K=%i",
+  async (limit) => {
+    const options = {
+      limit,
+      tagsAll: ["approved"],
+      categories: ["RELEASE"],
+      lang: "en",
+      noExpand: true,
+      noRerank: true,
+      noGraph: true,
+    };
+    const nearest = await vectorIndex.searchNearest(vectorQuery, limit, {
+      eligibility: { tagsAll: options.tagsAll, language: options.lang },
+    });
+    expect(nearest.ok).toBe(true);
+    if (!nearest.ok) throw new Error(nearest.error.message);
+    const oracle = exhaustiveEligibleVectors(
+      fixture,
+      new Set(["#fixture-200:1"]),
+      limit
+    );
+    expect(nearest.value.map((hit) => [hit.mirrorHash, hit.seq])).toEqual([
+      [target.doc.mirrorHash!, 1],
+    ]);
+    expect(nearest.value[0]!.distance).toBeCloseTo(oracle[0]!.distance, 6);
+    const vector = await searchVectorWithEmbedding(
+      { store: adapter, vectorIndex, config, embedPort },
+      "needle",
+      vectorQuery,
+      options
+    );
+    expect(vector.ok).toBe(true);
+    if (vector.ok)
+      expect(
+        vector.value.results.map((hit) => [hit.uri, hit.snippetLanguage])
+      ).toEqual([[target.doc.uri, "en"]]);
+    const hybrid = await searchHybrid(
+      {
+        store: adapter,
+        config,
+        vectorIndex,
+        embedPort,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "needle",
+      options
+    );
+    expect(hybrid.ok).toBe(true);
+    if (hybrid.ok)
+      expect(
+        hybrid.value.results.map((hit) => [hit.uri, hit.snippetLanguage])
+      ).toEqual([[target.doc.uri, "en"]]);
+  }
+);
+
+test("real vector scope intersections, all-chunk exclusions and missing metadata fail closed", async () => {
+  for (const options of [
+    { allowedMirrorHashes: [], eligibility: {} },
+    {
+      allowedMirrorHashes: [target.doc.mirrorHash!],
+      eligibility: { allowedMirrorHashes: [fixture[0]!.doc.mirrorHash!] },
+    },
+    { eligibility: { collection: "other" } },
+    { eligibility: { author: "%" } },
+    { eligibility: { author: "_" } },
+    { eligibility: { language: "fr" } },
+    {
+      eligibility: {
+        tagsAll: ["approved"],
+        language: "en",
+        exclude: ["DEUTSCHE"],
+      },
+    },
+    {
+      eligibility: {
+        tagsAll: ["approved"],
+        exclude: ["lovelace"],
+        excludeMetadata: true,
+      },
+    },
+  ]) {
+    expect(await vectorIndex.searchNearest(vectorQuery, 10, options)).toEqual(
+      ok([])
+    );
+  }
+  db.query("UPDATE documents SET author = ? WHERE mirror_hash = ?").run(
+    "Ümit_100%",
+    target.doc.mirrorHash!
+  );
+  try {
+    for (const author of ["üMIT", "_100%"])
+      expect(
+        await vectorIndex.searchNearest(vectorQuery, 1, {
+          eligibility: { author, language: "en" },
+        })
+      ).toMatchObject({
+        ok: true,
+        value: [{ mirrorHash: target.doc.mirrorHash, seq: 1 }],
+      });
+  } finally {
+    db.query("UPDATE documents SET author = ? WHERE mirror_hash = ?").run(
+      target.doc.author!,
+      target.doc.mirrorHash!
+    );
+  }
+  db.exec("ALTER TABLE doc_tags RENAME TO unavailable_doc_tags");
+  try {
+    const result = await vectorIndex.searchNearest(vectorQuery, 1, {
+      eligibility: { tagsAll: ["approved"] },
+    });
+    expect(result.ok).toBe(false);
+  } finally {
+    db.exec("ALTER TABLE unavailable_doc_tags RENAME TO doc_tags");
+  }
+});
+
+test("hybrid lexical-only budget respects language and metadata exclusions", async () => {
+  for (const limit of [1, 10]) {
+    const result = await searchHybrid(
+      {
+        store: adapter,
+        config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "needle",
+      {
+        limit,
+        lang: "en",
+        exclude: ["Noise Writer"],
+        noExpand: true,
+        noRerank: true,
+        noGraph: true,
+      }
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok)
+      expect(
+        result.value.results.map((hit) => [hit.uri, hit.snippetLanguage])
+      ).toEqual([[target.doc.uri, "en"]]);
+  }
+});
+
+test("shared-mirror title owners retain independent exclusion", async () => {
+  db.query("UPDATE documents SET title = ? WHERE rel_path = ?").run(
+    "Denied owner",
+    fixture[0]!.doc.relPath
+  );
+  try {
+    const result = await searchVectorWithEmbedding(
+      { store: adapter, vectorIndex, config, embedPort },
+      "needle",
+      vectorQuery,
+      {
+        limit: 1,
+        lang: "en",
+        exclude: ["Denied owner"],
+        retrievalScope: { allowedMirrorHashes: [fixture[0]!.doc.mirrorHash!] },
+      }
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok)
+      expect(result.value.results.map((hit) => hit.uri)).toEqual([
+        fixture[1]!.doc.uri,
+      ]);
+  } finally {
+    db.query("UPDATE documents SET title = ? WHERE rel_path = ?").run(
+      fixture[0]!.doc.title!,
+      fixture[0]!.doc.relPath
+    );
+  }
+});
+
+test("eligible exact distance ordering equals exhaustive SQLite and records query plan", async () => {
+  const options = { eligibility: { language: "en" } };
+  const eligible = buildEligibleVectorQuery(db, options);
+  const sql = `SELECT v.mirror_hash AS mirrorHash, v.seq, vec_distance_cosine(v.embedding, ?) AS distance FROM content_vectors v WHERE v.model = ? AND EXISTS (${eligible.sql}) ORDER BY distance, v.mirror_hash, v.seq`;
+  const params = [
+    new Uint8Array(vectorQuery.buffer),
+    vectorIndex.model,
+    ...eligible.params,
+  ];
+  const exhaustive = db
+    .query<VectorSearchResult, (Uint8Array | string | number)[]>(sql)
+    .all(...params);
+  for (const limit of [1, 10, 201, 300]) {
+    expect(
+      await vectorIndex.searchNearest(vectorQuery, limit, options)
+    ).toEqual(ok(exhaustive.slice(0, limit)));
+  }
+  expect(
+    db.query(`EXPLAIN QUERY PLAN ${sql}`).all(...params).length
+  ).toBeGreaterThan(0);
 });
