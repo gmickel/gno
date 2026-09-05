@@ -37,6 +37,6 @@ stage: QA - skipped(policy: CI/release configuration change; hosted CI verifies 
 
 Implementation routing fallback: Cursor bridge made no edits before owned-process termination after about5min; Grok CLI timed out at360s (exit124), no edits. Active harness implemented and validated the change.
 ## Evidence
-- Commits: 0b6555c9
+- Commits: 51a31ea229faa6d77bcdc2f7c596b0540e12ec2a
 - Tests: Bun1.4.2 full suite:5223pass/2skip/0fail,282s, bun test test/scripts/ci.test.ts:9pass,36assertions, bun run lint:check:pass,26existing warnings, actionlint1.7.12 changed workflows:pass, bun run docs:verify:15pass/2skip, publication verification shell:valid pass,wrong tag/tamper fail
 - PRs:
