@@ -1,0 +1,49 @@
+{
+  "blocked_reason": "fn145 R3 lacks a safe physical Metal auto-versus-sized native allocation pair. Earlier auto40960 run pressure-stopped; current Ivan free memory does not establish safe control admission. CUDA native byte reduction is measured separately and does not satisfy Metal.",
+  "branch": "fn-143-152-retrieval-resource-major",
+  "evidence": [
+    ".flow/artifacts/fn-145-token-sized-reranker-contexts-with",
+    ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-release-gates/README.md"
+  ],
+  "head_sha": "302ffe79ed8aa9ddafc1531c264391430d1ab366",
+  "id": "fn-145-token-sized-reranker-contexts-with",
+  "limitations": [
+    "Acceptance combines the explicitly pinned captured checkpoints in the artifact reports. This receipt does not relabel all historical runs as f64.",
+    "Hosted gno.sh documentation and driven-page QA are queued after the aggregate PR under the explicit user sequencing override.",
+    "Formal plan-review and impl-review were disabled by the user.",
+    "CUDA measured4.3313GiB native GPU context/compute reduction for the declared short-input pair; sized context/scoring timings were slower and remain retained."
+  ],
+  "mode": "interactive",
+  "model": "gpt-6-astra medium",
+  "open_p0p1": [],
+  "qa_outcome": "BLOCKED",
+  "rid_coverage": {
+    "covered": 4,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "no_live_scenario",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      }
+    ],
+    "total": 5
+  },
+  "timestamp": "2026-09-05T07:38:37Z",
+  "type": "qa_verdict",
+  "verdict": "NEEDS_WORK"
+}

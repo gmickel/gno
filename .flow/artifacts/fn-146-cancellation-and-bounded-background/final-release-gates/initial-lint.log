@@ -1,0 +1,270 @@
+$ oxlint --type-aware --type-check && oxfmt --check .
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+    ,-[test/cli/query-text.test.ts:26:5]
+ 25 |       test("rejects positional query plus --query-file", async () => {
+ 26 | ,->     await expect(resolveCliQueryText("a", "/tmp/q")).rejects.toThrow(
+ 27 | |         "Pass a query or --query-file, not both"
+ 28 | `->     );
+ 29 |       });
+    `----
+
+  ! typescript-eslint(unbound-method): Avoid referencing unbound methods which may cause unintentional scoping of `this`.
+  | If your function does not access `this`, you can annotate it with `this: void`, or consider using an arrow function instead.
+     ,-[test/eval/acceptance/adapters.test.ts:382:20]
+ 381 | test("capture forbids overlap and restores native prototypes after missing cached model", async () => {
+ 382 |   const original = ModelCache.prototype.ensureModel;
+     :                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 383 |   const session = installNativeCapture("missing", [
+     `----
+
+  ! typescript-eslint(unbound-method): Avoid referencing unbound methods which may cause unintentional scoping of `this`.
+  | If your function does not access `this`, you can annotate it with `this: void`, or consider using an arrow function instead.
+     ,-[test/eval/acceptance/adapters.test.ts:404:10]
+ 403 |   }
+ 404 |   expect(ModelCache.prototype.ensureModel).toBe(original);
+     :          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 405 |   const next = installNativeCapture("next", []);
+     `----
+
+  ! typescript-eslint(unbound-method): Avoid referencing unbound methods which may cause unintentional scoping of `this`.
+  | If your function does not access `this`, you can annotate it with `this: void`, or consider using an arrow function instead.
+     ,-[test/eval/acceptance/adapters.test.ts:471:22]
+ 470 |     const client = new SelectedClient();
+ 471 |     const original = client.decorateSearchResults;
+     :                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 472 |     const restore = captureSdkSearchResults(client, capture);
+     `----
+
+  ! typescript-eslint(unbound-method): Avoid referencing unbound methods which may cause unintentional scoping of `this`.
+  | If your function does not access `this`, you can annotate it with `this: void`, or consider using an arrow function instead.
+     ,-[test/eval/acceptance/adapters.test.ts:490:12]
+ 489 |     restore();
+ 490 |     expect(client.decorateSearchResults).toBe(original);
+     :            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 491 |     expect(Object.hasOwn(client, "decorateSearchResults")).toBe(false);
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/command.test.ts:152:7]
+ 151 |           await Bun.write(f.config.candidateManifest, JSON.stringify(value));
+ 152 | ,->       await expect(
+ 153 | |           runAcceptanceCommand(["--config", f.configPath])
+ 154 | `->       ).rejects.toThrow(error);
+ 155 |           expect(await Bun.file(f.config.output).exists()).toBe(false);
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/command.test.ts:197:5]
+ 196 |         );
+ 197 | ,->     await expect(
+ 198 | |         runAcceptanceCommand(["--config", f.configPath])
+ 199 | `->     ).rejects.toThrow("--native opt-in");
+ 200 |         expect(await Bun.file(output).exists()).toBe(false);
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/command.test.ts:285:5]
+ 284 |         );
+ 285 | ,->     await expect(
+ 286 | |         verifyAcceptanceSource({ sourceRoot }, commit)
+ 287 | `->     ).rejects.toThrow("Source differs from pinned Git commit");
+ 288 |         await Bun.write(
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/command.test.ts:292:5]
+ 291 |         );
+ 292 | ,->     await expect(verifyAcceptanceSource(settings, commit)).rejects.toThrow(
+ 293 | |         "Source tree differs from archive"
+ 294 | `->     );
+ 295 |         await Bun.write(
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/command.test.ts:301:5]
+ 300 |         await symlink("wrong.ts", join(extracted, "src/link.ts"));
+ 301 | ,->     await expect(verifyAcceptanceSource(settings, commit)).rejects.toThrow(
+ 302 | |         "Source tree differs from archive"
+ 303 | `->     );
+ 304 |         await expect(
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/command.test.ts:304:5]
+ 303 |         );
+ 304 | ,->     await expect(
+ 305 | |         verifyAcceptanceSource(
+ 306 | |           { ...settings, sourceArchive: { path, sha256: "0".repeat(64) } },
+ 307 | |           commit
+ 308 | |         )
+ 309 | `->     ).rejects.toThrow("Source archive hash mismatch");
+ 310 |         await expect(
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/command.test.ts:310:5]
+ 309 |         ).rejects.toThrow("Source archive hash mismatch");
+ 310 | ,->     await expect(
+ 311 | |         verifyAcceptanceSource(settings, "0".repeat(40))
+ 312 | `->     ).rejects.toThrow("Source archive commit mismatch");
+ 313 |       } finally {
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/parent-capture.test.ts:165:5]
+ 164 |     await rename(`${path}.next`, path);
+ 165 |     await expect(readChildEventLedger(path)).rejects.toThrow("parse JSON");
+     :     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 166 |   } finally {
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/session-driver.test.ts:122:5]
+ 121 |     expect(second.processId).not.toBe(firstPid);
+ 122 |     await expect(second.run("unknown")).rejects.toThrow("Unknown session case");
+     :     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 123 |     expect(scope.owns(second.processId)).toBe(false);
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/session-driver.test.ts:135:5]
+ 134 |       try {
+ 135 | ,->     await expect(
+ 136 | |         createSessionDriverFactory({ ...options, timeoutMs: 1 }).open(scope)
+ 137 | `->     ).rejects.toThrow("timed out");
+ 138 |         await scope.close();
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/session-driver.test.ts:139:5]
+ 138 |         await scope.close();
+ 139 | ,->     await expect(
+ 140 | |         createSessionDriverFactory(options).open(scope)
+ 141 | `->     ).rejects.toThrow("already closed");
+ 142 |       } finally {
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/session-driver.test.ts:152:5]
+ 151 |       try {
+ 152 | ,->     await expect(
+ 153 | |         createSessionDriverFactory({
+ 154 | |           ...options,
+ 155 | |           init: {
+ 156 | |             ...options.init,
+ 157 | |             dbPath: join(tmpdir(), "outside-index.sqlite"),
+ 158 | |           },
+ 159 | |         }).open(scope)
+ 160 | `->     ).rejects.toThrow("outside acceptance DB");
+ 161 |       } finally {
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/session-driver.test.ts:210:5]
+ 209 |         await Bun.write(child, "existing changed harness");
+ 210 | ,->     await expect(installSessionHarness(root)).rejects.toThrow(
+ 211 | |         "Snapshot harness differs"
+ 212 | `->     );
+ 213 |         expect(await Bun.file(child).text()).toBe("existing changed harness");
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/session-driver.test.ts:271:5]
+ 270 |         ).toThrow("one declared native backend");
+ 271 | ,->     await expect(
+ 272 | |         createSessionDriverFactory({
+ 273 | |           ...options,
+ 274 | |           cudaPath: join(sourceRoot, "evals/acceptance/session-child.ts"),
+ 275 | |         }).open(scope)
+ 276 | `->     ).rejects.toThrow("requires a directory");
+ 277 |       } finally {
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/child-capture.test.ts:341:5]
+ 340 |         await symlink(root, link);
+ 341 | ,->     await expect(installParentCapture("test", [], link)).rejects.toThrow(
+ 342 | |         "canonical"
+ 343 | `->     );
+ 344 |       } finally {
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/child-capture.test.ts:400:5]
+ 399 |         };
+ 400 | ,->     await expect(
+ 401 | |         scope.observeDescendant(owner, {
+ 402 | |           identity: { ...nativeIdentity, pid: unrelated.pid },
+ 403 | |           event: "birth",
+ 404 | |         })
+ 405 | `->     ).rejects.toThrow("ancestry");
+ 406 |         await scope.observeDescendant(owner, {
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/child-capture.test.ts:410:5]
+ 409 |         });
+ 410 | ,->     await expect(
+ 411 | |         scope.observeDescendant(owner, {
+ 412 | |           identity: nativeIdentity,
+ 413 | |           event: "birth",
+ 414 | |         })
+ 415 | `->     ).rejects.toThrow("duplicate");
+ 416 |         await scope.sample();
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/child-capture.test.ts:429:5]
+ 428 |         ).toBe(nativePid);
+ 429 | ,->     await expect(
+ 430 | |         scope.observeDescendant(owner, {
+ 431 | |           identity: nativeIdentity,
+ 432 | |           event: "exit",
+ 433 | |         })
+ 434 | `->     ).rejects.toThrow("still live");
+ 435 |         await scope.close();
+     `----
+
+  ! typescript-eslint(unbound-method): Avoid referencing unbound methods which may cause unintentional scoping of `this`.
+  | If your function does not access `this`, you can annotate it with `this: void`, or consider using an arrow function instead.
+     ,-[test/eval/acceptance/child-capture.test.ts:579:20]
+ 578 |   };
+ 579 |   const original = ModelManager.prototype.loadModel;
+     :                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 580 |   ModelManager.prototype.loadModel = (() =>
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/surfaces.test.ts:233:5]
+ 232 |         f.invocation.url = `http://127.0.0.1:${existing.port}/mcp`;
+ 233 | ,->     await expect(
+ 234 | |         runSurfaceAcceptance(f.request, f.launch, f.invocation, read)
+ 235 | `->     ).rejects.toThrow("already-running");
+ 236 |         f.request.manifest.cases[0]!.configuration.mcpTransport = "stdio";
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/surfaces.test.ts:237:5]
+ 236 |         f.request.manifest.cases[0]!.configuration.mcpTransport = "stdio";
+ 237 | ,->     await expect(
+ 238 | |         runSurfaceAcceptance(f.request, f.launch, f.invocation, read)
+ 239 | `->     ).rejects.toThrow("transport mismatch");
+ 240 |         f.request.manifest.cases[0]!.configuration.mcpTransport = "http";
+     `----
+
+  ! typescript-eslint(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+     ,-[test/eval/acceptance/surfaces.test.ts:242:5]
+ 241 |         f.launch.env.GNO_DATA_DIR = process.cwd();
+ 242 | ,->     await expect(
+ 243 | |         runSurfaceAcceptance(f.request, f.launch, f.invocation, read)
+ 244 | `->     ).rejects.toThrow("outside");
+ 245 |         expect(
+     `----
+
+Found 27 warnings and 0 errors.
+Finished in 5.8s on 1500 files with 105 rules using 32 threads.
+Checking formatting...
+
+All matched files use the correct format.
+Finished in 6616ms on 2396 files using 32 threads.

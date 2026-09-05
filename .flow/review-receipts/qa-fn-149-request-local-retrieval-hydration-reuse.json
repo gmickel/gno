@@ -1,0 +1,53 @@
+{
+  "branch": "fn-143-152-retrieval-resource-major",
+  "evidence": [
+    ".flow/artifacts/fn-149-request-local-retrieval-hydration-reuse",
+    ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-release-gates/README.md"
+  ],
+  "findings": {
+    "backend": "interactive",
+    "headSha": "302ffe79ed8aa9ddafc1531c264391430d1ab366",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-3c45a1cfc5c78b81d3d2efd52ac13f4697b949d67c2461a46dc6f7d7ba858eda"
+  },
+  "head_sha": "302ffe79ed8aa9ddafc1531c264391430d1ab366",
+  "id": "fn-149-request-local-retrieval-hydration-reuse",
+  "limitations": [
+    "Acceptance combines the explicitly pinned captured checkpoints in the artifact reports. This receipt does not relabel all historical runs as f64.",
+    "Hosted gno.sh documentation and driven-page QA are queued after the aggregate PR under the explicit user sequencing override.",
+    "Formal plan-review and impl-review were disabled by the user.",
+    "Read/returned-text savings are measured, not total heap allocation. Metal verified Ask retains original noRerank:true."
+  ],
+  "mode": "interactive",
+  "model": "gpt-6-astra medium",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 4,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      }
+    ],
+    "total": 4
+  },
+  "timestamp": "2026-09-05T07:38:38Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

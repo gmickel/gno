@@ -1,0 +1,99 @@
+$ bun scripts/package-smoke.ts
+[pdfjs-assets] installed binary:  /home/gordon/.cache/agent-tmp/gno-package-smoke-Px4q7h/prefix/bin/gno
+[pdfjs-assets] package root:      /home/gordon/.cache/agent-tmp/gno-package-smoke-Px4q7h/prefix/lib/node_modules/@gmickel/gno
+[pdfjs-assets] installed pdfjs:   /home/gordon/.cache/agent-tmp/gno-package-smoke-Px4q7h/prefix/lib/node_modules/@gmickel/gno/node_modules/pdfjs-dist
+[pdfjs-assets] launched installed 'gno serve' pid=1648610 port=45321 (NOT repo bun source)
+[pdfjs-assets] installed binary healthy at http://127.0.0.1:45321
+[pdfjs-assets] compatibility bootstrap: GET/HEAD 200, Math.sumPrecise + same-origin raw worker import verified
+[pdfjs-assets] --- /vendor/pdfjs/pdf.worker.raw.min.mjs ---
+[pdfjs-assets]   installed file: /home/gordon/.cache/agent-tmp/gno-package-smoke-Px4q7h/prefix/lib/node_modules/@gmickel/gno/node_modules/pdfjs-dist/build/pdf.worker.min.mjs
+[pdfjs-assets]   installed bytes=1262398 sha256=0613f41490dd6aaceed7a93fbbd38c85e6d6aa60474b6588c6e7709cfbe18cb3
+[pdfjs-assets]   GET status=200 bytes=1262398 sha256=0613f41490dd6aaceed7a93fbbd38c85e6d6aa60474b6588c6e7709cfbe18cb3
+[pdfjs-assets]   byte-equality: MATCH (size equal)
+[pdfjs-assets]   HEAD status=200 bodyBytes=0 (expected 0)
+[pdfjs-assets]   header content-type: GET=text/javascript HEAD=text/javascript MATCH
+[pdfjs-assets]   header content-length: GET=1262398 HEAD=1262398 MATCH
+[pdfjs-assets]   header cache-control: GET=public, max-age=31536000, immutable HEAD=public, max-age=31536000, immutable MATCH
+[pdfjs-assets] --- /vendor/pdfjs/cmaps/UniJIS-UCS2-H.bcmap ---
+[pdfjs-assets]   installed file: /home/gordon/.cache/agent-tmp/gno-package-smoke-Px4q7h/prefix/lib/node_modules/@gmickel/gno/node_modules/pdfjs-dist/cmaps/UniJIS-UCS2-H.bcmap
+[pdfjs-assets]   installed bytes=25439 sha256=ad2352f40870880fbf7f8ee5abadff743fbd025fbf9830b8ada472d1c5e4da0b
+[pdfjs-assets]   GET status=200 bytes=25439 sha256=ad2352f40870880fbf7f8ee5abadff743fbd025fbf9830b8ada472d1c5e4da0b
+[pdfjs-assets]   byte-equality: MATCH (size equal)
+[pdfjs-assets]   HEAD status=200 bodyBytes=0 (expected 0)
+[pdfjs-assets]   header content-type: GET=application/octet-stream HEAD=application/octet-stream MATCH
+[pdfjs-assets]   header content-length: GET=25439 HEAD=25439 MATCH
+[pdfjs-assets]   header cache-control: GET=public, max-age=31536000, immutable HEAD=public, max-age=31536000, immutable MATCH
+[pdfjs-assets] --- /vendor/pdfjs/standard_fonts/LiberationSans-Regular.ttf ---
+[pdfjs-assets]   installed file: /home/gordon/.cache/agent-tmp/gno-package-smoke-Px4q7h/prefix/lib/node_modules/@gmickel/gno/node_modules/pdfjs-dist/standard_fonts/LiberationSans-Regular.ttf
+[pdfjs-assets]   installed bytes=139512 sha256=f8ace1f892b2bd9dc1792ba7f097fa7588f84fed48321480e04de5390828221f
+[pdfjs-assets]   GET status=200 bytes=139512 sha256=f8ace1f892b2bd9dc1792ba7f097fa7588f84fed48321480e04de5390828221f
+[pdfjs-assets]   byte-equality: MATCH (size equal)
+[pdfjs-assets]   HEAD status=200 bodyBytes=0 (expected 0)
+[pdfjs-assets]   header content-type: GET=font/ttf HEAD=font/ttf MATCH
+[pdfjs-assets]   header content-length: GET=139512 HEAD=139512 MATCH
+[pdfjs-assets]   header cache-control: GET=public, max-age=31536000, immutable HEAD=public, max-age=31536000, immutable MATCH
+Installed binary pdfjs asset smoke passed (worker + cmap + standard-font GET/HEAD)
+Package smoke temp root: /home/gordon/.cache/agent-tmp/gno-package-smoke-Px4q7h
+Failure preserved this forensic recovery directory.
+[gno-sentinel] privacy-safe before/after summary
+[gno-sentinel]   (absolute paths, content hashes, and all config-root file
+[gno-sentinel]    names/sizes/modes/mtimes are intentionally NOT recorded)
+[gno-sentinel]   root <config-root> exists=true count(before/after)=2/2 bytes(before/after)=4627/4627 unchanged=true
+[gno-sentinel]     <config root contents redacted — credential-bearing; equality proven by the full-snapshot assertion above>
+[gno-sentinel]   root <data-root> exists=true count(before/after)=5/5 bytes(before/after)=380861977/380861977 unchanged=true
+[gno-sentinel]     index-default.sqlite size(before/after)=380329984/380329984
+[gno-sentinel]     index-personal.sqlite size(before/after)=528384/528384
+[gno-sentinel]     setup-receipts/default/9b1931f6d473e70c5afa00781de51b5943e0679c65ff61ad1302b501d9c1505c.json size(before/after)=2535/2535
+[gno-sentinel]     setup-semantic/default/9b1931f6d473e70c5afa00781de51b5943e0679c65ff61ad1302b501d9c1505c.json size(before/after)=1074/1074
+[gno-sentinel]     setup-semantic/default/9b1931f6d473e70c5afa00781de51b5943e0679c65ff61ad1302b501d9c1505c.json.lock size(before/after)=0/0
+51 |   const stderr = new Response(child.stderr).text();
+52 |   try {
+53 |     const code = await child.exited;
+54 |     const output = await stdout;
+55 |     if (code !== 0)
+56 |       throw new Error(
+                     ^
+error: Native package contract failed (1): error: Module not found "/home/gordon/.cache/agent-tmp/gno-package-smoke-Px4q7h/native-lifecycle/missing-entry.ts"
+79 | const bad = new NativeWorkerClient({
+80 |   ...options,
+81 |   entryPath: join(scratch, "missing-entry.ts"),
+82 | });
+83 | try {
+84 |   assert.deepEqual(await bad.request(init), {
+              ^
+AssertionError: Expected values to be strictly deep-equal:
++ actual - expected
+
+  {
+    error: {
+-     cause: undefined,
+      code: 'INFERENCE_FAILED',
+      message: 'Native worker failure: exited',
+      retryable: true
+    },
+    ok: false
+
+ generatedMessage: true,
+     actual: {
+  ok: false,
+  error: [Object ...],
+},
+   expected: {
+  ok: false,
+  error: [Object ...],
+},
+   operator: "deepStrictEqual",
+       code: "ERR_ASSERTION"
+
+      at /home/gordon/work/gno/evals/fixtures/acceptance/native-lifecycle/runner.ts:84:10
+
+Bun v1.3.14 (Linux x64)
+
+
+      at verifyPackedNativeWorker (/home/gordon/work/gno/scripts/package-smoke-native-worker.ts:56:17)
+      at verifyPackedResidentGateway (/home/gordon/work/gno/scripts/package-smoke-resident.ts:429:9)
+      at main (/home/gordon/work/gno/scripts/package-smoke.ts:722:11)
+      at processTicksAndRejections (unknown:7:39)
+
+Bun v1.3.14 (Linux x64)
+error: script "test:package" exited with code 1

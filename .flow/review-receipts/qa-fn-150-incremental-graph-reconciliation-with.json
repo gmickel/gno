@@ -1,0 +1,71 @@
+{
+  "branch": "fn-143-152-retrieval-resource-major",
+  "evidence": [
+    ".flow/artifacts/fn-150-incremental-graph-reconciliation-with",
+    ".flow/artifacts/fn-146-cancellation-and-bounded-background/final-release-gates/README.md"
+  ],
+  "findings": {
+    "backend": "interactive",
+    "headSha": "302ffe79ed8aa9ddafc1531c264391430d1ab366",
+    "items": [
+      {
+        "body": "Captured mobile Graph header overflows390px viewport to472px; graph consumer parity remains exact. Existing layout attribution is inferred. Evidence in fn150 browser artifacts.",
+        "classification": "pre_existing",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-2a1d760b3718e291af3b78d5da3b568d22717f6c8c7bc4e4827316ee85711ce0",
+        "id": "finding-a40cf0d4aa383a14718ee318aff00724",
+        "lastSeenReceiptId": "review-2a1d760b3718e291af3b78d5da3b568d22717f6c8c7bc4e4827316ee85711ce0",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "Graph header horizontal overflow"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-2a1d760b3718e291af3b78d5da3b568d22717f6c8c7bc4e4827316ee85711ce0"
+  },
+  "head_sha": "302ffe79ed8aa9ddafc1531c264391430d1ab366",
+  "id": "fn-150-incremental-graph-reconciliation-with",
+  "limitations": [
+    "Acceptance combines the explicitly pinned captured checkpoints in the artifact reports. This receipt does not relabel all historical runs as f64.",
+    "Hosted gno.sh documentation and driven-page QA are queued after the aggregate PR under the explicit user sequencing override.",
+    "Formal plan-review and impl-review were disabled by the user.",
+    "Existing mobile Graph overflow remains a P2 finding."
+  ],
+  "mode": "interactive",
+  "model": "gpt-6-astra medium",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 5,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      }
+    ],
+    "total": 5
+  },
+  "timestamp": "2026-09-05T07:38:38Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

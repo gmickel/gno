@@ -1,0 +1,3 @@
+$ bun browser-extension/package-cli.ts
+Browser clipper package: /home/gordon/work/gno/browser-extension/artifacts/gno-browser-clipper-v2.0.0.zip
+SHA-256: 29eba64fe081f545be10a09abb02b8ab19cbb92195233204b2042700769a7d0a

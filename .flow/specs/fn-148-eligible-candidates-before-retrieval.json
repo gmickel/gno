@@ -17,7 +17,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-148-eligible-candidates-before-retrieval.md",
-  "status": "open",
+  "status": "done",
   "title": "Eligible candidates before retrieval top-K",
   "tracker": {
     "baseHashFlow": null,
@@ -30,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T23:40:08.619017Z"
+  "updated_at": "2026-09-05T07:38:50.260116Z"
 }

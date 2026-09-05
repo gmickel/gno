@@ -1,0 +1,5 @@
+{
+  "oldRunnerSha256": "f49c61fdd68338e0a6a6c2d0285531170833b55a99e14b87f0a1e6c5715eaea8",
+  "newRunnerSha256": "c28099b1dbfdbe9eab0e10bb44368b26143988bdbbd15e3be3f3f965f045d0fe",
+  "reason": "Strict JSON-safe error equality omits non-JSON undefined cause; no relaxed assertions or baseline results changed."
+}

@@ -1,0 +1,32 @@
+$ bun --bun evalite evals/memory.eval.ts --threshold 100
+
+ EVALITE running...
+
+ ⏳ evals/memory.eval.ts  (19 evals)
+ 100% evals/memory.eval.ts  (19 evals)
+
+      Score  100%
+  Threshold  100% (passed)
+ Eval Files  1
+      Evals  19
+   Duration  1606ms
+
+Case: exact-add  Class: exact  Expected: existing  Outcome: existing  Written: 0  100%
+Case: exact-whit…  Class: exact  Expected: existing  Outcome: existing  Written: 0  100%
+Case: exact-prop…  Class: exact  Expected: existing  Outcome: existing  Written: 0  100%
+Case: paraphrase…  Class: paraphrase  Expected: candidates  Outcome: candidates  Written: 0  100%
+Case: paraphrase…  Class: paraphrase  Expected: candidates  Outcome: candidates  Written: 0  100%
+Case: chain-2  Current: Orbit nigh…  Returned: Orbit nigh…  Stale/race:   100%
+Case: racing-wri…  Current: Orbit's pr…  Returned: Orbit's pr…  Stale/race: superseded…  100%
+Case: chain-3  Current: The Orbit …  Returned: The Orbit …  Stale/race:   100%
+Case: stale-pred…  Current: Orbit logs…  Returned: Orbit logs…  Stale/race: MEMORY_SUP…  100%
+Case: clean-add  Class: clean  Expected: added  Outcome: added  Written: 1  100%
+Case: paraphrase…  Class: paraphrase  Expected: candidates  Outcome: candidates  Written: 0  100%
+Case: clean-empt…  Class: clean  Expected: added  Outcome: added  Written: 1  100%
+Case: clean-prop…  Class: clean  Expected: candidates  Outcome: candidates  Written: 0  100%
+Reads: a-deploys:…  Writes: a-writes-b…  Leaks: 0  Misses: 0  100%
+Fixture set: 0da022cef7…  On disk: match  100%
+Turns: 18/18  Records: 6  Golden: match  100%
+Replays rejected: 6/6  Derived rejected: 6/6  Paraphrase leak: 7/7 (100%)  100%
+Queries: 13  Recall@5: 1.000  Misses: -  Budget query: 8 facts / …  100%
+Samples: 200  p50: 0.59ms  p95: 1.60ms  max: 1.80ms  100%

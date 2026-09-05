@@ -51,9 +51,14 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Full gates and applicable skill eval complete; unresolved cost/physical acceptance is explicit unmet evidence.
 
 ## Done summary
-TBD
+Eligible-domain retrieval acceptance completed for the declared fixtures. The 201-owner public lexical matrix captured 96 CLI, stdio MCP, HTTP MCP and REST requests, with 80 complete result-bearing comparisons. Real SQLite scaling retained 144 legacy groups and 120 activated-owner groups per run across increasing corpora and concurrent readers. Actual CUDA and physical Ivan Metal each embedded all 198 active inputs and returned the restrictive K=1/10 eligible owner behind 197 excluded owners, with vectorsUsed true. Native bridge receipts retain full inputs and outputs, process cleanup and platform-specific model identities.
 
+The broad FTS correction retained exact outputs. The 10,001-document baseline broad query measured 5,071.5ms versus 7.50ms for the corrected SQL shape; the rare selective one-shot became slower, 1.81ms to3.38ms. Concurrent activated-owner tails remain explicit, including roughly365ms timer delay. These observations support the corrected eligible-domain behavior; they do not establish universal latency improvement or a native Cartesian scaling matrix.
+
+Repository docs and skill guidance are current. Final skill command-generation evaluation passed47/47 unchanged checks after a separately retained46/47 guidance failure. Final memory100%, hybrid86% and BM25 ranking88% gates passed without threshold or retrieval fixture changes. Final repository gate evidence is under the fn146 final-release-gates artifact directory. Hosted gno.sh implementation and driven-page QA are deferred to the downstream queue after the aggregate PR by the user's explicit sequencing instruction.
+
+Evidence: .flow/artifacts/fn-148-eligible-candidates-before-retrieval/final-receipt/README.md; native-bridge/cuda-receipt.json; native-bridge/metal/README.md; .flow/artifacts/fn-146-cancellation-and-bounded-background/final-release-gates/.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 76743bd616cbe723b0adab87da9f380cad1513ad, f64c41c97e196e3bffdba23bc1c006bca7489b28, 822e24b02abe1b429105a118da1ba2d2af12c190, 1f7e785df59e17fd3e31cd7397611128c0c6cdd7
+- Tests: bun run lint:check, bun run typecheck, bun test, bun run docs:verify, bun run verify:clipper-package, bun run test:package, bun run eval:memory, bun run eval:hybrid, bun --bun evalite evals/vsearch.eval.ts
 - PRs:
