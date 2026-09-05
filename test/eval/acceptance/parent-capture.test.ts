@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 // Bun has no temporary-directory/removal APIs.
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rename, rm } from "node:fs/promises";
 import { tmpdir } from "node:os"; // Bun has no OS temp-directory API.
 import { join } from "node:path"; // Bun has no path helpers.
 
@@ -130,3 +130,40 @@ test.each([0, 7])(
     }
   }
 );
+
+test("atomic child ledger growth bypasses BunFile cached length; only missing files are absent", async () => {
+  const { readChildEventLedger } =
+    await import("../../../evals/acceptance/surface-adapter");
+  const root = await mkdtemp(join(tmpdir(), "gno-ledger-rename-"));
+  const path = join(root, "children.json");
+  try {
+    expect(await readChildEventLedger(path)).toBeNull();
+    const identity = {
+      runId: "ledger",
+      token: crypto.randomUUID(),
+      parentPid: process.pid,
+      pid: process.pid + 1,
+      generation: 1,
+      entry: "/selected/entry.ts",
+    };
+    const first = [{ identity, event: "birth" as const }];
+    const second = [
+      ...first,
+      { identity, event: "exit" as const, exitCode: 0 },
+    ];
+    await Bun.write(path, JSON.stringify(first));
+    const stale = Bun.file(path);
+    expect(await stale.exists()).toBe(true);
+    const cachedLength = stale.size;
+    await Bun.write(`${path}.next`, JSON.stringify(second));
+    await rename(`${path}.next`, path);
+    // Reproduce the old handle's cached-length condition with real atomic rename.
+    expect(cachedLength).toBeLessThan(JSON.stringify(second).length);
+    expect(await readChildEventLedger(path)).toEqual(second);
+    await Bun.write(`${path}.next`, "{");
+    await rename(`${path}.next`, path);
+    await expect(readChildEventLedger(path)).rejects.toThrow("parse JSON");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

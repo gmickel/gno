@@ -160,6 +160,22 @@ async function mcpOutput(
   );
 }
 
+/** Read to EOF from a fresh handle: exists() caches a BunFile's old size across rename. */
+export async function readChildEventLedger(
+  path: string
+): Promise<ChildEvent[] | null> {
+  try {
+    const events = (await Bun.file(path).json()) as ChildEvent[];
+    if (!Array.isArray(events))
+      throw new Error("Invalid descendant event ledger");
+    return events;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT")
+      return null;
+    throw error;
+  }
+}
+
 export async function runSurfaceAcceptance(
   request: AdapterRequest,
   launch: SurfaceLaunch,
@@ -283,9 +299,10 @@ export async function runSurfaceAcceptance(
   let eventTimer: ReturnType<typeof setInterval> | undefined;
   const readEvents = async () => {
     if (!childMode || pid === null) return;
-    const file = Bun.file(`${launch.capturePath}.children/children.json`);
-    if (!(await file.exists())) return;
-    const events = (await file.json()) as ChildEvent[];
+    const events = await readChildEventLedger(
+      `${launch.capturePath}.children/children.json`
+    );
+    if (events === null) return;
     if (!Array.isArray(events) || events.length < seenEvents)
       throw new Error("Invalid descendant event ledger");
     for (const event of events.slice(seenEvents)) {
