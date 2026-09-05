@@ -1,0 +1,18 @@
+{
+  "timestampUtc": "2026-09-05T08:15:01.495395+00:00",
+  "socket": "/home/gordon/.cache/agent-tmp/gno-fn144-childcapture/ivan-lan.sock",
+  "expectedOwnedPid": 2189337,
+  "ownedToolSession": 38647,
+  "checkExitCode": 0,
+  "checkOutput": "Master running (pid=2189337)",
+  "remoteChanges": false,
+  "unrelatedConnectionsTouched": false,
+  "observedPid": 2189337,
+  "exactOwnedCommandMatches": true,
+  "exitCommandCode": 0,
+  "exitCommandOutput": "Exit request sent.",
+  "status": "closed_verified",
+  "verifiedAtUtc": "2026-09-05T08:15:11.789489+00:00",
+  "ownedPidAbsent": true,
+  "socketAbsent": true
+}

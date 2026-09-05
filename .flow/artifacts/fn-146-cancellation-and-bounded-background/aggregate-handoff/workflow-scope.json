@@ -1,0 +1,16 @@
+{
+  "mode": "one aggregate draft PR for ten specs by explicit user instruction",
+  "specRange": [
+    143,
+    152
+  ],
+  "formalPlanReview": false,
+  "formalImplementationReview": false,
+  "downstreamDocs": "queue after PR in gno.sh",
+  "supersededUntouched": [
+    138,
+    141
+  ],
+  "sourceBoundExports": "exports/*.json.gz",
+  "composition": "Aggregate body uses all ten exports and preserves uncovered fn145 R3; the single-spec walkthrough binding is not used to combine cross-spec task references."
+}

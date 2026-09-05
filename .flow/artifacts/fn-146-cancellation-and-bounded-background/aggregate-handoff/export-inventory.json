@@ -1,0 +1,68 @@
+[
+  {
+    "file": "exports/fn-143-paired-retrieval-quality-and-resource.json.gz",
+    "sha256": "20890820ad0162a6383f480962f1dfca3c661c759f24fba3df5e6ee45bb698ff",
+    "sourceSha256": "365dd665d59d9a882c693a2c691055d52f3ef6880e331fad361dae1654719e32",
+    "sourceBytes": 1292872
+  },
+  {
+    "file": "exports/fn-144-native-recovery-and-idle-inference.json.gz",
+    "sha256": "1c245bc36b8f68c0e20904ef142584942efe49861b5f8cf007b9bf508b6dddd1",
+    "sourceSha256": "1b6e3e5d0468a649b70da55a5b7c022d2b0ff32efeda30df0a275bdcfd256532",
+    "sourceBytes": 1304584
+  },
+  {
+    "file": "exports/fn-145-token-sized-reranker-contexts-with.json.gz",
+    "sha256": "9fc17760f4f96ee7edc47424167755f972142bdecc1472e89be25515ea552ba1",
+    "sourceSha256": "61d7ef4660e117744018805de87c7c7305e4a080ebfc6eef2152c4d9dc40806e",
+    "sourceBytes": 1285113
+  },
+  {
+    "file": "exports/fn-146-cancellation-and-bounded-background.json.gz",
+    "sha256": "af6660720f554a7a267b8f0dc05f06033e6ead8e1977cb0deb6e3dd62ef892e4",
+    "sourceSha256": "bed00858e90a31bb23679c646fde1388adcab35d40acb5585d03df4d3640bbd2",
+    "sourceBytes": 1303174
+  },
+  {
+    "file": "exports/fn-147-restoration-and-unchanged-embedding.json.gz",
+    "sha256": "a58ea0979b6021be1c565d4fbac5ea720d5aa0f9733a63d487e6ecd64c3535f4",
+    "sourceSha256": "ebad9c03c6b87fbe5ab96cbb68308d194dd5d312277961c5f9d7568b5daffa16",
+    "sourceBytes": 1309254
+  },
+  {
+    "file": "exports/fn-148-eligible-candidates-before-retrieval.json.gz",
+    "sha256": "8ff52a845b1f5acf1f423bf8b9c7ce298008d2c895366c290c033b207451f241",
+    "sourceSha256": "681f99099b6d1fa442f262664217cdb82d90cfca1699617d1693d29d5569845e",
+    "sourceBytes": 1292565
+  },
+  {
+    "file": "exports/fn-149-request-local-retrieval-hydration-reuse.json.gz",
+    "sha256": "38c3fee908ed811d4a5bee0f4a900eafd87f2e46bc17cd6a4ded82b526849502",
+    "sourceSha256": "f973d73ea3882771c5af217b340a2340224efa415f9e96841092e8510e1b1417",
+    "sourceBytes": 1289331
+  },
+  {
+    "file": "exports/fn-150-incremental-graph-reconciliation-with.json.gz",
+    "sha256": "5b89b6207ff162cb5e7a469c8b5c7dd4559217b4915f70de0a568ec0c20fc449",
+    "sourceSha256": "00c32e9549790f3b3e548ed0a58d5b2cc74b25ef4b57c02bd4a263e120df2127",
+    "sourceBytes": 1305341
+  },
+  {
+    "file": "exports/fn-151-atomic-readergate-capacity-and-abort.json.gz",
+    "sha256": "dc0260d7492198c022e590681be28fb12376004fa75cae33a1267f2a18509d7b",
+    "sourceSha256": "59c25788d0857d312d38ee7a6586c8c7eddddf30e692a1777a6cc63d0ac63553",
+    "sourceBytes": 1276925
+  },
+  {
+    "file": "exports/fn-152-stop-indexing-polling-after-component.json.gz",
+    "sha256": "842b20dd65124c56cf08a886f1bbf6698c50375199a63c28ee73050756335327",
+    "sourceSha256": "b163949bf7f6c14cbf219dbcda494289d52e97581a2661d9ddcae26e866c810c",
+    "sourceBytes": 1277064
+  },
+  {
+    "file": "exports/manifest.json.gz",
+    "sha256": "f5e1d6a58394fe194ef83e519a9aa92f8ece35b3ee7242687f744973f94368cf",
+    "sourceSha256": "339482486fc149824c7c8b73837f0e2307e75bab45fad2d180ae19b544ecbe9f",
+    "sourceBytes": 3950
+  }
+]
