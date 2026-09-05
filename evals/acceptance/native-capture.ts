@@ -85,8 +85,12 @@ export function installNativeCapture(
         return result;
       }
       const sha256 = await hashFile(result.value);
-      if (sha256 !== pin.sha256)
-        throw new Error(`Cached model hash mismatch: ${uri}`);
+      if (sha256 !== pin.sha256) {
+        const error = new Error(`Cached model hash mismatch: ${uri}`);
+        capture.errors.push(error.message);
+        publish();
+        throw error;
+      }
       if (!capture.models.some((model) => model.id === uri))
         capture.models.push({ id: uri, sha256 });
       publish();
@@ -213,7 +217,7 @@ export function installNativeCapture(
     NodeLlamaCppEmbedding.prototype,
     "embed",
     async function (this: NodeLlamaCppEmbedding, ...args) {
-      record("embedding", this.modelUri, args);
+      record("embedding", this.modelUri, args.slice(0, 1));
       const output = await embed.apply(this, args);
       capture.modelOutputs.push(structuredClone(output));
       if (!output.ok) capture.errors.push(output.error.message);
@@ -226,7 +230,7 @@ export function installNativeCapture(
     NodeLlamaCppEmbedding.prototype,
     "embedBatch",
     async function (this: NodeLlamaCppEmbedding, ...args) {
-      record("embedding", this.modelUri, args);
+      record("embedding", this.modelUri, args.slice(0, 1));
       const output = await batch.apply(this, args);
       capture.modelOutputs.push(structuredClone(output));
       if (!output.ok) capture.errors.push(output.error.message);
@@ -239,7 +243,7 @@ export function installNativeCapture(
     NodeLlamaCppRerank.prototype,
     "rerank",
     async function (this: NodeLlamaCppRerank, ...args) {
-      record("reranking", this.modelUri, args);
+      record("reranking", this.modelUri, args.slice(0, 2));
       const output = await rerank.apply(this, args);
       capture.modelOutputs.push(structuredClone(output));
       if (!output.ok) capture.errors.push(output.error.message);
@@ -252,7 +256,8 @@ export function installNativeCapture(
     NodeLlamaCppGeneration.prototype,
     "generate",
     async function (this: NodeLlamaCppGeneration, ...args) {
-      record("generation", this.modelUri, args);
+      // GenParams stays exact; the third argument owns execution, not model input.
+      record("generation", this.modelUri, args.slice(0, 2));
       const output = await generate.apply(this, args);
       capture.modelOutputs.push(structuredClone(output));
       if (!output.ok) capture.errors.push(output.error.message);

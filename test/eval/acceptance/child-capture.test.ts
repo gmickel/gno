@@ -31,6 +31,129 @@ const identity: ChildIdentity = {
   generation: 1,
   entry: "/selected/entry.ts",
 };
+
+test("child capture transparently forwards operational arguments and exact request", async () => {
+  const { chmod, readdir } = await import("node:fs/promises");
+  const root = await mkdtemp(join(tmpdir(), "gno-capture-forward-"));
+  const entry = join(process.cwd(), "src/llm/native-worker/entry.ts");
+  const preload = join(
+    process.cwd(),
+    "evals/acceptance/native-child-preload.ts"
+  );
+  const dispatcher = join(process.cwd(), "src/llm/native-worker/dispatcher.ts");
+  const bootstrap = join(root, "bootstrap.json");
+  const exactRequest = {
+    version: 1,
+    generation: 1,
+    requestId: 42,
+    op: "generate",
+    modelId: "gen",
+    prompt: "exact\r\n尾",
+    params: { seed: 42, temperature: 0.125 },
+  };
+  try {
+    await Bun.write(
+      bootstrap,
+      JSON.stringify({
+        identity: { ...identity, parentPid: process.pid, entry },
+        models: [],
+      })
+    );
+    await chmod(bootstrap, 0o600);
+    const child = Bun.spawn(
+      [
+        process.execPath,
+        "--no-env-file",
+        "-e",
+        `
+      process.argv[1] = ${JSON.stringify(entry)};
+      process.argv[2] = JSON.stringify({generation:1,models:[],loadTimeout:1000,inferenceTimeout:1000,warmModelTtl:60000});
+      const {NativeDispatcher} = await import(${JSON.stringify(dispatcher)});
+      const request = ${JSON.stringify(exactRequest)};
+      const controller = new AbortController();
+      let started = 0;
+      const options = {signal:controller.signal,onExecutionStart:()=>started++};
+      const receiver = {};
+      const {NodeLlamaCppEmbedding} = await import(${JSON.stringify(join(process.cwd(), "src/llm/nodeLlamaCpp/embedding.ts"))});
+      const {NodeLlamaCppRerank} = await import(${JSON.stringify(join(process.cwd(), "src/llm/nodeLlamaCpp/rerank.ts"))});
+      const {NodeLlamaCppGeneration} = await import(${JSON.stringify(join(process.cwd(), "src/llm/nodeLlamaCpp/generation.ts"))});
+      const calls = [
+        [NodeLlamaCppEmbedding,'embed',[request.prompt]],
+        [NodeLlamaCppEmbedding,'embedBatch',[[request.prompt]]],
+        [NodeLlamaCppRerank,'rerank',[request.prompt,[request.prompt]]],
+        [NodeLlamaCppGeneration,'generate',[request.prompt,request.params]],
+      ];
+      const port = {modelUri:'exact-model'};
+      for(const [Type, method, inputs] of calls) Type.prototype[method] = async function(...args) {
+        if(this !== port || args.at(-1) !== options || inputs.some((input,i)=>args[i] !== input))
+          throw Error('Port argument identity lost');
+        args.at(-1).onExecutionStart();
+        return {ok:true,value:'unchanged'};
+      };
+      NativeDispatcher.prototype.execute = async function(...args) {
+        if(this !== receiver || args[0] !== request || args[1] !== options || args[1].signal !== controller.signal)
+          throw Error('Operational argument identity lost');
+        args[1].onExecutionStart();
+        controller.abort();
+        if(!args[1].signal.aborted) throw Error('Abort signal disconnected');
+        for(const [Type,method,inputs] of calls) await Type.prototype[method].call(port,...inputs,options);
+        return {response:{result:{ok:true,value:'unchanged'},lifecycle:{}},activity:true};
+      };
+      await import(${JSON.stringify(preload)});
+      const result = await NativeDispatcher.prototype.execute.call(receiver,request,options);
+      process.stdout.write(JSON.stringify({started,result}));
+      `,
+      ],
+      {
+        env: { ...process.env, GNO_ACCEPTANCE_CHILD_BOOTSTRAP: bootstrap },
+        stdout: "pipe",
+        stderr: "pipe",
+      }
+    );
+    const [stdout, stderr, exit] = await Promise.all([
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+      child.exited,
+    ]);
+    expect({ exit, stderr }).toEqual({ exit: 0, stderr: "" });
+    expect(JSON.parse(stdout)).toMatchObject({
+      started: 5,
+      result: { response: { result: { ok: true, value: "unchanged" } } },
+    });
+    const receipts = (await readdir(root)).filter((name) =>
+      name.endsWith("-42.json")
+    );
+    expect(receipts).toHaveLength(1);
+    const captured = await Bun.file(join(root, receipts[0]!)).json();
+    expect(captured.request).toEqual(exactRequest);
+    expect(captured.complete).toBe(true);
+    expect(captured.request).not.toHaveProperty("signal");
+    expect(captured.capture.modelInputs).toEqual([
+      {
+        role: "embedding",
+        modelId: "exact-model",
+        input: [exactRequest.prompt],
+      },
+      {
+        role: "embedding",
+        modelId: "exact-model",
+        input: [[exactRequest.prompt]],
+      },
+      {
+        role: "reranking",
+        modelId: "exact-model",
+        input: [exactRequest.prompt, [exactRequest.prompt]],
+      },
+      {
+        role: "generation",
+        modelId: "exact-model",
+        input: [exactRequest.prompt, exactRequest.params],
+      },
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 const request: Extract<NativeRequest, { op: "embedBatch" }> = {
   version: 1,
   generation: 1,
@@ -174,6 +297,9 @@ test("actual selected child captures input and hash failure without loading a ba
       params: { seed: 17, maxTokens: 32 },
     };
     for (const frame of frameNativeMessage(input)) child.send(frame);
+    while (replies.length < 2 && Date.now() < deadline) await Bun.sleep(10);
+    expect(replies).toHaveLength(2);
+    child.kill("SIGTERM");
     await child.exited;
     const result = capture.finish();
     expect(result.errors.join(" ")).toContain("hash mismatch");
@@ -189,7 +315,7 @@ test("actual selected child captures input and hash failure without loading a ba
     expect(capture.receipts).toHaveLength(1);
     expect(capture.receipts[0]!.identity.pid).toBe(child.pid);
     expect(capture.receipts[0]!.request.requestId).toBe(2);
-    expect(capture.receipts[0]!.complete).toBe(false);
+    expect(capture.receipts[0]!.complete).toBe(true);
     await Bun.sleep(10);
     expect(capture.events.map((event) => event.event)).toEqual([
       "birth",

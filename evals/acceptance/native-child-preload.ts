@@ -89,7 +89,8 @@ async function installForSelectedEntry(): Promise<void> {
     publish
   );
   const execute = NativeDispatcher.prototype.execute;
-  NativeDispatcher.prototype.execute = async function (request) {
+  NativeDispatcher.prototype.execute = async function (...args) {
+    const [request] = args;
     if (current) throw new Error("Concurrent native capture unsupported");
     session.capture.modelInputs = [];
     session.capture.modelOutputs = [];
@@ -98,9 +99,18 @@ async function installForSelectedEntry(): Promise<void> {
     current = { identity, request, complete: false, capture: session.capture };
     publish();
     try {
-      const result = await execute.call(this, request);
-      if (!result.response.result.ok)
+      const result = await execute.apply(this, args);
+      if (!result.response.result.ok) {
         session.capture.errors.push(result.response.result.error.message);
+        const cause = result.response.result.error.cause;
+        if (
+          typeof cause === "object" &&
+          cause !== null &&
+          "message" in cause &&
+          typeof cause.message === "string"
+        )
+          session.capture.errors.push(cause.message);
+      }
       if (request.op === "dispose" && result.response.result.ok) {
         const model = config.models.find((item) => item.id === request.modelId);
         if (model)
