@@ -1,0 +1,7 @@
+```bash
+gno query "service resilience failure isolation"
+```
+
+```bash
+gno query "service resilience failure isolation" --thorough
+```

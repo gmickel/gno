@@ -1,0 +1,3 @@
+```bash
+gno similar gno://notes/auth.md --cross-collection
+```

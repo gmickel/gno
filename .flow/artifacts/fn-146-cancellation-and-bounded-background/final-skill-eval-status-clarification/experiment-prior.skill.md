@@ -37,11 +37,6 @@ gno search "your query"               # BM25 keyword search
 `gno setup` is the default activation path. It is idempotent, returns only
 after exact lexical proof, and runs directly without resident/Web/MCP
 attachment. Use `--no-semantic` to start no worker and record skipped state.
-Inside a repository with `.gno/index.yml`, setup inspects the optional profile
-before mutation. Run `gno profile diff`, then
-`gno setup . --apply-profile` to apply its portable collection/context/content
-rules before setup proves retrieval. Missing/invalid profiles keep ordinary
-setup usable; no profile is applied implicitly.
 Use repeatable `--connector` with `claude-code-skill`,
 `claude-desktop-mcp`, `cursor-mcp`, `codex-skill`, `opencode-skill`,
 `openclaw-skill`, or `hermes-skill`. Connector skips/failures can return
@@ -62,9 +57,6 @@ the matching recipe, then run the commands it names.
 | Summarize a source                  | `recipes/source-summary.md`          | Source-summary note with provenance verified  |
 | Preserve an idea                    | `recipes/idea-capture.md`            | Original phrasing captured and findable       |
 | Verify claims and citations         | `recipes/citation-and-provenance.md` | Claims labeled with evidence or explicit gaps |
-| File a fact that may change         | `recipes/memory-file-decision.md`    | Fact stored (add) or proposal resolved, cited |
-| Replace a stale recalled fact       | `recipes/memory-supersede-fact.md`   | Successor written, predecessor superseded     |
-| What do we know/believe about X     | `recipes/memory-scoped-recall.md`    | Current facts recalled under budget, cited    |
 
 Recipe rules:
 
@@ -78,57 +70,22 @@ Recipe rules:
 
 ## Command Overview
 
-| Category     | Commands                                                                                                   | Description                                                              |
-| ------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Search**   | `search`, `vsearch`, `query`, `ask`                                                                        | Find documents by keywords, meaning, or get AI answers                   |
-| **Links**    | `links`, `backlinks`, `similar`, `graph`, `graph query`                                                    | Navigate document relationships and typed connections                    |
-| **Retrieve** | `get`, `multi-get`, `ls`                                                                                   | Fetch document content by URI or ID                                      |
-| **Index**    | `setup`, `profile check/show/diff/apply`, `init`, `collection add/list/remove`, `index`, `update`, `embed` | Reproduce profile intent, prove retrieval, then maintain the index       |
-| **Tags**     | `tags`, `tags add`, `tags rm`                                                                              | Organize and filter documents                                            |
-| **Context**  | `context add/list/rm/check/build/verify/watch/watches/reverify/unwatch`                                    | Configure guidance or compile, verify, and watch saved evidence Capsules |
-| **Changes**  | `changes`, `diff`, `impact`                                                                                | Inspect bounded metadata history and dependency impact                   |
-| **Traces**   | `trace list/show/label/export/replay/delete/purge`                                                         | Manage and replay private retrieval receipts                             |
-| **Models**   | `models list/use/pull/clear/path`                                                                          | Manage local AI models                                                   |
-| **Serve**    | `serve`, `daemon`                                                                                          | One resident Web/headless gateway and watcher                            |
-| **Publish**  | `publish export`                                                                                           | Export gno.sh publish artifacts                                          |
-| **Memory**   | `remember`, `recall`                                                                                       | Fact-granular agent memory with explicit scopes and supersession         |
-| **MCP**      | `mcp`, `mcp install/uninstall/status`                                                                      | AI assistant integration                                                 |
-| **Skill**    | `skill install/uninstall/show/paths`                                                                       | Install skill for AI agents                                              |
-| **Admin**    | `peek`, `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`                                        | Snapshot, maintenance, and diagnostics                                   |
-
-### Publishing with local images
-
-`gno publish export` bundles resolved local PNG, JPEG, GIF, WebP, and AVIF
-references, deduplicates identical bytes, preserves public HTTPS images, and
-enforces the 100 MiB exact serialized artifact limit. Review `assetSummary`
-in `--json` output for unresolved or unsupported references. Public and
-secret-link readers serve authorized hosted URLs; encrypted exports keep image
-bytes inside ciphertext and create scoped Blob URLs only after browser
-decryption. Hosted invite-only bundled-image delivery is currently
-fail-closed, so use an asset-free invite, secret link, or encrypted share.
-
-## Snapshot, serve, and open
-
-For document/collection counts, backlog, whether serve is up, or recent files,
-run one cheap snapshot. Do not compose `gno status` + `gno ls` + `gno changes`.
-For chunk totals or index health, use `gno status --json` / `gno_status`; peek
-does not report total chunks. Status also covers activation and onboarding.
-
-```bash
-gno peek --json
-```
-
-MCP equivalent: `gno_peek` (same `peek@1.0` payload; no arguments). One
-snapshot, three surfaces: CLI, MCP, this skill.
-
-Open without fetching content via `gno get`:
-
-- **Web UI**: `{serveUrl}/doc?uri=<encodeURIComponent(uri)>` (optional
-  `#anchor`). Take `serveUrl` from peek `serve.url` when `serve.running` is
-  true.
-- **Source file**: peek `recent[].absPath`, or search `--json`
-  `results[].source.absPath`. If `absPath` is absent, show the URI tail and
-  do not offer file-open for that row.
+| Category     | Commands                                                                | Description                                                              |
+| ------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **Search**   | `search`, `vsearch`, `query`, `ask`                                     | Find documents by keywords, meaning, or get AI answers                   |
+| **Links**    | `links`, `backlinks`, `similar`, `graph`, `graph query`                 | Navigate document relationships and typed connections                    |
+| **Retrieve** | `get`, `multi-get`, `ls`                                                | Fetch document content by URI or ID                                      |
+| **Index**    | `setup`, `init`, `collection add/list/remove`, `index`, `update`, `embed` | Prove first retrieval, then maintain the document index                 |
+| **Tags**     | `tags`, `tags add`, `tags rm`                                           | Organize and filter documents                                            |
+| **Context**  | `context add/list/rm/check/build/verify/watch/watches/reverify/unwatch` | Configure guidance or compile, verify, and watch saved evidence Capsules |
+| **Changes**  | `changes`, `diff`, `impact`                                             | Inspect bounded metadata history and dependency impact                   |
+| **Traces**   | `trace list/show/label/export/replay/delete/purge`                      | Manage and replay private retrieval receipts                             |
+| **Models**   | `models list/use/pull/clear/path`                                       | Manage local AI models                                                   |
+| **Serve**    | `serve`, `daemon`                                                       | One resident Web/headless gateway and watcher                            |
+| **Publish**  | `publish export`                                                        | Export gno.sh publish artifacts                                          |
+| **MCP**      | `mcp`, `mcp install/uninstall/status`                                   | AI assistant integration                                                 |
+| **Skill**    | `skill install/uninstall/show/paths`                                    | Install skill for AI agents                                              |
+| **Admin**    | `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`             | Maintenance and diagnostics                                              |
 
 ## Search Modes
 
@@ -160,28 +117,13 @@ Open without fetching content via `gno get`:
 --line-numbers        Include line numbers
 --project-root <path> Trusted local root; repeatable and replaces cwd affinity
 --no-project-affinity Disable trusted local project-aware ranking
---explain            Include retrieval scoring details
 ```
 
-CLI searches use explicit `--project-root`, the nearest valid compiled project
-profile, then the current repository/worktree, in that precedence order.
+CLI searches use the current repository/worktree as a soft signal by default.
 A matching collection can receive at most `+0.03`; roots never stack, all
 auxiliary signals share `±0.08`, and collection/tag/date/exclude/egress filters
 stay hard. Use `--project-root` for explicit trusted roots or
 `--no-project-affinity` to disable it.
-
-Profile affinity defaults are request-local. `gno profile apply` never
-overwrites the user's global `projectAffinity` default, so one repository
-cannot change another repository's fallback. Explain/diagnose identify this
-trusted source as `project_profile`; contexts, content types, source metadata,
-and document fields never become project identity.
-
-Configured `contentTypes[].searchBoost` is a separate local ranking signal.
-`1` is neutral; `0.5..2` maps to a bounded `-0.05..+0.05` contribution, and
-all auxiliary signals share `±0.08`. It cannot create candidates or bypass hard
-filters. Use `gno query --explain`, `gno ask --explain`, or
-`gno query diagnose` when the ranking effect matters; normal output omits the
-boost receipt.
 
 Do not treat MCP/SDK/REST `projectHints` as paths. They are opaque, untrusted,
 limited to 16, never trigger filesystem probing, and currently produce zero
@@ -230,32 +172,7 @@ gno get gno://work/report.md --json
 gno multi-get gno://work/doc1.md gno://work/doc2.md
 ```
 
-**Editable vs read-only**: `gno get --json` returns a `capabilities` field showing whether a document is editable at its source. Markdown and plain text files are editable in place. Converted documents (PDF, DOCX, XLSX) and logical records from JSONL, mail, calendar, transcript, or browser exports are read-only -- edit/regenerate the source export or create a new markdown note instead of overwriting GNO's virtual record.
-
-**Export records**: search/get JSON may include a `record` object containing an
-exact bounded source locator, people/dates, thread/event/session identity,
-attachment inventory, and cue/message/event anchors. `source.relPath` is the
-real export file; `record.adapter` identifies the exact adapter version and
-configuration fingerprint. Use the result's unique `uri` or `docid` with
-`gno get`. If update/index reports a partial export snapshot, valid siblings
-were indexed but unseen old records were intentionally preserved; regenerate
-the export and rerun the command.
-
-| Export source                | Activation                                              | Logical record                         | Important boundary                                                                                 |
-| ---------------------------- | ------------------------------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| JSONL/NDJSON                 | Automatic; optional `recordAdapters.jsonl.fieldMapping` | One object per line                    | Configure/map an ID for update-in-place identity; content-derived fallback edits become remove+add |
-| EML/MBOX                     | Automatic                                               | One message                            | MIME/body bounded; attachments inventoried, never opened or indexed                                |
-| ICS                          | Automatic                                               | One event/exception                    | Timezone normalized; recurrence anchors capped at 64                                               |
-| VTT/SRT                      | Automatic                                               | One cue/segment                        | Speaker and timestamp anchors retained                                                             |
-| Generic JSON/text transcript | Explicit `recordAdapters.transcript.format`             | One segment/record                     | Never guessed from generic JSON/text                                                               |
-| `.browser-export`            | Explicit export file                                    | One bookmark/history/reading-list item | Live profiles/databases/cookies rejected; URLs never fetched                                       |
-
-Shared defaults: 100 MiB/container, 2,000,000 canonical characters/record,
-100,000 metadata characters/record, 50,000,000 characters or 100,000
-records/snapshot, 1,000 retained failures, and a 60-second adapter deadline.
-Only complete authoritative snapshots tombstone disappeared records. No export
-adapter authenticates to a live account, fetches remote content, executes
-embedded content, or unpacks attachments/archives.
+**Editable vs read-only**: `gno get --json` returns a `capabilities` field showing whether a document is editable at its source. Markdown and plain text files are editable in place. Converted documents (PDF, DOCX, XLSX) are read-only -- to edit their content, create a new markdown note instead of overwriting the binary source.
 
 ## Search Then Get (common pipeline)
 
@@ -307,56 +224,6 @@ Treat replay as evidence for a human promotion decision. It always reports
 `applied: false`; never claim that replay changed boosts, prompts, models,
 configuration, traces, or source files.
 
-## Collection Egress Boundaries
-
-Before any non-loopback serving, remote model call, network export, or publish
-handoff, inspect the participating collections instead of inferring permission
-from authentication:
-
-```bash
-gno collection policy get <collection>
-gno collection policy check --action <action> \
-  --destination <local_process|loopback|lan|remote> \
-  --content-class <class> -c <collection> --explain-egress
-```
-
-Absent and migrated policies are `local_only`. Mixed evidence and derived
-artifacts inherit the most restrictive source policy. Do not silently omit a
-restricted collection; use explicit partial mode only when the user asks for
-it, then report every omitted collection and reason.
-
-Relaxing to `lan` or `remote` is a visible user-authorized write. Read the
-current revision with `get`, then use
-`gno collection policy set <collection> <policy> --confirm-relaxation <revision>`.
-Never invent or reuse a revision. Tightening to `local_only` needs no
-confirmation and invalidates active sessions, streams, and queued work.
-
-Bearer authentication, MCP write enablement, and collection policy are
-independent gates. `EGRESS_DENIED` is not permission to retry through another
-surface. Audit output is local and content-free via
-`gno egress-audit list|show|status`; deletion/purge must be explicit. A local
-policy change cannot retract data already uploaded—tell the user to remove it
-at the remote service. For gno.sh, supported private links can be revoked or
-expired in Studio; public-space deletion is not yet self-service, so request
-takedown. Encrypted gno.sh shares are client-encrypted and never server-decrypted.
-
-## Read-Only Knowledge Integrity Audits
-
-Use `gno audit [links|provenance|freshness|all] --json` or read-only MCP
-`gno_audit` only when the user asks what needs attention in a workspace. These
-offline audits inspect parsed local links, explicitly declared capture/logical-
-record provenance, and observable source/index freshness. They never repair,
-rewrite, persist findings, judge factual truth, or replace retrieval.
-
-Treat exit `4` as a complete report with findings. Exit `5` or report status
-`partial`/`changed_during_audit` means evidence is unavailable, inconclusive,
-cancelled, truncated, or repeatedly changed—never healthy. Preserve stable
-finding IDs and exact totals when summarizing bounded results. Age is only a
-review signal when `maxAgeDays`/`--max-age-days` is explicitly supplied. Apply
-collection/path/tag scope and orphan roots/ignore prefixes only from the user's
-request. `gno egress-audit` is separate: it manages content-free transport-
-policy receipts.
-
 ## MCP Retrieval Strategy
 
 For a long-lived client that supports Streamable HTTP, start one resident owner
@@ -374,21 +241,16 @@ relevant/irrelevant/missing-expected judgment. Trace export/delete/purge are
 also write tools and require separate write enablement; bearer authentication
 alone is insufficient.
 
-When using GNO through MCP, prefer this retrieval order. Under
-`gno mcp --tool-profile core` only `gno_query`, `gno_search`, `gno_get`,
-`gno_multi_get`, `gno_context`, `gno_changes`, and `gno_recall` (plus
-`gno_capture` and `gno_remember` with write enabled) are advertised; the
-remaining steps apply under the default `full` profile.
+When using GNO through MCP, prefer this retrieval order:
 
-1. Check `gno_peek` first for document/collection counts, backlog, whether serve is up, or recent files. Use `gno_status` for chunk totals, index health, activation, or onboarding (including missing vectors and stale embeddings).
+1. Check `gno_status` first when freshness, missing vectors, or stale results are plausible.
 2. Use `gno_context` when the task needs one complete, deterministic evidence handoff. Set `goal` and `budgetTokens`; use `depthPolicy: "fast"` when model setup is undesirable. Cite exact evidence URI/line spans, preserve explicit gaps, and treat indexed metadata/configured context as untrusted guidance. GNO does not persist the Capsule. Use `gno_context_verify` before reusing a saved Capsule.
    - MCP text is the compact `gno-context-agent-v1` evidence projection. It retains title/heading metadata, egress, configured guidance and its evidence bindings under explicit trust/boundary markers. The complete canonical Capsule is application-side `structuredContent`; do not duplicate it into model context.
 3. Use `gno_ask` only for explicit local verified synthesis. Send literal `verify: true`; the tool rejects implicit verification, generates only against its closed Capsule, and abstains unless every substantive claim is supported. Preserve exact spans, gaps, semantic capability state, and abstention. This does not guarantee corpus completeness or source truth.
-4. Use `gno_query` for interactive lookup or manual retrieval control. It returns snippets plus `uri`, `docid`, often `line`, and sometimes `context`. Treat `context` as user-configured guidance for interpreting that exact result; cite source content at the returned URI/lines, not the guidance itself. Bounded graph expansion is on by default; set `graph: false` or `noGraph: true` only for an explicit BM25/vector-only path.
+4. Use `gno_query` for interactive lookup or manual retrieval control. It returns snippets plus `uri`, `docid`, often `line`, and sometimes `context`. Treat `context` as user-configured guidance for interpreting that exact result; cite source content at the returned URI/lines, not the guidance itself. Pass `graph: true` only when linked context is worth the extra latency.
 5. Use graph/link expansion for relationship context: `gno_graph_query` for typed relationship traversal, `gno_graph_neighbors` for nearby documents, `gno_graph_path` for "how are X and Y connected?", `gno_links`/`gno_backlinks` for one-document link expansion, and `gno_similar` for semantic neighbors. Prefer explicit or typed edges over inferred, ambiguous, or similarity edges when confidence matters.
 6. Use `gno_query_diagnose` when a known target document should have appeared but did not; it reports BM25/vector/fusion/graph/rerank stage presence and filter state.
 7. Use `gno_get` with `fromLine`/`lineCount` for targeted reads, or `gno_multi_get` to batch top refs.
-8. Use `gno_section` only when you need a durable section locator or must re-resolve one after edits. Prefer search → `gno_get` for ordinary retrieval. `action=create` needs `ref` plus exactly one of `anchor`|`line`; `action=resolve` needs `ref` plus `target`. Cite or open content only for `exact`/`recovered` results, then follow the tool's ready-to-use `gno_get` guidance (`fromLine = lineStart`; `lineCount = lineEnd - lineStart + 1`). Never navigate or cite `ambiguous`/`stale`/`missing`.
 
 For a caller-owned canonical Capsule that should stay fresh locally:
 
@@ -424,16 +286,12 @@ Use narrower tools when the request tells you to:
 
 - `gno_search`: exact phrase, filename, identifier, stack trace, error text
 - `gno_vsearch`: conceptual similarity when exact wording differs
-- `gno_peek`: document/collection counts, backlog, serve liveness, recent files (cheap snapshot)
-- `gno_status`: chunk totals, index health, activation/onboarding; stale results, missing embeddings, vector unavailable
-- `gno_audit`: explicit offline workspace-integrity review; report findings and
-  partial evidence, never mutate or imply repairs
+- `gno_status`: stale results, missing embeddings, vector unavailable
 - `gno_graph`: graph report/stats, hubs, isolates, unresolved links, edge confidence/audit, communities, unfamiliar corpus overview
 - `gno_graph_query`: bounded typed-edge traversal from a known document
 - `gno_graph_neighbors`: relationship/corpus-navigation questions around a known document
 - `gno_graph_path`: "how are X and Y connected?" questions
 - `gno_query_diagnose`: why a named target did or did not surface for a query
-- `gno_section`: create/resolve a durable section target when citation identity matters after edits; follow navigable citations with `gno_get`. Not the default retrieval path.
 
 For ambiguous terms, pass `intent` instead of bloating the query text. For typed retrieval, use `queryModes`: `term` for lexical anchors, `intent` for disambiguation, one `hyde` for a hypothetical answer/document.
 
@@ -549,56 +407,6 @@ MCP capture writes structured `source:` frontmatter, runs under the MCP write
 lock, syncs the file for FTS, and preserves legacy MCP fields (`docid`,
 `absPath`, `overwritten`, `serverInstanceId`) alongside the shared receipt. It
 does not auto-embed.
-
-For an explicit browser capture, use the local unpacked Chromium clipper with
-`gno serve`: the user selects visible top-frame text or Reader content, reviews
-the server-owned preview, chooses the destination/tags, and confirms the write.
-This is not an autonomous CLI/MCP browser tool. Never claim Chrome Web Store or
-Firefox support, history/cookie/session/background-tab/iframe access, raw HTML
-ingestion, paywall bypass, or remote source fetching. After capture, verify the
-receipt with `gno search` or `gno get`; use `gno index`/`gno embed` when semantic
-search must include the new note. Browser provenance fields are
-`extractionHash`, `finalBodyHash`, `clipIdentity`, and `previewDigest`—do not
-invent `sourceHash`.
-
-## Memory (remember/recall)
-
-Use `gno remember` / `gno recall` (MCP `gno_remember` / `gno_recall`) for one
-fact that may later change, not for documents (`gno capture`) or edits to
-existing notes. They work only on a collection with `memoryManaged: true`.
-
-- Explicit `--scope` is required on every call (repeatable, 1-8); there is no
-  implicit global scope.
-- `recall` returns current facts with `gno://` cites plus a content-free
-  receipt; pass it back as `remember --receipt` so recalled text is not
-  re-stored as a new fact.
-- `remember` without a decision returns candidates and writes nothing; decide
-  with `--add` or `--supersede <uri> --predecessor-hash <hash>` from recall.
-- Details, error codes, and the fence's paraphrase limit: `docs/MEMORY.md`,
-  [cli-reference.md](cli-reference.md), [mcp-reference.md](mcp-reference.md).
-
-## Reference-Safe Rename and Move
-
-When MCP writes are enabled and the user asks to rename or move an editable
-note, always use the operation-specific two-step tool. Never invent a digest or
-collapse preview and apply into one call.
-
-1. Call `gno_rename_note` or `gno_move_note` with `action: "preview"` and the
-   exact source/destination.
-2. Inspect `canApply`, `safety.blockingReasons`, and `examinedReferences`.
-   Stop and report ambiguous, malformed, unsupported, read-only, occupied,
-   cross-collection, or truncated plans.
-3. Only after explicit user approval, call the same tool with `action: "apply"`,
-   the preview's exact `schemaVersion` and `planDigest`, `confirmation: "apply"`,
-   and `confirm: true`.
-4. Treat `applied_with_sync_pending` as a committed filesystem refactor whose
-   index still needs `gno_sync` or `gno_index`; do not retry the file mutation.
-   For `stale_plan`, preview again instead of reusing the old digest.
-
-Supported wiki and Markdown destinations are rewritten in the same
-all-or-rollback filesystem transaction as the source move. Duplicate and
-create-folder do not retarget inbound references. Authentication alone never
-enables these MCP writes.
 
 ## Collection-specific embedding models
 

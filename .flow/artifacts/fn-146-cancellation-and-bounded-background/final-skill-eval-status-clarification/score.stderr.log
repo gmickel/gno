@@ -1,0 +1,107 @@
+
+[basic_keyword_search]
+  [PASS] uses_gno_search
+  [PASS] has_query
+  [PASS] not_query_or_vsearch
+  => 3/3 (100%)
+
+[semantic_search]
+  [PASS] uses_vsearch
+  [PASS] has_query
+  => 2/2 (100%)
+
+[best_quality_search]
+  [PASS] uses_query
+  [PASS] has_query
+  => 2/2 (100%)
+
+[search_no_results_retry]
+  [PASS] suggests_rephrase_or_thorough
+  [PASS] uses_thorough_flag
+  => 2/2 (100%)
+
+[collection_filtered_search]
+  [PASS] uses_collection_flag
+  [PASS] has_query
+  [PASS] uses_gno_search_or_query
+  => 3/3 (100%)
+
+[tag_filtered_search]
+  [PASS] uses_tags_any
+  [PASS] has_query
+  => 2/2 (100%)
+
+[get_document_by_uri]
+  [PASS] uses_gno_get
+  [PASS] has_uri
+  => 2/2 (100%)
+
+[get_document_lines]
+  [PASS] uses_gno_get
+  [PASS] has_from_flag
+  [PASS] has_line_count
+  => 3/3 (100%)
+
+[search_then_get_pipeline]
+  [PASS] has_search_step
+  [PASS] has_get_step
+  [PASS] uses_json_or_files
+  => 3/3 (100%)
+
+[index_new_folder]
+  [PASS] uses_verified_setup_or_complete_legacy_flow
+  [PASS] has_path
+  [PASS] has_name_flag
+  => 3/3 (100%)
+
+[ask_with_answer]
+  [PASS] uses_gno_ask
+  [PASS] has_answer_flag
+  [PASS] has_query
+  => 3/3 (100%)
+
+[find_backlinks]
+  [PASS] uses_backlinks
+  [PASS] has_ref
+  => 2/2 (100%)
+
+[find_similar_docs]
+  [PASS] uses_similar
+  [PASS] has_ref
+  [PASS] has_cross_collection
+  => 3/3 (100%)
+
+[check_status]
+  [PASS] uses_status
+  => 1/1 (100%)
+
+[json_output_for_scripting]
+  [PASS] uses_json_flag
+  [PASS] uses_search
+  [PASS] has_query
+  => 3/3 (100%)
+
+[date_filtered_search]
+  [PASS] uses_since_flag
+  [PASS] has_query
+  => 2/2 (100%)
+
+[exclude_filter]
+  [PASS] uses_exclude_flag
+  [PASS] has_query
+  => 2/2 (100%)
+
+[intent_disambiguation]
+  [PASS] uses_intent_flag
+  [PASS] has_query
+  => 2/2 (100%)
+
+[structured_query_mode]
+  [PASS] uses_query
+  [PASS] uses_query_mode_term
+  [PASS] uses_query_mode_hyde
+  => 3/3 (100%)
+
+[reindex_after_changes]
+  [PASS] uses_index_or_update
+  => 1/1 (100%)

@@ -1,3 +1,10 @@
+You are an AI coding assistant with access to the gno CLI tool for searching local documents. When given a task, produce the EXACT bash commands you would run. Each command in its own ```bash code block. Follow the skill instructions PRECISELY. Output ONLY bash commands. No explanations.
+
+---
+
+You have this CLI tool skill file. Follow it exactly:
+
+<skill>
 ---
 name: gno
 description: Search local documents, files, notes, and knowledge bases. Index directories, search with BM25/vector/hybrid, get AI answers with citations. Use when user wants to search files, find documents, query notes, look up information in local folders, index a directory, set up document search, build a knowledge base, needs RAG/semantic search, or wants to start a local web UI for their docs.
@@ -640,3 +647,9 @@ MCP-equivalent write tool:
 | Complete CLI reference (all commands, options, flags) | [cli-reference.md](cli-reference.md) |
 | MCP server setup and tools                            | [mcp-reference.md](mcp-reference.md) |
 | Usage examples and patterns                           | [examples.md](examples.md)           |
+
+</skill>
+
+Task: I need the best possible search results for 'authentication flow'. Quality matters more than speed.
+
+Produce the exact bash commands. Each in its own ```bash block.

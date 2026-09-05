@@ -1,0 +1,378 @@
+{
+  "harness": "/home/gordon/work/autoresearch-experiments/gno-skill/eval.py",
+  "harness_sha256": "a1f30d1be734e9aee46a4e868b57a691882acb6df48ebcf2d72b8c4b252a35da",
+  "skill_sha256": "b065b43ad65ab83aa4dc90421ad99e65a0ec93694c49f99ad66d61bed4a196d5",
+  "scenarios": [
+    "basic_keyword_search",
+    "semantic_search",
+    "best_quality_search",
+    "search_no_results_retry",
+    "collection_filtered_search",
+    "tag_filtered_search",
+    "get_document_by_uri",
+    "get_document_lines",
+    "search_then_get_pipeline",
+    "index_new_folder",
+    "ask_with_answer",
+    "find_backlinks",
+    "find_similar_docs",
+    "check_status",
+    "json_output_for_scripting",
+    "date_filtered_search",
+    "exclude_filter",
+    "intent_disambiguation",
+    "structured_query_mode",
+    "reindex_after_changes"
+  ],
+  "parser_selftests": "passed",
+  "model": "gpt-6-astra",
+  "reasoning_effort": "medium",
+  "transport": "native isolated agents, fork_turns none; prompt file read; inherited harness instructions/tools present; not standard Haiku transport",
+  "total_checks": 47,
+  "generationStartedAt": "2026-09-05T06:39:37.632384+00:00",
+  "priorPromptIdentity": "Original SYSTEM_PROMPT/scenarios/checks unchanged; skill block contains minimal truthful peek/status clarification",
+  "agent_prefix": "/root/native_package/clarification_case",
+  "freshResponses": 20,
+  "maxConcurrentChildren": 4,
+  "attemptsPerScenario": 1,
+  "prior_skill_sha256": "78d946003b7ab9ea306aead6784b316b9b6cbbd2572d41f4283a1645b1f4bf3a",
+  "experimentPriorSha256": "81b406b6d9678f45943eda70bc4f1d98841b4798a7d6d1cb93e86931866c3e9e",
+  "generationCompletedAt": "2026-09-05T06:43:34.069155+00:00",
+  "harness_main_rc": 0,
+  "passed": 47,
+  "score": 100.0,
+  "results": [
+    {
+      "scenario": "basic_keyword_search",
+      "agent": "/root/native_package/clarification_case00",
+      "response_sha256": "ac93735883d13b4f42e6787224619697d066c8a2987f19eaefe4c82741b4b8b8",
+      "checks": [
+        [
+          "uses_gno_search",
+          true
+        ],
+        [
+          "has_query",
+          true
+        ],
+        [
+          "not_query_or_vsearch",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "semantic_search",
+      "agent": "/root/native_package/clarification_case01",
+      "response_sha256": "b1ab93034b58b90ca758fadb80cdf0522c9ae904a5f5c1bf7d845b1339c7e9d3",
+      "checks": [
+        [
+          "uses_vsearch",
+          true
+        ],
+        [
+          "has_query",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "best_quality_search",
+      "agent": "/root/native_package/clarification_case02",
+      "response_sha256": "4443dc43f34cfc7ac6c36de1f56add3c2ca7dd3e4e51663b7f0464d2daff6305",
+      "checks": [
+        [
+          "uses_query",
+          true
+        ],
+        [
+          "has_query",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "search_no_results_retry",
+      "agent": "/root/native_package/clarification_case03",
+      "response_sha256": "2e89026accd5c7296bc8579a260b0743f091d8d3d99e741c9506fe479f57cbd7",
+      "checks": [
+        [
+          "suggests_rephrase_or_thorough",
+          true
+        ],
+        [
+          "uses_thorough_flag",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "collection_filtered_search",
+      "agent": "/root/native_package/clarification_case04",
+      "response_sha256": "2f23f099593b09038b34c8f102bfa8c226a16eb1c15653cd8585e76e19ead4a8",
+      "checks": [
+        [
+          "uses_collection_flag",
+          true
+        ],
+        [
+          "has_query",
+          true
+        ],
+        [
+          "uses_gno_search_or_query",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "tag_filtered_search",
+      "agent": "/root/native_package/clarification_case05",
+      "response_sha256": "2a68c5418e7f342df6f9b95865669a8856b7f226ecf02f902a813a3e1836bf78",
+      "checks": [
+        [
+          "uses_tags_any",
+          true
+        ],
+        [
+          "has_query",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "get_document_by_uri",
+      "agent": "/root/native_package/clarification_case06",
+      "response_sha256": "566b91e7b11e2e40d58e41f1e5529f6abb9bd064a70050db419065f9a63d1328",
+      "checks": [
+        [
+          "uses_gno_get",
+          true
+        ],
+        [
+          "has_uri",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "get_document_lines",
+      "agent": "/root/native_package/clarification_case07",
+      "response_sha256": "192d2eb23f6c6746d1442ba7237f77e3a2c3399c7d19cc706a8afdfce176e679",
+      "checks": [
+        [
+          "uses_gno_get",
+          true
+        ],
+        [
+          "has_from_flag",
+          true
+        ],
+        [
+          "has_line_count",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "search_then_get_pipeline",
+      "agent": "/root/native_package/clarification_case08",
+      "response_sha256": "46be978a34f9358b48767661f1f5d42cd3e696e3f38095acd15fd74c659b08ce",
+      "checks": [
+        [
+          "has_search_step",
+          true
+        ],
+        [
+          "has_get_step",
+          true
+        ],
+        [
+          "uses_json_or_files",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "index_new_folder",
+      "agent": "/root/native_package/clarification_case09",
+      "response_sha256": "4d818e5309126437b5b141177ddc5375bbdaf37b95cb7d4c530556b303fa4a3a",
+      "checks": [
+        [
+          "uses_verified_setup_or_complete_legacy_flow",
+          true
+        ],
+        [
+          "has_path",
+          true
+        ],
+        [
+          "has_name_flag",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "ask_with_answer",
+      "agent": "/root/native_package/clarification_case10",
+      "response_sha256": "d96e7d975ee2af3b7cab72e88bfdf348db121fa1182a8fd7cfb1e60eea51990e",
+      "checks": [
+        [
+          "uses_gno_ask",
+          true
+        ],
+        [
+          "has_answer_flag",
+          true
+        ],
+        [
+          "has_query",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "find_backlinks",
+      "agent": "/root/native_package/clarification_case11",
+      "response_sha256": "a7ed658eba0b138d3cb6ea6b8f40754c879d14345337b0baf34ab14f27853b3c",
+      "checks": [
+        [
+          "uses_backlinks",
+          true
+        ],
+        [
+          "has_ref",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "find_similar_docs",
+      "agent": "/root/native_package/clarification_case12",
+      "response_sha256": "b06a9cfa33f833b44133ba1173fdb00a2fb9a466ccd4b21a7fccc59207cd6c45",
+      "checks": [
+        [
+          "uses_similar",
+          true
+        ],
+        [
+          "has_ref",
+          true
+        ],
+        [
+          "has_cross_collection",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "check_status",
+      "agent": "/root/native_package/clarification_case13",
+      "response_sha256": "406cbfc82687cc82275db489ef0807b0a8c91ae87a7a3e68ad13206bce8b2b09",
+      "checks": [
+        [
+          "uses_status",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "json_output_for_scripting",
+      "agent": "/root/native_package/clarification_case14",
+      "response_sha256": "e431c25358871ae3fcfff392518996f1525be5082b20cb4476ff3314d8e9857a",
+      "checks": [
+        [
+          "uses_json_flag",
+          true
+        ],
+        [
+          "uses_search",
+          true
+        ],
+        [
+          "has_query",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "date_filtered_search",
+      "agent": "/root/native_package/clarification_case15",
+      "response_sha256": "c3d4c0c27c0e19eb6991145523e4e3665e9435330699c8701370782908841197",
+      "checks": [
+        [
+          "uses_since_flag",
+          true
+        ],
+        [
+          "has_query",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "exclude_filter",
+      "agent": "/root/native_package/clarification_case16",
+      "response_sha256": "0e9d876734f19b1dc63cd00f0a1a7caf18029581dd5dc8f9575120d52eb6b7a3",
+      "checks": [
+        [
+          "uses_exclude_flag",
+          true
+        ],
+        [
+          "has_query",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "intent_disambiguation",
+      "agent": "/root/native_package/clarification_case17",
+      "response_sha256": "213983be7b3b470378bd8f2f5c9d82ca041fb69be3d8f2ffcf17d5d5d0ab7754",
+      "checks": [
+        [
+          "uses_intent_flag",
+          true
+        ],
+        [
+          "has_query",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "structured_query_mode",
+      "agent": "/root/native_package/clarification_case18",
+      "response_sha256": "7963d63092075d046bb74011ad902f8482bdbd432a88c2ddb1dbfd43a1feaa08",
+      "checks": [
+        [
+          "uses_query",
+          true
+        ],
+        [
+          "uses_query_mode_term",
+          true
+        ],
+        [
+          "uses_query_mode_hyde",
+          true
+        ]
+      ]
+    },
+    {
+      "scenario": "reindex_after_changes",
+      "agent": "/root/native_package/clarification_case19",
+      "response_sha256": "6aa75a6496782fba23aa837db8cbec71ef1bb5f217c6c290e9c24ccbec63a12e",
+      "checks": [
+        [
+          "uses_index_or_update",
+          true
+        ]
+      ]
+    }
+  ],
+  "attempts_per_scenario": 1,
+  "production_command_execution": false,
+  "response_capture": "Native final response text transcribed verbatim with terminal newline.",
+  "source_current_matches_snapshot": true
+}

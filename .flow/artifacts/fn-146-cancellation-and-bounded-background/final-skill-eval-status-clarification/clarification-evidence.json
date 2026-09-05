@@ -1,0 +1,26 @@
+{
+  "peekSource": {
+    "path": "src/core/peek.ts",
+    "sha256": "0f0ec4a5fc9be8e8daf1c2ced815c13c81474b27dc2ea3cfb5c48762f49689ce",
+    "observed": "PeekCounts declares only documents and collections; payload assigns those two fields, no totalChunks."
+  },
+  "statusSource": {
+    "path": "src/cli/commands/status.ts",
+    "sha256": "6a337fd989ca7043b8d7d5319c8945ff96abbb6a539756998928464aef25c08e",
+    "observed": "JSON returns collections[].chunkCount, totalChunks, totalDocuments and healthy."
+  },
+  "mcpStatusSource": {
+    "path": "src/mcp/tools/status.ts",
+    "sha256": "75550b6425329789956f1eb5667fe371ee876d64fd31ec23254b053b8905eba8",
+    "observed": "Status formats health and collection/total chunk counts."
+  },
+  "experimentSync": {
+    "path": "/home/gordon/work/autoresearch-experiments/gno-skill/skill.md",
+    "priorClean": true,
+    "priorSha256": "81b406b6d9678f45943eda70bc4f1d98841b4798a7d6d1cb93e86931866c3e9e",
+    "afterSha256": "b065b43ad65ab83aa4dc90421ad99e65a0ec93694c49f99ad66d61bed4a196d5",
+    "priorSnapshot": "experiment-prior.skill.md",
+    "globalInstall": false
+  },
+  "format": "bunx oxfmt --check assets/skill/SKILL.md:pass"
+}
