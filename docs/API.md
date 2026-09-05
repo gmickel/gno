@@ -25,6 +25,10 @@ evaluation abort; noncooperative embedding/ranking retains native capacity until
 settlement or controlled child exit. Cancellation does not replay inference.
 The existing unavailable/error response schema is unchanged.
 
+Accepted asynchronous jobs own their lifetime after the job ID has been returned;
+normal client disconnect does not cancel them. Explicit job cancellation or resident
+shutdown stops subsequent work and suppresses late publication.
+
 ## Overview
 
 The GNO REST API provides programmatic access to your local knowledge index. Use it to:

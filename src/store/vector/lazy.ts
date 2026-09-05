@@ -59,6 +59,12 @@ export async function createLazyVectorIndex(
     async upsertVectors(rows) {
       return (await get()).upsertVectors(rows);
     },
+    async upsertVectorsChecked(rows, checkpoint) {
+      const port = await get();
+      if (!port.upsertVectorsChecked)
+        throw new Error("Atomic vector checkpoint unavailable");
+      return port.upsertVectorsChecked(rows, checkpoint);
+    },
     async deleteVectorsForMirror(hash) {
       return (await get()).deleteVectorsForMirror(hash);
     },

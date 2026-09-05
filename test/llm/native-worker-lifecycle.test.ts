@@ -4,6 +4,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { withBackgroundInference } from "../../src/llm/inference-scope";
 import { NativeWorkerClient } from "../../src/llm/native-worker/client";
 import {
   frameNativeMessage,
@@ -75,7 +76,7 @@ process.on('message',async message=>{
  if(request.text==='hang'){hanging=true;process.send({version:1,generation:request.generation,requestId:request.requestId,executionStarted:true});return;}
  if(request.text==='malformed'){process.send('broken');return;}
  await Bun.sleep(5);
- const value=request.op==='embedBatch'?request.texts.map(t=>[t.length]):[request.text.length];
+ const value=request.op==='init'?{structuredOutput:'none'}:request.op==='dispose'?null:request.op==='embedBatch'?request.texts.map(t=>[t.length]):[request.text.length];
  for(const frame of frameNativeMessage({version:1,generation:request.generation,requestId:request.requestId,op:request.op,result:{ok:true,value}}))process.send(frame);
 });
 setTimeout(()=>process.send('ready'),20);
@@ -130,6 +131,120 @@ test("real child startup is shared, queue bounded, batches ordered and stdout is
       texts: ["β", "hello", ""],
     })
   ).toEqual({ ok: true, value: [[1], [5], [0]] });
+});
+
+test("shared native queue serves foreground first and background after at most eight completions", async () => {
+  const owner = client();
+  const order: string[] = [];
+  const call = (name: string) =>
+    owner
+      .request({ op: "embed", modelId: "embed", text: name })
+      .then((result) => {
+        expect(result.ok).toBe(true);
+        order.push(name);
+      });
+  const background = Array.from({ length: 3 }, (_, i) =>
+    withBackgroundInference(() => call(`b${i}`))
+  );
+  const foreground = Array.from({ length: 20 }, (_, i) => call(`f${i}`));
+  await Promise.all([...background, ...foreground]);
+  expect(order).toEqual([
+    ...Array.from({ length: 8 }, (_, i) => `f${i}`),
+    "b0",
+    ...Array.from({ length: 8 }, (_, i) => `f${i + 8}`),
+    "b1",
+    ...Array.from({ length: 4 }, (_, i) => `f${i + 16}`),
+    "b2",
+  ]);
+  expect(owner.currentGeneration).toBe(1);
+});
+
+test("foreground metadata earns no fairness credit and background metadata cannot pay inference debt", async () => {
+  const owner = client();
+  const order: string[] = [];
+  const inference = (name: string) =>
+    owner
+      .request({ op: "embed", modelId: "embed", text: name })
+      .then((result) => {
+        expect(result.ok).toBe(true);
+        order.push(name);
+      });
+  const metadata = (op: "init" | "dispose", name: string) =>
+    owner.request({ op, modelId: "embed" }).then((result) => {
+      expect(result.ok).toBe(true);
+      order.push(name);
+    });
+  const background = [
+    withBackgroundInference(() => metadata("init", "b-init")),
+    withBackgroundInference(() => metadata("dispose", "b-dispose")),
+    withBackgroundInference(() => inference("b-inference")),
+  ];
+  const foreground = [
+    metadata("init", "f-init"),
+    metadata("dispose", "f-dispose"),
+    ...Array.from({ length: 9 }, (_, i) => inference(`f${i}`)),
+  ];
+  await Promise.all([...background, ...foreground]);
+  expect(order).toEqual([
+    "f-init",
+    "f-dispose",
+    ...Array.from({ length: 8 }, (_, i) => `f${i}`),
+    "b-init",
+    "b-dispose",
+    "b-inference",
+    "f8",
+  ]);
+});
+
+test("earned background inference service survives an asynchronous preparation gap", async () => {
+  const owner = client();
+  const call = (text: string) =>
+    owner.request({ op: "embed", modelId: "embed", text });
+  const metadata = withBackgroundInference(() =>
+    owner.request({ op: "init", modelId: "embed" })
+  );
+  const foreground = Array.from({ length: 8 }, (_, i) => call(`f${i}`));
+  expect((await metadata).ok).toBe(true);
+  await Promise.all(foreground);
+  // No background request is queued while its caller prepares the partition.
+  expect((await call("during preparation")).ok).toBe(true);
+  const order: string[] = [];
+  const active = call("active").then(() => order.push("active"));
+  const next = call("next foreground").then(() =>
+    order.push("next foreground")
+  );
+  const batch = withBackgroundInference(() => call("background batch")).then(
+    () => order.push("background batch")
+  );
+  await Promise.all([active, next, batch]);
+  expect(order).toEqual(["active", "background batch", "next foreground"]);
+});
+
+test("queued cancellation before child readiness consumes no background fairness credit", async () => {
+  const owner = client();
+  const order: string[] = [];
+  const controller = new AbortController();
+  const canceled = owner.request(
+    { op: "embed", modelId: "embed", text: "cancel" },
+    undefined,
+    { signal: controller.signal }
+  );
+  const call = (text: string) =>
+    owner.request({ op: "embed", modelId: "embed", text }).then((result) => {
+      expect(result.ok).toBe(true);
+      order.push(text);
+    });
+  const background = withBackgroundInference(() => call("background"));
+  const foreground = Array.from({ length: 9 }, (_, i) => call(`f${i}`));
+  await Bun.sleep(1);
+  controller.abort();
+  expect((await canceled).ok).toBe(false);
+  await Promise.all([background, ...foreground]);
+  expect(order).toEqual([
+    ...Array.from({ length: 8 }, (_, i) => `f${i}`),
+    "background",
+    "f8",
+  ]);
 });
 
 test.each(["crash", "malformed", "hang"])(

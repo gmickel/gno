@@ -161,16 +161,33 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   }
 
   async init(options?: NativeEvaluationOptions): Promise<LlmResult<void>> {
-    checkEvaluation(options);
-    const contexts = await this.getContexts(options);
-    checkEvaluation(options);
-    if (!contexts.ok) {
-      return contexts;
+    const lease = this.manager.acquireLease(this.modelUri, false);
+    try {
+      checkEvaluation(options);
+      const contexts = await this.getContexts(options);
+      checkEvaluation(options);
+      if (!contexts.ok) {
+        return contexts;
+      }
+      return { ok: true, value: undefined };
+    } finally {
+      lease.release();
     }
-    return { ok: true, value: undefined };
   }
 
   async embed(
+    text: string,
+    options?: NativeEvaluationOptions
+  ): Promise<LlmResult<number[]>> {
+    const lease = this.manager.acquireLease(this.modelUri);
+    try {
+      return await this.embedLeased(text, options);
+    } finally {
+      lease.release();
+    }
+  }
+
+  private async embedLeased(
     text: string,
     options?: NativeEvaluationOptions
   ): Promise<LlmResult<number[]>> {
@@ -205,6 +222,18 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   }
 
   async embedBatch(
+    texts: string[],
+    options?: NativeEvaluationOptions
+  ): Promise<LlmResult<number[][]>> {
+    const lease = this.manager.acquireLease(this.modelUri);
+    try {
+      return await this.embedBatchLeased(texts, options);
+    } finally {
+      lease.release();
+    }
+  }
+
+  private async embedBatchLeased(
     texts: string[],
     options?: NativeEvaluationOptions
   ): Promise<LlmResult<number[][]>> {
@@ -315,21 +344,26 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
   }
 
   async dispose(): Promise<void> {
-    this.lifecycleVersion += 1;
-    this.contextsPromise = null;
-    this.llamaModel = null;
-    this.dims = null;
-    this.warnedSingleTruncation = false;
-    this.warnedBatchTruncation = false;
-    const workers = this.workers;
-    this.workers = [];
+    const lease = this.manager.acquireLease(this.modelUri, false);
+    try {
+      this.lifecycleVersion += 1;
+      this.contextsPromise = null;
+      this.llamaModel = null;
+      this.dims = null;
+      this.warnedSingleTruncation = false;
+      this.warnedBatchTruncation = false;
+      const workers = this.workers;
+      this.workers = [];
 
-    for (const worker of workers) {
-      try {
-        await worker.context.dispose();
-      } catch {
-        // Ignore disposal errors
+      for (const worker of workers) {
+        try {
+          await worker.context.dispose();
+        } catch {
+          // Ignore disposal errors
+        }
       }
+    } finally {
+      lease.release();
     }
   }
 

@@ -100,6 +100,11 @@ export interface VectorIndexPort {
 
   /** Upsert vectors into storage and vec index */
   upsertVectors(rows: VectorRow[]): Promise<StoreResult<void>>;
+  /** Internal checkpoint validation inside the storage transaction; returns committed rows. */
+  upsertVectorsChecked?(
+    rows: VectorRow[],
+    checkpoint: (rows: VectorRow[]) => VectorRow[]
+  ): Promise<StoreResult<number>>;
 
   /** Delete all vectors for a mirror hash (for this model) */
   deleteVectorsForMirror(mirrorHash: string): Promise<StoreResult<void>>;

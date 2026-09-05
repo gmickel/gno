@@ -300,7 +300,6 @@ export async function startResidentRuntime(
     getEmbedPort: () => ctxHolder.current.embedPort,
     getVectorIndex: () => ctxHolder.current.vectorIndex,
     getModelUri: () => getActivePreset(ctxHolder.config).embed,
-    acquireModelLease: () => modelManager.acquireLease(),
     onEmbedded: () => {
       generations.index += 1;
     },

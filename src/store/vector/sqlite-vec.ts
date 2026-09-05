@@ -169,6 +169,61 @@ export async function createVectorIndexPort(
   let vecDirty = false;
   let vecErrorLogged = false; // Rate-limit warning to once per run
 
+  function upsert(
+    rows: VectorRow[],
+    checkpoint?: (rows: VectorRow[]) => VectorRow[]
+  ): Promise<StoreResult<number>> {
+    // 1. Always store in content_vectors first (critical path)
+    try {
+      db.transaction(() => {
+        rows = checkpoint?.(rows) ?? rows;
+        for (const row of rows) {
+          upsertVectorStmt.run(
+            row.mirrorHash,
+            row.seq,
+            row.model,
+            row.embedFingerprint,
+            encodeEmbedding(row.embedding)
+          );
+        }
+      })();
+    } catch (e) {
+      return Promise.resolve(
+        err(
+          "VECTOR_WRITE_FAILED",
+          `Vector write failed: ${e instanceof Error ? e.message : String(e)}`,
+          e
+        )
+      );
+    }
+
+    // 2. Best-effort update vec0 (graceful degradation)
+    if (deleteVecChunkStmt && insertVecStmt) {
+      try {
+        db.transaction(() => {
+          for (const row of rows) {
+            const chunkId = `${row.mirrorHash}:${row.seq}`;
+            // sqlite-vec vec0 tables do not reliably support OR REPLACE semantics.
+            // Delete first, then insert the fresh vector row.
+            deleteVecChunkStmt.run(chunkId);
+            insertVecStmt.run(chunkId, encodeEmbedding(row.embedding));
+          }
+        })();
+      } catch (e) {
+        // Vec0 write failed - storage succeeded, search needs sync
+        vecDirty = true;
+        if (!vecErrorLogged) {
+          vecErrorLogged = true;
+          console.warn(
+            `[vec] Index write failed, will sync after embed: ${e instanceof Error ? e.message : String(e)}`
+          );
+        }
+      }
+    }
+
+    return Promise.resolve(ok(rows.length));
+  }
+
   return ok({
     searchAvailable,
     model,
@@ -182,56 +237,12 @@ export async function createVectorIndexPort(
       vecDirty = v;
     },
 
-    upsertVectors(rows: VectorRow[]): Promise<StoreResult<void>> {
-      // 1. Always store in content_vectors first (critical path)
-      try {
-        db.transaction(() => {
-          for (const row of rows) {
-            upsertVectorStmt.run(
-              row.mirrorHash,
-              row.seq,
-              row.model,
-              row.embedFingerprint,
-              encodeEmbedding(row.embedding)
-            );
-          }
-        })();
-      } catch (e) {
-        return Promise.resolve(
-          err(
-            "VECTOR_WRITE_FAILED",
-            `Vector write failed: ${e instanceof Error ? e.message : String(e)}`,
-            e
-          )
-        );
-      }
-
-      // 2. Best-effort update vec0 (graceful degradation)
-      if (deleteVecChunkStmt && insertVecStmt) {
-        try {
-          db.transaction(() => {
-            for (const row of rows) {
-              const chunkId = `${row.mirrorHash}:${row.seq}`;
-              // sqlite-vec vec0 tables do not reliably support OR REPLACE semantics.
-              // Delete first, then insert the fresh vector row.
-              deleteVecChunkStmt.run(chunkId);
-              insertVecStmt.run(chunkId, encodeEmbedding(row.embedding));
-            }
-          })();
-        } catch (e) {
-          // Vec0 write failed - storage succeeded, search needs sync
-          vecDirty = true;
-          if (!vecErrorLogged) {
-            vecErrorLogged = true;
-            console.warn(
-              `[vec] Index write failed, will sync after embed: ${e instanceof Error ? e.message : String(e)}`
-            );
-          }
-        }
-      }
-
-      return Promise.resolve(ok(undefined));
+    upsertVectors(rows) {
+      return upsert(rows).then((result) =>
+        result.ok ? ok(undefined) : result
+      );
     },
+    upsertVectorsChecked: upsert,
 
     deleteVectorsForMirror(mirrorHash: string): Promise<StoreResult<void>> {
       // 1. Always delete from content_vectors first

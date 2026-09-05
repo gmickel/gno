@@ -62,6 +62,10 @@ export class ModelManager {
   private readonly leaseDrainWaiters = new Set<() => void>();
   private readonly config: ModelConfig;
   private activeLeases = 0;
+  private broadLeases = 0;
+  private readonly modelLeases = new Map<string, number>();
+  private readonly expiresAt = new Map<string, number>();
+  private readonly retiringModels = new Map<string, Promise<void>>();
   private leaseAcquisitions = 0;
   private leaseReleases = 0;
   private loadAttempts = 0;
@@ -200,6 +204,9 @@ export class ModelManager {
     type: ModelType,
     signal?: AbortSignal
   ): Promise<LlmResult<LoadedModel>> {
+    const retiring = this.retiringModels.get(uri);
+    if (retiring)
+      return retiring.then(() => this.loadModel(modelPath, uri, type, signal));
     if (this.closing)
       return Promise.resolve({
         ok: false,
@@ -208,7 +215,6 @@ export class ModelManager {
     // Check cache first
     const cached = this.models.get(uri);
     if (cached) {
-      this.resetDisposalTimer(uri);
       return Promise.resolve({
         ok: true as const,
         value: {
@@ -306,6 +312,7 @@ export class ModelManager {
       };
 
       this.models.set(uri, cachedModel);
+      this.expiresAt.set(uri, Date.now() + this.config.warmModelTtl);
       this.setDisposalTimer(uri);
       this.loadSuccesses += 1;
 
@@ -363,19 +370,21 @@ export class ModelManager {
 
   getLoadedModel(uri: string): CachedModel | undefined {
     if (this.closing) return;
-    const model = this.models.get(uri);
-    if (model) {
-      this.resetDisposalTimer(uri);
-    }
-    return model;
+    return this.models.get(uri);
   }
 
-  acquireLease(): ModelLease {
+  acquireLease(uri?: string, activity = true): ModelLease {
     if (this.closing) throw new Error("Model manager is disposing");
     this.activeLeases += 1;
     this.leaseAcquisitions += 1;
-    for (const timer of this.disposalTimers.values()) clearTimeout(timer);
-    this.disposalTimers.clear();
+    if (uri === undefined) this.broadLeases += 1;
+    else this.modelLeases.set(uri, (this.modelLeases.get(uri) ?? 0) + 1);
+    for (const [key, timer] of this.disposalTimers) {
+      if (uri === undefined || key === uri) {
+        clearTimeout(timer);
+        this.disposalTimers.delete(key);
+      }
+    }
 
     let released = false;
     return {
@@ -384,10 +393,22 @@ export class ModelManager {
         released = true;
         this.activeLeases = Math.max(0, this.activeLeases - 1);
         this.leaseReleases += 1;
+        if (uri === undefined) this.broadLeases -= 1;
+        else {
+          const count = (this.modelLeases.get(uri) ?? 1) - 1;
+          if (count) this.modelLeases.set(uri, count);
+          else this.modelLeases.delete(uri);
+        }
+        for (const key of this.models.keys()) {
+          if (uri === undefined || key === uri) {
+            if (activity)
+              this.expiresAt.set(key, Date.now() + this.config.warmModelTtl);
+            this.resetDisposalTimer(key);
+          }
+        }
         if (this.activeLeases === 0) {
           for (const resolve of this.leaseDrainWaiters) resolve();
           this.leaseDrainWaiters.clear();
-          for (const uri of this.models.keys()) this.setDisposalTimer(uri);
         }
       },
     };
@@ -411,10 +432,9 @@ export class ModelManager {
   }
 
   async dispose(uri: string): Promise<void> {
-    if (this.activeLeases > 0) {
-      this.resetDisposalTimer(uri);
-      return;
-    }
+    if (this.broadLeases > 0 || this.modelLeases.has(uri)) return;
+    const retiring = this.retiringModels.get(uri);
+    if (retiring) return retiring;
     const cached = this.models.get(uri);
     if (!cached) {
       return;
@@ -429,7 +449,14 @@ export class ModelManager {
 
     // Remove ownership before yielding so acquisitions cannot see a retiring model.
     this.models.delete(uri);
-    const cleanup = cached.model.dispose().catch(() => {});
+    this.expiresAt.delete(uri);
+    const cleanup = cached.model
+      .dispose()
+      .catch(() => {})
+      .finally(() => {
+        this.retiringModels.delete(uri);
+      });
+    this.retiringModels.set(uri, cleanup);
     this.lateCleanup.add(cleanup);
     await cleanup;
     this.lateCleanup.delete(cleanup);
@@ -482,12 +509,15 @@ export class ModelManager {
   // Private
 
   private setDisposalTimer(uri: string): void {
-    if (this.activeLeases > 0) return;
-    const timer = setTimeout(() => {
-      this.dispose(uri).catch(() => {
-        // Ignore disposal errors in timer callback
-      });
-    }, this.config.warmModelTtl);
+    if (this.broadLeases > 0 || this.modelLeases.has(uri)) return;
+    const timer = setTimeout(
+      () => {
+        this.dispose(uri).catch(() => {
+          // Ignore disposal errors in timer callback
+        });
+      },
+      Math.max(0, (this.expiresAt.get(uri) ?? Date.now()) - Date.now())
+    );
 
     // Allow CLI processes to exit without waiting for TTL timer
     if (typeof timer.unref === "function") {

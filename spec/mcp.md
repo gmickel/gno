@@ -296,6 +296,17 @@ redacted statuses: 401 (authentication), 403 (peer/Host/Origin/write), 413
 POST body, 120 requests/minute per actual peer, 64 active requests, 16 queued
 requests, 32 sessions, and a five-minute idle session timeout.
 
+### Cancellation and accepted jobs
+
+MCP request cancellation notifications and transport disconnect propagate to the
+participating inference stages. Canceled calls cannot publish late results or
+successful fallback. Noncooperative native operations retain their model lease
+and shared queue capacity until actual settlement or controlled child exit; queued
+operations are never replayed on a replacement child. Accepted asynchronous jobs
+have an independent lifetime after job-ID delivery and survive normal initiating
+transport closure. Explicit job cancellation and resident shutdown stop their
+subsequent work. Existing error, job status and output schemas remain unchanged.
+
 ### Packaged gateway conformance
 
 `bun run test:package` installs the generated npm tarball into an isolated

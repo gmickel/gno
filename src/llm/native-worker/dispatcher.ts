@@ -31,8 +31,6 @@ export class NativeDispatcher {
     string,
     { path: string; identity: string; fingerprint?: string }
   >();
-  // The process owns expiry. Disable independent model timers while it is alive.
-  private readonly lease;
 
   constructor(private readonly config: NativeRuntimeConfig) {
     this.manager = new ModelManager(
@@ -46,7 +44,6 @@ export class NativeDispatcher {
       },
       true
     );
-    this.lease = this.manager.acquireLease();
   }
 
   private async port(model: ApprovedModel): Promise<Port> {
@@ -90,37 +87,46 @@ export class NativeDispatcher {
       (entry) => entry.id === request.modelId
     );
     if (!model) throw new NativeWorkerError("protocol");
-    const before = this.manager.getLifecycleStats().loadAttempts;
-    const result = await this.run(request, model, options).catch(
-      (cause: unknown) => ({
-        ok: false as const,
-        error: inferenceFailedError(model.modelUri, cause),
-      })
+    // Metadata protects in-flight initialization without renewing idle models.
+    const lease = this.manager.acquireLease(
+      model.modelUri,
+      !["init", "dispose"].includes(request.op)
     );
-    // Lazy loads and inference may outlive a file mutation. Never publish their
-    // completion under provenance that no longer matches the approved artifact.
-    if (
-      request.op !== "dispose" &&
-      ((await realpath(model.path)) !== model.path ||
-        this.files.get(model.modelUri)?.identity !==
-          (await fileIdentity(model.path)))
-    )
-      throw new NativeWorkerError("stale_generation");
-    return {
-      response: {
-        version: 1,
-        generation: request.generation,
-        requestId: request.requestId,
-        op: request.op,
-        lifecycle: this.manager.getLifecycleStats(),
-        result: result.ok
-          ? result
-          : { ok: false, error: wireError(result.error) },
-      },
-      activity:
-        this.manager.getLifecycleStats().loadAttempts !== before ||
-        !["init", "dispose"].includes(request.op),
-    };
+    try {
+      const before = this.manager.getLifecycleStats().loadAttempts;
+      const result = await this.run(request, model, options).catch(
+        (cause: unknown) => ({
+          ok: false as const,
+          error: inferenceFailedError(model.modelUri, cause),
+        })
+      );
+      // Lazy loads and inference may outlive a file mutation. Never publish their
+      // completion under provenance that no longer matches the approved artifact.
+      if (
+        request.op !== "dispose" &&
+        ((await realpath(model.path)) !== model.path ||
+          this.files.get(model.modelUri)?.identity !==
+            (await fileIdentity(model.path)))
+      )
+        throw new NativeWorkerError("stale_generation");
+      return {
+        response: {
+          version: 1,
+          generation: request.generation,
+          requestId: request.requestId,
+          op: request.op,
+          lifecycle: this.manager.getLifecycleStats(),
+          result: result.ok
+            ? result
+            : { ok: false, error: wireError(result.error) },
+        },
+        activity:
+          this.manager.getLifecycleStats().loadAttempts !== before ||
+          !["init", "dispose"].includes(request.op),
+      };
+    } finally {
+      lease.release();
+    }
   }
 
   private async run(
@@ -212,7 +218,6 @@ export class NativeDispatcher {
     );
     this.ports.clear();
     this.files.clear();
-    this.lease.release();
     await this.manager.disposeAll();
     if (results.some((result) => result.status === "rejected"))
       throw new NativeWorkerError("exited");

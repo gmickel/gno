@@ -13,7 +13,10 @@ import type {
 } from "../store/vector";
 import type { VectorVariantStore } from "../store/vector/variants";
 
-import { assertInferenceActive } from "../llm/inference-scope";
+import {
+  assertInferenceActive,
+  isBackgroundInference,
+} from "../llm/inference-scope";
 import { err, ok } from "../store/types";
 import { getVectorStatsDatabase } from "../store/vector/stats";
 import { createVectorVariantStore } from "../store/vector/variants";
@@ -80,7 +83,10 @@ export async function embedBacklog(
   deps = prepared.value;
   if (deps.variantStore) return embedVariantBacklog(deps, deps.variantStore);
   const { statsPort, embedPort, vectorIndex, modelUri, collection } = deps;
-  const batchSize = deps.batchSize ?? 32;
+  const background = isBackgroundInference();
+  const batchSize = background
+    ? Math.min(deps.batchSize ?? 32, 32)
+    : (deps.batchSize ?? 32);
   const embedFingerprint = getEmbeddingFingerprint({
     modelUri,
     dimensions: vectorIndex.dimensions,
@@ -129,6 +135,8 @@ export async function embedBacklog(
         items: slice.map((entry) => entry.item),
         modelUri,
         embedFingerprint,
+        identityStillCurrent: deps.identityStillCurrent,
+        statsPort,
       });
 
       embedded += retryResult.embedded;
@@ -191,10 +199,20 @@ export async function embedBacklog(
         items: batch,
         modelUri,
         embedFingerprint,
+        identityStillCurrent: deps.identityStillCurrent,
+        statsPort,
       });
       embedded += batchStoreResult.embedded;
       errors += batchStoreResult.errors;
       contentionErrors += batchStoreResult.contentionErrors;
+      if (background) {
+        errors += batchStoreResult.retryItems.length;
+        deps.onProgress?.(embedded, errors);
+        // Each cursor page is a turn. Failed early pages cannot starve later work.
+        await Bun.sleep(0);
+        if (deps.identityStillCurrent && !deps.identityStillCurrent()) break;
+        continue;
+      }
       enqueueRetryItems(batchStoreResult.retryItems, 1);
 
       if (embedded > beforeEmbedded) {

@@ -5,13 +5,19 @@ import type { ApprovedModel, NativeRequest, NativeResponse } from "./protocol";
 import type { NativeRuntimeConfig } from "./runtime-config";
 
 import { InferenceSettlement } from "../inference-cancellation";
-import { inferenceOptions, recordInferenceTimeout } from "../inference-scope";
+import {
+  inferenceOptions,
+  recordInferenceTimeout,
+  isBackgroundInference,
+} from "../inference-scope";
 import { NativeWorkerError } from "./errors";
 import {
   cancelPending,
   wireResult,
   waitForQuarantine,
   releaseQuarantine,
+  selectNext,
+  recordCompletion,
 } from "./owner";
 import {
   frameNativeMessage,
@@ -123,8 +129,8 @@ export class NativeWorkerClient {
         return;
       if (owner.pending.length || owner.busy)
         await new Promise<void>((resolve) => owner.drain.add(resolve));
-      // The child lease intentionally keeps models alive: process retirement is
-      // the only complete native allocation release. Other roles reload lazily.
+      // Explicit disposal reclaims the complete process allocation. Individual
+      // model idle timers may already have evicted weights within this owner.
       await this.retire(owner);
     });
     this.registration = operation.catch(() => {});
@@ -268,7 +274,12 @@ export class NativeWorkerClient {
       );
       owner.ledger.admit(request);
       return new Promise((resolve) => {
-        const pending: Pending = { request, resolve, settlement };
+        const pending: Pending = {
+          request,
+          resolve,
+          settlement,
+          background: isBackgroundInference(),
+        };
         owner.pending.push(pending);
         settlement.signal.addEventListener(
           "abort",
@@ -325,6 +336,7 @@ export class NativeWorkerClient {
       ledger: new NativeRequestLedger(config.generation),
       decoder: new NativeFrameDecoder(config.generation),
       pending: [],
+      foregroundCompletions: 0,
       ready: false,
       busy: false,
       quarantined: false,
@@ -404,6 +416,7 @@ export class NativeWorkerClient {
         pending.settlement.cancel("timeout");
       clearTimeout(pending.cancelTimer);
       owner.pending.shift();
+      recordCompletion(owner, pending);
       releaseQuarantine(owner);
       if (response.lifecycle) this.lifecycle = response.lifecycle;
       pending.resolve(response.result);
@@ -433,8 +446,10 @@ export class NativeWorkerClient {
   }
 
   private sendNext(owner: Owner): void {
+    if (!owner.ready || owner.retiring || owner.busy) return;
+    selectNext(owner);
     const pending = owner.pending[0];
-    if (!pending || owner.retiring || owner.busy) return;
+    if (!pending) return;
     this.idleOwner = undefined;
     if (!pending.settlement.startNative()) {
       this.cancel(owner, pending);

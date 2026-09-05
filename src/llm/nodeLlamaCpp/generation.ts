@@ -109,6 +109,19 @@ export class NodeLlamaCppGeneration implements GenerationPort {
     params?: GenParams,
     options?: NativeEvaluationOptions
   ): Promise<LlmResult<string>> {
+    const lease = this.manager.acquireLease(this.modelUri);
+    try {
+      return await this.generateLeased(prompt, params, options);
+    } finally {
+      lease.release();
+    }
+  }
+
+  private async generateLeased(
+    prompt: string,
+    params?: GenParams,
+    options?: NativeEvaluationOptions
+  ): Promise<LlmResult<string>> {
     checkEvaluation(options);
     const model = await this.manager.loadModel(
       this.modelPath,

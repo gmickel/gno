@@ -7,11 +7,14 @@
 
 import type { Database } from "bun:sqlite";
 
-import type { ModelLease } from "../llm/nodeLlamaCpp/lifecycle";
 import type { EmbeddingPort } from "../llm/types";
 import type { VectorIndexPort } from "../store/vector";
 
 import { embedBacklog } from "../embed";
+import {
+  withBackgroundInference,
+  withOwnedInferenceScope,
+} from "../llm/inference-scope";
 import { createVectorStatsPort } from "../store/vector";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,7 +50,6 @@ export interface EmbedSchedulerDeps {
   getVectorIndex: () => VectorIndexPort | null;
   /** Getter for current model URI (survives preset changes) */
   getModelUri: () => string;
-  acquireModelLease?: () => ModelLease;
   onEmbedded?: (result: EmbedResult) => void;
   embedBacklogFn?: typeof embedBacklog;
 }
@@ -80,7 +82,6 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
     getEmbedPort,
     getVectorIndex,
     getModelUri,
-    acquireModelLease,
     onEmbedded,
     embedBacklogFn = embedBacklog,
   } = deps;
@@ -96,6 +97,7 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
   let currentRun: Promise<EmbedResult | null> | null = null;
   let lastRunAt: number | null = null;
   let lastResult: EmbedResult | null = null;
+  const controller = new AbortController();
 
   const stats = createVectorStatsPort(db);
 
@@ -116,33 +118,48 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
       return { embedded: 0, errors: 0 };
     }
 
-    const lease = acquireModelLease?.();
+    let result: Awaited<ReturnType<typeof embedBacklogFn>>;
     try {
-      const result = await embedBacklogFn({
-        statsPort: stats,
-        embedPort,
-        vectorIndex,
-        modelUri,
-        batchSize: BATCH_SIZE,
-      });
-
-      if (!result.ok) {
-        console.error("[embed-scheduler] Embed failed:", result.error.message);
-        return { embedded: 0, errors: 0 };
-      }
-      if ((result.value.contentionErrors ?? 0) > 0) {
-        // Chunks deferred by SQLITE_BUSY stay in the backlog; retry the run
-        // instead of silently leaving embeddings a pass behind (fn-127 R6).
-        console.error(
-          `[embed-scheduler] ${result.value.contentionErrors} chunks deferred by index contention; rescheduling`
-        );
-        needsRerun = true;
-      }
-      if (result.value.embedded > 0) onEmbedded?.(result.value);
-      return result.value;
-    } finally {
-      lease?.release();
+      result = await withBackgroundInference(() =>
+        withOwnedInferenceScope({ signal: controller.signal }, () =>
+          embedBacklogFn({
+            statsPort: stats,
+            embedPort,
+            vectorIndex,
+            modelUri,
+            batchSize: BATCH_SIZE,
+            identityStillCurrent: () =>
+              getEmbedPort() === embedPort &&
+              getVectorIndex() === vectorIndex &&
+              getModelUri() === modelUri,
+          })
+        )
+      );
+    } catch (cause) {
+      if (controller.signal.aborted) return { embedded: 0, errors: 0 };
+      throw cause;
     }
+
+    if (!result.ok) {
+      needsRerun = true;
+      console.error("[embed-scheduler] Embed failed:", result.error.message);
+      return { embedded: 0, errors: 0 };
+    }
+    if (
+      getEmbedPort() !== embedPort ||
+      getVectorIndex() !== vectorIndex ||
+      getModelUri() !== modelUri
+    )
+      needsRerun = true;
+    if ((result.value.contentionErrors ?? 0) > 0 || result.value.errors > 0) {
+      // Provider failures and contended checkpoints remain durably pending.
+      console.error(
+        `[embed-scheduler] ${result.value.errors} embedding errors, ${result.value.contentionErrors ?? 0} contended writes; rescheduling`
+      );
+      needsRerun = true;
+    }
+    if (result.value.embedded > 0) onEmbedded?.(result.value);
+    return result.value;
   }
 
   /**
@@ -303,6 +320,7 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
 
     async dispose(): Promise<void> {
       disposed = true;
+      controller.abort();
       if (timer) {
         clearTimeout(timer);
         timer = null;

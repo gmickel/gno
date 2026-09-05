@@ -872,6 +872,10 @@ First use and the first request after native retirement include worker startup,
 model loading and context creation. Compare complete cold requests separately
 from warm calls before changing timeouts. Model-load and generation-inference
 timeouts are separate: raising `loadTimeout` does not extend `inferenceTimeout`.
+For local models, evaluation timing starts after loading; an absolute caller
+`deadlineAt` also covers queue and load time. For HTTP inference, `inferenceTimeout`
+covers preparation, fetch and response-body consumption, since remote model
+loading cannot be observed. See [Timeouts](CONFIGURATION.md#timeouts).
 
 Cold expanded queries have hit the expansion stage's five-second budget on macOS.
 This pipeline budget is separate from `models.loadTimeout` and

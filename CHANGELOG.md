@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Background embedding yields between turns of at most 32 pending chunks;
+  foreground native dispatches take priority with bounded background fairness.
+  Failed chunks remain resumable, and model-specific leases let idle generation
+  and reranking weights expire while embedding continues.
+
 - Local GGUF inference runs in an owned persistent Bun child. Warm requests
   reuse the child; idle native allocation can be reclaimed and loaded again on
   the next request. Child failures return structured errors without replaying

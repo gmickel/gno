@@ -1041,7 +1041,12 @@ not bound total shutdown. These are operational shutdown bounds, not a universal
 query latency promise.
 
 Native embedding, generation and reranking share one child per LLM adapter.
-`warmModelTtl` is the native inactivity grace (five minutes by default).
+`warmModelTtl` is the inactivity grace for each model and for the native child
+(five minutes by default). Model-specific leases protect actual loading,
+context creation, evaluation and cleanup. Background embedding does not renew
+idle generation/reranking weights; they can expire while the same child remains
+busy. A later call reloads the expired model and rebinds its context. Cached
+metadata and status reads do not renew a model's idle grace.
 Active inference, pending responses and model-use leases prevent idle retirement;
 metadata-only access does not refresh native activity. Retirement exits the
 child to reclaim its native process allocations. The next inference reloads
@@ -1051,6 +1056,19 @@ the idle grace does not change candidate counts, precision or input text.
 Command/SDK disposal terminates the owned child. Explicit model disposal retires
 the shared child, so other native roles reload lazily too. HTTP inference is
 unaffected by this child lifecycle.
+
+Background embedding runs in internal turns of at most 32 pending chunks. A
+scheduler run or accepted job may span many turns; it does not report completion
+after one page. Each turn checkpoints current inputs, releases native/model
+ownership and yields before continuing. Foreground requests dispatch first,
+with one pending background native request served after at most eight completed
+foreground native inference dispatches. Metadata init/dispose do not earn or reset
+that service credit. Both classes share the existing 64-call waiting
+queue. Native batches are not preemptible and this is not a total-query deadline.
+Failed chunks remain pending for a subsequent pass; later pages still progress.
+Notifications keep the existing 30-second debounce and five-minute maximum wait,
+and failed scheduler passes retry after debounce. No priority or turn-size
+configuration is exposed.
 
 Resident model counters are cached child-reported lifecycle snapshots. Reading
 status sends no native request and does not extend the idle deadline. Loaded-model

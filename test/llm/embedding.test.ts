@@ -86,6 +86,7 @@ function createManager(options?: {
   });
 
   const manager = {
+    acquireLease: () => ({ release() {} }),
     getLlama: mock(async () => ({
       cpuMathCores: options?.cpuMathCores ?? 16,
       gpu: options?.gpu ?? false,
@@ -344,6 +345,7 @@ describe("NodeLlamaCppEmbedding", () => {
     );
 
     const manager = {
+      acquireLease: () => ({ release() {} }),
       getLlama: mock(async () => ({
         cpuMathCores: 4,
         gpu: false,

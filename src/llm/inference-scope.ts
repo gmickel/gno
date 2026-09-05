@@ -11,6 +11,18 @@ interface RequestInferenceScope extends InferenceOptions {
   controller?: AbortController;
 }
 const scope = new AsyncLocalStorage<RequestInferenceScope>();
+// Internal scheduling class, separate from public inference options/model inputs.
+const background = new AsyncLocalStorage<boolean>();
+
+export function isBackgroundInference(): boolean {
+  return background.getStore() === true;
+}
+
+export function withBackgroundInference<T>(
+  operation: () => Promise<T>
+): Promise<T> {
+  return background.run(true, operation);
+}
 
 export function recordInferenceTimeout(): void {
   let current = scope.getStore();

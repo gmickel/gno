@@ -12,7 +12,12 @@ import type { VectorIndexPort } from "../../src/store/vector";
 
 import { embedBacklog } from "../../src/embed/backlog";
 import { embedVariantBatch } from "../../src/embed/variant-retry";
+import {
+  withBackgroundInference,
+  withOwnedInferenceScope,
+} from "../../src/llm/inference-scope";
 import { migration } from "../../src/store/migrations/028-vector-variants";
+import { createVectorIndexPort } from "../../src/store/vector/sqlite-vec";
 import { createVectorStatsPort } from "../../src/store/vector/stats";
 import { createVectorVariantStore } from "../../src/store/vector/variants";
 
@@ -240,8 +245,14 @@ test("unverified provider retains legacy embedding without promoting shadow cove
   db.exec(
     "ALTER TABLE content_chunks ADD COLUMN created_at TEXT; ALTER TABLE content_vectors ADD COLUMN embed_fingerprint TEXT; ALTER TABLE content_vectors ADD COLUMN embedded_at TEXT"
   );
+  const checked = await createVectorIndexPort(db, {
+    model: "test-model",
+    dimensions: 3,
+  });
+  if (!checked.ok) throw new Error(checked.error.message);
   const result = await embedBacklog({
     ...deps,
+    vectorIndex: checked.value,
     variantStore: undefined,
     identityStillCurrent: undefined,
   });
@@ -251,6 +262,65 @@ test("unverified provider retains legacy embedding without promoting shadow cove
   expect(db.query("SELECT count(*) AS n FROM vector_variants").get()).toEqual({
     n: 0,
   });
+});
+
+test("background owner turns cap at 32, pass failed first page and resume only unfinished work", async () => {
+  const { store, deps, port } = await variantFixture(
+    Array.from({ length: 70 }, (_, i) => `Title ${i}`)
+  );
+  const batches: number[] = [];
+  let fail = true;
+  port.embedBatch = async (texts) => {
+    batches.push(texts.length);
+    if (fail && texts.some((text) => text.includes("Title 0 |")))
+      return {
+        ok: false,
+        error: {
+          code: "INFERENCE_FAILED",
+          message: "synthetic failure",
+          retryable: true,
+        },
+      };
+    return { ok: true, value: texts.map(() => [1, 2, 3]) };
+  };
+  expect(
+    await withBackgroundInference(() =>
+      embedBacklog({ ...deps, batchSize: 1000 })
+    )
+  ).toMatchObject({ ok: true, value: { embedded: 38, errors: 32 } });
+  expect(batches).toEqual([32, 32, 6]);
+  expect(store.pending({ limit: 100 })).toHaveLength(32);
+  fail = false;
+  expect(await withBackgroundInference(() => embedBacklog(deps))).toMatchObject(
+    { ok: true, value: { embedded: 32, errors: 0 } }
+  );
+  expect(batches).toEqual([32, 32, 6, 32]);
+  expect(store.pending()).toEqual([]);
+  expect(store.isActive()).toBe(true);
+});
+
+test("interrupted background turns preserve checkpoints and resume each remaining owner once", async () => {
+  const { store, deps, port } = await variantFixture(
+    Array.from({ length: 70 }, (_, i) => `Unique ${i}`)
+  );
+  const controller = new AbortController();
+  const failure = await withBackgroundInference(() =>
+    withOwnedInferenceScope({ signal: controller.signal }, () =>
+      embedBacklog({ ...deps, onProgress: () => controller.abort() })
+    )
+  ).catch((cause: unknown) => cause);
+  expect(failure).toBeInstanceOf(DOMException);
+  expect(store.pending({ limit: 100 })).toHaveLength(38);
+  expect((port.embedBatch as ReturnType<typeof mock>).mock.calls).toHaveLength(
+    1
+  );
+  expect(await withBackgroundInference(() => embedBacklog(deps))).toMatchObject(
+    { ok: true, value: { embedded: 38, errors: 0 } }
+  );
+  const calls = (port.embedBatch as ReturnType<typeof mock>).mock.calls;
+  expect(calls.map((call) => call[0].length)).toEqual([32, 32, 6]);
+  expect(new Set(calls.flatMap((call) => call[0])).size).toBe(70);
+  expect(store.pending()).toEqual([]);
 });
 
 function createMockEmbedPort() {

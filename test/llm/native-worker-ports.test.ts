@@ -432,6 +432,7 @@ test("child embedding context replacement invalidates tokenizer, dimensions and 
   let generation = 1;
   let disposed = false;
   const manager = {
+    acquireLease: () => ({ release() {} }),
     getLlama: async () => ({ gpu: "cuda", cpuMathCores: 4 }),
     loadModel: async () => {
       const current = generation;
@@ -480,6 +481,7 @@ test("disposal while awaiting model load prevents late tokenizer/context publica
   let disposed = 0;
   const port = new NodeLlamaCppEmbedding(
     {
+      acquireLease: () => ({ release() {} }),
       loadModel: () => loaded.promise,
       getLlama: async () => ({ gpu: "cuda", cpuMathCores: 4 }),
     } as never,

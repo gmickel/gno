@@ -113,6 +113,39 @@ test("port disposal reuses one verified hash; a new generation hashes independen
   expect(hash).toHaveBeenCalledTimes(2);
 });
 
+test("individual model eviction retains verified fingerprint and rejects later artifact mutation", async () => {
+  const { path, model, hash, generation } = await fixture();
+  const first = generation(1);
+  const manager = (first.owner as unknown as { manager: ModelManager }).manager;
+  let disposed = 0;
+  manager.getLlama = async () =>
+    ({
+      gpu: false,
+      cpuMathCores: 4,
+      loadModel: async () => ({
+        dispose: async () => {
+          disposed++;
+        },
+      }),
+    }) as never;
+  const initial = await first.execute("init");
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await manager.loadModel(path, model.modelUri, "embed");
+    await manager.dispose(model.modelUri);
+    expect(manager.isLoaded(model.modelUri)).toBe(false);
+    expect((await first.execute("init")).response.result).toEqual(
+      initial.response.result
+    );
+  }
+  expect(disposed).toBe(2);
+  expect(hash).toHaveBeenCalledTimes(1);
+  await Bun.write(path, "mutated after individual expiry");
+  expect(
+    await first.execute("init").catch((cause: unknown) => cause)
+  ).toMatchObject({ reason: "stale_generation" });
+  expect(hash).toHaveBeenCalledTimes(1);
+});
+
 test.each(["mutation", "replacement"])(
   "%s after port disposal rejects retained weights; a later generation reloads provenance",
   async (change) => {

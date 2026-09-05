@@ -129,6 +129,26 @@ native settlement instead of acknowledging a timeout race. A stuck canceled
 operation gets five seconds to settle before its single-operation child is
 retired. Cleanup remains owned even when caller delivery has already ended.
 
+Background embedding uses internal turns of at most 32 pending chunks. A scheduler
+run or accepted job can span many turns: each checkpoint releases native/model
+ownership before yielding and the next page rechecks current work. No whole-pass
+model lease is held. Foreground native requests dispatch first; a pending
+background request receives service after at most eight foreground native
+inference completions. Metadata init/dispose neither earn foreground credit nor
+reset background service credit. Both classes share the existing 64 waiting-call limit. Cancellation
+delivery does not free active capacity or count as native completion. Failed
+background chunks remain pending for a later pass, while the cursor advances to
+allow later pages to progress. Background passes do not expand a failed batch
+into an inline adaptive recovery tail. New notifications retain the 30-second
+debounce and five-minute maximum wait; failures retry on the debounced schedule.
+
+Native model leases are specific to the model URI and protect loading, context
+creation, evaluation and cleanup until actual settlement. Embedding activity
+therefore does not retain idle generation/reranking weights. Individual model
+expiry invalidates native contexts; later inference rebinds cached ports to the
+newly loaded model. Metadata initialization can protect an active load without
+renewing already-loaded models' inactivity grace.
+
 The default native inactivity grace is five minutes. Active work, pending response
 delivery and model-use leases prevent retirement; metadata polling does not renew
 it. Retirement exits the child, and subsequent inference acquires a new generation
@@ -139,7 +159,7 @@ counts; their historical counters remain until the next generation.
 Embedding weight fingerprints are reused within the owning child generation
 while the model file's device, inode, size, modification time and change time
 remain identical. Disposing a port releases its contexts but retains this
-provenance with the ModelManager's cached weights, avoiding another full-file
+provenance even across individual model expiry, avoiding another full-file
 hash for the next query. File identity is checked around hashing, model loading
 and inference. A changed or replaced artifact invalidates the child rather than
 attaching a new fingerprint to retained old weights; a later independent request
@@ -584,6 +604,14 @@ conservatively require recomputation. These checks and invalidation commit with
 the document mutation. They preserve legacy rename compatibility, but do not
 provide separate title-specific vectors for simultaneous differently titled
 owners; that requires verified exact-input variants.
+
+Embedding checkpoints revalidate the current input and selected runtime after
+inference and each contention wait. Legacy database-backed writes use an explicit
+checked-upsert port operation: lazy indexes forward the check into the actual
+SQLite transaction, which returns the committed row count. A custom index lacking
+that atomic operation fails closed for database-backed backlog work. Verified
+variants continue using their existing transactional owner checks. Interrupted
+passes retain completed checkpoints and leave unfinished inputs pending.
 
 Retrieval bulk-validates current eligible formatted inputs before distance ranking;
 it does not approximate filtered top-K through global overfetch. This adds CPU

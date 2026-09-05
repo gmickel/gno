@@ -1,4 +1,8 @@
 /** Tracks cancellable work that intentionally outlives its initiating request. */
+import {
+  withBackgroundInference,
+  withOwnedInferenceScope,
+} from "../llm/inference-scope";
 
 interface BackgroundWorkEntry {
   controller: AbortController;
@@ -21,7 +25,13 @@ export class ResidentBackgroundWork {
       promise: Promise.resolve(),
     };
     entry.promise = Promise.resolve()
-      .then(() => operation(controller.signal))
+      .then(() =>
+        withBackgroundInference(() =>
+          withOwnedInferenceScope({ signal: controller.signal }, () =>
+            operation(controller.signal)
+          )
+        )
+      )
       .catch(() => undefined)
       .finally(() => this.#entries.delete(entry));
     this.#entries.add(entry);

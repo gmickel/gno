@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { EmbeddingPort } from "../../src/llm/types";
 import type { VectorIndexPort } from "../../src/store/vector";
 
+import { isBackgroundInference } from "../../src/llm/inference-scope";
 import { createEmbedScheduler } from "../../src/serve/embed-scheduler";
 
 // Mock database
@@ -55,6 +56,36 @@ function createMockVectorIndex() {
 }
 
 describe("EmbedScheduler", () => {
+  test("background scheduler fences captured port, model and index at checkpoint", async () => {
+    let embedPort = createMockEmbedPort();
+    let vectorIndex = createMockVectorIndex();
+    let model = "test-model";
+    const scheduler = createEmbedScheduler({
+      db: createMockDb(),
+      getEmbedPort: () => embedPort,
+      getVectorIndex: () => vectorIndex,
+      getModelUri: () => model,
+      embedBacklogFn: async (deps) => {
+        expect(isBackgroundInference()).toBe(true);
+        expect(deps.batchSize).toBe(32);
+        expect(deps.identityStillCurrent?.()).toBe(true);
+        const oldPort = embedPort;
+        embedPort = createMockEmbedPort();
+        expect(deps.identityStillCurrent?.()).toBe(false);
+        embedPort = oldPort;
+        const oldIndex = vectorIndex;
+        vectorIndex = createMockVectorIndex();
+        expect(deps.identityStillCurrent?.()).toBe(false);
+        vectorIndex = oldIndex;
+        model = "new-model";
+        expect(deps.identityStillCurrent?.()).toBe(false);
+        return { ok: true, value: { embedded: 0, errors: 0 } };
+      },
+    });
+    await scheduler.triggerNow();
+    expect(scheduler.getState().nextRunAt).toBeDefined();
+    await scheduler.dispose();
+  });
   let originalTimers: typeof globalThis.setTimeout;
 
   beforeEach(() => {

@@ -10,6 +10,7 @@ import { inferenceFailedError } from "../llm/errors";
 import {
   assertInferenceActive,
   assertInferenceResult,
+  isBackgroundInference,
 } from "../llm/inference-scope";
 
 export interface EmbedBatchRecoveryResult {
@@ -73,6 +74,23 @@ export async function embedTextsWithRecovery(
   }
 
   const profile = getEmbeddingCompatibilityProfile(embedPort.modelUri);
+  // A background page gets one provider attempt. Recovery remains durable for
+  // the next pass instead of expanding the current native scheduling turn.
+  if (isBackgroundInference() && profile.batchEmbeddingTrusted) {
+    const result = await embedPort.embedBatch(texts);
+    assertInferenceResult(result);
+    if (!result.ok) return result;
+    const complete = result.value.length === texts.length;
+    return {
+      ok: true,
+      value: {
+        vectors: complete ? result.value : texts.map(() => null),
+        batchFailed: !complete,
+        fallbackErrors: complete ? 0 : texts.length,
+        failureSamples: complete ? [] : ["Embedding count mismatch"],
+      },
+    };
+  }
   if (profile.batchEmbeddingTrusted) {
     let batchResult = await embedPort.embedBatch(texts);
     assertInferenceResult(batchResult);

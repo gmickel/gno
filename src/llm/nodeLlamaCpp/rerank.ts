@@ -80,7 +80,7 @@ export class NodeLlamaCppRerank implements RerankPort {
     documents: string[],
     options?: NativeEvaluationOptions
   ): Promise<LlmResult<RerankScore[]>> {
-    const lease = this.manager.acquireLease();
+    const lease = this.manager.acquireLease(this.modelUri);
     try {
       checkEvaluation(options);
       const model = await this.manager.loadModel(
@@ -176,7 +176,7 @@ export class NodeLlamaCppRerank implements RerankPort {
   async dispose(): Promise<void> {
     this.disposed = true;
     await this.pending;
-    const lease = this.manager.acquireLease();
+    const lease = this.manager.acquireLease(this.modelUri, false);
     try {
       await this.releaseContext();
     } finally {

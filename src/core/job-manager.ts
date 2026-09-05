@@ -8,6 +8,7 @@ import type { SyncResult } from "../ingestion";
 import {
   assertInferenceActive,
   withOwnedInferenceScope,
+  withBackgroundInference,
 } from "../llm/inference-scope";
 import { MCP_ERRORS } from "./errors";
 import { acquireWriteLock, type WriteLockHandle } from "./file-lock";
@@ -285,7 +286,7 @@ export class JobManager {
 
     const jobPromise = withOwnedInferenceScope(
       { signal: this.#jobControllers.get(jobId)!.signal },
-      () => this.#runJob(job, fn, lock)
+      () => withBackgroundInference(() => this.#runJob(job, fn, lock))
     );
     this.#track(jobPromise);
 
@@ -313,7 +314,7 @@ export class JobManager {
 
     const jobPromise = withOwnedInferenceScope(
       { signal: this.#jobControllers.get(jobId)!.signal },
-      () => this.#runTypedJob(job, fn, lock)
+      () => withBackgroundInference(() => this.#runTypedJob(job, fn, lock))
     );
     this.#track(jobPromise);
 

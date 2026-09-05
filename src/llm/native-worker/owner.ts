@@ -19,6 +19,7 @@ export function wireResult(
 
 type Child = ReturnType<typeof Bun.spawn>;
 export interface Pending {
+  background: boolean;
   request: NativeRequest;
   settlement: InferenceSettlement<
     Extract<NativeResponse["result"], { ok: true }>["value"]
@@ -29,6 +30,7 @@ export interface Pending {
   cancelTimer?: ReturnType<typeof setTimeout>;
 }
 export interface Owner {
+  foregroundCompletions: number;
   generation: number;
   child: Child;
   ledger: NativeRequestLedger;
@@ -42,6 +44,29 @@ export interface Owner {
   timer?: ReturnType<typeof setTimeout>;
   retirement?: Promise<void>;
   drain: Set<() => void>;
+}
+
+/** Only waiting work may move; the active request remains pending[0] through ACK. */
+export function selectNext(owner: Owner): void {
+  if (owner.busy) return;
+  const backgroundIndex = owner.pending.findIndex((entry) => entry.background);
+  const foregroundIndex = owner.pending.findIndex((entry) => !entry.background);
+  const index =
+    backgroundIndex >= 0 &&
+    (foregroundIndex < 0 || owner.foregroundCompletions >= 8)
+      ? backgroundIndex
+      : foregroundIndex;
+  if (index > 0) owner.pending.unshift(owner.pending.splice(index, 1)[0]!);
+}
+
+export function recordCompletion(owner: Owner, pending: Pending): void {
+  // Metadata prepares a batch but does not perform inference or pay its debt.
+  if (pending.request.op === "init" || pending.request.op === "dispose") return;
+  if (pending.background) owner.foregroundCompletions = 0;
+  else if (owner.pending.some((entry) => entry.background))
+    owner.foregroundCompletions = Math.min(8, owner.foregroundCompletions + 1);
+  // Preserve earned service across a metadata/partition preparation gap. Only
+  // actual background inference pays it; an empty queue is not completed work.
 }
 export function cancelPending(
   owner: Owner,

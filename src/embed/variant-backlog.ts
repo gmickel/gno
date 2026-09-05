@@ -2,7 +2,10 @@ import type { StoreResult } from "../store/types";
 import type { VectorVariantStore } from "../store/vector/variants";
 import type { EmbedBacklogDeps, EmbedBacklogResult } from "./backlog";
 
-import { assertInferenceActive } from "../llm/inference-scope";
+import {
+  assertInferenceActive,
+  isBackgroundInference,
+} from "../llm/inference-scope";
 import { err, ok } from "../store/types";
 import { getVectorStatsDatabase } from "../store/vector/stats";
 import { variantBacklogPage } from "./variant-plan";
@@ -25,7 +28,10 @@ export async function embedVariantBacklog(
       "INVALID_INPUT",
       "Collection-scoped variant backlog requires document ownership storage"
     );
-  const batchSize = deps.batchSize ?? 32;
+  const background = isBackgroundInference();
+  const batchSize = background
+    ? Math.min(deps.batchSize ?? 32, 32)
+    : (deps.batchSize ?? 32);
   if (!Number.isSafeInteger(batchSize) || batchSize < 1)
     return err("INVALID_INPUT", "Invalid embedding batch size");
   const total = { embedded: 0, errors: 0, contentionErrors: 0 };
@@ -57,7 +63,8 @@ export async function embedVariantBacklog(
       total.embedded += result.embedded;
       total.errors += result.errors;
       total.contentionErrors += result.contentionErrors;
-      if (result.retryOwners.length) {
+      if (background) total.errors += result.retryOwners.length;
+      if (!background && result.retryOwners.length) {
         result = await embedVariantBatch({
           store,
           embedPort: deps.embedPort,
@@ -70,6 +77,7 @@ export async function embedVariantBacklog(
         total.contentionErrors += result.contentionErrors;
       }
       deps.onProgress?.(total.embedded, total.errors);
+      if (background) await Bun.sleep(0);
     }
     assertInferenceActive();
     // Capture the epoch before checking completeness; activate rechecks under write lock.
