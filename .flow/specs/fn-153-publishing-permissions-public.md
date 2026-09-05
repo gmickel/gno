@@ -1,109 +1,134 @@
 # Publishing permissions, public revocation, and a usable Studio
 
-## Conversation Evidence
-
-1. Gordon: "i exported from the gno local serve (just a note), then uploaded on the live ~/work/gno.sh"
-2. Gordon: "it was public by default"
-3. Gordon: "the 'who can read this' doesn't overwrite what is in the exported file and there are no options to add that during export from the webui i think?"
-4. Gordon: "i can't seem to delete it again on gno.sh?"
-5. Gordon: "in the web ui the user will be able to select the permission mode on export, it can be overriden at import etc and public ones can be revoked."
-6. Gordon: "also we need to clean up the publish page on gno.sh, ie. https://gno.sh/studio it is very user unfriendly right now"
-7. Gordon, after revocation, with screenshots of the source sidebar and published ledger: "interesting that is sitll visible in this sidebar but not below, here ... might be a bug"
-
 ## Goal & Context
-<!-- scope: business; source: paraphrase of evidence 1-6 -->
 
-A person exporting a local note and uploading it to gno.sh must understand and control who can read it. Gordon encountered a public export with no local permission picker, a hosted visibility selector that did not override the uploaded JSON, and no usable way to revoke a public share. Fix that complete publishing journey and simplify Studio so choosing content, confirming access, publishing, and managing the result are understandable actions.
+A publisher must be able to choose who can read an export, review or override that choice on gno.sh, update an existing publication, and withdraw or delete it without operator assistance. Studio should make content and publication state understandable. The hosted reader should make its note navigation visibly interactive.
+
+This is a cross-repository implementation spec. GNO lives in `~/work/gno`; the hosted product lives in `~/work/gno.sh`. Flow state stays in GNO. Work begins after the other agent's GNO 2.0 release is complete. Refresh both repositories from the released baseline before implementation; do not build against this conversation's older deployment. fn-154 tracks the release gates, but its task completion alone is not proof that the release has shipped.
+
+Gordon authorized preparing both specs for a fresh implementation agent on 5 September 2026. The decisions below replace the earlier capture assumptions and unfinished interview alternatives. Keep this spec no-plan with zero tasks; it supports direct execution through `$flow-next-work fn-153` after the release prerequisite. This handoff does not authorize changing real publications or deploying production.
 
 ## Architecture & Data Models
-<!-- scope: technical -->
 
-- Local GNO produces a Publish Artifact with the permission mode selected during export. Hosted Studio reads that mode, allows an explicit override, and publishes with the effective mode the user reviewed. The work spans the GNO local Web UI and gno.sh. [paraphrase; evidence 1, 3, 5]
-- Treat an uploaded file as a draft until the user confirms publication. Keep the artifact's original mode and the selected effective mode distinguishable; file selection alone must not make a note public. [inferred]
-- Use the existing public, secret-link, invite-only, and encrypted modes. Reader visibility remains distinct from Egress Policy and owner authorization. A visibility override must not relax either boundary. [inferred]
-- Revocation is a publication lifecycle operation covering the whole share, independent of visibility. It must be enforced by the serving system and reflected in Studio, not merely hide a link or button. Retain stored content for revocation; permanent deletion is a separate operation. [inferred]
+### Repository entry points
+
+| Surface | Files to inspect first |
+|---|---|
+| Local export UI | `src/serve/public/pages/DocView.tsx`, `src/serve/public/pages/Collections.tsx`, `src/serve/public/lib/publish-export.ts` |
+| Local export contract and implementation | `src/publish/export-service.ts`, `src/publish/artifact.ts`, `src/publish/encrypted-export.ts`, `src/cli/commands/publish.ts`; locate `/api/publish/export` in `src/serve` |
+| Hosted Studio and mutations | `src/components/studio/publish-studio.tsx`, `src/lib/publish.functions.ts`, `src/lib/publish-service.ts`, `src/lib/publish-mutation-adapter.ts` in gno.sh |
+| Artifact import | `src/lib/publish-artifact-client.ts`, `src/lib/publish-artifact.ts`, `src/lib/publish-import.server.ts`, `src/lib/server/publish-db-import-write.ts` in gno.sh |
+| Source, target, and access persistence | `db/schema.sql`, `src/lib/server/publish-db-source.ts`, `publish-db-read.ts`, `publish-db-write.ts`, and repository adapters in gno.sh |
+| Access, entitlement, and asset delivery | `src/lib/server/entitlements.ts`, `billing.ts`, `src/lib/publish-reader-asset-delivery.ts`, `publish-artifact-asset-lifecycle.ts`, `src/lib/server/storage.ts` in gno.sh |
+| Reader navigation | `src/components/reader/reader-scaffold.tsx` and its styles in gno.sh |
+| Policy and documentation | `docs/WEB-UI.md`, `docs/API.md`, `docs/CLI.md`, `spec/cli.md` in GNO; `src/lib/gno-docs.tsx`, `src/routes/terms.tsx`, `privacy.tsx`, `src/lib/legal.ts` in gno.sh |
+
+Paths are starting points verified during preparation; inspect the released implementations before editing. Preserve the repository's existing service/repository split and production/fallback behavior. Do not implement only the in-memory demo path.
+
+### Access selection
+
+| Input | Initial choice | Publication rule |
+|---|---|---|
+| Local Web UI export, no hosted account context | No mode selected | Require explicit choice; explain current hosted plan availability without pretending local GNO knows the account |
+| New Markdown/text or source publication in Studio | Secret-link if entitlement allows private publishing; otherwise public | Show the mode and audience in review, then require Publish |
+| Uploaded artifact | Preserve each space's declared mode | Allow supported explicit overrides; an unavailable mode requires a deliberate supported choice or upgrade, never automatic public fallback |
+| Existing publication update | Preserve current mode and link unless the user explicitly chooses an access change | Review both the existing and proposed state before committing |
+
+Use the existing entitlement source, not duplicated plan checks. Current private publishing is paid; encrypted publishing has its own entitlement. Show free/paid availability in local help from a maintained shared contract or documented metadata, and direct the user to hosted pricing for the account-specific decision. Preserve explicit CLI/API defaults for backward compatibility.
+
+### Visibility conversions
+
+Public, secret-link, and invite-only can convert among each other. Rebuild access records and public projections from the effective mode. Invite-only must show the intended owner/organization audience and use the existing membership/access model. Owner access alone is the explicit default for a personal invite-only share unless recipients are selected.
+
+Any transition into or out of encrypted mode requires a new local export in that mode. The hosted service never receives a passphrase or decrypts a share. An encrypted artifact may be published unchanged and updated with another correctly encrypted artifact. Do not reuse plaintext access-edit or append paths for encrypted content.
+
+A content-only update preserves its active route, token, and mode. An access-mode change invalidates the old access path/token before the new mode becomes visible. Public-to-private conversion returns 404 on the old public routes; secret-to-invite conversion invalidates the old secret token. A stale operation must not resurrect broader access. A previously withdrawn public URL must not silently reactivate on a later private-to-public conversion; allocate a fresh public route in that case. Existing public content can still update at its active URL.
+
+### Source library and publication lifecycle
+
+Keep source content and publications as separate concepts, with an explicit association. Studio opens with a compact library of content items. Each row shows title, note/collection type, note and asset counts, current access when published, and status. Publish opens the upload/review flow. Item details expose publication history and advanced options without a second unexplained ledger.
+
+Use these visible states as appropriate: Draft, Published, Unpublished, Expired, Deleting, Cleanup failed. A later moderation state is owned by fn-155. A retained source must explain that it can be published again; an unpublished target must remain discoverable in its owner's history. Raw snapshot identifiers belong in expandable diagnostics, not the primary row.
+
+Distinguish three operations:
+
+- **Update publication:** explicitly choose the matching target, preview the replacement, and preserve its active access for content-only updates. A matching filename or slug alone never authorizes overwrite.
+- **Publish a copy:** create a separate source/target with a distinct route, after explicit choice. Do not silently make a second public copy.
+- **Unpublish / Delete permanently:** unpublish denies hosted access but retains source and history; deletion removes the selected hosted library item, its associated publications and history, and unreferenced payloads. Local vault files remain untouched.
+
+If an uploaded multi-space artifact cannot be reviewed and applied atomically, reject it before writes with a clear supported path. The first implementation may explicitly block mixed-mode or multi-space updates rather than partially publishing them. Existing append support belongs under advanced options, with a selected target and preview; reject unsupported encrypted or access-conflicting appends.
+
+### Deletion and persistence
+
+The confirmation names the selected item and counts the publications, snapshots, and assets affected. For a collection, delete that imported collection and its history; preserve separately published notes/copies and objects still referenced elsewhere. Show this limitation before confirmation. Do not implement cross-vault or cross-owner deletion.
+
+In one database transaction, mark the selected source/targets deleted, deny access, and persist a cleanup job. Only then return Deleting. Clean database content and object storage asynchronously with idempotent retries. Refresh/restart must retain job state; a storage failure leaves access denied and shows Cleanup failed with a retry action. The job reaches Deleted only after all in-scope live payloads and derived projections are gone. An absent object is successful cleanup. Derive object keys from trusted persisted references and reference counts, never client-supplied paths.
+
+Use the smallest durable worker mechanism compatible with the deployed service, including startup recovery and a documented retry command. Do not add a new queue dependency solely for this feature. Keep only the minimal content-free operation receipt needed for idempotency; do not retain title, body, assets, or secret tokens in it. Deletion must not erase fn-155 moderation tombstones or any explicitly recorded legal hold. Such exceptions must have restricted access and truthful policy treatment; do not invent or automatically create legal holds.
+
+Enforce denial in the shared read path for every visibility, historical snapshot, reader route, search/discovery result, public Markdown/manifest/llms projection, and asset route. Application-controlled caching must not serve withdrawn content after success. If an existing signed object URL can outlive revocation, change delivery or bound/invalidate it before claiming the criterion passed. Already downloaded copies cannot be recalled.
 
 ## API Contracts
-<!-- scope: technical -->
 
-- Export accepts the selected permission mode and returns an artifact whose declared mode matches it. Keep existing explicit CLI and API mode choices working. [paraphrase; evidence 5]
-- Import accepts an explicit effective permission choice for uploaded JSON as well as direct Markdown/text. Server validation and the publication result must agree with the reviewed choice; no silent fallback to public or silent retention of a conflicting artifact mode. [paraphrase; evidence 3, 5]
-- Revocation requires authority over the selected share and reports success only after subsequent content requests are denied. Define request/response shapes in the existing interface contracts during implementation. [inferred]
+Extend the existing endpoints/server functions rather than creating a parallel publishing service. Update GNO's interface specs and schema tests before changing its output contracts.
+
+- Export accepts target and visibility, plus local encryption input only when required; the artifact and result report the selected mode. Preserve v1 plaintext and v2 encrypted contracts and bundled-asset validation.
+- Hosted publish accepts the validated artifact, per-space effective access where supported, operation intent (new, update, copy, or supported append), target identity for mutations, and an expected revision. Return effective access, resulting route, target identity, and new revision. Unknown fields, conflicting intents, unsupported conversions, and entitlement failures are rejected before activation.
+- Content or access edits, unpublish, and deletion validate server-side owner scope and expected revision. Use transaction locking or compare-and-swap to reject stale changes. Unpublish and delete accept a stable idempotency key and return their actual state. No mutation is allowed via GET.
+- Use existing typed error conventions with distinguishable validation, unauthorized/not-found, entitlement, conflict, and cleanup-failure outcomes. The UI retains the draft and shows the relevant correction. Do not expose another tenant's existence through errors.
+- Readers deny inaccessible/deleted content with the existing non-disclosing not-found response. Owner management views can show the reason without exposing content to readers.
 
 ## Edge Cases & Constraints
-<!-- scope: technical -->
 
-- A secret link means anyone holding the link can read the content; it is not encryption or membership-based access. Explain that distinction at selection time. [inferred]
-- Permission changes must rebuild the affected projection and access metadata consistently, including secret tokens and public machine-readable metadata. Relabeling an encrypted payload does not convert it into plaintext, and relabeling plaintext does not encrypt it. [inferred]
-- Encryption and any required decryption stay on the user's device. Where an import conversion cannot be supported safely, reject it before publication with a clear local re-export path. Never upload a passphrase or decrypted content to enable a server-side conversion. [inferred]
-- Mixed-mode, multi-space imports must expose each space's effective access or explicitly block unsupported combinations before publishing. Append/overwrite must identify the existing target and reject permission conflicts without partial publication or creating an unintended second public copy. [inferred]
-- Revocation covers reader pages, individual notes, search/discovery, machine-readable projections, and bundled asset delivery. Check cache behavior explicitly: future requests must not retrieve revoked content from application-controlled caches. Previously downloaded copies cannot be recalled; do not promise otherwise. [inferred]
-- Repeated revocation is safe; refresh, retries, concurrent publish operations, and historical snapshots must not accidentally reactivate a revoked share. An intentional later publication requires a fresh, explicit publish action. Existing publications remain unchanged unless their owner acts on them. [inferred]
+Test public, secret-link, invite-only, and encrypted publications, both personal and organization ownership. Organization mutation authorization is the existing publishing authority, not merely reader membership. Egress Policy, ownership, entitlement, and visibility are independent checks; an override cannot relax the others.
+
+Handle legacy imports with missing provenance, targets with a null latest-snapshot pointer, and public snapshots whose old code bypassed revocation checks. Add an explicit source-to-target association where needed. If an association is ambiguous, require target selection; do not infer destructive ownership from a title match.
+
+Repeated clicks, browser retries, update-versus-unpublish races, delete-versus-publish races, and token rotation must not restore access. Failed transactions leave the prior publication intact; after a committed withdrawal, subsequent cleanup failures leave it inaccessible. A new explicit publish from an unpublished retained source may create a fresh publication, but a deleted source cannot be republished through a stale request.
+
+The shared denial model must allow an independent operator moderation block in fn-155; owner mutations cannot clear that future block. Keep this extension small, with no moderation UI in fn-153.
 
 ## Acceptance Criteria
-<!-- scope: both -->
 
-- **R1:** A user exporting a note or collection from the local Web UI can select the permission mode before downloading, and the artifact contains the selected mode. Errors: unsupported modes and missing encryption inputs prevent export and explain the correction; cancellation produces no export. [paraphrase; evidence 3, 5; error handling inferred]
-- **R2:** A user importing a JSON Publish Artifact can see its declared access, override it, review the effective access, and publish a share that obeys that choice. The same access controls behave consistently for Markdown/text imports. Errors: invalid artifacts, unavailable modes, mixed-space conflicts, and append/overwrite conflicts are reported before publication; none silently fall back to public or ignore the selected mode. [paraphrase; evidence 3, 5; boundary handling inferred]
-- **R3:** Permission overrides preserve actual access guarantees: secret-link results use secret access, invite-only results require authorized membership, and encrypted results remain client-encrypted. Errors: unsupported encryption conversions require local re-export and produce no share; an override cannot bypass ownership, entitlement, or Egress Policy checks. [inferred]
-- **R4:** An authorized owner can revoke an existing public share from Studio, as well as supported private shares, and verify that its previously working content routes no longer serve content. Studio visibly reports the revoked state. Errors: unauthorized attempts make no change; repeated revocation remains revoked; failures are surfaced without false success; concurrent updates and historical snapshots do not bypass revocation. [paraphrase; evidence 4, 5; scope and error handling inferred]
-- **R5:** Studio offers one understandable primary upload journey: select content, review content and access, explicitly publish, then see the resulting link and its permission mode. Relevant controls appear with the operation they affect; advanced owner, slug, append, and overwrite options do not dominate the basic single-note upload. File selection alone does not publish. Errors: validation failures preserve the draft and identify the actionable correction; upload/publish busy states prevent duplicate submissions. [paraphrase; evidence 6; concrete interaction design inferred]
-- **R6:** Published-share management is easy to find from Studio and from the publication result, with clear status, current access, view/copy actions when active, and an accurately named revoke/unpublish action for public shares. Source cards distinguish a retained source from an active publication: an unpublished or revoked source may remain available, but its status and the reason it differs from the publication list are explicit. Revoked publications remain discoverable as revoked rather than simply disappearing without explanation. Summaries display readable text without raw Markdown formatting markers or unexplained mid-word truncation. The upload and management flows remain usable by keyboard and at desktop/mobile widths. Errors: revoked shares are not presented as active links; action failures remain visible beside the relevant share; no extra error surface beyond R2-R5. [paraphrase; evidence 4-7; interaction, summary formatting, and accessibility details inferred from the supplied screenshots]
-- **R7:** New local Web UI exports start with secret-link selected and explain its audience; public publishing requires a visible, deliberate choice at export or import review. Existing artifacts show their actual declared mode rather than being silently rewritten on selection. Errors: absence of a valid effective choice blocks publication; account restrictions never force a silent switch to public. [inferred; proposed safer default prompted by evidence 2]
-
-- **R8:** The hosted reader's Contents note links provide a clearly visible hover state across the clickable row. Keyboard focus is visible, and the currently open note has a persistent selected state that remains distinguishable from hover and focus. Preserve readable contrast and avoid layout shifts. Verify pointer hover, keyboard navigation, note switching, and touch use in the running reader; touch navigation must not depend on hover. The user reported missing hover feedback in the three-note bundle screenshot on 5 September 2026; the static screenshot alone does not verify the hover behavior. Hover feedback is user-requested; focus, selected-state distinction, and verification details are inferred acceptance checks. [paraphrase]
-
-- **R9:** The access defaults respect the account entitlement: use secret-link when available, otherwise public for free accounts. This supersedes R7's universal secret-link default. Account restrictions must never silently downgrade an uploaded artifact to public. [paraphrase]
-- **R10:** Owners can permanently delete their content as a separate operation from unpublishing. Define retained data, asset cleanup, failure handling, and independently published copies before implementation; do not present deletion alone as a GDPR-compliance guarantee. [paraphrase]
-- **R11:** Studio opens with a compact content library showing publication status, with a prominent Publish action that opens the upload/review flow. [paraphrase]
-- **R12:** Existing public, secret-link, and invite-only publications support access edits. Tightening access invalidates the previous broader access. Conversions into or out of encryption require a fresh local export rather than a hosted visibility toggle. [paraphrase]
+- **R1:** Note and collection export dialogs require an explicit access choice and export that mode. Invalid choices, cancelled dialogs, and missing encryption inputs produce no artifact. [paraphrase]
+- **R2:** Import review shows each supported space's declared and effective access, accepts supported overrides, and publishes exactly the reviewed result. Unsupported multi-space combinations are rejected before any activation. No ignored override or silent public fallback. [paraphrase]
+- **R3:** Export/import/edit preserve entitlement, tenant ownership, Egress Policy, invite membership, and client-encryption boundaries. Unsupported encryption conversions give a local re-export path and create no publication. [paraphrase]
+- **R4:** Owners can unpublish every mode, including public. Subsequent reader, asset, search, historical, and machine-readable requests cannot serve the withdrawn content; retries and concurrent writes do not reactivate it. [paraphrase]
+- **R5:** File selection creates a draft. Review precedes explicit publication; failed validation preserves the draft, and duplicate submissions do not create duplicate publications. Matching content requires an explicit update-or-copy decision. [paraphrase]
+- **R6:** Studio distinguishes retained sources from active, unpublished, expired, and deleting publications. Summaries contain readable text and word-safe truncation. Status and relevant failures remain visible across refresh. Desktop, mobile, and keyboard journeys are usable. [paraphrase]
+- **R7:** Every export/publish review explains the audience and requires deliberate confirmation. The earlier universal secret-link default is withdrawn; R9 and the access-selection table define the effective defaults. [paraphrase]
+- **R8:** Reader Contents rows have visible full-row hover, keyboard focus, and persistent current-note selection, with distinguishable states, readable contrast, and no layout shift. Verify real pointer, keyboard, note switching, and touch behavior. [paraphrase]
+- **R9:** Studio defaults new content to secret-link when entitled and public otherwise; uploaded artifacts preserve their declared access. Local export without account context starts with no selected mode. Unsupported access requires explicit correction, never a silent downgrade. [paraphrase]
+- **R10:** Confirmed owner deletion immediately denies access, then durably cleans the selected hosted source, associated publication history, and unreferenced assets. Independent copies and shared objects survive. Failures remain denied, visible, retryable, and recoverable after restart. [paraphrase]
+- **R11:** Studio opens with the compact library and prominent Publish action. Item details contain history and advanced operations; a missing ledger row is never the sole indication of withdrawal. [paraphrase]
+- **R12:** Ordinary content updates preserve active links. Access changes invalidate superseded routes/tokens, and stale operations cannot restore them. Encryption conversion requires local re-export. [paraphrase]
+- **R13:** Terms, Privacy, publishing help, and GNO export/API documentation accurately describe the implemented modes, unpublish versus deletion, cleanup status, independent copies, and limits on recalling content. Remove obsolete claims that public deletion is not self-service. Policy and product changes ship together; no unsupported GDPR or universal erasure claim. [user]
+- **R14:** Production database/object-storage tests and running-app QA cover migration, permission changes, revocation, deletion recovery, and reader navigation. Green unit tests or source review alone do not satisfy release acceptance. [inferred]
 
 ## Boundaries
-<!-- scope: business -->
 
-- Scope is the local export, hosted import, public revocation, and Studio publishing/management experience, plus the hosted reader Contents navigation feedback in R8. [paraphrase; evidence 5-6; reader screenshot follow-up]
-- Revocation removes hosted access without promising erasure of downloaded copies. Owner-initiated permanent deletion is included by the interview decision below. Account deletion, new permission modes, billing redesign, and a general site redesign remain outside this change. Abuse reporting and administrator takedown are deferred to fn-155. [inferred]
-- Preserve explicit existing CLI/API defaults unless changing them is necessary for the captured behavior; the proposed safer default concerns the new Web UI choice. [inferred]
+Includes GNO local export, hosted import and lifecycle, Studio, reader navigation feedback, and affected policy/docs. No account deletion, billing redesign, new permission mode, whole-site redesign, or global egress-policy changes. fn-155 owns abuse reporting, operator moderation, and its policy disclosures.
+
+A spec commit authorizes no new production mutation. Development uses synthetic fixtures; production release and any operator configuration follow Gordon's existing approval boundaries. Never reuse the real note or secret token from this conversation as a test fixture.
 
 ## Decision Context
-<!-- scope: both -->
 
-The export/import mismatch and missing public revocation were encountered in one real single-note publishing journey. Treat them and Studio cleanup as one coherent feature so the user can choose access, trust the resulting share, and withdraw it without editing JSON or requesting an operator takedown. [paraphrase; evidence 1-6]
+Gordon reported public-by-default local export, an import selector that ignored uploaded JSON access, inability to revoke public content, a retained source with no corresponding ledger entry, raw Markdown/truncated summaries, and reader links with no apparent hover feedback. The screenshot documents the surface but cannot prove an absent hover state; verify it live.
 
-The proposed interaction model separates selecting a file from publishing it. The proposed secret-link default avoids silently preparing public exports while leaving public publishing available through an explicit choice. These are design defaults inferred from the reported friction, not verbatim user decisions. [inferred]
+The incident was remediated separately by disabling the exact public target. That operator workaround is historical evidence, not the implementation design. No further action on that publication is part of this spec.
 
-During diagnosis, deployed JSON import retained the file's visibility while the public reader bypassed revocation checks. An operator takedown cleared the affected share's active publication pointer and marked its stored access revoked. Implementation must handle existing inactive targets without resurrecting them. This observation is implementation evidence, not an instruction to use that workaround as the permanent design. [inferred; verified during this conversation]
-
-The follow-up screenshots show the retained imported source in the sidebar but no corresponding public ledger row. Source records and active publications are loaded separately; the ledger also filters out revoked private shares. Keeping source content is compatible with revocation, but silently hiding the publication state is confusing. The same screenshots show literal Markdown emphasis markers and a summary cut off inside a word, which belong in the Studio readability cleanup. [inferred; verified source inspection and user-supplied visual evidence]
+Confirmed interview choices include plan-aware defaults, owner deletion, library-first Studio, editable ordinary visibility, invalidation when access tightens, and separate abuse work. For this implementation handoff, the agent selected the remaining routine UX defaults under Gordon's instruction to make the specs ready: preserve artifact access, explicit update-or-copy, stable content-update links, immediate denial with durable cleanup, and deletion scoped to the selected item. These are design decisions, not additional quotations from Gordon.
 
 ## Strategy Alignment
 
-Deliberate sharing with explicit access and owner control supports Controlled portability. Consistent export/import semantics support Coherent agent and application surfaces. [strategy:Controlled portability] [strategy:Coherent agent and application surfaces]
-
-## Strategy Conflicts
-
-No conflict identified with the current strategy. [inferred]
+Explicit access and withdrawal support Controlled portability. Consistent local export and hosted import support Coherent agent and application surfaces. No strategy conflict identified.
 
 ## Verification and Documentation
 
-Run focused regression and contract checks for selected export modes, JSON import overrides, encryption boundaries, revocation authorization, and public/private reader denial. Exercise the actual local export and hosted import/revoke flows with isolated fixtures, including keyboard and mobile use. Capture running-app evidence; source inspection or a successful build alone is not acceptance. Follow both repositories' required checks and live QA gates. [inferred; project verification requirements]
+Use GNO's `test/serve/routes/publish-export.test.ts`, `test/cli/publish-export.test.ts`, and `test/publish/` as regression entry points. In gno.sh, extend Studio, publish service/import/access, reader delivery, and PostgreSQL/object-storage integration suites. Include a two-owner fixture, organization reader versus publisher, public collection with images, every visibility, and fault injection during deletion.
 
-Update the affected GNO user documentation and interface contracts together with hosted publishing documentation and Studio help. Explain mode precedence, secret-link semantics, supported encrypted conversions, and revocation limitations. [inferred; project documentation requirements]
+Run the required GNO checks (`bun run lint:check`, `bun test`) and site checks (`bun run check`, `bun run typecheck`, `bun run test`, `bun run test:integration`, `bun run build`) as applicable to the final changes, verifying current scripts first. Run GNO locally and gno.sh at port 3344. Drive export -> upload -> review -> publish -> content update -> access change -> unpublish -> deletion, including stale requests, storage failure/retry, restart, and shared-asset preservation. Capture screenshots/responses for desktop and mobile, keyboard focus and pointer hover. Follow `$flow-next-qa fn-153` and each repo's AGENTS.md; a missing running app is a blocker, not a pass.
 
+Update both `terms.tsx` and `privacy.tsx` for public self-service removal. Explain retained unpublished sources, pending/failed cleanup, local-versus-hosted deletion, independently published copies, and copies already downloaded. Do not promise instant backup erasure. Inspect the deployed backup/restore policy during release preparation and ensure deleted content cannot become publicly active after restore; disclose actual residual retention rather than inventing a duration. Keep the encrypted-content promise intact. Update `src/lib/legal.ts`'s effective date only when the revised policies ship. fn-155 extends these pages afterward and must preserve this deletion wording.
 
-
-## Interview Decisions and Remaining Questions
-
-The following decisions supersede conflicting earlier capture assumptions. The interview remains open; this commit does not mark the spec ready.
-
-- Gordon chose secret-link when the account supports it, otherwise public for free accounts. Current hosted entitlements gate private publishing to paid plans. Gordon delegated the local export UX decision; the selected design requires an explicit access choice when the local app cannot know the hosted plan, with plan availability explained beside the modes. Studio can use the known account entitlement for new-content defaults.
-- Gordon included permanent owner deletion, accepted the library-first Studio layout, and agreed that tightening access must invalidate the old broader access.
-- Gordon accepted editing ordinary visibility modes; encryption conversions remain a local re-export operation.
-- Public abuse reports and administrator takedown are a separate follow-up in fn-155.
-
-The last question round remains unanswered. Keep these proposals open rather than treating them as accepted:
-
-1. Preserve an uploaded artifact's declared mode at review, with explicit change or upgrade for an unsupported mode, versus applying the account default. No silent public downgrade is allowed.
-2. For matching content, offer an explicit update-versus-copy choice; whether ordinary content updates preserve the current link still needs confirmation.
-3. Delete access immediately and show tracked background cleanup, including cleanup failures, versus waiting for full cleanup before reporting completion.
-4. Delete the selected item and its history while preserving independently published copies and shared assets needed elsewhere, versus a separately confirmed wider deletion.
+Ship a migration and rollback runbook. An application rollback must not return to a reader version that ignores deletion/revocation state; retain a compatible denial guard or disable affected publishing readers. Walk the required downstream docs chain, and recheck the changed site pages after an authorized deployment. Record exact tested commits and remaining release prerequisites in the handoff.
