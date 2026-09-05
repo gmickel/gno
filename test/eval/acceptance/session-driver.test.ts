@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-// Bun has no directory creation/removal APIs.
-import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
+// Bun has no directory copy/creation/removal or symlink APIs.
+import { cp, mkdir, mkdtemp, realpath, rm, symlink } from "node:fs/promises";
 // Bun has no OS/path utility equivalents.
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -195,16 +195,17 @@ test("cached hash preflight revalidates a changed physical GGUF file", async () 
   }
 });
 
-test("snapshot harness installation preserves existing source-root ownership", async () => {
+test.each([
+  "session-child.ts",
+  "../agentic/canonical.ts",
+  "../../scripts/package-smoke-isolation.ts",
+])("snapshot harness installation preserves differing %s", async (name) => {
   const root = await mkdtemp(join(tmpdir(), "gno-session-snapshot-"));
   const { installSessionHarness } =
     await import("../../../evals/acceptance/session-driver");
   try {
     await installSessionHarness(root);
-    const child = join(root, "evals/acceptance/session-child.ts");
-    expect(await Bun.file(child).text()).toContain(
-      'await import("../../src/llm/nodeLlamaCpp/lifecycle")'
-    );
+    const child = join(root, "evals/acceptance", name);
     await Bun.write(child, "existing changed harness");
     await expect(installSessionHarness(root)).rejects.toThrow(
       "Snapshot harness differs"
@@ -275,6 +276,107 @@ test("driver pins declared backend/build policy and only explicit canonical CUDA
     ).rejects.toThrow("requires a directory");
   } finally {
     await scope.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("installed harness imports inside a fresh selected product root without native access", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gno-session-portable-"));
+  const source = new URL("../../../", import.meta.url).pathname;
+  const { installSessionHarness } =
+    await import("../../../evals/acceptance/session-driver");
+  try {
+    // Copy actual product bytes: symlinking src would hide missing snapshot-relative imports.
+    await cp(join(source, "src"), join(root, "src"), { recursive: true });
+    await Bun.write(
+      join(root, "package.json"),
+      Bun.file(join(source, "package.json"))
+    );
+    await symlink(
+      join(source, "node_modules"),
+      join(root, "node_modules"),
+      "dir"
+    );
+    const product = await Bun.file(join(root, "src/index.ts")).bytes();
+    await installSessionHarness(root);
+    await installSessionHarness(root); // Identical helpers remain reusable.
+    expect(await Bun.file(join(root, "src/index.ts")).bytes()).toEqual(product);
+    const probe = join(root, "probe.ts");
+    await Bun.write(
+      probe,
+      `
+const attempts = [];
+const deny = name => { attempts.push(name); throw new Error("Forbidden native access: " + name); };
+Bun.spawn = () => deny("spawn");
+Bun.spawnSync = () => deny("spawnSync");
+Bun.dlopen = () => deny("Bun.dlopen");
+process.dlopen = () => deny("process.dlopen");
+globalThis.fetch = () => deny("fetch");
+const driver = await import("./evals/acceptance/session-driver.ts");
+if (typeof driver.createSessionDriverFactory !== "function") throw new Error("Missing selected driver");
+try {
+  await import("./evals/acceptance/session-child.ts");
+  throw new Error("Unexpected bootstrap acceptance");
+} catch (error) {
+  if (error.message !== "Acceptance session child requires owned IPC bootstrap") throw error;
+}
+console.log(JSON.stringify({ driver: true, childImports: true, attempts }));
+`
+    );
+    const child = Bun.spawn([process.execPath, "--no-env-file", probe], {
+      cwd: root,
+      env: {
+        PATH: process.env.PATH,
+        HOME: root,
+        TMPDIR: root,
+        GNO_OFFLINE: "1",
+        GNO_NO_AUTO_DOWNLOAD: "1",
+        GNO_LLAMA_BUILD: "never",
+        CUDA_VISIBLE_DEVICES: "",
+      },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const deadline = setTimeout(() => child.kill("SIGKILL"), 5000);
+    const stdout = new Response(child.stdout).text();
+    const stderr = new Response(child.stderr).text();
+    try {
+      expect(await child.exited, await stderr).toBe(0);
+      expect(JSON.parse(await stdout)).toEqual({
+        driver: true,
+        childImports: true,
+        attempts: [],
+      });
+    } finally {
+      clearTimeout(deadline);
+      child.kill("SIGKILL");
+      await child.exited;
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}, 10000);
+
+test("helper installation rejects a companion-directory symlink outside the selected root", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gno-session-contained-"));
+  const source = join(root, "selected");
+  const outside = join(root, "outside");
+  const { installSessionHarness } =
+    await import("../../../evals/acceptance/session-driver");
+  try {
+    await mkdir(source);
+    await mkdir(outside);
+    await symlink(outside, join(source, "scripts"), "dir");
+    const failure = await installSessionHarness(source).catch(
+      (error: unknown) => error
+    );
+    expect(failure instanceof Error && failure.message).toContain(
+      "outside snapshot harness"
+    );
+    expect(
+      await Bun.file(join(outside, "package-smoke-isolation.ts")).exists()
+    ).toBe(false);
+  } finally {
     await rm(root, { recursive: true, force: true });
   }
 });

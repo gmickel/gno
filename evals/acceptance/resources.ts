@@ -13,6 +13,14 @@ export interface ResourceSample {
   gpuBytes: number | null;
   pids: number[];
   errors: string[];
+  /** Raw failed measurement retained when successful owned exit explains absence. */
+  exitedDuringSample?: {
+    pids: number[];
+    rssExitCode: number;
+    rssOutput: string;
+    absenceExitCode: number;
+    absenceOutput: string;
+  };
   processes?: Array<{
     pid: number;
     rssBytes: number;
@@ -220,6 +228,53 @@ export class OwnedResources {
         .trim()
         .split("\n")
         .map((row) => row.trim().split(/\s+/).map(Number));
+      const presentPids = new Set(rows.map(([pid]) => pid));
+      const missingPids = pids.filter((pid) => !presentPids.has(pid));
+      const availableRowsValid =
+        !result.output.trim() ||
+        rows.every(
+          ([pid, rss]) =>
+            pid !== undefined &&
+            pids.includes(pid) &&
+            rss !== undefined &&
+            Number.isFinite(rss) &&
+            rss > 0
+        );
+      if (
+        (result.exitCode === 0 || result.exitCode === 1) &&
+        availableRowsValid &&
+        missingPids.length &&
+        missingPids.every((pid) => {
+          const native = nativeIdentities.get(pid);
+          const ownerPid = native?.parentPid ?? pid;
+          return [...this.children].some(
+            (child) =>
+              child.pid === ownerPid &&
+              child.exitCode === 0 &&
+              child.signalCode === null
+          );
+        })
+      ) {
+        const absence = await telemetry([
+          "ps",
+          "-o",
+          "pid=,ppid=",
+          "-p",
+          missingPids.join(","),
+        ]);
+        if (absence.exitCode === 1 && !absence.output.trim()) {
+          sample.exitedDuringSample = {
+            pids: missingPids,
+            rssExitCode: result.exitCode,
+            rssOutput: result.output,
+            absenceExitCode: absence.exitCode,
+            absenceOutput: absence.output,
+          };
+          // No aggregate RSS/GPU value can be manufactured for this exit race.
+          this.samples.push(sample);
+          return;
+        }
+      }
       if (
         result.exitCode !== 0 ||
         rows.length !== pids.length ||

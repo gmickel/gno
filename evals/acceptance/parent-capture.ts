@@ -18,6 +18,10 @@ import type { ChildEvent, ChildIdentity, ChildReceipt } from "./child-receipt";
 import type { AcceptanceManifest } from "./manifest";
 
 import { RetrievalTraceSession } from "../../src/core/retrieval-trace-session";
+import {
+  SEARCH_RESULTS_TRACE_METADATA,
+  type SearchResults,
+} from "../../src/pipeline/types";
 import { emptyCapture } from "./capture-contract";
 import { appendChildCapture, validateChildReceipt } from "./child-receipt";
 
@@ -131,6 +135,32 @@ export async function installParentCapture(
           : "unavailable-use-owned-GPU-and-platform-proof",
     };
   }
+  const defineProperty = Object.defineProperty;
+  // This private Symbol comes from the selected product source. Observe only
+  // its actual metadata attachment; unrelated property definitions pass through.
+  Object.defineProperty = function (
+    object: object,
+    key: PropertyKey,
+    descriptor: PropertyDescriptor
+  ) {
+    const result = defineProperty(object, key, descriptor);
+    if (key === SEARCH_RESULTS_TRACE_METADATA) {
+      const search = object as SearchResults;
+      const trace = search[SEARCH_RESULTS_TRACE_METADATA];
+      (capture.searchResults ??= []).push({
+        source: "src/pipeline/trace-metadata.ts",
+        method: "attachSearchResultsTraceMetadata",
+        result: structuredClone(search),
+        trace: trace ? structuredClone(trace) : null,
+      });
+      if (!trace || !Array.isArray(trace.capabilityOutcomes))
+        capture.errors.push(
+          "Selected pipeline capability attachment unavailable"
+        );
+      publish();
+    }
+    return result;
+  } as typeof Object.defineProperty;
   const capability = RetrievalTraceSession.prototype.recordCapability;
   RetrievalTraceSession.prototype.recordCapability = function (
     name,
@@ -362,6 +392,7 @@ export async function installParentCapture(
     restore() {
       Bun.spawn = spawn;
       process.dlopen = dlopen;
+      Object.defineProperty = defineProperty;
       RetrievalTraceSession.prototype.recordCapability = capability;
       for (const { child } of children)
         if (child.exitCode === null && child.signalCode === null)

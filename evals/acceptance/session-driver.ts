@@ -4,7 +4,7 @@ import type { Subprocess } from "bun";
 // Bun has no mkdir/mkdtemp/realpath filesystem structure equivalents.
 import { mkdir, mkdtemp, realpath, stat } from "node:fs/promises";
 // Bun has no path construction utilities.
-import { isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 
 import type { AcceptanceManifest } from "./manifest";
 import type {
@@ -74,6 +74,7 @@ export interface SessionDriverOptions {
 }
 
 const SESSION_HARNESS_FILES = [
+  "session-driver.ts",
   "session-child.ts",
   "native-adapter.ts",
   "native-capture.ts",
@@ -83,22 +84,32 @@ const SESSION_HARNESS_FILES = [
   "native-child-preload.ts",
   "manifest.ts",
   "records.ts",
+  // Runtime dependencies outside acceptance/. Type-only imports are erased by Bun.
+  "../agentic/canonical.ts",
+  "../../scripts/package-smoke-isolation.ts",
 ] as const;
 
 /** Install only the development harness into a preselected archived source tree.
  * Existing differing files are refused. Product files are never copied. */
 export async function installSessionHarness(sourceRoot: string): Promise<void> {
-  const target = join(await realpath(sourceRoot), "evals/acceptance");
+  const root = await realpath(sourceRoot);
+  const target = join(root, "evals/acceptance");
+  await assertPackageSmokePathContained(root, target, "snapshot harness");
   await mkdir(target, { recursive: true });
   if ((await realpath(target)) === (await realpath(import.meta.dir))) return;
   for (const name of SESSION_HARNESS_FILES) {
     const bytes = await Bun.file(join(import.meta.dir, name)).arrayBuffer();
-    const destination = Bun.file(join(target, name));
+    const path = join(target, name);
+    await assertPackageSmokePathContained(root, path, "snapshot harness");
+    const destination = Bun.file(path);
     if (await destination.exists()) {
       const existing = await destination.arrayBuffer();
       if (Buffer.compare(Buffer.from(existing), Buffer.from(bytes)) !== 0)
         throw new Error(`Snapshot harness differs: ${name}`);
-    } else await Bun.write(destination, bytes);
+    } else {
+      await mkdir(dirname(path), { recursive: true });
+      await Bun.write(destination, bytes);
+    }
   }
 }
 
