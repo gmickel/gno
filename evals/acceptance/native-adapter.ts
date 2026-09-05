@@ -1,6 +1,7 @@
 import type { SearchResults, AskResult } from "../../src/pipeline/types";
 /** Real cached-model SDK execution and lossless acceptance projection. */
 import type { GnoClientInitOptions, GnoAskOptions } from "../../src/sdk/types";
+import type { ChildEvent } from "./child-receipt";
 
 import {
   CITATION_TRACE_METADATA,
@@ -8,16 +9,13 @@ import {
   SEARCH_RESULTS_TRACE_METADATA,
 } from "../../src/pipeline/types";
 import { createGnoClient } from "../../src/sdk/client";
+import { exactJson, type NativeCapture } from "./capture-contract";
 import {
   acceptanceManifestFingerprint,
   ACCEPTANCE_SCHEMA_VERSION,
   type AcceptanceManifest,
 } from "./manifest";
-import {
-  exactJson,
-  installNativeCapture,
-  type NativeCapture,
-} from "./native-capture";
+import { hasNativeWorker, installParentCapture } from "./parent-capture";
 import {
   acceptanceRecordSchema,
   type AcceptanceRecord,
@@ -272,9 +270,27 @@ export type NativeAcceptanceInit = GnoClientInitOptions & {
  * One capture owner per process. Calls on a session must not overlap. */
 export async function createNativeAcceptanceSession(
   manifest: AcceptanceManifest,
-  init: NativeAcceptanceInit
+  init: NativeAcceptanceInit,
+  captureOptions?: { directory: string; onChild?: (event: ChildEvent) => void }
 ) {
-  const session = installNativeCapture(crypto.randomUUID(), manifest.models);
+  const childMode = await hasNativeWorker();
+  if (childMode && !captureOptions)
+    throw new Error("Child acceptance requires an owned capture directory");
+  const parentSession = childMode
+    ? await installParentCapture(
+        crypto.randomUUID(),
+        manifest.models,
+        captureOptions!.directory,
+        undefined,
+        captureOptions!.onChild
+      )
+    : undefined;
+  const session =
+    parentSession ??
+    (await import("./native-capture")).installNativeCapture(
+      crypto.randomUUID(),
+      manifest.models
+    );
   let client: Awaited<ReturnType<typeof createGnoClient>>;
   try {
     client = await createGnoClient({
@@ -288,6 +304,7 @@ export async function createNativeAcceptanceSession(
   let busy = false;
   let closed = false;
   return {
+    modelState: () => parentSession?.modelState(),
     async run(
       request: AdapterRequest,
       options: { prepareEmbeddings?: boolean } = {}
@@ -304,6 +321,7 @@ export async function createNativeAcceptanceSession(
       )
         throw new Error("Native SDK adapter requires an sdk case");
       busy = true;
+      parentSession?.begin(request.caseId);
       session.capture.modelInputs = [];
       session.capture.modelOutputs = [];
       session.capture.capabilities = [];
@@ -328,6 +346,7 @@ export async function createNativeAcceptanceSession(
         } catch (error) {
           failure = error instanceof Error ? error.message : String(error);
         }
+        parentSession?.finish();
         return await projectAcceptance(
           request,
           raw,
@@ -364,11 +383,17 @@ export async function createNativeAcceptanceSession(
 export async function runNativeAcceptance(
   request: AdapterRequest,
   init: NativeAcceptanceInit,
-  options: { prepareEmbeddings?: boolean } = {}
+  options: { prepareEmbeddings?: boolean; captureDirectory?: string } = {}
 ): Promise<AdapterResult> {
   let session: Awaited<ReturnType<typeof createNativeAcceptanceSession>>;
   try {
-    session = await createNativeAcceptanceSession(request.manifest, init);
+    session = await createNativeAcceptanceSession(
+      request.manifest,
+      init,
+      options.captureDirectory
+        ? { directory: options.captureDirectory }
+        : undefined
+    );
   } catch (error) {
     return projectAcceptance(
       request,

@@ -215,7 +215,7 @@ test("snapshot harness installation preserves existing source-root ownership", a
     await installSessionHarness(root);
     const child = join(root, "evals/acceptance/session-child.ts");
     expect(await Bun.file(child).text()).toContain(
-      'from "../../src/llm/nodeLlamaCpp/lifecycle"'
+      'await import("../../src/llm/nodeLlamaCpp/lifecycle")'
     );
     await Bun.write(child, "existing changed harness");
     await expect(installSessionHarness(root)).rejects.toThrow(

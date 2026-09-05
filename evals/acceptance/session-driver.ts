@@ -40,6 +40,7 @@ interface Message {
   ok: boolean;
   sequence?: number;
   resultPath?: string;
+  childEvent?: import("./child-receipt").ChildEvent;
   error?: string;
   startedAt?: string;
   preflightMs?: number;
@@ -52,6 +53,7 @@ export interface SessionDriverSession extends AcceptanceSession {
     startedAt?: string;
     directory: string;
     preflightMs?: number;
+    harnessSha256: Record<string, string>;
   };
   idle(ms: number): Promise<void>;
 }
@@ -71,19 +73,25 @@ export interface SessionDriverOptions {
   cudaPath?: string;
 }
 
+const SESSION_HARNESS_FILES = [
+  "session-child.ts",
+  "native-adapter.ts",
+  "native-capture.ts",
+  "capture-contract.ts",
+  "child-receipt.ts",
+  "parent-capture.ts",
+  "native-child-preload.ts",
+  "manifest.ts",
+  "records.ts",
+] as const;
+
 /** Install only the development harness into a preselected archived source tree.
  * Existing differing files are refused. Product files are never copied. */
 export async function installSessionHarness(sourceRoot: string): Promise<void> {
   const target = join(await realpath(sourceRoot), "evals/acceptance");
   await mkdir(target, { recursive: true });
   if ((await realpath(target)) === (await realpath(import.meta.dir))) return;
-  for (const name of [
-    "session-child.ts",
-    "native-adapter.ts",
-    "native-capture.ts",
-    "manifest.ts",
-    "records.ts",
-  ]) {
+  for (const name of SESSION_HARNESS_FILES) {
     const bytes = await Bun.file(join(import.meta.dir, name)).arrayBuffer();
     const destination = Bun.file(join(target, name));
     if (await destination.exists()) {
@@ -139,6 +147,18 @@ export function createSessionDriverFactory(
       await mkdir(options.protocolRoot, { recursive: true });
       const directory = await mkdtemp(join(options.protocolRoot, "session-"));
       const runId = crypto.randomUUID();
+      const harnessSha256: Record<string, string> = {};
+      for (const name of SESSION_HARNESS_FILES) {
+        const file = Bun.file(join(sourceRoot, "evals/acceptance", name));
+        if (await file.exists())
+          harnessSha256[name] = new Bun.CryptoHasher("sha256")
+            .update(await file.arrayBuffer())
+            .digest("hex");
+      }
+      await Bun.write(
+        join(directory, "harness.json"),
+        JSON.stringify({ sourceRoot, harnessSha256 })
+      );
       const env: Record<string, string> = { GNO_NO_AUTO_DOWNLOAD: "1" };
       for (const [key, name] of Object.entries({
         HOME: "home",
@@ -209,11 +229,20 @@ export function createSessionDriverFactory(
         }
         pending.clear();
       };
+      let descendantUpdates = Promise.resolve();
       const onMessage = (value: unknown) => {
         const message = value as Message;
         if (message?.runId !== runId || message.pid !== child.pid) {
           rejectAll(new Error("Session reply identity mismatch"));
           child.kill("SIGKILL");
+          return;
+        }
+        if (message.childEvent) {
+          descendantUpdates = descendantUpdates
+            .then(() => scope.observeDescendant(child, message.childEvent!))
+            .catch((error: unknown) => {
+              scope.errors.push(String(error));
+            });
           return;
         }
         if (message.ready) {
@@ -329,6 +358,7 @@ export function createSessionDriverFactory(
             decoded.pid !== child.pid
           )
             throw new Error("Session payload identity mismatch");
+          await descendantUpdates;
           return decoded.response;
         } catch (error) {
           closed = true;
@@ -349,6 +379,7 @@ export function createSessionDriverFactory(
           startedAt: readiness.startedAt,
           directory,
           preflightMs: readiness.preflightMs,
+          harnessSha256,
         },
         async modelState() {
           const state = (await command("state")) as { loaded: boolean | null };

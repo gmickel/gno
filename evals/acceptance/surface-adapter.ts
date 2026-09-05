@@ -10,6 +10,7 @@ import { lstat, mkdir, realpath } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import type { AskResult, SearchResults } from "../../src/pipeline/types";
+import type { ChildEvent } from "./child-receipt";
 import type {
   AdapterRequest,
   AdapterResult,
@@ -22,6 +23,7 @@ import {
   buildPackageSmokeProcessEnv,
 } from "../../scripts/package-smoke-isolation";
 import { projectAcceptance } from "./native-adapter";
+import { OwnedResources } from "./resources";
 
 export interface SurfaceLaunch {
   /** Entrypoint and arguments after `bun --preload native-capture.ts`. */
@@ -217,7 +219,11 @@ export async function runSurfaceAcceptance(
   const runId = crypto.randomUUID();
   await Bun.write(
     `${launch.capturePath}.request.json`,
-    JSON.stringify({ runId, models: request.manifest.models })
+    JSON.stringify({
+      runId,
+      caseId: request.caseId,
+      models: request.manifest.models,
+    })
   );
   const env = {
     ...safeEnv,
@@ -241,11 +247,28 @@ export async function runSurfaceAcceptance(
     throw new Error(
       "Copy native-capture.ts into the selected source root before launching"
     );
+  const childMode = await Bun.file(
+    `${launch.cwd}/src/llm/native-worker/entry.ts`
+  ).exists();
   const args = [
     "--preload",
-    `${launch.cwd}/evals/acceptance/native-capture.ts`,
+    `${launch.cwd}/evals/acceptance/${childMode ? "parent-capture" : "native-capture"}.ts`,
     ...launch.args,
   ];
+  const harnessSha256: Record<string, string> = {};
+  for (const name of [
+    "native-capture.ts",
+    "capture-contract.ts",
+    "parent-capture.ts",
+    "native-child-preload.ts",
+    "child-receipt.ts",
+  ]) {
+    const file = Bun.file(join(launch.cwd, "evals/acceptance", name));
+    if (await file.exists())
+      harnessSha256[name] = new Bun.CryptoHasher("sha256")
+        .update(await file.arrayBuffer())
+        .digest("hex");
+  }
   const timeout = launch.timeoutMs ?? 120_000;
   if (!Number.isFinite(timeout) || timeout <= 0)
     throw new Error("Invalid surface timeout");
@@ -254,6 +277,32 @@ export async function runSurfaceAcceptance(
   let pid: number | null = null;
   let raw: SearchResults | AskResult | null = null;
   let failure: string | undefined;
+  const resources = new OwnedResources(request.expectedBackend === "cuda");
+  let seenEvents = 0;
+  let eventUpdates = Promise.resolve();
+  let eventTimer: ReturnType<typeof setInterval> | undefined;
+  const readEvents = async () => {
+    if (!childMode || pid === null) return;
+    const file = Bun.file(`${launch.capturePath}.children/children.json`);
+    if (!(await file.exists())) return;
+    const events = (await file.json()) as ChildEvent[];
+    if (!Array.isArray(events) || events.length < seenEvents)
+      throw new Error("Invalid descendant event ledger");
+    for (const event of events.slice(seenEvents)) {
+      seenEvents += 1;
+      if (event.identity.runId !== runId)
+        throw new Error("Foreign descendant run");
+      await resources.observeDescendant({ pid }, event);
+    }
+  };
+  const observe = () => {
+    resources.start();
+    eventTimer = setInterval(() => {
+      eventUpdates = eventUpdates.then(readEvents).catch((error: unknown) => {
+        resources.errors.push(String(error));
+      });
+    }, 25);
+  };
   try {
     if (invocation.surface === "mcp" && invocation.transport !== "http") {
       const transport = new StdioClientTransport({
@@ -291,9 +340,19 @@ export async function runSurfaceAcceptance(
       try {
         await client.connect(transport, { timeout });
         pid = transport.pid;
+        if (pid === null) throw new Error("MCP transport omitted owned PID");
+        resources.ownTransport(
+          pid,
+          () => transport.pid !== null,
+          async () => {
+            await client.close();
+          }
+        );
+        observe();
         raw = await mcpOutput(client, invocation, timeout, launch.capturePath);
       } finally {
         pid ??= transport.pid;
+        await resources.stopSampling();
         // Direct SDK v2 owns the handle and escalates EOF -> TERM -> KILL.
         try {
           await client.close();
@@ -310,6 +369,8 @@ export async function runSurfaceAcceptance(
         stderr: Bun.file(`${launch.capturePath}.stderr.log`),
       });
       pid = process.pid;
+      resources.own(process);
+      observe();
       const timer = setTimeout(() => process.kill("SIGKILL"), timeout);
       let cleanupTimer: ReturnType<typeof setTimeout> | undefined;
       try {
@@ -381,6 +442,7 @@ export async function runSurfaceAcceptance(
               throw new Error(`API HTTP ${response.status}: ${text}`);
             raw = parseOutput(JSON.parse(text));
           }
+          await resources.stopSampling();
           process.kill("SIGTERM");
           cleanupTimer = setTimeout(() => {
             if (process.exitCode === null && process.signalCode === null)
@@ -409,11 +471,23 @@ export async function runSurfaceAcceptance(
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
   }
+  clearInterval(eventTimer);
+  await eventUpdates;
+  try {
+    await readEvents();
+  } catch (error) {
+    resources.errors.push(String(error));
+  }
+  await resources.close();
   await Bun.write(
     `${launch.capturePath}.diagnostics.json`,
     JSON.stringify({
       runId,
       pid,
+      resources: resources.samples,
+      resourceErrors: resources.errors,
+      nativeChildren: resources.descendantEvents,
+      harnessSha256,
       cwd,
       invocation,
       nativePolicy: {
@@ -447,5 +521,6 @@ export async function runSurfaceAcceptance(
       .filter(Boolean)
       .join("; ");
   }
+  receipt.errors.push(...resources.errors);
   return projectAcceptance(request, raw, receipt, readEvidence, failure);
 }

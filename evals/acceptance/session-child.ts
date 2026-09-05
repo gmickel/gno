@@ -2,10 +2,10 @@ import type { SessionBootstrap, SessionCommand } from "./session-driver";
 
 import { ModelCache } from "../../src/llm/cache";
 /** Internal owned-child entrypoint. All product imports resolve in this snapshot. */
-import { getModelManager } from "../../src/llm/nodeLlamaCpp/lifecycle";
 import { getModelConfig } from "../../src/llm/registry";
+import { hashFile } from "./capture-contract";
 import { createNativeAcceptanceSession } from "./native-adapter";
-import { installNativeCapture } from "./native-capture";
+import { hasNativeWorker } from "./parent-capture";
 
 const configPath = process.env.GNO_ACCEPTANCE_SESSION_CONFIG;
 if (!configPath || !process.send)
@@ -20,8 +20,7 @@ let session:
   | undefined;
 try {
   const preflightStart = performance.now();
-  const preflight = installNativeCapture(`${runId}:preflight`, manifest.models);
-  try {
+  {
     const cache = new ModelCache(init.cacheDir);
     for (const model of manifest.models) {
       const type =
@@ -35,18 +34,29 @@ try {
         allowDownload: false,
       });
       if (!result.ok) throw new Error(result.error.message);
+      if (
+        model.tokenizerSha256 !== model.sha256 ||
+        (await hashFile(result.value)) !== model.sha256
+      )
+        throw new Error(`Cached model hash mismatch: ${model.id}`);
     }
-  } finally {
-    preflight.restore();
   }
   const preflightMs = performance.now() - preflightStart;
-  session = await createNativeAcceptanceSession(manifest, init);
-  const manager = getModelManager(getModelConfig(init.config));
+  session = await createNativeAcceptanceSession(manifest, init, {
+    directory,
+    onChild: (event) => send({ childEvent: event, ok: true }),
+  });
+  const manager = (await hasNativeWorker())
+    ? undefined
+    : (await import("../../src/llm/nodeLlamaCpp/lifecycle")).getModelManager(
+        getModelConfig(init.config)
+      );
   let requestedModels: string[] = [];
   let busy = false;
   let sequence = 0;
   let closing = false;
   const state = () => {
+    if (!manager) return session!.modelState();
     const lifecycle = manager.getLifecycleStats();
     const models = requestedModels.map((id) => ({
       id,

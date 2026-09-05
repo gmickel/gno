@@ -3,12 +3,9 @@ import type { LlamaModel } from "node-llama-cpp";
 /** Owned-process instrumentation only; never install in a user's resident service. */
 // Bun has no synchronous write API for termination-safe capture sidecars.
 import { writeFileSync } from "node:fs";
-// Bun has no realpath or bigint inode/change-time stat equivalent.
-import { realpath, stat } from "node:fs/promises";
 import { z } from "zod";
 
 import type { AcceptanceManifest } from "./manifest";
-import type { DeterministicRecord } from "./records";
 
 import { RetrievalTraceSession } from "../../src/core/retrieval-trace-session";
 import { ModelCache } from "../../src/llm/cache";
@@ -17,67 +14,19 @@ import { NodeLlamaCppGeneration } from "../../src/llm/nodeLlamaCpp/generation";
 import { ModelManager } from "../../src/llm/nodeLlamaCpp/lifecycle";
 import { NodeLlamaCppRerank } from "../../src/llm/nodeLlamaCpp/rerank";
 
-export interface NativeCapture {
-  runId: string;
-  kind: "native" | "replay";
-  modelInputs: DeterministicRecord["modelInputs"];
-  modelOutputs: unknown[];
-  backends: string[];
-  models: { id: string; sha256: string }[];
-  capabilities: { capability: string; status: string; reasonCode?: string }[];
-  errors: string[];
-}
+export {
+  captureArguments,
+  exactJson,
+  type NativeCapture,
+} from "./capture-contract";
+import {
+  captureArguments,
+  hashFile,
+  captureContextArguments,
+  exactJson,
+  type NativeCapture,
+} from "./capture-contract";
 let active = false;
-export const exactJson = (value: unknown): z.infer<ReturnType<typeof z.json>> =>
-  z.json().parse(value);
-
-/** Encode undefined explicitly so omitted optional arguments never disappear. */
-export function captureArguments(
-  args: unknown[]
-): z.infer<ReturnType<typeof z.json>> {
-  return exactJson(
-    args.map((value) => (value === undefined ? { $undefined: true } : value))
-  );
-}
-
-const verifiedFiles = new Map<string, { identity: string; sha256: string }>();
-async function fileIdentity(path: string): Promise<string> {
-  const metadata = await stat(path, { bigint: true });
-  if (!metadata.isFile())
-    throw new Error(`Cached model is not a regular file: ${path}`);
-  return [
-    metadata.dev,
-    metadata.ino,
-    metadata.size,
-    metadata.mtimeNs,
-    metadata.ctimeNs,
-  ].join(":");
-}
-
-/** Hash once per unchanged physical file. Every use checks inode and change-time;
- * replacements/edits force a new hash, including edits during the hash read. */
-async function hashFile(path: string): Promise<string> {
-  const physical = await realpath(path);
-  const identity = await fileIdentity(physical);
-  const previous = verifiedFiles.get(physical);
-  if (previous?.identity === identity) return previous.sha256;
-  const hash = new Bun.CryptoHasher("sha256");
-  const reader = Bun.file(physical).stream().getReader();
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      hash.update(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  if ((await fileIdentity(physical)) !== identity)
-    throw new Error(`Cached model changed while hashing: ${path}`);
-  const sha256 = hash.digest("hex");
-  verifiedFiles.set(physical, { identity, sha256 });
-  return sha256;
-}
 
 export function installNativeCapture(
   runId: string,
@@ -162,11 +111,55 @@ export function installNativeCapture(
     ModelManager.prototype,
     "loadModel",
     async function (this: ModelManager, ...args) {
+      // In the worker, ModelCache is parent-only. Verify the actual load path here.
+      const [path, uri] = args;
+      const pin = pins.find((item) => item.id === uri);
+      if (!pin || pin.tokenizerSha256 !== pin.sha256)
+        throw new Error(`Unpinned model/tokenizer requested: ${uri}`);
+      const sha256 = await hashFile(path);
+      if (sha256 !== pin.sha256)
+        throw new Error(`Cached model hash mismatch: ${uri}`);
       const result = await loadModel.apply(this, args);
+      if (result.ok && !capture.models.some((model) => model.id === uri))
+        capture.models.push({ id: uri, sha256 });
+      publish();
       if (!result.ok || tappedModels.has(result.value.model as object))
         return result;
       const model = result.value.model as LlamaModel;
       tappedModels.add(model);
+      function contextEvent(method: string, args: unknown[]) {
+        const event: NonNullable<NativeCapture["contextEvents"]>[number] = {
+          modelId: result.ok ? result.value.uri : uri,
+          method,
+          arguments: captureContextArguments(args),
+        };
+        (capture.contextEvents ??= []).push(event);
+        publish();
+        return event;
+      }
+      const createContext = model.createContext;
+      replace(model, "createContext", async function (...contextArgs) {
+        const event = contextEvent("createContext", contextArgs);
+        const context = await createContext.apply(model, contextArgs);
+        event.result = exactJson({ contextSize: context.contextSize });
+        publish();
+        return context;
+      });
+      const createRanking = model.createRankingContext;
+      replace(model, "createRankingContext", async function (...contextArgs) {
+        contextEvent("createRankingContext", contextArgs);
+        return createRanking.apply(model, contextArgs);
+      });
+      const tokenize = model.tokenize;
+      replace(model, "tokenize", ((
+        ...tokenArgs: Parameters<LlamaModel["tokenize"]>
+      ) => {
+        const event = contextEvent("tokenize", tokenArgs);
+        const tokens = tokenize.apply(model, tokenArgs);
+        event.result = exactJson(Array.from(tokens));
+        publish();
+        return tokens;
+      }) as LlamaModel["tokenize"]);
       const create = model.createEmbeddingContext;
       replace(
         model,
