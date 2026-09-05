@@ -776,9 +776,13 @@ describe("DocView PDF integration (fn-112.5)", () => {
     expect(
       stubMountLog.some((e) => e.id === Number(idA) && e.event === "unmount")
     ).toBe(true);
-    expect(
-      stubMountLog.some((e) => e.id === Number(idB) && e.event === "mount")
-    ).toBe(true);
+    // Finding the DOM node does not guarantee its passive effect has flushed.
+    // Wait for the lifecycle evidence while retaining the exact mount assertion.
+    await waitFor(() => {
+      expect(
+        stubMountLog.some((e) => e.id === Number(idB) && e.event === "mount")
+      ).toBe(true);
+    });
   });
 
   test("content not available remains distinct from no-extracted-text", async () => {
