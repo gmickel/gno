@@ -1,0 +1,29 @@
+{
+  "status": "prepared-not-run",
+  "nativeSlot": "queued after native_runtime and native_package; no GPU initialized",
+  "source": "Exact original 201 scaling fixture owner/chunk snapshot; separate native model identity",
+  "run": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/",
+  "files": [
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/driver.ts",
+      "sha256": "d83c2b9416ec1bb2aead3f52d43b572cdf56ba45598b55052993d967ef9035d4",
+      "bytes": 8239
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/manifest.json",
+      "sha256": "e2c45f27db478b3ba1bff2551e5ee31cde193d190ee9fc8c54647c3a2cfe5a43",
+      "bytes": 95054
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared/config.json",
+      "sha256": "fc69b886469530dbbc4c0bcd4c9fbc933c0b7bcf2c4ed39ab3ac2c6b3ac6f135",
+      "bytes": 975
+    }
+  ],
+  "checks": [
+    "Preparation verifies original physical owner/chunk inputs before cloning",
+    "Typed Oxlint: 1 file,105 rules,0 warnings,0 errors",
+    "Standalone strict TypeScript passed",
+    "Oxfmt stdin formatted (artifact ignored by normal target glob)"
+  ]
+}

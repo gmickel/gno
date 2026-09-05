@@ -1,0 +1,60 @@
+{
+  "task": "fn-148-eligible-candidates-before-retrieval.4",
+  "status": "in_progress",
+  "commits": [],
+  "artifact": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/final-receipt/README.md",
+  "manifest": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/final-receipt/evidence-manifest.json",
+  "sourceCheckpoints": {
+    "public": "23ba2c25",
+    "legacy": "2d65bedbc5a28fb15231c010f7c071b9081cf7bf",
+    "activated": "803463374075a9f20049cb0cef547dfc33656200",
+    "integratedGates": "6e25153f",
+    "nativeContext": "3d9c0ec4"
+  },
+  "observed": {
+    "publicRequests": 96,
+    "publicOrderedComparisons": 80,
+    "legacyGroups": 144,
+    "legacyRequests": 1800,
+    "variantGroupsPerRun": 120,
+    "variantRequestsPerRun": 1500,
+    "variantFullRuns": 2,
+    "explicitVectorStateCalls": 60,
+    "skillScenarios": 20,
+    "skillChecks": 47,
+    "skillScore": 100,
+    "fullTests": {
+      "passed": 5132,
+      "skipped": 2,
+      "failed": 0,
+      "assertions": 41089,
+      "files": 601,
+      "seconds": 276.17
+    },
+    "nativeCudaBridge": {
+      "documents": 201,
+      "activeNativeEmbeddings": 198,
+      "excludedOwnersAhead": 197,
+      "finalQueries": 5,
+      "completeNativeRequestsAcrossAttempts": 32,
+      "failedHarnessAttemptRetained": true
+    }
+  },
+  "tests": [
+    "Host: bun test (bare full suite; exit green)",
+    "Host: bun run lint:check (final artifact fix; exit green, 23 warnings)",
+    "Host: bun run typecheck (exit green)",
+    "Host: bun run docs:verify (exit green)",
+    "Host: package smoke (exit green)",
+    "Host: selected memory eval 100%, hybrid 86%, vsearch/BM25 88%; unchanged thresholds",
+    "Consolidation: read/hash actual logs and reports; assert all completed oracle samples and 60 vectorsUsed flags; no gate reruns"
+  ],
+  "remaining": [
+    "Host-requested matching Metal 201-owner native bridge; child_capture owns after preceding native cases",
+    "Host promotion judgment on retained selective penalty and synchronous tails; no universal cost acceptance",
+    "Hosted guidance and driven-page QA queued AFTER PR by explicit user override"
+  ],
+  "nativeScope": "Metal/idle/generation/reranking and aggregate native performance remain separate owning-task acceptance, not additional fn148 Cartesian requirements",
+  "prs": [],
+  "nativeBridge": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda-receipt.json"
+}

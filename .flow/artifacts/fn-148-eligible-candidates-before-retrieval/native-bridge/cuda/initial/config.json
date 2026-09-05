@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "ftsTokenizer": "unicode61",
+  "busyTimeoutMs": 60000,
+  "collections": [
+    {
+      "name": "scaling",
+      "path": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    }
+  ],
+  "contexts": [],
+  "contentTypes": [],
+  "models": {
+    "activePreset": "native-bridge",
+    "presets": [
+      {
+        "id": "native-bridge",
+        "name": "Native eligibility bridge",
+        "embed": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "rerank": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "gen": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf"
+      }
+    ],
+    "loadTimeout": 60000,
+    "inferenceTimeout": 30000,
+    "expandContextSize": 2048,
+    "warmModelTtl": 300000
+  },
+  "projectAffinity": {
+    "enabled": false,
+    "contribution": 0.03
+  }
+}

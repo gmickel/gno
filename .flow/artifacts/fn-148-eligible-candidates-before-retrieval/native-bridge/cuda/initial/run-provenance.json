@@ -1,0 +1,10 @@
+{
+  "source": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/public-surfaces-f8a278ef/package",
+  "product": "9d0b57e3",
+  "helpers": "f8a278ef",
+  "tar": "/home/gordon/.cache/agent-tmp/gno-packed-9d0b57e3/gmickel-gno-1.46.0.tgz",
+  "tarHash": "1a01daff5030dfbab0492d8d7d76a759e699a3effbd87ede8a40a290e6879342",
+  "driverHash": "d83c2b9416ec1bb2aead3f52d43b572cdf56ba45598b55052993d967ef9035d4",
+  "sourcePinsVerified": true,
+  "startedAt": "2026-09-05T04:09:31.552Z"
+}

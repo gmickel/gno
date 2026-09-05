@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "dir": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared",
+      "pid": 293146,
+      "live": false
+    },
+    {
+      "dir": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-prepared",
+      "pid": 293203,
+      "live": false
+    },
+    {
+      "dir": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected",
+      "pid": 293903,
+      "live": false
+    },
+    {
+      "dir": "/home/gordon/.cache/agent-tmp/gno-fn148-native-bridge-wire-corrected",
+      "pid": 293949,
+      "live": false
+    }
+  ],
+  "allAbsent": true
+}

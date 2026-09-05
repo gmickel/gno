@@ -1,0 +1,1 @@
+{"runId":"fn148-native-201-cuda-9d0b57e3","caseId":"native-filtered-201","models":[{"role":"embedding","id":"file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf","sha256":"06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439","tokenizerSha256":"06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"}]}
