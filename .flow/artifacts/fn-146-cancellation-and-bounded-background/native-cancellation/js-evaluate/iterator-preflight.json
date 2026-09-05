@@ -1,0 +1,97 @@
+{
+  "nativeExecution": false,
+  "writable": true,
+  "nextReturnThrowIdentity": true,
+  "asyncIteratorSelf": true,
+  "events": [
+    {
+      "kind": "evaluation-pending",
+      "id": 1,
+      "method": "next"
+    },
+    {
+      "kind": "evaluation-end",
+      "id": 1,
+      "method": "next",
+      "result": {
+        "done": false
+      }
+    },
+    {
+      "kind": "evaluation-pending",
+      "id": 2,
+      "method": "next"
+    },
+    {
+      "kind": "evaluation-end",
+      "id": 2,
+      "method": "next",
+      "result": {
+        "done": true
+      }
+    },
+    {
+      "kind": "evaluation-pending",
+      "id": 1,
+      "method": "next"
+    },
+    {
+      "kind": "evaluation-end",
+      "id": 1,
+      "method": "next",
+      "result": {
+        "done": false
+      }
+    },
+    {
+      "kind": "evaluation-pending",
+      "id": 2,
+      "method": "return"
+    },
+    {
+      "kind": "evaluation-end",
+      "id": 2,
+      "method": "return",
+      "result": {
+        "done": true
+      }
+    },
+    {
+      "kind": "evaluation-pending",
+      "id": 1,
+      "method": "next"
+    },
+    {
+      "kind": "evaluation-end",
+      "id": 1,
+      "method": "next",
+      "result": {
+        "done": false
+      }
+    },
+    {
+      "kind": "evaluation-pending",
+      "id": 2,
+      "method": "throw"
+    },
+    {
+      "kind": "evaluation-error",
+      "id": 2,
+      "method": "throw",
+      "error": "Error: same error"
+    },
+    {
+      "kind": "evaluation-pending",
+      "id": 1,
+      "method": "next"
+    },
+    {
+      "kind": "evaluation-end",
+      "id": 1,
+      "method": "next",
+      "result": {
+        "done": false
+      }
+    }
+  ]
+}

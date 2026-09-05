@@ -1,0 +1,180 @@
+{
+  "status": "bounded-native-cancellation-exercised",
+  "comparisons": [
+    {
+      "case": "pre-aborted",
+      "publicResolved": true,
+      "fullResultsExact": true,
+      "fullPayloadExceptTimingExact": true,
+      "actualNativeQueryInputsOutputsExact": true,
+      "vectorsUsed": true,
+      "reranked": true
+    },
+    {
+      "case": "queued",
+      "publicResolved": true,
+      "fullResultsExact": true,
+      "fullPayloadExceptTimingExact": true,
+      "actualNativeQueryInputsOutputsExact": true,
+      "vectorsUsed": true,
+      "reranked": true
+    },
+    {
+      "case": "active-rerank",
+      "publicResolved": true,
+      "fullResultsExact": true,
+      "fullPayloadExceptTimingExact": true,
+      "actualNativeQueryInputsOutputsExact": true,
+      "vectorsUsed": true,
+      "reranked": true
+    },
+    {
+      "case": "active-generate",
+      "publicResolved": true,
+      "fullResultsExact": true,
+      "fullPayloadExceptTimingExact": true,
+      "actualNativeQueryInputsOutputsExact": true,
+      "vectorsUsed": true,
+      "reranked": true
+    }
+  ],
+  "cancellation": [
+    {
+      "case": "queued",
+      "exercised": true,
+      "requestId": 12,
+      "callerLatencyMs": 1,
+      "callerState": {
+        "atMonotonicMs": 4389.16449,
+        "pid": 369607,
+        "generation": 1,
+        "ownerPresent": true,
+        "busy": true,
+        "retiring": false,
+        "quarantined": false,
+        "externalWaiters": 0,
+        "pending": [
+          {
+            "requestId": 11,
+            "op": "rerank",
+            "generation": 1,
+            "ownsNative": true,
+            "phase": "native-active"
+          }
+        ]
+      },
+      "nativeDispatcherSettlementAfterAbortMs": null,
+      "evaluationSettledAfterAbortMs": null,
+      "queuedRequestReachedChild": false,
+      "externalWaiterPeakObserved": 0,
+      "callerDeliveryEvents": 1,
+      "cancelledResult": {
+        "ok": false,
+        "error": {
+          "code": "INFERENCE_FAILED",
+          "message": "Inference cancelled",
+          "retryable": false,
+          "cause": {
+            "name": "AbortError",
+            "message": "Inference cancelled"
+          }
+        }
+      }
+    },
+    {
+      "case": "active-rerank",
+      "exercised": true,
+      "requestId": 18,
+      "callerLatencyMs": 0,
+      "callerState": {
+        "atMonotonicMs": 5321.279563,
+        "pid": 369607,
+        "generation": 1,
+        "ownerPresent": true,
+        "busy": true,
+        "retiring": false,
+        "quarantined": true,
+        "externalWaiters": 0,
+        "pending": [
+          {
+            "requestId": 18,
+            "op": "rerank",
+            "generation": 1,
+            "ownsNative": true,
+            "phase": "native-active"
+          }
+        ]
+      },
+      "nativeDispatcherSettlementAfterAbortMs": 445,
+      "evaluationSettledAfterAbortMs": 396,
+      "queuedRequestReachedChild": null,
+      "externalWaiterPeakObserved": 1,
+      "callerDeliveryEvents": 1,
+      "cancelledResult": {
+        "ok": false,
+        "error": {
+          "code": "INFERENCE_FAILED",
+          "message": "Inference cancelled",
+          "retryable": false,
+          "cause": {
+            "name": "AbortError",
+            "message": "Inference cancelled"
+          }
+        }
+      }
+    },
+    {
+      "case": "active-generate",
+      "exercised": true,
+      "requestId": 24,
+      "callerLatencyMs": 1,
+      "callerState": {
+        "atMonotonicMs": 7833.19231,
+        "pid": 369607,
+        "generation": 1,
+        "ownerPresent": true,
+        "busy": true,
+        "retiring": false,
+        "quarantined": true,
+        "externalWaiters": 0,
+        "pending": [
+          {
+            "requestId": 24,
+            "op": "generate",
+            "generation": 1,
+            "ownsNative": true,
+            "phase": "native-active"
+          }
+        ]
+      },
+      "nativeDispatcherSettlementAfterAbortMs": 31,
+      "evaluationSettledAfterAbortMs": 24,
+      "queuedRequestReachedChild": null,
+      "externalWaiterPeakObserved": 1,
+      "callerDeliveryEvents": 1,
+      "cancelledResult": {
+        "ok": false,
+        "error": {
+          "code": "INFERENCE_FAILED",
+          "message": "Inference cancelled",
+          "retryable": false,
+          "cause": {
+            "name": "AbortError",
+            "message": "Inference cancelled"
+          }
+        }
+      }
+    }
+  ],
+  "queuedPrimaryExactHistorical": true,
+  "preAbortedNoRequestIdAdvance": true,
+  "allScopesDrained": true,
+  "postRun": {
+    "ownedPids": [
+      369561,
+      369607,
+      369657
+    ],
+    "remaining": []
+  }
+}
