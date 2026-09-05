@@ -3,6 +3,8 @@ import type { LlamaModel } from "node-llama-cpp";
 /** Owned-process instrumentation only; never install in a user's resident service. */
 // Bun has no synchronous write API for termination-safe capture sidecars.
 import { writeFileSync } from "node:fs";
+// Bun has no realpath or bigint inode/change-time stat equivalent.
+import { realpath, stat } from "node:fs/promises";
 import { z } from "zod";
 
 import type { AcceptanceManifest } from "./manifest";
@@ -38,9 +40,29 @@ export function captureArguments(
   );
 }
 
+const verifiedFiles = new Map<string, { identity: string; sha256: string }>();
+async function fileIdentity(path: string): Promise<string> {
+  const metadata = await stat(path, { bigint: true });
+  if (!metadata.isFile())
+    throw new Error(`Cached model is not a regular file: ${path}`);
+  return [
+    metadata.dev,
+    metadata.ino,
+    metadata.size,
+    metadata.mtimeNs,
+    metadata.ctimeNs,
+  ].join(":");
+}
+
+/** Hash once per unchanged physical file. Every use checks inode and change-time;
+ * replacements/edits force a new hash, including edits during the hash read. */
 async function hashFile(path: string): Promise<string> {
+  const physical = await realpath(path);
+  const identity = await fileIdentity(physical);
+  const previous = verifiedFiles.get(physical);
+  if (previous?.identity === identity) return previous.sha256;
   const hash = new Bun.CryptoHasher("sha256");
-  const reader = Bun.file(path).stream().getReader();
+  const reader = Bun.file(physical).stream().getReader();
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -50,7 +72,11 @@ async function hashFile(path: string): Promise<string> {
   } finally {
     reader.releaseLock();
   }
-  return hash.digest("hex");
+  if ((await fileIdentity(physical)) !== identity)
+    throw new Error(`Cached model changed while hashing: ${path}`);
+  const sha256 = hash.digest("hex");
+  verifiedFiles.set(physical, { identity, sha256 });
+  return sha256;
 }
 
 export function installNativeCapture(

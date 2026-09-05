@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable", "DOM.AsyncIterable"],
     "target": "ESNext",
     "module": "Preserve",
     "moduleDetection": "force",
@@ -26,6 +26,7 @@
   },
   "exclude": [
     "node_modules",
+    "notes",
     "src/serve/public",
     "desktop/electrobun-shell",
     "desktop/electrobun-spike"

@@ -158,7 +158,7 @@ export async function runSupersessionCase(
     raceOk = winners.length === 1 && conflicts.length === settled.length - 1;
     expectedCurrent.clear();
     for (const winner of winners) {
-      if (winner.kind === "result" && winner.outcome === "superseded") {
+      if (winner.kind === "result" && winner.result.outcome === "superseded") {
         expectedCurrent.add(winner.result.record.text);
       }
     }
@@ -500,7 +500,7 @@ export async function runScopeSuite(
       decision: "add",
     });
     const record =
-      attempt.kind === "result" && attempt.outcome !== "candidates"
+      attempt.kind === "result" && attempt.result.outcome !== "candidates"
         ? attempt.result.record
         : null;
     writes.push({
