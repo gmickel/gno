@@ -38,6 +38,17 @@
       "finalQueries": 5,
       "completeNativeRequestsAcrossAttempts": 32,
       "failedHarnessAttemptRetained": true
+    },
+    "nativeMetalBridge": {
+      "documents": 201,
+      "activeNativeEmbeddings": 198,
+      "actualNativeInputStringsVerified": 198,
+      "excludedOwnersAhead": 197,
+      "finalQueries": 5,
+      "completeNativeRequests": 24,
+      "governorExit": 0,
+      "governorWallSeconds": 8.203884582966566,
+      "governorWarningSeconds": 0
     }
   },
   "tests": [
@@ -50,11 +61,12 @@
     "Consolidation: read/hash actual logs and reports; assert all completed oracle samples and 60 vectorsUsed flags; no gate reruns"
   ],
   "remaining": [
-    "Host-requested matching Metal 201-owner native bridge; child_capture owns after preceding native cases",
+    "Host latest integrated gate after fn146.4; earlier full gates remain checkpoint evidence",
     "Host promotion judgment on retained selective penalty and synchronous tails; no universal cost acceptance",
     "Hosted guidance and driven-page QA queued AFTER PR by explicit user override"
   ],
-  "nativeScope": "Metal/idle/generation/reranking and aggregate native performance remain separate owning-task acceptance, not additional fn148 Cartesian requirements",
+  "nativeScope": "Requested CUDA and Metal filtered bridges captured; broader lifecycle/idle/generation/reranking and aggregate native performance remain separate owning-task acceptance",
   "prs": [],
-  "nativeBridge": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda-receipt.json"
+  "nativeBridge": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cuda-receipt.json",
+  "nativeMetalBridge": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/verification.json"
 }

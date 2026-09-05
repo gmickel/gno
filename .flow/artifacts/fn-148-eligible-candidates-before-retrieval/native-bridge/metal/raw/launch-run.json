@@ -1,0 +1,43 @@
+{
+  "command": [
+    "/tmp/gno-native-tools-1314.KrONBb/bun-darwin-aarch64/bun",
+    "--no-env-file",
+    "--preload",
+    "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/evals/acceptance/parent-capture.ts",
+    "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/.flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/driver.ts",
+    "run"
+  ],
+  "environment": {
+    "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+    "GNO_NO_AUTO_DOWNLOAD": "1",
+    "GNO_LLAMA_GPU": "metal",
+    "GNO_LLAMA_BUILD": "never",
+    "HOME": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/home",
+    "XDG_CONFIG_HOME": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/config",
+    "XDG_DATA_HOME": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/data",
+    "XDG_CACHE_HOME": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/cache",
+    "XDG_STATE_HOME": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/state",
+    "GNO_CONFIG_DIR": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/config/gno",
+    "GNO_DATA_DIR": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/data/gno",
+    "GNO_CACHE_DIR": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/cache/gno",
+    "GNO_SKILLS_HOME_OVERRIDE": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/skills/home",
+    "CLAUDE_SKILLS_DIR": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/skills/claude",
+    "CODEX_SKILLS_DIR": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/skills/codex",
+    "OPENCODE_SKILLS_DIR": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/skills/opencode",
+    "OPENCLAW_SKILLS_DIR": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/skills/openclaw",
+    "HERMES_SKILLS_DIR": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/skills/hermes",
+    "APPDATA": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/appdata",
+    "LOCALAPPDATA": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/localappdata",
+    "USERPROFILE": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/home",
+    "TEMP": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/tmp",
+    "TMP": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/tmp",
+    "TMPDIR": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/tmp",
+    "npm_config_cache": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/npm/cache",
+    "npm_config_prefix": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/npm/prefix",
+    "npm_config_userconfig": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/control-env/npm/config",
+    "QA_RUN": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201",
+    "QA_MODEL": "file:/Users/gordon/Library/Caches/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+    "QA_NATIVE_SLOT": "granted",
+    "GNO_ACCEPTANCE_CAPTURE": "/private/tmp/fn1445-final-f8a278ef.vbAn9o/metal201/capture.json"
+  }
+}

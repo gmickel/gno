@@ -1,0 +1,18 @@
+{
+  "status": "captured",
+  "checks": [
+    {
+      "limit": 1,
+      "vectorFullRowsExact": true,
+      "hybridOwnerExact": true,
+      "vectorsUsed": true
+    },
+    {
+      "limit": 10,
+      "vectorFullRowsExact": true,
+      "hybridOwnerExact": true,
+      "vectorsUsed": true
+    }
+  ],
+  "limitation": "Hybrid score assembly is not compared to an independent native fusion implementation; deterministic matrix supplies that declared-domain proof"
+}

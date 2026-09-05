@@ -165,6 +165,21 @@
       "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/cleanup.json",
       "bytes": 583,
       "sha256": "85f1cab4b7818da2c30f3113ba043fcc7a6c456bda038369557fb4500d3c1dfa"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/verification.json",
+      "bytes": 1901,
+      "sha256": "ac5dc76fd09e33d7efab34cb0d1be9bff420fb567940c1c5364258c6f46ed6e3"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/manifest.json",
+      "bytes": 20460,
+      "sha256": "054558f79093b16cfe7648b5f6c982001077d27dbed87d6b044d3bf6010f3643"
+    },
+    {
+      "path": ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/native-bridge/metal/transfer.json",
+      "bytes": 11328,
+      "sha256": "dfc491e43585814e67d79e929ee96e7e518cbbf77d545be57f2818dafb91d13b"
     }
   ]
 }
