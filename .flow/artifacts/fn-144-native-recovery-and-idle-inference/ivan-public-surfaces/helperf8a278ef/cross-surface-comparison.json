@@ -1,0 +1,56 @@
+{
+  "passed": false,
+  "externalSdkReference": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/sdk/protocol/session-hmGwKv/2.reply.json.gz",
+  "phase": "Each public surface is a single cold process; external SDK phase comes from its retained session receipt. Exact equality is checked across those stated phases, never used to compare latency.",
+  "comparisonContract": "Full results/citations/model-inputs/semantic-state, all native outputs and complete public results; scope.surface differs by definition and is retained, never rewritten; no fn143 same-surface comparator verdict claimed",
+  "comparisons": [
+    {
+      "reference": "sdk",
+      "candidate": "cli",
+      "checks": {
+        "record.results": true,
+        "record.citations": true,
+        "record.modelInputs": true,
+        "record.semanticState": true,
+        "native.modelOutputs": true,
+        "public.results": true
+      }
+    },
+    {
+      "reference": "sdk",
+      "candidate": "stdio",
+      "checks": {
+        "record.results": true,
+        "record.citations": true,
+        "record.modelInputs": true,
+        "record.semanticState": true,
+        "native.modelOutputs": true,
+        "public.results": true
+      }
+    },
+    {
+      "reference": "sdk",
+      "candidate": "http",
+      "checks": {
+        "record.results": true,
+        "record.citations": true,
+        "record.modelInputs": true,
+        "record.semanticState": true,
+        "native.modelOutputs": true,
+        "public.results": true
+      }
+    },
+    {
+      "reference": "sdk",
+      "candidate": "api",
+      "checks": {
+        "record.results": true,
+        "record.citations": true,
+        "record.modelInputs": true,
+        "record.semanticState": true,
+        "native.modelOutputs": true,
+        "public.results": true
+      }
+    }
+  ]
+}

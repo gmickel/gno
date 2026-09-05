@@ -1,0 +1,579 @@
+{
+  "policy": {
+    "stratum": "capacity-warning30-v1",
+    "pressureKey": "kern.memorystatus_vm_pressure_level",
+    "normal": 1,
+    "warning": 2,
+    "critical": 4,
+    "warningBudgetSeconds": 30,
+    "wallSeconds": 120,
+    "ownedGroupRssMiB": 6144,
+    "pollSeconds": 0.2,
+    "xnuSourceCommit": "f6217f891ac0bb64f3d375211650a4c1ff8ca1ea",
+    "warningAccounting": "sample-hold monotonic seconds; raw transition samples retained; resolution <=250ms"
+  },
+  "governorSha256": "24713377c597313ddd1b0e68e4cd64ad7b50ee8bcce9b40173bb36f9feeba90f",
+  "command": [
+    "/tmp/gno-native-tools-1314.KrONBb/bun-darwin-aarch64/bun",
+    "/private/tmp/fn1445-final-f8a278ef.vbAn9o/matched-ask.ts",
+    "--native",
+    "/private/tmp/fn1445-ask-packed-9244d715.QBZRbQ/matched29-f8a278ef/baseline"
+  ],
+  "pid": 9635,
+  "exit": 0,
+  "stopReason": null,
+  "wallSeconds": 10.231901499442756,
+  "cumulativeWarningSeconds": 0.0,
+  "samples": [
+    {
+      "elapsedSeconds": 0.001248999498784542,
+      "sampleIntervalSeconds": 0.001248999498784542,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 3264,
+      "ownedPids": [
+        9635
+      ]
+    },
+    {
+      "elapsedSeconds": 0.20845316722989082,
+      "sampleIntervalSeconds": 0.20720416773110628,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 202144,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 0.4184844996780157,
+      "sampleIntervalSeconds": 0.21003133244812489,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 204288,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 0.6285113329067826,
+      "sampleIntervalSeconds": 0.21002683322876692,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 204832,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 0.8385350415483117,
+      "sampleIntervalSeconds": 0.21002370864152908,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 205248,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 1.0485672075301409,
+      "sampleIntervalSeconds": 0.21003216598182917,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 207728,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 1.2531293332576752,
+      "sampleIntervalSeconds": 0.2045621257275343,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 207840,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 1.4536791667342186,
+      "sampleIntervalSeconds": 0.20054983347654343,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 207840,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 1.6637101247906685,
+      "sampleIntervalSeconds": 0.2100309580564499,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 207840,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 1.8737405827268958,
+      "sampleIntervalSeconds": 0.21003045793622732,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 207840,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 2.0837704995647073,
+      "sampleIntervalSeconds": 0.21002991683781147,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 208000,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 2.2877015825361013,
+      "sampleIntervalSeconds": 0.20393108297139406,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 208000,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 2.493511166423559,
+      "sampleIntervalSeconds": 0.20580958388745785,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 224864,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 2.7035516668111086,
+      "sampleIntervalSeconds": 0.2100405003875494,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 436640,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 2.9109631665050983,
+      "sampleIntervalSeconds": 0.20741149969398975,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 662944,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 3.121007832698524,
+      "sampleIntervalSeconds": 0.21004466619342566,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 924128,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 3.3310390831902623,
+      "sampleIntervalSeconds": 0.21003125049173832,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 1255488,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 3.541076791472733,
+      "sampleIntervalSeconds": 0.2100377082824707,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 1554720,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 3.7511163325980306,
+      "sampleIntervalSeconds": 0.21003954112529755,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 1661328,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 3.961154124699533,
+      "sampleIntervalSeconds": 0.21003779210150242,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2727744,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 4.170967957936227,
+      "sampleIntervalSeconds": 0.20981383323669434,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2776256,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 4.381016083061695,
+      "sampleIntervalSeconds": 0.21004812512546778,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2783920,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 4.591077375225723,
+      "sampleIntervalSeconds": 0.2100612921640277,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2784448,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 4.80113804154098,
+      "sampleIntervalSeconds": 0.21006066631525755,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2788400,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 5.011195791885257,
+      "sampleIntervalSeconds": 0.21005775034427643,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2790432,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 5.212701667100191,
+      "sampleIntervalSeconds": 0.20150587521493435,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2791184,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 5.4227585000917315,
+      "sampleIntervalSeconds": 0.21005683299154043,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2791808,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 5.63278679177165,
+      "sampleIntervalSeconds": 0.21002829167991877,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2792720,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 5.842479166574776,
+      "sampleIntervalSeconds": 0.20969237480312586,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2793376,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 6.04929762519896,
+      "sampleIntervalSeconds": 0.20681845862418413,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2794880,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 6.249357832595706,
+      "sampleIntervalSeconds": 0.20006020739674568,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2795808,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 6.458948582410812,
+      "sampleIntervalSeconds": 0.2095907498151064,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2796320,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 6.668983791954815,
+      "sampleIntervalSeconds": 0.210035209544003,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2796928,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 6.879066791385412,
+      "sampleIntervalSeconds": 0.21008299943059683,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2797568,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 7.089127624407411,
+      "sampleIntervalSeconds": 0.2100608330219984,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2797872,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 7.299177625216544,
+      "sampleIntervalSeconds": 0.21005000080913305,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2798736,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 7.501974041573703,
+      "sampleIntervalSeconds": 0.20279641635715961,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2798736,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 7.7120364578440785,
+      "sampleIntervalSeconds": 0.21006241627037525,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2799232,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 7.915962083265185,
+      "sampleIntervalSeconds": 0.20392562542110682,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2649264,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 8.12603500019759,
+      "sampleIntervalSeconds": 0.21007291693240404,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2996864,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 8.336105625145137,
+      "sampleIntervalSeconds": 0.2100706249475479,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2989920,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 8.54616979137063,
+      "sampleIntervalSeconds": 0.21006416622549295,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2983296,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 8.75622162502259,
+      "sampleIntervalSeconds": 0.2100518336519599,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2984768,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 8.966257999651134,
+      "sampleIntervalSeconds": 0.21003637462854385,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2985024,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 9.176310832612216,
+      "sampleIntervalSeconds": 0.21005283296108246,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2989184,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 9.383558082394302,
+      "sampleIntervalSeconds": 0.20724724978208542,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2989216,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 9.593608499504626,
+      "sampleIntervalSeconds": 0.2100504171103239,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2989280,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 9.799855291843414,
+      "sampleIntervalSeconds": 0.2062467923387885,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 3005920,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 10.008843082934618,
+      "sampleIntervalSeconds": 0.2089877910912037,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 2999152,
+      "ownedPids": [
+        9635,
+        9637
+      ]
+    },
+    {
+      "elapsedSeconds": 10.210162166506052,
+      "sampleIntervalSeconds": 0.20131908357143402,
+      "pressure": 1,
+      "cumulativeWarningSeconds": 0.0,
+      "rssKiB": 0,
+      "ownedPids": [
+        9635
+      ]
+    }
+  ],
+  "finalPressure": 1,
+  "physicalQualityComplete": true
+}

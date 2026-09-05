@@ -1,0 +1,2326 @@
+{
+  "samples": [
+    {
+      "elapsedMs": 2921.0565,
+      "rssBytes": 279281664,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175816704
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 103464960,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3021.657,
+      "rssBytes": 329908224,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175964160
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 153944064,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3122.224166,
+      "rssBytes": 330219520,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175964160
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 154255360,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3223.887833,
+      "rssBytes": 332513280,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175964160
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 156549120,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3325.4795,
+      "rssBytes": 332955648,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175964160
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 156991488,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3425.048833,
+      "rssBytes": 332988416,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175964160
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 157024256,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3527.089791,
+      "rssBytes": 354811904,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175964160
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 178847744,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3629.173583,
+      "rssBytes": 486703104,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175964160
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 310738944,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3738.20725,
+      "rssBytes": 632324096,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175964160
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 456359936,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3833.558208,
+      "rssBytes": 748748800,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175964160
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 572784640,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 3933.972541,
+      "rssBytes": 743407616,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175964160
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 567443456,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4032.799291,
+      "rssBytes": 1383628800,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175964160
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 1207664640,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4133.0655830000005,
+      "rssBytes": 1638891520,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 178061312
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 1460830208,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4238.280333000001,
+      "rssBytes": 1690796032,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 189956096
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 1500839936,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4338.819916,
+      "rssBytes": 1690861568,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 189956096
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 1500905472,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4440.451791,
+      "rssBytes": 1690877952,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 189972480
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 1500905472,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4543.195625,
+      "rssBytes": 1690910720,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 189972480
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 1500938240,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4643.85025,
+      "rssBytes": 1757855744,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 189972480
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 1567883264,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4753.048708,
+      "rssBytes": 1796784128,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 189972480
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 1606811648,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4849.131625,
+      "rssBytes": 1840414720,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 186531840
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 1653882880,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4947.65825,
+      "rssBytes": 1780793344,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 182239232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 1598554112,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5048.934083,
+      "rssBytes": 2888941568,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 182239232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2706702336,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5166.3137910000005,
+      "rssBytes": 3009003520,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 175112192
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2833891328,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5280.007750000001,
+      "rssBytes": 2848423936,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173326336
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2675097600,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5354.921291000001,
+      "rssBytes": 2848473088,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173326336
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2675146752,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5458.074291000001,
+      "rssBytes": 2851569664,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173326336
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2678243328,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5559.982041,
+      "rssBytes": 2851569664,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173326336
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2678243328,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5662.374291,
+      "rssBytes": 2851569664,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173326336
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2678243328,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5764.766166,
+      "rssBytes": 2852143104,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173326336
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2678816768,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5867.520458000001,
+      "rssBytes": 2853109760,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173326336
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2679783424,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5970.176,
+      "rssBytes": 2853224448,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173326336
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2679898112,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6072.106916000001,
+      "rssBytes": 2849374208,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2676031488,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6178.945625,
+      "rssBytes": 2828369920,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2655027200,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6275.936625,
+      "rssBytes": 2828632064,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2655289344,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6378.676291000001,
+      "rssBytes": 2828648448,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2655305728,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6478.326208,
+      "rssBytes": 2828664832,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2655322112,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6580.8690830000005,
+      "rssBytes": 2828697600,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2655354880,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6681.3471660000005,
+      "rssBytes": 2828713984,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2655371264,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6784.328958,
+      "rssBytes": 2828763136,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2655420416,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6884.317833,
+      "rssBytes": 2828779520,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2655436800,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6988.108125000001,
+      "rssBytes": 2829221888,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2655879168,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7089.13125,
+      "rssBytes": 2829254656,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2655911936,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7193.205583000001,
+      "rssBytes": 2825060352,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2651717632,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7291.479291000001,
+      "rssBytes": 2825076736,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2651734016,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7395.907416,
+      "rssBytes": 2825076736,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173342720
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2651734016,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7496.514416,
+      "rssBytes": 2825748480,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 173965312
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2651783168,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7600.414125,
+      "rssBytes": 2825846784,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2651799552,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7700.6689160000005,
+      "rssBytes": 2825846784,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2651799552,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7805.058166000001,
+      "rssBytes": 2825863168,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2651815936,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7905.080083000001,
+      "rssBytes": 2825863168,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2651815936,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8010.863208000001,
+      "rssBytes": 2825879552,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2651832320,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8109.253625,
+      "rssBytes": 2825879552,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2651832320,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8213.429916000001,
+      "rssBytes": 2825879552,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2651832320,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8313.430125,
+      "rssBytes": 2824208384,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2650161152,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8418.292958,
+      "rssBytes": 2824224768,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2650177536,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8518.105,
+      "rssBytes": 2824224768,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2650177536,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8620.430250000001,
+      "rssBytes": 2824224768,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2650177536,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8725.198875,
+      "rssBytes": 2822586368,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2648539136,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8823.521083,
+      "rssBytes": 2822586368,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2648539136,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8924.936875000001,
+      "rssBytes": 2818605056,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 174047232
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2644557824,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9024.369291,
+      "rssBytes": 2642198528,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 177487872
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2464710656,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9128.092458000001,
+      "rssBytes": 3090890752,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 177487872
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2913402880,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9228.709416,
+      "rssBytes": 2933538816,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92389376
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2841149440,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9332.702875,
+      "rssBytes": 2933555200,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92389376
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2841165824,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9435.336708,
+      "rssBytes": 2933587968,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92389376
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2841198592,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9536.506125,
+      "rssBytes": 2933587968,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92389376
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2841198592,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9639.470291,
+      "rssBytes": 2933587968,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92389376
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2841198592,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9740.873583,
+      "rssBytes": 2934538240,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92389376
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2842148864,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9843.233375,
+      "rssBytes": 2956099584,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92389376
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2863710208,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9945.437791,
+      "rssBytes": 2956099584,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92389376
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2863710208,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10047.313208,
+      "rssBytes": 2956263424,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92553216
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2863710208,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10151.780333,
+      "rssBytes": 2971516928,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92602368
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2878914560,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10251.58275,
+      "rssBytes": 2971615232,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92602368
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2879012864,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10352.769583000001,
+      "rssBytes": 2971615232,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92602368
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2879012864,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10452.411833,
+      "rssBytes": 2971648000,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92602368
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2879045632,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10555.529375,
+      "rssBytes": 2971648000,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92602368
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2879045632,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10655.765541,
+      "rssBytes": 2971729920,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92602368
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2879127552,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10759.470875,
+      "rssBytes": 2971811840,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92602368
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2879209472,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10860.4905,
+      "rssBytes": 2971877376,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92602368
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2879275008,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10963.745708,
+      "rssBytes": 2971910144,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92602368
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2879307776,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 11064.74575,
+      "rssBytes": 2971992064,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92602368
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2879389696,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 11167.52125,
+      "rssBytes": 2972090368,
+      "gpuBytes": null,
+      "pids": [
+        9826,
+        9841
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 9826,
+          "rssBytes": 92602368
+        },
+        {
+          "pid": 9841,
+          "rssBytes": 2879488000,
+          "nativeIdentity": {
+            "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+            "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+            "parentPid": 9826,
+            "pid": 9841,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "nativeChildren": [
+    {
+      "identity": {
+        "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+        "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+        "parentPid": 9826,
+        "pid": 9841,
+        "generation": 1,
+        "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+      },
+      "event": "birth"
+    },
+    {
+      "identity": {
+        "runId": "e5c08120-e978-4593-8324-c3a2dbc259a0",
+        "token": "a204a2ec-866f-4485-82ab-c7dc39748e99",
+        "parentPid": 9826,
+        "pid": 9841,
+        "generation": 1,
+        "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/llm/native-worker/entry.ts"
+      },
+      "event": "exit",
+      "exitCode": 0
+    }
+  ]
+}

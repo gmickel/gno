@@ -1,0 +1,43 @@
+{
+  "verdict": {
+    "passed": true,
+    "comparedCases": 1,
+    "failures": [],
+    "generatedAnswerChanges": []
+  },
+  "coverage": [
+    "complete",
+    "complete"
+  ],
+  "semantic": [
+    {
+      "status": "completed",
+      "reason": "verified",
+      "schemaRequested": true,
+      "schemaEnforced": true,
+      "modelFingerprint": "df7b18d008b723c115c8606747ff8d8132f4a1ac47b43001d6598e12c566aeaf",
+      "configFingerprint": "a487c4b02c6b7d9b25e86920025befcccfb6544f9884ea9c61e42d62f5406f09",
+      "verifierFingerprint": "55cdf0d4299d1b309f019d4520c31d8c63fde9023bda9dcaae6c9d9288f0621d",
+      "candidateClaims": 1,
+      "verifiedClaims": 0,
+      "unresolvedClaims": 1,
+      "modelCalls": 1,
+      "durationMs": 2190.2855419999996
+    },
+    {
+      "status": "completed",
+      "reason": "verified",
+      "schemaRequested": true,
+      "schemaEnforced": true,
+      "modelFingerprint": "df7b18d008b723c115c8606747ff8d8132f4a1ac47b43001d6598e12c566aeaf",
+      "configFingerprint": "a487c4b02c6b7d9b25e86920025befcccfb6544f9884ea9c61e42d62f5406f09",
+      "verifierFingerprint": "55cdf0d4299d1b309f019d4520c31d8c63fde9023bda9dcaae6c9d9288f0621d",
+      "candidateClaims": 1,
+      "verifiedClaims": 0,
+      "unresolvedClaims": 1,
+      "modelCalls": 1,
+      "durationMs": 2196.8058330000003
+    }
+  ],
+  "nativeModelOutputsEqual": true
+}

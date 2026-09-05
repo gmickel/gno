@@ -1,0 +1,26 @@
+{
+  "args": [
+    "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/package/src/index.ts",
+    "--config",
+    "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/api/config/index.yml",
+    "serve",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "53400"
+  ],
+  "invocation": {
+    "surface": "api",
+    "url": "http://127.0.0.1:53400/api/query",
+    "body": {
+      "query": "what retry budget did we decide and why",
+      "limit": 5,
+      "explain": true
+    }
+  },
+  "env": {
+    "GNO_CONFIG_DIR": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/api/config",
+    "GNO_DATA_DIR": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/api/data",
+    "GNO_CACHE_DIR": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/public-surfaces-f8a278ef/api/cache"
+  }
+}

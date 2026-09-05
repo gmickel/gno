@@ -1,0 +1,4 @@
+{"phase":"cold-primer","coverage":"incomplete","reasons":["native_fallback"],"results":5,"before":false,"after":true}
+{"phase":"warm-1","coverage":"complete","reasons":[],"results":5,"before":true,"after":true}
+{"phase":"warm-2","coverage":"complete","reasons":[],"results":5,"before":true,"after":true}
+{"phase":"warm-3","coverage":"complete","reasons":[],"results":5,"before":true,"after":true}
