@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { join } from "node:path";
 
 import {
   body,
@@ -12,6 +13,7 @@ import {
   openHarness,
   whitespaceBody,
 } from "../../evals/fixtures/acceptance/ingestion-identity/oracle";
+import { safeRm } from "../helpers/cleanup";
 
 test("frozen independent oracle rejects missing, stale, wrong-title and unproven legacy vectors", async () => {
   const pin = await Bun.file(
@@ -64,7 +66,8 @@ test.each([false, true])(
         expectedOwner("Alpha.md", "Alpha"),
         expectedOwner("Beta.md", "Beta"),
       ];
-      expect(calls).toEqual(fixture.expectations.titleOrders.calls);
+      expect(calls).toEqual([1, 0]); // Legacy harness cannot prove the new title input.
+      expect(fixture.expectations.titleOrders.calls).toEqual([1, 1]);
       expect(cleanCalls).toBe(1); // Known gap: oracle requires two independent inputs.
       expect(fixture.expectations.titleOrders.cleanCalls).toBe(2);
       expect(equivalent(expected, h.snapshot())).toBe(false);
@@ -78,7 +81,7 @@ test.each([false, true])(
 );
 
 test.each(["sameTitle", "whitespace"] as const)(
-  "characterization: %s deletes unchanged valid vector and repeats model work",
+  "%s preserves unchanged valid vectors without model work",
   async (scenario) => {
     const h = await openHarness();
     const clean = await openHarness();
@@ -95,11 +98,8 @@ test.each(["sameTitle", "whitespace"] as const)(
       await h.sync();
       const expected = [expectedOwner("Alpha.md", "Alpha")];
       if (scenario === "sameTitle") expected.push(expectedOwner(name, "Alpha"));
-      expect(equivalent(expected, h.snapshot())).toBe(false);
-      expect(h.snapshot().every((owner) => owner.embedding === null)).toBe(
-        true
-      );
-      expect(await h.embed()).toBe(1); // Required delta is zero; do not bless current work.
+      expect(equivalent(expected, h.snapshot())).toBe(true);
+      expect(await h.embed()).toBe(0);
       expect(fixture.expectations[scenario].calls).toEqual([1, 0]);
       expect(await h.events()).toEqual(fixture.expectations[scenario].events);
       await clean.write("Alpha.md", scenario === "whitespace" ? source : body);
@@ -150,5 +150,122 @@ test("true content and model changes need new input vectors; clean rebuild agree
   } finally {
     await h.close();
     await clean.close();
+  }
+});
+
+test("identical restore cycles preserve vectors and emit exactly one committed event", async () => {
+  const h = await openHarness();
+  const clean = await openHarness();
+  try {
+    await h.write("Alpha.md");
+    await h.sync();
+    expect(await h.embed()).toBe(1);
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      await safeRm(join(h.path, "Alpha.md"));
+      await h.sync();
+      await h.sync();
+      expect(h.snapshot()).toEqual([]);
+      await h.write("Alpha.md");
+      if (cycle === 0) {
+        const db = h.store.getRawDb();
+        db.exec(
+          "CREATE TRIGGER reject_restore BEFORE INSERT ON document_changes WHEN NEW.change_kind = 'reactivate' BEGIN SELECT RAISE(ABORT, 'injected restoration failure'); END"
+        );
+        await h.sync();
+        expect(h.snapshot()).toEqual([]);
+        expect(await h.events()).toEqual(["create", "inactivate"]);
+        db.exec("DROP TRIGGER reject_restore");
+      }
+      await h.sync();
+      expect(await h.embed()).toBe(0);
+      await h.sync();
+      expect(await h.embed()).toBe(0);
+    }
+    expect(await h.events()).toEqual(fixture.expectations.restoration.events);
+    expect(
+      h.store
+        .getRawDb()
+        .query(
+          "SELECT DISTINCT new_source_hash AS source_hash FROM document_changes WHERE change_kind = 'reactivate'"
+        )
+        .all()
+    ).toEqual(
+      h.store.getRawDb().query("SELECT source_hash FROM documents").all()
+    );
+    await clean.write("Alpha.md");
+    await clean.sync();
+    await clean.embed();
+    expect(equivalent(clean.snapshot(), h.snapshot())).toBe(true);
+    const rows = h.store
+      .getRawDb()
+      .query("SELECT source_hash FROM documents")
+      .get();
+    expect(rows).toEqual(
+      clean.store.getRawDb().query("SELECT source_hash FROM documents").get()
+    );
+  } finally {
+    await h.close();
+    await clean.close();
+  }
+});
+
+test("chunk reconciliation retains stable sequences and rolls back changed input failures", async () => {
+  const h = await openHarness();
+  try {
+    await h.write("Alpha.md");
+    await h.sync();
+    await h.embed();
+    const db = h.store.getRawDb();
+    const before = db.query("SELECT rowid, * FROM content_chunks").all();
+    const chunks = await h.store.getChunks(
+      expectedOwner("Alpha.md", "Alpha").mirror
+    );
+    if (!chunks.ok) throw new Error(chunks.error.message);
+    const inputs = chunks.value.map((chunk) => ({
+      ...chunk,
+      language: chunk.language ?? undefined,
+      tokenCount: chunk.tokenCount ?? undefined,
+    }));
+    expect(
+      await h.store.upsertChunks(
+        expectedOwner("Alpha.md", "Alpha").mirror,
+        inputs
+      )
+    ).toMatchObject({ ok: true });
+    expect(db.query("SELECT rowid, * FROM content_chunks").all()).toEqual(
+      before
+    );
+    expect(await h.embed()).toBe(0);
+    db.exec(
+      "CREATE TRIGGER reject_chunk BEFORE INSERT ON content_chunks WHEN NEW.text = 'changed' BEGIN SELECT RAISE(ABORT, 'injected chunk failure'); END"
+    );
+    const changed = inputs.map((chunk) => ({
+      ...chunk,
+      text: "changed",
+    }));
+    expect(
+      await h.store.upsertChunks(
+        expectedOwner("Alpha.md", "Alpha").mirror,
+        changed
+      )
+    ).toMatchObject({ ok: false });
+    expect(db.query("SELECT rowid, * FROM content_chunks").all()).toEqual(
+      before
+    );
+    expect(equivalent([expectedOwner("Alpha.md", "Alpha")], h.snapshot())).toBe(
+      true
+    );
+    db.exec("DROP TRIGGER reject_chunk");
+    expect(
+      await h.store.upsertChunks(
+        expectedOwner("Alpha.md", "Alpha").mirror,
+        changed
+      )
+    ).toMatchObject({ ok: true });
+    expect(db.query("SELECT count(*) AS n FROM content_vectors").get()).toEqual(
+      { n: 0 }
+    );
+  } finally {
+    await h.close();
   }
 });

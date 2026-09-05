@@ -12,6 +12,7 @@ import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { CONFIG_VERSION } from "../../src/config/types";
 import { getEmbeddingFingerprint } from "../../src/embed/fingerprint";
 import { runEmbed } from "../../src/sdk/embed";
+import { migration } from "../../src/store/migrations/028-vector-variants";
 import { encodeEmbedding } from "../../src/store/vector";
 import { safeRm } from "../helpers/cleanup";
 
@@ -30,10 +31,12 @@ describe("runEmbed", () => {
     }
   });
 
-  test("dry-run backlog uses current model dimensions instead of arbitrary stored vectors", async () => {
-    testDir = await mkdtemp(join(tmpdir(), "gno-sdk-embed-test-"));
-    db = new Database(join(testDir, "index.sqlite"), { create: true });
-    db.exec(`
+  test.each([false, true])(
+    "dry-run backlog uses actual model dimensions (verified=%s)",
+    async (verified) => {
+      testDir = await mkdtemp(join(tmpdir(), "gno-sdk-embed-test-"));
+      db = new Database(join(testDir, "index.sqlite"), { create: true });
+      db.exec(`
       CREATE TABLE documents (
         id INTEGER PRIMARY KEY,
         mirror_hash TEXT,
@@ -61,55 +64,102 @@ describe("runEmbed", () => {
       );
     `);
 
-    const staleStoredFingerprint = getEmbeddingFingerprint({
-      modelUri: MODEL_URI,
-      dimensions: 2,
-    });
+      migration.up(db, "unicode61");
 
-    db.prepare(
-      "INSERT INTO documents (id, mirror_hash, active) VALUES (1, 'h1', 1)"
-    ).run();
-    db.prepare(
-      "INSERT INTO content_chunks (mirror_hash, seq, text, created_at) VALUES ('h1', 0, 'chunk', datetime('now', '-1 minute'))"
-    ).run();
-    db.prepare(
-      `INSERT INTO content_vectors (
+      const staleStoredFingerprint = getEmbeddingFingerprint({
+        modelUri: MODEL_URI,
+        dimensions: 2,
+      });
+
+      db.prepare(
+        "INSERT INTO documents (id, mirror_hash, active) VALUES (1, 'h1', 1)"
+      ).run();
+      db.prepare(
+        "INSERT INTO content_chunks (mirror_hash, seq, text, created_at) VALUES ('h1', 0, 'chunk', datetime('now', '-1 minute'))"
+      ).run();
+      db.prepare(
+        `INSERT INTO content_vectors (
         mirror_hash, seq, model, embed_fingerprint, embedding, embedded_at
       ) VALUES (?, ?, ?, ?, ?, datetime('now'))`
-    ).run(
-      "h1",
-      0,
-      MODEL_URI,
-      staleStoredFingerprint,
-      encodeEmbedding(new Float32Array([1, 2]))
-    );
+      ).run(
+        "h1",
+        0,
+        MODEL_URI,
+        staleStoredFingerprint,
+        encodeEmbedding(new Float32Array([1, 2]))
+      );
 
-    const embedPort: EmbeddingPort = {
-      modelUri: MODEL_URI,
-      init: async () => ({ ok: true, value: undefined }),
-      embed: async () => ({ ok: true, value: [1, 2, 3] }),
-      embedBatch: async () => ({ ok: true, value: [[1, 2, 3]] }),
-      dimensions: () => 3,
-      dispose: async () => {},
-    };
-    const llm = {
-      createEmbeddingPort: async () => ({ ok: true, value: embedPort }),
-    } as unknown as LlmAdapter;
-    const store = {
-      getRawDb: () => db as Database,
-    } as unknown as SqliteAdapter;
-    const config: Config = {
-      version: CONFIG_VERSION,
-      ftsTokenizer: "unicode61",
-      collections: [],
-      contexts: [],
-    };
+      const embedPort: EmbeddingPort = {
+        modelUri: MODEL_URI,
+        init: async () => ({ ok: true, value: undefined }),
+        embed: async () => ({ ok: true, value: [1, 2, 3] }),
+        embedBatch: async () => ({ ok: true, value: [[1, 2, 3]] }),
+        dimensions: () => 3,
+        dispose: async () => {},
+      };
+      if (verified)
+        embedPort.getIdentity = () => ({
+          contextSize: 512,
+          truncationPolicy: "test",
+          modelFingerprint: "weights",
+          runtimeFingerprint: "runtime",
+        });
+      const llm = {
+        createEmbeddingPort: async () => ({ ok: true, value: embedPort }),
+      } as unknown as LlmAdapter;
+      const store = {
+        getRawDb: () => db as Database,
+      } as unknown as SqliteAdapter;
+      const config: Config = {
+        version: CONFIG_VERSION,
+        ftsTokenizer: "unicode61",
+        collections: [],
+        contexts: [],
+      };
 
-    const result = await runEmbed(
-      { config, store, llm },
-      { model: MODEL_URI, dryRun: true }
-    );
+      const result = await runEmbed(
+        { config, store, llm },
+        { model: MODEL_URI, dryRun: true }
+      );
 
-    expect(result.embedded).toBe(1);
-  });
+      expect(result.embedded).toBe(1);
+      if (verified) {
+        expect(
+          (await runEmbed({ config, store, llm }, { model: MODEL_URI }))
+            .embedded
+        ).toBe(1);
+        expect(
+          (
+            await runEmbed(
+              { config, store, llm },
+              { model: MODEL_URI, dryRun: true }
+            )
+          ).embedded
+        ).toBe(0);
+        expect(
+          (
+            await runEmbed(
+              { config, store, llm },
+              { model: MODEL_URI, dryRun: true, force: true }
+            )
+          ).embedded
+        ).toBe(1);
+        expect(
+          (
+            await runEmbed(
+              { config, store, llm },
+              { model: MODEL_URI, force: true }
+            )
+          ).embedded
+        ).toBe(1);
+        embedPort.getIdentity = () => undefined;
+        expect(
+          runEmbed(
+            { config, store, llm },
+            { model: MODEL_URI, force: true, dryRun: true }
+          )
+        ).rejects.toThrow("identity unavailable");
+      }
+    }
+  );
 });

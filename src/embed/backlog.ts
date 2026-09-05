@@ -39,6 +39,8 @@ export interface EmbedBacklogDeps {
   collection?: string;
   modelUri: string;
   batchSize?: number;
+  force?: boolean;
+  onProgress?: (embedded: number, errors: number) => void;
   variantStore?: VectorVariantStore;
   /** Recheck the effective runtime identity after asynchronous inference. */
   identityStillCurrent?: () => boolean;
@@ -72,58 +74,10 @@ interface Cursor {
 export async function embedBacklog(
   deps: EmbedBacklogDeps
 ): Promise<StoreResult<EmbedBacklogResult>> {
+  const prepared = await prepareEmbeddingBacklog(deps);
+  if (!prepared.ok) return prepared;
+  deps = prepared.value;
   if (deps.variantStore) return embedVariantBacklog(deps, deps.variantStore);
-  const db = getVectorStatsDatabase(deps.statsPort);
-  if (db) {
-    try {
-      const initialized = await deps.embedPort.init();
-      if (!initialized.ok) return err("INTERNAL", initialized.error.message);
-      const identity = deps.embedPort.getIdentity?.();
-      if (identity) {
-        const identitySnapshot = JSON.stringify(identity);
-        const dimensions = deps.embedPort.dimensions();
-        const variantStore = await createVectorVariantStore(db, {
-          model: deps.modelUri,
-          modelFingerprint: getVariantModelFingerprint(
-            { modelUri: deps.modelUri, dimensions },
-            identity
-          ),
-          contextSize: identity.contextSize,
-          truncationPolicy: identity.truncationPolicy,
-          dimensions,
-        });
-        return embedVariantBacklog(
-          {
-            ...deps,
-            identityStillCurrent: () =>
-              deps.embedPort.modelUri === deps.modelUri &&
-              deps.embedPort.dimensions() === dimensions &&
-              JSON.stringify(deps.embedPort.getIdentity?.()) ===
-                identitySnapshot,
-          },
-          variantStore
-        );
-      }
-      // Unverified/HTTP ports retain legacy behavior until variant authority exists.
-      if (
-        db
-          .query(
-            "SELECT 1 FROM vector_partitions WHERE model = ? AND state = ? AND activated_epoch IS NOT NULL LIMIT 1"
-          )
-          .get(deps.modelUri, "active")
-      ) {
-        return err(
-          "INVALID_INPUT",
-          "Effective embedding identity unavailable after variant activation"
-        );
-      }
-    } catch (cause) {
-      return err(
-        "QUERY_FAILED",
-        cause instanceof Error ? cause.message : String(cause)
-      );
-    }
-  }
   const { statsPort, embedPort, vectorIndex, modelUri, collection } = deps;
   const batchSize = deps.batchSize ?? 32;
   const embedFingerprint = getEmbeddingFingerprint({
@@ -267,4 +221,66 @@ export async function embedBacklog(
       `Embedding failed: ${e instanceof Error ? e.message : String(e)}`
     );
   }
+}
+
+/** Resolve authority before counts, dry runs, forced work, or early returns. */
+export async function prepareEmbeddingBacklog(
+  deps: EmbedBacklogDeps
+): Promise<StoreResult<EmbedBacklogDeps>> {
+  if (deps.variantStore) return ok(deps);
+  const db = getVectorStatsDatabase(deps.statsPort);
+  if (db) {
+    try {
+      const initialized = await deps.embedPort.init();
+      if (!initialized.ok) return err("INTERNAL", initialized.error.message);
+      const identity = deps.embedPort.getIdentity?.();
+      if (identity) {
+        const identitySnapshot = JSON.stringify(identity);
+        const dimensions = deps.embedPort.dimensions();
+        const variantStore = await createVectorVariantStore(db, {
+          model: deps.modelUri,
+          modelFingerprint: getVariantModelFingerprint(
+            { modelUri: deps.modelUri, dimensions },
+            identity
+          ),
+          contextSize: identity.contextSize,
+          truncationPolicy: identity.truncationPolicy,
+          dimensions,
+        });
+        return ok({
+          ...deps,
+          variantStore,
+          identityStillCurrent: () =>
+            (deps.identityStillCurrent?.() ?? true) &&
+            deps.embedPort.modelUri === deps.modelUri &&
+            deps.embedPort.dimensions() === dimensions &&
+            JSON.stringify(deps.embedPort.getIdentity?.()) === identitySnapshot,
+        });
+      }
+      // Unverified/HTTP ports retain legacy behavior until variant authority exists.
+      if (
+        db
+          .query(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'vector_partitions'"
+          )
+          .get() &&
+        db
+          .query(
+            "SELECT 1 FROM vector_partitions WHERE model = ? AND state = ? AND activated_epoch IS NOT NULL LIMIT 1"
+          )
+          .get(deps.modelUri, "active")
+      ) {
+        return err(
+          "INVALID_INPUT",
+          "Effective embedding identity unavailable after variant activation"
+        );
+      }
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : String(cause)
+      );
+    }
+  }
+  return ok(deps);
 }

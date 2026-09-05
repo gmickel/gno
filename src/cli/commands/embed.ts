@@ -22,6 +22,7 @@ import {
   type WriteLeaseContention,
   withCliWriteLease,
 } from "../../core/write-lease";
+import { embedBacklog, prepareEmbeddingBacklog } from "../../embed/backlog";
 import { getEmbeddingFingerprint } from "../../embed/fingerprint";
 import {
   addUniqueSamples,
@@ -38,6 +39,7 @@ import {
   markIndexStageRunning,
   readIndexStageState,
 } from "../../embed/stage-state";
+import { countVariantBacklog } from "../../embed/variant-plan";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
@@ -137,18 +139,6 @@ function formatDuration(seconds: number): string {
 
 function isDisposedBatchError(message: string): boolean {
   return message.toLowerCase().includes("object is disposed");
-}
-
-async function checkVecAvailable(
-  db: import("bun:sqlite").Database
-): Promise<boolean> {
-  try {
-    const sqliteVec = await import("sqlite-vec");
-    sqliteVec.load(db);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 interface BatchContext {
@@ -506,28 +496,6 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
         const stats: VectorStatsPort = createVectorStatsPort(db);
 
         let totalToEmbed = 0;
-        if (force) {
-          const forceCount = await getActiveChunkCount(db, options.collection);
-          if (!forceCount.ok) {
-            return { success: false, error: forceCount.error.message };
-          }
-          totalToEmbed = forceCount.value;
-
-          if (totalToEmbed === 0 || dryRun) {
-            const vecAvailable = await checkVecAvailable(db);
-            return {
-              success: true,
-              embedded: totalToEmbed,
-              errors: 0,
-              contentionErrors: 0,
-              duration: 0,
-              model: modelUri,
-              searchAvailable: vecAvailable,
-              errorSamples: [],
-            };
-          }
-        }
-
         // Create LLM adapter and embedding port with auto-download
         let offline = options.offline;
         if (offline === undefined) {
@@ -585,12 +553,16 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           process.stderr.write("\n");
         }
 
-        // Discover dimensions via probe embedding
-        const probeResult = await embedPort.embed("dimension probe");
-        if (!probeResult.ok) {
-          return { success: false, error: probeResult.error.message };
+        const initializedPort = await embedPort.init();
+        if (!initializedPort.ok)
+          return { success: false, error: initializedPort.error.message };
+        let dimensions = embedPort.dimensions();
+        if (!embedPort.getIdentity?.()) {
+          const probeResult = await embedPort.embed("dimension probe");
+          if (!probeResult.ok)
+            return { success: false, error: probeResult.error.message };
+          dimensions = probeResult.value.length;
         }
-        const dimensions = probeResult.value.length;
 
         // Create vector index port
         const vectorResult = await createVectorIndexPort(db, {
@@ -601,6 +573,70 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           return { success: false, error: vectorResult.error.message };
         }
         vectorIndex = vectorResult.value;
+
+        const prepared = await prepareEmbeddingBacklog({
+          statsPort: stats,
+          embedPort,
+          vectorIndex,
+          modelUri,
+          collection: options.collection,
+          batchSize,
+          force,
+        });
+        if (!prepared.ok)
+          return { success: false, error: prepared.error.message };
+        if (prepared.value.variantStore) {
+          totalToEmbed = countVariantBacklog(prepared.value);
+          const startedAt = Date.now();
+          if (dryRun)
+            return {
+              success: true,
+              embedded: totalToEmbed,
+              errors: 0,
+              contentionErrors: 0,
+              duration: 0,
+              model: modelUri,
+              searchAvailable: prepared.value.variantStore.searchAvailable,
+              errorSamples: [],
+            };
+          const processed = await embedBacklog({
+            ...prepared.value,
+            onProgress: !options.json
+              ? (embedded, errors) =>
+                  process.stderr.write(
+                    `\rEmbedded ${embedded}/${totalToEmbed} owners; ${errors} errors`
+                  )
+              : undefined,
+          });
+          if (!options.json) process.stderr.write("\n");
+          if (!processed.ok)
+            return { success: false, error: processed.error.message };
+          return {
+            success: true,
+            ...processed.value,
+            contentionErrors: processed.value.contentionErrors ?? 0,
+            duration: (Date.now() - startedAt) / 1000,
+            model: modelUri,
+            searchAvailable: prepared.value.variantStore.searchAvailable,
+            errorSamples: [],
+          };
+        }
+        if (force) {
+          const count = await getActiveChunkCount(db, options.collection);
+          if (!count.ok) return { success: false, error: count.error.message };
+          totalToEmbed = count.value;
+          if (dryRun || !totalToEmbed)
+            return {
+              success: true,
+              embedded: totalToEmbed,
+              errors: 0,
+              contentionErrors: 0,
+              duration: 0,
+              model: modelUri,
+              searchAvailable: vectorIndex.searchAvailable,
+              errorSamples: [],
+            };
+        }
 
         if (!force) {
           const embedFingerprint = getEmbeddingFingerprint({

@@ -1446,6 +1446,16 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           throw new Error("Failed to get document id after upsert");
         }
 
+        // Owner bindings describe the exact current source input. Keep inactive
+        // bindings for identical restoration, but invalidate changed ownership.
+        if (
+          previousRow &&
+          (previousRow.mirror_hash !== (doc.mirrorHash ?? null) ||
+            previousRow.title !== (doc.title ?? null))
+        ) {
+          db.run("DELETE FROM vector_owners WHERE document_id = ?", [idRow.id]);
+        }
+
         // Conversion failures deliberately drop mirror ownership. Remove the
         // old lexical projection in the same transaction so stale content can
         // never join against the newly updated document metadata.
@@ -2541,15 +2551,42 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const db = this.ensureOpen();
 
       const transaction = db.transaction(() => {
-        // Delete existing chunks for this hash
-        db.run("DELETE FROM content_chunks WHERE mirror_hash = ?", [
-          mirrorHash,
-        ]);
+        // Retain stable rows: DELETE cascades erase valid legacy vectors even
+        // when duplicate ingestion produces exactly the same embedding input.
+        const nextBySequence = new Map(
+          chunks.map((chunk) => [chunk.seq, chunk])
+        );
+        const existing = db
+          .query<{ seq: number; text: string }, [string]>(
+            "SELECT seq, text FROM content_chunks WHERE mirror_hash = ?"
+          )
+          .all(mirrorHash);
+        for (const old of existing) {
+          const next = nextBySequence.get(old.seq);
+          if (!next || next.text !== old.text) {
+            db.run(
+              "DELETE FROM vector_owners WHERE mirror_hash = ? AND seq = ?",
+              [mirrorHash, old.seq]
+            );
+            db.run(
+              "DELETE FROM content_chunks WHERE mirror_hash = ? AND seq = ?",
+              [mirrorHash, old.seq]
+            );
+          }
+        }
 
-        // Insert new chunks
         const stmt = db.prepare(`
           INSERT INTO content_chunks (mirror_hash, seq, pos, text, start_line, end_line, language, token_count)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(mirror_hash, seq) DO UPDATE SET
+            pos = excluded.pos, start_line = excluded.start_line,
+            end_line = excluded.end_line, language = excluded.language,
+            token_count = excluded.token_count
+          WHERE content_chunks.pos IS NOT excluded.pos
+             OR content_chunks.start_line IS NOT excluded.start_line
+             OR content_chunks.end_line IS NOT excluded.end_line
+             OR content_chunks.language IS NOT excluded.language
+             OR content_chunks.token_count IS NOT excluded.token_count
         `);
 
         for (const chunk of chunks) {

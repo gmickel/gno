@@ -299,3 +299,64 @@ function createMockVectorIndex(
   };
   return index as unknown as MockVectorIndex;
 }
+
+test("zero pending repairs missing materialization without model work or losing authority", async () => {
+  const { db, store, port, deps } = await variantFixture();
+  await embedBacklog(deps);
+  db.exec(`DROP TABLE ${store.tableName}`);
+  const repaired = await createVectorVariantStore(db, store.identity);
+  expect(repaired.hasActivated()).toBe(true);
+  expect(repaired.pending()).toEqual([]);
+  const calls = (port.embedBatch as ReturnType<typeof mock>).mock.calls.length;
+  expect(await embedBacklog({ ...deps, variantStore: repaired })).toMatchObject(
+    { ok: true, value: { embedded: 0 } }
+  );
+  expect(repaired.isActive()).toBe(true);
+  expect(
+    db.query(`SELECT count(*) AS n FROM ${store.tableName}`).get()
+  ).toEqual({ n: 2 });
+  expect((port.embedBatch as ReturnType<typeof mock>).mock.calls.length).toBe(
+    calls
+  );
+});
+
+test("forced current-owner counts and writes stay in the selected partition", async () => {
+  const { db, store, port, deps } = await variantFixture();
+  await embedBacklog(deps);
+  const { countVariantBacklog } = await import("../../src/embed/variant-plan");
+  expect(countVariantBacklog(deps)).toBe(0);
+  expect(countVariantBacklog({ ...deps, force: true })).toBe(3);
+  db.run("UPDATE documents SET collection = 'other' WHERE id = 2");
+  expect(
+    countVariantBacklog({ ...deps, force: true, collection: "docs" })
+  ).toBe(2);
+  port.embedBatch = mock(async (texts) => ({
+    ok: true as const,
+    value: texts.map(() => [0.9, 0.2, 0.1]),
+  }));
+  expect(await embedBacklog({ ...deps, force: true })).toMatchObject({
+    ok: true,
+    value: { embedded: 3 },
+  });
+  const rows = db
+    .query<{ embedding: Uint8Array }, []>(
+      "SELECT embedding FROM vector_variants"
+    )
+    .all();
+  for (const row of rows)
+    expect(
+      new Float32Array(row.embedding.buffer, row.embedding.byteOffset, 3)[0]
+    ).toBeCloseTo(0.9);
+  const indexed = db
+    .query<{ embedding: Uint8Array }, []>(
+      `SELECT embedding FROM ${store.tableName}`
+    )
+    .all();
+  for (const row of indexed)
+    expect(
+      new Float32Array(row.embedding.buffer, row.embedding.byteOffset, 3)[0]
+    ).toBeCloseTo(0.9);
+  expect(db.query("SELECT count(*) AS n FROM content_vectors").get()).toEqual({
+    n: 1,
+  });
+});

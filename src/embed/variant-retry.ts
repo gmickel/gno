@@ -29,6 +29,7 @@ export async function embedVariantBatch(params: {
   owners: VectorOwnerInput[];
   identityStillCurrent: () => boolean;
   delays?: number[];
+  force?: boolean;
 }): Promise<{
   embedded: number;
   errors: number;
@@ -51,7 +52,7 @@ export async function embedVariantBatch(params: {
   const inputs = new Map<string, string>();
   const reusable = new Set<string>();
   for (const owner of owners) {
-    if (store.reusable(owner)) reusable.add(owner.inputHash);
+    if (!params.force && store.reusable(owner)) reusable.add(owner.inputHash);
     else inputs.set(owner.inputHash, owner.formattedInput);
   }
   const keys = [...inputs.keys()];

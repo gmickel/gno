@@ -433,9 +433,11 @@ OpenClaw keeps writing its own memory files; the plugin only retrieves.
   hashes, the evidence layer (`context build`, `ask --verify`, traces), and
   scoped recall. OpenClaw's built-in memory already runs local GGUF
   embeddings, so "no API key" is not the difference.
-- **Known gap (GNO core).** A memory file deleted and later restored at the
-  same path with identical content stays inactive: incremental sync treats a
-  same-hash record as unchanged. Any content change reactivates it.
+- **Restoration.** A deleted memory file restored at the same path with
+  identical bytes becomes active on the next sync and emits one reactivation
+  event. Repeated unchanged syncs emit no additional restoration history.
+  Unchanged formatted embedding inputs retain proven vectors; changed titles,
+  content or model identity require matching coverage.
 
 Install commands, the config reference, and the unit suite
 (`bun test integrations/openclaw-gno-memory`, faked `gno` subprocess) are in

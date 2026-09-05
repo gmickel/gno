@@ -202,6 +202,13 @@ export class VectorVariantStore {
             );
             row = this.variant(owner)!;
           }
+          if (embedding && row) {
+            this.db.run(
+              "UPDATE vector_variants SET embedding = ? WHERE variant_id = ? AND partition_id = ?",
+              [encodeEmbedding(embedding), row.variant_id, this.partitionId]
+            );
+            row = this.variant(owner)!;
+          }
           if (this.searchAvailable) {
             this.db.run(`DELETE FROM ${this.tableName} WHERE variant_id = ?`, [
               row.variant_id,

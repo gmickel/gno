@@ -4,6 +4,7 @@ import type { EmbedBacklogDeps, EmbedBacklogResult } from "./backlog";
 
 import { err, ok } from "../store/types";
 import { getVectorStatsDatabase } from "../store/vector/stats";
+import { variantBacklogPage } from "./variant-plan";
 import { embedVariantBatch } from "./variant-retry";
 
 /** One bounded owner pass plus one retry; mutations stay durably pending for the next pass. */
@@ -30,7 +31,7 @@ export async function embedVariantBacklog(
   let after: { documentId: number; seq: number } | undefined;
   try {
     while (identityStillCurrent()) {
-      const pending = store.pending({ limit: batchSize, after });
+      const pending = variantBacklogPage(deps, store, batchSize, after);
       if (!pending.length) break;
       const last = pending.at(-1)!;
       after = { documentId: last.documentId, seq: last.seq };
@@ -49,6 +50,7 @@ export async function embedVariantBacklog(
         embedPort: deps.embedPort,
         owners,
         identityStillCurrent,
+        force: deps.force,
       });
       total.embedded += result.embedded;
       total.errors += result.errors;
@@ -59,16 +61,20 @@ export async function embedVariantBacklog(
           embedPort: deps.embedPort,
           owners: result.retryOwners,
           identityStillCurrent,
+          force: deps.force,
         });
         total.embedded += result.embedded;
         total.errors += result.errors + result.retryOwners.length;
         total.contentionErrors += result.contentionErrors;
       }
+      deps.onProgress?.(total.embedded, total.errors);
     }
     // Capture the epoch before checking completeness; activate rechecks under write lock.
     const epoch = store.epoch();
     if (identityStillCurrent() && !store.pending({ limit: 1 }).length) {
       try {
+        if (!store.isActive()) store.syncIndex();
+        if (!identityStillCurrent()) return ok(total);
         store.activate(epoch);
       } catch (cause) {
         return ok({
