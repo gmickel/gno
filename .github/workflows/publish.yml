@@ -12,6 +12,11 @@ on:
     tags:
       - "v*"
 
+# CLI and desktop are one coordinated release; never cancel a partial publication.
+concurrency:
+  group: coordinated-release
+  cancel-in-progress: false
+
 jobs:
   test:
     strategy:
@@ -26,7 +31,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.4.2
 
       # Cache Bun's global package cache
       - name: Cache Bun packages
@@ -61,6 +66,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Lint & Typecheck
+        if: matrix.os == 'ubuntu-latest'
         run: bun run lint:check
 
       - name: Test (Unix)
@@ -97,7 +103,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.4.2
 
       - name: "Set TEMP to D: drive (Windows)"
         shell: pwsh
@@ -153,7 +159,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.4.2
 
       - name: Install Homebrew SQLite for signed-app compatibility test
         run: |
@@ -321,7 +327,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.4.2
 
       - name: Cache package-smoke embedding model
         uses: actions/cache@v6
@@ -342,15 +348,31 @@ jobs:
         run: bun scripts/package-smoke-model.ts
 
       - name: Test packed package
-        run: GNO_PACKAGE_SMOKE_KEEP_TEMP=1 bun run test:package
+        env:
+          GNO_PACKAGE_SMOKE_KEEP_TEMP: "1"
+          TMPDIR: ${{ runner.temp }}/package-smoke
+        run: |
+          mkdir -p "$TMPDIR"
+          bun run test:package
+
+      - name: Retain exactly the tested tarball and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' packages < <(find "$RUNNER_TEMP/package-smoke" -type f -path '*/pack/gmickel-gno-*.tgz' -print0)
+          test "${#packages[@]}" -eq 1
+          mkdir -p npm-artifact
+          cp "${packages[0]}" npm-artifact/package.tgz
+          cd npm-artifact
+          sha256sum package.tgz > package.tgz.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: npm-package
           retention-days: 30
-          path: /tmp/gno-package-smoke-*/pack/gmickel-gno-*.tgz
-          if-no-files-found: ignore
+          path: npm-artifact/*
+          if-no-files-found: error
 
       - name: Upload browser clipper artifact
         uses: actions/upload-artifact@v7
@@ -361,7 +383,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: pack-test
+    needs: [pack-test, package-windows-desktop, package-macos-desktop]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || inputs.publish == true
     permissions:
@@ -378,20 +400,31 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Download tested npm package
+        uses: actions/download-artifact@v8
         with:
-          bun-version: latest
+          name: npm-package
+          path: npm-artifact
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - name: Verify tested artifact and release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd npm-artifact
+          test "$(find . -maxdepth 1 -type f | wc -l)" -eq 2
+          sha256sum --check package.tgz.sha256
+          tar -xOf package.tgz package/package.json > "$RUNNER_TEMP/packed-package.json"
+          node -e '
+            const fs = require("node:fs");
+            const packed = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + "/packed-package.json"));
+            const source = JSON.parse(fs.readFileSync("../package.json"));
+            if (packed.name !== source.name || packed.version !== source.version) throw new Error("Packed identity mismatch");
+            if (process.env.GITHUB_REF.startsWith("refs/tags/") && process.env.GITHUB_REF !== "refs/tags/v" + packed.version) throw new Error("Tag/version mismatch");
+          '
 
-      - name: Build CSS
-        run: bun run build:css
-
-      - name: Publish to npm
-        run: npm publish --provenance --access public
-        # No token needed - uses OIDC trusted publishing
+      - name: Publish tested tarball to npm
+        run: npm publish ./npm-artifact/package.tgz --provenance --access public
+        # No install/build/repack here: this is the archive pack-test exercised.
 
   release:
     needs: [publish, package-windows-desktop, package-macos-desktop]
@@ -420,9 +453,11 @@ jobs:
           name: browser-clipper
           path: release-assets/browser-clipper
 
-      - name: Extract version from tag
+      - name: Read coordinated release version
         id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Extract changelog section
         id: changelog
@@ -445,6 +480,8 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           name: v${{ steps.version.outputs.version }}
+          tag_name: v${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
           body: ${{ steps.changelog.outputs.notes }}
           draft: false
           prerelease: false
