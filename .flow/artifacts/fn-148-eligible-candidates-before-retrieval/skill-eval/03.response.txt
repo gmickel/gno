@@ -1,0 +1,7 @@
+```bash
+gno query "prevent cascading failures in distributed services"
+```
+
+```bash
+gno query "prevent cascading failures in distributed services" --thorough
+```

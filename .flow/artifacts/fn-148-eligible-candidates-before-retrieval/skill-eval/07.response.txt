@@ -1,0 +1,3 @@
+```bash
+gno get gno://work/report.md --from 100 -l 21
+```
