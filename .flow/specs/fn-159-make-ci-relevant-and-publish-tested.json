@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-159-make-ci-relevant-and-publish-tested.md",
-  "status": "open",
+  "status": "done",
   "title": "Make CI relevant and publish tested release artifacts",
   "tracker": {
     "baseHashFlow": null,
@@ -20,5 +20,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-05T16:17:26.398143Z"
+  "updated_at": "2026-09-05T16:39:22.233452Z"
 }

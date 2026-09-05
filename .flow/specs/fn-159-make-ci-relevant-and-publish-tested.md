@@ -17,3 +17,11 @@ Reduce duplicate and irrelevant CI work while retaining cross-platform evidence,
 ## Boundaries
 
 No release tags, npm publication, production deployments, or physical File Provider/desktop acceptance substitutions in this change.
+
+## Landing evidence
+
+PR #219 merged as `51a31ea229faa6d77bcdc2f7c596b0540e12ec2a` after all16 hosted checks passed at `65da886416ae96d9ce2fd095e395fdb8e6553f7f`. CI run: https://github.com/gmickel/gno/actions/runs/33977726892 . Linux/macOS full suites and packed gateway checks, Windows full suite and desktop packaging, allthree watcher platforms, clipper E2E, lint, CodeQL/dependency review, Vercel and CI result passed. No unresolved review threads.
+
+Review followed the repository AGENTS.md policy that planning and review stay in-harness. A fresh native read-only reviewer returned SHIP and reconfirmed the exact merged PR head; the only intervening code-host catch-up was unrelated Flow planning metadata. That project policy superseded the generic land skill's hosted-bot signal and associated silence grace. Copilot reported exhausted quota and was not counted as a substantive review or approval. Actual required checks remained enforced.
+
+The source version is2.0.1. No release tag, npm publication or physical acceptance bypass occurred. Tracker sync: n/a (bridge inactive). Release-follow: skipped(user scope excludes publication).
