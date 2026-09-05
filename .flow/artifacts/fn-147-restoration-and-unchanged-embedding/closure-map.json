@@ -1,0 +1,75 @@
+{
+  "assessment": "fn147 task6 closure evidence sufficient; no additional fn147 runtime gap identified",
+  "mode": "CPU-only mapping; not formal review",
+  "sourceStrata": {
+    "failedBaseline": "2beb8aae",
+    "successfulNativeMatrix": "3d9c0ec4",
+    "packedPublicProduct": "9d0b57e3",
+    "latestCpuGate": "f8a278ef",
+    "memoryGate": "6e25153f"
+  },
+  "requirements": {
+    "R1": "Native restored1/2 exact clean parity plus failed journal rollback",
+    "R2": "Two cycles and unchanged; zero actual passage calls on unchanged/restores, no duplicate events",
+    "R3": "Whitespace/same-title duplicate exact parity and zero actual passage calls",
+    "R4": "Native rename1/force3 passage calls; model/text/identity partition and metadata-less compatibility tests",
+    "R5": "12 complete native clean pairs; durable SQLite resume/partial retry/rollback/final-owner GC",
+    "R6": "Local docs reconciled; hosted follow-through explicitly afterPR",
+    "task6Surfaces": "Native SDK mutation matrix plus later packed CLI/stdio/HTTP MCP/REST24of24full-field equality"
+  },
+  "evidence": {
+    "attribution": ".flow/artifacts/fn-147-restoration-and-unchanged-embedding/native-call-attribution/",
+    "native": ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-3d9c0ec4/",
+    "public": ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-packed-surfaces-9d0b57e3/drivers/f8a278ef/cross-surface-comparison.json.gz",
+    "checksumsChecked": 20,
+    "checksumMismatches": 0
+  },
+  "gates": {
+    "root": "/home/gordon/.cache/agent-tmp/gno-final-f8a278ef",
+    "lint": {
+      "passed": true,
+      "warnings": 26,
+      "errors": 0
+    },
+    "typecheck": {
+      "passed": true
+    },
+    "tests": {
+      "passed": 5150,
+      "skipped": 2,
+      "failed": 0,
+      "assertions": 41177,
+      "files": 603,
+      "seconds": 226.7
+    },
+    "docs": {
+      "passed": 15,
+      "skipped": 2,
+      "failed": 0
+    },
+    "memory": {
+      "path": "/home/gordon/.cache/agent-tmp/gno-integrated-6e25153f/memory-selected.log",
+      "files": 1,
+      "evals": 19,
+      "score": 100,
+      "threshold": 100,
+      "p95ms": 1.6,
+      "samples": 200
+    }
+  },
+  "requiredRemainingRuntime": [],
+  "authorizedDeferred": [
+    "gno.sh docs/product reconciliation and live changed-page QA after aggregate PR"
+  ],
+  "separateFn146": [
+    "real cancellation during load/inference and suppression of late publication",
+    "background fairness/foreground results and citations, latency/queue/memory",
+    "model-specific leases and finite shutdown with durable backlog/child cleanup"
+  ],
+  "limits": [
+    "Complementary surface/mutation evidence, not every mutation on every protocol/platform",
+    "Not latestf8native nor fullMetal147matrix",
+    "Old2bebfailures retained; no impossible oldrawtoken/context equality claim",
+    "Host owns final lifecycle/release judgment"
+  ]
+}

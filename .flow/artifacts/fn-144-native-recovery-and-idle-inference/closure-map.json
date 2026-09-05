@@ -1,0 +1,118 @@
+{
+  "task": "fn-144-native-recovery-and-idle-inference",
+  "status": "ready_for_host_closure",
+  "formal_review": false,
+  "scope": "CPU-only evidence reconciliation; no new execution or lifecycle mutation",
+  "requirements": [
+    {
+      "id": "R1",
+      "status": "covered",
+      "assessment": "Physical CUDA and Ivan REST: eight stages each, all20 full arrays exact; default300000 and separate1200 repeated expiry/fresh controls. Packed CUDA CLI/stdio/HTTP MCP/REST complete actual expansion/vector/rerank.",
+      "evidence": [
+        ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-rest-idle/README.md",
+        ".flow/artifacts/fn-144-native-recovery-and-idle-inference/ivan-rest-idle/README.md",
+        ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-packed-surfaces-9d0b57e3/README.md"
+      ]
+    },
+    {
+      "id": "R2",
+      "status": "covered",
+      "assessment": "Lifecycle/ports tests shared initialization, startup timeout/late cleanup, generation invalidation, model replacement and retirement; packed production entry three generations and parentEOF.",
+      "evidence": []
+    },
+    {
+      "id": "R3",
+      "status": "covered",
+      "assessment": "Physical child retirement despite repeated metadata polling, CUDA parent no NVIDIA allocation, warm child reuse, default five-minute policy retained. Metal RSS is not GPU allocation evidence.",
+      "evidence": [
+        ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-rest-idle/README.md",
+        ".flow/artifacts/fn-144-native-recovery-and-idle-inference/ivan-rest-idle/README.md",
+        ".flow/artifacts/fn-144-native-recovery-and-idle-inference/ivan-warm3/README.md"
+      ]
+    },
+    {
+      "id": "R4",
+      "status": "covered_complementary_evidence",
+      "assessment": "Exact mechanical IPC all ports through restart, bounded framing/error/no replay; actual physical paired native first/warm controls and CUDA matched schema29 Ask unchanged fn143 pass. Do not invent an all-role all-platform physical restart matrix.",
+      "evidence": [
+        ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-burst-9d0b57e3/README.md",
+        ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-packed-surfaces-9d0b57e3/README.md"
+      ]
+    },
+    {
+      "id": "R5",
+      "status": "covered",
+      "assessment": "Original Metal same SDK client three expanded/vector/reranked warm completions after recorded cold primer; full actual native inputs/outputs and results exact. Required3/3 durable; cold primer timeout remains.",
+      "evidence": [
+        ".flow/artifacts/fn-144-native-recovery-and-idle-inference/ivan-warm3/README.md"
+      ]
+    },
+    {
+      "id": "R6",
+      "status": "covered",
+      "assessment": "Actual CUDA SIGKILL leaves parent responsive, truthful vectorsUsed:false bm25_only fallback then exact20 recovery. Packed controlled failures retain structured errors/framing, reject oversize and queued work without replay, later generation succeeds. Matched actual CUDA verifiedAsk and semantic judge complete.",
+      "evidence": [
+        ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-rest-idle/README.md",
+        ".flow/artifacts/fn-144-native-recovery-and-idle-inference/cuda-packed-surfaces-9d0b57e3/README.md"
+      ]
+    },
+    {
+      "id": "R7",
+      "status": "covered",
+      "assessment": "Source docs reconciled d4266578: lazy child, five-minute actual-use leases, cached stats/actual identity, rerank contract, measured cost limits and five-second expansion-stage budget. Hosted site explicitly queued after aggregate PR.",
+      "evidence": []
+    }
+  ],
+  "required_remaining_holes": [],
+  "gates": {
+    "authority": "Host supplied exit results; log summaries inspected; no duplicate suites run",
+    "lint": "pass;26 warnings,0 errors;format clean",
+    "typecheck": "pass",
+    "tests": "5150 pass,2 existing skips,0 fail,41177 assertions,603 files,226.70s",
+    "docs": "15 pass,0 fail,2 uncached-model skips",
+    "package": "pass; initial attempt failed npm TAR_ENTRY_ERROR -122 /tmp quota, same command passed with task-cache TMPDIR",
+    "logs": "/home/gordon/.cache/agent-tmp/gno-final-f8a278ef/",
+    "package_log": "/home/gordon/.cache/agent-tmp/gno-final-f8a278ef/package-taskcache.log"
+  },
+  "original_metal": {
+    "product": "d0604b0d7b0c888653390618ab498187bf71b397",
+    "files": 72,
+    "manifest_sha256": "0ccdfa13682d59397473650bb900b0df6975d26300b559a1aee5822973d6cf63",
+    "evidence": ".flow/artifacts/fn-144-native-recovery-and-idle-inference/ivan-warm3/evidence.json",
+    "native_reply_pattern": ".flow/artifacts/fn-144-native-recovery-and-idle-inference/ivan-warm3/raw/protocol/session-*/{5,8,11}.reply.json.gz"
+  },
+  "current_cuda": {
+    "product": "9d0b57e30590b5d71429df538da7a5d0f08fff02",
+    "package_sha256": "1a01daff5030dfbab0492d8d7d76a759e699a3effbd87ede8a40a290e6879342",
+    "serial": "72/72 both;3.720 baseline vs4.403 candidate requests/s",
+    "cold": "2333.30 vs2751.37ms completed-start median; +418.07ms",
+    "limits": "Baseline concurrent crash retained; no universal speedup. Earlier57.2% serial regression retained and superseded by hash-reuse fix and matched rerun.",
+    "commits": [
+      "f62e6438",
+      "370baab8",
+      "80b3cc8e"
+    ]
+  },
+  "combined_ui_evidence": [
+    ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/public-lexical/README.md",
+    ".flow/artifacts/fn-148-eligible-candidates-before-retrieval/final-receipt/README.md",
+    ".flow/artifacts/fn-151-atomic-readergate-capacity-and-abort/live-api.log",
+    ".flow/review-receipts/qa-fn-151-atomic-readergate-capacity-and-abort.json",
+    ".flow/artifacts/fn-152-stop-indexing-polling-after-component/summary.md"
+  ],
+  "additional_controls_not_required_gates": [
+    "New1a01 Metal warm3 executed remotely; durable d060 proof already satisfies originalR5.",
+    "Matched schema29 Metal Ask both completed remotely; strict comparison/transfer pending. CUDA matched Ask comparison already captured and passes.",
+    "Additional Metal cold-baseline attribution control pending; cold3/3 was never the specified after-load requirement."
+  ],
+  "preserved_negatives": [
+    "Historical Metal Ask comparator18 differences remains failed, not normalized into a pass; distinct from matched-schema control.",
+    "Original Metal cold expansion timeout and warning-pressure exposure retained.",
+    "Metal GPU mapping unavailable; RSS must not be labeled GPU accounting.",
+    "Package dependencies linked, not a fresh dependency installation."
+  ],
+  "host_actions": [
+    "Record final task5/task6 evidence and lifecycle closure; no new native hardware gate identified.",
+    "Keep hosted-source/deploy work queued after aggregate PR per user direction."
+  ]
+}
