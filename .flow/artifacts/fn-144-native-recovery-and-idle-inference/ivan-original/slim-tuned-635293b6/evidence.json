@@ -1,0 +1,37 @@
+{
+  "status": "INCOMPLETE",
+  "commit": "635293b6c309cf3be34facf30b4fbc1802167cae",
+  "archiveSha256": "7cd87d3e3ee540ded98538871e67d32ee302b33c9ffa8add7db41a8cd9ad6034",
+  "configSha256": "4892ce86ba9133d6de0b0152e282454d6b460eb8ea5484c70b811acb45f0b4af",
+  "stratum": "Corrected slim-tuned explicit role override; not historical byte-identical configuration",
+  "cliAttempts": 1,
+  "successfulExpandedRerankedAttempts": 0,
+  "required": 3,
+  "sameSessionPrimer": "not attempted after first pressure failure",
+  "stopReason": "memory_pressure",
+  "exit": -15,
+  "seconds": 5.244069625623524,
+  "peakOwnedRssMiB": 4452.609375,
+  "parentPid": 96077,
+  "nativeChildPid": 96079,
+  "generation": 1,
+  "actualBackend": "metal",
+  "expansionInput": {
+    "contextSize": 2048,
+    "maxTokens": 512,
+    "seed": 42,
+    "temperature": 0
+  },
+  "lastNativeEvent": "expansion model-load-result success; no generation output",
+  "rerankInvocations": 0,
+  "stderrBytes": 0,
+  "gpuReleased": true,
+  "rawRoot": "/tmp/fn1445-ivan-slim-635293b6",
+  "limitations": [
+    "No context-allocation hook; exact allocation completion unmeasured",
+    "Pressure warning triggered owned watchdog, not observed native fatal",
+    "No full-port harness acceptance claim",
+    "No historical exact preset claim",
+    "No retries or scope reduction"
+  ]
+}
