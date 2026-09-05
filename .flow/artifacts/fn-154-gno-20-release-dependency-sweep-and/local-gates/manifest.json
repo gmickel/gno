@@ -1,0 +1,32 @@
+{
+  "candidate_commit": "64400ffeffa59ddb58dfd10f1e6386a7eb81f6a6",
+  "package_sha256": "94581ea58f100a6d1e50c311d14addb158b0defa3771e87aace603df4f52e224",
+  "groups": {
+    "gates": {
+      "count": 12,
+      "raw_bytes": 576057,
+      "gzip_bytes": 141625
+    },
+    "consumers": {
+      "count": 19,
+      "raw_bytes": 9712,
+      "gzip_bytes": 3728
+    },
+    "evalite": {
+      "count": 11,
+      "raw_bytes": 25840,
+      "gzip_bytes": 6846
+    },
+    "frontend": {
+      "count": 135,
+      "raw_bytes": 8637015,
+      "gzip_bytes": 6743290
+    }
+  },
+  "totals": {
+    "count": 177,
+    "raw_bytes": 9248624,
+    "gzip_bytes": 6895489
+  },
+  "verification": "Every archived payload was decompressed and compared byte-for-byte to its source; gzip mtime is zero."
+}

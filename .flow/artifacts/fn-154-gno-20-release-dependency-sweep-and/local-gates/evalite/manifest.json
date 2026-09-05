@@ -1,0 +1,107 @@
+{
+  "gzip_mtime": 0,
+  "files": [
+    {
+      "source": "/home/gordon/.cache/agent-tmp/fn154-evalite-compat/hybrid.log",
+      "logical_path": "hybrid.log",
+      "archive_path": "evalite/hybrid.log.gz",
+      "raw_bytes": 1197,
+      "raw_sha256": "d37ed22f05448b07f0df8ed756612d4c3d6cd442df2fc02272cc5b8e7883320d",
+      "gzip_bytes": 307,
+      "gzip_sha256": "6ca6c809c0b83d762fa0c1fe5e4bcde4fa60e8f05385d956e1af94894c06d1bd"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/fn154-evalite-compat/index.html",
+      "logical_path": "index.html",
+      "archive_path": "evalite/index.html.gz",
+      "raw_bytes": 1457,
+      "raw_sha256": "9f966e3970edbc6ef4051cb6fde096d523f1e1319a6b6fefb55d1fe74c7a939e",
+      "gzip_bytes": 657,
+      "gzip_sha256": "3d20c1e2c718bf6b4fee1b37ec0f6a8e31047a001c0b9dc6271c539816f057fd"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/fn154-evalite-compat/memory.log",
+      "logical_path": "memory.log",
+      "archive_path": "evalite/memory.log.gz",
+      "raw_bytes": 1776,
+      "raw_sha256": "aedab160623dd0cacc9ad2901252c1751f14db92ac66c26d5e3510008e8509dd",
+      "gzip_bytes": 616,
+      "gzip_sha256": "32226501182e6d1e6790648fc937807d087d73938895103ae47a5ae5be93977d"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/fn154-evalite-compat/receipt.json",
+      "logical_path": "receipt.json",
+      "archive_path": "evalite/receipt.json.gz",
+      "raw_bytes": 3765,
+      "raw_sha256": "0ccc68a1e0ac6871a7ef88109f32fa81f6f6c2d237e14cf6f3c97d483a9193fd",
+      "gzip_bytes": 1283,
+      "gzip_sha256": "641991eda381873f3f67fa8b7898d775dd3c10c388588945bc491eb1ff8ed386"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/fn154-evalite-compat/results.json",
+      "logical_path": "results.json",
+      "archive_path": "evalite/results.json.gz",
+      "raw_bytes": 699,
+      "raw_sha256": "6c0071c8ce8f7ab5be6329d414b80a8c307f2e418638818cfd3a92935869f6ad",
+      "gzip_bytes": 385,
+      "gzip_sha256": "6e920e1457be533b2b777d9f750abd8739efb5cdc35c4c2e09210f86b6d15db2"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/fn154-evalite-compat/smoke-bun142.log",
+      "logical_path": "smoke-bun142.log",
+      "archive_path": "evalite/smoke-bun142.log.gz",
+      "raw_bytes": 1158,
+      "raw_sha256": "2b16dace7317c6a5456df3576680177ecd2bb53bd106bb264d422789dcdb7543",
+      "gzip_bytes": 428,
+      "gzip_sha256": "dbaf3f2de634038f7d771ccdfd17c45609fd29e33038f0b975400da8b5817768"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/fn154-evalite-compat/smoke-diagnostic.log",
+      "logical_path": "smoke-diagnostic.log",
+      "archive_path": "evalite/smoke-diagnostic.log.gz",
+      "raw_bytes": 66,
+      "raw_sha256": "0d1dd5963b97d8cc503ad53f58be56ff038ae9ca850bc03513c346f635004920",
+      "gzip_bytes": 82,
+      "gzip_sha256": "bff9304fda520b1856763c42c2b2fb51ebcb42020567ecb76f2f5cb510803585"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/fn154-evalite-compat/smoke.log",
+      "logical_path": "smoke.log",
+      "archive_path": "evalite/smoke.log.gz",
+      "raw_bytes": 0,
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzip_bytes": 20,
+      "gzip_sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/fn154-evalite-compat/smoke.ts",
+      "logical_path": "smoke.ts",
+      "archive_path": "evalite/smoke.ts.gz",
+      "raw_bytes": 4354,
+      "raw_sha256": "1a36cbc8170c11e8e0f9e9d3f62366c187249cde245d4bca7df79e4ab6d69d3e",
+      "gzip_bytes": 1768,
+      "gzip_sha256": "25f4f71be2dc545c732ae9cd70728e4a6af75b958b233d38716abc7d40aabf36"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/fn154-evalite-compat/vsearch.log",
+      "logical_path": "vsearch.log",
+      "archive_path": "evalite/vsearch.log.gz",
+      "raw_bytes": 11300,
+      "raw_sha256": "76158e09d205cbdc188f4556f3af60c6284c7a0684798a780b5aaa133c610631",
+      "gzip_bytes": 1219,
+      "gzip_sha256": "f63825a21eb0e05fc9be1ff331d5530ad0efb5295f62011ee16732678917fc68"
+    },
+    {
+      "source": "/home/gordon/.cache/agent-tmp/fn154-evalite-compat/files/9d5e998704306a4923462c52b1e5ca319224636f5d4be4fc6fe0adf4b81c6820.png",
+      "logical_path": "files/9d5e998704306a4923462c52b1e5ca319224636f5d4be4fc6fe0adf4b81c6820.png",
+      "archive_path": "evalite/files/9d5e998704306a4923462c52b1e5ca319224636f5d4be4fc6fe0adf4b81c6820.png.gz",
+      "raw_bytes": 68,
+      "raw_sha256": "9d5e998704306a4923462c52b1e5ca319224636f5d4be4fc6fe0adf4b81c6820",
+      "gzip_bytes": 81,
+      "gzip_sha256": "145e553b10c45beda92181ee795e635585ce31744af9e405285e37b9f9a2af21"
+    }
+  ],
+  "count": 11,
+  "raw_bytes": 25840,
+  "gzip_bytes": 6846
+}

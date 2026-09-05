@@ -1,16 +1,16 @@
 # GNO 2.0 dependency decisions
 
-Audit date: 2026-09-05. Scope: all direct dependencies reported outdated for the release branch, the three open Dependabot PRs, native/runtime compatibility, AI SDK/Evalite compatibility, and the host's fresh-lock vulnerability report. PR183 is excluded. This artifact records decisions and observed metadata; it is **not a validation receipt or release approval**. The host is still changing the dependency graph and repairing runtime transitive findings. Pins below were read from the live package.json during this audit; the final committed manifest and lockfile take precedence.
+Audit date: 2026-09-05. Scope: all direct dependencies reported outdated for the release branch, the three open Dependabot PRs, native/runtime compatibility, AI SDK/Evalite compatibility, and the host's fresh-lock vulnerability report. PR183 is excluded. This artifact records decisions and observed metadata; it is **not a validation receipt or release approval**. Final consumer evidence below covers candidate64400ffeffa59ddb58dfd10f1e6386a7eb81f6a6. Local full release gates now pass as recorded in local-gates/README.md; native/platform QA remains a separate host acceptance boundary. The tables preserve the dependency selection history; the final committed manifest and lockfile take precedence, including the converter vendoring described below.
 
 ## Evidence and method
 
 - Read package.json and locally installed Evalite metadata/adapter implementation; inspected GNO's AI imports, pager invocation and reranker capacity guard.
 - Queried npm registry metadata for every direct dependency/dev dependency and the TypeScript peer. The remaining differences from the registry's latest tags are listed below; packages omitted from the decision tables were already current at this observation.
 - Read the host's `/home/gordon/.cache/agent-tmp/gno-release-deps-outdated.log` and `/home/gordon/.cache/agent-tmp/gno-release-audit-fresh-lock.json`. Earlier `notes/fn143-152-dependency-freshness.json` records the old frozen dependency cohort, not the new sweep's acceptance.
-- Read Dependabot PR207/181/182 metadata, package patches and relevant CI output through gh. No PR183 details were opened. No comments, PR mutations, Git operations, installs, tests or native execution were performed by this audit worker.
+- Read Dependabot PR207/181/182 metadata, package patches and relevant CI output through gh. No PR183 details were opened. The initial read-only audit performed no comments, PR mutations, Git operations, installs, tests or native execution. Subsequent authorized Evalite smoke/eval execution is recorded below; consumer installs were performed by the host and read back here.
 - Registry endpoints are primary metadata: `https://registry.npmjs.org/<package>` with scoped package slash URL-encoded. Dist-tags are time-sensitive; exact versions below are the September5 observation, not floating installation instructions.
 
-## Adopted manifest pins; verification remains pending
+## Adopted manifest pins and verification scope
 
 These are host-selected updates already visible in the working manifest, including decisions that supersede the initial recommendation to postpone native/Bun changes. Adoption here means selected for the sweep, not proven safe by the old 2.0 package receipts.
 
@@ -22,7 +22,7 @@ These are host-selected updates already visible in the working manifest, includi
 | lucide-react | 1.28.0 | 1.41.0 | Current icon package; rebuild and inspect packaged UI. |
 | nanoid | 6.0.0 | 6.0.1 | Same-major maintenance; identity/output contracts remain unchanged. |
 | node-llama-cpp | 3.19.1 | 3.20.0 | Native compatibility/disposal improvements; new paired native proof required. |
-| officeparser | 7.5.0 | 7.8.0 | Maintained ingestion parser; conversion fixtures and transitive PDF dependency audit. |
+| officeparser | 7.5.0 | Vendored7.8.0 | Maintained ingestion parser; final unchanged upstream source is vendored and dependencies owned by GNO, removing the unsafe nested PDF dependency edge. |
 | pdfjs-dist | 6.2.108 | 6.3.289 | Current direct viewer package; direct pin does not remove vulnerable nested copies. |
 | sharp | 0.35.3 | 0.35.4 | Native image patch; package installation and image operations. |
 | shiki | 4.3.1 | 4.4.3 | Syntax highlighting maintenance; built UI/code rendering. |
@@ -90,23 +90,43 @@ SDK7's standardized reasoning, per-operation timeouts, telemetry, durable agents
 - PR181/182 were conflicted at inspection and their older successful checks were not run against this sweep. No PR was closed, merged, rebased or commented on by this worker. Host can reconcile superseded PRs after final dependency acceptance.
 - PR183 is outside this audit; its contributor work is neither assessed nor altered.
 
-## Fresh-lock vulnerability findings: repairs in progress
+## Vulnerability findings and final consumer repair
 
-The host's fresh-lock JSON contains **four package families and six advisories**, not a clean audit. Runtime/development classification below follows the host's dependency-path audit; this worker read the advisory JSON but did not independently run a second package-manager audit.
+The initial host fresh-lock JSON contained **four package families and six advisories**. Final full-package consumer audits now report zero production vulnerabilities under both npm and Bun. The root development graph still retains image-size and uuid findings. Runtime/development classification below follows the host's dependency-path audit; this worker read the advisory JSON but did not independently run a second package-manager audit.
 
 | Family | Host-classified scope | Fresh-lock finding | Disposition |
 | --- | --- | --- | --- |
-| image-size | Development graph | Two high-severity infinite-loop parser advisories, <=2.0.2 | Repair/verify development graph; do not silently erase from all-dependency report. |
-| uuid | Development graph | Moderate missing buffer bounds checks, <11.1.1 | Repair/verify development graph and affected consumers. |
-| pdfjs-dist | Runtime transitive graph | High malicious-PDF execution advisory, >=5.6.83 <6.2.108 | Runtime repair in progress. Direct6.3.289 alone does not prove nested vulnerable copies are absent. |
-| xlsx | Runtime transitive graph | High prototype pollution <0.19.3 and high ReDoS <0.20.2 | Runtime repair in progress; accepted parser replacement/removal or consumer-valid safe dependency path required. |
+| image-size | Development graph | Two high-severity infinite-loop parser advisories, <=2.0.2 | Retained development fixture-generator finding; no published production exposure shown in final consumer audits. Do not erase from the all-dependency report. |
+| uuid | Development graph | Moderate missing buffer bounds checks, <11.1.1 | Retained development finding. Host call-path audit found v4 usage only; advisory concerns other methods. This bounds observed reachability, not the vulnerable package metadata. |
+| pdfjs-dist | Runtime transitive graph | High malicious-PDF execution advisory, >=5.6.83 <6.2.108 | Repaired published graph: actual converter resolves6.3.289 in both fresh consumers; production audits0. |
+| xlsx | Runtime transitive graph | High prototype pollution <0.19.3 and high ReDoS <0.20.2 | Repaired published graph: actual converter resolves SheetJS0.20.3 in both fresh consumers; production audits0. |
 
 Advisories: [image-size ICNS](https://github.com/advisories/GHSA-w3rx-r6r6-pgpr), [image-size JXL/HEIF](https://github.com/advisories/GHSA-5p2g-fcmc-qvqq), [uuid](https://github.com/advisories/GHSA-w5hq-g745-h8pq), [PDF.js](https://github.com/advisories/GHSA-hq66-cqwq-w95j), [SheetJS prototype pollution](https://github.com/advisories/GHSA-4r6h-8v6p-xvw6), [SheetJS ReDoS](https://github.com/advisories/GHSA-5pgg-2g8v-p4x9).
 
-Observed root overrides were @fastify/static10.1.3 and file-type22.0.2. Root overrides constrain this checkout's install; **published consumers do not inherit dependency-package overrides**. A green root lockfile audit cannot prove the npm-installed GNO graph is safe. Validate a freshly packed consumer installation without copied root overrides or repository node_modules, inspect production dependency paths, and retain separate root/all-dependency and published-runtime reports. Repairs must propagate through the shipped dependency graph rather than rely solely on root overrides. [npm overrides semantics](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#overrides)
+Observed root overrides were @fastify/static10.1.3 and file-type22.0.2. Root overrides constrain this checkout's install; **published consumers do not inherit dependency-package overrides**. A green root lockfile audit cannot prove the npm-installed GNO graph is safe. The final consumer verification below satisfies the independent-install check without copied root overrides or repository node_modules; root/all-dependency and published-runtime reports remain separate. Repairs must propagate through the shipped dependency graph rather than rely solely on root overrides. [npm overrides semantics](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#overrides)
 
-## Validation still required from host
+## Final published converter graph and consumer evidence
 
-This worker performed metadata/source/CI-log inspection only. It did not run or fabricate an install, audit, test, gate, package smoke, Windows TTY check, native test or browser pass for the changed dependency cohort.
+Candidate commit: `64400ffeffa59ddb58dfd10f1e6386a7eb81f6a6`. Archive: `/home/gordon/.cache/agent-tmp/gno-release-64400ffe-package/gmickel-gno-2.0.0.tgz`, SHA256 `94581ea58f100a6d1e50c311d14addb158b0defa3771e87aace603df4f52e224`, 1011 members, 16,561,358 archive bytes (host package identity).
 
-Before release acceptance, append or link the final manifest/lock/package pins; fresh root and independent consumer audits; actual package installs; appropriate schema/parser/DOM/SDK gates; full configured release checks; regenerated CSS/SPA/clipper artifacts; packaged production browser/PDF checks; and the host's bounded native migration receipts. Retain failures and exact exclusions. Existing old-cohort test counts, package hashes and native receipts are historical controls, not substitute results. Resolve runtime PDF.js/XLSX findings before claiming a clean published dependency graph.
+The shipped converter source contains99 unchanged upstream files plus `vendor/converters/upstream-manifest.json`; THIRD_PARTY_NOTICES accompanies it. GNO owns the dependency edges directly, including SheetJS0.20.3 from the pinned upstream tarball URL and PDF.js6.3.289. This removes reliance on dependency-package overrides being inherited by consumers. The former markitdown-ts/officeparser package dependencies are replaced by these vendored sources and explicit root dependencies, not by altered upstream parser implementation bytes.
+
+Read-back receipt: `/home/gordon/.cache/agent-tmp/gno-final-consumers-6cp7uhwr/evidence.json`. Fresh full-GNO consumer installs used npm11.17.0 and Bun1.4.2, with Node24.19.0 available. Both install/verification/audit exit codes were0. Both verified all99 upstream source hashes, THIRD_PARTY_NOTICES and actual parser resolutions: xlsx0.20.3 and pdfjs-dist6.3.289. Both exercised GNO converters on XLSX, PPTX and PDF, reporting adapter/markitdown-ts0.0.10+xlsx.0.20.3 and adapter/officeparser7.8.0+pdfjs.6.3.289 as applicable. npm production audit reports total0; Bun production audit is empty with exit0.
+
+Exact receipt commands: `npm install <archive> --ignore-scripts --no-audit --no-fund`; `bun add <archive> --ignore-scripts`; `bun ../verify.ts <absolute-consumer-directory>`; `npm audit --omit=dev --json`; `bun audit --production --json`. These are actual independent consumer installs, not a copied root node_modules tree. Install scripts were intentionally disabled and no native backend was loaded. Consequently this proves consumer resolution, converter behavior and production dependency audit, not native postinstall or CUDA/Metal compatibility.
+
+## Evalite compatibility evidence
+
+Cache receipt `/home/gordon/.cache/agent-tmp/fn154-evalite-compat/receipt.json` indexes the smoke source, results and logs. `smoke.ts` imports the real Evalite createServer/InMemoryStorage/createEvaliteFileIfNeeded implementations. Under Bun1.4.2, Evalite beta16, @fastify/static10.1.3 and file-type22.0.2, it served HTTP root and a471,540-byte JavaScript asset, verified state/menu APIs, received a real WebSocket state update, recognized and persisted a68-byte PNG, rejected unknown bytes, closed the server and confirmed the listener was gone. Exit0; `results.json` records observations.
+
+Scoped cache-directory runs use symlinks to only evals/src/test/assets/node_modules/package plus an unchanged copied evalite.config.ts, excluding notes snapshots from discovery. Exact entrypoint `/home/gordon/work/gno/node_modules/.bin/bun --bun /home/gordon/work/gno/node_modules/evalite/dist/bin.js evals/<name>.eval.ts --threshold <threshold>`, with `TMPDIR=/home/gordon/.cache/agent-tmp`, `GNO_OFFLINE=1`, timeout600. Memory100%/19evals at100 threshold; hybrid86%/1eval at70; BM25/vsearch88%/25evals at70. Each exited0; fixtures and thresholds unchanged. Actual Zod4.4.3 was recorded.
+
+Retained failures: two initial system-Bun1.3.14 smoke attempts timed out124 during cleanup. The successful1.4.2 attempt also consumed the readiness body and used Connection:close, so the evidence does not isolate a runtime-version fix. No API-key judge or native inference ran. Root override compatibility does not imply overrides ship to consumers.
+
+## Desktop and auxiliary manifests
+
+Host desktop audit retains Electrobun1.16.0; latest observed2.0.1 entails the Hutch major migration and is deferred. The maintained `desktop/electrobun-shell/package.json` now pins @types/bun1.3.11 instead of latest, matching its existing lockfile; host reports frozen-lock verification. The historical `desktop/electrobun-spike` remains untouched, including its old floating declaration. OpenClaw compatibility peer remains unchanged. These are deliberate scope decisions, not a claim that every historical manifest was modernized. [Electrobun releases](https://github.com/blackboardsh/electrobun/releases)
+
+## Remaining acceptance boundary
+
+The audit worker ran the bounded Evalite smoke and three scoped evals above, read the host full-consumer receipt, and curated the host-executed local gates in [local-gates/README.md](local-gates/README.md). Full tests passed (5222 pass, 2 skip, 0 fail; 41723 assertions), final lint/format passed with26 warnings and0 errors, typecheck passed, documentation verification passed15 with2 skips, both frozen installs passed, and clipper build/verification passed. Isolated installed-package smoke passed; the host verified an explicit embedding-model invocation and exit0. The first sentinel failure remains archived with cause unproven. Frontend evidence retains its own NEEDS_WORK verdict and three inherited P2 findings; successful subcases do not erase those findings. The177 deterministically compressed payloads preserve exact source boundaries and raw/gzip hashes. This worker did not perform Windows TTY, CUDA/Metal or a new final-package browser pass during curation. Native/platform QA remains a separate host acceptance boundary before release approval. Root image-size/uuid development findings remain visible. Old-cohort package hashes and native receipts remain historical controls. The new consumer audits0 apply to the identified archive and observed production dependency graphs, not all development dependencies or future resolver/advisory states.
