@@ -3,6 +3,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test";
 let mockPlatformValue: NodeJS.Platform = "darwin";
 
 const mockGetLlama = mock(async (_options?: unknown) => ({
+  dispose: async () => {},
   loadModel: mock(async () => ({
     dispose: async () => {
       // no-op
@@ -37,6 +38,7 @@ describe("ModelManager", () => {
   afterEach(async () => {
     mockGetLlama.mockClear();
     mockGetLlama.mockImplementation(async (_options?: unknown) => ({
+      dispose: async () => {},
       loadModel: mock(async () => ({
         dispose: async () => {
           // no-op
@@ -75,6 +77,78 @@ describe("ModelManager", () => {
       gpu: "auto",
       logLevel: "error",
     });
+  });
+
+  test("concurrent backend startup is deduplicated and shutdown disposes its late owner once", async () => {
+    const backendDispose = mock(async () => {});
+    let publish!: (value: Awaited<ReturnType<typeof mockGetLlama>>) => void;
+    mockGetLlama.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          publish = resolve;
+        })
+    );
+    const { ModelManager } =
+      await import("../../src/llm/nodeLlamaCpp/lifecycle");
+    const manager = new ModelManager({
+      activePreset: "test",
+      presets: [],
+      loadTimeout: 1000,
+      inferenceTimeout: 1000,
+      expandContextSize: 2048,
+      warmModelTtl: 300000,
+    });
+    const first = manager.getLlama();
+    const second = manager.getLlama();
+    await Bun.sleep(1);
+    const disposal = manager.disposeAll();
+    publish({
+      dispose: backendDispose,
+      loadModel: mock(async () => ({ dispose: async () => {} })),
+    });
+    const outcomes = await Promise.allSettled([first, second, disposal]);
+    expect(outcomes.map((result) => result.status)).toEqual([
+      "rejected",
+      "rejected",
+      "fulfilled",
+    ]);
+    expect(mockGetLlama).toHaveBeenCalledTimes(1);
+    expect(backendDispose).toHaveBeenCalledTimes(1);
+    expect(manager.getLifecycleStats().loadedModels).toBe(0);
+  });
+
+  test("timed out backend is disposed exactly once when initialization eventually completes", async () => {
+    process.env.GNO_LLAMA_INIT_TIMEOUT_MS = "1";
+    const backendDispose = mock(async () => {});
+    let publish!: (value: Awaited<ReturnType<typeof mockGetLlama>>) => void;
+    mockGetLlama.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          publish = resolve;
+        })
+    );
+    const { ModelManager } =
+      await import("../../src/llm/nodeLlamaCpp/lifecycle");
+    const manager = new ModelManager({
+      activePreset: "test",
+      presets: [],
+      loadTimeout: 1000,
+      inferenceTimeout: 1000,
+      expandContextSize: 2048,
+      warmModelTtl: 300000,
+    });
+    const failure = await manager.getLlama().then(
+      () => null,
+      (error: unknown) => error
+    );
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toContain("timeout");
+    publish({
+      dispose: backendDispose,
+      loadModel: mock(async () => ({ dispose: async () => {} })),
+    });
+    await manager.disposeAll();
+    expect(backendDispose).toHaveBeenCalledTimes(1);
   });
 
   test("allows opt-in source builds for llama backends", async () => {
@@ -134,6 +208,7 @@ describe("ModelManager", () => {
         throw new Error("Binding binary load test timed out");
       })
       .mockImplementationOnce(async (_options?: unknown) => ({
+        dispose: async () => {},
         loadModel: mock(async () => ({
           dispose: async () => {
             // no-op
@@ -226,8 +301,48 @@ describe("ModelManager", () => {
     });
   });
 
+  test("retiring model leaves cache before await and late timed-out load cleans once", async () => {
+    const { ModelManager } =
+      await import("../../src/llm/nodeLlamaCpp/lifecycle");
+    const disposed = mock(async () => {
+      await Bun.sleep(10);
+    });
+    const loadModel = mock(async () => ({ dispose: disposed }));
+    mockGetLlama.mockImplementationOnce(async () => ({
+      dispose: async () => {},
+      loadModel,
+    }));
+    const manager = new ModelManager({
+      activePreset: "test",
+      presets: [],
+      loadTimeout: 1,
+      inferenceTimeout: 1000,
+      expandContextSize: 2048,
+      warmModelTtl: 300000,
+    });
+    await manager.loadModel("/test.gguf", "test:model", "embed");
+    const retiring = manager.dispose("test:model");
+    expect(manager.isLoaded("test:model")).toBe(false);
+    expect(
+      (await manager.loadModel("/test.gguf", "test:model", "embed")).ok
+    ).toBe(true);
+    expect(loadModel).toHaveBeenCalledTimes(2);
+    await retiring;
+    loadModel.mockImplementationOnce(async () => {
+      await Bun.sleep(15);
+      return { dispose: disposed };
+    });
+    expect((await manager.loadModel("/late.gguf", "test:late", "gen")).ok).toBe(
+      false
+    );
+    await manager.disposeAll();
+    expect(disposed).toHaveBeenCalledTimes(3);
+    expect(manager.getLifecycleStats().loadedModels).toBe(0);
+  });
+
   test("counts model failures without leaving an inflight load", async () => {
     mockGetLlama.mockImplementationOnce(async () => ({
+      dispose: async () => {},
       loadModel: mock(async () => {
         throw new Error("model load failed");
       }),
