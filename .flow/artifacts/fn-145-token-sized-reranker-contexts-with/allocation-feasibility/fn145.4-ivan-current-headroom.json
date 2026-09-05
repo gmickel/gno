@@ -1,0 +1,125 @@
+{
+  "route": "existing strict verified Ivan LAN control socket through Heimdall",
+  "nativeInference": false,
+  "serviceChanges": false,
+  "samples": [
+    {
+      "timestampUtc": "2026-09-05T06:26:20.307726+00:00",
+      "physicalMemory": {
+        "command": [
+          "sysctl",
+          "-n",
+          "hw.memsize"
+        ],
+        "exitCode": 0,
+        "stdout": "17179869184",
+        "stderr": ""
+      },
+      "pressure": {
+        "command": [
+          "sysctl",
+          "-n",
+          "kern.memorystatus_vm_pressure_level"
+        ],
+        "exitCode": 0,
+        "stdout": "1",
+        "stderr": ""
+      },
+      "vmStat": {
+        "command": [
+          "vm_stat"
+        ],
+        "exitCode": 0,
+        "stdout": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                                   113123.\nPages active:                                 295507.\nPages inactive:                               251579.\nPages speculative:                             45763.\nPages throttled:                                   0.\nPages wired down:                             187108.\nPages purgeable:                                3103.\n\"Translation faults\":                    30918280817.\nPages copy-on-write:                      1092666401.\nPages zero filled:                        7762650944.\nPages reactivated:                        6641916988.\nPages purged:                              750682084.\nFile-backed pages:                            169485.\nAnonymous pages:                              423364.\nPages stored in compressor:                   741920.\nPages occupied by compressor:                 120993.\nDecompressions:                           9629180514.\nCompressions:                             9930619439.\nPageins:                                   410262289.\nPageouts:                                   10441021.\nSwapins:                                    45789182.\nSwapouts:                                   50832925.",
+        "stderr": ""
+      },
+      "swap": {
+        "command": [
+          "sysctl",
+          "vm.swapusage"
+        ],
+        "exitCode": 0,
+        "stdout": "vm.swapusage: total = 5120.00M  used = 4004.31M  free = 1115.69M  (encrypted)",
+        "stderr": ""
+      },
+      "processRss": {
+        "processCount": 868,
+        "sumRssKiB": 11206704,
+        "limitation": "RSS sum double counts shared pages; not physical used memory"
+      },
+      "identifiedGnoOrModelProcesses": [],
+      "processIdentityLimitation": "Known Bun/node/GNO/llama names and command markers only; arbitrary other inference software not excluded; raw process arguments not retained"
+    },
+    {
+      "timestampUtc": "2026-09-05T06:26:25.484622+00:00",
+      "physicalMemory": {
+        "command": [
+          "sysctl",
+          "-n",
+          "hw.memsize"
+        ],
+        "exitCode": 0,
+        "stdout": "17179869184",
+        "stderr": ""
+      },
+      "pressure": {
+        "command": [
+          "sysctl",
+          "-n",
+          "kern.memorystatus_vm_pressure_level"
+        ],
+        "exitCode": 0,
+        "stdout": "1",
+        "stderr": ""
+      },
+      "vmStat": {
+        "command": [
+          "vm_stat"
+        ],
+        "exitCode": 0,
+        "stdout": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                                   115816.\nPages active:                                 297446.\nPages inactive:                               252700.\nPages speculative:                             45764.\nPages throttled:                                   0.\nPages wired down:                             181227.\nPages purgeable:                                3097.\n\"Translation faults\":                    30918313835.\nPages copy-on-write:                      1092674039.\nPages zero filled:                        7762656589.\nPages reactivated:                        6641917061.\nPages purged:                              750682172.\nFile-backed pages:                            169486.\nAnonymous pages:                              426424.\nPages stored in compressor:                   741917.\nPages occupied by compressor:                 120992.\nDecompressions:                           9629180522.\nCompressions:                             9930619439.\nPageins:                                   410262363.\nPageouts:                                   10441021.\nSwapins:                                    45789182.\nSwapouts:                                   50832925.",
+        "stderr": ""
+      },
+      "swap": {
+        "command": [
+          "sysctl",
+          "vm.swapusage"
+        ],
+        "exitCode": 0,
+        "stdout": "vm.swapusage: total = 5120.00M  used = 4004.31M  free = 1115.69M  (encrypted)",
+        "stderr": ""
+      },
+      "processRss": {
+        "processCount": 868,
+        "sumRssKiB": 11199648,
+        "limitation": "RSS sum double counts shared pages; not physical used memory"
+      },
+      "identifiedGnoOrModelProcesses": [],
+      "processIdentityLimitation": "Known Bun/node/GNO/llama names and command markers only; arbitrary other inference software not excluded; raw process arguments not retained"
+    }
+  ],
+  "interpretation": "Current OS counters and five-second observation only; no allocation fit claim or long-run swap trend",
+  "derived": [
+    {
+      "timestampUtc": "2026-09-05T06:26:20.307726+00:00",
+      "pageSizeBytes": 16384,
+      "freeGiB": 1.7261199951171875,
+      "speculativeGiB": 0.6982879638671875,
+      "inactiveGiB": 3.8387908935546875,
+      "compressorOccupiedGiB": 1.8462066650390625,
+      "swapins": 45789182,
+      "swapouts": 50832925
+    },
+    {
+      "timestampUtc": "2026-09-05T06:26:25.484622+00:00",
+      "pageSizeBytes": 16384,
+      "freeGiB": 1.7672119140625,
+      "speculativeGiB": 0.69830322265625,
+      "inactiveGiB": 3.85589599609375,
+      "compressorOccupiedGiB": 1.84619140625,
+      "swapins": 45789182,
+      "swapouts": 50832925
+    }
+  ],
+  "fitConclusion": "No materially new safe allocation condition established: normal pressure at idle is insufficient; old auto40960 failure remains unwaived. No model allocation performed."
+}
