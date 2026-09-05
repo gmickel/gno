@@ -111,6 +111,20 @@ async function verify(): Promise<void> {
     ),
     "bundled bun binary"
   );
+  const runtimePackage = await Bun.file(
+    join(runtimeDir, "package.json")
+  ).json();
+  const expectedBun = runtimePackage.devDependencies.bun;
+  const actualBun = runCommand(
+    [bunPath, "--version"],
+    runtimeDir,
+    {}
+  ).stdout.trim();
+  if (actualBun !== expectedBun) {
+    throw new Error(
+      `Packaged Bun mismatch: expected ${expectedBun}, got ${actualBun}`
+    );
+  }
   const launcherPath = expectTruthy(
     await findFirst(buildDir, (path) =>
       path.endsWith(

@@ -82,3 +82,10 @@ Build + packaged runtime verify:
 bun run build
 bun scripts/verify-packaged-runtime.ts
 ```
+
+Install the root dependencies with `bun install --frozen-lockfile` before
+building the shell. Staging uses the root package's pinned Bun executable,
+and the desktop bundle ships that same version. Electrobun may invoke its
+build hooks with an older embedded Bun; that hook runtime must not install
+the staged dependencies. The packaged-runtime check rejects a bundled Bun
+version that differs from the root pin.
