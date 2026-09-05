@@ -852,7 +852,12 @@ Or use the Web UI:
 - **Collections page** → collection menu → **Export for gno.sh**
 - **Document view** → **Export for gno.sh**
 
-Upload the artifact at [gno.sh/studio](https://gno.sh/studio) and pick a visibility mode:
+Both local dialogs require an explicit access choice. Upload the artifact at
+[gno.sh/studio](https://gno.sh/studio), review its access and audience, then press
+Publish. CLI/API exports keep their public default; pass visibility explicitly
+for restricted content. Hosted plan availability is checked in Studio.
+
+Choose the audience:
 
 | Mode            | Use When                                                       |
 | :-------------- | :------------------------------------------------------------- |
@@ -875,13 +880,20 @@ and image fields accept only uncredentialed public HTTP(S) targets.
 Resolved local PNG, JPEG, GIF, WebP, and AVIF references are bundled,
 content-addressed, and deduplicated; external public HTTPS images remain
 external. The exact serialized artifact is capped at 100 MiB. Public images
-use immutable snapshot/generation URLs, secret-link images are authorized on
-every request, and encrypted image bytes exist only inside ciphertext before
+use generation routes that check current access without caching, secret-link
+images are authorized on every request, and encrypted image bytes exist only inside ciphertext before
 the browser creates scoped Blob URLs. Invite-only bundled-image delivery is
 currently fail-closed; use an asset-free invite, secret link, or encrypted
 share when local images are required.
 
-Republishing a public, secret-link, or invite-only artifact updates the same URL. Encrypted shares should be replaced from a fresh local export so the server never needs your plaintext.
+Explicitly select an existing publication to update it, or publish a separate
+copy. Content-only updates preserve the active URL; access changes invalidate
+old routes or tokens. Changing into or out of encryption requires a fresh
+local export. Unpublish stops hosted access but retains source and history.
+Delete permanently stops access before durable background cleanup; failed
+cleanup stays denied and can be retried. Neither operation deletes local
+files or independently published copies, and downloads cannot be recalled.
+See [Publishing](docs/PUBLISHING.md) for the full lifecycle and retention limits.
 
 Encrypted source-backed publish on `gno.sh` is intentionally disabled. For encrypted shares, use:
 
