@@ -1,0 +1,12 @@
+{
+  "originalRows": 304,
+  "retainedRows": 301,
+  "excludedDatabaseArtifacts": 3,
+  "artifactHashesVerified": 301,
+  "decompressedHashesVerified": 301,
+  "physicalSourceHashesVerified": 304,
+  "rawArtifactBytesChanged": 0,
+  "credentialPatternFlags": [],
+  "pathInventory": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-f8a278ef/excluded-database-artifacts/path-inventory.json",
+  "pathInventoryReview": "117 extracted path strings: only task scratch, synthetic fixture/package, model cache, repository, retained Ivan temporary package paths"
+}
