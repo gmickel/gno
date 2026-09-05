@@ -1,0 +1,95 @@
+{
+  "schema": "eligible-scaling-v1",
+  "commit": "aae58c0a0662ea20d4e9ecdef1c9c4867c278833",
+  "status": "M src/ingestion/sync.ts\n M src/mcp/tools/index.ts\n M src/pipeline/hybrid.ts\n M src/serve/resident-request.ts\n M src/store/sqlite/adapter.ts\n M src/store/sqlite/graph-reference-state.ts\n M src/store/types.ts\n M src/store/vector/freshness.ts\n?? .flow/artifacts/fn-129-gno-agents-install-global-instruction/\n?? .flow/artifacts/fn-130-memory-slice-rememberrecall-contracts/\n?? .flow/artifacts/fn-131-slim-mcp-core-tool-profile-and-mcp-2026/\n?? .flow/artifacts/fn-132-wired-loop-capture-parity-changes/\n?? .flow/artifacts/fn-133-site-and-docs-memory-positioning-agents/\n?? .flow/artifacts/fn-134-memory-eval-suite-as-the-adapter-gate/\n?? .flow/artifacts/fn-135-memory-adapters-openclaw-backend-hermes/\n?? .flow/artifacts/fn-142-mcp-installer-tool-profile-gno-mcp/\n?? .flow/artifacts/fn-148-eligible-candidates-before-retrieval/\n?? evals/acceptance/eligible-scaling.ts\n?? src/ingestion/graph-reconciliation.ts",
+  "scriptSha256": "d75fb839d0dcf26e08a68f7734d670df59f5994e8a87ff619e762ee99d151891",
+  "startedAt": "2026-09-05T01:51:38.579Z",
+  "runtime": {
+    "bun": "1.3.14",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "protocol": {
+    "version": "eligible-scaling-v1",
+    "sizes": [
+      201,
+      2001,
+      10001
+    ],
+    "concurrency": [
+      1,
+      4
+    ],
+    "repetitions": 5,
+    "limits": [
+      1,
+      10
+    ],
+    "timerMs": 1,
+    "corpora": [
+      {
+        "size": 201,
+        "sha256": "06cbdc94eebdbb299c4f5525213da5fdc6671db8a5faad6198eead07bb0c9811"
+      },
+      {
+        "size": 2001,
+        "sha256": "86bf68e4d59510e0823d639cc1a83e9a83d9ea0a8c1f661c6e508b57a85d6d55"
+      },
+      {
+        "size": 10001,
+        "sha256": "ad9e03b33592e9387a8f3a491fad92957c1769f6e3b4e1259b1680badb163f31"
+      }
+    ]
+  },
+  "phase": "failed",
+  "interpretation": "Known vectors, real SQLite/sqlite-vec and exported retrieval pipelines. Same-event-loop overlapping reads on independent connections; no GGUF/HTTP/UI evidence. Timer delay includes synchronous SQL plus queued microtasks. First measured and steady samples retained; oracle enumeration warms caches before timing, so this is not a cold-start measurement. No performance acceptance threshold or promotion verdict inferred.",
+  "errors": [
+    "201: Error: Canonical JSON rejects undefined at $[0].contentType",
+    "2001: Error: Canonical JSON rejects undefined at $[0].contentType",
+    "10001: Error: Canonical JSON rejects undefined at $[0].contentType"
+  ],
+  "corpora": [
+    {
+      "size": 201,
+      "directory": "/home/gordon/.cache/agent-tmp/gno-fn148-vector/eligible-scaling-201-Z6Rjcl",
+      "setupMs": 73.11457700000003,
+      "vectorAvailable": true,
+      "timerControlMs": [
+        0.08187499999999659,
+        0.05628500000000258,
+        0.05477500000000646,
+        0.054544999999990296,
+        0.5205409999999802
+      ],
+      "cases": []
+    },
+    {
+      "size": 2001,
+      "directory": "/home/gordon/.cache/agent-tmp/gno-fn148-vector/eligible-scaling-2001-SP9hH5",
+      "setupMs": 402.7234460000001,
+      "vectorAvailable": true,
+      "timerControlMs": [
+        0.9202470000000176,
+        1.1154000000000224,
+        0.05802500000004329,
+        0.05452500000001237,
+        0.058104999999955
+      ],
+      "cases": []
+    },
+    {
+      "size": 10001,
+      "directory": "/home/gordon/.cache/agent-tmp/gno-fn148-vector/eligible-scaling-10001-bsIJ3f",
+      "setupMs": 2167.487556,
+      "vectorAvailable": true,
+      "timerControlMs": [
+        10.711525000000165,
+        0.6659730000001218,
+        0.05993499999976848,
+        0.02941499999997177,
+        0.0663950000002842
+      ],
+      "cases": []
+    }
+  ]
+}

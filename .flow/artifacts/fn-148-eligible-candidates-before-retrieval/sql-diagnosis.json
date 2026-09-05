@@ -1,0 +1,1504 @@
+{
+  "baselineSource": "cb3421f6:src/store/sqlite/adapter.ts searchFts broad active-only CTE",
+  "candidateSource": "aae58c0a0662ea20d4e9ecdef1c9c4867c278833",
+  "caveat": "Diagnostic hot SQL, not an old-revision end-to-end latency baseline; only unused outer metadata columns omitted. One timing per variant, cache already warm. Exact URI/score/snippet ordered equality tested.",
+  "diagnostics": [
+    {
+      "size": 201,
+      "selective": false,
+      "variant": "pre1482Broad",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND rowid IN (SELECT id FROM documents WHERE active = 1)\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 5.787931,
+      "rows": [
+        {
+          "rowid": 30,
+          "uri": "gno://scaling/scope/000029.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 29 background background background background "
+        },
+        {
+          "rowid": 59,
+          "uri": "gno://scaling/scope/000058.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 58 background background background background "
+        },
+        {
+          "rowid": 88,
+          "uri": "gno://scaling/scope/000087.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 87 background background background background "
+        },
+        {
+          "rowid": 117,
+          "uri": "gno://scaling/scope/000116.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 116 background background background background "
+        },
+        {
+          "rowid": 146,
+          "uri": "gno://scaling/scope/000145.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 145 background background background background "
+        },
+        {
+          "rowid": 175,
+          "uri": "gno://scaling/scope/000174.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 174 background background background background "
+        },
+        {
+          "rowid": 2,
+          "uri": "gno://scaling/scope/000001.md",
+          "score": -0.000001268498650238804,
+          "snippet": "<mark>needle</mark> noise 1 background background background background background "
+        },
+        {
+          "rowid": 31,
+          "uri": "gno://scaling/scope/000030.md",
+          "score": -0.000001268498650238804,
+          "snippet": "<mark>needle</mark> noise 30 background background background background background "
+        },
+        {
+          "rowid": 60,
+          "uri": "gno://scaling/scope/000059.md",
+          "score": -0.000001268498650238804,
+          "snippet": "<mark>needle</mark> noise 59 background background background background background "
+        },
+        {
+          "rowid": 89,
+          "uri": "gno://scaling/scope/000088.md",
+          "score": -0.000001268498650238804,
+          "snippet": "<mark>needle</mark> noise 88 background background background background background "
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 146,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:=M3"
+        },
+        {
+          "id": 10,
+          "parent": 2,
+          "notused": 0,
+          "detail": "LIST SUBQUERY 1"
+        },
+        {
+          "id": 12,
+          "parent": 10,
+          "notused": 51,
+          "detail": "SEARCH documents USING COVERING INDEX idx_documents_active (active=?)"
+        },
+        {
+          "id": 43,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 55,
+          "parent": 0,
+          "notused": 16,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 58,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": null
+    },
+    {
+      "size": 201,
+      "selective": false,
+      "variant": "current",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND rowid IN (SELECT id FROM (SELECT d.id, d.mirror_hash FROM documents d WHERE d.active = 1 ))\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 4.709766999999999,
+      "rows": [
+        {
+          "rowid": 30,
+          "uri": "gno://scaling/scope/000029.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 29 background background background background "
+        },
+        {
+          "rowid": 59,
+          "uri": "gno://scaling/scope/000058.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 58 background background background background "
+        },
+        {
+          "rowid": 88,
+          "uri": "gno://scaling/scope/000087.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 87 background background background background "
+        },
+        {
+          "rowid": 117,
+          "uri": "gno://scaling/scope/000116.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 116 background background background background "
+        },
+        {
+          "rowid": 146,
+          "uri": "gno://scaling/scope/000145.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 145 background background background background "
+        },
+        {
+          "rowid": 175,
+          "uri": "gno://scaling/scope/000174.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 174 background background background background "
+        },
+        {
+          "rowid": 2,
+          "uri": "gno://scaling/scope/000001.md",
+          "score": -0.000001268498650238804,
+          "snippet": "<mark>needle</mark> noise 1 background background background background background "
+        },
+        {
+          "rowid": 31,
+          "uri": "gno://scaling/scope/000030.md",
+          "score": -0.000001268498650238804,
+          "snippet": "<mark>needle</mark> noise 30 background background background background background "
+        },
+        {
+          "rowid": 60,
+          "uri": "gno://scaling/scope/000059.md",
+          "score": -0.000001268498650238804,
+          "snippet": "<mark>needle</mark> noise 59 background background background background background "
+        },
+        {
+          "rowid": 89,
+          "uri": "gno://scaling/scope/000088.md",
+          "score": -0.000001268498650238804,
+          "snippet": "<mark>needle</mark> noise 88 background background background background background "
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 146,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:=M3"
+        },
+        {
+          "id": 10,
+          "parent": 2,
+          "notused": 0,
+          "detail": "LIST SUBQUERY 2"
+        },
+        {
+          "id": 12,
+          "parent": 10,
+          "notused": 51,
+          "detail": "SEARCH d USING COVERING INDEX idx_documents_active (active=?)"
+        },
+        {
+          "id": 43,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 55,
+          "parent": 0,
+          "notused": 16,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 58,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": null
+    },
+    {
+      "size": 201,
+      "selective": false,
+      "variant": "proposed",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND EXISTS (SELECT 1 FROM (SELECT d.id, d.mirror_hash FROM documents d WHERE d.active = 1 ) eligible WHERE eligible.id = documents_fts.rowid)\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 0.2876839999999987,
+      "rows": [
+        {
+          "rowid": 30,
+          "uri": "gno://scaling/scope/000029.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 29 background background background background "
+        },
+        {
+          "rowid": 59,
+          "uri": "gno://scaling/scope/000058.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 58 background background background background "
+        },
+        {
+          "rowid": 88,
+          "uri": "gno://scaling/scope/000087.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 87 background background background background "
+        },
+        {
+          "rowid": 117,
+          "uri": "gno://scaling/scope/000116.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 116 background background background background "
+        },
+        {
+          "rowid": 146,
+          "uri": "gno://scaling/scope/000145.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 145 background background background background "
+        },
+        {
+          "rowid": 175,
+          "uri": "gno://scaling/scope/000174.md",
+          "score": -0.000001295535682725955,
+          "snippet": "<mark>needle</mark> noise 174 background background background background "
+        },
+        {
+          "rowid": 2,
+          "uri": "gno://scaling/scope/000001.md",
+          "score": -0.000001268498650238804,
+          "snippet": "<mark>needle</mark> noise 1 background background background background background "
+        },
+        {
+          "rowid": 31,
+          "uri": "gno://scaling/scope/000030.md",
+          "score": -0.000001268498650238804,
+          "snippet": "<mark>needle</mark> noise 30 background background background background background "
+        },
+        {
+          "rowid": 60,
+          "uri": "gno://scaling/scope/000059.md",
+          "score": -0.000001268498650238804,
+          "snippet": "<mark>needle</mark> noise 59 background background background background background "
+        },
+        {
+          "rowid": 89,
+          "uri": "gno://scaling/scope/000088.md",
+          "score": -0.000001268498650238804,
+          "snippet": "<mark>needle</mark> noise 88 background background background background background "
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 156,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:M3"
+        },
+        {
+          "id": 12,
+          "parent": 2,
+          "notused": 0,
+          "detail": "CORRELATED SCALAR SUBQUERY 2"
+        },
+        {
+          "id": 16,
+          "parent": 12,
+          "notused": 33,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        },
+        {
+          "id": 38,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 50,
+          "parent": 0,
+          "notused": 49,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 53,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": true
+    },
+    {
+      "size": 201,
+      "selective": true,
+      "variant": "current",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND rowid IN (SELECT id FROM (SELECT d.id, d.mirror_hash FROM documents d WHERE d.active = 1 AND EXISTS (SELECT 1 FROM doc_tags t WHERE t.document_id=d.id AND t.tag='rare')))\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 0.16254200000000196,
+      "rows": [
+        {
+          "rowid": 201,
+          "uri": "gno://scaling/scope/000200.md",
+          "score": -8.335873001432829e-7,
+          "snippet": "<mark>needle</mark> target 200 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background..."
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 146,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:=M3"
+        },
+        {
+          "id": 10,
+          "parent": 2,
+          "notused": 0,
+          "detail": "LIST SUBQUERY 3"
+        },
+        {
+          "id": 14,
+          "parent": 10,
+          "notused": 51,
+          "detail": "SEARCH d USING COVERING INDEX idx_documents_active (active=?)"
+        },
+        {
+          "id": 18,
+          "parent": 10,
+          "notused": 45,
+          "detail": "SEARCH t EXISTS USING COVERING INDEX sqlite_autoindex_doc_tags_1 (document_id=? AND tag=?)"
+        },
+        {
+          "id": 51,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 63,
+          "parent": 0,
+          "notused": 16,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 66,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": null
+    },
+    {
+      "size": 201,
+      "selective": true,
+      "variant": "proposed",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND EXISTS (SELECT 1 FROM (SELECT d.id, d.mirror_hash FROM documents d WHERE d.active = 1 AND EXISTS (SELECT 1 FROM doc_tags t WHERE t.document_id=d.id AND t.tag='rare')) eligible WHERE eligible.id = documents_fts.rowid)\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 0.17842199999999764,
+      "rows": [
+        {
+          "rowid": 201,
+          "uri": "gno://scaling/scope/000200.md",
+          "score": -8.335873001432829e-7,
+          "snippet": "<mark>needle</mark> target 200 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background..."
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 156,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:M3"
+        },
+        {
+          "id": 12,
+          "parent": 2,
+          "notused": 0,
+          "detail": "CORRELATED SCALAR SUBQUERY 3"
+        },
+        {
+          "id": 18,
+          "parent": 12,
+          "notused": 44,
+          "detail": "SEARCH d USING COVERING INDEX idx_documents_active (active=? AND rowid=?)"
+        },
+        {
+          "id": 23,
+          "parent": 12,
+          "notused": 45,
+          "detail": "SEARCH t EXISTS USING COVERING INDEX sqlite_autoindex_doc_tags_1 (document_id=? AND tag=?)"
+        },
+        {
+          "id": 46,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 58,
+          "parent": 0,
+          "notused": 49,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 61,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": true
+    },
+    {
+      "size": 2001,
+      "selective": false,
+      "variant": "pre1482Broad",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND rowid IN (SELECT id FROM documents WHERE active = 1)\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 234.28155999999998,
+      "rows": [
+        {
+          "rowid": 30,
+          "uri": "gno://scaling/scope/000029.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 29 background background background background "
+        },
+        {
+          "rowid": 59,
+          "uri": "gno://scaling/scope/000058.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 58 background background background background "
+        },
+        {
+          "rowid": 88,
+          "uri": "gno://scaling/scope/000087.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 87 background background background background "
+        },
+        {
+          "rowid": 117,
+          "uri": "gno://scaling/scope/000116.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 116 background background background background "
+        },
+        {
+          "rowid": 146,
+          "uri": "gno://scaling/scope/000145.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 145 background background background background "
+        },
+        {
+          "rowid": 175,
+          "uri": "gno://scaling/scope/000174.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 174 background background background background "
+        },
+        {
+          "rowid": 204,
+          "uri": "gno://scaling/scope/000203.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 203 background background background background "
+        },
+        {
+          "rowid": 233,
+          "uri": "gno://scaling/scope/000232.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 232 background background background background "
+        },
+        {
+          "rowid": 262,
+          "uri": "gno://scaling/scope/000261.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 261 background background background background "
+        },
+        {
+          "rowid": 291,
+          "uri": "gno://scaling/scope/000290.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 290 background background background background "
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 146,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:=M3"
+        },
+        {
+          "id": 10,
+          "parent": 2,
+          "notused": 0,
+          "detail": "LIST SUBQUERY 1"
+        },
+        {
+          "id": 12,
+          "parent": 10,
+          "notused": 51,
+          "detail": "SEARCH documents USING COVERING INDEX idx_documents_active (active=?)"
+        },
+        {
+          "id": 43,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 55,
+          "parent": 0,
+          "notused": 16,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 58,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": null
+    },
+    {
+      "size": 2001,
+      "selective": false,
+      "variant": "current",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND rowid IN (SELECT id FROM (SELECT d.id, d.mirror_hash FROM documents d WHERE d.active = 1 ))\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 227.099058,
+      "rows": [
+        {
+          "rowid": 30,
+          "uri": "gno://scaling/scope/000029.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 29 background background background background "
+        },
+        {
+          "rowid": 59,
+          "uri": "gno://scaling/scope/000058.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 58 background background background background "
+        },
+        {
+          "rowid": 88,
+          "uri": "gno://scaling/scope/000087.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 87 background background background background "
+        },
+        {
+          "rowid": 117,
+          "uri": "gno://scaling/scope/000116.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 116 background background background background "
+        },
+        {
+          "rowid": 146,
+          "uri": "gno://scaling/scope/000145.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 145 background background background background "
+        },
+        {
+          "rowid": 175,
+          "uri": "gno://scaling/scope/000174.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 174 background background background background "
+        },
+        {
+          "rowid": 204,
+          "uri": "gno://scaling/scope/000203.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 203 background background background background "
+        },
+        {
+          "rowid": 233,
+          "uri": "gno://scaling/scope/000232.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 232 background background background background "
+        },
+        {
+          "rowid": 262,
+          "uri": "gno://scaling/scope/000261.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 261 background background background background "
+        },
+        {
+          "rowid": 291,
+          "uri": "gno://scaling/scope/000290.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 290 background background background background "
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 146,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:=M3"
+        },
+        {
+          "id": 10,
+          "parent": 2,
+          "notused": 0,
+          "detail": "LIST SUBQUERY 2"
+        },
+        {
+          "id": 12,
+          "parent": 10,
+          "notused": 51,
+          "detail": "SEARCH d USING COVERING INDEX idx_documents_active (active=?)"
+        },
+        {
+          "id": 43,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 55,
+          "parent": 0,
+          "notused": 16,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 58,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": null
+    },
+    {
+      "size": 2001,
+      "selective": false,
+      "variant": "proposed",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND EXISTS (SELECT 1 FROM (SELECT d.id, d.mirror_hash FROM documents d WHERE d.active = 1 ) eligible WHERE eligible.id = documents_fts.rowid)\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 1.594333000000006,
+      "rows": [
+        {
+          "rowid": 30,
+          "uri": "gno://scaling/scope/000029.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 29 background background background background "
+        },
+        {
+          "rowid": 59,
+          "uri": "gno://scaling/scope/000058.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 58 background background background background "
+        },
+        {
+          "rowid": 88,
+          "uri": "gno://scaling/scope/000087.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 87 background background background background "
+        },
+        {
+          "rowid": 117,
+          "uri": "gno://scaling/scope/000116.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 116 background background background background "
+        },
+        {
+          "rowid": 146,
+          "uri": "gno://scaling/scope/000145.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 145 background background background background "
+        },
+        {
+          "rowid": 175,
+          "uri": "gno://scaling/scope/000174.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 174 background background background background "
+        },
+        {
+          "rowid": 204,
+          "uri": "gno://scaling/scope/000203.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 203 background background background background "
+        },
+        {
+          "rowid": 233,
+          "uri": "gno://scaling/scope/000232.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 232 background background background background "
+        },
+        {
+          "rowid": 262,
+          "uri": "gno://scaling/scope/000261.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 261 background background background background "
+        },
+        {
+          "rowid": 291,
+          "uri": "gno://scaling/scope/000290.md",
+          "score": -0.0000012971698113207548,
+          "snippet": "<mark>needle</mark> noise 290 background background background background "
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 156,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:M3"
+        },
+        {
+          "id": 12,
+          "parent": 2,
+          "notused": 0,
+          "detail": "CORRELATED SCALAR SUBQUERY 2"
+        },
+        {
+          "id": 16,
+          "parent": 12,
+          "notused": 33,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        },
+        {
+          "id": 38,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 50,
+          "parent": 0,
+          "notused": 49,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 53,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": true
+    },
+    {
+      "size": 2001,
+      "selective": true,
+      "variant": "current",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND rowid IN (SELECT id FROM (SELECT d.id, d.mirror_hash FROM documents d WHERE d.active = 1 AND EXISTS (SELECT 1 FROM doc_tags t WHERE t.document_id=d.id AND t.tag='rare')))\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 0.4703269999999975,
+      "rows": [
+        {
+          "rowid": 2001,
+          "uri": "gno://scaling/scope/002000.md",
+          "score": -8.136094674556214e-7,
+          "snippet": "<mark>needle</mark> target 2000 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background..."
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 146,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:=M3"
+        },
+        {
+          "id": 10,
+          "parent": 2,
+          "notused": 0,
+          "detail": "LIST SUBQUERY 3"
+        },
+        {
+          "id": 14,
+          "parent": 10,
+          "notused": 51,
+          "detail": "SEARCH d USING COVERING INDEX idx_documents_active (active=?)"
+        },
+        {
+          "id": 18,
+          "parent": 10,
+          "notused": 45,
+          "detail": "SEARCH t EXISTS USING COVERING INDEX sqlite_autoindex_doc_tags_1 (document_id=? AND tag=?)"
+        },
+        {
+          "id": 51,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 63,
+          "parent": 0,
+          "notused": 16,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 66,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": null
+    },
+    {
+      "size": 2001,
+      "selective": true,
+      "variant": "proposed",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND EXISTS (SELECT 1 FROM (SELECT d.id, d.mirror_hash FROM documents d WHERE d.active = 1 AND EXISTS (SELECT 1 FROM doc_tags t WHERE t.document_id=d.id AND t.tag='rare')) eligible WHERE eligible.id = documents_fts.rowid)\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 0.751419999999996,
+      "rows": [
+        {
+          "rowid": 2001,
+          "uri": "gno://scaling/scope/002000.md",
+          "score": -8.136094674556214e-7,
+          "snippet": "<mark>needle</mark> target 2000 background background background background background background background background background background background background background background background background background background background background background background background background background background background background background..."
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 156,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:M3"
+        },
+        {
+          "id": 12,
+          "parent": 2,
+          "notused": 0,
+          "detail": "CORRELATED SCALAR SUBQUERY 3"
+        },
+        {
+          "id": 18,
+          "parent": 12,
+          "notused": 44,
+          "detail": "SEARCH d USING COVERING INDEX idx_documents_active (active=? AND rowid=?)"
+        },
+        {
+          "id": 23,
+          "parent": 12,
+          "notused": 45,
+          "detail": "SEARCH t EXISTS USING COVERING INDEX sqlite_autoindex_doc_tags_1 (document_id=? AND tag=?)"
+        },
+        {
+          "id": 46,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 58,
+          "parent": 0,
+          "notused": 49,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 61,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": true
+    },
+    {
+      "size": 10001,
+      "selective": false,
+      "variant": "pre1482Broad",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND rowid IN (SELECT id FROM documents WHERE active = 1)\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 5071.548696,
+      "rows": [
+        {
+          "rowid": 30,
+          "uri": "gno://scaling/scope/000029.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 29 background background background background "
+        },
+        {
+          "rowid": 59,
+          "uri": "gno://scaling/scope/000058.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 58 background background background background "
+        },
+        {
+          "rowid": 88,
+          "uri": "gno://scaling/scope/000087.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 87 background background background background "
+        },
+        {
+          "rowid": 117,
+          "uri": "gno://scaling/scope/000116.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 116 background background background background "
+        },
+        {
+          "rowid": 146,
+          "uri": "gno://scaling/scope/000145.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 145 background background background background "
+        },
+        {
+          "rowid": 175,
+          "uri": "gno://scaling/scope/000174.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 174 background background background background "
+        },
+        {
+          "rowid": 204,
+          "uri": "gno://scaling/scope/000203.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 203 background background background background "
+        },
+        {
+          "rowid": 233,
+          "uri": "gno://scaling/scope/000232.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 232 background background background background "
+        },
+        {
+          "rowid": 262,
+          "uri": "gno://scaling/scope/000261.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 261 background background background background "
+        },
+        {
+          "rowid": 291,
+          "uri": "gno://scaling/scope/000290.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 290 background background background background "
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 146,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:=M3"
+        },
+        {
+          "id": 10,
+          "parent": 2,
+          "notused": 0,
+          "detail": "LIST SUBQUERY 1"
+        },
+        {
+          "id": 12,
+          "parent": 10,
+          "notused": 51,
+          "detail": "SEARCH documents USING COVERING INDEX idx_documents_active (active=?)"
+        },
+        {
+          "id": 43,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 55,
+          "parent": 0,
+          "notused": 16,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 58,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": null
+    },
+    {
+      "size": 10001,
+      "selective": false,
+      "variant": "current",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND rowid IN (SELECT id FROM (SELECT d.id, d.mirror_hash FROM documents d WHERE d.active = 1 ))\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 5060.377576999999,
+      "rows": [
+        {
+          "rowid": 30,
+          "uri": "gno://scaling/scope/000029.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 29 background background background background "
+        },
+        {
+          "rowid": 59,
+          "uri": "gno://scaling/scope/000058.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 58 background background background background "
+        },
+        {
+          "rowid": 88,
+          "uri": "gno://scaling/scope/000087.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 87 background background background background "
+        },
+        {
+          "rowid": 117,
+          "uri": "gno://scaling/scope/000116.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 116 background background background background "
+        },
+        {
+          "rowid": 146,
+          "uri": "gno://scaling/scope/000145.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 145 background background background background "
+        },
+        {
+          "rowid": 175,
+          "uri": "gno://scaling/scope/000174.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 174 background background background background "
+        },
+        {
+          "rowid": 204,
+          "uri": "gno://scaling/scope/000203.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 203 background background background background "
+        },
+        {
+          "rowid": 233,
+          "uri": "gno://scaling/scope/000232.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 232 background background background background "
+        },
+        {
+          "rowid": 262,
+          "uri": "gno://scaling/scope/000261.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 261 background background background background "
+        },
+        {
+          "rowid": 291,
+          "uri": "gno://scaling/scope/000290.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 290 background background background background "
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 146,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:=M3"
+        },
+        {
+          "id": 10,
+          "parent": 2,
+          "notused": 0,
+          "detail": "LIST SUBQUERY 2"
+        },
+        {
+          "id": 12,
+          "parent": 10,
+          "notused": 51,
+          "detail": "SEARCH d USING COVERING INDEX idx_documents_active (active=?)"
+        },
+        {
+          "id": 43,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 55,
+          "parent": 0,
+          "notused": 16,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 58,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": null
+    },
+    {
+      "size": 10001,
+      "selective": false,
+      "variant": "proposed",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND EXISTS (SELECT 1 FROM (SELECT d.id, d.mirror_hash FROM documents d WHERE d.active = 1 ) eligible WHERE eligible.id = documents_fts.rowid)\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 7.499065999998493,
+      "rows": [
+        {
+          "rowid": 30,
+          "uri": "gno://scaling/scope/000029.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 29 background background background background "
+        },
+        {
+          "rowid": 59,
+          "uri": "gno://scaling/scope/000058.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 58 background background background background "
+        },
+        {
+          "rowid": 88,
+          "uri": "gno://scaling/scope/000087.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 87 background background background background "
+        },
+        {
+          "rowid": 117,
+          "uri": "gno://scaling/scope/000116.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 116 background background background background "
+        },
+        {
+          "rowid": 146,
+          "uri": "gno://scaling/scope/000145.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 145 background background background background "
+        },
+        {
+          "rowid": 175,
+          "uri": "gno://scaling/scope/000174.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 174 background background background background "
+        },
+        {
+          "rowid": 204,
+          "uri": "gno://scaling/scope/000203.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 203 background background background background "
+        },
+        {
+          "rowid": 233,
+          "uri": "gno://scaling/scope/000232.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 232 background background background background "
+        },
+        {
+          "rowid": 262,
+          "uri": "gno://scaling/scope/000261.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 261 background background background background "
+        },
+        {
+          "rowid": 291,
+          "uri": "gno://scaling/scope/000290.md",
+          "score": -0.000001297109232709102,
+          "snippet": "<mark>needle</mark> noise 290 background background background background "
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 156,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:M3"
+        },
+        {
+          "id": 12,
+          "parent": 2,
+          "notused": 0,
+          "detail": "CORRELATED SCALAR SUBQUERY 2"
+        },
+        {
+          "id": 16,
+          "parent": 12,
+          "notused": 33,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        },
+        {
+          "id": 38,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 50,
+          "parent": 0,
+          "notused": 49,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 53,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": true
+    },
+    {
+      "size": 10001,
+      "selective": true,
+      "variant": "current",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND rowid IN (SELECT id FROM (SELECT d.id, d.mirror_hash FROM documents d WHERE d.active = 1 AND EXISTS (SELECT 1 FROM doc_tags t WHERE t.document_id=d.id AND t.tag='rare')))\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 1.814726000000519,
+      "rows": [
+        {
+          "rowid": 10001,
+          "uri": "gno://scaling/scope/010000.md",
+          "score": -8.592904051412581e-7,
+          "snippet": "<mark>needle</mark> target 10000 background background background background background background background background background background background background background background background background background background background background background background background background background background background background "
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 146,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:=M3"
+        },
+        {
+          "id": 10,
+          "parent": 2,
+          "notused": 0,
+          "detail": "LIST SUBQUERY 3"
+        },
+        {
+          "id": 14,
+          "parent": 10,
+          "notused": 51,
+          "detail": "SEARCH d USING COVERING INDEX idx_documents_active (active=?)"
+        },
+        {
+          "id": 18,
+          "parent": 10,
+          "notused": 45,
+          "detail": "SEARCH t EXISTS USING COVERING INDEX sqlite_autoindex_doc_tags_1 (document_id=? AND tag=?)"
+        },
+        {
+          "id": 51,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 63,
+          "parent": 0,
+          "notused": 16,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 66,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": null
+    },
+    {
+      "size": 10001,
+      "selective": true,
+      "variant": "proposed",
+      "sql": "WITH fts_matches AS (\n          SELECT rowid, snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) AS snippet,\n                 bm25(documents_fts, 1.5, 4, 1) AS score\n          FROM documents_fts WHERE documents_fts MATCH ? AND EXISTS (SELECT 1 FROM (SELECT d.id, d.mirror_hash FROM documents d WHERE d.active = 1 AND EXISTS (SELECT 1 FROM doc_tags t WHERE t.document_id=d.id AND t.tag='rare')) eligible WHERE eligible.id = documents_fts.rowid)\n          ORDER BY score LIMIT ?\n        ) SELECT fm.rowid, d.uri, fm.score, fm.snippet FROM fts_matches fm\n          JOIN documents d ON d.id=fm.rowid AND d.active=1\n          WHERE 1=1 ORDER BY fm.score LIMIT ?",
+      "params": [
+        "needle*",
+        10,
+        10
+      ],
+      "elapsedMs": 3.3848480000015115,
+      "rows": [
+        {
+          "rowid": 10001,
+          "uri": "gno://scaling/scope/010000.md",
+          "score": -8.592904051412581e-7,
+          "snippet": "<mark>needle</mark> target 10000 background background background background background background background background background background background background background background background background background background background background background background background background background background background background "
+        }
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE fts_matches"
+        },
+        {
+          "id": 6,
+          "parent": 2,
+          "notused": 156,
+          "detail": "SCAN documents_fts VIRTUAL TABLE INDEX 0:M3"
+        },
+        {
+          "id": 12,
+          "parent": 2,
+          "notused": 0,
+          "detail": "CORRELATED SCALAR SUBQUERY 3"
+        },
+        {
+          "id": 18,
+          "parent": 12,
+          "notused": 44,
+          "detail": "SEARCH d USING COVERING INDEX idx_documents_active (active=? AND rowid=?)"
+        },
+        {
+          "id": 23,
+          "parent": 12,
+          "notused": 45,
+          "detail": "SEARCH t EXISTS USING COVERING INDEX sqlite_autoindex_doc_tags_1 (document_id=? AND tag=?)"
+        },
+        {
+          "id": 46,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 58,
+          "parent": 0,
+          "notused": 49,
+          "detail": "SCAN fm"
+        },
+        {
+          "id": 61,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"
+        }
+      ],
+      "sameAsCurrent": true
+    }
+  ]
+}
