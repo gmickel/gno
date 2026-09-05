@@ -53,6 +53,10 @@ bun run test:package    # Must pass
 Evalite suites are local-only and opt-in. Run `bun run eval` only when Gordon
 explicitly asks or when changing retrieval/answer quality behavior.
 
+`bun test` discovers the main, browser-extension and integration suites. It
+excludes immutable `.flow/artifacts/` snapshots and local `notes/` experiments;
+reproduce those only with their recorded commands and pinned inputs.
+
 **Release:**
 
 ```bash
