@@ -7,6 +7,24 @@
 
 import type { StoreResult } from "../types";
 
+/** Full effective embedding identity, including truncation/runtime policy. */
+export interface VectorVariantIdentity {
+  model: string;
+  modelFingerprint: string;
+  contextSize: number;
+  truncationPolicy: string;
+  dimensions: number;
+}
+
+/** Snapshot carried through asynchronous embedding; write revalidates input. */
+export interface VectorOwnerInput {
+  documentId: number;
+  mirrorHash: string;
+  seq: number;
+  formattedInput: string;
+  inputHash: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Row Types
 // ─────────────────────────────────────────────────────────────────────────────

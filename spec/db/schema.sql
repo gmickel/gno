@@ -221,9 +221,109 @@ CREATE INDEX IF NOT EXISTS idx_vectors_freshness
   ON content_vectors(model, embed_fingerprint, mirror_hash, seq, embedded_at);
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- LLM Cache (EPIC 6+)
+-- Exact embedding input variants (v1)
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- Input variants v1 are additive shadow state. Legacy content_vectors remain
+-- authoritative until a partition's complete active-owner coverage is checked
+-- under BEGIN IMMEDIATE at the expected mutation epoch. Never infer exact
+-- historical input from unique ownership. Pending work is current active
+-- document/chunk pairs without a validated binding; it is resumable by owner.
+CREATE TABLE IF NOT EXISTS vector_variant_epoch (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  epoch INTEGER NOT NULL DEFAULT 0
+);
+INSERT OR IGNORE INTO vector_variant_epoch(id) VALUES (1);
+CREATE TABLE IF NOT EXISTS vector_partitions (
+  partition_id TEXT PRIMARY KEY,
+  version INTEGER NOT NULL CHECK (version = 1),
+  model TEXT NOT NULL,
+  fingerprint TEXT NOT NULL,
+  dimensions INTEGER NOT NULL CHECK (dimensions > 0),
+  state TEXT NOT NULL DEFAULT 'shadow' CHECK (state IN ('shadow', 'active')),
+  activated_epoch INTEGER,
+  UNIQUE(model, fingerprint, dimensions)
+);
+CREATE TABLE IF NOT EXISTS vector_variants (
+  variant_id INTEGER PRIMARY KEY,
+  partition_id TEXT NOT NULL REFERENCES vector_partitions(partition_id),
+  input_hash TEXT NOT NULL CHECK (length(input_hash) = 64),
+  embedding BLOB NOT NULL,
+  UNIQUE(partition_id, input_hash),
+  UNIQUE(partition_id, variant_id)
+);
+CREATE TABLE IF NOT EXISTS vector_owners (
+  document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  mirror_hash TEXT NOT NULL,
+  seq INTEGER NOT NULL,
+  partition_id TEXT NOT NULL,
+  variant_id INTEGER NOT NULL,
+  PRIMARY KEY(document_id, seq, partition_id),
+  FOREIGN KEY(partition_id, variant_id)
+    REFERENCES vector_variants(partition_id, variant_id)
+);
+CREATE INDEX IF NOT EXISTS idx_vector_owners_variant ON vector_owners(variant_id);
+-- No chunk FK: replacing shared canonical chunks must not cascade vector loss.
+-- The writer validates bindings against current document/chunk/formatted input.
+-- vec_v1_<partition SHA256> uses variant_id INTEGER PRIMARY KEY and FLOAT[dims].
+-- Its writes/deletes share the authoritative variant transaction; no best effort.
+-- Mutation epoch fences all old and new writers, including raw SQL. Active state
+-- records durable variant authority after initial promotion. activated_epoch
+-- proves current completeness only when it matches the mutation epoch.
+-- Later mutations do not revoke authority: retrieval validates each owner and
+-- continues serving unaffected variants; it must not fall back wholesale to
+-- legacy rows. Recreating a missing vec0 table resets its partition to shadow.
+
+CREATE TRIGGER IF NOT EXISTS variant_epoch_documents_INSERT
+  AFTER INSERT ON documents BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_documents_UPDATE
+  AFTER UPDATE ON documents BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_documents_DELETE
+  AFTER DELETE ON documents BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_content_chunks_INSERT
+  AFTER INSERT ON content_chunks BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_content_chunks_UPDATE
+  AFTER UPDATE ON content_chunks BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_content_chunks_DELETE
+  AFTER DELETE ON content_chunks BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_vector_owners_INSERT
+  AFTER INSERT ON vector_owners BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_vector_owners_UPDATE
+  AFTER UPDATE ON vector_owners BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_vector_owners_DELETE
+  AFTER DELETE ON vector_owners BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_vector_variants_INSERT
+  AFTER INSERT ON vector_variants BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_vector_variants_UPDATE
+  AFTER UPDATE ON vector_variants BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+CREATE TRIGGER IF NOT EXISTS variant_epoch_vector_variants_DELETE
+  AFTER DELETE ON vector_variants BEGIN
+    UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1;
+  END;
+
+-- LLM Cache (EPIC 6+)
 CREATE TABLE IF NOT EXISTS llm_cache (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
