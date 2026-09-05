@@ -9,6 +9,7 @@
 import { realpath } from "node:fs/promises";
 
 import type { Config } from "../../config/types";
+import type { NativeDisposeOptions } from "../native-worker/owned-exit";
 import type { DownloadPolicy } from "../policy";
 import type {
   EmbeddingPort,
@@ -321,8 +322,8 @@ export class LlmAdapter {
   /**
    * Dispose all resources.
    */
-  async dispose(): Promise<void> {
-    await this.worker.dispose();
+  async dispose(options?: NativeDisposeOptions): Promise<void> {
+    await this.worker.dispose(options);
   }
 }
 

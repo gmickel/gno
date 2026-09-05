@@ -11,6 +11,7 @@ import type {
 } from "../core/egress-policy";
 import type { EgressLineage } from "../core/egress-provenance";
 import type { JobManager } from "../core/job-manager";
+import type { NativeDisposeOptions } from "../llm/native-worker/owned-exit";
 import type { ModelLease } from "../llm/nodeLlamaCpp/lifecycle";
 import type { ResidentStatus } from "../serve/status-model";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
@@ -88,7 +89,7 @@ export interface ToolContext {
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
   getModelAdapter?: () => LlmAdapter;
-  disposeModels?: () => Promise<void>;
+  disposeModels?: (options?: NativeDisposeOptions) => Promise<void>;
   acquireModelLease?: () => ModelLease;
   markContentMutation?: () => void;
   markIndexMutation?: () => void;
@@ -129,7 +130,7 @@ export interface CreateToolContextOptions {
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
   getModelAdapter?: (config: Config) => LlmAdapter | undefined;
-  disposeModels?: () => Promise<void>;
+  disposeModels?: (options?: NativeDisposeOptions) => Promise<void>;
   acquireModelLease?: () => ModelLease;
   markContentMutation?: () => void;
   markIndexMutation?: () => void;
@@ -147,6 +148,7 @@ export function createToolContext(
   options: CreateToolContextOptions
 ): ToolContext {
   const adapters = new Map<Config, LlmAdapter>();
+  let modelsClosed = false;
   const requestSnapshot = new AsyncLocalStorage<ToolContextSnapshot>();
   const currentSnapshot = (): ToolContextSnapshot =>
     requestSnapshot.getStore() ??
@@ -183,6 +185,7 @@ export function createToolContext(
       options.getResidentStatus ??
       (() => createStandaloneResidentStatus("stdio")),
     getModelAdapter: () => {
+      if (modelsClosed) throw new Error("Resident runtime is shutting down");
       const config = currentSnapshot().config;
       const shared = options.getModelAdapter?.(config);
       if (shared) return shared;
@@ -193,9 +196,10 @@ export function createToolContext(
       }
       return adapter;
     },
-    disposeModels: async () => {
-      await Promise.allSettled(
-        [...adapters.values()].map((adapter) => adapter.dispose())
+    disposeModels: async (disposeOptions) => {
+      modelsClosed = true;
+      await Promise.all(
+        [...adapters.values()].map((adapter) => adapter.dispose(disposeOptions))
       );
       adapters.clear();
     },

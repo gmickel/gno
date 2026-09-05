@@ -84,6 +84,8 @@ export class JobManager {
   #activeJobs = new Set<Promise<void>>();
   #jobControllers = new Map<string, AbortController>();
   #authorizationEpoch = "egress-epoch-uninitialized";
+  #accepting = true;
+  #releaseJobLocks = new Map<string, () => Promise<void>>();
 
   constructor(options: JobManagerOptions) {
     this.#lockPath = options.lockPath;
@@ -97,6 +99,7 @@ export class JobManager {
     fn: (signal: AbortSignal) => Promise<SyncResult>
   ): Promise<string> {
     assertInferenceActive();
+    this.#assertAccepting();
     this.#cleanupExpiredJobs();
 
     if (this.#activeJobId) {
@@ -111,6 +114,11 @@ export class JobManager {
       throw new JobError("LOCKED", MCP_ERRORS.LOCKED.message);
     }
 
+    if (!this.#accepting) {
+      await lock.release();
+      this.#assertAccepting();
+    }
+
     return this.#startJobWithLock(type, fn, lock);
   }
 
@@ -120,6 +128,7 @@ export class JobManager {
     fn: (signal: AbortSignal) => Promise<SyncResult>
   ): Promise<string> {
     assertInferenceActive();
+    this.#assertAccepting();
     this.#cleanupExpiredJobs();
 
     if (this.#activeJobId) {
@@ -142,6 +151,7 @@ export class JobManager {
     fn: (signal: AbortSignal) => Promise<JobResult>
   ): Promise<string> {
     assertInferenceActive();
+    this.#assertAccepting();
     this.#cleanupExpiredJobs();
 
     if (this.#activeJobId) {
@@ -222,7 +232,45 @@ export class JobManager {
   }
 
   async shutdown(): Promise<void> {
+    this.stop();
     await Promise.allSettled(this.#activeJobs);
+  }
+
+  stop(): void {
+    this.#accepting = false;
+  }
+
+  cancel(): void {
+    this.stop();
+    for (const controller of this.#jobControllers.values()) controller.abort();
+  }
+
+  /** Call only after the shared shutdown budget; late callbacks stay canceled. */
+  async failUnfinished(): Promise<void> {
+    this.cancel();
+    for (const job of this.#jobs.values()) {
+      if (job.status !== "running") continue;
+      job.status = "failed";
+      job.error = "Resident shutdown deadline exceeded";
+      job.completedAt = Date.now();
+    }
+    await Promise.allSettled(
+      Array.from(this.#releaseJobLocks.values(), (release) => release())
+    );
+  }
+
+  #assertAccepting(): void {
+    if (!this.#accepting) throw new Error("Resident runtime is shutting down");
+  }
+
+  #ownLock(jobId: string, lock: WriteLockHandle): WriteLockHandle {
+    let releasing: Promise<void> | undefined;
+    const owned = {
+      release: () =>
+        (releasing ??= Promise.resolve().then(() => lock.release())),
+    };
+    this.#releaseJobLocks.set(jobId, owned.release);
+    return owned;
   }
 
   #track(jobPromise: Promise<void>): void {
@@ -257,6 +305,7 @@ export class JobManager {
       job.status = "failed";
       job.error = e instanceof Error ? e.message : String(e);
     } finally {
+      this.#releaseJobLocks.delete(job.id);
       this.#jobControllers.delete(job.id);
       job.completedAt = Date.now();
       this.#activeJobId = null;
@@ -271,6 +320,7 @@ export class JobManager {
     lock: WriteLockHandle
   ): string {
     const jobId = crypto.randomUUID();
+    const ownedLock = this.#ownLock(jobId, lock);
     const job: JobRecord = {
       id: jobId,
       type,
@@ -286,7 +336,7 @@ export class JobManager {
 
     const jobPromise = withOwnedInferenceScope(
       { signal: this.#jobControllers.get(jobId)!.signal },
-      () => withBackgroundInference(() => this.#runJob(job, fn, lock))
+      () => withBackgroundInference(() => this.#runJob(job, fn, ownedLock))
     );
     this.#track(jobPromise);
 
@@ -299,6 +349,7 @@ export class JobManager {
     lock: WriteLockHandle
   ): string {
     const jobId = crypto.randomUUID();
+    const ownedLock = this.#ownLock(jobId, lock);
     const job: JobRecord = {
       id: jobId,
       type,
@@ -314,7 +365,7 @@ export class JobManager {
 
     const jobPromise = withOwnedInferenceScope(
       { signal: this.#jobControllers.get(jobId)!.signal },
-      () => withBackgroundInference(() => this.#runTypedJob(job, fn, lock))
+      () => withBackgroundInference(() => this.#runTypedJob(job, fn, ownedLock))
     );
     this.#track(jobPromise);
 
@@ -345,6 +396,7 @@ export class JobManager {
       job.status = "failed";
       job.error = e instanceof Error ? e.message : String(e);
     } finally {
+      this.#releaseJobLocks.delete(job.id);
       this.#jobControllers.delete(job.id);
       job.completedAt = Date.now();
       this.#activeJobId = null;

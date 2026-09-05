@@ -70,6 +70,8 @@ export interface EmbedScheduler {
 
   /** Cleanup on server shutdown */
   dispose(): Promise<void>;
+  /** Stop new turns while allowing the current pass to settle before cancellation. */
+  stop?(): Promise<void>;
 }
 
 /**
@@ -258,7 +260,16 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
     return operation;
   }
 
+  const stop = async (): Promise<void> => {
+    disposed = true;
+    if (timer) clearTimeout(timer);
+    timer = null;
+    nextRunAt = null;
+    await currentRun;
+  };
+
   return {
+    stop,
     notifySyncComplete(docIds: string[]): void {
       // Resolve embedPort at call time to check availability
       if (disposed || !getEmbedPort()) {
@@ -319,14 +330,8 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
     },
 
     async dispose(): Promise<void> {
-      disposed = true;
       controller.abort();
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-        nextRunAt = null;
-      }
-      await currentRun;
+      await stop();
     },
   };
 }

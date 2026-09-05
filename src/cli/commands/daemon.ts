@@ -211,6 +211,14 @@ export async function daemon(
   });
   let gateway: Awaited<ReturnType<typeof createMcpHttpGateway>> | undefined;
   let server: ReturnType<typeof Bun.serve> | undefined;
+  const stopSignals = new AbortController();
+  const shutdown = createSignalPromise(
+    options.signal
+      ? AbortSignal.any([options.signal, stopSignals.signal])
+      : stopSignals.signal,
+    logger,
+    options.quiet ?? false
+  );
   try {
     gateway = await (deps.createMcpHttpGateway ?? createMcpHttpGateway)(
       runtime as ResidentRuntime,
@@ -271,10 +279,12 @@ export async function daemon(
       if (!options.quiet) {
         logger.log("Running initial sync...");
       }
-      const { syncResult, embedResult } = await runtime.syncAll({
-        runUpdateCmd: true,
-        triggerEmbed: true,
-      });
+      const synced = await Promise.race([
+        runtime.syncAll({ runUpdateCmd: true, triggerEmbed: true }),
+        shutdown.then(() => null),
+      ]);
+      if (!synced) return { success: true };
+      const { syncResult, embedResult } = synced;
       if (!options.quiet) {
         logger.log(
           `sync totals: ${syncResult.totalFilesAdded} added, ${syncResult.totalFilesUpdated} updated, ${syncResult.totalFilesErrored} errors, ${syncResult.totalFilesSkipped} skipped`
@@ -289,7 +299,7 @@ export async function daemon(
       logger.log("Skipping initial sync (--no-sync-on-start).");
     }
 
-    await createSignalPromise(options.signal, logger, options.quiet ?? false);
+    await shutdown;
     return { success: true };
   } catch (error) {
     return {
@@ -297,8 +307,11 @@ export async function daemon(
       error: error instanceof Error ? error.message : String(error),
     };
   } finally {
-    await Promise.allSettled([server?.stop(true)]);
-    await Promise.allSettled([gateway?.close()]);
-    await Promise.allSettled([runtime.dispose()]);
+    stopSignals.abort();
+    const surfaceClose = Promise.all([
+      Promise.resolve().then(() => server?.stop(true)),
+      Promise.resolve().then(() => gateway?.close()),
+    ]);
+    await runtime.dispose(() => surfaceClose);
   }
 }

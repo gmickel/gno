@@ -42,7 +42,13 @@ import {
 } from "../core/findings-run-state";
 import { JobManager } from "../core/job-manager";
 import { recordContentMutation } from "../core/mutation-generations";
+import {
+  shutdownDuration,
+  SHUTDOWN_DRAIN_MS,
+  SHUTDOWN_ABORT_MS,
+} from "../core/shutdown-budget";
 import { defaultSyncService, withContentTypeRules } from "../ingestion";
+import { withOwnedInferenceScope } from "../llm/inference-scope";
 import { getActivePreset } from "../llm/registry";
 import { createToolContext, Mutex } from "../mcp/context";
 import { SqliteAdapter } from "../store/sqlite/adapter";
@@ -56,13 +62,13 @@ import { createEmbedScheduler } from "./embed-scheduler";
 import { FindingsScheduler, type FindingsPassResult } from "./findings-pass";
 import { AdmissionController, ReaderGate } from "./resident-admission";
 import { ResidentBackgroundWork } from "./resident-background-work";
+import { disposeResidentResources } from "./resident-shutdown";
 import {
   createStandaloneResidentStatus,
   buildResidentStatusSnapshot,
 } from "./resident-status";
 import { CollectionWatchService as DefaultCollectionWatchService } from "./watch-service";
 
-const DEFAULT_SHUTDOWN_DEADLINE_MS = 5_000;
 const OWNER_LOCK_TIMEOUT_MS = 0;
 
 export type ResidentMode = "serve" | "daemon";
@@ -140,7 +146,7 @@ export interface ResidentRuntime {
     runUpdateCmd?: boolean;
     triggerEmbed?: boolean;
   }): Promise<{ syncResult: SyncResult; embedResult: EmbedResult | null }>;
-  dispose(): Promise<void>;
+  dispose(closeSurface?: () => Promise<unknown>): Promise<void>;
 }
 
 export type ResidentRuntimeResult =
@@ -180,6 +186,8 @@ export async function startResidentRuntime(
   options: ResidentRuntimeOptions = {},
   deps: ResidentRuntimeDeps = {}
 ): Promise<ResidentRuntimeResult> {
+  shutdownDuration(options.shutdownDeadlineMs, SHUTDOWN_DRAIN_MS);
+  shutdownDuration(options.shutdownAbortSettleMs, SHUTDOWN_ABORT_MS);
   if (options.index !== undefined && !isValidIndexName(options.index)) {
     return {
       success: false,
@@ -360,6 +368,7 @@ export async function startResidentRuntime(
   let shutdownState: ResidentStatus["shutdown"]["state"] = "none";
   let admissionState: ResidentStatus["admission"]["state"] = "accepting";
   let disposed = false;
+  let disposal: Promise<void> | undefined;
   const backgroundWork = new ResidentBackgroundWork(
     () => !disposed && admission.accepting
   );
@@ -556,63 +565,76 @@ export async function startResidentRuntime(
       policySessionInvalidator = invalidator;
     },
     async syncAll(syncOptions = {}) {
-      const config = ctxHolder.config;
-      const syncAllService = deps.syncAllService
-        ? (...args: Parameters<typeof defaultSyncService.syncAll>) =>
-            deps.syncAllService!(...args)
-        : defaultSyncService.syncAll.bind(defaultSyncService);
-      const syncResult = await syncAllService(
-        config.collections,
-        store,
-        withContentTypeRules(
-          {
-            gitPull: syncOptions.gitPull,
-            runUpdateCmd: syncOptions.runUpdateCmd,
-          },
-          config
-        )
-      );
-      recordContentMutation(syncResult, () => {
-        generations.content += 1;
-      });
-      const embedResult =
-        syncOptions.triggerEmbed === false
-          ? null
-          : await scheduler.triggerNow();
-      capsuleReverificationScheduler.notifySyncSettled();
-      return { syncResult, embedResult };
+      const request = admission.admit();
+      if (!request) throw new Error("Resident runtime is shutting down");
+      try {
+        return await withOwnedInferenceScope(
+          { signal: request.signal },
+          async () => {
+            const config = ctxHolder.config;
+            const syncAllService = deps.syncAllService
+              ? (...args: Parameters<typeof defaultSyncService.syncAll>) =>
+                  deps.syncAllService!(...args)
+              : defaultSyncService.syncAll.bind(defaultSyncService);
+            const syncResult = await syncAllService(
+              config.collections,
+              store,
+              withContentTypeRules(
+                {
+                  gitPull: syncOptions.gitPull,
+                  runUpdateCmd: syncOptions.runUpdateCmd,
+                },
+                config
+              )
+            );
+            recordContentMutation(syncResult, () => {
+              generations.content += 1;
+            });
+            const embedResult =
+              syncOptions.triggerEmbed === false
+                ? null
+                : await scheduler.triggerNow();
+            capsuleReverificationScheduler.notifySyncSettled();
+            return { syncResult, embedResult };
+          }
+        );
+      } finally {
+        request.finish();
+      }
     },
-    async dispose() {
-      if (disposed) return;
+    dispose(closeSurface) {
+      if (disposal) return disposal;
       disposed = true;
+      admission.stop();
+      jobManager.stop();
       admissionState = "draining";
       shutdownState = "graceful";
-      const deadlineReached = await admission.closeAndDrain(
-        options.shutdownDeadlineMs ?? DEFAULT_SHUTDOWN_DEADLINE_MS,
-        options.shutdownAbortSettleMs ?? DEFAULT_SHUTDOWN_DEADLINE_MS
-      );
-      if (deadlineReached) shutdownState = "deadline";
-      findingsScheduler?.dispose();
-      await backgroundWork.cancelAndDrain();
-      await capsuleReverificationScheduler.dispose();
-      await jobManager.shutdown().catch(() => undefined);
-      await Promise.allSettled([
-        Promise.resolve().then(() => watchService.dispose()),
-        Promise.resolve().then(() => options.eventBus?.close()),
-      ]);
-      await Promise.allSettled([scheduler.dispose()]);
-      await Promise.allSettled([
-        (deps.disposeServerContext ?? disposeServerContext)(ctxHolder.current),
-      ]);
-      await Promise.allSettled([
-        modelManager.disposeAll(),
-        mcpContext.disposeModels?.(),
-      ]);
-      await Promise.allSettled([store.close()]);
-      await Promise.allSettled([ownerLock.release()]);
-      admissionState = "closed";
-      transportStatusProvider = null;
-      listenerPort = null;
+      disposal = disposeResidentResources({
+        options,
+        admission,
+        backgroundWork,
+        jobManager,
+        scheduler,
+        store,
+        watchService,
+        context: ctxHolder.current,
+        mcpContext,
+        modelManager,
+        ownerLock,
+        stopFindings: () => findingsScheduler?.dispose(),
+        stopCapsules: () => capsuleReverificationScheduler.dispose(),
+        closeEvents: () => options.eventBus?.close(),
+        disposeContext: deps.disposeServerContext ?? disposeServerContext,
+        closeSurface,
+        onDeadline: () => {
+          shutdownState = "deadline";
+        },
+      }).then(() => {
+        admissionState = "closed";
+        transportStatusProvider = null;
+        listenerPort = null;
+      });
+      return disposal;
     },
   };
   ctxHolder.startBackgroundWork = (operation) =>

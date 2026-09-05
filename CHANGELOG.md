@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Resident shutdown shares one drain, cancellation and owned-child-exit budget across requests and background work. Suspended writes roll back before store close; incomplete jobs stay failed and embedding backlog resumes on restart. Detached stop allows the resident cleanup budget to finish.
 - Native model disposal waits for in-flight context-budget estimates, avoiding
   disposal while those estimates still read the model's native allocation.
 - Restoring unchanged source bytes at the same path reactivates the document,

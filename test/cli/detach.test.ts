@@ -5,7 +5,7 @@
  * so no writes ever reach `~/.local/share/gno/`.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -893,6 +893,42 @@ describe("detach helper", () => {
   });
 
   describe("stopProcess", () => {
+    test("default parent grace allows the full eleven-second resident cleanup", async () => {
+      const pidFile = join(tmpDir, "shutdown-budget.pid");
+      await writePidFile(pidFile, {
+        pid: 9999,
+        cmd: "serve",
+        version: VERSION,
+        started_at: new Date().toISOString(),
+        port: 3000,
+      });
+      let clock = Date.now();
+      const started = clock;
+      const now = spyOn(Date, "now").mockImplementation(() => clock);
+      const signals: Array<NodeJS.Signals | number> = [];
+      try {
+        const result = await stopProcess({
+          kind: "serve",
+          pidFile,
+          isAlive: () => clock - started < 11_100,
+          kill: (_pid, signal) => {
+            signals.push(signal);
+          },
+          sleep: async (ms) => {
+            clock += ms;
+          },
+        });
+        expect(result).toEqual({
+          kind: "stopped",
+          pid: 9999,
+          signal: "SIGTERM",
+        });
+        expect(signals).toEqual(["SIGTERM"]);
+      } finally {
+        now.mockRestore();
+      }
+    });
+
     test("returns not-running when pid-file is absent", async () => {
       const result = await stopProcess({
         kind: "serve",

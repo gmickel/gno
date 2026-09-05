@@ -1933,7 +1933,7 @@ Both `gno daemon` and `gno serve` ship with a symmetric set of management flags 
 | ------------------- | ------------------------------------------------------------------------------------------------- |
 | `--detach`          | Self-spawn a detached child; parent prints `pid` (+ url for serve) and exits 0. macOS/Linux only. |
 | `--status`          | Read pid-file, check liveness, print status. Pair with `--json` for machine output.               |
-| `--stop`            | SIGTERM the recorded pid, poll up to 10s, fall back to SIGKILL.                                   |
+| `--stop`            | SIGTERM the recorded pid, poll up to 12s, fall back to SIGKILL.                                   |
 | `--pid-file <path>` | Override pid-file location (defaults to `{data}/{kind}.pid`).                                     |
 | `--log-file <path>` | Override log-file location (append-only; defaults to `{data}/{kind}.log`).                        |
 
@@ -2042,7 +2042,7 @@ gno daemon --status
 # Check status (machine-readable; exits 3 when not running)
 gno daemon --status --json
 
-# Stop gracefully (SIGTERM with 10s timeout, SIGKILL fallback)
+# Stop gracefully (SIGTERM with 12s timeout, SIGKILL fallback)
 gno daemon --stop
 
 # Override paths

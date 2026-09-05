@@ -11,6 +11,7 @@ import {
   isBackgroundInference,
 } from "../inference-scope";
 import { NativeWorkerError } from "./errors";
+import { retireOwnedChild, type NativeDisposeOptions } from "./owned-exit";
 import {
   cancelPending,
   wireResult,
@@ -114,7 +115,9 @@ export class NativeWorkerClient {
           !owner.pending.length &&
           !owner.busy
         )
-          void this.retire(owner);
+          void this.retire(owner).catch((error: unknown) =>
+            console.error(error)
+          );
       },
     };
   }
@@ -127,6 +130,10 @@ export class NativeWorkerClient {
         !this.options.models.some((entry) => entry.modelUri === uri)
       )
         return;
+      if (owner.retiring) {
+        await owner.retirement;
+        return;
+      }
       if (owner.pending.length || owner.busy)
         await new Promise<void>((resolve) => owner.drain.add(resolve));
       // Explicit disposal reclaims the complete process allocation. Individual
@@ -161,6 +168,7 @@ export class NativeWorkerClient {
         warmModelTtl: this.options.warmModelTtl ?? 300_000,
       });
       const owner = this.owner;
+      if (owner?.retiring) await owner.retirement;
       if (existing && owner) {
         if (owner.pending.length || owner.busy)
           await new Promise<void>((resolve) => owner.drain.add(resolve));
@@ -351,7 +359,9 @@ export class NativeWorkerClient {
     );
     void child.exited.then(() => {
       this.fail(owner, new NativeWorkerError("exited"));
+      this.finishOwner(owner, new NativeWorkerError("exited"));
       if (this.owner === owner) this.owner = undefined;
+      releaseQuarantine(owner);
     });
     return owner;
   }
@@ -369,7 +379,9 @@ export class NativeWorkerClient {
       if (message === "idle") {
         this.idleOwner = owner;
         if (!this.leases && !owner.pending.length && !owner.busy)
-          void this.retire(owner);
+          void this.retire(owner).catch((error: unknown) =>
+            console.error(error)
+          );
         return;
       }
       if (
@@ -486,52 +498,39 @@ export class NativeWorkerClient {
       clearTimeout(pending.cancelTimer);
       pending.settlement.fail(error.detail);
     }
-    void this.retire(owner, true).then(() => {
-      for (const response of owner.ledger.failAll(error)) {
-        owner.pending
-          .find((entry) => entry.request.requestId === response.requestId)
-          ?.resolve(response.result);
-      }
-      owner.pending.length = 0;
-      owner.busy = false;
+    void this.retire(owner, { force: true }).catch((cause: unknown) =>
+      console.error(cause)
+    );
+  }
+
+  private retire(
+    owner: Owner,
+    options: NativeDisposeOptions = {}
+  ): Promise<void> {
+    return retireOwnedChild(owner, options).then(() => {
+      if (this.owner === owner) this.owner = undefined;
+      releaseQuarantine(owner);
     });
   }
 
-  private retire(owner: Owner, force = false): Promise<void> {
-    if (owner.retirement) return owner.retirement;
-    owner.retiring = true;
-    for (const resolve of owner.drain) resolve();
-    owner.drain.clear();
-    clearTimeout(owner.timer);
-    owner.decoder.reset();
-    owner.retirement = (async () => {
-      const killTimer = setTimeout(() => owner.child.kill("SIGKILL"), 1000);
-      try {
-        if (force) owner.child.kill("SIGKILL");
-        else owner.child.send("shutdown");
-      } catch {
-        owner.child.kill("SIGKILL");
-      } finally {
-        await owner.child.exited;
-        clearTimeout(killTimer);
-        if (this.owner === owner) this.owner = undefined;
-        releaseQuarantine(owner);
-      }
-    })();
-    return owner.retirement;
-  }
-
-  async dispose(): Promise<void> {
+  async dispose(options: NativeDisposeOptions = {}): Promise<void> {
     this.closed = true;
-    process.removeListener("exit", this.onParentExit);
     const owner = this.owner;
-    if (!owner) return;
+    if (!owner) {
+      process.removeListener("exit", this.onParentExit);
+      return;
+    }
     const failure = new NativeWorkerError("exited");
     for (const pending of owner.pending) {
       clearTimeout(pending.cancelTimer);
       pending.settlement.fail(failure.detail);
     }
-    await this.retire(owner);
+    await this.retire(owner, options);
+    process.removeListener("exit", this.onParentExit);
+    this.finishOwner(owner, failure);
+  }
+
+  private finishOwner(owner: Owner, failure: NativeWorkerError): void {
     for (const response of owner.ledger.failAll(failure))
       owner.pending
         .find((entry) => entry.request.requestId === response.requestId)

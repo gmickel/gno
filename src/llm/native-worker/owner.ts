@@ -1,5 +1,6 @@
 import type { InferenceSettlement } from "../inference-cancellation";
 import type { LlmResult } from "../types";
+import type { OwnedExitControl } from "./owned-exit";
 import type {
   NativeRequest,
   NativeResponse,
@@ -43,6 +44,7 @@ export interface Owner {
   retiring: boolean;
   timer?: ReturnType<typeof setTimeout>;
   retirement?: Promise<void>;
+  retirementControl?: OwnedExitControl;
   drain: Set<() => void>;
 }
 

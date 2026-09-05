@@ -1035,10 +1035,21 @@ sampling, model selection, candidate counts, or ranking.
 
 The resident shutdown contract allocates a shared five-second drain, five-second
 abort-settlement period, then at most one second awaiting forced owned-child
-exit. Carrying that budget through background jobs, scheduling and native child
-ownership is still being integrated; the existing admission drain alone does
-not bound total shutdown. These are operational shutdown bounds, not a universal
-query latency promise.
+exit. Requests, accepted jobs, background scheduling and listener cleanup share
+those phases; individual participants do not restart the clock. Admission and
+scheduling stop first. At the abort deadline, suspended parent transactions are
+rolled back and their store access revoked before the database closes. Completed
+checkpoints remain durable; unfinished embedding work stays pending for restart.
+Only the owned native child can be forced to exit; an unconfirmed OS termination
+is reported as an error, never successful cleanup. See [daemon shutdown](DAEMON.md#shutdown).
+
+These bounds apply while the parent event loop can run. JavaScript timers cannot
+preempt a synchronous callback, a blocked OS call or a SQLite statement already
+executing when the signal arrives. During shutdown, ordinary store access caps
+SQLite busy waiting to the remaining settlement budget. Raw database handles
+cached outside the store API do not inherit that per-access cap or transaction
+token; they become unusable when their connection closes. The bounds are not a
+universal query latency promise and have no new CLI/configuration setting.
 
 Native embedding, generation and reranking share one child per LLM adapter.
 `warmModelTtl` is the inactivity grace for each model and for the native child

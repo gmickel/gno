@@ -522,8 +522,17 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private ftsTokenizer: FtsTokenizer = "unicode61";
   private configPath = ""; // Set by CLI layer for status output
   private txCounter = 0; // Savepoint counter for unique names
-  private readonly txContext = new AsyncLocalStorage<{ depth: number }>();
+  private readonly txContext = new AsyncLocalStorage<{
+    depth: number;
+    token: { revoked: boolean };
+  }>();
   private txTail: Promise<void> = Promise.resolve();
+  private activeTransaction?: {
+    token: { revoked: boolean };
+    release: () => void;
+  };
+  private shutdownFenced = false;
+  private shutdownDeadline?: number;
   private contextGeneration = 0;
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -537,6 +546,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   ): Promise<StoreResult<MigrationResult>> {
     try {
       this.db = new Database(dbPath, { create: true });
+      this.shutdownFenced = false;
+      this.shutdownDeadline = undefined;
       this.dbPath = dbPath;
       this.ftsTokenizer = ftsTokenizer;
 
@@ -607,6 +618,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   ): StoreResult<void> {
     try {
       this.db = new Database(dbPath, { readonly: true, strict: true });
+      this.shutdownFenced = false;
+      this.shutdownDeadline = undefined;
       this.dbPath = dbPath;
       this.db.exec("PRAGMA query_only = ON");
       this.db.exec(
@@ -628,10 +641,42 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   }
 
   async close(): Promise<void> {
+    this.fenceForShutdown();
     if (this.db) {
       this.db.close();
       this.db = null;
     }
+  }
+
+  /** Cap subsequent SQLite lock waits to the resident settlement deadline. */
+  beginShutdown(deadline: number): void {
+    this.shutdownDeadline = deadline;
+    if (this.db) this.capShutdownBusyWait(this.db);
+  }
+
+  private capShutdownBusyWait(db: Database): void {
+    if (this.shutdownDeadline === undefined) return;
+    const remaining = Math.max(
+      0,
+      Math.floor(this.shutdownDeadline - performance.now())
+    );
+    const current =
+      db.query<{ timeout: number }, []>("PRAGMA busy_timeout").get()?.timeout ??
+      0;
+    db.exec(`PRAGMA busy_timeout = ${Math.min(current, remaining)}`);
+  }
+
+  /** Revoke suspended transaction callbacks before closing their connection. */
+  fenceForShutdown(): void {
+    this.shutdownFenced = true;
+    const transaction = this.activeTransaction;
+    if (!transaction) return;
+    // JS cannot interleave this synchronous rollback with a running callback.
+    // A callback suspended at await must never commit or use the store again.
+    transaction.token.revoked = true;
+    this.db?.exec("ROLLBACK");
+    transaction.release();
+    this.activeTransaction = undefined;
   }
 
   isOpen(): boolean {
@@ -646,26 +691,38 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
    * explicit BEGIN/COMMIT to support async callbacks.
    */
   async withTransaction<T>(fn: () => Promise<T>): Promise<StoreResult<T>> {
-    const db = this.ensureOpen();
     const parent = this.txContext.getStore();
+    const connection = this.ensureOpen();
     const isOuter = parent === undefined;
     const savepoint = `sp_${++this.txCounter}`;
     const releaseWriter = isOuter
       ? await this.acquireTransactionWriter()
       : null;
+    const token = parent?.token ?? { revoked: false };
+    let db: Database | undefined;
 
     try {
+      const current = this.ensureOpen();
+      if (current !== connection)
+        throw new Error("Transaction connection retired before admission");
+      db = current;
       if (isOuter) {
         // IMMEDIATE reduces lock churn for bulk writes
         db.exec("BEGIN IMMEDIATE");
+        this.activeTransaction = { token, release: releaseWriter! };
       } else {
         db.exec(`SAVEPOINT ${savepoint}`);
       }
 
       const value = await this.txContext.run(
-        { depth: (parent?.depth ?? 0) + 1 },
+        { depth: (parent?.depth ?? 0) + 1, token },
         fn
       );
+
+      if (token.revoked || this.shutdownFenced)
+        throw new Error("Transaction revoked by resident shutdown");
+
+      this.capShutdownBusyWait(db);
 
       if (isOuter) {
         db.exec("COMMIT");
@@ -676,7 +733,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return ok(value);
     } catch (cause) {
       try {
-        if (isOuter) {
+        if (!db || token.revoked) {
+          // Shutdown already rolled back. Never touch a replacement connection.
+        } else if (isOuter) {
           db.exec("ROLLBACK");
         } else {
           db.exec(`ROLLBACK TO ${savepoint}`);
@@ -690,6 +749,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         cause instanceof Error ? cause.message : "Transaction failed";
       return err("TRANSACTION_FAILED", message, cause);
     } finally {
+      if (isOuter && this.activeTransaction?.token === token)
+        this.activeTransaction = undefined;
       releaseWriter?.();
     }
   }
@@ -724,9 +785,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   }
 
   private ensureOpen(): Database {
+    if (this.shutdownFenced || this.txContext.getStore()?.token.revoked) {
+      throw new Error("Database fenced by resident shutdown");
+    }
     if (!this.db) {
       throw new Error("Database not open");
     }
+    this.capShutdownBusyWait(this.db);
     return this.db;
   }
 

@@ -472,8 +472,8 @@ export async function startServer(
     }
   } catch (error) {
     removeShutdownHandlers();
-    await Promise.allSettled([gateway.close()]);
-    await Promise.allSettled([runtime.dispose()]);
+    const surfaceClose = Promise.resolve().then(() => gateway.close());
+    await runtime.dispose(() => surfaceClose);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
@@ -1505,11 +1505,11 @@ export async function startServer(
     });
   } catch (e) {
     removeShutdownHandlers();
-    if (spaBundleSource) {
-      await Promise.allSettled([spaBundleSource.close()]);
-    }
-    await Promise.allSettled([gateway.close()]);
-    await Promise.allSettled([runtime.dispose()]);
+    const surfaceClose = Promise.all([
+      Promise.resolve().then(() => spaBundleSource?.close()),
+      Promise.resolve().then(() => gateway.close()),
+    ]);
+    await runtime.dispose(() => surfaceClose);
     return {
       success: false,
       error: e instanceof Error ? e.message : String(e),
@@ -1534,14 +1534,11 @@ export async function startServer(
   }
 
   removeShutdownHandlers();
-  try {
-    await server.stop(true);
-  } finally {
-    if (spaBundleSource) {
-      await Promise.allSettled([spaBundleSource.close()]);
-    }
-    await Promise.allSettled([gateway.close()]);
-    await Promise.allSettled([runtime.dispose()]);
-  }
+  const surfaceClose = Promise.all([
+    Promise.resolve().then(() => server.stop(true)),
+    Promise.resolve().then(() => spaBundleSource?.close()),
+    Promise.resolve().then(() => gateway.close()),
+  ]);
+  await runtime.dispose(() => surfaceClose);
   return { success: true };
 }

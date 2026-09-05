@@ -29,7 +29,7 @@ export interface BackgroundRuntime {
     runUpdateCmd?: boolean;
     triggerEmbed?: boolean;
   }): Promise<{ syncResult: SyncResult; embedResult: EmbedResult | null }>;
-  dispose(): Promise<void>;
+  dispose(closeSurface?: () => Promise<unknown>): Promise<void>;
 }
 
 export type BackgroundRuntimeResult =

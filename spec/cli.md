@@ -3805,7 +3805,7 @@ production default unless the parent was started with `--dev`.
 | `--pid-file <path>`    | string  | `{data}/serve.pid`       | Override pid-file location (JSON metadata, absolute path)        |
 | `--log-file <path>`    | string  | `{data}/serve.log`       | Override log-file location (append mode)                         |
 | `--status`             | boolean | false                    | Read pid-file, check liveness, print status (JSON with `--json`) |
-| `--stop`               | boolean | false                    | Graceful SIGTERM with 10s timeout → SIGKILL fallback             |
+| `--stop`               | boolean | false                    | Graceful SIGTERM with 12s timeout → SIGKILL fallback             |
 | `--host <address>`     | string  | `127.0.0.1`              | Loopback listen address (Web/REST remains local-only)            |
 | `--mcp-token-file`     | string  | config                   | Restrictive bearer-token file                                    |
 | `--mcp-allowed-host`   | string  | config/loopback defaults | Exact Host value; repeatable                                     |
@@ -3864,7 +3864,7 @@ is blocked.
   without changing destination.
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON (`{pid, port, cmd:"serve", version, started_at}`), prints `{pid, url}` on stdout, exits 0
 - On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json). Liveness via `process.kill(pid, 0)`; stale pid-files (ESRCH) are reported as `running:false`. Live status best-effort reads the same redacted `resident-status@1.0` snapshot from the recorded listener.
-- On `--stop`: sends SIGTERM, polls every 100ms for up to 10s, falls back to SIGKILL, polls 2s more, unlinks pid-file if the process cleaned up after itself
+- On `--stop`: sends SIGTERM, polls every 100ms for up to 12s, falls back to SIGKILL, polls 2s more, unlinks pid-file if the process cleaned up after itself
 - **Windows**: `--detach` is unsupported and returns a `VALIDATION` error pointing to WSL. `--status` / `--stop` / `--pid-file` / `--log-file` remain parseable but have nothing to manage.
 
 **Exit Codes:**
@@ -3918,7 +3918,7 @@ gno daemon --stop
 | `--pid-file <path>`    | string  | `{data}/daemon.pid`      | Override pid-file location (JSON metadata, absolute path)        |
 | `--log-file <path>`    | string  | `{data}/daemon.log`      | Override log-file location (append mode)                         |
 | `--status`             | boolean | false                    | Read pid-file, check liveness, print status (JSON with `--json`) |
-| `--stop`               | boolean | false                    | Graceful SIGTERM with 10s timeout → SIGKILL fallback             |
+| `--stop`               | boolean | false                    | Graceful SIGTERM with 12s timeout → SIGKILL fallback             |
 | `--host <address>`     | string  | `127.0.0.1`              | HTTP listen address                                              |
 | `--mcp-token-file`     | string  | config                   | Restrictive bearer-token file                                    |
 | `--mcp-allowed-host`   | string  | config/loopback defaults | Exact Host value; repeatable                                     |
@@ -3960,7 +3960,7 @@ is blocked.
   peer zone and all participating collection policies before returning metadata
 - On `--detach`: forks a detached child with stdio redirected to `--log-file`, writes pid-file JSON including the MCP gateway `port`, prints `{pid}` on stdout, exits 0
 - On `--status`: output matches the [process-status schema](./output-schemas/process-status.schema.json), including the MCP gateway port and a best-effort copy of the live redacted resident snapshot
-- On `--stop`: SIGTERM → 10s poll → SIGKILL → 2s poll; the daemon's own signal handler unlinks the pid-file, `--stop` unlinks as fallback
+- On `--stop`: SIGTERM → 12s poll → SIGKILL → 2s poll; the daemon's own signal handler unlinks the pid-file, `--stop` unlinks as fallback
 - **Windows**: `--detach` is unsupported and returns a `VALIDATION` error pointing to WSL.
 
 **Packaged conformance:** `bun run test:package` installs the generated npm

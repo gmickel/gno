@@ -38,12 +38,20 @@ export class ResidentBackgroundWork {
     return true;
   }
 
-  async cancelAndDrain(): Promise<void> {
+  cancel(): void {
     for (const entry of this.#entries) {
       entry.controller.abort(new Error("Resident runtime is shutting down"));
     }
+  }
+
+  async drain(): Promise<void> {
     await Promise.allSettled(
       Array.from(this.#entries, (entry) => entry.promise)
     );
+  }
+
+  async cancelAndDrain(): Promise<void> {
+    this.cancel();
+    await this.drain();
   }
 }
