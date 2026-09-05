@@ -434,8 +434,9 @@ OpenClaw keeps writing its own memory files; the plugin only retrieves.
   scoped recall. OpenClaw's built-in memory already runs local GGUF
   embeddings, so "no API key" is not the difference.
 - **Restoration.** A deleted memory file restored at the same path with
-  identical bytes becomes active on the next sync and emits one reactivation
-  event. Repeated unchanged syncs emit no additional restoration history.
+  identical bytes becomes active on the next successful sync. Activation and
+  its `reactivate` event commit together. Repeated unchanged syncs emit no
+  additional restoration history.
   Unchanged formatted embedding inputs retain proven vectors; changed titles,
   content or model identity require matching coverage.
 

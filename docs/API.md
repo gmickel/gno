@@ -48,6 +48,12 @@ selected partition or a missing/corrupt variant index produces semantic failure;
 hybrid retrieval may continue lexically with explicit fallback diagnostics.
 `gno embed` completes or repairs semantic coverage.
 
+Providers without verified identity retain one legacy vector for each canonical
+chunk and model before activation. A change to the selected owner's
+formatted title input invalidates the affected legacy vectors. Ambiguous
+inactive title histories may require recomputation on restore; separate vectors
+for simultaneous differently titled owners require verified identity.
+
 ## Project hints
 
 Search, vector search, hybrid query, Ask, diagnose, and context request bodies
@@ -1058,11 +1064,11 @@ Missing, stale, or interrupted graph state triggers a full reconciliation.
 An unchanged sync with current graph state skips graph projection.
 
 An identical file restored at the same path becomes active on its next successful
-sync and emits one `reactivate` change with unchanged source and mirror hashes.
-Another unchanged sync emits no change. Existing exact-input vectors are retained;
+sync. Activation and one `reactivate` change with unchanged source and mirror
+hashes commit together. Another unchanged sync emits no change. Existing exact-input vectors are retained;
 changed titles, content, or model identity require matching embedding coverage for
-the current document owner. Semantic results remain owner-specific even when
-documents share a canonical mirror.
+the current document owner. With verified variant identity, semantic results
+remain owner-specific even when documents share a canonical mirror.
 
 **Note**: After sync completes, embeddings are automatically generated for any new/updated chunks (debounced, runs in background).
 

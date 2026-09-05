@@ -118,9 +118,11 @@ or refreshes the reason and restarts the five-minute clock on failure. An
 explicit `openclaw gno-memory sync` re-probes immediately.
 
 Files restored at the same path with identical bytes become active on the next
-index run. GNO records one reactivation event and preserves proven unchanged
-embedding inputs; repeated unchanged indexing does not embed them again.
-Changed titles, content or model identity require matching vector coverage.
+successful index run. Activation and one `reactivate` event commit together;
+repeated unchanged indexing adds no restoration event. Proven unchanged
+embedding inputs need no repeat embedding. Changed titles, content or model
+identity require matching vector coverage; per-document title-specific coverage
+requires a provider with verified embedding identity (see [embedding behavior](../../docs/CLI.md#gno-embed)).
 
 ## Config reference
 

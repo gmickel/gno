@@ -886,21 +886,26 @@ unchanged runs reuse proven inputs. Providers without verified identity retain
 legacy compatibility only before variant authority has been activated; missing
 identity afterward is an error, not permission to reuse legacy vectors.
 
+Legacy providers store one vector per canonical chunk and model. A change to the
+selected title's formatted input invalidates the affected legacy vectors;
+ambiguous inactive title histories may require recomputation on restoration.
+Separate vectors for simultaneous differently titled owners require verified
+embedding identity.
+
 A deleted file restored with identical bytes becomes active on the next
-successful `gno update` or `gno index` and produces one `reactivate` change.
-Repeated unchanged syncs do not add restoration events. Same-title duplicates
+successful `gno update` or `gno index`. Activation and one `reactivate` change
+commit together. Repeated unchanged syncs do not add restoration events. Same-title duplicates
 and canonical-equivalent whitespace edits preserve unchanged embedding inputs;
 changed titles, text or model identity require matching coverage.
 
-If the active embedding model keeps the same URI but changes formatting/profile
-behavior, `stale` cleanup is not enough because the vectors are still tagged
-with the same model URI. In that case, use either:
+To explicitly recompute selected embeddings even when the model URI and
+embedding identity are unchanged, use:
 
 ```bash
 gno embed --force
 ```
 
-or a per-collection reset:
+For a per-collection reset, clear its vectors and then regenerate coverage:
 
 ```bash
 gno collection clear-embeddings notes --all
