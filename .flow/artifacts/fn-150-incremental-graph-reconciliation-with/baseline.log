@@ -1,0 +1,29 @@
+bun test v1.3.14 (0d9b296a)
+
+test/core/graph-query.test.ts:
+(pass) diagnoseGraphQuery > traverses outbound typed edges deterministically with edge filter [85.77ms]
+(pass) diagnoseGraphQuery > supports inbound traversal and cycle safety [89.53ms]
+(pass) diagnoseGraphQuery > filters returned edges by inbound direction and dedups provenance [61.10ms]
+(pass) diagnoseGraphQuery > truncates hub traversal at frontier and node caps [60.10ms]
+(pass) diagnoseGraphQuery > ignores inactive and duplicate hub edges before frontier warnings [63.33ms]
+(pass) diagnoseGraphQuery > applies cycle filters before bounded edge windows [51.36ms]
+(pass) diagnoseGraphQuery > ranks unique next nodes before applying frontier slots [46.25ms]
+(pass) diagnoseGraphQuery > warns when global depth frontier trimming drops nodes [51.58ms]
+(pass) diagnoseGraphQuery > bounds raw candidate windows by unique next docs [46.46ms]
+
+test/core/graph-analysis.test.ts:
+(pass) analyzeGraphCommunities > detects two dense communities with a weak bridge deterministically [0.63ms]
+(pass) analyzeGraphCommunities > keeps isolates as singleton communities [0.15ms]
+(pass) analyzeGraphCommunities > handles sparse graphs [0.10ms]
+(pass) analyzeGraphCommunities > skips large graphs with a warning [0.33ms]
+
+test/serve/routes/graph-query.test.ts:
+(pass) POST /api/graph/query > returns schema-valid bounded traversal [83.51ms]
+(pass) POST /api/graph/query > rejects invalid direction [28.72ms]
+(pass) POST /api/graph/query > rejects non-string edgeType [28.64ms]
+(pass) POST /api/graph/query > rejects primitive JSON body [27.84ms]
+
+ 17 pass
+ 0 fail
+ 167 expect() calls
+Ran 17 tests across 3 files. [990.00ms]

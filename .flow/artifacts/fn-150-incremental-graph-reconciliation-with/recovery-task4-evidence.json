@@ -1,0 +1,15 @@
+{
+  "base_commit": "23ba2c258e2d6c27b03aa7504a7d28f88d1ae2cf",
+  "commits": [
+    "e4e7c266"
+  ],
+  "tests": [
+    "baseline: red \u2014 9 pass, 3 obsolete no-op amplification assertions failed before edits; intentional current-production expectation transition",
+    "TMPDIR=/home/gordon/.cache/agent-tmp/gno-fn150-idempotence timeout 600 bun test ./test/ingestion/graph-recovery.test.ts ./test/store/graph-reference-state.test.ts ./test/ingestion/graph-reconciliation.test.ts ./test/store/graph-performance.test.ts ./test/store/change-journal.test.ts ./test/core/graph-query.test.ts ./test/traces/trace-propagation.test.ts \u2014 44 pass, 409 assertions",
+    "TMPDIR=/home/gordon/.cache/agent-tmp/gno-fn150-idempotence timeout 600 bun test ./test/store/graph-reference-state.test.ts ./test/ingestion/graph-reconciliation.test.ts ./test/store/graph-performance.test.ts ./test/store/links.test.ts \u2014 55 pass, 3800 assertions",
+    "bunx oxlint --type-aware --type-check src/store/sqlite/adapter.ts src/store/sqlite/graph-edge-application.ts src/ingestion/graph-reconciliation.ts test/store/graph-reference-state.test.ts test/store/graph-performance.test.ts test/store/links.test.ts test/ingestion/graph-recovery.test.ts",
+    "bunx oxfmt --check src/store/sqlite/adapter.ts src/store/sqlite/graph-edge-application.ts src/ingestion/graph-reconciliation.ts test/store/graph-reference-state.test.ts test/store/graph-performance.test.ts test/store/links.test.ts test/ingestion/graph-recovery.test.ts docs/DAEMON.md",
+    "git diff --check"
+  ],
+  "prs": []
+}

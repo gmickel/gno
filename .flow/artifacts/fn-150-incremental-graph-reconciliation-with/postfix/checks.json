@@ -1,0 +1,62 @@
+[
+  {
+    "step": "initial",
+    "comparedConsumers": 15,
+    "oracleEqual": true,
+    "scopedOwnersAndEdgesOnly": true
+  },
+  {
+    "step": "add",
+    "comparedConsumers": 15,
+    "oracleEqual": true,
+    "scopedOwnersAndEdgesOnly": true
+  },
+  {
+    "step": "ambiguous",
+    "comparedConsumers": 15,
+    "oracleEqual": true,
+    "scopedOwnersAndEdgesOnly": true
+  },
+  {
+    "step": "unique",
+    "comparedConsumers": 15,
+    "oracleEqual": true,
+    "scopedOwnersAndEdgesOnly": true
+  },
+  {
+    "step": "delete",
+    "comparedConsumers": 15,
+    "oracleEqual": true,
+    "scopedOwnersAndEdgesOnly": true
+  },
+  {
+    "step": "restore",
+    "comparedConsumers": 15,
+    "oracleEqual": true,
+    "scopedOwnersAndEdgesOnly": true
+  },
+  {
+    "step": "rename",
+    "comparedConsumers": 15,
+    "oracleEqual": true,
+    "scopedOwnersAndEdgesOnly": true
+  },
+  {
+    "step": "title",
+    "comparedConsumers": 15,
+    "oracleEqual": true,
+    "scopedOwnersAndEdgesOnly": true
+  },
+  {
+    "step": "config",
+    "comparedConsumers": 15,
+    "oracleEqual": true,
+    "scopedOwnersAndEdgesOnly": true
+  },
+  {
+    "step": "source-disappears",
+    "comparedConsumers": 15,
+    "oracleEqual": true,
+    "scopedOwnersAndEdgesOnly": true
+  }
+]

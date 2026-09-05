@@ -1,0 +1,9 @@
+[93355.40] GET http://127.0.0.1:3385/api/status (Fetch) 200
+[93355.41] GET http://127.0.0.1:3385/api/graph?limit=600&edgeLimit=2200 (Fetch) 200
+[93355.80] GET http://127.0.0.1:3385/api/status (Fetch) 200
+[93355.81] GET http://127.0.0.1:3385/api/graph?limit=600&edgeLimit=2200 (Fetch) 200
+[93355.83] GET http://127.0.0.1:3385/api/graph?collection=targets&limit=600&edgeLimit=2200 (Fetch) 200
+[93355.122] GET http://127.0.0.1:3385/api/status (Fetch) 200
+[93355.123] GET http://127.0.0.1:3385/api/graph?limit=600&edgeLimit=2200 (Fetch) 200
+[93355.163] GET http://127.0.0.1:3385/api/status (Fetch) 200
+[93355.164] GET http://127.0.0.1:3385/api/graph?limit=600&edgeLimit=2200 (Fetch) 200

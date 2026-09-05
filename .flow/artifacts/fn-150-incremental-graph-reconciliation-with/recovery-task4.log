@@ -1,0 +1,64 @@
+bun test v1.3.14 (0d9b296a)
+
+test/ingestion/graph-recovery.test.ts:
+(pass) projection recovery after before-begin preserves source journal and oracle parity [626.33ms]
+(pass) projection recovery after process-exit preserves source journal and oracle parity [694.08ms]
+(pass) projection recovery after before-complete preserves source journal and oracle parity [81.39ms]
+(pass) configured and parsed edge identities survive a forced full repair [47.65ms]
+
+test/store/graph-reference-state.test.ts:
+(pass) outside unresolved targets and old resolver identities survive target addition and deletion [15.66ms]
+(pass) missing coverage and config/version changes reject completeness; rebuild is idempotent [15.75ms]
+(pass) interrupted durable projection and failed inventory transaction cannot claim complete [33.61ms]
+(pass) edge diffs preserve retained identity and timestamp, update confidence only, and roll back invalid targets [19.74ms]
+
+test/ingestion/graph-reconciliation.test.ts:
+(pass) scoped mutation parity including identical-source restoration [388.13ms]
+(pass) oracle rejects selected-collection-only and old-identity-only invalidation [75.08ms]
+(pass) graph scenario has its own immutable fixture identity [0.21ms]
+(pass) 1001-document no-op skips global reads and outside unresolved references update without rereads [633.62ms]
+(pass) configuration, version and incomplete inventory select full recovery [26.86ms]
+
+test/store/graph-performance.test.ts:
+(pass) unchanged sync and full repair retain edge rows for 101 docs [60.36ms]
+(pass) unchanged sync and full repair retain edge rows for 1001 docs [466.96ms]
+(pass) unchanged sync and full repair retain edge rows for 5001 docs [2689.88ms]
+(pass) getGraph resolves a moderate link inventory without starving timers [31.44ms]
+
+test/store/change-journal.test.ts:
+(pass) document change journal > records create, update, inactivate, and reactivate with exact hashes [33.42ms]
+(pass) document change journal > fails closed instead of inventing policy for an unknown owner [27.47ms]
+(pass) document change journal > renames only through the explicit API and preserves stable identity [28.93ms]
+(pass) document change journal > treats an ambiguous external move as create plus inactivate [29.78ms]
+(pass) document change journal > rolls journal and document state back together [27.45ms]
+(pass) document change journal > does not journal a sync whose downstream store write fails [31.65ms]
+(pass) document change journal > coalesces concurrent identical lifecycle writes [58.96ms]
+(pass) document change journal > paginates, expires pruned cursors, and preserves monotonic sequence [31.73ms]
+(pass) document change journal > enforces age and byte retention, then discloses purge expiry [30.86ms]
+(pass) document change journal > keeps transactional counters exact while pruning an out-of-order expired prefix [32.98ms]
+(pass) document change journal > enforces a no-op policy at retained-journal scale without scanning rows into JavaScript [469.75ms]
+(pass) document change journal > bounds reserved structural summaries and never stores source content [30.83ms]
+(pass) document change journal > bounds CJK, emoji, escaped controls, and collisions by serialized UTF-8 bytes [31.78ms]
+
+test/core/graph-query.test.ts:
+(pass) diagnoseGraphQuery > traverses outbound typed edges deterministically with edge filter [52.10ms]
+(pass) diagnoseGraphQuery > supports inbound traversal and cycle safety [84.44ms]
+(pass) diagnoseGraphQuery > filters returned edges by inbound direction and dedups provenance [45.74ms]
+(pass) diagnoseGraphQuery > truncates hub traversal at frontier and node caps [53.12ms]
+(pass) diagnoseGraphQuery > ignores inactive and duplicate hub edges before frontier warnings [56.78ms]
+(pass) diagnoseGraphQuery > applies cycle filters before bounded edge windows [43.49ms]
+(pass) diagnoseGraphQuery > ranks unique next nodes before applying frontier slots [49.02ms]
+(pass) diagnoseGraphQuery > warns when global depth frontier trimming drops nodes [51.00ms]
+(pass) diagnoseGraphQuery > bounds raw candidate windows by unique next docs [46.42ms]
+
+test/traces/trace-propagation.test.ts:
+(pass) retrieval trace propagation > CLI exposes enabled trace identity only on stderr [29.40ms]
+(pass) retrieval trace propagation > MCP exposes trace identity only in top-level metadata [24.34ms]
+(pass) retrieval trace propagation > disabled tracing performs no clock, ID, fingerprint, or store work [24.63ms]
+(pass) retrieval trace propagation > pre-disables record caps 1, 2, and 3 without trace identity or store work [30.58ms]
+(pass) retrieval trace propagation > classifies setup failures and cancellation as terminal trace outcomes [38.96ms]
+
+ 44 pass
+ 0 fail
+ 409 expect() calls
+Ran 44 tests across 7 files. [7.68s]

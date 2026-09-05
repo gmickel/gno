@@ -1,0 +1,1479 @@
+{
+  "cli-graph": {
+    "body": {
+      "nodes": [
+        {
+          "id": "#6aa50529",
+          "uri": "gno://outside/source.md",
+          "title": "Source",
+          "collection": "outside",
+          "relPath": "source.md",
+          "degree": 1,
+          "communityId": "c1"
+        },
+        {
+          "id": "#ac35cad8",
+          "uri": "gno://targets/moved.md",
+          "title": "Renamed",
+          "collection": "targets",
+          "relPath": "moved.md",
+          "degree": 1,
+          "communityId": "c1"
+        },
+        {
+          "id": "#dd26dda9",
+          "uri": "gno://targets/anchor.md",
+          "title": "Anchor",
+          "collection": "targets",
+          "relPath": "anchor.md",
+          "degree": 0,
+          "communityId": "c3"
+        },
+        {
+          "id": "#183aaf29",
+          "uri": "gno://outside/peer.md",
+          "title": "Peer",
+          "collection": "outside",
+          "relPath": "peer.md",
+          "degree": 0,
+          "communityId": "c2"
+        }
+      ],
+      "links": [
+        {
+          "source": "#6aa50529",
+          "target": "#ac35cad8",
+          "type": "wiki",
+          "weight": 1,
+          "confidence": "explicit",
+          "audit": {
+            "resolution": "exact-title",
+            "matchCount": 1
+          }
+        }
+      ],
+      "report": {
+        "hubs": [
+          {
+            "id": "#6aa50529",
+            "uri": "gno://outside/source.md",
+            "title": "Source",
+            "collection": "outside",
+            "relPath": "source.md",
+            "degree": 1,
+            "communityId": "c1"
+          },
+          {
+            "id": "#ac35cad8",
+            "uri": "gno://targets/moved.md",
+            "title": "Renamed",
+            "collection": "targets",
+            "relPath": "moved.md",
+            "degree": 1,
+            "communityId": "c1"
+          }
+        ],
+        "bridgeCandidates": [],
+        "isolated": {
+          "total": 2,
+          "examples": [
+            {
+              "id": "#dd26dda9",
+              "uri": "gno://targets/anchor.md",
+              "title": "Anchor",
+              "collection": "targets",
+              "relPath": "anchor.md",
+              "degree": 0,
+              "communityId": "c3"
+            },
+            {
+              "id": "#183aaf29",
+              "uri": "gno://outside/peer.md",
+              "title": "Peer",
+              "collection": "outside",
+              "relPath": "peer.md",
+              "degree": 0,
+              "communityId": "c2"
+            }
+          ]
+        },
+        "unresolvedLinks": {
+          "total": 2,
+          "byType": {
+            "wiki": 2,
+            "markdown": 0
+          }
+        },
+        "edgeTypes": {
+          "wiki": 1,
+          "markdown": 0,
+          "similar": 0
+        },
+        "edgeConfidence": {
+          "explicit": 1,
+          "inferred": 0,
+          "ambiguous": 0,
+          "similarity": 0
+        },
+        "audit": {
+          "inferredEdges": 0,
+          "ambiguousEdges": 0,
+          "similarityEdges": 0
+        },
+        "communities": {
+          "total": 3,
+          "algorithm": "deterministic-label-propagation",
+          "skipped": false,
+          "assignments": {
+            "#183aaf29": "c2",
+            "#6aa50529": "c1",
+            "#ac35cad8": "c1",
+            "#dd26dda9": "c3"
+          },
+          "top": [
+            {
+              "id": "c1",
+              "label": "Source",
+              "size": 2,
+              "edgeCount": 1,
+              "density": 1,
+              "topNodes": [
+                {
+                  "id": "#6aa50529",
+                  "uri": "gno://outside/source.md",
+                  "title": "Source",
+                  "collection": "outside",
+                  "relPath": "source.md",
+                  "degree": 1
+                },
+                {
+                  "id": "#ac35cad8",
+                  "uri": "gno://targets/moved.md",
+                  "title": "Renamed",
+                  "collection": "targets",
+                  "relPath": "moved.md",
+                  "degree": 1
+                }
+              ]
+            },
+            {
+              "id": "c2",
+              "label": "Peer",
+              "size": 1,
+              "edgeCount": 0,
+              "density": 0,
+              "topNodes": [
+                {
+                  "id": "#183aaf29",
+                  "uri": "gno://outside/peer.md",
+                  "title": "Peer",
+                  "collection": "outside",
+                  "relPath": "peer.md",
+                  "degree": 0
+                }
+              ]
+            },
+            {
+              "id": "c3",
+              "label": "Anchor",
+              "size": 1,
+              "edgeCount": 0,
+              "density": 0,
+              "topNodes": [
+                {
+                  "id": "#dd26dda9",
+                  "uri": "gno://targets/anchor.md",
+                  "title": "Anchor",
+                  "collection": "targets",
+                  "relPath": "anchor.md",
+                  "degree": 0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "meta": {
+        "collection": null,
+        "nodeLimit": 2000,
+        "edgeLimit": 10000,
+        "totalNodes": 4,
+        "totalEdges": 1,
+        "totalEdgesUnresolved": 2,
+        "returnedNodes": 4,
+        "returnedEdges": 1,
+        "truncated": false,
+        "linkedOnly": false,
+        "includedSimilar": false,
+        "similarAvailable": false,
+        "similarTopK": 5,
+        "similarTruncatedByComputeBudget": false,
+        "warnings": []
+      }
+    },
+    "stderr": ""
+  },
+  "cli-scoped": {
+    "body": {
+      "nodes": [
+        {
+          "id": "#dd26dda9",
+          "uri": "gno://targets/anchor.md",
+          "title": "Anchor",
+          "collection": "targets",
+          "relPath": "anchor.md",
+          "degree": 0,
+          "communityId": "c1"
+        },
+        {
+          "id": "#ac35cad8",
+          "uri": "gno://targets/moved.md",
+          "title": "Renamed",
+          "collection": "targets",
+          "relPath": "moved.md",
+          "degree": 0,
+          "communityId": "c2"
+        }
+      ],
+      "links": [],
+      "report": {
+        "hubs": [],
+        "bridgeCandidates": [],
+        "isolated": {
+          "total": 2,
+          "examples": [
+            {
+              "id": "#dd26dda9",
+              "uri": "gno://targets/anchor.md",
+              "title": "Anchor",
+              "collection": "targets",
+              "relPath": "anchor.md",
+              "degree": 0,
+              "communityId": "c1"
+            },
+            {
+              "id": "#ac35cad8",
+              "uri": "gno://targets/moved.md",
+              "title": "Renamed",
+              "collection": "targets",
+              "relPath": "moved.md",
+              "degree": 0,
+              "communityId": "c2"
+            }
+          ]
+        },
+        "unresolvedLinks": {
+          "total": 0,
+          "byType": {
+            "wiki": 0,
+            "markdown": 0
+          }
+        },
+        "edgeTypes": {
+          "wiki": 0,
+          "markdown": 0,
+          "similar": 0
+        },
+        "edgeConfidence": {
+          "explicit": 0,
+          "inferred": 0,
+          "ambiguous": 0,
+          "similarity": 0
+        },
+        "audit": {
+          "inferredEdges": 0,
+          "ambiguousEdges": 0,
+          "similarityEdges": 0
+        },
+        "communities": {
+          "total": 2,
+          "algorithm": "deterministic-label-propagation",
+          "skipped": false,
+          "assignments": {
+            "#ac35cad8": "c2",
+            "#dd26dda9": "c1"
+          },
+          "top": [
+            {
+              "id": "c1",
+              "label": "Anchor",
+              "size": 1,
+              "edgeCount": 0,
+              "density": 0,
+              "topNodes": [
+                {
+                  "id": "#dd26dda9",
+                  "uri": "gno://targets/anchor.md",
+                  "title": "Anchor",
+                  "collection": "targets",
+                  "relPath": "anchor.md",
+                  "degree": 0
+                }
+              ]
+            },
+            {
+              "id": "c2",
+              "label": "Renamed",
+              "size": 1,
+              "edgeCount": 0,
+              "density": 0,
+              "topNodes": [
+                {
+                  "id": "#ac35cad8",
+                  "uri": "gno://targets/moved.md",
+                  "title": "Renamed",
+                  "collection": "targets",
+                  "relPath": "moved.md",
+                  "degree": 0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "meta": {
+        "collection": "targets",
+        "nodeLimit": 2000,
+        "edgeLimit": 10000,
+        "totalNodes": 2,
+        "totalEdges": 0,
+        "totalEdgesUnresolved": 0,
+        "returnedNodes": 2,
+        "returnedEdges": 0,
+        "truncated": false,
+        "linkedOnly": false,
+        "includedSimilar": false,
+        "similarAvailable": false,
+        "similarTopK": 5,
+        "similarTruncatedByComputeBudget": false,
+        "warnings": []
+      }
+    },
+    "stderr": ""
+  },
+  "cli-backlinks": {
+    "body": {
+      "backlinks": [
+        {
+          "sourceDocid": "#6aa50529",
+          "sourceUri": "gno://outside/source.md",
+          "sourceTitle": "Source",
+          "startLine": 8,
+          "startCol": 1
+        }
+      ],
+      "meta": {
+        "docid": "#ac35cad8",
+        "uri": "gno://targets/moved.md",
+        "title": "Renamed",
+        "totalBacklinks": 1,
+        "semantic": false
+      }
+    },
+    "stderr": ""
+  },
+  "cli-traversal": {
+    "body": {
+      "schemaVersion": "1.0",
+      "root": {
+        "id": "#ac35cad8",
+        "uri": "gno://targets/moved.md",
+        "title": "Renamed",
+        "collection": "targets",
+        "relPath": "moved.md",
+        "depth": 0,
+        "graphHints": []
+      },
+      "nodes": [
+        {
+          "id": "#ac35cad8",
+          "uri": "gno://targets/moved.md",
+          "title": "Renamed",
+          "collection": "targets",
+          "relPath": "moved.md",
+          "depth": 0,
+          "graphHints": []
+        },
+        {
+          "id": "#6aa50529",
+          "uri": "gno://outside/source.md",
+          "title": "Source",
+          "collection": "outside",
+          "relPath": "source.md",
+          "depth": 1,
+          "graphHints": [
+            "attended"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "source": "#6aa50529",
+          "target": "#ac35cad8",
+          "edgeType": "attended",
+          "relationType": "attended",
+          "confidence": "configured",
+          "edgeSource": "wikilink",
+          "depth": 1
+        }
+      ],
+      "meta": {
+        "direction": "both",
+        "edgeType": null,
+        "maxDepth": 2,
+        "maxNodes": 100,
+        "frontierLimit": 100,
+        "visitedLimit": 500,
+        "returnedNodes": 2,
+        "returnedEdges": 1,
+        "truncated": false,
+        "warnings": []
+      }
+    },
+    "stderr": ""
+  },
+  "cli-impact": {
+    "body": {
+      "schemaVersion": "1.0",
+      "root": {
+        "id": "#ac35cad8",
+        "uri": "gno://targets/moved.md",
+        "title": "Renamed",
+        "collection": "targets",
+        "relPath": "moved.md"
+      },
+      "impacted": [
+        {
+          "document": {
+            "id": "#6aa50529",
+            "uri": "gno://outside/source.md",
+            "title": "Source",
+            "collection": "outside",
+            "relPath": "source.md"
+          },
+          "depth": 1,
+          "evidencePath": [
+            {
+              "source": {
+                "id": "#6aa50529",
+                "uri": "gno://outside/source.md"
+              },
+              "target": {
+                "id": "#ac35cad8",
+                "uri": "gno://targets/moved.md"
+              },
+              "edgeType": "attended",
+              "relationType": "attended",
+              "confidence": "configured",
+              "edgeSource": "wikilink"
+            }
+          ]
+        }
+      ],
+      "meta": {
+        "maxDepth": 3,
+        "maxNodes": 100,
+        "maxEdges": 250,
+        "frontierLimit": 100,
+        "visitedLimit": 500,
+        "returnedNodes": 2,
+        "returnedEdges": 1,
+        "truncated": false,
+        "warnings": []
+      }
+    },
+    "stderr": ""
+  },
+  "rest-graph": {
+    "status": 200,
+    "body": {
+      "nodes": [
+        {
+          "id": "#6aa50529",
+          "uri": "gno://outside/source.md",
+          "title": "Source",
+          "collection": "outside",
+          "relPath": "source.md",
+          "degree": 1,
+          "communityId": "c1"
+        },
+        {
+          "id": "#ac35cad8",
+          "uri": "gno://targets/moved.md",
+          "title": "Renamed",
+          "collection": "targets",
+          "relPath": "moved.md",
+          "degree": 1,
+          "communityId": "c1"
+        },
+        {
+          "id": "#dd26dda9",
+          "uri": "gno://targets/anchor.md",
+          "title": "Anchor",
+          "collection": "targets",
+          "relPath": "anchor.md",
+          "degree": 0,
+          "communityId": "c3"
+        },
+        {
+          "id": "#183aaf29",
+          "uri": "gno://outside/peer.md",
+          "title": "Peer",
+          "collection": "outside",
+          "relPath": "peer.md",
+          "degree": 0,
+          "communityId": "c2"
+        }
+      ],
+      "links": [
+        {
+          "source": "#6aa50529",
+          "target": "#ac35cad8",
+          "type": "wiki",
+          "weight": 1,
+          "confidence": "explicit",
+          "audit": {
+            "resolution": "exact-title",
+            "matchCount": 1
+          }
+        }
+      ],
+      "report": {
+        "hubs": [
+          {
+            "id": "#6aa50529",
+            "uri": "gno://outside/source.md",
+            "title": "Source",
+            "collection": "outside",
+            "relPath": "source.md",
+            "degree": 1,
+            "communityId": "c1"
+          },
+          {
+            "id": "#ac35cad8",
+            "uri": "gno://targets/moved.md",
+            "title": "Renamed",
+            "collection": "targets",
+            "relPath": "moved.md",
+            "degree": 1,
+            "communityId": "c1"
+          }
+        ],
+        "bridgeCandidates": [],
+        "isolated": {
+          "total": 2,
+          "examples": [
+            {
+              "id": "#dd26dda9",
+              "uri": "gno://targets/anchor.md",
+              "title": "Anchor",
+              "collection": "targets",
+              "relPath": "anchor.md",
+              "degree": 0,
+              "communityId": "c3"
+            },
+            {
+              "id": "#183aaf29",
+              "uri": "gno://outside/peer.md",
+              "title": "Peer",
+              "collection": "outside",
+              "relPath": "peer.md",
+              "degree": 0,
+              "communityId": "c2"
+            }
+          ]
+        },
+        "unresolvedLinks": {
+          "total": 2,
+          "byType": {
+            "wiki": 2,
+            "markdown": 0
+          }
+        },
+        "edgeTypes": {
+          "wiki": 1,
+          "markdown": 0,
+          "similar": 0
+        },
+        "edgeConfidence": {
+          "explicit": 1,
+          "inferred": 0,
+          "ambiguous": 0,
+          "similarity": 0
+        },
+        "audit": {
+          "inferredEdges": 0,
+          "ambiguousEdges": 0,
+          "similarityEdges": 0
+        },
+        "communities": {
+          "total": 3,
+          "algorithm": "deterministic-label-propagation",
+          "skipped": false,
+          "assignments": {
+            "#183aaf29": "c2",
+            "#6aa50529": "c1",
+            "#ac35cad8": "c1",
+            "#dd26dda9": "c3"
+          },
+          "top": [
+            {
+              "id": "c1",
+              "label": "Source",
+              "size": 2,
+              "edgeCount": 1,
+              "density": 1,
+              "topNodes": [
+                {
+                  "id": "#6aa50529",
+                  "uri": "gno://outside/source.md",
+                  "title": "Source",
+                  "collection": "outside",
+                  "relPath": "source.md",
+                  "degree": 1
+                },
+                {
+                  "id": "#ac35cad8",
+                  "uri": "gno://targets/moved.md",
+                  "title": "Renamed",
+                  "collection": "targets",
+                  "relPath": "moved.md",
+                  "degree": 1
+                }
+              ]
+            },
+            {
+              "id": "c2",
+              "label": "Peer",
+              "size": 1,
+              "edgeCount": 0,
+              "density": 0,
+              "topNodes": [
+                {
+                  "id": "#183aaf29",
+                  "uri": "gno://outside/peer.md",
+                  "title": "Peer",
+                  "collection": "outside",
+                  "relPath": "peer.md",
+                  "degree": 0
+                }
+              ]
+            },
+            {
+              "id": "c3",
+              "label": "Anchor",
+              "size": 1,
+              "edgeCount": 0,
+              "density": 0,
+              "topNodes": [
+                {
+                  "id": "#dd26dda9",
+                  "uri": "gno://targets/anchor.md",
+                  "title": "Anchor",
+                  "collection": "targets",
+                  "relPath": "anchor.md",
+                  "degree": 0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "meta": {
+        "collection": null,
+        "nodeLimit": 2000,
+        "edgeLimit": 10000,
+        "totalNodes": 4,
+        "totalEdges": 1,
+        "totalEdgesUnresolved": 2,
+        "returnedNodes": 4,
+        "returnedEdges": 1,
+        "truncated": false,
+        "linkedOnly": false,
+        "includedSimilar": false,
+        "similarAvailable": false,
+        "similarTopK": 5,
+        "similarTruncatedByComputeBudget": false,
+        "warnings": []
+      }
+    }
+  },
+  "rest-scoped": {
+    "status": 200,
+    "body": {
+      "nodes": [
+        {
+          "id": "#dd26dda9",
+          "uri": "gno://targets/anchor.md",
+          "title": "Anchor",
+          "collection": "targets",
+          "relPath": "anchor.md",
+          "degree": 0,
+          "communityId": "c1"
+        },
+        {
+          "id": "#ac35cad8",
+          "uri": "gno://targets/moved.md",
+          "title": "Renamed",
+          "collection": "targets",
+          "relPath": "moved.md",
+          "degree": 0,
+          "communityId": "c2"
+        }
+      ],
+      "links": [],
+      "report": {
+        "hubs": [],
+        "bridgeCandidates": [],
+        "isolated": {
+          "total": 2,
+          "examples": [
+            {
+              "id": "#dd26dda9",
+              "uri": "gno://targets/anchor.md",
+              "title": "Anchor",
+              "collection": "targets",
+              "relPath": "anchor.md",
+              "degree": 0,
+              "communityId": "c1"
+            },
+            {
+              "id": "#ac35cad8",
+              "uri": "gno://targets/moved.md",
+              "title": "Renamed",
+              "collection": "targets",
+              "relPath": "moved.md",
+              "degree": 0,
+              "communityId": "c2"
+            }
+          ]
+        },
+        "unresolvedLinks": {
+          "total": 0,
+          "byType": {
+            "wiki": 0,
+            "markdown": 0
+          }
+        },
+        "edgeTypes": {
+          "wiki": 0,
+          "markdown": 0,
+          "similar": 0
+        },
+        "edgeConfidence": {
+          "explicit": 0,
+          "inferred": 0,
+          "ambiguous": 0,
+          "similarity": 0
+        },
+        "audit": {
+          "inferredEdges": 0,
+          "ambiguousEdges": 0,
+          "similarityEdges": 0
+        },
+        "communities": {
+          "total": 2,
+          "algorithm": "deterministic-label-propagation",
+          "skipped": false,
+          "assignments": {
+            "#ac35cad8": "c2",
+            "#dd26dda9": "c1"
+          },
+          "top": [
+            {
+              "id": "c1",
+              "label": "Anchor",
+              "size": 1,
+              "edgeCount": 0,
+              "density": 0,
+              "topNodes": [
+                {
+                  "id": "#dd26dda9",
+                  "uri": "gno://targets/anchor.md",
+                  "title": "Anchor",
+                  "collection": "targets",
+                  "relPath": "anchor.md",
+                  "degree": 0
+                }
+              ]
+            },
+            {
+              "id": "c2",
+              "label": "Renamed",
+              "size": 1,
+              "edgeCount": 0,
+              "density": 0,
+              "topNodes": [
+                {
+                  "id": "#ac35cad8",
+                  "uri": "gno://targets/moved.md",
+                  "title": "Renamed",
+                  "collection": "targets",
+                  "relPath": "moved.md",
+                  "degree": 0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "meta": {
+        "collection": "targets",
+        "nodeLimit": 2000,
+        "edgeLimit": 10000,
+        "totalNodes": 2,
+        "totalEdges": 0,
+        "totalEdgesUnresolved": 0,
+        "returnedNodes": 2,
+        "returnedEdges": 0,
+        "truncated": false,
+        "linkedOnly": false,
+        "includedSimilar": false,
+        "similarAvailable": false,
+        "similarTopK": 5,
+        "similarTruncatedByComputeBudget": false,
+        "warnings": []
+      }
+    }
+  },
+  "rest-backlinks": {
+    "status": 200,
+    "body": {
+      "backlinks": [
+        {
+          "sourceDocid": "#6aa50529",
+          "sourceUri": "gno://outside/source.md",
+          "sourceTitle": "Source",
+          "startLine": 8,
+          "startCol": 1
+        }
+      ],
+      "meta": {
+        "docid": "#ac35cad8",
+        "totalBacklinks": 1
+      }
+    }
+  },
+  "rest-impact": {
+    "status": 200,
+    "body": {
+      "schemaVersion": "1.0",
+      "root": {
+        "id": "#ac35cad8",
+        "uri": "gno://targets/moved.md",
+        "title": "Renamed",
+        "collection": "targets",
+        "relPath": "moved.md"
+      },
+      "impacted": [
+        {
+          "document": {
+            "id": "#6aa50529",
+            "uri": "gno://outside/source.md",
+            "title": "Source",
+            "collection": "outside",
+            "relPath": "source.md"
+          },
+          "depth": 1,
+          "evidencePath": [
+            {
+              "source": {
+                "id": "#6aa50529",
+                "uri": "gno://outside/source.md"
+              },
+              "target": {
+                "id": "#ac35cad8",
+                "uri": "gno://targets/moved.md"
+              },
+              "edgeType": "attended",
+              "relationType": "attended",
+              "confidence": "configured",
+              "edgeSource": "wikilink"
+            }
+          ]
+        }
+      ],
+      "meta": {
+        "maxDepth": 3,
+        "maxNodes": 100,
+        "maxEdges": 250,
+        "frontierLimit": 100,
+        "visitedLimit": 500,
+        "returnedNodes": 2,
+        "returnedEdges": 1,
+        "truncated": false,
+        "warnings": []
+      }
+    }
+  },
+  "rest-traversal": {
+    "status": 200,
+    "body": {
+      "schemaVersion": "1.0",
+      "root": {
+        "id": "#ac35cad8",
+        "uri": "gno://targets/moved.md",
+        "title": "Renamed",
+        "collection": "targets",
+        "relPath": "moved.md",
+        "depth": 0,
+        "graphHints": []
+      },
+      "nodes": [
+        {
+          "id": "#ac35cad8",
+          "uri": "gno://targets/moved.md",
+          "title": "Renamed",
+          "collection": "targets",
+          "relPath": "moved.md",
+          "depth": 0,
+          "graphHints": []
+        },
+        {
+          "id": "#6aa50529",
+          "uri": "gno://outside/source.md",
+          "title": "Source",
+          "collection": "outside",
+          "relPath": "source.md",
+          "depth": 1,
+          "graphHints": [
+            "attended"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "source": "#6aa50529",
+          "target": "#ac35cad8",
+          "edgeType": "attended",
+          "relationType": "attended",
+          "confidence": "configured",
+          "edgeSource": "wikilink",
+          "depth": 1
+        }
+      ],
+      "meta": {
+        "direction": "both",
+        "edgeType": null,
+        "maxDepth": 2,
+        "maxNodes": 100,
+        "frontierLimit": 100,
+        "visitedLimit": 500,
+        "returnedNodes": 2,
+        "returnedEdges": 1,
+        "truncated": false,
+        "warnings": []
+      }
+    }
+  },
+  "mcp-gno_graph": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Knowledge Graph: 4 nodes, 1 edges\n\nTop nodes by degree:\n  [#6aa50529] gno://outside/source.md \"Source\" (degree: 1)\n  [#ac35cad8] gno://targets/moved.md \"Renamed\" (degree: 1)\n\nEdge breakdown:\n  wiki: 1\n  markdown: 0\n  similar: 0\nConfidence:\n  explicit: 1\n  inferred: 0\n  ambiguous: 0\n  similarity: 0\n\nCommunities: 3\n  c1: Source (2 docs, 1 internal edges)\n  c2: Peer (1 docs, 0 internal edges)\n  c3: Anchor (1 docs, 0 internal edges)\n\nUnresolved links: 2 (wiki: 2, markdown: 0)\nAudit: inferred 0, ambiguous 0, similarity 0\nIsolated documents: 2"
+      }
+    ],
+    "structuredContent": {
+      "nodes": [
+        {
+          "id": "#6aa50529",
+          "uri": "gno://outside/source.md",
+          "title": "Source",
+          "collection": "outside",
+          "relPath": "source.md",
+          "degree": 1,
+          "communityId": "c1"
+        },
+        {
+          "id": "#ac35cad8",
+          "uri": "gno://targets/moved.md",
+          "title": "Renamed",
+          "collection": "targets",
+          "relPath": "moved.md",
+          "degree": 1,
+          "communityId": "c1"
+        },
+        {
+          "id": "#dd26dda9",
+          "uri": "gno://targets/anchor.md",
+          "title": "Anchor",
+          "collection": "targets",
+          "relPath": "anchor.md",
+          "degree": 0,
+          "communityId": "c3"
+        },
+        {
+          "id": "#183aaf29",
+          "uri": "gno://outside/peer.md",
+          "title": "Peer",
+          "collection": "outside",
+          "relPath": "peer.md",
+          "degree": 0,
+          "communityId": "c2"
+        }
+      ],
+      "links": [
+        {
+          "source": "#6aa50529",
+          "target": "#ac35cad8",
+          "type": "wiki",
+          "weight": 1,
+          "confidence": "explicit",
+          "audit": {
+            "resolution": "exact-title",
+            "matchCount": 1
+          }
+        }
+      ],
+      "report": {
+        "hubs": [
+          {
+            "id": "#6aa50529",
+            "uri": "gno://outside/source.md",
+            "title": "Source",
+            "collection": "outside",
+            "relPath": "source.md",
+            "degree": 1,
+            "communityId": "c1"
+          },
+          {
+            "id": "#ac35cad8",
+            "uri": "gno://targets/moved.md",
+            "title": "Renamed",
+            "collection": "targets",
+            "relPath": "moved.md",
+            "degree": 1,
+            "communityId": "c1"
+          }
+        ],
+        "bridgeCandidates": [],
+        "isolated": {
+          "total": 2,
+          "examples": [
+            {
+              "id": "#dd26dda9",
+              "uri": "gno://targets/anchor.md",
+              "title": "Anchor",
+              "collection": "targets",
+              "relPath": "anchor.md",
+              "degree": 0,
+              "communityId": "c3"
+            },
+            {
+              "id": "#183aaf29",
+              "uri": "gno://outside/peer.md",
+              "title": "Peer",
+              "collection": "outside",
+              "relPath": "peer.md",
+              "degree": 0,
+              "communityId": "c2"
+            }
+          ]
+        },
+        "unresolvedLinks": {
+          "total": 2,
+          "byType": {
+            "wiki": 2,
+            "markdown": 0
+          }
+        },
+        "edgeTypes": {
+          "wiki": 1,
+          "markdown": 0,
+          "similar": 0
+        },
+        "edgeConfidence": {
+          "explicit": 1,
+          "inferred": 0,
+          "ambiguous": 0,
+          "similarity": 0
+        },
+        "audit": {
+          "inferredEdges": 0,
+          "ambiguousEdges": 0,
+          "similarityEdges": 0
+        },
+        "communities": {
+          "total": 3,
+          "algorithm": "deterministic-label-propagation",
+          "skipped": false,
+          "assignments": {
+            "#183aaf29": "c2",
+            "#6aa50529": "c1",
+            "#ac35cad8": "c1",
+            "#dd26dda9": "c3"
+          },
+          "top": [
+            {
+              "id": "c1",
+              "label": "Source",
+              "size": 2,
+              "edgeCount": 1,
+              "density": 1,
+              "topNodes": [
+                {
+                  "id": "#6aa50529",
+                  "uri": "gno://outside/source.md",
+                  "title": "Source",
+                  "collection": "outside",
+                  "relPath": "source.md",
+                  "degree": 1
+                },
+                {
+                  "id": "#ac35cad8",
+                  "uri": "gno://targets/moved.md",
+                  "title": "Renamed",
+                  "collection": "targets",
+                  "relPath": "moved.md",
+                  "degree": 1
+                }
+              ]
+            },
+            {
+              "id": "c2",
+              "label": "Peer",
+              "size": 1,
+              "edgeCount": 0,
+              "density": 0,
+              "topNodes": [
+                {
+                  "id": "#183aaf29",
+                  "uri": "gno://outside/peer.md",
+                  "title": "Peer",
+                  "collection": "outside",
+                  "relPath": "peer.md",
+                  "degree": 0
+                }
+              ]
+            },
+            {
+              "id": "c3",
+              "label": "Anchor",
+              "size": 1,
+              "edgeCount": 0,
+              "density": 0,
+              "topNodes": [
+                {
+                  "id": "#dd26dda9",
+                  "uri": "gno://targets/anchor.md",
+                  "title": "Anchor",
+                  "collection": "targets",
+                  "relPath": "anchor.md",
+                  "degree": 0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "meta": {
+        "collection": null,
+        "nodeLimit": 2000,
+        "edgeLimit": 10000,
+        "totalNodes": 4,
+        "totalEdges": 1,
+        "totalEdgesUnresolved": 2,
+        "returnedNodes": 4,
+        "returnedEdges": 1,
+        "truncated": false,
+        "linkedOnly": false,
+        "includedSimilar": false,
+        "similarAvailable": false,
+        "similarTopK": 5,
+        "similarTruncatedByComputeBudget": false,
+        "warnings": []
+      }
+    }
+  },
+  "mcp-scoped": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Knowledge Graph: 2 nodes, 0 edges\nCollection: targets\n\nTop nodes by degree:\n\nEdge breakdown:\n  wiki: 0\n  markdown: 0\n  similar: 0\nConfidence:\n  explicit: 0\n  inferred: 0\n  ambiguous: 0\n  similarity: 0\n\nCommunities: 2\n  c1: Anchor (1 docs, 0 internal edges)\n  c2: Renamed (1 docs, 0 internal edges)\n\nUnresolved links: 0 (wiki: 0, markdown: 0)\nAudit: inferred 0, ambiguous 0, similarity 0\nIsolated documents: 2"
+      }
+    ],
+    "structuredContent": {
+      "nodes": [
+        {
+          "id": "#dd26dda9",
+          "uri": "gno://targets/anchor.md",
+          "title": "Anchor",
+          "collection": "targets",
+          "relPath": "anchor.md",
+          "degree": 0,
+          "communityId": "c1"
+        },
+        {
+          "id": "#ac35cad8",
+          "uri": "gno://targets/moved.md",
+          "title": "Renamed",
+          "collection": "targets",
+          "relPath": "moved.md",
+          "degree": 0,
+          "communityId": "c2"
+        }
+      ],
+      "links": [],
+      "report": {
+        "hubs": [],
+        "bridgeCandidates": [],
+        "isolated": {
+          "total": 2,
+          "examples": [
+            {
+              "id": "#dd26dda9",
+              "uri": "gno://targets/anchor.md",
+              "title": "Anchor",
+              "collection": "targets",
+              "relPath": "anchor.md",
+              "degree": 0,
+              "communityId": "c1"
+            },
+            {
+              "id": "#ac35cad8",
+              "uri": "gno://targets/moved.md",
+              "title": "Renamed",
+              "collection": "targets",
+              "relPath": "moved.md",
+              "degree": 0,
+              "communityId": "c2"
+            }
+          ]
+        },
+        "unresolvedLinks": {
+          "total": 0,
+          "byType": {
+            "wiki": 0,
+            "markdown": 0
+          }
+        },
+        "edgeTypes": {
+          "wiki": 0,
+          "markdown": 0,
+          "similar": 0
+        },
+        "edgeConfidence": {
+          "explicit": 0,
+          "inferred": 0,
+          "ambiguous": 0,
+          "similarity": 0
+        },
+        "audit": {
+          "inferredEdges": 0,
+          "ambiguousEdges": 0,
+          "similarityEdges": 0
+        },
+        "communities": {
+          "total": 2,
+          "algorithm": "deterministic-label-propagation",
+          "skipped": false,
+          "assignments": {
+            "#ac35cad8": "c2",
+            "#dd26dda9": "c1"
+          },
+          "top": [
+            {
+              "id": "c1",
+              "label": "Anchor",
+              "size": 1,
+              "edgeCount": 0,
+              "density": 0,
+              "topNodes": [
+                {
+                  "id": "#dd26dda9",
+                  "uri": "gno://targets/anchor.md",
+                  "title": "Anchor",
+                  "collection": "targets",
+                  "relPath": "anchor.md",
+                  "degree": 0
+                }
+              ]
+            },
+            {
+              "id": "c2",
+              "label": "Renamed",
+              "size": 1,
+              "edgeCount": 0,
+              "density": 0,
+              "topNodes": [
+                {
+                  "id": "#ac35cad8",
+                  "uri": "gno://targets/moved.md",
+                  "title": "Renamed",
+                  "collection": "targets",
+                  "relPath": "moved.md",
+                  "degree": 0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "meta": {
+        "collection": "targets",
+        "nodeLimit": 2000,
+        "edgeLimit": 10000,
+        "totalNodes": 2,
+        "totalEdges": 0,
+        "totalEdgesUnresolved": 0,
+        "returnedNodes": 2,
+        "returnedEdges": 0,
+        "truncated": false,
+        "linkedOnly": false,
+        "includedSimilar": false,
+        "similarAvailable": false,
+        "similarTopK": 5,
+        "similarTruncatedByComputeBudget": false,
+        "warnings": []
+      }
+    }
+  },
+  "mcp-gno_backlinks": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Found 1 backlinks to gno://targets/moved.md:\n\n  gno://outside/source.md \"Source\" (line 8)"
+      }
+    ],
+    "structuredContent": {
+      "backlinks": [
+        {
+          "sourceDocUri": "gno://outside/source.md",
+          "sourceDocTitle": "Source",
+          "position": {
+            "startLine": 8,
+            "startCol": 1
+          }
+        }
+      ],
+      "meta": {
+        "docid": "#ac35cad8",
+        "uri": "gno://targets/moved.md",
+        "title": "Renamed",
+        "totalBacklinks": 1
+      }
+    }
+  },
+  "mcp-gno_graph_query": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Typed graph query from gno://targets/moved.md: 2 nodes, 1 edges\nDirection: both, depth: 2\n  #6aa50529 -> #ac35cad8 (attended, configured, wikilink)"
+      }
+    ],
+    "structuredContent": {
+      "schemaVersion": "1.0",
+      "root": {
+        "id": "#ac35cad8",
+        "uri": "gno://targets/moved.md",
+        "title": "Renamed",
+        "collection": "targets",
+        "relPath": "moved.md",
+        "depth": 0,
+        "graphHints": []
+      },
+      "nodes": [
+        {
+          "id": "#ac35cad8",
+          "uri": "gno://targets/moved.md",
+          "title": "Renamed",
+          "collection": "targets",
+          "relPath": "moved.md",
+          "depth": 0,
+          "graphHints": []
+        },
+        {
+          "id": "#6aa50529",
+          "uri": "gno://outside/source.md",
+          "title": "Source",
+          "collection": "outside",
+          "relPath": "source.md",
+          "depth": 1,
+          "graphHints": [
+            "attended"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "source": "#6aa50529",
+          "target": "#ac35cad8",
+          "edgeType": "attended",
+          "relationType": "attended",
+          "confidence": "configured",
+          "edgeSource": "wikilink",
+          "depth": 1
+        }
+      ],
+      "meta": {
+        "direction": "both",
+        "edgeType": null,
+        "maxDepth": 2,
+        "maxNodes": 100,
+        "frontierLimit": 100,
+        "visitedLimit": 500,
+        "returnedNodes": 2,
+        "returnedEdges": 1,
+        "truncated": false,
+        "warnings": []
+      }
+    }
+  },
+  "mcp-gno_impact": {
+    "content": [
+      {
+        "type": "text",
+        "text": "1 documents depend on gno://targets/moved.md"
+      }
+    ],
+    "structuredContent": {
+      "schemaVersion": "1.0",
+      "root": {
+        "id": "#ac35cad8",
+        "uri": "gno://targets/moved.md",
+        "title": "Renamed",
+        "collection": "targets",
+        "relPath": "moved.md"
+      },
+      "impacted": [
+        {
+          "document": {
+            "id": "#6aa50529",
+            "uri": "gno://outside/source.md",
+            "title": "Source",
+            "collection": "outside",
+            "relPath": "source.md"
+          },
+          "depth": 1,
+          "evidencePath": [
+            {
+              "source": {
+                "id": "#6aa50529",
+                "uri": "gno://outside/source.md"
+              },
+              "target": {
+                "id": "#ac35cad8",
+                "uri": "gno://targets/moved.md"
+              },
+              "edgeType": "attended",
+              "relationType": "attended",
+              "confidence": "configured",
+              "edgeSource": "wikilink"
+            }
+          ]
+        }
+      ],
+      "meta": {
+        "maxDepth": 3,
+        "maxNodes": 100,
+        "maxEdges": 250,
+        "frontierLimit": 100,
+        "visitedLimit": 500,
+        "returnedNodes": 2,
+        "returnedEdges": 1,
+        "truncated": false,
+        "warnings": []
+      }
+    }
+  }
+}

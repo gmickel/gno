@@ -1,0 +1,320 @@
+[
+  {
+    "step": "initial",
+    "scopedOwnersOnly": true,
+    "scopedEdgesOnly": true,
+    "globalNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://outside/peer.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://outside/source.md",
+        "degree": 0
+      }
+    ],
+    "scopedNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      }
+    ]
+  },
+  {
+    "step": "add",
+    "scopedOwnersOnly": true,
+    "scopedEdgesOnly": true,
+    "globalNodes": [
+      {
+        "uri": "gno://targets/opaque.md",
+        "degree": 2
+      },
+      {
+        "uri": "gno://outside/peer.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://outside/source.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      }
+    ],
+    "scopedNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://targets/opaque.md",
+        "degree": 0
+      }
+    ]
+  },
+  {
+    "step": "ambiguous",
+    "scopedOwnersOnly": true,
+    "scopedEdgesOnly": true,
+    "globalNodes": [
+      {
+        "uri": "gno://targets/opaque.md",
+        "degree": 2
+      },
+      {
+        "uri": "gno://outside/peer.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://outside/source.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://targets/duplicate.md",
+        "degree": 0
+      }
+    ],
+    "scopedNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://targets/opaque.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://targets/duplicate.md",
+        "degree": 0
+      }
+    ]
+  },
+  {
+    "step": "unique",
+    "scopedOwnersOnly": true,
+    "scopedEdgesOnly": true,
+    "globalNodes": [
+      {
+        "uri": "gno://targets/opaque.md",
+        "degree": 2
+      },
+      {
+        "uri": "gno://outside/peer.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://outside/source.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      }
+    ],
+    "scopedNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://targets/opaque.md",
+        "degree": 0
+      }
+    ]
+  },
+  {
+    "step": "delete",
+    "scopedOwnersOnly": true,
+    "scopedEdgesOnly": true,
+    "globalNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://outside/peer.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://outside/source.md",
+        "degree": 0
+      }
+    ],
+    "scopedNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      }
+    ]
+  },
+  {
+    "step": "restore",
+    "scopedOwnersOnly": true,
+    "scopedEdgesOnly": true,
+    "globalNodes": [
+      {
+        "uri": "gno://targets/opaque.md",
+        "degree": 2
+      },
+      {
+        "uri": "gno://outside/peer.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://outside/source.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      }
+    ],
+    "scopedNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://targets/opaque.md",
+        "degree": 0
+      }
+    ]
+  },
+  {
+    "step": "rename",
+    "scopedOwnersOnly": true,
+    "scopedEdgesOnly": true,
+    "globalNodes": [
+      {
+        "uri": "gno://targets/moved.md",
+        "degree": 2
+      },
+      {
+        "uri": "gno://outside/peer.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://outside/source.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      }
+    ],
+    "scopedNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://targets/moved.md",
+        "degree": 0
+      }
+    ]
+  },
+  {
+    "step": "title",
+    "scopedOwnersOnly": true,
+    "scopedEdgesOnly": true,
+    "globalNodes": [
+      {
+        "uri": "gno://outside/source.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://targets/moved.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://outside/peer.md",
+        "degree": 0
+      }
+    ],
+    "scopedNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://targets/moved.md",
+        "degree": 0
+      }
+    ]
+  },
+  {
+    "step": "config",
+    "scopedOwnersOnly": true,
+    "scopedEdgesOnly": true,
+    "globalNodes": [
+      {
+        "uri": "gno://outside/source.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://targets/moved.md",
+        "degree": 1
+      },
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://outside/peer.md",
+        "degree": 0
+      }
+    ],
+    "scopedNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://targets/moved.md",
+        "degree": 0
+      }
+    ]
+  },
+  {
+    "step": "source-disappears",
+    "scopedOwnersOnly": true,
+    "scopedEdgesOnly": true,
+    "globalNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://outside/peer.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://targets/moved.md",
+        "degree": 0
+      }
+    ],
+    "scopedNodes": [
+      {
+        "uri": "gno://targets/anchor.md",
+        "degree": 0
+      },
+      {
+        "uri": "gno://targets/moved.md",
+        "degree": 0
+      }
+    ]
+  }
+]

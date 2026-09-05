@@ -1,0 +1,23 @@
+{
+  "qa_verdict": "NO",
+  "scope": "fn150 synthetic graph consumers on635293b6; browser ondd38f777",
+  "mechanical_equivalence": "PASS",
+  "existing_findings": [
+    {
+      "severity": "P2",
+      "title": "Graph header overflows390px viewport",
+      "tracking": "existing fn151/fn152 finding",
+      "evidence": "browser-evidence.json"
+    }
+  ],
+  "new_findings": [
+    {
+      "severity": "P1",
+      "title": "REST backlinks select inactive pre-rename owner",
+      "status": "fixed and public-rerun verified",
+      "evidence": "public-matrix.json and postfix/public-matrix.json"
+    }
+  ],
+  "full_gates": "host pending",
+  "hosted_site": "queued only"
+}
