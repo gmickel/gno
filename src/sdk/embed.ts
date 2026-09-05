@@ -72,7 +72,7 @@ function getActiveChunks(
     const sql = after
       ? `
         SELECT c.mirror_hash as mirrorHash, c.seq, c.text,
-          (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 LIMIT 1) as title,
+          (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 ORDER BY d.id LIMIT 1) as title,
           'force' as reason
         FROM content_chunks c
         WHERE EXISTS (
@@ -85,7 +85,7 @@ function getActiveChunks(
       `
       : `
         SELECT c.mirror_hash as mirrorHash, c.seq, c.text,
-          (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 LIMIT 1) as title,
+          (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 ORDER BY d.id LIMIT 1) as title,
           'force' as reason
         FROM content_chunks c
         WHERE EXISTS (

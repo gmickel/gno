@@ -514,6 +514,16 @@ missing runtime identity, unactivated selected partition, or unavailable/corrupt
 variant index produces semantic failure and explicit hybrid fallback diagnostics.
 Losing an index table does not erase that durable authority.
 
+Providers without verified identity retain the legacy mirror-level representation
+before activation. Its selected title owner is the lowest active document ID.
+Document mutations compare that owner's prepared input per model and invalidate
+only affected legacy vectors when it changes. The final owner's disappearance
+retains vectors for an identical restore; ambiguous inactive title histories
+conservatively require recomputation. These checks and invalidation commit with
+the document mutation. They preserve legacy rename compatibility, but do not
+provide separate title-specific vectors for simultaneous differently titled
+owners; that requires verified exact-input variants.
+
 Retrieval bulk-validates current eligible formatted inputs before distance ranking;
 it does not approximate filtered top-K through global overfetch. This adds CPU
 hashing proportional to eligible owner/chunk bindings. The ranking pass uses the

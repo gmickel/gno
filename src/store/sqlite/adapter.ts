@@ -189,6 +189,10 @@ import { resolveGraphLinkTargets } from "./graph-link-resolver";
 import { queryGraphNeighborsForSeeds } from "./graph-neighbors";
 import { createGraphReferenceStore } from "./graph-reference-state";
 import {
+  snapshotLegacyTitles,
+  reconcileLegacyTitles,
+} from "./legacy-vector-ownership";
+import {
   appendExportManifest as appendStoredTraceExportManifest,
   getBoundedTrace as getBoundedStoredTrace,
   getExportBundle as getStoredTraceExportBundle,
@@ -1350,6 +1354,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             "SELECT * FROM documents WHERE collection = ? AND rel_path = ?"
           )
           .get(doc.collection, doc.relPath);
+        const legacyTitles = snapshotLegacyTitles(
+          db,
+          !previousRow ||
+            !previousRow.active ||
+            previousRow.title !== (doc.title ?? null) ||
+            previousRow.mirror_hash !== (doc.mirrorHash ?? null)
+            ? [previousRow?.mirror_hash, doc.mirrorHash]
+            : []
+        );
 
         db.run(
           `
@@ -1445,6 +1458,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         if (!idRow) {
           throw new Error("Failed to get document id after upsert");
         }
+
+        reconcileLegacyTitles(db, legacyTitles);
 
         // Owner bindings describe the exact current source input. Keep inactive
         // bindings for identical restoration, but invalidate changed ownership.
@@ -2249,6 +2264,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         if (activeRows.length === 0) {
           return 0;
         }
+        const legacyTitles = snapshotLegacyTitles(
+          db,
+          activeRows.map((row) => row.mirror_hash)
+        );
         db.run(
           `UPDATE documents SET active = 0, updated_at = datetime('now')
            WHERE collection = ?
@@ -2260,6 +2279,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         const changed =
           db.query<{ count: number }, []>("SELECT changes() AS count").get()
             ?.count ?? 0;
+        reconcileLegacyTitles(db, legacyTitles);
         const observedAtMs = Date.now();
         for (const activeRow of activeRows) {
           const previous = snapshotDocumentChange(mapDocumentRow(activeRow));
