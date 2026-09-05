@@ -47,9 +47,30 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Metadata lookup failures never widen eligibility or bypass owner policy.
 
 ## Done summary
-TBD
+# fn-148.1 handover
 
+Status: in_progress; host owns Flow, git, integration and QA. No commits or lifecycle mutations performed by worker.
+
+Added internal pre-budget eligibility evaluation in `src/pipeline/filters.ts`. Reuses existing document/tag/date/author/category/exclude evaluation, intersects caller and user collection/mirror/path scope, treats empty mirror allowlists as deny-all, checks active ownership and metadata availability, and selects exact-language chunks only after whole-document exclusion. The helper is deliberately not wired into retrieval yet. Existing recency/project-affinity/full-document/minScore ranking is untouched.
+
+Added independently hash-pinned 201-document fixture and exhaustive lexical/vector proof tests. Explicit expected eligible match is `scope/target.md` / `#fixture-200:1` at limits 1 and 10. Tests reject the global 10× overfetch algorithm; current lexical starvation is a separately named characterization. Task .2 must replace its empty-result characterization assertions with parity to the unchanged exhaustive expectation. Invalid lexical syntax, internal invalid-date semantics, tag/category/author/date/path/scope zero matches, inactive owners, missing/mismatched metadata, failed/rejected tag reads, whole-document exclusion across language chunks, deterministic oracle ties and duplicate owner identities are pinned.
+
+Files:
+- src/pipeline/filters.ts
+- evals/fixtures/acceptance/eligible-top-k/fixture.ts
+- evals/fixtures/acceptance/eligible-top-k/manifest.json
+- evals/fixtures/acceptance/eligible-top-k/README.md
+- test/store/eligible-top-k.test.ts
+- test/pipeline/eligible-top-k.test.ts
+
+Baseline: green, existing `bun test ./test/store/fts-lexical-regression.test.ts` before edits. New deliverable tests did not exist at baseline.
+
+Validation: 37 focused tests pass, 117 assertions. Targeted Oxlint with type-aware/type-check flags passes for the three source/test files; repository lint configuration excludes the eval fixture (even with `--no-ignore`), so no fixture typecheck claim. Oxfmt check passes for all six files. Logs under `/home/gordon/.cache/agent-tmp/gno-fn148-oracle/` (`baseline.log`, `focused.log`, `lint.log`). TMPDIR outside repository avoids changing project-affinity behavior and avoids exhausted /tmp quota.
+
+Limitations: no production eligible-top-K correction claimed. No native embeddings/vector-store execution or GPU use; fn-143 paired-comparator run, public live QA, full project gate, ranking-policy integration and performance coverage remain downstream. Frozen fn-143 fixture files unchanged. Store lexical oracle uses exact existing 1.5/4/1 BM25 weights with no SQL candidate LIMIT; stable vector tie order is an oracle convention, not a new public ranking policy. The contract helper assumes callers already applied managed-memory supersession/scope SQL rules; it does not implement those independently.
+
+stage: impl-review - skipped(policy: user disabled formal reviews; host owns acceptance)
 ## Evidence
-- Commits:
-- Tests:
+- Commits: cb3421f6954f796599ea372d577d2971215aef8c
+- Tests: baseline green: TMPDIR=/home/gordon/.cache/agent-tmp/gno-fn148-oracle timeout 600 bun test ./test/store/fts-lexical-regression.test.ts, PASS 37 tests / 117 assertions: TMPDIR=/home/gordon/.cache/agent-tmp/gno-fn148-oracle timeout 600 bun test ./test/store/eligible-top-k.test.ts ./test/pipeline/eligible-top-k.test.ts ./test/store/fts-lexical-regression.test.ts, PASS: bunx oxlint --type-aware --type-check src/pipeline/filters.ts evals/fixtures/acceptance/eligible-top-k/fixture.ts test/store/eligible-top-k.test.ts test/pipeline/eligible-top-k.test.ts, PASS: bunx oxfmt --check src/pipeline/filters.ts evals/fixtures/acceptance/eligible-top-k/ test/store/eligible-top-k.test.ts test/pipeline/eligible-top-k.test.ts
 - PRs:
