@@ -33,7 +33,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.bun/install/cache
-          key: bun-cache-${{ runner.os }}-${{ hashFiles('**/bun.lockb') }}
+          key: bun-cache-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
           restore-keys: |
             bun-cache-${{ runner.os }}-
 

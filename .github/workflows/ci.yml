@@ -23,10 +23,15 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: ${{ matrix.bun }}
+          bun-version: 1.4.2
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Select watcher runtime
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ matrix.bun }}
 
       - name: Record watcher environment
         shell: bash
@@ -61,7 +66,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.bun/install/cache
-          key: bun-cache-${{ runner.os }}-${{ hashFiles('**/bun.lockb') }}
+          key: bun-cache-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
           restore-keys: bun-cache-${{ runner.os }}-
 
       - name: Cache package-smoke embedding model
@@ -120,7 +125,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.bun/install/cache
-          key: bun-cache-Windows-${{ hashFiles('**/bun.lockb') }}
+          key: bun-cache-Windows-${{ hashFiles('**/bun.lock') }}
           restore-keys: bun-cache-Windows-
 
       # Match the release matrix's proven isolated temp root. runner.temp can

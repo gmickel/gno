@@ -17,10 +17,14 @@
 - Label `test-windows` for Windows-specific PR testing
 - npm publish only on explicit version tags
 
+Repository installs use Bun 1.4.2 or newer to read the current lockfile format.
+The watcher matrix installs with 1.4.2, then selects its declared runtime,
+including Bun 1.3.11, for compatibility checks.
+
 ## Cache
 
 - Bun packages cached per-OS with lockfile hash
-- Auto-invalidates when `bun.lockb` changes
+- Auto-invalidates when `bun.lock` changes
 - Falls back to partial cache on lockfile change
 
 ## Windows Optimizations
