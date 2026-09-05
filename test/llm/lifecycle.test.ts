@@ -16,7 +16,7 @@ void mock.module("node:os", () => ({
   hostname: () => "localhost",
   platform: () => mockPlatformValue,
   totalmem: () => 16 * 1024 * 1024 * 1024,
-  tmpdir: () => "/tmp",
+  tmpdir: () => process.env.TMPDIR ?? "/tmp",
   userInfo: () => ({
     gid: 501,
     homedir: "/tmp",

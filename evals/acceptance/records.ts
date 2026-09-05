@@ -59,6 +59,12 @@ export const acceptanceRecordSchema = z.strictObject({
     requestId: z.string().optional(),
     capturedAt: z.string().optional(),
     durationMs: z.number().finite().nonnegative().optional(),
+    // Exact source: AskResult.verification.semantic.durationMs (elapsed telemetry).
+    verificationSemanticDurationMs: z
+      .number()
+      .finite()
+      .nonnegative()
+      .optional(),
   }),
 });
 

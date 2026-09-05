@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 // Bun has no directory creation/removal APIs.
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 // Bun has no OS/path utility equivalents.
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -223,6 +223,70 @@ test("snapshot harness installation preserves existing source-root ownership", a
     );
     expect(await Bun.file(child).text()).toBe("existing changed harness");
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("driver pins declared backend/build policy and only explicit canonical CUDA_PATH", async () => {
+  const { root, options } = await fixture();
+  const scope = new OwnedResources();
+  const sourceRoot = join(root, "fake-protocol-source");
+  await mkdir(join(sourceRoot, "evals/acceptance"), { recursive: true });
+  // Protocol-only child reports its environment; it cannot produce native coverage.
+  await Bun.write(
+    join(sourceRoot, "evals/acceptance/session-child.ts"),
+    `
+    const {runId,directory}=await Bun.file(process.env.GNO_ACCEPTANCE_SESSION_CONFIG).json();
+    process.on('message',async ({sequence,operation})=>{
+      const resultPath=directory+'/'+sequence+'.reply.json.gz';
+      await Bun.write(resultPath,Bun.gzipSync(JSON.stringify({runId,sequence,pid:process.pid,response:{loaded:false,env:{gpu:process.env.GNO_LLAMA_GPU,build:process.env.GNO_LLAMA_BUILD,cudaPath:process.env.CUDA_PATH??null}}})));
+      process.send({runId,pid:process.pid,sequence,ok:true,resultPath});
+      if(operation==='close'){process.disconnect();process.exit(0);}
+    });
+    process.send({runId,pid:process.pid,ready:true,ok:true});
+  `
+  );
+  try {
+    for (const explicit of [false, true]) {
+      const session = await createSessionDriverFactory({
+        ...options,
+        sourceRoot,
+        ...(explicit ? { cudaPath: root } : {}),
+      }).open(scope);
+      await session.modelState();
+      const reply = JSON.parse(
+        new TextDecoder().decode(
+          Bun.gunzipSync(
+            await Bun.file(
+              join(session.processIdentity.directory, "1.reply.json.gz")
+            ).arrayBuffer()
+          )
+        )
+      );
+      expect(reply.response.env).toEqual({
+        gpu: "cuda",
+        build: "never",
+        cudaPath: explicit ? await realpath(root) : null,
+      });
+      await session.close();
+    }
+    expect(() =>
+      createSessionDriverFactory({
+        ...options,
+        requests: [
+          options.requests[0]!,
+          { ...options.requests[0]!, expectedBackend: "metal" },
+        ],
+      })
+    ).toThrow("one declared native backend");
+    await expect(
+      createSessionDriverFactory({
+        ...options,
+        cudaPath: join(sourceRoot, "evals/acceptance/session-child.ts"),
+      }).open(scope)
+    ).rejects.toThrow("requires a directory");
+  } finally {
+    await scope.close();
     await rm(root, { recursive: true, force: true });
   }
 });

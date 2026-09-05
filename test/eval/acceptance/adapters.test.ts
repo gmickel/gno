@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 
+import { compareAcceptance } from "../../../evals/acceptance/compare";
 import { ACCEPTANCE_SCHEMA_VERSION } from "../../../evals/acceptance/manifest";
 import {
   projectAcceptance,
@@ -97,6 +98,225 @@ function receipt(): NativeCapture {
 }
 const read = async () => ({ content: "exact\r\ntext\ntail", sourceHash: hash });
 
+test.each([
+  "declared",
+  "undeclared-expansion",
+  "undeclared-graph",
+  "wrong-reason",
+  "failed-stage",
+  "required-embedding",
+  "required-reranking",
+] as const)("optional-stage classification: %s", async (scenario) => {
+  const req = {
+    ...request,
+    options: { noExpand: true, graph: false, noRerank: false },
+  };
+  const trace: NonNullable<
+    SearchResults[typeof SEARCH_RESULTS_TRACE_METADATA]
+  > = {
+    capabilityOutcomes: [
+      { capability: "semantic_search", status: "used" },
+      {
+        capability: "query_expansion",
+        status: "unavailable",
+        reasonCode: "expansion_disabled",
+      },
+      {
+        capability: "graph_expansion",
+        status: "unavailable",
+        reasonCode: "graph_disabled",
+      },
+    ],
+    fallbackCodes: ["expansion_disabled", "graph_disabled"],
+  };
+  if (scenario === "undeclared-expansion") req.options.noExpand = false;
+  if (scenario === "undeclared-graph") req.options.graph = true;
+  if (scenario === "wrong-reason")
+    trace.capabilityOutcomes[1]!.reasonCode = "expansion_error";
+  if (scenario === "failed-stage")
+    trace.capabilityOutcomes[1]!.status = "failed";
+  const captured = receipt();
+  if (scenario === "required-embedding" || scenario === "required-reranking") {
+    const role = scenario === "required-embedding" ? "embedding" : "reranking";
+    captured.modelInputs = captured.modelInputs.filter(
+      (input) => input.role !== role
+    );
+    trace.capabilityOutcomes.push({
+      capability: role === "embedding" ? "semantic_search" : "reranking",
+      status: "unavailable",
+      reasonCode:
+        role === "embedding" ? "vector_unavailable" : "rerank_disabled",
+    });
+    if (role === "reranking") req.options.noRerank = true;
+  }
+  captured.capabilities = structuredClone(trace.capabilityOutcomes);
+  const originalCapabilities = structuredClone(captured.capabilities);
+  const output = { ...raw, [SEARCH_RESULTS_TRACE_METADATA]: trace };
+  const projected = await projectAcceptance(req, output, captured, read);
+  expect(projected.coverage).toBe(
+    scenario === "declared" ? "complete" : "incomplete"
+  );
+  expect(projected.receipt.capabilities).toEqual(originalCapabilities);
+  expect(projected.raw).toBe(output);
+  if (scenario === "declared")
+    expect(projected.record.deterministic.semanticState.fallbacks).toEqual([]);
+});
+
+test.each([
+  "pinned",
+  "default",
+  "unpinned",
+  "failed",
+  "wrong-reason",
+  "missing-embedding",
+  "missing-vector",
+] as const)("embedding-only native coverage: %s", async (scenario) => {
+  const req = structuredClone(request);
+  req.options.noRerank = true;
+  req.manifest.cases[0]!.configuration.options = {
+    noExpand: true,
+    noRerank: true,
+  };
+  if (scenario === "default") delete req.options.noRerank;
+  if (scenario === "unpinned")
+    req.manifest.cases[0]!.configuration.options = {};
+  const captured = receipt();
+  captured.modelInputs = captured.modelInputs.filter(
+    (input) => input.role === "embedding"
+  );
+  const trace: NonNullable<
+    SearchResults[typeof SEARCH_RESULTS_TRACE_METADATA]
+  > = {
+    capabilityOutcomes: [
+      { capability: "semantic_search", status: "used" },
+      {
+        capability: "reranking",
+        status: "unavailable",
+        reasonCode: "rerank_disabled",
+      },
+    ],
+    fallbackCodes: ["rerank_disabled"],
+  };
+  if (scenario === "failed") trace.capabilityOutcomes[1]!.status = "failed";
+  if (scenario === "wrong-reason")
+    trace.capabilityOutcomes[1]!.reasonCode = "rerank_error";
+  if (scenario === "missing-embedding") captured.modelInputs = [];
+  if (scenario === "missing-vector")
+    trace.capabilityOutcomes[0]!.status = "unavailable";
+  captured.capabilities = structuredClone(trace.capabilityOutcomes);
+  const result = await projectAcceptance(
+    req,
+    {
+      ...raw,
+      meta: { ...raw.meta, reranked: false },
+      [SEARCH_RESULTS_TRACE_METADATA]: trace,
+    },
+    captured,
+    read
+  );
+  expect(result.coverage).toBe(
+    scenario === "pinned" ? "complete" : "incomplete"
+  );
+  expect(result.receipt.capabilities).toEqual(trace.capabilityOutcomes);
+  if (scenario === "pinned") {
+    expect(
+      result.record.deterministic.modelInputs.every(
+        (input) => input.role === "embedding"
+      )
+    ).toBe(true);
+    expect(result.record.deterministic.semanticState.vectorStatus).toBe("used");
+  }
+});
+
+test.each(["timing", "verdict", "citation"] as const)(
+  "verification %s parity preserves semantic evidence",
+  async (change) => {
+    const baselineRequest = { ...request, operation: "verified-ask" as const };
+    const candidateRequest = structuredClone(baselineRequest);
+    candidateRequest.manifest.role = "candidate";
+    candidateRequest.manifest.identity.indexId = "candidate";
+    const baselineRaw = {
+      ...raw,
+      citations: [
+        { docid: "#aaaaaa", uri: "gno://test/a.md", startLine: 1, endLine: 2 },
+      ],
+      verification: {
+        semantic: {
+          status: "completed",
+          reason: "verified",
+          schemaRequested: true,
+          schemaEnforced: true,
+          modelFingerprint: hash,
+          configFingerprint: hash,
+          verifierFingerprint: hash,
+          candidateClaims: 1,
+          verifiedClaims: 1,
+          unresolvedClaims: 0,
+          modelCalls: 1,
+          durationMs: 12.125,
+        },
+        claims: {
+          answerStatus: "verified",
+          claims: [
+            { verdict: "supported", text: "Exact claim", evidenceIds: [hash] },
+          ],
+        },
+        capsule: {
+          evidence: [
+            {
+              sourceHash: hash,
+              observedAt: "2026-09-05T00:00:00Z",
+              provenance: { durationMs: 7 },
+            },
+          ],
+        },
+      },
+    };
+    const candidateRaw = {
+      ...baselineRaw,
+      citations: structuredClone(baselineRaw.citations),
+      verification: structuredClone(baselineRaw.verification),
+    };
+    candidateRaw.verification.semantic.durationMs = 87.75;
+    if (change === "verdict")
+      candidateRaw.verification.claims.claims[0]!.verdict = "contradicted";
+    if (change === "citation") candidateRaw.citations[0]!.endLine = 3;
+    const baseline = await projectAcceptance(
+      baselineRequest,
+      baselineRaw,
+      receipt(),
+      read
+    );
+    const candidate = await projectAcceptance(
+      candidateRequest,
+      candidateRaw,
+      receipt(),
+      read
+    );
+    const compared = compareAcceptance(
+      baselineRequest.manifest,
+      candidateRequest.manifest,
+      [baseline.record],
+      [candidate.record]
+    );
+    expect(compared.passed).toBe(change === "timing");
+    expect(baseline.record.transport.verificationSemanticDurationMs).toBe(
+      12.125
+    );
+    expect(candidate.record.transport.verificationSemanticDurationMs).toBe(
+      87.75
+    );
+    expect(baseline.raw).toBe(baselineRaw);
+    expect(baselineRaw.verification.semantic.durationMs).toBe(12.125);
+    const { durationMs: _timing, ...semantic } =
+      baselineRaw.verification.semantic;
+    expect(baseline.record.deterministic.semanticState.verification).toEqual({
+      ...baselineRaw.verification,
+      semantic,
+    });
+  }
+);
+
 test("exact actual inputs, scores and selected evidence survive serialization", async () => {
   const result = await projectAcceptance(
     request,
@@ -190,7 +410,9 @@ test("owned CLI output cannot turn uninstrumented vectorsUsed into native covera
   const { mkdtemp, rm } = await import("node:fs/promises");
   const { runSurfaceAcceptance } =
     await import("../../../evals/acceptance/surface-adapter");
-  const root = await mkdtemp("/tmp/gno-acceptance-cli-");
+  // Bun has no platform temporary-directory utility.
+  const { tmpdir } = await import("node:os");
+  const root = await mkdtemp(`${tmpdir()}/gno-acceptance-cli-`);
   const req = structuredClone(request);
   req.manifest.cases[0]!.surface = "cli";
   try {
@@ -198,6 +420,7 @@ test("owned CLI output cannot turn uninstrumented vectorsUsed into native covera
       req,
       {
         cwd: process.cwd(),
+        isolatedRoot: root,
         args: ["--eval", `console.log(${JSON.stringify(JSON.stringify(raw))})`],
         env: { GNO_CONFIG_DIR: root, GNO_DATA_DIR: root, GNO_CACHE_DIR: root },
         capturePath: `${root}/capture.json`,

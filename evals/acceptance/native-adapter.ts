@@ -67,6 +67,15 @@ export async function projectAcceptance(
   );
   if (!manifestCase)
     throw new Error(`Unknown acceptance case: ${request.caseId}`);
+  const pinnedOptions = manifestCase.configuration.options;
+  // Embedding-only coverage is a separately pinned pipeline, never an implicit
+  // fast-preset exception or evidence that the default reranked suite passed.
+  const rerankDisabled =
+    request.options.noRerank === true &&
+    pinnedOptions !== null &&
+    typeof pinnedOptions === "object" &&
+    !Array.isArray(pinnedOptions) &&
+    pinnedOptions.noRerank === true;
   if (receipt.kind !== "native")
     reasons.push("replay_is_not_native_acceptance");
   if (
@@ -77,6 +86,7 @@ export async function projectAcceptance(
   for (const role of request.operation === "verified-ask"
     ? (["embedding", "reranking", "generation"] as const)
     : (["embedding", "reranking"] as const)) {
+    if (role === "reranking" && rerankDisabled) continue;
     if (!receipt.modelInputs.some((input) => input.role === role))
       reasons.push(`model_not_exercised:${role}`);
   }
@@ -108,7 +118,8 @@ export async function projectAcceptance(
         : "unavailable";
   if (vectorStatus !== "used") reasons.push("vector_stage_unavailable");
   if (!raw?.meta.vectorsUsed) reasons.push("vectors_not_used");
-  if (!raw?.meta.reranked) reasons.push("reranking_not_used");
+  if (!rerankDisabled && !raw?.meta.reranked)
+    reasons.push("reranking_not_used");
   const verification =
     raw && "verification" in raw ? raw.verification : undefined;
   if (
@@ -178,13 +189,40 @@ export async function projectAcceptance(
   }
   if (!results.length && !verification?.capsule.evidence.length)
     reasons.push("empty_successful_result");
+  // These exact hybrid trace outcomes describe caller-disabled optional work,
+  // not a failed attempt. No other unavailable/failed capability is exempt.
+  const disabledOptionalStages = capabilities.filter(
+    (item) =>
+      item.status === "unavailable" &&
+      ((item.capability === "query_expansion" &&
+        item.reasonCode === "expansion_disabled" &&
+        request.options.noExpand === true) ||
+        (item.capability === "graph_expansion" &&
+          item.reasonCode === "graph_disabled" &&
+          request.options.graph === false) ||
+        (item.capability === "reranking" &&
+          item.reasonCode === "rerank_disabled" &&
+          rerankDisabled))
+  );
   const fallbacks = [
-    ...(trace?.fallbackCodes ?? []),
+    ...(trace?.fallbackCodes ?? []).filter(
+      (code) => !disabledOptionalStages.some((item) => item.reasonCode === code)
+    ),
     ...capabilities.filter(
-      (item) => item.status === "failed" || item.status === "unavailable"
+      (item) =>
+        (item.status === "failed" || item.status === "unavailable") &&
+        !disabledOptionalStages.includes(item)
     ),
   ];
   if (fallbacks.length) reasons.push("native_fallback");
+  // The capability schema has exactly one elapsed-clock field. Preserve all
+  // verdicts, claims, provenance and source timestamps; `raw` stays untouched.
+  const verificationProjection = verification
+    ? (() => {
+        const { durationMs, ...semantic } = verification.semantic;
+        return { deterministic: { ...verification, semantic }, durationMs };
+      })()
+    : null;
   const record = acceptanceRecordSchema.parse({
     schemaVersion: ACCEPTANCE_SCHEMA_VERSION,
     manifestSha256: acceptanceManifestFingerprint(request.manifest),
@@ -206,11 +244,15 @@ export async function projectAcceptance(
         vectorStatus,
         error: reasons.length ? reasons : null,
         fallbacks,
-        verification: verification ? jsonObject(verification) : null,
+        verification: verificationProjection
+          ? jsonObject(verificationProjection.deterministic)
+          : null,
       },
     },
     generatedAnswer: raw && "answer" in raw ? (raw.answer ?? null) : null,
-    transport: {},
+    transport: verificationProjection
+      ? { verificationSemanticDurationMs: verificationProjection.durationMs }
+      : {},
   });
   return {
     record,

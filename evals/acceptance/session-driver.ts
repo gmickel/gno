@@ -2,9 +2,9 @@ import type { Subprocess } from "bun";
 
 /** Retained per-snapshot SDK process; payloads are lossless compressed files. */
 // Bun has no mkdir/mkdtemp/realpath filesystem structure equivalents.
-import { mkdir, mkdtemp, realpath } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, stat } from "node:fs/promises";
 // Bun has no path construction utilities.
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 
 import type { AcceptanceManifest } from "./manifest";
 import type {
@@ -67,6 +67,8 @@ export interface SessionDriverOptions {
   init: NativeAcceptanceInit;
   requests: AdapterRequest[];
   timeoutMs?: number;
+  /** Explicit native toolkit directory; never inherited from the parent env. */
+  cudaPath?: string;
 }
 
 /** Install only the development harness into a preselected archived source tree.
@@ -95,8 +97,28 @@ export async function installSessionHarness(sourceRoot: string): Promise<void> {
 export function createSessionDriverFactory(
   options: SessionDriverOptions
 ): SessionDriverFactory {
+  const backends = new Set(
+    options.requests.map((request) => request.expectedBackend)
+  );
+  if (backends.size !== 1)
+    throw new Error("Session requests require one declared native backend");
+  const backend = options.requests[0]!.expectedBackend;
+  if (backend !== "cuda" && backend !== "metal")
+    throw new Error("Unsupported native backend");
   return {
     async open(scope) {
+      const nativeEnv: Record<string, string> = {
+        GNO_LLAMA_GPU: backend,
+        GNO_LLAMA_BUILD: "never",
+      };
+      if (options.cudaPath !== undefined) {
+        if (!isAbsolute(options.cudaPath))
+          throw new Error("CUDA_PATH requires an absolute directory");
+        const cudaPath = await realpath(options.cudaPath);
+        if (!(await stat(cudaPath)).isDirectory())
+          throw new Error("CUDA_PATH requires a directory");
+        nativeEnv.CUDA_PATH = cudaPath;
+      }
       const sourceRoot = await realpath(options.sourceRoot);
       await assertPackageSmokePathContained(
         options.isolatedRoot,
@@ -221,7 +243,11 @@ export function createSessionDriverFactory(
         ],
         {
           cwd: sourceRoot,
-          env: { ...safeEnv, GNO_ACCEPTANCE_SESSION_CONFIG: configPath },
+          env: {
+            ...safeEnv,
+            ...nativeEnv,
+            GNO_ACCEPTANCE_SESSION_CONFIG: configPath,
+          },
           stdout: Bun.file(join(directory, "stdout.log")),
           stderr: Bun.file(join(directory, "stderr.log")),
           ipc: onMessage,

@@ -78,6 +78,7 @@
     "test:fixtures": "bun scripts/generate-test-fixtures.ts",
     "evals": "bun scripts/update-eval-scores.ts",
     "eval": "bun --bun evalite",
+    "eval:acceptance": "bun scripts/retrieval-acceptance.ts",
     "eval:hybrid": "bun --bun evalite evals/hybrid.eval.ts",
     "eval:memory": "bun --bun evalite evals/memory.eval.ts --threshold 100",
     "eval:memory:fixtures": "bun scripts/memory-eval-fixtures.ts",
