@@ -227,13 +227,21 @@ test("resource scope samples validated actual descendants and leaves unrelated p
     { stdout: "ignore", stderr: "ignore" }
   );
   let nativePid = 0;
+  let probePid = 0;
+  const nativeProgram = `
+    const probe = Bun.spawn([process.execPath, "--no-env-file", "-e", "process.on('disconnect',()=>process.exit(0));setInterval(()=>{},1000)"], {stdout:"ignore",stderr:"ignore",ipc(){}});
+    process.send({probePid:probe.pid});
+    process.on("disconnect",async()=>{probe.kill("SIGTERM");await probe.exited;process.exit(0)});
+    process.on("SIGTERM",async()=>{probe.kill("SIGTERM");await probe.exited;process.exit(0)});
+    setInterval(()=>{},1000);
+  `;
   const owner = Bun.spawn(
     [
       process.execPath,
       "--no-env-file",
       "-e",
       `
-    const child = Bun.spawn([process.execPath, '--no-env-file', '-e', "process.on('disconnect',()=>process.exit(0));setInterval(()=>{},1000)"], {stdout:'ignore',stderr:'ignore',ipc(){}});
+    const child = Bun.spawn([process.execPath, '--no-env-file', '-e', ${JSON.stringify(nativeProgram)}], {stdout:'ignore',stderr:'ignore',ipc(message){process.send(message)}});
     process.send({pid:child.pid});
     process.on('message', async () => { child.kill('SIGTERM'); await child.exited; process.send({exited:true}); });
     process.on('exit',()=>child.kill('SIGTERM'));
@@ -244,13 +252,15 @@ test("resource scope samples validated actual descendants and leaves unrelated p
       stderr: "ignore",
       ipc(message) {
         if (message?.pid) nativePid = message.pid;
+        if (message?.probePid) probePid = message.probePid;
       },
     }
   );
   scope.own(owner);
   try {
     const deadline = Date.now() + 3000;
-    while (!nativePid && Date.now() < deadline) await Bun.sleep(10);
+    while ((!nativePid || !probePid) && Date.now() < deadline)
+      await Bun.sleep(10);
     expect(nativePid).toBeGreaterThan(0);
     const nativeIdentity = {
       ...identity,
@@ -277,12 +287,16 @@ test("resource scope samples validated actual descendants and leaves unrelated p
     await scope.sample();
     expect(scope.samples[0]!.errors).toEqual([]);
     expect(scope.samples[0]!.pids.toSorted((a, b) => a - b)).toEqual(
-      [owner.pid, nativePid].toSorted((a, b) => a - b)
+      [owner.pid, nativePid, probePid].toSorted((a, b) => a - b)
     );
     expect(
       scope.samples[0]!.processes?.find((item) => item.pid === nativePid)
         ?.nativeIdentity
     ).toEqual(nativeIdentity);
+    expect(
+      scope.samples[0]!.processes?.find((item) => item.pid === probePid)
+        ?.osDescendant?.parentPid
+    ).toBe(nativePid);
     await expect(
       scope.observeDescendant(owner, {
         identity: nativeIdentity,
@@ -313,7 +327,8 @@ test("candidate adapter import and parent capture do not load native leaf module
       await import(${JSON.stringify(adapter)});
       const {installParentCapture} = await import(${JSON.stringify(bridge)});
       const capture = await installParentCapture('native-free', [], ${JSON.stringify(root)});
-      process.stdout.write(JSON.stringify(capture.finish().parentNative));
+      const initial = await Bun.file(${JSON.stringify(join(root, "parent-capture.json"))}).json();
+      process.stdout.write(JSON.stringify(initial.parentNative));
       capture.restore();
     `,
       ],
@@ -321,6 +336,8 @@ test("candidate adapter import and parent capture do not load native leaf module
     );
     const output = JSON.parse(await new Response(child.stdout).text());
     expect(await child.exited).toBe(0);
+    const persisted = await Bun.file(join(root, "parent-capture.json")).json();
+    expect(persisted.parentNative).toEqual(output);
     expect(output.nativeModules).toEqual([]);
     expect(output.bindingLoads).toEqual([]);
     if (process.platform === "linux") expect(output.mappedModels).toEqual([]);
@@ -348,3 +365,139 @@ test("native context options preserve nested undefined fields from ranking conte
     },
   ]);
 });
+
+test("actual worker removes only its QA preload before dependency fork; nonentry inherited preload is harmless", async () => {
+  const { chmod } = await import("node:fs/promises");
+  const root = await mkdtemp(join(tmpdir(), "gno-capture-fork-"));
+  const preload = join(
+    process.cwd(),
+    "evals/acceptance/native-child-preload.ts"
+  );
+  const entry = join(process.cwd(), "src/llm/native-worker/entry.ts");
+  const bootstrap = join(root, "bootstrap.json");
+  const probe = join(root, "binding-probe.cjs");
+  const observer = join(root, "fork-observer.ts");
+  const output = join(root, "fork.json");
+  // Exercise the dependency's actual child_process.fork execArgv inheritance;
+  // Bun.spawn does not reproduce that Node compatibility behavior.
+  await Bun.write(
+    probe,
+    "process.send({args:process.execArgv,ran:true});process.disconnect();"
+  );
+  await Bun.write(
+    observer,
+    `
+    import {fork} from 'node:child_process';
+    if(process.argv[1] === ${JSON.stringify(entry)}) {
+      const child=fork(${JSON.stringify(probe)},[],{stdio:['ignore','ignore','ignore','ipc']});
+      await new Promise((resolve,reject)=>{
+        child.once('message',async value=>{await Bun.write(${JSON.stringify(output)},JSON.stringify(value));});
+        child.once('error',reject);child.once('exit',code=>code===0?resolve(undefined):reject(Error('probe exit '+code)));
+      });
+    }
+  `
+  );
+  await Bun.write(
+    bootstrap,
+    JSON.stringify({
+      identity: { ...identity, parentPid: process.pid, entry },
+      models: [],
+    })
+  );
+  await chmod(bootstrap, 0o600);
+  let child: ReturnType<typeof Bun.spawn> | undefined;
+  try {
+    let ready = false;
+    child = Bun.spawn({
+      cmd: [
+        process.execPath,
+        "--no-env-file",
+        "--preload",
+        preload,
+        "--preload",
+        observer,
+        entry,
+        JSON.stringify({
+          generation: 1,
+          models: [],
+          loadTimeout: 1000,
+          inferenceTimeout: 1000,
+          warmModelTtl: 60000,
+        }),
+      ],
+      env: {
+        ...nativeWorkerEnvironment(),
+        GNO_ACCEPTANCE_CHILD_BOOTSTRAP: bootstrap,
+      },
+      stdin: "ignore",
+      stdout: "ignore",
+      stderr: "pipe",
+      serialization: "advanced",
+      ipc(message) {
+        if (message === "ready") ready = true;
+      },
+    });
+    const deadline = Date.now() + 5000;
+    while (!ready && child.exitCode === null && Date.now() < deadline)
+      await Bun.sleep(10);
+    expect(ready).toBe(true);
+    const observed = await Bun.file(output).json();
+    expect(observed.ran).toBe(true);
+    expect(observed.args).not.toContain(preload);
+    expect(observed.args).toContain(observer);
+    child.send("shutdown");
+    await child.exited;
+    const inherited = Bun.spawn(
+      [
+        process.execPath,
+        "--no-env-file",
+        "--preload",
+        preload,
+        "-e",
+        "process.stdout.write('probe-ran')",
+      ],
+      {
+        env: { GNO_ACCEPTANCE_CHILD_BOOTSTRAP: bootstrap },
+        stdout: "pipe",
+        stderr: "pipe",
+      }
+    );
+    expect(await new Response(inherited.stdout).text()).toBe("probe-ran");
+    expect(await inherited.exited).toBe(0);
+    await Bun.write(
+      bootstrap,
+      JSON.stringify({
+        identity: { ...identity, parentPid: 1, entry },
+        models: [],
+      })
+    );
+    const mismatch = Bun.spawn(
+      [
+        process.execPath,
+        "--no-env-file",
+        "--preload",
+        preload,
+        entry,
+        JSON.stringify({
+          generation: 1,
+          models: [],
+          loadTimeout: 1000,
+          inferenceTimeout: 1000,
+        }),
+      ],
+      {
+        env: { GNO_ACCEPTANCE_CHILD_BOOTSTRAP: bootstrap },
+        stdout: "ignore",
+        stderr: "pipe",
+      }
+    );
+    expect(await new Response(mismatch.stderr).text()).toContain(
+      "execution identity mismatch"
+    );
+    expect(await mismatch.exited).not.toBe(0);
+  } finally {
+    if (child && child.exitCode === null) child.kill("SIGKILL");
+    await child?.exited;
+    await rm(root, { recursive: true, force: true });
+  }
+}, 10000);

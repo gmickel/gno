@@ -18,6 +18,7 @@ export interface ResourceSample {
     rssBytes: number;
     gpuBytes?: number;
     nativeIdentity?: ChildIdentity;
+    osDescendant?: { parentPid: number; start: string };
   }>;
 }
 
@@ -49,6 +50,10 @@ export class OwnedResources {
   private readonly descendants = new Map<
     string,
     { identity: ChildIdentity; start: string; exited: boolean }
+  >();
+  private readonly forks = new Map<
+    number,
+    { parentPid: number; start: string }
   >();
   readonly descendantEvents: ChildEvent[] = [];
   readonly samples: ResourceSample[] = [];
@@ -158,6 +163,41 @@ export class OwnedResources {
         pids.push(descendant.identity.pid);
       nativeIdentities.set(descendant.identity.pid, descendant.identity);
     }
+    // Native dependencies can fork short-lived binding testers. Discover only
+    // their verified OS subtree for telemetry; this grants no PID kill authority.
+    const observedForks = new Map<
+      number,
+      { parentPid: number; start: string }
+    >();
+    if (nativeIdentities.size) {
+      try {
+        const result = await telemetry(["ps", "-axo", "pid=,ppid="]);
+        if (result.exitCode !== 0)
+          throw new Error("Native descendant enumeration unavailable");
+        const rows = result.output
+          .trim()
+          .split("\n")
+          .map((row) => row.trim().split(/\s+/).map(Number));
+        const owned = new Set(nativeIdentities.keys());
+        for (let depth = 0; depth < rows.length; depth++) {
+          let changed = false;
+          for (const [pid, parentPid] of rows) {
+            if (!pid || !parentPid || !owned.has(parentPid) || owned.has(pid))
+              continue;
+            const state = await processIdentity(pid);
+            if (!state || state.parentPid !== parentPid) continue;
+            owned.add(pid);
+            observedForks.set(pid, state);
+            this.forks.set(pid, state);
+            if (!pids.includes(pid)) pids.push(pid);
+            changed = true;
+          }
+          if (!changed) break;
+        }
+      } catch (error) {
+        identityErrors.push(String(error));
+      }
+    }
     const sample: ResourceSample = {
       elapsedMs: performance.now() - this.started,
       rssBytes: null,
@@ -196,6 +236,9 @@ export class OwnedResources {
       sample.processes = rows.map(([pid, rss]) => ({
         pid: pid!,
         rssBytes: rss! * 1024,
+        ...(observedForks.has(pid!)
+          ? { osDescendant: observedForks.get(pid!) }
+          : {}),
         ...(nativeIdentities.has(pid!)
           ? { nativeIdentity: nativeIdentities.get(pid!) }
           : {}),
@@ -270,13 +313,20 @@ export class OwnedResources {
     // Product disconnect handling owns descendant termination. Never kill a PID
     // discovered through evidence; a surviving owned identity is incomplete QA.
     const deadline = Date.now() + 2500;
-    for (const descendant of this.descendants.values()) {
+    const cleanupIdentities = [
+      ...[...this.descendants.values()].map((item) => ({
+        pid: item.identity.pid,
+        start: item.start,
+      })),
+      ...[...this.forks].map(([pid, item]) => ({ pid, start: item.start })),
+    ];
+    for (const descendant of cleanupIdentities) {
       while (true) {
-        const state = await processIdentity(descendant.identity.pid);
+        const state = await processIdentity(descendant.pid);
         if (!state || state.start !== descendant.start) break;
         if (Date.now() >= deadline) {
           this.errors.push(
-            `Owned native descendant survived cleanup:${descendant.identity.pid}`
+            `Owned native descendant survived cleanup:${descendant.pid}`
           );
           break;
         }

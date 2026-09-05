@@ -42,7 +42,8 @@ export async function installParentCapture(
     throw new Error("Capture directory must be private");
   if (
     (await Bun.file(join(root, "children.json")).exists()) ||
-    (await Bun.file(join(root, "requests.json")).exists())
+    (await Bun.file(join(root, "requests.json")).exists()) ||
+    (await Bun.file(join(root, "parent-capture.json")).exists())
   )
     throw new Error("Stale child capture directory");
   const entry = realpathSync(
@@ -75,7 +76,15 @@ export async function installParentCapture(
   let caseId = "startup";
   let scopeOpen = true; // Startup discoveries belong to the initial scope.
   const receipts: ChildReceipt[] = [];
-  const publish = () => onUpdate?.(capture);
+  const publish = () => {
+    const path = join(root, "parent-capture.json");
+    writeFileSync(`${path}.partial`, JSON.stringify(capture), {
+      mode: 0o600,
+      flag: "wx",
+    });
+    renameSync(`${path}.partial`, path);
+    onUpdate?.(capture);
+  };
   const event = (value: ChildEvent) => {
     events.push(value);
     const file = join(root, "children.json");
@@ -273,14 +282,14 @@ export async function installParentCapture(
     next.parentNative = parentNativeState();
     if (
       next.parentNative.bindingLoads.length ||
-      next.parentNative.nativeModules.length ||
       next.parentNative.mappedModels?.length
     )
-      next.errors.push("Public parent loaded native inference artifacts");
+      next.errors.push("Public parent loaded native inference binding/model");
     Object.assign(capture, next);
     publish();
     return capture;
   }
+  collect(); // Persist the initial parent observation before any inference can start.
   return {
     capture,
     events,
