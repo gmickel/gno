@@ -12,6 +12,15 @@ import type { BacklogItem, VectorStatsPort } from "./types";
 
 import { err, ok } from "../types";
 
+const statsDatabases = new WeakMap<VectorStatsPort, Database>();
+
+/** Internal bridge for exact-input backlog; mock/third-party stats have no database. */
+export function getVectorStatsDatabase(
+  stats: VectorStatsPort
+): Database | undefined {
+  return statsDatabases.get(stats);
+}
+
 /**
  * Create a VectorStatsPort for backlog detection and vector stats.
  * Uses EXISTS-based queries to avoid duplicates from multiple docs sharing mirror_hash.
@@ -44,7 +53,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
     };
   }
 
-  return {
+  const port: VectorStatsPort = {
     countVectors(model: string): Promise<StoreResult<number>> {
       try {
         const result = db
@@ -206,4 +215,6 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
       }
     },
   };
+  statsDatabases.set(port, db);
+  return port;
 }

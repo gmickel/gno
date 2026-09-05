@@ -42,7 +42,15 @@ export interface EmbedStoreBatchResult {
 // src/cli/commands/index-cmd.ts) must surface contentionErrors in their
 // summary and exit non-zero — the integrator wires that.
 
-export function chunkRetryKey(item: Pick<BacklogItem, "mirrorHash" | "seq">) {
+export function chunkRetryKey(
+  item: Pick<BacklogItem, "mirrorHash" | "seq"> & {
+    documentId?: number;
+    inputHash?: string;
+  }
+) {
+  if (item.documentId !== undefined && item.inputHash !== undefined) {
+    return `${item.documentId}\0${item.mirrorHash}\0${item.seq}\0${item.inputHash}`;
+  }
   return `${item.mirrorHash}\0${item.seq}`;
 }
 
