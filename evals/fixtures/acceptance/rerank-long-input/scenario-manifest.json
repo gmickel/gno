@@ -1,0 +1,29 @@
+{
+  "version": "rerank-scenarios-v1",
+  "scheduleSha256": "fd75dbaf76161af7165cf5e622c1b2cfe2b76463e7e0e6f7310fa766d135225e",
+  "historicalCells": 45,
+  "historicalPairs": 69,
+  "historicalScores": 122,
+  "additionalCases": [
+    {
+      "caseId": "long-query-full-pair",
+      "sha256": "591a3c79134c8e75929f37b0610be784b8e8c803db170f10f1ccd41e07d05df6"
+    },
+    {
+      "caseId": "shrink-after-long-query",
+      "sha256": "682d608852bf98177b493e4fdacaa0007c004ed6a74e9ef04dec444157e49de7"
+    },
+    {
+      "caseId": "duplicate-ties",
+      "sha256": "f006a066c71f5cea17cebb5c8be7ba7accdbeeb31ce5ab7196f994bb19de2aee"
+    },
+    {
+      "caseId": "unsupported-template",
+      "sha256": "31ce81dabc27114ea4950591f2e7145204f27681d9d70d9d5e9147ce1365d8e5"
+    },
+    {
+      "caseId": "restart-short",
+      "sha256": "94da11bd004fb2e804b07c6847d5c680a0b8f19b50f729556ae9ed1e2a4e471c"
+    }
+  ]
+}
