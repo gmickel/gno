@@ -173,6 +173,7 @@ import {
   listEgressAuditReceipts as listStoredEgressAuditReceipts,
   purgeEgressAuditReceipts as purgeStoredEgressAuditReceipts,
 } from "./egress-audit-store";
+import { buildEligibleDocumentQuery } from "./eligibility";
 import {
   advanceFileRefactorReceipt as advanceStoredFileRefactorReceipt,
   createFileRefactorPreparedReceipt as createStoredFileRefactorPreparedReceipt,
@@ -2654,67 +2655,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         return err("INVALID_INPUT", builtQuery.error);
       }
 
-      // Build tag filter conditions using EXISTS subqueries
-      const tagConditions: string[] = [];
-      const params: (string | number)[] = [];
-
-      // tagsAny: document has at least one of these tags
-      if (options.tagsAny && options.tagsAny.length > 0) {
-        const placeholders = options.tagsAny.map(() => "?").join(",");
-        tagConditions.push(
-          `EXISTS (SELECT 1 FROM doc_tags dt WHERE dt.document_id = d.id AND dt.tag IN (${placeholders}))`
-        );
-        params.push(...options.tagsAny);
-      }
-
-      // tagsAll: document has all of these tags
-      if (options.tagsAll && options.tagsAll.length > 0) {
-        for (const tag of options.tagsAll) {
-          tagConditions.push(
-            "EXISTS (SELECT 1 FROM doc_tags dt WHERE dt.document_id = d.id AND dt.tag = ?)"
-          );
-          params.push(tag);
-        }
-      }
-
-      if (options.since) {
-        tagConditions.push("d.source_mtime >= ?");
-        params.push(options.since);
-      }
-      if (options.until) {
-        tagConditions.push("d.source_mtime <= ?");
-        params.push(options.until);
-      }
-      if (options.categories && options.categories.length > 0) {
-        const placeholders = options.categories.map(() => "?").join(",");
-        tagConditions.push(
-          `(d.content_type IN (${placeholders}) OR EXISTS (SELECT 1 FROM json_each(COALESCE(d.categories, '[]')) jc WHERE jc.value IN (${placeholders})))`
-        );
-        params.push(...options.categories, ...options.categories);
-      }
-      if (options.author) {
-        tagConditions.push("LOWER(COALESCE(d.author, '')) LIKE ?");
-        params.push(`%${options.author.toLowerCase()}%`);
-      }
-
-      // Scope and supersession filters run inside the candidate subquery so
-      // they narrow the corpus before the FTS LIMIT (never a post-filter).
-      const innerConditions: string[] = [];
-      const innerParams: string[] = [];
-      if (options.memoryScopesAny && options.memoryScopesAny.length > 0) {
-        const placeholders = options.memoryScopesAny.map(() => "?").join(",");
-        innerConditions.push(
-          `AND EXISTS (SELECT 1 FROM doc_memory_scopes ms WHERE ms.document_id = documents.id AND ms.scope IN (${placeholders}))`
-        );
-        innerParams.push(...options.memoryScopesAny);
-      }
-      if (options.excludeSuperseded) {
-        innerConditions.push(SUPERSEDED_EXCLUSION_SQL("documents.id"));
-      }
-
-      const hasOuterFilters = tagConditions.length > 0;
-      const ftsLimit = hasOuterFilters ? limit * 10 : limit;
-      params.push(limit);
+      const eligible = buildEligibleDocumentQuery(options, db);
 
       // Document-level FTS search using an FTS-first CTE to keep collection and
       // metadata filters from degrading the query plan into a broad scan.
@@ -2732,15 +2673,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           FROM documents_fts
           WHERE documents_fts MATCH ?
           AND rowid IN (
-            SELECT id FROM documents
-            WHERE active = 1
-            ${options.collection ? "AND collection = ?" : ""}
-            ${
-              options.relPathPrefix !== undefined
-                ? "AND (COALESCE(NULLIF(record_source_path, ''), rel_path) = ? OR substr(COALESCE(NULLIF(record_source_path, ''), rel_path), 1, length(?) + 1) = ? || '/')"
-                : ""
-            }
-            ${innerConditions.join("\n            ")}
+            SELECT id FROM (${eligible.sql})
           )
           ORDER BY score
           LIMIT ?
@@ -2775,7 +2708,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         FROM fts_matches fm
         JOIN documents d ON d.id = fm.rowid AND d.active = 1
         WHERE 1 = 1
-        ${tagConditions.length > 0 ? `AND ${tagConditions.join(" AND ")}` : ""}
         ORDER BY fm.score
         LIMIT ?
       `;
@@ -2809,20 +2741,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         record_adapter_fingerprint: string | null;
       }
 
-      const queryParams = [
-        builtQuery.query,
-        ...(options.collection ? [options.collection] : []),
-        ...(options.relPathPrefix !== undefined
-          ? [
-              options.relPathPrefix,
-              options.relPathPrefix,
-              options.relPathPrefix,
-            ]
-          : []),
-        ...innerParams,
-        ftsLimit,
-        ...params,
-      ];
+      const queryParams = [builtQuery.query, ...eligible.params, limit, limit];
       const rows = db
         .query<FtsRow, (string | number)[]>(sql)
         .all(...queryParams);

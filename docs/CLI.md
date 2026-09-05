@@ -243,6 +243,8 @@ printf '%s' "auth" | gno search --query-file - --json
 - hyphenated technical terms like `real-time`, `gpt-4`, and `DEC-0054` are handled intentionally
 - malformed lexical syntax returns a validation error instead of leaking raw SQLite FTS errors
 
+Keyword retrieval applies collection/path scope, caller allowlists, tags, modified-date bounds, category and author filters, managed-memory visibility, and whole-document exclusions before its ranked candidate limit. Higher-ranked ineligible documents cannot consume that window; fewer eligible matches still produce a short result. Existing BM25 weights, query syntax, recency/project-affinity reranking and minimum-score behavior are unchanged.
+
 **Recency intent sorting**: Queries containing `latest`, `newest`, or `recent` are ordered newest-first using frontmatter date when present, falling back to file modified time.
 
 Options:

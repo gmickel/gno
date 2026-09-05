@@ -1330,6 +1330,8 @@ gno search "contract" --json | jq '.[] | .uri'
 
 ---
 
+Keyword retrieval applies collection/path scope, caller allowlists, tags, modified-date bounds, category and author filters, managed-memory visibility, and whole-document exclusions before its ranked candidate limit. Higher-ranked ineligible documents cannot consume that window; fewer eligible matches still produce a short result. Existing BM25 weights, query syntax, recency/project-affinity reranking and minimum-score behavior are unchanged.
+
 ### gno vsearch
 
 Vector semantic search over indexed documents.

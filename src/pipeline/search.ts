@@ -202,6 +202,8 @@ export async function searchBm25(
   const ftsResult = await store.searchFts(query, {
     limit: retrievalLimit,
     collection: options.collection,
+    allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
+    exclude: options.exclude,
     relPathPrefix: options.retrievalScope?.relPathPrefix,
     language: options.lang,
     snippet: !(options.full || options.lineNumbers),
