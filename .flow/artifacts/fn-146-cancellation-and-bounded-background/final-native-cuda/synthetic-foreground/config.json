@@ -1,0 +1,47 @@
+{
+  "version": "1.0",
+  "ftsTokenizer": "unicode61",
+  "busyTimeoutMs": 60000,
+  "collections": [
+    {
+      "name": "probe",
+      "path": "/home/gordon/.cache/agent-tmp/gno-fn144-packed-surfaces-98252a9c/ask29/corpus/probe",
+      "pattern": "**/*.md",
+      "include": [],
+      "exclude": []
+    }
+  ],
+  "contexts": [],
+  "contentTypes": [],
+  "models": {
+    "activePreset": "qa-pinned",
+    "presets": [
+      {
+        "id": "qa-pinned",
+        "name": "Cached slim-tuned equivalent",
+        "embed": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "rerank": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "expand": "file:/home/gordon/.cache/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "gen": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf"
+      }
+    ],
+    "loadTimeout": 60000,
+    "inferenceTimeout": 30000,
+    "expandContextSize": 2048,
+    "warmModelTtl": 300000
+  },
+  "retrievalTraces": {
+    "enabled": true,
+    "redactionMode": "metadata",
+    "retention": {
+      "maxAgeDays": 30,
+      "maxTraces": 1000,
+      "maxRecordsPerTrace": 10000,
+      "maxBytes": 16777216
+    }
+  },
+  "projectAffinity": {
+    "enabled": true,
+    "contribution": 0.03
+  }
+}

@@ -1,0 +1,7 @@
+installed
+begun
+overlap
+source-read
+finished
+restored
+{"status":"CPU_PASS","native":false,"root":"/home/gordon/.cache/agent-tmp/fn1465-scope-preflight-ZKeo4Y","originalOverlapReproduced":true,"oneScopeOutsideRequestWrapper":true,"exactStdoutStderr":true}

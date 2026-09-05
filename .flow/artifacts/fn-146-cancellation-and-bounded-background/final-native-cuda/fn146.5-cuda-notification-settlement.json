@@ -1,0 +1,60 @@
+{
+  "source": "/home/gordon/.cache/agent-tmp/fn1465-surfaces-1788594094769/launch-1",
+  "selectedPretriggerStage": "embed21 ended2ms before notification; original negative retention preserved",
+  "actualSignalObserver": {
+    "at": 1788594106208,
+    "parentPid": 2191269,
+    "value": {
+      "kind": "signal-abort",
+      "marker": "mcp-notification",
+      "owner": {
+        "atMonotonicMs": 10252.216086,
+        "pid": 2191383,
+        "generation": 1,
+        "ownerPresent": true,
+        "busy": true,
+        "retiring": false,
+        "quarantined": false,
+        "externalWaiters": 0,
+        "pending": [
+          {
+            "requestId": 22,
+            "op": "rerank",
+            "generation": 1,
+            "ownsNative": true,
+            "phase": "native-active"
+          }
+        ]
+      }
+    }
+  },
+  "actualChildEnd": {
+    "pid": 2191383,
+    "at": 1788594106376,
+    "event": {
+      "kind": "request-end",
+      "request": {
+        "version": 1,
+        "generation": 1,
+        "requestId": 22,
+        "modelId": "rerank:file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "op": "rerank",
+        "query": "Who owns the meadow migration?",
+        "documents": [
+          "# Synthetic benchmark 0\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 0\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 0\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 0\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 0\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 0\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 0\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 0\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 0\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 0\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n",
+          "# Synthetic benchmark 26\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 26\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 26\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 26\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 26\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 26\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 26\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 26\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 26\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 26\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n",
+          "# Synthetic benchmark 29\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 29\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 29\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 29\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 29\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 29\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 29\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 29\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 29\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 29\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n",
+          "# Synthetic benchmark 22\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 22\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 22\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 22\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 22\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 22\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 22\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 22\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 22\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 22\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n",
+          "# Synthetic benchmark 27\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 27\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 27\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 27\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 27\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 27\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 27\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 27\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 27\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 27\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n",
+          "# Synthetic benchmark 28\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 28\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 28\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 28\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 28\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 28\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 28\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 28\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 28\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n# Synthetic benchmark 28\n\nAmber platypus performance calibration. The orchid team owns the meadow migration.\n"
+        ]
+      }
+    }
+  },
+  "signalToSameRequestNativeEndMs": 168,
+  "identityMatch": {
+    "pid": 2191383,
+    "generation": 1,
+    "requestId": 22
+  }
+}

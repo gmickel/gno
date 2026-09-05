@@ -1,0 +1,38 @@
+{
+  "baselineSourceArchive": "/tmp/gno-native-baseline-20260905-gmyi58ts/source.tar",
+  "baselineSourceArchiveSha256": "ca991b29e0e23451290b82f8999fbca8725f20e4ac684e2acbc09ead9fd86d73",
+  "originalInitSha256": "d35563c654fadd9d7f221dafd48b753f1e384e46252bb313567df42b5190f746",
+  "originalManifestSha256": "180287cd61f077907743c1560940d8dd471413fdc017eb5207b1da2655825e07",
+  "configChangedFields": [
+    "collection path relocated identically for both roles"
+  ],
+  "originalCase": {
+    "caseId": "orchid-ownership:orchid-verified",
+    "fixtureSha256": "abd9f124d99afdb109dae88872a675e36be1d9531634ee55e2a6719a106884ff",
+    "surface": "sdk",
+    "preset": "qa-pinned",
+    "configuration": {
+      "operation": "verified-ask",
+      "query": "Who owns the meadow migration?",
+      "options": {
+        "collection": "probe",
+        "limit": 3,
+        "noExpand": true,
+        "noRerank": false,
+        "graph": false
+      },
+      "request": {
+        "query": "Who owns the meadow migration?",
+        "operation": "verified-ask",
+        "options": {
+          "collection": "probe",
+          "limit": 3,
+          "noExpand": true,
+          "noRerank": false,
+          "graph": false
+        },
+        "expectedBackend": "cuda"
+      }
+    }
+  }
+}

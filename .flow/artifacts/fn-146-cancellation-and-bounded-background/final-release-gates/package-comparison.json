@@ -1,0 +1,15 @@
+{
+  "smokeArchiveSha256": "75db15882854390d0730d4406847dbb73b289d5a6b14d0c0cab652f52f338e38",
+  "frozenArchiveSha256": "56587f10c9969a795d6aa527c29fe8a057720a97d9f9e5de335daa996e706655",
+  "filesEach": 909,
+  "all754SourceFilesExact": true,
+  "clipperChunkNames": [
+    "chunk-627emwpj.js",
+    "chunk-wv7h4cab.js"
+  ],
+  "clipperChunkBytesExact": true,
+  "clipperHtmlOnlyChunkReferenceDiffers": true,
+  "clipperZipExactAfterDeclaredFilenameMapping": true,
+  "unmodifiedRawArchivesRetained": true,
+  "interpretation": "Separate builds assign different clipper chunk names to identical bytes. Raw package SHA values remain distinct; no cross-archive byte identity is claimed."
+}

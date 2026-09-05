@@ -1,0 +1,18 @@
+{
+  "status": "INCOMPLETE_HARNESS_FAILURE",
+  "productCommit": "f64c41c97e196e3bffdba23bc1c006bca7489b28",
+  "root": "/home/gordon/.cache/agent-tmp/fn1465-surfaces-1788592064430",
+  "nativeBackendObserved": "cuda",
+  "completedNativeOperations": ["embedding init"],
+  "subsequentNativeDispatchBlockedBy": "Scratch preload called capture.begin repeatedly without finish; canonical Overlapping native capture scope guard",
+  "publicObservations": {"idleQueryResults": 0, "idleAskHttp": 500, "idleAskError": "No in-scope evidence was available for the Context Capsule"},
+  "driverExit": 1,
+  "elapsedSeconds": 4.256052157143131,
+  "nativeAcceptance": false,
+  "ownedPidsAbsent": [1936127,1936144,1936257,1936339,1936813],
+  "stdoutLimit": "v1 Bun.write(stream) persisted object string; exact native sidecars and HTTP responses retained",
+  "originalDriverBytes": "driver-revision/receipt.json within raw root; both hashes match immutable config",
+  "correctionProof": "notes/fn146.5-scope-v2-preflight.log",
+  "nextConfig": "notes/fn146.5-final-v2-run-config.json",
+  "nextRun": "not started; host CPU gate window"
+}

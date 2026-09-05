@@ -20,6 +20,8 @@ The initial full gate failed three tests. Two registration-only MCP fakes lacked
 
 The verified npm distribution contains 909 files, including all 754 source files from f64. Archive SHA256 is `56587f10c9969a795d6aa527c29fe8a057720a97d9f9e5de335daa996e706655`. The package report records clipper prepack, fresh production SPA and source/archive verification. Package smoke separately exercised its own packed artifact. Version 2.0.0 and the changelog are prepared; no tag, merge or publication occurred.
 
+The independently built smoke archive has SHA256 `75db15882854390d0730d4406847dbb73b289d5a6b14d0c0cab652f52f338e38`. All 754 source files match. Its clipper JavaScript chunk has identical bytes under a different generated filename; only that filename, its HTML reference and the corresponding clipper ZIP/checksum differ. `package-comparison.json` records the exact comparison. Both raw archives remain distinct.
+
 The winning GNO skill passed all 47 unchanged command-generation checks in a fresh GPT-6-Astra medium run. Its earlier 46/47 result remains in the sibling skill artifacts. All 15 canonical skill assets were installed and byte-verified in five user harness directories after backups. `verification.json` records those comparisons.
 
 `SHA256SUMS.json` maps retained log/report bytes and losslessly compressed source bytes. Physical CUDA/Metal lifecycle reports remain separate evidence. The physical Metal auto-versus-sized allocation comparison for fn145 R3 is blocked and is not cleared by these gates.

@@ -1,0 +1,1167 @@
+{
+  "source": "/home/gordon/.cache/agent-tmp/fn1465-surfaces-1788594094769",
+  "nativeEvidence": "Actual child request-start and validated canonical child receipts; foreground class observed on parent pending transitions, not inferred from timing alone",
+  "comparisons": {
+    "query": {
+      "actualNativePayloadExact": false,
+      "actualModelInputsOutputsExact": true,
+      "selectedModelPinsValid": true,
+      "complete": true,
+      "roleCounts": {
+        "idle": [
+          "embed",
+          "rerank"
+        ],
+        "background": [
+          "embed",
+          "rerank"
+        ]
+      }
+    },
+    "ask": {
+      "actualNativePayloadExact": false,
+      "actualModelInputsOutputsExact": true,
+      "selectedModelPinsValid": true,
+      "complete": true,
+      "roleCounts": {
+        "idle": [
+          "embed",
+          "rerank",
+          "generate",
+          "generate"
+        ],
+        "background": [
+          "embed",
+          "rerank",
+          "generate",
+          "generate"
+        ]
+      }
+    }
+  },
+  "backgroundBatches": [
+    {
+      "identity": [
+        2191383,
+        1,
+        38
+      ],
+      "background": true,
+      "chunks": 2,
+      "receipt": "/home/gordon/.cache/agent-tmp/fn1465-surfaces-1788594094769/launch-1/capture/native-t3mEBe/2191383-38.json"
+    },
+    {
+      "identity": [
+        2191383,
+        1,
+        40
+      ],
+      "background": true,
+      "chunks": 32,
+      "receipt": "/home/gordon/.cache/agent-tmp/fn1465-surfaces-1788594094769/launch-1/capture/native-t3mEBe/2191383-40.json"
+    },
+    {
+      "identity": [
+        2191383,
+        1,
+        42
+      ],
+      "background": true,
+      "chunks": 30,
+      "receipt": "/home/gordon/.cache/agent-tmp/fn1465-surfaces-1788594094769/launch-1/capture/native-t3mEBe/2191383-42.json"
+    },
+    {
+      "identity": [
+        2191383,
+        1,
+        47
+      ],
+      "background": true,
+      "chunks": 32,
+      "receipt": "/home/gordon/.cache/agent-tmp/fn1465-surfaces-1788594094769/launch-1/capture/native-t3mEBe/2191383-47.json"
+    },
+    {
+      "identity": [
+        2191383,
+        1,
+        48
+      ],
+      "background": true,
+      "chunks": 32,
+      "receipt": "/home/gordon/.cache/agent-tmp/fn1465-surfaces-1788594094769/launch-1/capture/native-t3mEBe/2191383-48.json"
+    },
+    {
+      "identity": [
+        2191383,
+        1,
+        49
+      ],
+      "background": true,
+      "chunks": 30,
+      "receipt": "/home/gordon/.cache/agent-tmp/fn1465-surfaces-1788594094769/launch-1/capture/native-t3mEBe/2191383-49.json"
+    }
+  ],
+  "batchCap32": true,
+  "dispatches": [
+    {
+      "at": 1788594096397,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 1,
+            "op": "init",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594098404,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 2,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594098447,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 3,
+            "op": "rerank",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594099905,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 4,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594099922,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 5,
+            "op": "rerank",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594100108,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 6,
+            "op": "generate",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594103250,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 7,
+            "op": "generate",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594103942,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 8,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594103958,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 9,
+            "op": "rerank",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594104126,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 11,
+            "op": "generate",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594104914,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 12,
+            "op": "generate",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594105268,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 13,
+            "op": "init",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594105279,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 14,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594105296,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 15,
+            "op": "rerank",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594105462,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 16,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594105483,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 17,
+            "op": "rerank",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594105666,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 18,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594105688,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 19,
+            "op": "rerank",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106163,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 20,
+            "op": "init",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106179,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 21,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106206,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 22,
+            "op": "rerank",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106388,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 23,
+            "op": "dispose",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          },
+          {
+            "requestId": 24,
+            "op": "dispose",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          },
+          {
+            "requestId": 25,
+            "op": "dispose",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          },
+          {
+            "requestId": 26,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106405,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 24,
+            "op": "dispose",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          },
+          {
+            "requestId": 25,
+            "op": "dispose",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          },
+          {
+            "requestId": 26,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106416,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 25,
+            "op": "dispose",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          },
+          {
+            "requestId": 26,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106431,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 26,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106465,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 27,
+            "op": "rerank",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106895,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 28,
+            "op": "init",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106910,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 29,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106935,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 30,
+            "op": "rerank",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106958,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 31,
+            "op": "dispose",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          },
+          {
+            "requestId": 32,
+            "op": "dispose",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          },
+          {
+            "requestId": 33,
+            "op": "dispose",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          },
+          {
+            "requestId": 34,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594106976,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 32,
+            "op": "dispose",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          },
+          {
+            "requestId": 33,
+            "op": "dispose",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          },
+          {
+            "requestId": 34,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594107021,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 33,
+            "op": "dispose",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          },
+          {
+            "requestId": 34,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594107031,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 34,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594107065,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 35,
+            "op": "rerank",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594107431,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 36,
+            "op": "init",
+            "background": true,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594107448,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 37,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594107479,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 1,
+        "pending": [
+          {
+            "requestId": 38,
+            "op": "embedBatch",
+            "background": true,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": 2,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594107526,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 39,
+            "op": "rerank",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594107681,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 1,
+        "pending": [
+          {
+            "requestId": 40,
+            "op": "embedBatch",
+            "background": true,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": 32,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594108014,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 41,
+            "op": "embed",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594108091,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 1,
+        "pending": [
+          {
+            "requestId": 42,
+            "op": "embedBatch",
+            "background": true,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": 30,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594108364,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 43,
+            "op": "rerank",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594108523,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 1,
+        "pending": [
+          {
+            "requestId": 44,
+            "op": "dispose",
+            "background": true,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594108648,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 1,
+        "pending": [
+          {
+            "requestId": 45,
+            "op": "generate",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594109483,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 1,
+        "pending": [
+          {
+            "requestId": 46,
+            "op": "generate",
+            "background": false,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594110643,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 1,
+        "pending": [
+          {
+            "requestId": 47,
+            "op": "embedBatch",
+            "background": true,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": 32,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594111467,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 48,
+            "op": "embedBatch",
+            "background": true,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": 32,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594111760,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 49,
+            "op": "embedBatch",
+            "background": true,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": 30,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594112091,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 50,
+            "op": "init",
+            "background": true,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 1788594112176,
+      "owner": {
+        "generation": 1,
+        "busy": false,
+        "foregroundCompletions": 0,
+        "pending": [
+          {
+            "requestId": 51,
+            "op": "dispose",
+            "background": true,
+            "ownsNative": false,
+            "phase": "queued",
+            "batchChunks": null,
+            "earnsForegroundCredit": false
+          }
+        ]
+      }
+    }
+  ],
+  "eightCompletionFairness": "Unexercised unless an actual pending background request survives eight foreground completions; this one foreground query+Ask pair does not establish that condition.",
+  "projections": "Request IDs, PID and public times correlate receipts. actualNativePayloadExact also compares accumulated model-load inventories and is false because cold/warm load inventories differ. actualModelInputsOutputsExact compares every unmodified actual model input/output/backend/error plus operation/modelId. Full model-load inventories and context events remain retained, not harmonized or dropped."
+}

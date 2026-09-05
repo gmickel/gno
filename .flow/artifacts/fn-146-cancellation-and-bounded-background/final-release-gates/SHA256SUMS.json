@@ -148,5 +148,10 @@
     "sha256": "9314a2e17102a1cb91c60e2981db58e22f0a1162b806e0891d3429e53928408e",
     "sourceSha256": "9314a2e17102a1cb91c60e2981db58e22f0a1162b806e0891d3429e53928408e",
     "sourceBytes": 5318
+  },
+  "package-comparison.json": {
+    "sha256": "d13d9418819f2beb00a25853a2bcf3f867612db2c0e70b68155c244bf2c3bc17",
+    "sourceSha256": "d13d9418819f2beb00a25853a2bcf3f867612db2c0e70b68155c244bf2c3bc17",
+    "sourceBytes": 678
   }
 }
