@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-05
+
 ### Added
 
 - SDK inference cancellation through `signal` and absolute `deadlineAt`
@@ -21,7 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   foreground native dispatches take priority with bounded background fairness.
   Failed chunks remain resumable, and model-specific leases let idle generation
   and reranking weights expire while embedding continues.
-
 - Local GGUF inference runs in an owned persistent Bun child. Warm requests
   reuse the child; idle native allocation can be reclaimed and loaded again on
   the next request. Child failures return structured errors without replaying
@@ -45,7 +46,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Resident shutdown shares one drain, cancellation and owned-child-exit budget across requests and background work. Suspended writes roll back before store close; incomplete jobs stay failed and embedding backlog resumes on restart. Detached stop allows the resident cleanup budget to finish.
+- Resident shutdown shares one drain, cancellation and owned-child-exit budget
+  across requests and background work. Suspended writes roll back before store
+  close; incomplete jobs stay failed and embedding backlog resumes on restart.
+  Detached stop allows the resident cleanup budget to finish.
+- Agent skill guidance uses `status` for chunk totals and index health, and
+  `peek` for cheap document/collection counts and runtime snapshots.
 - Native model disposal waits for in-flight context-budget estimates, avoiding
   disposal while those estimates still read the model's native allocation.
 - Restoring unchanged source bytes at the same path reactivates the document,
@@ -2647,7 +2653,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v1.46.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/gmickel/gno/compare/v1.46.0...v2.0.0
 [1.46.0]: https://github.com/gmickel/gno/compare/v1.45.1...v1.46.0
 [1.45.1]: https://github.com/gmickel/gno/compare/v1.45.0...v1.45.1
 [1.45.0]: https://github.com/gmickel/gno/compare/v1.44.0...v1.45.0

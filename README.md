@@ -117,7 +117,7 @@ gno daemon --detach  # headless indexing + resident MCP gateway
 
 <!-- public-truth:current-version -->
 
-> Current release: **v1.46.0**. See [CHANGELOG.md](./CHANGELOG.md).
+> Current release: **v2.0.0**. See [CHANGELOG.md](./CHANGELOG.md).
 
 <!-- /public-truth -->
 
