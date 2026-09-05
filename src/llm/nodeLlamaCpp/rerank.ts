@@ -8,6 +8,7 @@ import type { LlmResult, RerankPort, RerankScore } from "../types";
 import type { ModelManager } from "./lifecycle";
 
 import { inferenceFailedError } from "../errors";
+import { getRerankCapacity } from "./rerank-capacity";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -28,6 +29,15 @@ export class NodeLlamaCppRerank implements RerankPort {
   readonly modelUri: string;
   private readonly modelPath: string;
 
+  private context: Awaited<
+    ReturnType<LlamaModel["createRankingContext"]>
+  > | null = null;
+  private contextModel: LlamaModel | null = null;
+  private contextSize: number | undefined;
+  private contextConfiguration: string | undefined;
+  private pending: Promise<void> = Promise.resolve();
+  private disposed = false;
+
   constructor(manager: ModelManager, modelUri: string, modelPath: string) {
     this.manager = manager;
     this.modelUri = modelUri;
@@ -42,35 +52,87 @@ export class NodeLlamaCppRerank implements RerankPort {
       return { ok: true, value: [] };
     }
 
-    const model = await this.manager.loadModel(
-      this.modelPath,
-      this.modelUri,
-      "rerank"
+    if (this.disposed) {
+      return {
+        ok: false,
+        error: inferenceFailedError(
+          this.modelUri,
+          new Error("Rerank port is disposed")
+        ),
+      };
+    }
+    // Snapshot caller-owned input before waiting for a different capacity batch.
+    const input = [...documents];
+    const operation = this.pending.then(() => this.score(query, input));
+    this.pending = operation.then(
+      () => {},
+      () => {}
     );
-    if (!model.ok) {
-      return model;
-    }
+    return operation;
+  }
 
-    // Build index map for O(1) lookups (handles duplicates correctly)
-    const indexMap = new Map<string, number[]>();
-    for (let i = 0; i < documents.length; i += 1) {
-      const doc = documents[i] as string; // Guaranteed by loop bounds
-      const indices = indexMap.get(doc) ?? [];
-      indices.push(i);
-      indexMap.set(doc, indices);
-    }
-
-    const llamaModel = model.value.model as LlamaModel;
-    const context = await llamaModel.createRankingContext();
-
+  private async score(
+    query: string,
+    documents: string[]
+  ): Promise<LlmResult<RerankScore[]>> {
+    const lease = this.manager.acquireLease();
     try {
-      const ranked = await context.rankAndSort(query, documents);
+      const model = await this.manager.loadModel(
+        this.modelPath,
+        this.modelUri,
+        "rerank"
+      );
+      if (!model.ok) return model;
+      const llamaModel = model.value.model as LlamaModel;
+      if (llamaModel.disposed) throw new Error("Rerank model is disposed");
+      const capacity = getRerankCapacity(llamaModel, query, documents);
+      const contextSize =
+        capacity.kind === "sized" ? capacity.contextSize : undefined;
+      const configuration = JSON.stringify([
+        llamaModel.fileInfo.metadata.general?.architecture,
+        llamaModel.fileInfo.metadata.tokenizer?.["chat_template.rerank"],
+        llamaModel.vocabularyType,
+        llamaModel.trainContextSize,
+      ]);
+      if (
+        this.contextConfiguration !== configuration ||
+        this.contextModel !== llamaModel ||
+        this.contextSize !== contextSize ||
+        this.context?.disposed
+      ) {
+        await this.releaseContext();
+      }
+      if (!this.context) {
+        this.context = await llamaModel.createRankingContext(
+          contextSize === undefined ? {} : { contextSize }
+        );
+        this.contextModel = llamaModel;
+        this.contextSize = contextSize;
+        this.contextConfiguration = configuration;
+      }
+      if (this.context.disposed || llamaModel.disposed)
+        throw new Error("Rerank context is disposed");
+      // Build index map for O(1) lookups (handles duplicates correctly)
+      const indexMap = new Map<string, number[]>();
+      for (let i = 0; i < documents.length; i += 1) {
+        const doc = documents[i] as string; // Guaranteed by loop bounds
+        const indices = indexMap.get(doc) ?? [];
+        indices.push(i);
+        indexMap.set(doc, indices);
+      }
+
+      const ranked = await this.context.rankAndSort(query, documents);
+      if (ranked.length !== documents.length)
+        throw new Error("Rerank returned incomplete scores");
 
       // Convert to RerankScore format with O(1) index lookup
       const scores: RerankScore[] = ranked.map((item, rank) => {
         const indices = indexMap.get(item.document) ?? [];
         // Shift to handle duplicates (each duplicate gets next index)
-        const index = indices.shift() ?? -1;
+        const index = indices.shift();
+        if (index === undefined || !Number.isFinite(item.score)) {
+          throw new Error("Rerank returned invalid candidate scores");
+        }
         return {
           index,
           score: item.score,
@@ -80,16 +142,34 @@ export class NodeLlamaCppRerank implements RerankPort {
 
       return { ok: true, value: scores };
     } catch (e) {
+      await this.releaseContext();
       return { ok: false, error: inferenceFailedError(this.modelUri, e) };
     } finally {
+      lease.release();
+    }
+  }
+
+  private async releaseContext(): Promise<void> {
+    const context = this.context;
+    this.context = null;
+    this.contextModel = null;
+    this.contextSize = undefined;
+    this.contextConfiguration = undefined;
+    if (context && !context.disposed) {
       await context.dispose().catch(() => {
-        // Ignore disposal errors
+        // A failed native context must never be reused.
       });
     }
   }
 
   async dispose(): Promise<void> {
-    // Rerank doesn't hold persistent context
-    // Model cleanup is handled by ModelManager
+    this.disposed = true;
+    await this.pending;
+    const lease = this.manager.acquireLease();
+    try {
+      await this.releaseContext();
+    } finally {
+      lease.release();
+    }
   }
 }

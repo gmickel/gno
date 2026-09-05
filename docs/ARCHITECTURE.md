@@ -293,13 +293,27 @@ Multiple source files with identical canonical content share the same chunks and
 
 All models run locally via node-llama-cpp:
 
-| Model  | Purpose                    | Default                              |
-| ------ | -------------------------- | ------------------------------------ |
-| Embed  | Generate vector embeddings | Qwen3-Embedding-0.6B-Q8              |
-| Rerank | Cross-encoder scoring      | Qwen3-Reranker-0.6B-Q8 (32K context) |
-| Gen    | Answer generation          | Qwen3-1.7B-Q4                        |
+| Model  | Purpose                    | Default                 |
+| ------ | -------------------------- | ----------------------- |
+| Embed  | Generate vector embeddings | Qwen3-Embedding-0.6B-Q8 |
+| Rerank | Cross-encoder scoring      | Qwen3-Reranker-0.6B-Q8  |
+| Gen    | Answer generation          | Qwen3-1.7B-Q4           |
 
 Models are GGUF-quantized for efficiency. First use triggers automatic download.
+
+The native rerank port retains one ranking context for its loaded model generation,
+formatter configuration and token-capacity bucket. Batches execute serially within
+the port; resizing both upward and downward happens after active scoring finishes.
+A model lease protects loading, context replacement and scoring from idle expiry.
+Expired model generations and failed contexts are never reused; port disposal drains
+accepted batches before releasing the retained context.
+
+The pinned native formatter counts complete prepared pairs, adds the audited
+256-token margin and rounds to a 256-token bucket within the model limit. Unknown
+formatters or unproven padded boundaries use native automatic sizing. Neither path
+clips inputs to fit; capacity and incomplete-scoring failures return the existing
+inference error, allowing retrieval to fall back to fusion. This policy does not
+promise a fixed memory reduction or latency gain across devices.
 
 ### Search Modes
 

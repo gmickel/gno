@@ -404,6 +404,17 @@ Chunk text loading is batched (`getChunksBatch`) to avoid per-document N+1 looku
 
 **Why chunk-level?** Full-document reranking (128K chars) is 25× slower than chunk-level (4K chars). Testing shows chunk-level achieves similar quality at ~2s vs ~10s for the same query.
 
+**Native context capacity:** For the pinned Qwen3 reranker formatter, GNO counts
+complete formatted query/document pairs and sizes the context for the largest
+pair, with native padding and capacity rounding. It reuses a compatible context
+and replaces it between batches when inputs need a larger or smaller capacity.
+This adds no clipping to the existing best-chunk preparation and preserves
+candidate counts, duplicate mappings, scores and tie order. Empty batches load
+nothing. Unknown formatter contracts use native automatic sizing; inputs that
+exceed supported capacity fail reranking explicitly and use the existing
+fusion-only fallback. Context creation and scoring can cost more after a resize
+or model reload; allocation and latency gains depend on the workload and device.
+
 ### Position-Aware Blending
 
 We don't just replace fusion scores with rerank scores. We blend them based on position:
