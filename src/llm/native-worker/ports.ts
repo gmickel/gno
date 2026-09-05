@@ -25,7 +25,7 @@ const scores = z.array(
 );
 const metadata = z.object({
   dimensions: z.number().int().positive(),
-  embeddingIdentity: EmbeddingIdentitySchema.optional(),
+  embeddingIdentity: EmbeddingIdentitySchema,
 });
 
 function decode<T>(
@@ -62,59 +62,148 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
   private dims: number | undefined;
   private generation = 0;
   private identity?: EmbeddingIdentity;
+  private initializing?: Promise<LlmResult<void>>;
+  private version = 0;
+  private disposing = false;
 
   async init(): Promise<LlmResult<void>> {
+    return this.withIdentity(async () => ({ ok: true, value: undefined }));
+  }
+
+  private async loadIdentity(version: number): Promise<LlmResult<void>> {
     const result = decode(
       await this.client.request({ op: "init", modelId: this.modelId }),
       metadata
     );
     if (!result.ok) return result;
+    if (
+      version !== this.version ||
+      this.disposing ||
+      this.client.processId === undefined
+    )
+      return {
+        ok: false,
+        error: new NativeWorkerError("stale_generation").detail,
+      };
     this.dims = result.value.dimensions;
     this.identity = result.value.embeddingIdentity;
     this.generation = this.client.currentGeneration;
     return { ok: true, value: undefined };
   }
 
-  private acceptDimensions(length: number): boolean {
-    if (this.generation !== this.client.currentGeneration) {
-      this.dims = undefined;
-      this.identity = undefined;
+  private async ensureIdentity(): Promise<LlmResult<void>> {
+    if (this.getIdentity()) return { ok: true, value: undefined };
+    if (this.initializing) return this.initializing;
+    this.identity = undefined;
+    this.dims = undefined;
+    const pending = this.loadIdentity(this.version);
+    this.initializing = pending;
+    try {
+      return await pending;
+    } finally {
+      if (this.initializing === pending) this.initializing = undefined;
     }
-    this.generation = this.client.currentGeneration;
-    if (this.dims !== undefined && this.dims !== length) return false;
-    this.dims = length;
-    return true;
+  }
+
+  private async withIdentity<T>(
+    operation: (generation: number) => Promise<LlmResult<T>>
+  ): Promise<LlmResult<T>> {
+    let lease: { release(): void } | undefined;
+    const version = this.version;
+    try {
+      lease = this.client.acquireLease();
+      if (this.disposing)
+        return {
+          ok: false,
+          error: new NativeWorkerError("stale_generation").detail,
+        };
+      const initialized = await this.ensureIdentity();
+      if (!initialized.ok) return initialized;
+      if (version !== this.version || this.disposing)
+        return {
+          ok: false,
+          error: new NativeWorkerError("stale_generation").detail,
+        };
+      const generation = this.generation;
+      const identity = this.identity;
+      const result = await operation(generation);
+      if (!result.ok) {
+        this.identity = undefined;
+        return result;
+      }
+      if (
+        version !== this.version ||
+        generation !== this.client.currentGeneration ||
+        this.client.processId === undefined
+      ) {
+        this.identity = undefined;
+        return {
+          ok: false,
+          error: new NativeWorkerError("stale_generation").detail,
+        };
+      }
+      this.identity = identity;
+      return result;
+    } catch (cause) {
+      this.identity = undefined;
+      return {
+        ok: false,
+        error: (cause instanceof NativeWorkerError
+          ? cause
+          : new NativeWorkerError("exited")
+        ).detail,
+      };
+    } finally {
+      lease?.release();
+    }
+  }
+
+  private acceptDimensions(length: number): boolean {
+    return (
+      this.generation === this.client.currentGeneration && this.dims === length
+    );
   }
 
   async embed(text: string): Promise<LlmResult<number[]>> {
-    const result = decode(
-      await this.client.request({ op: "embed", modelId: this.modelId, text }),
-      vector
-    );
-    if (result.ok && !this.acceptDimensions(result.value.length)) {
-      await this.client.disposeModel(this.modelUri);
-      return { ok: false, error: new NativeWorkerError("protocol").detail };
-    }
-    return result;
+    return this.withIdentity(async (generation) => {
+      const result = decode(
+        await this.client.request(
+          { op: "embed", modelId: this.modelId, text },
+          generation
+        ),
+        vector
+      );
+      if (result.ok && !this.acceptDimensions(result.value.length)) {
+        await this.client.disposeModel(this.modelUri);
+        return { ok: false, error: new NativeWorkerError("protocol").detail };
+      }
+      return result;
+    });
   }
 
   async embedBatch(texts: string[]): Promise<LlmResult<number[][]>> {
-    const result = decode(
-      await this.client.request({
-        op: "embedBatch",
-        modelId: this.modelId,
-        texts,
-      }),
-      z.array(vector).length(texts.length)
-    );
-    if (
-      result.ok &&
-      result.value.some((item) => !this.acceptDimensions(item.length))
-    ) {
-      await this.client.disposeModel(this.modelUri);
-      return { ok: false, error: new NativeWorkerError("protocol").detail };
-    }
-    return result;
+    if (!texts.length) return { ok: true, value: [] };
+    return this.withIdentity(async (generation) => {
+      const result = decode(
+        await this.client.request(
+          {
+            op: "embedBatch",
+            modelId: this.modelId,
+            texts,
+          },
+          generation
+        ),
+        z.array(vector).length(texts.length)
+      );
+      if (
+        result.ok &&
+        result.value.some((item) => !this.acceptDimensions(item.length))
+      ) {
+        await this.client.disposeModel(this.modelUri);
+        return { ok: false, error: new NativeWorkerError("protocol").detail };
+      }
+      return result;
+    });
   }
 
   dimensions(): number {
@@ -126,16 +215,24 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
   getIdentity(): EmbeddingIdentity | undefined {
     if (
       this.generation !== this.client.currentGeneration ||
-      this.client.processId === undefined
+      this.client.processId === undefined ||
+      this.disposing
     )
       return;
     return this.identity && { ...this.identity };
   }
 
   override async dispose(): Promise<void> {
+    this.version++;
+    this.disposing = true;
+    this.initializing = undefined;
     this.dims = undefined;
     this.identity = undefined;
-    await super.dispose();
+    try {
+      await super.dispose();
+    } finally {
+      this.disposing = false;
+    }
   }
 }
 

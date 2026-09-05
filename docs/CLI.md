@@ -871,6 +871,27 @@ gno embed --no-wait          # Exit 4 immediately if a writer holds the lease
 If you only want one collection to catch up after a model change, use the
 positional collection argument or `--collection`.
 
+For a model that provides verified runtime identity, backlog and `--dry-run`
+counts refer to current document/chunk owners in that exact model partition.
+Two documents sharing canonical content can need different vectors when their
+titles produce different embedding inputs. `--force` processes all selected
+owners and replaces their matching vectors. Equal inputs within a batch share
+one inference; the reported owner count is not a model-call count.
+
+Both normal and dry-run commands may initialize the cached model to determine
+its actual dimensions, context and truncation policy. A dry run does not embed
+pending inputs. A normal run also repairs missing vector-index materialization
+from stored variants, even when no owner needs another embedding. Repeated
+unchanged runs reuse proven inputs. Providers without verified identity retain
+legacy compatibility only before variant authority has been activated; missing
+identity afterward is an error, not permission to reuse legacy vectors.
+
+A deleted file restored with identical bytes becomes active on the next
+successful `gno update` or `gno index` and produces one `reactivate` change.
+Repeated unchanged syncs do not add restoration events. Same-title duplicates
+and canonical-equivalent whitespace edits preserve unchanged embedding inputs;
+changed titles, text or model identity require matching coverage.
+
 If the active embedding model keeps the same URI but changes formatting/profile
 behavior, `stale` cleanup is not enough because the vectors are still tagged
 with the same model URI. In that case, use either:

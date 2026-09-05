@@ -1052,6 +1052,18 @@ POST /api/sync
 
 Trigger re-indexing of all collections or a specific one.
 
+Successful sync updates graph references affected by changed targets, including
+incoming references from other collections and previously unresolved links.
+Missing, stale, or interrupted graph state triggers a full reconciliation.
+An unchanged sync with current graph state skips graph projection.
+
+An identical file restored at the same path becomes active on its next successful
+sync and emits one `reactivate` change with unchanged source and mirror hashes.
+Another unchanged sync emits no change. Existing exact-input vectors are retained;
+changed titles, content, or model identity require matching embedding coverage for
+the current document owner. Semantic results remain owner-specific even when
+documents share a canonical mirror.
+
 **Note**: After sync completes, embeddings are automatically generated for any new/updated chunks (debounced, runs in background).
 
 **Request Body**:

@@ -713,6 +713,12 @@ The Graph page (`/graph`) provides an interactive visualization of document rela
 - **Similarity**: Toggle similarity edges (requires embeddings)
 - Isolated nodes (no links) are hidden by default
 
+After a successful sync, reopen or refresh the graph to see updated references.
+Changes to a target also update incoming references from other collections,
+including links that previously had no matching target. Missing or interrupted
+graph state is rebuilt during sync; unchanged syncs with current graph state
+skip graph projection.
+
 > **Note**: When filtering by collection, node degrees may reflect links to documents outside the current view (used for importance ranking).
 
 **Visual Indicators**:

@@ -108,7 +108,7 @@ File on disk
     │
     ▼ Hash source content (SHA-256 → sourceHash)
     │
-    ├─[ sourceHash unchanged ]─► Skip (file not modified)
+    ├─[ sourceHash unchanged, active, complete ]─► Skip
     │
     ▼ Converter (MIME detection → Markdown)
     │
@@ -125,6 +125,25 @@ File on disk
     ▼ [Optional] Embed chunks with title context (llama.cpp → vectors)
     │   Format: "title: Doc Title | text: chunk content..."
 ```
+
+Identical source bytes do not suppress restoration of an inactive document.
+Activation and its existing `reactivate` journal entry commit together; failed
+persistence cannot publish a successful transition. Missing files stay inactive,
+and repeated unchanged syncs do not emit additional restoration history.
+
+Chunk persistence reconciles sequence ownership instead of deleting every row
+for a shared mirror. Unchanged chunk text retains its row and valid vectors;
+changed or removed sequences invalidate only their affected ownership. Metadata
+updates preserve the chunk's creation identity. Document title or mirror changes
+invalidate its bindings, while unchanged inactive bindings can survive a restore.
+
+Verified embedding entrypoints select partitions from the initialized runtime's
+actual identity before counting, dry runs, force processing or zero-backlog
+returns. Counts represent document/chunk owners; inference may deduplicate exact
+inputs. Explicit force replaces supplied vectors atomically with owner binding
+and vector-index materialization. Stored variants can repair lost materialization
+without inference. Completeness and durable activation are separate: losing an
+index table does not authorize fallback to legacy vectors after promotion.
 
 ### Search Pipeline
 

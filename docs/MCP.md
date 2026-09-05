@@ -1702,6 +1702,13 @@ Each edge also includes `confidence` (`explicit`, `inferred`,
 `ambiguous`, or `similarity`) and `audit` metadata describing exact matches,
 fallback matches, collision-prone matches, or similarity scores.
 
+Successful sync reconciles references affected by target changes, including
+incoming references from other collections and previously unresolved links.
+Missing, stale, or interrupted graph state falls back to full reconciliation.
+An unchanged sync with current graph state skips projection; graph reads continue
+to use the current index. This also applies to typed graph queries and impact
+analysis.
+
 **Use cases**:
 
 - Explore document relationships programmatically

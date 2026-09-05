@@ -1619,7 +1619,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const db = this.ensureOpen();
       const row = db
         .query<DbDocumentRow, [string]>(
-          "SELECT * FROM documents WHERE docid = ?"
+          "SELECT * FROM documents WHERE docid = ? ORDER BY active DESC, id ASC LIMIT 1"
         )
         .get(docid);
 

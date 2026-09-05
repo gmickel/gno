@@ -175,7 +175,10 @@ export class NativeWorkerClient {
     return operation;
   }
 
-  async request(input: Input): Promise<NativeResponse["result"]> {
+  async request(
+    input: Input,
+    expectedGeneration?: number
+  ): Promise<NativeResponse["result"]> {
     await this.registration;
     if (this.closed)
       return {
@@ -190,6 +193,15 @@ export class NativeWorkerClient {
       };
     if (input.op === "dispose" && !this.owner) return { ok: true, value: null };
     try {
+      // Metadata-dependent inference must never start/replay on a replacement
+      // owner. All asynchronous registration/retirement waits precede this fence.
+      if (
+        expectedGeneration !== undefined &&
+        (!this.owner ||
+          this.owner.retiring ||
+          this.owner.generation !== expectedGeneration)
+      )
+        throw new NativeWorkerError("stale_generation");
       const owner = this.owner ?? this.start();
       const request = parseNativeRequest(
         {

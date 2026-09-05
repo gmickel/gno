@@ -76,13 +76,14 @@ process.on('message', async message => {
  case 'rerank': value = request.documents.map((text, index) => ({index, rank: index + 1, score: text.length / 7})); break;
  case 'dispose': value = null; break;
  }
+ if(request.op==='init' && request.modelId==='metadata-failure') delete value.embeddingIdentity;
  for (const frame of frameNativeMessage({version, generation, requestId, op: request.op, lifecycle: {activeLeases:1,leaseAcquisitions:1,leaseReleases:0,loadedModels:1,loadAttempts:1,loadSuccesses:1,loadFailures:0,inflightLoads:0}, result: {ok:true, value}})) process.send(frame);
 });
 process.send('ready');
 `
 );
 
-function createClient() {
+function createClient(warmModelTtl = 30) {
   const client = new NativeWorkerClient({
     models: ["embed", "gen", "rerank"].map((type) => ({
       id: type,
@@ -93,13 +94,77 @@ function createClient() {
     entryPath: fixture,
     loadTimeout: 300,
     inferenceTimeout: 300,
-    warmModelTtl: 30,
+    warmModelTtl,
   });
   clients.push(client);
   return client;
 }
 afterEach(async () => {
   await Promise.all(clients.splice(0).map((client) => client.dispose()));
+});
+
+test("direct single/batch inference loads actual identity once per generation and reacquires after idle", async () => {
+  const client = createClient(0);
+  const port = new NativeEmbeddingPort(client, "embed", "file:/embed.gguf");
+  expect(await port.embedBatch([])).toEqual({ ok: true, value: [] });
+  expect(client.processId).toBeUndefined();
+  for (const [name, operation] of [
+    ["embed", () => port.embed("direct")],
+    ["embedBatch", () => port.embedBatch(["direct"])],
+  ] as const) {
+    expect((await operation()).ok).toBe(true);
+    expect(port.getIdentity()).toEqual(identity);
+    expect(port.dimensions()).toBe(3);
+    const calls = await Bun.file(capture).json();
+    expect(calls.map((call: { op: string }) => call.op)).toEqual([
+      "init",
+      name,
+    ]);
+    expect(calls).toHaveLength(2);
+    for (let i = 0; client.processId !== undefined && i < 100; i++)
+      await Bun.sleep(5);
+    expect(client.processId).toBeUndefined();
+    expect(port.getIdentity()).toBeUndefined();
+  }
+  expect(client.currentGeneration).toBe(2);
+});
+
+test("missing native identity fails before inference with no replay", async () => {
+  const client = createClient();
+  await client.registerModel({
+    id: "metadata-failure",
+    type: "embed",
+    modelUri: "file:/bad.gguf",
+    path: "/bad.gguf",
+  });
+  const port = new NativeEmbeddingPort(
+    client,
+    "metadata-failure",
+    "file:/bad.gguf"
+  );
+  expect((await port.embed("never evaluated")).ok).toBe(false);
+  expect(port.getIdentity()).toBeUndefined();
+  expect(
+    (await Bun.file(capture).json()).map((call: { op: string }) => call.op)
+  ).toEqual(["init"]);
+});
+
+test("cold concurrent direct calls share metadata without phantom inference capacity or replay", async () => {
+  const client = createClient(1000);
+  const port = new NativeEmbeddingPort(client, "embed", "file:/embed.gguf");
+  const results = await Promise.all(
+    Array.from({ length: 66 }, () => port.embed("capacity"))
+  );
+  expect(results.filter((result) => result.ok)).toHaveLength(65);
+  expect(results.filter((result) => !result.ok)).toHaveLength(1);
+  expect(port.getIdentity()).toEqual(identity);
+  const calls = await Bun.file(capture).json();
+  expect(
+    calls.filter((call: { op: string }) => call.op === "init")
+  ).toHaveLength(1);
+  expect(
+    calls.filter((call: { op: string }) => call.op === "embed")
+  ).toHaveLength(65);
 });
 
 function compareTranscript(expected: unknown, actual: unknown): void {
@@ -277,6 +342,7 @@ test.each(["malformed", "wrong-dimensions", "crash", "late"])(
 test("model disposal drains calls, retires owner and closed adapter cannot replay work", async () => {
   const client = createClient();
   const port = new NativeEmbeddingPort(client, "embed", "file:/embed.gguf");
+  expect((await port.init()).ok).toBe(true);
   const pending = port.embed("valid");
   await Bun.sleep(10);
   await client.disposeModel("file:/embed.gguf");
@@ -285,6 +351,23 @@ test("model disposal drains calls, retires owner and closed adapter cannot repla
   expect((await port.embed("again")).ok).toBe(true);
   await client.dispose();
   expect((await port.embed("closed")).ok).toBe(false);
+});
+
+test("retirement racing cold metadata rejects inference before replacement admission", async () => {
+  const client = createClient();
+  const port = new NativeEmbeddingPort(client, "embed", "file:/embed.gguf");
+  const pending = port.embed("must not replay");
+  while (client.processId === undefined) await Bun.sleep(1);
+  await client.disposeModel("file:/embed.gguf");
+  expect((await pending).ok).toBe(false);
+  expect(client.currentGeneration).toBe(1);
+  expect(client.processId).toBeUndefined();
+  expect(port.getIdentity()).toBeUndefined();
+  expect(
+    (await Bun.file(capture).json()).map((call: { op: string }) => call.op)
+  ).toEqual(["init"]);
+  expect((await port.embed("explicit recovery")).ok).toBe(true);
+  expect(port.getIdentity()).toEqual(identity);
 });
 
 test("adapter registers approved paths lazily and leaves HTTP generation on its existing adapter", async () => {
