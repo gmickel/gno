@@ -46,9 +46,30 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] Record queue/frame limits as internal operational bounds with explicit overload behavior, not retrieval truncation.
 
 ## Done summary
-TBD
+# fn-144.1 handover
 
+Implemented the internal version-1 native worker contract in `src/llm/native-worker/protocol.ts`, stable ownership errors in `src/llm/native-worker/errors.ts`, and focused tests in `test/llm/native-worker-protocol.test.ts`. No native imports, discovery, fixture changes, Flow mutations, Git mutations, or native workloads.
+
+Baseline: none (task Quick command targets the new test deliverable). Pre-edit HEAD: `9285e523e207e465c22d434d52df73880fe95c49`. Shared checkout; other agents' changes excluded from ownership.
+
+Verification: `bun test ./test/llm/native-worker-protocol.test.ts`: 6 pass, 0 fail, 69 assertions. Targeted `bunx oxlint --type-aware --type-check` and `bunx oxfmt --check` over the three owned files pass. Log: `/home/gordon/.cache/agent-tmp/gno-fn144-protocol/test.log`. No native QA verdict; physical acceptance remains with later tasks and host.
+
+Contract and runtime integration:
+
+- `parseNativeRequest` validates closed operation envelopes against generation and approved model IDs/types. Approved descriptors contain only ID, URI, absolute local path, model type. Parent owns canonical path selection and policy; child must recheck actual file identity before loading (protocol string validation is not filesystem approval).
+- `init` returns `{dimensions?, structuredOutput}`; embedding init must report dimensions. `dispose` succeeds with wire `null` (map to port `void`). Other operations preserve actual port input/output values, including generation JSON Schema and structured errors. GenerationPort currently returns complete strings; no streaming public port is invented.
+- `frameNativeMessage` / `NativeFrameDecoder`: binary Uint8Array frames for dedicated Bun IPC, preserving message boundaries. Do not feed arbitrary partial/coalesced stdout reads into this decoder. stdout/stderr remain diagnostics. Each frame includes version/generation/request ID/total byte length/offset and is at most 8 MiB. Logical UTF-8 JSON is at most 64 MiB. A decoder assembles one ordered logical message per direction. Reset/discard partial assembly on transport termination.
+- `splitEmbeddingRequest`: exact ordered text groups; individual large texts remain intact and use multiple transport frames. Count the original operation once in the admission ledger and combine all group results in original order before settling; do not reuse the logical request ID as multiple ledger admissions. Never truncate or partially return a batch.
+- `NativeRequestLedger`: monotonic positive safe-integer request IDs, one active plus 64 waiting logical operations; runtime serializes execution. `settle` validates identity/result before deleting a pending entry. Runtime must treat malformed responses as worker failures and use `failAll` to settle/release callers. `failAll` provides structured failure responses once and clears retained input snapshots. No automatic retries. New worker/model configuration requires a new generation/ledger; runtime must not admit after retirement.
+- `NativeWorkerError.detail` maps timeout to existing TIMEOUT and other ownership failures to INFERENCE_FAILED, with stable sanitized messages and retryability. Never append raw child diagnostics or payloads.
+- Spawn with Bun IPC `serialization: "advanced"` to preserve Uint8Array frames. Runtime activity accounting must distinguish actual model initialization/native work from an `init` returning cached metadata; metadata-only traffic must not renew unrelated model residency or blindly extend TTL.
+
+R2 coverage: generation identity, one settlement, immutable admitted input snapshot, late response rejection and draining. R4 coverage: full port round trips, strict malformed result checks, queue overload, multibyte framing/splitting, 64 MiB rejection. R6 contract coverage: exit/timeout stable errors and late completion rejection. Actual native lifecycle/abnormal exit and recovery require tasks 2 onward.
+
+stage: impl-review - skipped(policy: user disabled formal reviews; host owns acceptance)
+
+Status remains in_progress for host validation/commit/Flow completion.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 9ee4f238aecb2e13fa53c3ce33f75eeca973deb5
+- Tests: baseline: none (new test deliverable), bun test ./test/llm/native-worker-protocol.test.ts — 6 pass, 0 fail, 69 assertions, bunx oxlint --type-aware --type-check src/llm/native-worker/protocol.ts src/llm/native-worker/errors.ts test/llm/native-worker-protocol.test.ts, bunx oxfmt --check src/llm/native-worker/protocol.ts src/llm/native-worker/errors.ts test/llm/native-worker-protocol.test.ts
 - PRs:
