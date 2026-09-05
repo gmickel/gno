@@ -1,0 +1,24 @@
+{
+  "command": [
+    "bun",
+    "--no-env-file",
+    "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/burst-driver.ts",
+    "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/plans/warm30-block2-concurrent-candidate.json"
+  ],
+  "pid": 254879,
+  "exitCode": 0,
+  "stopReason": null,
+  "wallMs": 7746.343319071457,
+  "firstResponse": [
+    {
+      "spawnToFirstResponseMs": 2840.8435019664466,
+      "event": {
+        "event": "first-response",
+        "pid": 254879,
+        "at": 1788579454398,
+        "driverElapsedMs": 2831.699289,
+        "ok": true
+      }
+    }
+  ]
+}

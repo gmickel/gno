@@ -1,0 +1,66 @@
+[
+  {
+    "workload": "warm30",
+    "phase": "first",
+    "coverage": [
+      "complete",
+      "complete"
+    ],
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "fullResultArrayExact": true,
+    "negativeRejected": true
+  },
+  {
+    "workload": "warm30",
+    "phase": "warm",
+    "coverage": [
+      "complete",
+      "complete"
+    ],
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "fullResultArrayExact": true,
+    "negativeRejected": true
+  },
+  {
+    "workload": "original143",
+    "phase": "first",
+    "coverage": [
+      "complete",
+      "complete"
+    ],
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "fullResultArrayExact": true,
+    "negativeRejected": true
+  },
+  {
+    "workload": "original143",
+    "phase": "warm",
+    "coverage": [
+      "complete",
+      "complete"
+    ],
+    "comparison": {
+      "passed": true,
+      "comparedCases": 1,
+      "failures": [],
+      "generatedAnswerChanges": []
+    },
+    "fullResultArrayExact": true,
+    "negativeRejected": true
+  }
+]

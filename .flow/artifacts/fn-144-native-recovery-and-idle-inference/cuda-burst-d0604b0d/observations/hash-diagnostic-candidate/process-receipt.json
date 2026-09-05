@@ -1,0 +1,26 @@
+{
+  "command": [
+    "bun",
+    "--no-env-file",
+    "--preload",
+    "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/hash-parent.ts",
+    "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/burst-driver.ts",
+    "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/plans/hash-diagnostic-candidate.json"
+  ],
+  "pid": 262013,
+  "exitCode": 0,
+  "stopReason": null,
+  "wallMs": 5062.169590964913,
+  "firstResponse": [
+    {
+      "spawnToFirstResponseMs": 2831.3007219694555,
+      "event": {
+        "event": "first-response",
+        "pid": 262013,
+        "at": 1788579764181,
+        "driverElapsedMs": 2821.268769,
+        "ok": true
+      }
+    }
+  ]
+}

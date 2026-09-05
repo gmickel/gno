@@ -1,0 +1,30 @@
+[
+  {
+    "role": "baseline",
+    "embed": {
+      "embedded": 143,
+      "errors": 0,
+      "contentionErrors": 0,
+      "duration": 1.565,
+      "model": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "searchAvailable": true
+    },
+    "updateErrors": 0,
+    "dbPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/baseline/data/index-default.sqlite",
+    "dbSha256": "1dd87e596e305689a9ffaf82cdcd7f776cf0ea95ff53cd836ff079b683b643d7"
+  },
+  {
+    "role": "candidate",
+    "embed": {
+      "embedded": 143,
+      "errors": 0,
+      "contentionErrors": 0,
+      "duration": 2.001,
+      "model": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "searchAvailable": true
+    },
+    "updateErrors": 0,
+    "dbPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/candidate/data/index-default.sqlite",
+    "dbSha256": "56ff66870a8aa26242b2551064dd73d1bbd58998d645f5ff9564973cc4a9d10c"
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "command": [
+    "bun",
+    "--no-env-file",
+    "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/seed.ts",
+    "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/plans/candidate-warm30-seed.json"
+  ],
+  "pid": 249199,
+  "exitCode": 0,
+  "stopReason": null,
+  "wallMs": 2218.4153648559004,
+  "firstResponse": []
+}

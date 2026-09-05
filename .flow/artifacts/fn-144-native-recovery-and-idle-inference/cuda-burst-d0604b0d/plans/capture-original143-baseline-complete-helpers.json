@@ -1,0 +1,89 @@
+{
+  "role": "baseline",
+  "sourceRoot": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/baseline-capture-source",
+  "configPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/config.json",
+  "dbPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/baseline/data/index-default.sqlite",
+  "cacheDir": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/baseline/cache",
+  "outputPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/observations/capture-original143-baseline-complete-helpers/result.json",
+  "caseId": "original143-expanded",
+  "query": "what retry budget did we decide and why",
+  "options": {
+    "limit": 5,
+    "explain": true
+  },
+  "mode": "serial",
+  "count": 3,
+  "concurrency": 1,
+  "productIdentity": {
+    "commit": "270c3a74f4f7a3aeb8a60462b4c8e1b4adf45462",
+    "packageSha256": null,
+    "helperCommit": "9244d715",
+    "driverSha256": "1b292ce47ae84c14fa36ab4e863b45feda3ed5137614ff239ed5b309849ef0da"
+  },
+  "capture": true,
+  "manifest": {
+    "schemaVersion": "gno-acceptance-v1",
+    "role": "baseline",
+    "identity": {
+      "commit": "270c3a74f4f7a3aeb8a60462b4c8e1b4adf45462",
+      "indexId": "original143-baseline",
+      "indexSha256": "1dd87e596e305689a9ffaf82cdcd7f776cf0ea95ff53cd836ff079b683b643d7",
+      "bunVersion": "1.3.14",
+      "nativeDependencies": {
+        "node-llama-cpp": "3.19.1"
+      },
+      "platform": "linux",
+      "architecture": "x64"
+    },
+    "fixtureVersion": "fn144-cost-controls-v1",
+    "fixtures": [
+      {
+        "path": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/original143/fixture-verification.json",
+        "sha256": "4f5ae185c1b4a0b53d10ac89e7ec914658c160634dd1d1ef76922a0928ebe868"
+      }
+    ],
+    "models": [
+      {
+        "role": "embedding",
+        "id": "file:/home/gordon/.cache/gno/models/hf_Qwen_Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+        "tokenizerSha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+      },
+      {
+        "role": "reranking",
+        "id": "file:/home/gordon/.cache/gno/models/hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+        "tokenizerSha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48"
+      },
+      {
+        "role": "generation",
+        "id": "file:/home/gordon/.cache/gno/models/hf_guiltylemon_gno-expansion-slim-retrieval-v1_gno-expansion-auto-entity-lock-default-mix-lr95-.gguf",
+        "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338",
+        "tokenizerSha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+      },
+      {
+        "role": "generation",
+        "id": "file:/home/gordon/.cache/gno/models/hf_unsloth_Qwen3-1.7B-Q4_K_M.gguf",
+        "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
+        "tokenizerSha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897"
+      }
+    ],
+    "cases": [
+      {
+        "caseId": "original143-expanded",
+        "fixtureSha256": "4f5ae185c1b4a0b53d10ac89e7ec914658c160634dd1d1ef76922a0928ebe868",
+        "surface": "sdk",
+        "preset": "slim-tuned",
+        "configuration": {
+          "query": "what retry budget did we decide and why",
+          "operation": "hybrid",
+          "options": {
+            "limit": 5,
+            "explain": true
+          }
+        }
+      }
+    ],
+    "intendedDeltas": []
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "status": "both cold expansion timeouts",
+  "capturedExpansionTiming": "5005.56ms",
+  "plainExpansionTiming": "5004.82ms",
+  "plainPublicMeta": {
+    "query": "what retry budget did we decide and why",
+    "mode": "hybrid",
+    "expanded": false,
+    "reranked": true,
+    "vectorsUsed": true,
+    "totalResults": 5,
+    "candidateLimit": 20,
+    "graphExpansion": {
+      "enabled": true,
+      "seedCount": 5,
+      "candidateCount": 20,
+      "maxCandidates": 20,
+      "edgeConfidence": {
+        "explicit": 39,
+        "inferred": 0,
+        "ambiguous": 0,
+        "similarity": 0
+      },
+      "fallbackReasons": []
+    },
+    "queryLanguage": "nl",
+    "explain": {
+      "lines": [
+        {
+          "stage": "lang",
+          "message": "queryLanguage=nl (detected)"
+        },
+        {
+          "stage": "expansion",
+          "message": "skipped (timeout)"
+        },
+        {
+          "stage": "bm25",
+          "message": "0 candidates"
+        },
+        {
+          "stage": "vector",
+          "message": "10 candidates"
+        },
+        {
+          "stage": "graph",
+          "message": "seeds=5, candidates=20/20, explicit=39, inferred=0, ambiguous=0, similarity=0"
+        },
+        {
+          "stage": "fusion",
+          "message": "RRF k=60, 27 unique candidates"
+        },
+        {
+          "stage": "rerank",
+          "message": "top 20 reranked"
+        },
+        {
+          "stage": "timing",
+          "message": "lang=0.53ms, expansion=5004.82ms, bm25=1.26ms, vector=2550.73ms, graph=12.91ms, fusion=2.12ms, rerank=2931.26ms, assembly=5.47ms, total=10509.38ms"
+        },
+        {
+          "stage": "counters",
+          "message": "expansionCache=0/0, rerankCache=0/0, fallbacks=none"
+        }
+      ],
+      "results": [
+        {
+          "rank": 1,
+          "docid": "#f5a86388",
+          "score": 0.9999115796142813,
+          "fusionScore": 0.13278688524590165,
+          "vecScore": 0.01639344262295082,
+          "rerankScore": 0.9996463184571254
+        },
+        {
+          "rank": 2,
+          "docid": "#4467ed57",
+          "score": 0.6991168994490258,
+          "fusionScore": 0.07125000000000001,
+          "vecScore": 0.015625,
+          "rerankScore": 0.9995445850711627
+        },
+        {
+          "rank": 3,
+          "docid": "#4feebe6e",
+          "score": 0.6969497791927699,
+          "fusionScore": 0.07076923076923078,
+          "vecScore": 0.015384615384615385,
+          "rerankScore": 1
+        },
+        {
+          "rank": 4,
+          "docid": "#5d5eb137",
+          "score": 0.629982654267111,
+          "fusionScore": 0.07225806451612904,
+          "vecScore": 0.016129032258064516,
+          "rerankScore": 0.9988056762871871
+        },
+        {
+          "rank": 5,
+          "docid": "#c11074de",
+          "score": 0.6271125782741954,
+          "fusionScore": 0.07174603174603175,
+          "vecScore": 0.015873015873015872,
+          "rerankScore": 0.9998356522791835
+        }
+      ]
+    }
+  },
+  "capturedQueryMs": 11523.367834,
+  "plainQueryMs": 11604.964375000001,
+  "plainPreflightMs": 2654.0978330000003,
+  "plainWallSeconds": 15.033776124939322,
+  "plainWarningSeconds": 1.2527977926656604,
+  "plainPeakOwnedGroupMiB": 5442.4375,
+  "exactExplainRankAndScoresEquality": true,
+  "governorSha256": "24713377c597313ddd1b0e68e4cd64ad7b50ee8bcce9b40173bb36f9feeba90f",
+  "plainControlNativeBackend": "not independently observed; no preloads/hooks",
+  "interpretation": "Child capture hashing is not necessary for cold expansion timeout in this pair. No timing overhead estimate or full acceptance pass. Governor physicalQualityComplete field only indicates command exit/governor outcome, not model quality.",
+  "archiveSha256": "142c8259f63459ed06f6d7d9a33f647c82d36f6aae1fbc0f1622a41095c6c9c2",
+  "cleanup": {
+    "checkedPids": [
+      494,
+      496,
+      540
+    ],
+    "psExit": 1,
+    "psStdout": "",
+    "psStderr": ""
+  }
+}

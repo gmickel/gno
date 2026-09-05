@@ -1,0 +1,3194 @@
+{
+  "samples": [
+    {
+      "elapsedMs": 4069.260791,
+      "rssBytes": 220119040,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 132988928
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 87130112,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4171.622875,
+      "rssBytes": 282935296,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 136101888
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 146833408,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4272.0824999999995,
+      "rssBytes": 290373632,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 136101888
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 154271744,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4374.344416,
+      "rssBytes": 292306944,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 136101888
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 156205056,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4475.0942079999995,
+      "rssBytes": 293044224,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 136101888
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 156942336,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4577.462166,
+      "rssBytes": 293191680,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 136101888
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 157089792,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4679.489,
+      "rssBytes": 293208064,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 136101888
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 157106176,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4781.175833,
+      "rssBytes": 343572480,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 136101888
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 207470592,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4883.424416,
+      "rssBytes": 465076224,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 136085504
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 328990720,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 4994.920416,
+      "rssBytes": 667729920,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 136085504
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 531644416,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5088.5125,
+      "rssBytes": 743292928,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 136085504
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 607207424,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5191.876708,
+      "rssBytes": 1340604416,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 136085504
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1204518912,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5299.467708,
+      "rssBytes": 1569505280,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 138346496
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1431158784,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5398.212083,
+      "rssBytes": 1575698432,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 139411456
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1436286976,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5499.178791,
+      "rssBytes": 1520173056,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 139411456
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1380761600,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5600.746041,
+      "rssBytes": 1450508288,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 139411456
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1311096832,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5701.989666,
+      "rssBytes": 1397735424,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 139411456
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1258323968,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5802.891791,
+      "rssBytes": 1347076096,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 139411456
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1207664640,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 5904.993125,
+      "rssBytes": 1339473920,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 139411456
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1200062464,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6005.429291,
+      "rssBytes": 1335476224,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 139411456
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1196064768,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6109.9725,
+      "rssBytes": 1316421632,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 139411456
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1177010176,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6210.080666,
+      "rssBytes": 1315651584,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 139411456
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1176240128,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6313.031583,
+      "rssBytes": 1282916352,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 138870784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1144045568,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6413.960041,
+      "rssBytes": 1238220800,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 138723328
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1099497472,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6513.109,
+      "rssBytes": 1200979968,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 138362880
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1062617088,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6617.718666,
+      "rssBytes": 1079132160,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 136036352
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 943095808,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6714.201416,
+      "rssBytes": 1028259840,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130416640
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 897843200,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6818.554291,
+      "rssBytes": 1028276224,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130416640
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 897859584,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 6919.117291,
+      "rssBytes": 1028374528,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130416640
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 897957888,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7021.741875,
+      "rssBytes": 1028620288,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 897941504,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7120.624625,
+      "rssBytes": 1030045696,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 899366912,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7222.819625,
+      "rssBytes": 1036271616,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 905592832,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7324.608333,
+      "rssBytes": 1036697600,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 906018816,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7427.485041,
+      "rssBytes": 1037041664,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 906362880,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7527.601,
+      "rssBytes": 1157480448,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1026801664,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7638.685291,
+      "rssBytes": 1345290240,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1214611456,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7732.064916,
+      "rssBytes": 1413120000,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1282441216,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7830.977666,
+      "rssBytes": 1647067136,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 1516388352,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 7933.661458,
+      "rssBytes": 4832526336,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4701847552,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8037.162666,
+      "rssBytes": 5096685568,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4966006784,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8139.707416,
+      "rssBytes": 5349752832,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5219074048,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8238.487583,
+      "rssBytes": 4919345152,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4788666368,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8338.344583,
+      "rssBytes": 4811948032,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4681269248,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8442.717458,
+      "rssBytes": 4811948032,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4681269248,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8543.693958,
+      "rssBytes": 4805525504,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4674846720,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8648.101083,
+      "rssBytes": 4806787072,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4676108288,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8748.811791,
+      "rssBytes": 4806918144,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4676239360,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8853.252166,
+      "rssBytes": 4812341248,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4681662464,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 8953.68225,
+      "rssBytes": 4812472320,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4681793536,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9057.333291,
+      "rssBytes": 4812701696,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682022912,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9157.605125,
+      "rssBytes": 4812767232,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682088448,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9261.769958,
+      "rssBytes": 4812767232,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682088448,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9363.878583,
+      "rssBytes": 4812849152,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682170368,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9466.388416,
+      "rssBytes": 4812898304,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682219520,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9568.624583,
+      "rssBytes": 4813029376,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682350592,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9670.749375,
+      "rssBytes": 4813275136,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682596352,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9772.381958,
+      "rssBytes": 4813291520,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682612736,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9873.981375,
+      "rssBytes": 4813324288,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682645504,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 9976.807625,
+      "rssBytes": 4813389824,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130678784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682711040,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10077.804833,
+      "rssBytes": 4813520896,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130777088
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682743808,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10177.658166,
+      "rssBytes": 4813520896,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130777088
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682743808,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10280.089208,
+      "rssBytes": 4813586432,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 130777088
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682809344,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10383.004125,
+      "rssBytes": 4814684160,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131874816
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682809344,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10484.541666,
+      "rssBytes": 4814700544,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131891200
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682809344,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10587.406916,
+      "rssBytes": 4814716928,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131891200
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682825728,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10689.046416,
+      "rssBytes": 4814716928,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131891200
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682825728,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10789.4375,
+      "rssBytes": 4814733312,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131891200
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682842112,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10891.414958,
+      "rssBytes": 4814798848,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131891200
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682907648,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 10992.667708,
+      "rssBytes": 4814864384,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131891200
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682973184,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 11094.296375,
+      "rssBytes": 4814880768,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131907584
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682973184,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 11197.242041,
+      "rssBytes": 4814880768,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131907584
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4682973184,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 11298.809083,
+      "rssBytes": 4814913536,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131907584
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4683005952,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 11399.802791,
+      "rssBytes": 4815650816,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131907584
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4683743232,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 11508.842333,
+      "rssBytes": 4758781952,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131907584
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4626874368,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 11602.872083,
+      "rssBytes": 4758798336,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131907584
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4626890752,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 11705.041291,
+      "rssBytes": 4758831104,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131907584
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4626923520,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 11808.489958,
+      "rssBytes": 4758880256,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131907584
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4626972672,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 11908.248583,
+      "rssBytes": 4758913024,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 131907584
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4627005440,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 12010.728208,
+      "rssBytes": 4679254016,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 132268032
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4546985984,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 12108.425041,
+      "rssBytes": 4596547584,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 132284416
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4464263168,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 12209.300916,
+      "rssBytes": 4608131072,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 142409728
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4465721344,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 12322.387291,
+      "rssBytes": 4775329792,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 142426112
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4632903680,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 12430.646041,
+      "rssBytes": 4958355456,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 141393920
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4816961536,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 12519.826833,
+      "rssBytes": 5023629312,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 114294784
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4909334528,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 12618.056416,
+      "rssBytes": 5004705792,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 69894144
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4934811648,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 12724.639833,
+      "rssBytes": 5008015360,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 67764224
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4940251136,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 12829.640333,
+      "rssBytes": 4995006464,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 63143936
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4931862528,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 12921.915625,
+      "rssBytes": 5012193280,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 63160320
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 4949032960,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 13021.285583,
+      "rssBytes": 5066358784,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 63389696
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5002969088,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 13121.234958,
+      "rssBytes": 5162270720,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 59686912
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5102583808,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 13225.8295,
+      "rssBytes": 5268471808,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 55738368
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5212733440,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 13326.247791,
+      "rssBytes": 5567889408,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 55738368
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5512151040,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 13428.80025,
+      "rssBytes": 5531123712,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53886976
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5477236736,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 13529.855666,
+      "rssBytes": 5564989440,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53886976
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5511102464,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 13647.644708,
+      "rssBytes": 5444026368,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53886976
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5390139392,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 13735.79975,
+      "rssBytes": 5444026368,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53886976
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5390139392,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 13838.367583,
+      "rssBytes": 5445255168,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53886976
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5391368192,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 13938.876208,
+      "rssBytes": 5445255168,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53886976
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5391368192,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 14040.327958,
+      "rssBytes": 5445402624,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5391433728,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 14142.074541,
+      "rssBytes": 5494145024,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5440176128,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 14243.864791,
+      "rssBytes": 5494145024,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5440176128,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 14345.46025,
+      "rssBytes": 5494194176,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5440225280,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 14448.627916,
+      "rssBytes": 5499764736,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5445795840,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 14550.148583,
+      "rssBytes": 5501632512,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5447663616,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 14652.323833,
+      "rssBytes": 5594316800,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5540347904,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 14754.133375,
+      "rssBytes": 5594316800,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5540347904,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 14856.92275,
+      "rssBytes": 5596151808,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5542182912,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 14959.100957999999,
+      "rssBytes": 5599838208,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5545869312,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 15062.226541,
+      "rssBytes": 5604130816,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5550161920,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 15163.514458,
+      "rssBytes": 5606014976,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5552046080,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 15265.289875,
+      "rssBytes": 5606014976,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 53968896
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5552046080,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 15367.34875,
+      "rssBytes": 5610274816,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 54542336
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5555732480,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    },
+    {
+      "elapsedMs": 15470.543666,
+      "rssBytes": 5338578944,
+      "gpuBytes": null,
+      "pids": [
+        98926,
+        98948
+      ],
+      "errors": [],
+      "processes": [
+        {
+          "pid": 98926,
+          "rssBytes": 81149952
+        },
+        {
+          "pid": 98948,
+          "rssBytes": 5257428992,
+          "nativeIdentity": {
+            "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+            "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+            "parentPid": 98926,
+            "pid": 98948,
+            "generation": 1,
+            "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+          }
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "nativeChildren": [
+    {
+      "identity": {
+        "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+        "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+        "parentPid": 98926,
+        "pid": 98948,
+        "generation": 1,
+        "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+      },
+      "event": "birth"
+    },
+    {
+      "identity": {
+        "runId": "225d06e5-02c6-4c23-a049-a4913ff1d68e",
+        "token": "2c6954cf-ad62-4f94-a911-8fcec2aa2ce1",
+        "parentPid": 98926,
+        "pid": 98948,
+        "generation": 1,
+        "entry": "/private/tmp/fn1445-capacity-packed-021990ed.kAAORH/package/src/llm/native-worker/entry.ts"
+      },
+      "event": "exit",
+      "exitCode": 0
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "seed": true,
+  "skipUpdate": true,
+  "embedOptions": {
+    "collection": "rerank-en-1000-start"
+  },
+  "role": "baseline",
+  "sourceRoot": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/baseline-source",
+  "configPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/warm30/config.json",
+  "dbPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/warm30/baseline/data/index-default.sqlite",
+  "cacheDir": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/warm30/baseline/cache",
+  "outputPath": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/observations/baseline-warm30-seed/result.json"
+}

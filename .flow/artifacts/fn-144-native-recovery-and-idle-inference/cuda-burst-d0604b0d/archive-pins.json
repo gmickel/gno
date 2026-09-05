@@ -1,0 +1,22 @@
+[
+  {
+    "path": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/product-d0604b0d.tar",
+    "sha256": "0bf3d61e853816600c0581c4797a5173e10be0b0e6c20c7a53247d97fffcc05d",
+    "bytes": 133017600
+  },
+  {
+    "path": "/home/gordon/.cache/agent-tmp/gno-fn144-burst-preparation/helpers-9244d715.tar",
+    "sha256": "b7019374c658433c878aae3ad4d32bcf492a0c735f083dbbea5d97d7e46000b5",
+    "bytes": 139673600
+  },
+  {
+    "path": "/home/gordon/.cache/agent-tmp/gno-packed-d0604b0d/gmickel-gno-1.46.0.tgz",
+    "sha256": "f42dfdddd6296e527f3c4bf01d21bb8a685a33996edcfd1c7624e60fe13320bd",
+    "bytes": 12848387
+  },
+  {
+    "path": "/tmp/gno-native-baseline-20260905-gmyi58ts/source.tar",
+    "sha256": "ca991b29e0e23451290b82f8999fbca8725f20e4ac684e2acbc09ead9fd86d73",
+    "bytes": 115998720
+  }
+]
