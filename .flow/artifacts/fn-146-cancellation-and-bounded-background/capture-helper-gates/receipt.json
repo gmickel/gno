@@ -1,0 +1,26 @@
+{
+  "helperCommit": "9814b800097c89e1a9085eb51fc5e91c2a06b2c4",
+  "productCommit": "a30da4423ec5604f46d2b050af8a2cba51c66e07",
+  "tests": 45,
+  "assertions": 185,
+  "status": "PASS",
+  "limitation": "Explicit eval type-aware inclusion crashed tsgolint; normal repo excludes evals; repository typecheck and owned non-type-aware lint pass.",
+  "files": [
+    {
+      "file": "fn146.2-capture-forwarding-summary.md.gz",
+      "sha256": "2ee9b0a1f76cf77892dfa0b44516e337b43692857cb3f92ffaead0a8183a1d59"
+    },
+    {
+      "file": "fn146.2-capture-forwarding-evidence.json.gz",
+      "sha256": "f9eea423c610e99be0c7817397fe06428adb38f9f4e6d2b83a026215818201ed"
+    },
+    {
+      "file": "fn146.2-capture-forwarding-test.log.gz",
+      "sha256": "7f22336d17cd64d6eb454248b96f31610fb3999f83cc9b04e51610badfb6b163"
+    },
+    {
+      "file": "fn146.2-capture-forwarding-lint.log.gz",
+      "sha256": "0b6982fc8a6617caa887e0eca2c45727220bc83a641f8c61f4032be2a2acf51a"
+    }
+  ]
+}
