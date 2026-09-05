@@ -1,0 +1,16 @@
+57340 |       throw new Error("Serialized error must have either an error or a value");
+57341 |     return parseSerializedValue(error.value, void 0);
+57342 |   }
+57343 |   let e;
+57344 |   if (error.error.name === "TimeoutError")
+57345 |     e = new TimeoutError2(error.error.message);
+                    ^
+TimeoutError: click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('radio', { name: 'Fast BM25', exact: true })[22m
+
+  log: [ "  - waiting for getByRole('radio', { name: 'Fast BM25', exact: true })" ],
+
+      at /home/gordon/work/gno/node_modules/playwright-core/lib/coreBundle.js:57345:13
+
+Bun v1.3.14 (Linux x64)

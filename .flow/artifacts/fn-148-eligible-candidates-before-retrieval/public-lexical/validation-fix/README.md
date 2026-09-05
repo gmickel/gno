@@ -1,0 +1,13 @@
+# fn148.4 validation fix and date-control follow-up
+
+Fixed only handleSearch in src/serve/routes/api.ts: searchBm25 INVALID_INPUT maps to documented VALIDATION400; all other failures retain RUNTIME500 and unchanged message/trace handling. No shared error helper, other route, UI, docs or Flow/git edits. Added test/serve/api-search-validation.test.ts, a single real-SQLite regression covering unmatched quote400 and closed-store500.
+
+Baseline: existing api-tags tests green before edits. Verification: bun test ./test/serve/api-search-validation.test.ts ./test/serve/api-tags.test.ts =>11passed,81assertions. Targeted oxlint --type-aware --type-check and oxfmt --check pass for both owned files. Logs /home/gordon/.cache/agent-tmp/gno-fn148-validation/{baseline,focused,lint}.log.
+
+Live retest used the revised shared source with isolated missing-local-model startup-runtime config/data/cache, offline flags, GNO_LLAMA_BUILD=never and CUDA_VISIBLE_DEVICES=-1 on127.0.0.1:3349. Direct curl captured HTTP400 and VALIDATION JSON in validation-fix/rest-invalid.headers/json. Browser actual unmatched-quote POST also returns400 and displays the original useful message. The intentional400 produces a browser network resource error; no uncaught application exception. Original23ba2c25 HTTP500 artifacts are retained unchanged.
+
+Date coverage completed through installed Playwright (Chromium), standard locator.fill on actual input[type=date] elements, after switching Fast mode. No injected DOM state, synthetic React events or source changes. Since2026-09-01 and until2026-09-02 persist; real browser POST includes both fields, response200 contains only gno://notes/scope/target.md score1/sourceHash source-200/mirror eligible-v1-200. Desktop1380x880 and mobile375x812 screenshots captured, with raw requests/responses/console and accessible snapshot. No UI defect demonstrated; earlier agent-browser unset dates are a driver-path limitation. Original unset-date artifacts remain intact.
+
+One initial Playwright locator used exact Fast BM25 before asynchronous capability rendering; it timed out. Recorded original date-drive.log, changed locator to visible Fast radio prefix, then successful date-drive-rerun.log. This is driver setup, not product failure.
+
+Artifacts: .flow/artifacts/fn-148-eligible-candidates-before-retrieval/public-lexical/validation-fix/. Source hashes recorded in evidence. Browser closed in finally; isolated resident PID101259 SIGTERM. No model/GPU inference, private/live DB, hosted site or formal review work. Host owns commit, broader gates and final QA/task receipts. This closes the bounded prior REST-status finding and dateUI coverage gap.

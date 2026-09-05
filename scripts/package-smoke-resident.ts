@@ -8,6 +8,7 @@ import { chmod } from "node:fs/promises";
 import { join } from "node:path";
 
 import { assertValid, loadSchema } from "../test/spec/schemas/validator";
+import { verifyPackedNativeWorker } from "./package-smoke-native-worker";
 import { proveResidentUnaffectedBySemanticSetup } from "./package-smoke-resident-setup";
 import {
   createHttpClient,
@@ -425,6 +426,7 @@ async function proveDetachedStatus(
 export async function verifyPackedResidentGateway(
   input: ResidentSmokeInput
 ): Promise<void> {
+  await verifyPackedNativeWorker(input);
   await proveLoopbackGateway(input);
   await proveNonLoopbackDaemon(input);
   await proveDetachedStatus(input, "serve", true);

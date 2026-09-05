@@ -1,0 +1,54 @@
+{
+  "resident.log": {
+    "sha256": "631e669d0569b798bf38358560e77290864e4cd5cf7894beed64581e80ec6897",
+    "bytes": 83
+  },
+  "date-drive.ts": {
+    "sha256": "621e2d402e958921f710de80eff6a063126edee58a12270e905722d291d9523a",
+    "bytes": 2723
+  },
+  "date-drive.log": {
+    "sha256": "331090b5eedf6ac1b381dfaf97cc0e7fb03e4ef4bc684743605a7ed2c95f0cf1",
+    "bytes": 644
+  },
+  "initial-snapshot.txt": {
+    "sha256": "8e1d4a6dd351f065eaa4bfcdec2b43e6ab29ab751a021c4f6719f65a9e58c807",
+    "bytes": 1338
+  },
+  "rest-invalid.json": {
+    "sha256": "326dee2c3d7d4f052bd20869639dcb73cde35b67f53f204d5575d7d41fca99dc",
+    "bytes": 151
+  },
+  "rest-invalid.headers": {
+    "sha256": "88b196dbd3c0518ee3aa51f824eac480be57a54fe2b31bdd23b4bae214215ac9",
+    "bytes": 503
+  },
+  "date-drive-rerun.log": {
+    "sha256": "b95486e6907fecc6dc56bad971a14b8961e957fbcf71cd145664d65f9bae8e8f",
+    "bytes": 571
+  },
+  "date-desktop.png": {
+    "sha256": "6dc66437616b902063d752c1b16656ff2e4ab3b11b7892261157ee4191ef3402",
+    "bytes": 206362
+  },
+  "date-snapshot.txt": {
+    "sha256": "09b553252945e2fcf59b0725c3294d7b6930ccf48409c3c262bd88494e419476",
+    "bytes": 2691
+  },
+  "date-mobile.png": {
+    "sha256": "1680b49c6d86e8c722942d8c0320d216138c2008a7a23f8065d1dc2fad420b60",
+    "bytes": 137364
+  },
+  "invalid400-mobile.png": {
+    "sha256": "5e3a32eb654092182221c4d548e7e47c25352a85752754bb5dd9e2fa8d822b1d",
+    "bytes": 140727
+  },
+  "date-result.json": {
+    "sha256": "7a24855f2a7e3419c81855cb4dbd4db0a4df121f7b65baa78fb5fac1e8894fed",
+    "bytes": 2380
+  },
+  "README.md": {
+    "sha256": "544cd306e46abec5772c8bb5714199d8e9746eb1a930795fb79797a951b10f20",
+    "bytes": 2668
+  }
+}
