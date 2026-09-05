@@ -51,9 +51,8 @@ New test/command paths listed above are deliverables; run them after creating th
 - [ ] No work is added to superseded fn-138; all inherited acceptance is proven within this successor.
 
 ## Done summary
-TBD
-
+Verified restoration preserves canonical chunks/vectors and emits atomic restoration events across repeated cycles; unchanged/restored native captures attribute zero passage embedding calls, while force embeds three actual passages. All12 clean/native mutation pairs exact; title/model/input identity, shadow resume, stale checkpoint rejection, vec0 repair and durable rollback have real SQLite regression coverage. Current packed CLI/MCP/REST full native/public fields match SDK. Reconciled MEMORY/OpenClaw/CLI/API/architecture docs; hosted docs remain explicitly deferred until after aggregate PR. Full f8 lint/typecheck/tests/docs pass; authoritative selected memory gate100% unchanged fixtures. Later cancellation/background/shutdown QA belongs to fn146; no full mutation-by-protocol-by-platform matrix claimed.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 9211b044, 017513d2, fa291b8c, 80b3cc8e
+- Tests: full bun test5150pass2skip0fail, bun run lint:check, bun run typecheck, bun run docs:verify, selected eval:memory100percent19evals unchangedfixtures, 24ownedchildren138completeactualrequests:zero passagecalls unchanged/restores and exact12cleanpairs, packed CLI/stdioMCP/HTTPMCP/REST24fullfieldchecks exact
 - PRs:

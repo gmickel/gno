@@ -17,7 +17,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-147-restoration-and-unchanged-embedding.md",
-  "status": "open",
+  "status": "done",
   "title": "Restoration and unchanged embedding preservation",
   "tracker": {
     "baseHashFlow": null,
@@ -30,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-04T23:40:08.352390Z"
+  "updated_at": "2026-09-05T04:25:37.967507Z"
 }
