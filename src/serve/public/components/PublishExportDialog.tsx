@@ -116,7 +116,7 @@ export function PublishExportDialog({
       }}
     >
       <DialogContent
-        className="max-h-[90dvh] overflow-y-auto bg-card sm:max-w-xl"
+        className="publish-export-dialog bg-card"
         onCloseAutoFocus={(event) => {
           if (returnFocus?.isConnected) {
             event.preventDefault();
@@ -125,124 +125,126 @@ export function PublishExportDialog({
         }}
         showCloseButton={!busy}
       >
-        <DialogHeader>
+        <DialogHeader className="publish-export-dialog-header">
           <DialogTitle>Export for gno.sh</DialogTitle>
           <DialogDescription>
             Review who can read “{title}”. This downloads a local file; upload
             and publish it separately in Studio.
           </DialogDescription>
         </DialogHeader>
-        <fieldset className="space-y-2" disabled={busy}>
-          <legend className="mb-2 font-medium text-sm">
-            Who can read this?
-          </legend>
-          {PUBLISH_ACCESS_OPTIONS.map((option) => (
-            <label
-              className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 transition-colors hover:bg-muted/40 has-[:checked]:border-primary has-[:checked]:bg-primary/10 focus-within:ring-2 focus-within:ring-primary/50"
-              key={option.value}
+        <div className="publish-export-dialog-body">
+          <fieldset className="space-y-2" disabled={busy}>
+            <legend className="mb-2 font-medium text-sm">
+              Who can read this?
+            </legend>
+            {PUBLISH_ACCESS_OPTIONS.map((option) => (
+              <label
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 transition-colors hover:bg-muted/40 has-[:checked]:border-primary has-[:checked]:bg-primary/10 focus-within:ring-2 focus-within:ring-primary/50"
+                key={option.value}
+              >
+                <input
+                  checked={visibility === option.value}
+                  className="mt-1 accent-primary"
+                  name="publish-access"
+                  onChange={() => {
+                    setVisibility(option.value);
+                    setAudienceConfirmed(false);
+                    setPassphrase("");
+                    setPassphraseConfirmation("");
+                    setError(null);
+                  }}
+                  type="radio"
+                  value={option.value}
+                />
+                <span className="min-w-0 space-y-1">
+                  <span className="block font-medium text-sm">
+                    {option.label}
+                  </span>
+                  <span className="block text-muted-foreground text-sm">
+                    {option.audience}
+                  </span>
+                  <span className="block font-mono text-muted-foreground text-xs">
+                    {option.availability}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <p className="text-muted-foreground text-xs">
+            Local GNO cannot check your hosted account. Studio checks plan
+            availability and Egress Policy before publishing. See{" "}
+            <a
+              className="text-primary underline"
+              href="https://gno.sh/pricing"
+              rel="noopener noreferrer"
+              target="_blank"
             >
+              current plans
+            </a>
+            .
+          </p>
+          {visibility === "encrypted" && (
+            <fieldset className="space-y-3" disabled={busy}>
+              <legend className="mb-2 font-medium text-sm">
+                Local encryption
+              </legend>
+              <p className="text-muted-foreground text-sm">
+                Your local GNO server encrypts the notes and bundled assets. The
+                passphrase is never sent to gno.sh or included in the downloaded
+                file. Keep it safe: lost passphrases cannot be recovered.
+                Switching into or out of encrypted sharing requires a new local
+                export.
+              </p>
+              <label className="block space-y-1 text-sm">
+                <span>Passphrase</span>
+                <Input
+                  autoComplete="new-password"
+                  onChange={(event) => setPassphrase(event.target.value)}
+                  type="password"
+                  value={passphrase}
+                />
+              </label>
+              <label className="block space-y-1 text-sm">
+                <span>Confirm passphrase</span>
+                <Input
+                  autoComplete="new-password"
+                  onChange={(event) =>
+                    setPassphraseConfirmation(event.target.value)
+                  }
+                  type="password"
+                  value={passphraseConfirmation}
+                />
+              </label>
+              {passphraseConfirmation &&
+                passphrase !== passphraseConfirmation && (
+                  <p className="text-destructive text-sm" role="status">
+                    The passphrases do not match.
+                  </p>
+                )}
+            </fieldset>
+          )}
+          {selected && (
+            <label className="flex cursor-pointer items-start gap-2 text-sm">
               <input
-                checked={visibility === option.value}
+                checked={audienceConfirmed}
                 className="mt-1 accent-primary"
-                name="publish-access"
-                onChange={() => {
-                  setVisibility(option.value);
-                  setAudienceConfirmed(false);
-                  setPassphrase("");
-                  setPassphraseConfirmation("");
-                  setError(null);
-                }}
-                type="radio"
-                value={option.value}
+                disabled={busy}
+                onChange={(event) => setAudienceConfirmed(event.target.checked)}
+                type="checkbox"
               />
-              <span className="min-w-0 space-y-1">
-                <span className="block font-medium text-sm">
-                  {option.label}
-                </span>
-                <span className="block text-muted-foreground text-sm">
-                  {option.audience}
-                </span>
-                <span className="block font-mono text-muted-foreground text-xs">
-                  {option.availability}
-                </span>
+              <span>
+                I reviewed the {selected.label.toLowerCase()} audience and want
+                to export with this access.
               </span>
             </label>
-          ))}
-        </fieldset>
-        <p className="text-muted-foreground text-xs">
-          Local GNO cannot check your hosted account. Studio checks plan
-          availability and Egress Policy before publishing. See{" "}
-          <a
-            className="text-primary underline"
-            href="https://gno.sh/pricing"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            current plans
-          </a>
-          .
-        </p>
-        {visibility === "encrypted" && (
-          <fieldset className="space-y-3" disabled={busy}>
-            <legend className="mb-2 font-medium text-sm">
-              Local encryption
-            </legend>
-            <p className="text-muted-foreground text-sm">
-              Your local GNO server encrypts the notes and bundled assets. The
-              passphrase is never sent to gno.sh or included in the downloaded
-              file. Keep it safe: lost passphrases cannot be recovered.
-              Switching into or out of encrypted sharing requires a new local
-              export.
+          )}
+          {error && (
+            <p className="text-destructive text-sm" role="alert">
+              {error}
             </p>
-            <label className="block space-y-1 text-sm">
-              <span>Passphrase</span>
-              <Input
-                autoComplete="new-password"
-                onChange={(event) => setPassphrase(event.target.value)}
-                type="password"
-                value={passphrase}
-              />
-            </label>
-            <label className="block space-y-1 text-sm">
-              <span>Confirm passphrase</span>
-              <Input
-                autoComplete="new-password"
-                onChange={(event) =>
-                  setPassphraseConfirmation(event.target.value)
-                }
-                type="password"
-                value={passphraseConfirmation}
-              />
-            </label>
-            {passphraseConfirmation &&
-              passphrase !== passphraseConfirmation && (
-                <p className="text-destructive text-sm" role="status">
-                  The passphrases do not match.
-                </p>
-              )}
-          </fieldset>
-        )}
-        {selected && (
-          <label className="flex cursor-pointer items-start gap-2 text-sm">
-            <input
-              checked={audienceConfirmed}
-              className="mt-1 accent-primary"
-              disabled={busy}
-              onChange={(event) => setAudienceConfirmed(event.target.checked)}
-              type="checkbox"
-            />
-            <span>
-              I reviewed the {selected.label.toLowerCase()} audience and want to
-              export with this access.
-            </span>
-          </label>
-        )}
-        {error && (
-          <p className="text-destructive text-sm" role="alert">
-            {error}
-          </p>
-        )}
-        <DialogFooter>
+          )}
+        </div>
+        <DialogFooter className="publish-export-dialog-footer">
           <Button disabled={busy} onClick={onClose} variant="outline">
             Cancel
           </Button>
