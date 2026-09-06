@@ -1393,6 +1393,22 @@ gno models path
 
 ### gno publish export
 
+New exports include random stable note IDs for reader view totals. GNO keeps the
+private `publish-identities.json` registry beside the loaded config file; custom
+`--config` paths and `GNO_CONFIG_DIR` are respected. Back up this file with your
+config. The collection root must be accessible when exporting so GNO can
+resolve its canonical path. Content/title edits, published URL changes, and index rebuilds retain
+IDs while the source-relative path and collection root stay the same. Moving a
+source file or root, or losing the registry, starts a new identity and view total.
+GNO never adds identity fields to your Markdown. A damaged or unwritable registry
+stops export instead of silently resetting identities.
+
+Plain artifacts carry each note's `id`. Encrypted artifacts expose only an
+opaque UUID roster (`noteIds`) and its count; matching IDs remain inside the
+encrypted note cards. Paths, titles, and note content stay encrypted. Legacy
+plain artifacts remain supported; encrypted artifacts without the roster need
+a fresh export before note view totals are available.
+
 Export one active document or collection as a reader-safe gno.sh artifact:
 
 ```bash

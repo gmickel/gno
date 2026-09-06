@@ -197,6 +197,9 @@ export async function finalizeEncryptedArtifact(input: {
   const artifact = buildEncryptedPublishArtifact({
     egressLineage: input.egressLineage,
     encryptedPayload: encrypted.encryptedPayload,
+    ...(input.notes.every((note) => note.id !== undefined)
+      ? { noteIds: input.notes.map((note) => note.id!) }
+      : {}),
     requiredCapabilities:
       assets.length > 0 ? [BUNDLED_RASTER_ASSETS_CAPABILITY] : undefined,
     routeSlug: input.routeSlug,

@@ -68,6 +68,7 @@ export type PublishVisibility =
   | "secret-link";
 
 export interface PublishArtifactNote {
+  id?: string;
   markdown: string;
   metadata?: Record<string, string | string[]>;
   slug: string;
@@ -148,6 +149,7 @@ export interface EncryptedArtifactPayload {
 }
 
 export interface EncryptedPublishArtifactSpace {
+  noteIds?: string[];
   encryptedPayload: EncryptedArtifactPayload;
   routeSlug: string;
   secretToken: string;
@@ -441,6 +443,7 @@ export const buildPublishArtifact = (input: {
 };
 
 export const buildEncryptedPublishArtifact = (input: {
+  noteIds?: string[];
   egressLineage?: EgressLineage;
   encryptedPayload: EncryptedArtifactPayload;
   requiredCapabilities?: KnownPublishRequiredCapability[];
@@ -464,6 +467,9 @@ export const buildEncryptedPublishArtifact = (input: {
     source: validated.routeSlug,
     spaces: [
       {
+        ...(validated.noteIds === undefined
+          ? {}
+          : { noteIds: validated.noteIds }),
         encryptedPayload: validated.encryptedPayload,
         routeSlug: validated.routeSlug,
         secretToken: validated.secretToken,

@@ -1266,7 +1266,8 @@ export async function handleEgressAuditPurge(
 export async function handlePublishExport(
   config: Config,
   store: SqliteAdapter,
-  req: Request
+  req: Request,
+  configPath?: string
 ): Promise<Response> {
   let body: PublishExportRequestBody;
   try {
@@ -1304,6 +1305,7 @@ export async function handlePublishExport(
     const { artifact, assetSummary, warnings } = await exportPublishArtifact({
       collections: config.collections,
       options: {
+        configPath,
         encryptionPassphrase: body.encryptionPassphrase,
         routeSlug: body.slug,
         summary: body.summary,

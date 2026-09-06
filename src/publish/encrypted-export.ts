@@ -183,7 +183,7 @@ const deriveReaderPayload = (input: {
   const noteCards: ReaderNoteCard[] = input.notes.map((note) => {
     const blocks = parseMarkdownBlocks(note.markdown);
     return {
-      noteId: `${input.routeSlug}:${note.slug}`,
+      noteId: note.id ?? `${input.routeSlug}:${note.slug}`,
       slug: note.slug,
       title: note.title,
       excerpt: deriveExcerpt(note.summary, blocks),

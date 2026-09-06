@@ -161,6 +161,35 @@ verification without exposing an agent manifest or decrypting content. gno.sh
 does not currently provide token-authenticated private agent access. Do not
 treat a secret link as an agent API credential.
 
+## Reader tools and note identities
+
+The gno.sh reader shows an estimated reading time for notes with visible prose.
+**Copy Markdown** or **Shift+Y** copies the current note with its title and
+structure; protected images become descriptive placeholders. Encrypted notes
+are processed in the browser after unlock.
+
+Views count approximate page opens. Refreshing or returning counts again;
+blocked signals and outages can lose increments. The first total appears about
+five seconds after opening a note. Counting uses aggregate note counters without
+visitor identifiers or analytics cookies; private access still uses normal
+authentication. New counters start at zero with the September 6, 2026 rollout.
+
+New exports include random stable note IDs for reader view totals. GNO keeps the
+private `publish-identities.json` registry beside the loaded config file; custom
+`--config` paths and `GNO_CONFIG_DIR` are respected. Back up this file with your
+config. The collection root must be accessible when exporting so GNO can
+resolve its canonical path. Content/title edits, published URL changes, and index rebuilds retain
+IDs while the source-relative path and collection root stay the same. Moving a
+source file or root, or losing the registry, starts a new identity and view total.
+GNO never adds identity fields to your Markdown. A damaged or unwritable registry
+stops export instead of silently resetting identities.
+
+Plain artifacts carry each note's `id`. Encrypted artifacts expose only an
+opaque UUID roster (`noteIds`) and its count; matching IDs remain inside the
+encrypted note cards. Paths, titles, and note content stay encrypted. Legacy
+plain artifacts remain supported; encrypted artifacts without the roster need
+a fresh export before note view totals are available.
+
 ## Unpublish and delete permanently
 
 Studio keeps retained sources distinct from their publications. The library

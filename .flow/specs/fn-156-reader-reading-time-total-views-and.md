@@ -14,7 +14,7 @@
 
 Readers of hosted gno.sh notes can estimate the time needed to read a page, see its total view count, and copy its Markdown into an agent. Keep the UI compact and the implementation small. Total page views replace the initial unique-person request; the number represents page opens, not distinct people or completed reads.
 
-This feature extends the hosted reader shared by public, secret-link, invite-only, and encrypted publications. fn-153 owns the Studio/lifecycle/navigation revamp; this spec adds reader utilities on that foundation. fn-155's moderation work is separate. No additional local GNO export feature is required.
+This feature extends the hosted reader shared by public, secret-link, invite-only, and encrypted publications. fn-153 owns the Studio/lifecycle/navigation revamp; this spec adds reader utilities on that foundation. fn-155's moderation work is separate. Local GNO exports also carry stable opaque note IDs and an encrypted note-ID roster. Gordon renewed the instruction to finish and release this feature after the missing export identity contract was explained; this is the required narrow exporter extension.
 
 ## Architecture & Data Models
 <!-- scope: technical; source: inferred from inspected implementation and accepted scope -->
@@ -24,6 +24,14 @@ This feature extends the hosted reader shared by public, secret-link, invite-onl
 Show a compact estimate beside the note metadata, for the current note only. Use visible prose word count at 200 words per minute, rounded up to whole minutes with a minimum of one minute for nonempty text. Exclude frontmatter, Markdown syntax, code blocks, navigation, URLs, and image binary payloads; count link labels and table text. Hide the estimate for an empty note. This is an estimate, not a measurement of reader behavior.
 
 Derive from the same content the reader displays. Compute once per note revision and reuse it; do not parse the whole document on scroll or each render. For encrypted notes, compute only in the browser after successful decryption, without sending plaintext or derived word counts to the server. Use existing text-processing utilities where suitable; do not add a package solely to count words.
+
+### Stable export identity
+
+The local exporter assigns random UUIDv4 note IDs through a private `publish-identities.json` registry under the actual GNO configuration directory, outside the disposable index. Keys identify canonical collection root and source relative path. The registry uses private permissions and atomic writes; malformed state or write failures produce an explicit error instead of silently assigning replacement identities. Export does not edit source Markdown.
+
+Version 1 notes may carry `id`; version 2 encrypted spaces may carry a unique `noteIds` roster (1–5000 UUIDs). The decrypted current-note IDs must match the authorized envelope roster. The hosted collector resolves membership and counts by publication target plus stable note ID. The encrypted roster exposes opaque IDs and note count, never note names, paths, titles, or plaintext.
+
+Identity survives content changes, index rebuilds, and published slug/route changes when the source path remains the same. Arbitrary source-file moves cannot be inferred safely; moving a source path creates a new identity unless a supported source-identity operation explicitly preserves it. Do not add fuzzy matching or non-atomic filesystem/database rename hooks. Legacy plain exports retain slug-based compatibility; legacy encrypted bundles require a new export before note counts are available.
 
 ### Total page views
 
@@ -87,7 +95,7 @@ Performance means no measurable reader regression, not literally zero CPU or net
 
 ## Boundaries
 
-- Hosted reader only; no Studio/account dashboard redesign beyond what fn-153 already covers. No collection-wide total, engagement analytics, visitor profiles, unique counting, funnels, referrer reports, read receipts, tracking SDK, or new billing restriction. [paraphrase]
+- Hosted reader utilities and their required local export identities; no Studio/account dashboard redesign beyond what fn-153 already covers. No collection-wide total, engagement analytics, visitor profiles, unique counting, funnels, referrer reports, read receipts, tracking SDK, or new billing restriction. [paraphrase]
 - No whole-bundle clipboard export, image-byte copying, new publication mode, or relaxing access/encryption boundaries. [inferred]
 - Retain existing required authentication and operational security logging. This feature must not repurpose those records for identifying visitors. [inferred]
 
@@ -101,7 +109,7 @@ Markdown copy supports deliberate reuse of published knowledge in agent workflow
 
 ## Verification and Handoff
 
-Implement in the hosted gno.sh repository using its existing reader, publish read service/telemetry, Markdown/agent projection, and database layers. Flow tracking remains in GNO. Depend on fn-153 so the common lifecycle behavior and reader changes are available; fn-155 is not a prerequisite. Inspect current code rather than assuming this conversation's baseline is unchanged. No remaining product decision requires another interview.
+Implement reader utilities in the hosted gno.sh repository using its existing reader, publish read service/telemetry, Markdown/agent projection, and database layers. Implement durable export identities in GNO with the contract described above. Flow tracking remains in GNO. Depend on fn-153 so the common lifecycle behavior and reader changes are available; fn-155 is not a prerequisite. Inspect current code rather than assuming this conversation's baseline is unchanged. No remaining product decision requires another interview.
 
 Test word-count fixtures; canonical versus block-based Markdown; title duplication; tables/code; image placeholders; clipboard failures; shortcut modifiers/input fields; unlock/change/lock cleanup; view navigation versus hydration/prefetch; concurrent atomic deltas; buffer bounds; ambiguous and definite DB failures; multiple owners; withdrawn/deleted notes; and count persistence across revisions versus separate copies.
 
@@ -110,6 +118,10 @@ Drive synthetic public, secret-link, invite-only, and encrypted notes, including
 Capture a same-machine baseline and changed build at representative content sizes and concurrency, including a warmed run and a cold run. Use at least three repeat runs per condition. Reader p95 response time must not regress beyond the greater of five milliseconds or five percent of baseline; report browser LCP and layout-shift observations as well. Inject slow/unavailable analytics storage and verify content still loads without waiting. Averages alone do not prove the bound; store the measurements and workload with the QA evidence. These are initial acceptance limits, not promised universal production latency.
 
 Run the hosted site's current check, typecheck, tests, affected database integration tests, and build. Perform the live Flow QA gate and inspect changed policy/help pages as running pages. Update policy wording and effective date with the feature's release. No product implementation, production data cleanup, or external communication is part of capturing this spec.
+
+## Release acceptance clarification (September 6, 2026)
+
+After clarification that the measured milliseconds were HTTP response time rather than full browser rendering, Gordon instructed: "ok 2ms is no biggie, if that is the only blocker, get it released". A small millisecond exceedance of the initial response-time bound alone therefore does not block this release. Retain the original measurements and raw pass/fail calculations; investigate material slowdowns separately and still capture browser loading and layout behavior. This does not waive access, privacy, count correctness, or functional QA.
 
 ## Requirement coverage
 

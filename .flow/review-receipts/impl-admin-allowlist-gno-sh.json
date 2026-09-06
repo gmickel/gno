@@ -1,0 +1,52 @@
+{
+  "type": "impl_review",
+  "id": "branch",
+  "mode": "claude",
+  "base": "b67b075120265ff66036f3fe5a6c321a248382cf",
+  "verdict": "SHIP",
+  "session_id": "20fda77a-f53c-4055-94c5-4817c6ac6e0b",
+  "model": "claude-fable-5-1",
+  "effort": "medium",
+  "spec": "claude:claude-fable-5-1:medium",
+  "timestamp": "2026-09-06T13:36:56.986598Z",
+  "review": "**Verdict: ships.** The allowlist logic is correct and fail-closed on every path I traced.\n\n**What I verified**\n\n- **Exact-ID authorization** in `src/lib/server/moderation.ts:23-33`. With an empty singleton, `userId !== \"\"` is always true for a nonempty session ID, so the decision falls through to the trimmed, filtered plural list. Partial matches cannot pass because `includes` is exact-string. Missing session hits `!userId`. Empty config yields an empty list and a non-matching singleton, so it denies.\n- **Legacy singleton compatibility.** Singleton-only config behaves exactly as before. The integration case at `src/lib/server/moderation.integration-case.ts:92-98` still only sets the singleton and keeps working.\n- **Runtime fail-closed** in `src/lib/publish-runtime.ts:21-26`. A plural-only config forces the database runtime. A whitespace-only value like `\", ,\"` also forces it, which is the safe direction and matches the doc wording \"either nonempty setting\".\n- **Tests.** The parameterized cases cover both IDs, unknown, prefix and suffix partial matches, null session, whitespace-only list, and fully empty config, and assert denial across access, lookup, and mutate with no DB call. The switch from `clearAllMocks` to `resetAllMocks` is safe because `beforeEach` re-installs every mock implementation.\n- **No real IDs or credentials** in the diff. All fixtures are synthetic.\n\n**Findings**\n\n- **Severity**: P3\n- **Confidence**: 75\n- **Classification**: introduced\n- **File:Line**: `src/lib/server/moderation.ts:24-29`\n- **R-IDs**: [R2]\n- **Problem**: Plural entries are trimmed but the legacy singleton is compared raw. A singleton value with stray whitespace from a hosting console denies that operator while the same value in the plural list would be accepted. This is fail-closed, so it is not a security issue, only an operational inconsistency.\n- **Suggestion**: Optional. Trim the singleton before comparison, or leave as is since the doc tells operators to migrate to the plural setting.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|------|--------|----------|\n| R1 | met | `assertModerationOperator` plus the nine parameterized access cases in `moderation-functions.test.ts` |\n| R2 | met | Singleton path unchanged; `it.each([\"legacy\",\"plural\"])` runtime test asserts `\"db\"` under fallback mode |\n| R3 | met | Tests, `.env.example`, and `docs/publish-moderation.md` updated; only synthetic IDs |\n| R4 | deferred | Deployment and authenticated production verification are host-side operational gates outside this diff |\n\nUnaddressed R-IDs: []\n\nClassification counts: 1 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":1,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>SHIP</verdict>",
+  "focus": "Quick bounded review of the small operator allowlist change. Read .flow/tmp/admin-allowlist-review-spec.md. Check exact-ID authorization, legacy singleton compatibility, empty and unknown denial, plural-only fail-closed DB runtime, and regression tests. All local check/typecheck/356 unit tests/build passed. Host will perform R4 deployment and real authenticated access verification; those are pending operational gates, not code omissions. Report actual correctness or security blockers. Do not add roles, databases, settings UIs, new services, generic refactors, or speculative architecture. User requested Fable 5.1 medium and a quick review without overengineering.",
+  "introduced_count": 1,
+  "pre_existing_count": 0,
+  "unaddressed": [],
+  "findings": {
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-d668dd07822f31f24f9ac441d433e617d8b867e7e2c81feaf083ca627e038667",
+    "reviewKind": "implementation",
+    "backend": "claude",
+    "round": 1,
+    "baseSha": "b67b075120265ff66036f3fe5a6c321a248382cf",
+    "headSha": "46700f3e0a9477a9bb3ee3770cfc11f8ac06b2aa",
+    "items": [
+      {
+        "id": "finding-695401fbeba4dcb12985849f47070d94",
+        "ordinal": 1,
+        "severity": "P3",
+        "confidence": 75,
+        "classification": "introduced",
+        "status": "open",
+        "title": "Plural entries are trimmed but the legacy singleton is compared raw",
+        "body": "Plural entries are trimmed but the legacy singleton is compared raw. A singleton value with stray whitespace from a hosting console denies that operator while the same value in the plural list would be accepted. This is fail-closed, so it is not a security issue, only an operational inconsistency.",
+        "rIds": [
+          "R2"
+        ],
+        "anchor": {
+          "path": "src/lib/server/moderation.ts",
+          "side": "head",
+          "startLine": 24,
+          "baseSha": "b67b075120265ff66036f3fe5a6c321a248382cf",
+          "headSha": "46700f3e0a9477a9bb3ee3770cfc11f8ac06b2aa",
+          "endLine": 29
+        },
+        "suggestion": "Optional. Trim the singleton before comparison, or leave as is since the doc tells operators to migrate to the plural setting.",
+        "firstSeenReceiptId": "review-d668dd07822f31f24f9ac441d433e617d8b867e7e2c81feaf083ca627e038667",
+        "lastSeenReceiptId": "review-d668dd07822f31f24f9ac441d433e617d8b867e7e2c81feaf083ca627e038667"
+      }
+    ]
+  }
+}

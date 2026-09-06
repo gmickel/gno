@@ -2313,6 +2313,18 @@ MUST fail without an artifact. Encrypted CLI export requires `--passphrase`;
 the local API requires `encryptionPassphrase`. Neither sends that input to
 gno.sh. Export is a local operation, not hosted activation or deletion.
 
+New exports MUST assign each note a random lowercase UUIDv4 persisted in
+`publish-identities.json` beside the resolved config file (`--config` and
+`GNO_CONFIG_DIR` apply). The private registry keys canonical collection roots
+and source-relative paths, outside the disposable index. The collection root
+MUST be accessible for canonical-path resolution. V1 notes emit `id`;
+V2 spaces emit `noteIds` matching decrypted reader cards’ `noteId` values.
+Legacy artifacts without IDs remain valid. Registry corruption or write failure
+MUST fail export rather than reset IDs. Content/title edits, published route/slug
+changes, and index rebuilds preserve IDs for unchanged source paths. Moving a
+source file or collection root starts a new identity; no move inference or
+source-Markdown mutation is performed. Registry paths MUST NOT enter artifacts.
+
 Public V1 spaces MUST carry a `manifest` conforming to
 [`publish-artifact.schema.json`](./output-schemas/publish-artifact.schema.json).
 The manifest contains schema version `1.0`, a deterministic projection
@@ -2342,7 +2354,8 @@ insufficient). Asset-free exports omit `assets` /
 
 Secret-link and invite-only V1 spaces MUST NOT contain a manifest or agent
 capability field. Encrypted V2 spaces MUST contain only ciphertext parameters,
-the opaque secret token, route slug, source type, and encrypted visibility; no
+the opaque secret token, route slug, source type, encrypted visibility, and an
+optional unique `noteIds` UUIDv4 roster (1–5000 IDs); no
 plaintext manifest or evidence may appear outside the ciphertext. V2 builders
 MUST emit a closed projection, validate payload strings as non-empty bounded
 base64, require a positive safe-integer KDF iteration count, and bound the
