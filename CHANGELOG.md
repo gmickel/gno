@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The gno.sh reader shows reading-time estimates and approximate page-open
+  totals, with Copy Markdown and Shift+Y for the current note. Encrypted-note
+  processing stays in the browser.
 - Give exported notes stable opaque IDs so hosted view counts survive content
   updates, index rebuilds, and published URL changes. Encrypted exports include
   an opaque note-ID roster for per-note counting without exposing note content.
