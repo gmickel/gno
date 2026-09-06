@@ -16,7 +16,7 @@ Final QA fixed short-window encrypted export, misleading encrypted content count
 
 Final GNO checks: lint:check and 5233 tests pass (2 expected skips). Final hosted check, typecheck, build and 329 tests pass; 28 real PostgreSQL/MinIO integration tests passed before the UI-only count follow-up. GNO code 525d2c75; hosted code 3e93e13. No plan or implementation review by explicit user request.
 
-Production release HOLD: verify actual backup retention and restore reconciliation, ship policies with product, set legal effective date on release, and perform production QA after authorized deployment. No production publishing or configuration mutations performed.
+Release follow-up, 2026-09-06: the blanket backup/restore HOLD is removed after read-only inspection of both hosts and user-supplied Hetzner screenshots showing automatic backups disabled. No host-managed content backups were found. Manual snapshots remain unverified; retention and restore reconciliation apply to any copy used, including a pre-migration backup. Ship policies with product, set the legal effective date on release, and perform production QA after authorized deployment. No production publishing or configuration mutations performed.
 
 Evidence under .flow/tmp/qa-fn-153-publishing-permissions-public and /home/gordon/.cache/agent-tmp/fn153/{worker-smoke,backend,invite-qa}. During initial site checks an unrelated ignored fn-4 cognitive-aid artifact received whitespace-only formatting; excluded from commits. Concurrent fn-160 planning work and unrelated untracked artifacts preserved.
 ## Evidence

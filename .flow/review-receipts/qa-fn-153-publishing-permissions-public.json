@@ -11,7 +11,7 @@
   "mode": "interactive",
   "open_p0p1": [],
   "qa_outcome": "SHIP",
-  "release_hold": "Production backup retention and restore reconciliation remain unverified. No production deployment or publishing mutations; legal effective date changes on release and production QA after authorized deployment remain required.",
+  "release_hold": null,
   "rid_coverage": {
     "covered": 14,
     "rids": [
@@ -119,5 +119,13 @@
   },
   "timestamp": "2026-09-06T03:14:25Z",
   "type": "qa_verdict",
-  "verdict": "SHIP"
+  "verdict": "SHIP",
+  "release_followup": {
+    "date": "2026-09-06",
+    "backup_hold_removed": true,
+    "evidence": "Read-only SSH checks on both production hosts found no host-managed content backup jobs or dumps in inspected locations; PostgreSQL archiving off, zero replication connections/slots. User screenshots show Hetzner automatic backups disabled on both servers.",
+    "limits": "Manual snapshots and independent copies remain unverified. Retention and restore reconciliation apply to any backup/snapshot used, including a pre-migration backup.",
+    "remaining": "Release authorization, migration safeguards, coordinated policy effective date and production QA after deployment. No production deployment or publishing mutations performed.",
+    "qa_identity": "Original tested code heads and QA timestamp preserved; this follow-up changes release interpretation only."
+  }
 }
