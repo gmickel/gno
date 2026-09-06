@@ -79,7 +79,15 @@ export async function resolvePublishNoteIds(input: {
   sourceRelPaths: string[];
   configPath?: string;
 }): Promise<string[]> {
-  const root = await realpath(toAbsolutePath(input.collectionRoot));
+  let root: string;
+  try {
+    root = await realpath(toAbsolutePath(input.collectionRoot));
+  } catch (cause) {
+    throw new Error(
+      "Collection root must exist and be accessible to resolve publish identities",
+      { cause }
+    );
+  }
   const keys = input.sourceRelPaths.map((source) => {
     const rel = normalize(source).replaceAll("\\", "/");
     if (

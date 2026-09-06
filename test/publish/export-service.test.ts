@@ -1,7 +1,7 @@
 /**
  * Integration tests for publish export attachment bundling.
  */
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 // node:fs/promises — structural ops; no Bun equivalent
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 // node:os tmpdir — no Bun equivalent
@@ -332,4 +332,27 @@ describe("exportPublishArtifact attachment bundling", () => {
     const schema = await loadSchema("publish-artifact");
     expect(assertValid(artifact, schema)).toBe(true);
   });
+});
+
+test("single-document export rejects a missing collection before content reads or egress audit", async () => {
+  const doc = buildDocument({ id: 1, relPath: "orphan.md" });
+  const getContent = mock(() => Promise.resolve(ok("Private content")));
+  const appendEgressAuditReceiptWithRetention = mock(() =>
+    Promise.resolve(ok("inserted" as const))
+  );
+  const store = {
+    getDocumentByUri: () => Promise.resolve(ok(doc)),
+    getContent,
+    appendEgressAuditReceiptWithRetention,
+  } as unknown as StorePort;
+  const failure = await exportPublishArtifact({
+    collections: [],
+    options: {},
+    store,
+    target: doc.uri,
+  }).catch((error: unknown) => error);
+  expect(failure).toBeInstanceOf(Error);
+  expect((failure as Error).message).toBe("Collection not configured: atlas");
+  expect(getContent).not.toHaveBeenCalled();
+  expect(appendEgressAuditReceiptWithRetention).not.toHaveBeenCalled();
 });

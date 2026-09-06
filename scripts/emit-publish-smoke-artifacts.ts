@@ -135,19 +135,28 @@ const main = async (): Promise<void> => {
 
     const publicExport = await exportPublishArtifact({
       collections,
-      options: { routeSlug: "smoke-public", visibility: "public" },
+      options: {
+        configPath: join(root, "config/config.yml"),
+        routeSlug: "smoke-public",
+        visibility: "public",
+      },
       store: rasterStore,
       target: "smoke",
     });
     const secretExport = await exportPublishArtifact({
       collections,
-      options: { routeSlug: "smoke-secret", visibility: "secret-link" },
+      options: {
+        configPath: join(root, "config/config.yml"),
+        routeSlug: "smoke-secret",
+        visibility: "secret-link",
+      },
       store: rasterStore,
       target: "smoke",
     });
     const encryptedExport = await exportPublishArtifact({
       collections,
       options: {
+        configPath: join(root, "config/config.yml"),
         encryptionPassphrase: PASSPHRASE,
         routeSlug: "smoke-encrypted",
         visibility: "encrypted",
@@ -157,7 +166,11 @@ const main = async (): Promise<void> => {
     });
     const legacyExport = await exportPublishArtifact({
       collections,
-      options: { routeSlug: "smoke-legacy", visibility: "public" },
+      options: {
+        configPath: join(root, "config/config.yml"),
+        routeSlug: "smoke-legacy",
+        visibility: "public",
+      },
       store: plainStore,
       target: "smoke",
     });

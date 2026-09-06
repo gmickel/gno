@@ -333,6 +333,8 @@ async function exportDocumentArtifact(
 
   const collection =
     collections.find((entry) => entry.name === doc.collection) ?? null;
+  if (!collection)
+    throw new Error(`Collection not configured: ${doc.collection}`);
   const rawMarkdown = await loadDocumentMarkdown(store, doc);
   if (isPublishDisabledByFrontmatter(rawMarkdown)) {
     throw new Error(
@@ -374,8 +376,6 @@ async function exportDocumentArtifact(
     store,
   });
 
-  if (!collection)
-    throw new Error(`Collection not configured: ${doc.collection}`);
   const [id] = await resolvePublishNoteIds({
     collectionRoot: collection.path,
     sourceRelPaths: [doc.relPath],

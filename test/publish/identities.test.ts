@@ -144,3 +144,18 @@ test("config-directory override resolves independently of index settings", async
     join(input.root, "override/publish-identities.json")
   );
 });
+
+test("missing collection root reports actionable guidance without creating a registry", async () => {
+  const input = await fixture();
+  const failure = await resolvePublishNoteIds({
+    ...input,
+    collectionRoot: join(input.root, "missing"),
+  }).catch((error: unknown) => error);
+  expect(failure).toBeInstanceOf(Error);
+  expect((failure as Error).message).toBe(
+    "Collection root must exist and be accessible to resolve publish identities"
+  );
+  expect(
+    await Bun.file(publishIdentityRegistryPath(input.configPath)).exists()
+  ).toBe(false);
+});
