@@ -19,3 +19,12 @@ Adjust the mobile reader header spacing in ~/work/gno.sh so the home control and
 - URL: https://gno.sh/share/gno/atlas
 - Screenshot: /home/gordon/.cache/agent-tmp/fn153/prod-reader-mobile-fresh.png
 - Reader navigation and the publishing lifecycle production smoke passed separately.
+
+## Completion — 6 September 2026
+
+- Fixed in gmickel/gno.sh PR #63; deployed commit 565f692d62b3963f8fe454a62fb7d657cf910125. Mobile reader top padding is 80px; desktop remains 64px.
+- Fresh production reader loads at 375 x 812 and 390 x 844: Home bottom 52.390625px, visibility badge top 80px. Desktop checked at 1380 x 880.
+- Local synthetic label layout checks covered Public URL, Secret link, Invite-only, and Encrypted share in the shared header; all cleared Home at 375px. These were label substitutions, not authentication-flow tests.
+- Browser screenshots: /home/gordon/.cache/agent-tmp/reader-home-before.png, reader-home-after-375.png, reader-home-after-390.png, reader-home-prod-375.png, reader-home-prod-390.png, reader-home-prod-desktop.png (same directory).
+- Site CI run 34057938566 passed formatting, types, tests, database integration, deployment checks, and build. Production HTTP 200; gno-sh active; remote HEAD, origin/main, and .output/REVISION match the deployed commit.
+- Applied the requested lightweight local-view-and-release workflow; no additional formal Flow QA gate.
