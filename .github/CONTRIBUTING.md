@@ -2,24 +2,32 @@
 
 ## CI/CD Matrix
 
-| Trigger                   | Ubuntu | macOS | Windows | npm publish |
-| ------------------------- | ------ | ----- | ------- | ----------- |
-| PR                        | ✓      | ✓     | -       | -           |
-| PR + label `test-windows` | ✓      | ✓     | ✓       | -           |
-| Push main                 | ✓      | ✓     | ✓       | -           |
-| Tag `v*`                  | ✓      | ✓     | ✓       | ✓           |
-| Manual dispatch           | ✓      | ✓     | ✓       | optional    |
+CI always reports **CI result** and runs lint/typecheck once. The result checks
+that every selected job succeeded; failed classification, missing outputs,
+cancellation, or unexpectedly skipped jobs fail the result. The existing
+`test (ubuntu-latest)` and `test (macos-latest)` names remain available to branch
+protection. Documentation-only PRs skip runtime jobs, with that decision checked
+by the aggregate. Unknown paths and unavailable diffs select full coverage.
 
-**Rationale:**
+| Trigger                        | Core Linux/macOS            | Windows full suite                                         | Watcher                             | Clipper Chromium E2E                                          |
+| ------------------------------ | --------------------------- | ---------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------- |
+| Relevant PR                    | Bun 1.4.2                   | Runtime/filesystem/package changes or `test-windows` label | Bun 1.3.11 on three OSes            | Clipper, web ingestion, package/dependency or unknown changes |
+| Main push                      | Relevant changes            | Always                                                     | Relevant changes                    | Relevant changes                                              |
+| Weekly Monday / manual CI      | Bun 1.4.2                   | Always                                                     | Bun 1.3.11 and latest on three OSes | Always                                                        |
+| Release tag / publish dispatch | Bun 1.4.2 on all three OSes | Always                                                     | Covered by release tests            | Package verification                                          |
 
-- PRs run Ubuntu + macOS (core dev platforms)
-- Windows only on main/tags/manual (slow, less critical)
-- Label `test-windows` for Windows-specific PR testing
-- npm publish only on explicit version tags
+PR label changes trigger classification immediately. Superseded PR runs cancel;
+main/manual runs keep independent concurrency groups. Latest-Bun watcher
+compatibility runs weekly and on demand, separate from the pinned PR gate.
 
-Repository installs use Bun 1.4.2 or newer to read the current lockfile format.
-The watcher matrix installs with 1.4.2, then selects its declared runtime,
-including Bun 1.3.11, for compatibility checks.
+Repository installs use Bun 1.4.2 to read the current lockfile format. Watcher
+jobs install with 1.4.2 before selecting their declared compatibility runtime.
+Windows desktop packaging runs for runtime, asset, dependency and shell changes,
+with PR cancellation and the same pinned build runtime.
+
+Real macOS File Provider/cloud-placeholder acceptance, physical desktop behavior,
+and retrieval/model performance acceptance remain local. Hosted platform checks
+do not substitute for them. Evalite remains opt-in.
 
 ## Cache
 
@@ -72,6 +80,18 @@ git tag vX.Y.Z && git push --tags
 ```
 
 Tag push triggers full CI + npm publish via OIDC (no token needed).
+
+CLI and desktop are coordinated: npm publication waits for the tested package,
+Windows desktop build, and signed/notarized macOS build plus launch test. The
+package-smoke job retains exactly one tested tarball and its SHA-256 checksum;
+the publication job downloads and verifies it, checks its package/version
+identity against the source and any tag, then publishes that archive without
+rebuilding. Missing or multiple tarballs fail closed. Publication is serialized
+and is never cancelled by a newer release run. Manual publication uses the
+package version for the GitHub release tag and the dispatched commit as its
+release target. A dry run builds and validates artifacts without publishing.
+
+A source-version bump does not itself authorize a tag or npm publication.
 
 ## Manual Workflow Dispatch
 

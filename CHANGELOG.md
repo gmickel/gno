@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-09-05
+
+### Changed
+
+- Scope CI to relevant changes, cancel superseded PR runs, and move floating
+  Bun compatibility to weekly and manual runs while preserving platform checks.
+- Gate coordinated npm publication on desktop artifacts and publish the exact
+  tested package with an integrity check.
+
+### Fixed
+
+- Wait for PDF viewer passive lifecycle effects in the navigation test, avoiding
+  a macOS timing race without weakening the remount assertions.
+
 ## [2.0.0] - 2026-09-05
 
 ### Added
@@ -2662,7 +2676,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/gmickel/gno/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/gmickel/gno/compare/v1.46.0...v2.0.0
 [1.46.0]: https://github.com/gmickel/gno/compare/v1.45.1...v1.46.0
 [1.45.1]: https://github.com/gmickel/gno/compare/v1.45.0...v1.45.1
