@@ -12,8 +12,11 @@ import {
 import { dirname, isAbsolute, join, normalize } from "node:path";
 
 import { getConfigPaths, toAbsolutePath } from "../config/paths";
-import { acquireWriteLock } from "../core/file-lock";
+import { acquireWriteLock, type WriteLockHandle } from "../core/file-lock";
 import { PUBLISH_NOTE_ID_PATTERN } from "./artifact-validation";
+
+const IDENTITY_LOCK_TIMEOUT_MS = 5000;
+const IDENTITY_LOCK_RETRY_MS = 25;
 
 type Registry = { version: 1; identities: Record<string, string> };
 
@@ -73,6 +76,21 @@ async function readRegistry(path: string): Promise<Registry> {
   }
 }
 
+async function acquireIdentityLock(path: string): Promise<WriteLockHandle> {
+  const deadline = performance.now() + IDENTITY_LOCK_TIMEOUT_MS;
+  // Zero-wait attempts avoid blocking the JS holder on SQLite's busy timeout.
+  // flock -w 0 and lockf -t 0 also mean immediate acquisition or failure.
+  let lock = await acquireWriteLock(path, 0);
+  while (!lock) {
+    const remaining = deadline - performance.now();
+    if (remaining <= 0)
+      throw new Error("Publish identity registry is busy; retry the export");
+    await Bun.sleep(Math.min(IDENTITY_LOCK_RETRY_MS, remaining));
+    lock = await acquireWriteLock(path, 0);
+  }
+  return lock;
+}
+
 /** Allocate a batch under one OS lock; publish IDs only after the private file commits. */
 export async function resolvePublishNoteIds(input: {
   collectionRoot: string;
@@ -105,9 +123,7 @@ export async function resolvePublishNoteIds(input: {
   });
   const path = publishIdentityRegistryPath(input.configPath);
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  const lock = await acquireWriteLock(`${path}.lock`);
-  if (!lock)
-    throw new Error("Publish identity registry is busy; retry the export");
+  const lock = await acquireIdentityLock(`${path}.lock`);
   const temporaryPath = `${path}.tmp.${crypto.randomUUID()}`;
   try {
     const registry = await readRegistry(path);

@@ -159,3 +159,68 @@ test("missing collection root reports actionable guidance without creating a reg
     await Bun.file(publishIdentityRegistryPath(input.configPath)).exists()
   ).toBe(false);
 });
+
+test("SQLite fallback yields for concurrent exports and preserves cross-process exclusion", async () => {
+  const input = await fixture();
+  const identityModule = new URL(
+    "../../src/publish/identities.ts",
+    import.meta.url
+  ).href;
+  const lockModule = new URL("../../src/core/file-lock.ts", import.meta.url)
+    .href;
+  const code = `
+    import { resolvePublishNoteIds, publishIdentityRegistryPath } from ${JSON.stringify(identityModule)};
+    import { acquireWriteLock } from ${JSON.stringify(lockModule)};
+    if (Bun.which("flock") || Bun.which("lockf")) throw new Error("Expected SQLite fallback");
+    const input = JSON.parse(process.env.GNO_IDENTITY_TEST_INPUT);
+    const [first, second] = await Promise.all([
+      resolvePublishNoteIds({ ...input, sourceRelPaths: ["same.md", "one.md"] }),
+      resolvePublishNoteIds({ ...input, sourceRelPaths: ["same.md", "two.md"] }),
+    ]);
+    if (first[0] !== second[0] || first[1] === second[1]) throw new Error("Concurrent identities diverged");
+    const lock = await acquireWriteLock(publishIdentityRegistryPath(input.configPath) + ".lock", 0);
+    if (!lock) throw new Error("Could not acquire external holder lock");
+    let child;
+    let reader;
+    try {
+      const childCode = 'import { resolvePublishNoteIds } from ' + ${JSON.stringify(JSON.stringify(identityModule))} + '; console.log("ready"); console.log(JSON.stringify(await resolvePublishNoteIds(JSON.parse(process.env.GNO_IDENTITY_TEST_INPUT))));';
+      child = Bun.spawn([process.execPath, "-e", childCode], { env: { ...process.env, GNO_IDENTITY_TEST_INPUT: JSON.stringify({ ...input, sourceRelPaths: ["same.md", "three.md"] }) }, stdout: "pipe", stderr: "pipe" });
+      reader = child.stdout.getReader();
+      const ready = await reader.read();
+      if (new TextDecoder().decode(ready.value).trim() !== "ready") throw new Error("Competing exporter did not reach the lock");
+      await Bun.sleep(100);
+      if (child.exitCode !== null) throw new Error("Exporter bypassed the cross-process lock");
+    } finally { await lock.release(); }
+    const remainingOutput = (async () => {
+      let output = "";
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) return output;
+        output += new TextDecoder().decode(chunk.value);
+      }
+    })();
+    const [output, error, status] = await Promise.all([remainingOutput, new Response(child.stderr).text(), child.exited]);
+    if (status !== 0) throw new Error(error);
+    const third = JSON.parse(output);
+    if (third[0] !== first[0]) throw new Error("Cross-process identity changed");
+    const persisted = await resolvePublishNoteIds({ ...input, sourceRelPaths: ["one.md", "two.md", "three.md"] });
+    if (JSON.stringify(persisted) !== JSON.stringify([first[1], second[1], third[1]])) throw new Error("Registry lost identities");
+    console.log("ok");
+  `;
+  const child = Bun.spawn([process.execPath, "-e", code], {
+    env: {
+      ...process.env,
+      PATH: join(input.root, "no-lock-tools"),
+      GNO_IDENTITY_TEST_INPUT: JSON.stringify(input),
+    },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
+  ]);
+  expect(exitCode, stderr).toBe(0);
+  expect(stdout.trim()).toBe("ok");
+}, 10_000);
