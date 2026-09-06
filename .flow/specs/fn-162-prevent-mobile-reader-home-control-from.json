@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-162-prevent-mobile-reader-home-control-from.md",
-  "status": "open",
+  "status": "done",
   "title": "Prevent mobile reader home control from obscuring visibility badge",
   "tracker": {
     "baseHashFlow": null,
@@ -20,5 +20,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-06T04:30:24.108776Z"
+  "updated_at": "2026-09-06T20:31:19.216008Z"
 }
