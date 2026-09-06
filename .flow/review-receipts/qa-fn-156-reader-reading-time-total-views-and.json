@@ -1,0 +1,79 @@
+{
+  "branch": "fn-156-reader-reading-time-total-views-and",
+  "evidence": [
+    {
+      "path": ".flow/tmp/qa-fn-156-reader-reading-time-total-views-and/functional-evidence.json",
+      "sha256": "9475c1c50fb41bd6d11d11a92d1a6e5987eb682b9584db5b1266c80e629ee41c"
+    },
+    {
+      "path": ".flow/tmp/qa-fn-156-reader-reading-time-total-views-and/delayed-count-evidence.json",
+      "sha256": "241b56e00a52c2f92f9f73cc3000c13b1d74a34b228b6f13dfe54117030a6a26"
+    },
+    {
+      "path": ".flow/tmp/qa-fn-156-reader-reading-time-total-views-and/membership-evidence.json",
+      "sha256": "905dc6224ea4380a1a0c8c3be0b1402295816a626b803b7f06e37dd880a6cc69"
+    },
+    {
+      "path": ".flow/tmp/qa-fn-156-reader-reading-time-total-views-and/performance-evidence.json",
+      "sha256": "b467d39de6d90410d9059bfcfb3c5e701c6c800343f12382da89f37ad30259c1"
+    }
+  ],
+  "head_sha": "a98333f5edc9cc777a9351ca10c4126dc7a7aa3e",
+  "id": "fn-156-reader-reading-time-total-views-and",
+  "mode": "interactive",
+  "open_findings": [],
+  "open_p0p1": [],
+  "performance_acceptance": {
+    "accepted_by_user": true,
+    "browser_limitations": "Encrypted-mobile LCP unavailable in six candidate samples; warm unlock median 132ms slower. Readiness differences and failed automation attempts retained.",
+    "raw_http_all_bounds_pass": false,
+    "reason": "Gordon explicitly accepted small millisecond threshold misses and instructed release; final 1KB excess is 1.15ms. Prior material gap did not reproduce."
+  },
+  "product_head_sha": "780840b0080f021e310bcf96b325cce46f12d63b",
+  "qa_outcome": "SHIP",
+  "resolved_findings": [
+    {
+      "evidence": ".flow/tmp/qa-fn-156-reader-reading-time-total-views-and/r4-recovery.json",
+      "fix": "68a95a9",
+      "id": "R4-pre-SQL-checkout-loss",
+      "memory": "bug/data/reader-totals-lose-accepted-increments-2026-09-06"
+    }
+  ],
+  "rid_coverage": {
+    "covered": 7,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      }
+    ],
+    "total": 7
+  },
+  "timestamp": "2026-09-06T16:28:47.237300+00:00",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

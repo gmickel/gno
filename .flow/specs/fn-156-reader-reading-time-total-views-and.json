@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-156-reader-reading-time-total-views-and",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-06T16:28:48.574742Z",
   "created_at": "2026-09-05T12:40:06.061443Z",
   "default_impl": null,
   "default_review": null,
@@ -31,5 +31,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-06T14:24:15.105151Z"
+  "updated_at": "2026-09-06T16:28:48.574753Z"
 }

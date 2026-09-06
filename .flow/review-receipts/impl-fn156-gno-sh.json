@@ -8,21 +8,21 @@
   "model": "claude-fable-5-1",
   "effort": "medium",
   "spec": "claude:claude-fable-5-1:medium",
-  "timestamp": "2026-09-06T14:16:05.568856Z",
-  "review": "Prior finding #1: fixed\nPrior finding #2: fixed\nPrior finding #3: not-fixed\nPrior finding #4: fixed\nPrior finding #5: not-fixed\nPrior finding #6: fixed\n\n## Verification of the follow-up commit (904553c)\n\n- **#1 orphan definitions**: `prepareReaderNote` now collects definitions first, expands `linkReference`/`imageReference`, then filters `definition` nodes out of every `children` array before recursing (`src/lib/reader-note-text.ts:186`). The old `link || definition` branch that produced the stray placeholder is gone. New test asserts no `Nonportable link omitted`, no unused definition, and no `[safe]:`/`[hidden]:` lines in the output.\n- **#2 held j/k**: the scaffold handler now only rejects `event.repeat` for keys other than `j`/`k` (`src/components/reader/reader-scaffold.tsx:138`), and `ignoreReaderShortcut` no longer checks `repeat` itself. The Shift+Y handler adds its own `event.repeat` guard (`src/components/reader/reader-utilities.tsx:133`). Test covers repeat j/k firing, repeat+ctrl and repeat inside a textbox not firing, and Shift+Y ignoring repeat.\n- **#4 pluralization**: visible text and `aria-label` both switch on `views === 1`.\n- **#6 migration**: `db/migrations/156-reader-views.sql` exists with the same idempotent statements as `schema.sql`. Not referenced from a runbook the way 155 was, but that is documentation only.\n- **#3 and #5**: unchanged by design per the focus note. Both were P3 and never blocked; the request count and the inline SQL remain observations for the performance gate and a future cleanup, not defects.\n\nNo new regressions introduced by the fixes: the definition filter runs on the same mutable tree before stringify, and the repeat exemption is scoped to the two navigation keys.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Unchanged from prior review. |\n| R2 | met | Unchanged; singular/plural label fixed. |\n| R3 | met | Unchanged. |\n| R4 | met | Unchanged. |\n| R5 | met | Copy output no longer contains orphan definition placeholders; held-key repeat excluded for copy only; navigation keys preserved. |\n| R6 | met | Unchanged. |\n| R7 | partial | Docs/privacy done; live QA and performance evidence remain host gates. |\n\nUnaddressed R-IDs: []\n\nClassification counts: 0 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":0,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>SHIP</verdict>",
-  "focus": "Quick continuation: prior SHIP accepted. Only inspect followup commit904553c: remove orphan/unused Markdown definition output after reference expansion, restore held j/k repeat with copy repeat exclusion, singular1view visible+aria, add idempotent156SQLmigration. Focused12tests pass and migration applied twice successfully; finalcheck/types/unit/build underway. No SQL structural refactor or new countrequest architecture is warranted from speculative concerns; actual controlled performance QA remains host gate. Report actual regressions or remaining correctness/security blockers, not generic style/taste. Preserve prior scope and quick Fable5.1medium request.",
+  "timestamp": "2026-09-06T16:10:38.874360Z",
+  "review": "Prior finding #1: fixed\nPrior finding #2: fixed\nPrior finding #3: fixed\nPrior finding #4: fixed\nPrior finding #5: not-fixed\nPrior finding #6: fixed\n\n## Verification of 780840b (organization lookup guard)\n\n- **Guard is semantically exact.** `canAccessInviteOnlyTarget` returns false immediately when `userId` is absent, and only consults `userOrganizationIds` on the `ownerScope === \"organization\"` branch. The new condition `session && row.owner_scope === \"organization\"` (`src/lib/server/reader-views.ts:218`) therefore skips the membership query in precisely the cases where its result could never change the outcome. Owner match, allowlist, and moderation overrides are still evaluated for user-scoped targets.\n- **No auth widening.** An empty array is passed in the skipped cases, which is the same value an unaffiliated user would have produced. The \"user stranger with matching organization ID\" test pins the important negative: a user whose org list happens to contain the owner's user ID is still refused for a user-scoped target.\n- **Session lookup unchanged.** `getRequestSession` still runs for every invite-only request, so the hot path saves one `member` query per request, nothing more.\n- **Tests.** Six scope/membership combinations run against both `view` and `count`, asserting status, the returned total, buffer `add` calls, and that the organization lookup is invoked only for organization-owned targets. The `afterEach` restores the `Pool.prototype.query` spy so it cannot leak into other suites.\n- **Prior finding #5** (inline SQL assembly in `handleReaderViews`) is untouched and remains a P3 style observation, not a blocker.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Unchanged. |\n| R2 | met | Unchanged. |\n| R3 | met | Unchanged. |\n| R4 | met | Unchanged. |\n| R5 | met | Unchanged. |\n| R6 | met | Invite-only tenant checks preserved for view and count; organization membership consulted only where it can matter, verified by six focused cases. |\n| R7 | partial | Live invite-only latency check still in progress; no performance pass inferred here. |\n\nUnaddressed R-IDs: []\n\nClassification counts: 0 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":0,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>SHIP</verdict>",
+  "focus": "Quick continuation only new delta1e6f47d..780840b: getOrganizationIdsForUser now guarded by session and owner_scope organization because canAccessInviteOnlyTarget ignores org IDs for user-owned. Six focused cases both view/count preserve auth semantics. Review exact guard and tests, no repeated full audit. 386unit41integration/check/typecheck/build pass. User explicitly waived few-ms performance bound misses; material noisy invite-only variance still under focused livecheck, no performance pass inferred. No edits.",
   "introduced_count": 0,
   "pre_existing_count": 0,
   "unaddressed": [],
   "findings": {
     "schemaVersion": 1,
-    "sourceReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b",
+    "sourceReceiptId": "review-ca33f521dcc53255588481f2fc1f502bb32df2fe49af7dee5c8c798b78f67fac",
     "reviewKind": "implementation",
     "backend": "claude",
-    "round": 2,
+    "round": 5,
     "baseSha": "55b4925d382cf82be2201da022af505c941f72e0",
-    "headSha": "904553cf056b160d22d722faad47530faef9750e",
-    "supersedesReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
+    "headSha": "780840b0080f021e310bcf96b325cce46f12d63b",
+    "supersedesReceiptId": "review-298c970a4fc57a0333cc52bf5ea77730f3b4b8654d00ccb82c0c4a6eda31919c",
     "items": [
       {
         "id": "finding-4f971237695afb5073e33b7bd87b3133",
@@ -38,7 +38,7 @@
         ],
         "suggestion": "Either accept and document, or apply the repeat/modifier filter only in the Shift+Y handler and keep the original typing-context check for navigation keys.",
         "firstSeenReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
-        "lastSeenReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b"
+        "lastSeenReceiptId": "review-ca33f521dcc53255588481f2fc1f502bb32df2fe49af7dee5c8c798b78f67fac"
       },
       {
         "id": "finding-731411eb3f92ebb8c4073c7e983d64c5",
@@ -54,7 +54,7 @@
         ],
         "suggestion": "`views === 1 ? \"1 view\" : ...`.",
         "firstSeenReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
-        "lastSeenReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b"
+        "lastSeenReceiptId": "review-ca33f521dcc53255588481f2fc1f502bb32df2fe49af7dee5c8c798b78f67fac"
       },
       {
         "id": "finding-eaeecd3a64af8e85a971b2a6587e641e",
@@ -68,7 +68,7 @@
         "rIds": [],
         "suggestion": "Add `db/migrations/156-reader-views.sql` with the same idempotent statements, or note the omission in the release checklist.",
         "firstSeenReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
-        "lastSeenReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b"
+        "lastSeenReceiptId": "review-ca33f521dcc53255588481f2fc1f502bb32df2fe49af7dee5c8c798b78f67fac"
       },
       {
         "id": "finding-79db5b3b8cf8218132daeddb4b04dfa9",
@@ -84,7 +84,7 @@
         ],
         "suggestion": "After inlining references, drop `definition` nodes from `tree.children` entirely instead of converting them to text.",
         "firstSeenReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
-        "lastSeenReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b"
+        "lastSeenReceiptId": "review-ca33f521dcc53255588481f2fc1f502bb32df2fe49af7dee5c8c798b78f67fac"
       },
       {
         "id": "finding-fb7ae1b1174766606b2edb79bda2d5c7",
@@ -92,7 +92,7 @@
         "severity": "P3",
         "confidence": 75,
         "classification": "introduced",
-        "status": "not_fixed",
+        "status": "fixed",
         "title": "Each displayed note fires `view`, an immediate `count`, and a second `count` at 5",
         "body": "Each displayed note fires `view`, an immediate `count`, and a second `count` at 5.5 s. Each request resolves the target with a multi-join query on the analytics pool (`max: 2`, 1 s connect timeout). Under moderate concurrency the pool queue will hit the timeout and return 503, which is safe for reading but wastes work; the delayed re-count only exists to show the reader their own increment.",
         "rIds": [
@@ -100,7 +100,7 @@
         ],
         "suggestion": "Return the current total in the `view` 202 body and drop the delayed re-count, or keep a single `count` request. Not a blocker; the failure path is already non-blocking.",
         "firstSeenReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
-        "lastSeenReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b"
+        "lastSeenReceiptId": "review-ca33f521dcc53255588481f2fc1f502bb32df2fe49af7dee5c8c798b78f67fac"
       },
       {
         "id": "finding-f88ad418bb627ce1870f8266acea3043",
@@ -114,7 +114,7 @@
         "rIds": [],
         "suggestion": "Split into three small named query builders (public/private, secret, locked) returning `{text, values}`. No new abstraction beyond that.",
         "firstSeenReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
-        "lastSeenReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b"
+        "lastSeenReceiptId": "review-ca33f521dcc53255588481f2fc1f502bb32df2fe49af7dee5c8c798b78f67fac"
       }
     ]
   }

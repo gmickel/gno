@@ -119,6 +119,10 @@ Capture a same-machine baseline and changed build at representative content size
 
 Run the hosted site's current check, typecheck, tests, affected database integration tests, and build. Perform the live Flow QA gate and inspect changed policy/help pages as running pages. Update policy wording and effective date with the feature's release. No product implementation, production data cleanup, or external communication is part of capturing this spec.
 
+## Release acceptance clarification (September 6, 2026)
+
+After clarification that the measured milliseconds were HTTP response time rather than full browser rendering, Gordon instructed: "ok 2ms is no biggie, if that is the only blocker, get it released". A small millisecond exceedance of the initial response-time bound alone therefore does not block this release. Retain the original measurements and raw pass/fail calculations; investigate material slowdowns separately and still capture browser loading and layout behavior. This does not waive access, privacy, count correctness, or functional QA.
+
 ## Requirement coverage
 
 R1-R7 are implemented directly under this no-plan spec. Completion evidence must map each requirement to its focused test or running-app scenario; there is no task breakdown to infer or recreate.
