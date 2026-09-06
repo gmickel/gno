@@ -51,7 +51,9 @@ Review: SHIP on round 1 (Opus, host backend). Its P2 (the reveal gate was `req &
 stage: wave-join - ran (cherry-pick of the worker commit onto the target; snapshot refreshed by the conductor; no collision)
 stage: impl-review - ran [round 1 SHIP] (model: claude-opus-5 via harness subagent, host backend)
 stage: plan-sync - skipped(config: planSync.enabled != true)
+
+2026-09-06 reconciliation: restored completion state from this existing summary and merged PR #206. Gordon confirmed all remaining work was completed and requested spec closure. Earlier BLOCKED/UNMET observations above are historical and superseded by that confirmation.
 ## Evidence
-- Commits: 050dafc0, 8a07db8b, 40750a755cc0a5e6c8d6896319153529a9288a8d
+- Commits: 050dafc0, 8a07db8b, 40750a755cc0a5e6c8d6896319153529a9288a8d, d17ac7d8577c87fbd14a072deef3f39db121edae
 - Tests: bun test test/serve/api-capabilities.test.ts test/serve/api-docs-lifecycle.test.ts test/serve/request-locality.test.ts test/serve/public/pages/DocView-actions.dom.test.tsx test/clipper test/serve/security.test.ts -> green (integrated target), bun run lint:check -> clean, bun test test/serve/spa-snapshot-freshness.test.ts -> 2 pass, worker: bun test (full) -> 4479 pass, 1 fail (snapshot freshness, fixed by the conductor rebuild)
-- PRs:
+- PRs: https://github.com/gmickel/gno/pull/206

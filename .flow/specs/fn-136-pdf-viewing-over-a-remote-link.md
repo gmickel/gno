@@ -1,5 +1,7 @@
 # PDF viewing over a remote link
 
+> Closed on 2026-09-06 at Gordon's request. PR #206 was merged on 2026-09-02; Gordon confirmed the remaining remote verification and hosted documentation work was completed. Historical blocked observations below describe the original implementation session, not the final acceptance state. No new remote measurements were performed during this reconciliation.
+
 ## Overview
 
 A PDF opened in the `gno serve` web UI from another machine over a mesh VPN loads slowly, renders blurry, and offers actions that only work on the server host. The measured link to the remote host is a relayed VPN path at about 200 ms per round trip, and the viewer pays one round trip per 64 KB chunk plus one full geometry pass before it draws page 1. This plan fixes the transport, the first paint, the HTTP cache and compression posture of the server, and the locality of the document actions, then measures the result over the real link.
@@ -152,8 +154,8 @@ Task fn-136-pdf-viewing-over-a-remote-link.3 validates the core approach (fewer,
 | R3  | ETag/304 on doc-asset, gzip + immutable SPA chunks; warm reload under 100 KB | fn-136-pdf-viewing-over-a-remote-link.1 (headers, tests), fn-136-pdf-viewing-over-a-remote-link.5 (warm-reload measurement) | — |
 | R4  | `localClient` capability, reveal 403, action gating | fn-136-pdf-viewing-over-a-remote-link.2 | — |
 | R5  | Remote "Open original" inline link | fn-136-pdf-viewing-over-a-remote-link.2 | — |
-| R6  | Measured first paint and request count over the relay | fn-136-pdf-viewing-over-a-remote-link.3 (proof measurement), fn-136-pdf-viewing-over-a-remote-link.5 (final measurement) | BLOCKED: before-numbers captured (37.2 s first paint, 79 requests, 25 x 64 KB Range); after-measurement needs the remote install updated to this build, which this machine cannot do |
-| R7  | Sharp render over the remote link, with capture | fn-136-pdf-viewing-over-a-remote-link.5 | UNMET, capture BLOCKED: the remote screenshot needs the updated build on the remote host; a local DPR 2 check shows a crisp 2.0x canvas, ruling out the render math; the spec stays open until the remote capture lands |
+| R6  | Measured first paint and request count over the relay | fn-136-pdf-viewing-over-a-remote-link.3 (proof measurement), fn-136-pdf-viewing-over-a-remote-link.5 (final measurement) | Completed; owner confirmed on 2026-09-06 (task .6). |
+| R7  | Sharp render over the remote link, with capture | fn-136-pdf-viewing-over-a-remote-link.5 | Completed; owner confirmed on 2026-09-06 (task .6). |
 
 ## References
 

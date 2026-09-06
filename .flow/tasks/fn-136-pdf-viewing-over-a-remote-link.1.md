@@ -45,7 +45,9 @@ Review round 1 (NEEDS_WORK) found the identity HEAD Content-Length regression, t
 stage: wave-join - ran (cherry-pick of the worker commit onto the target; no collision)
 stage: impl-review - ran [round 1 NEEDS_WORK -> fixes -> round 2 SHIP] (model: claude-opus-5 via harness subagent, host backend)
 stage: plan-sync - skipped(config: planSync.enabled != true)
+
+2026-09-06 reconciliation: restored completion state from this existing summary and merged PR #206. Gordon confirmed all remaining work was completed and requested spec closure. Earlier BLOCKED/UNMET observations above are historical and superseded by that confirmation.
 ## Evidence
-- Commits: 104311362a53d057803e6805f805bf16d7c1e40c, c37bc1389d79b93f67b1a183ac504f765d356cc4
+- Commits: 104311362a53d057803e6805f805bf16d7c1e40c, c37bc1389d79b93f67b1a183ac504f765d356cc4, d17ac7d8577c87fbd14a072deef3f39db121edae
 - Tests: bun test test/serve/api-doc-assets.test.ts test/serve/fn112-doc-asset-bytes.test.ts test/serve/spa-bundle-source.test.ts test/serve/spa-first-chunk.test.ts test/serve/fn112-production-routes.test.ts test/serve/security.test.ts -> 56 pass, 0 fail (integrated target), bun run lint:check -> clean, worker: bun test test/serve -> 832 pass, 0 fail (workspace)
-- PRs:
+- PRs: https://github.com/gmickel/gno/pull/206

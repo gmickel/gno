@@ -46,7 +46,9 @@ Follow-up not built (out of R2's wording): a render-path `getPage` failure after
 stage: wave-join - ran (cherry-pick of the worker commit and the review-fix commit onto the target; SPA snapshot refreshed by the conductor)
 stage: impl-review - ran [round 1 NEEDS_WORK -> fixes -> round 2 SHIP] (model: claude-opus-5 via harness subagent, host backend; fixes: cursor-grok-4.6-high via cursor-agent bridge, verification and commit by the conductor after the bridge agent hit a session limit)
 stage: plan-sync - skipped(config: planSync.enabled != true)
+
+2026-09-06 reconciliation: restored completion state from this existing summary and merged PR #206. Gordon confirmed all remaining work was completed and requested spec closure. Earlier BLOCKED/UNMET observations above are historical and superseded by that confirmation.
 ## Evidence
-- Commits: 23ebb1f2, 5e69f66f, 3eb34c89, 40d2c96400f5e6846666e19dcfdfb6b7d5699547
+- Commits: 23ebb1f2, 5e69f66f, 3eb34c89, 40d2c96400f5e6846666e19dcfdfb6b7d5699547, d17ac7d8577c87fbd14a072deef3f39db121edae
 - Tests: bun test test/serve/public/hooks test/serve/public/lib test/serve/public/components/pdf -> 135 pass, 0 fail (integrated target), bun run lint:check -> clean, bun test test/serve/spa-snapshot-freshness.test.ts -> 2 pass, bun run test:e2e:pdf -> PASSED on the review-fix tree (incl. CLEAN: anchored-correction CSS contract), worker: bun test (full) -> 4486 pass, 1 fail (snapshot freshness, fixed by the conductor rebuild); e2e PASSED twice
-- PRs:
+- PRs: https://github.com/gmickel/gno/pull/206

@@ -61,7 +61,9 @@ Review: SHIP on round 1 (Opus, host backend); its two P3 doc wording notes (PDF-
 stage: wave-join - ran (cherry-pick of the worker commit onto the target; no collision)
 stage: impl-review - ran [round 1 SHIP] (model: claude-opus-5 via harness subagent, host backend)
 stage: plan-sync - skipped(config: planSync.enabled != true)
+
+2026-09-06 reconciliation: restored completion state from this existing summary and merged PR #206. Gordon confirmed all remaining work was completed and requested spec closure. Earlier BLOCKED/UNMET observations above are historical and superseded by that confirmation.
 ## Evidence
-- Commits: a0195eb5, 1121d06898bdbcdf42563428aade2b2fa35ead89
+- Commits: a0195eb5, 1121d06898bdbcdf42563428aade2b2fa35ead89, d17ac7d8577c87fbd14a072deef3f39db121edae
 - Tests: bun run lint:check -> clean, bun test test/serve/spa-snapshot-freshness.test.ts -> 2 pass, worker: focused Quick suites 16/16, 7/7, 85/85 pass; local R3 warm-reload measurement 0 B JavaScript, 42/42 chunks from cache (evidence in the run notes), R6 after-measurement and R7 remote capture: BLOCKED (remote host not updatable from this machine); hosted site mirror: BLOCKED (repository inaccessible)
-- PRs:
+- PRs: https://github.com/gmickel/gno/pull/206
