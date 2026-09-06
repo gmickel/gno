@@ -18,7 +18,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-156-reader-reading-time-total-views-and.md",
-  "status": "open",
+  "status": "done",
   "title": "Reader reading time, total views, and Markdown copy",
   "tracker": {
     "baseHashFlow": null,
@@ -31,5 +31,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-06T16:28:48.574753Z"
+  "updated_at": "2026-09-06T16:43:48.522727Z"
 }

@@ -18,7 +18,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-155-public-share-abuse-reporting-and.md",
-  "status": "open",
+  "status": "done",
   "title": "Public-share abuse reporting and administrator takedown",
   "tracker": {
     "baseHashFlow": null,
@@ -31,5 +31,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-06T09:30:41.076222Z"
+  "updated_at": "2026-09-06T16:43:48.187286Z"
 }
