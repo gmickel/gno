@@ -28,6 +28,7 @@ interface OwnerCoverage {
   title: string | null;
   input_hash: string | null;
   embedding_bytes: number | null;
+  legacy_embedded: number;
 }
 
 /** Null retains legacy counts until a verified selection or activation exists. */
@@ -64,7 +65,7 @@ export function getVariantStatus(
     const models = new Set(partitions.map((p) => p.model));
     if (options?.embedModel) models.add(options.embedModel);
     else for (const model of selected.keys()) models.add(model);
-    let hasAuthority = false;
+    const authoritativeModels = new Set<string>();
     const usablePartitions = new Map<string, Partition>();
     for (const model of models) {
       const candidates = partitions.filter((p) => p.model === model);
@@ -73,7 +74,7 @@ export function getVariantStatus(
         (p) => p.state === "active" && p.activated_epoch !== null
       );
       if (selection === undefined && !activated) continue;
-      hasAuthority = true;
+      authoritativeModels.add(model);
       // Resolve one persisted identity per model, never combine alternative
       // partitions of the same model. Unscoped status may accept any model.
       // Stale epochs do not revoke owners whose current inputs still match.
@@ -103,10 +104,22 @@ export function getVariantStatus(
       )
         usablePartitions.set(partition.partition_id, partition);
     }
-    if (!hasAuthority) return null;
-    const statement = db.prepare<OwnerCoverage, [string]>(`
+    if (authoritativeModels.size === 0) return null;
+    // Unscoped legacy coverage remains valid only for models that have never
+    // selected or activated verified authority; legacy rows cannot repair it.
+    const statement = db.prepare<
+      OwnerCoverage,
+      [string | null, string, string]
+    >(`
+      WITH legacy_vectors AS (
+        SELECT mirror_hash, seq, MAX(embedded_at) AS embedded_at
+        FROM content_vectors
+        WHERE ? IS NULL AND model NOT IN (SELECT value FROM json_each(?))
+        GROUP BY mirror_hash, seq
+      )
       SELECT d.id AS document_id, o.partition_id, d.collection, d.mirror_hash, c.seq, c.text, d.title,
-        v.input_hash, length(v.embedding) AS embedding_bytes
+        v.input_hash, length(v.embedding) AS embedding_bytes,
+        CASE WHEN lv.embedded_at >= c.created_at THEN 1 ELSE 0 END AS legacy_embedded
       FROM documents d
       JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
       LEFT JOIN vector_owners o ON o.document_id = d.id AND o.seq = c.seq
@@ -114,6 +127,7 @@ export function getVariantStatus(
         AND o.partition_id IN (SELECT value FROM json_each(?))
       LEFT JOIN vector_variants v ON v.variant_id = o.variant_id
         AND v.partition_id = o.partition_id
+      LEFT JOIN legacy_vectors lv ON lv.mirror_hash = c.mirror_hash AND lv.seq = c.seq
       WHERE d.active = 1
     `);
     const owners = new Map<
@@ -122,23 +136,26 @@ export function getVariantStatus(
     >();
     try {
       for (const row of statement.iterate(
+        options?.embedModel ?? null,
+        JSON.stringify([...authoritativeModels]),
         JSON.stringify([...usablePartitions.keys()])
       )) {
         const partition = row.partition_id
           ? usablePartitions.get(row.partition_id)
           : undefined;
         const embedded = Boolean(
-          partition &&
-          row.embedding_bytes ===
-            partition.dimensions * Float32Array.BYTES_PER_ELEMENT &&
-          row.input_hash ===
-            embeddingInputHash(
-              formatDocForEmbedding(
-                row.text,
-                row.title ?? undefined,
-                partition.model
-              )
-            )
+          row.legacy_embedded ||
+          (partition &&
+            row.embedding_bytes ===
+              partition.dimensions * Float32Array.BYTES_PER_ELEMENT &&
+            row.input_hash ===
+              embeddingInputHash(
+                formatDocForEmbedding(
+                  row.text,
+                  row.title ?? undefined,
+                  partition.model
+                )
+              ))
         );
         const key = `${row.document_id}:${row.seq}`;
         const previous = owners.get(key);

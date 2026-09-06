@@ -203,3 +203,48 @@ test("unscoped status accepts any selected model without mixing same-model parti
   );
   expect((await coverage(store, {})).backlog).toBe(1);
 });
+
+test("unscoped mixed models retain legacy coverage only before that model gains variant authority", async () => {
+  const { store, variants } = await fixture();
+  const db = store.getRawDb();
+  variants.selectForEmbedding();
+  db.run("DELETE FROM vector_owners WHERE partition_id = ? AND seq = 0", [
+    variants.partitionId,
+  ]);
+  const insertLegacy = db.prepare(`INSERT INTO content_vectors
+    (mirror_hash, seq, model, embed_fingerprint, embedding, embedded_at)
+    VALUES ('shared', 0, ?, ?, ?, '2999-01-01')`);
+  insertLegacy.run(
+    statusIdentity.model,
+    getEmbeddingFingerprint({ modelUri: statusIdentity.model, dimensions: 2 }),
+    new Uint8Array(8)
+  );
+  // Even a fresh legacy vector cannot fill a missing verified owner for A.
+  expect((await coverage(store, {})).backlog).toBe(3);
+  insertLegacy.run(
+    "legacy-model",
+    getEmbeddingFingerprint({ modelUri: "legacy-model", dimensions: 2 }),
+    new Uint8Array(8)
+  );
+  expect((await coverage(store, {})).backlog).toBe(0);
+  expect(
+    (await coverage(store, {})).collections.every((c) => c.embedded === 2)
+  ).toBe(true);
+  expect((await coverage(store)).backlog).toBe(3);
+  expect((await coverage(store, { embedModel: "legacy-model" })).backlog).toBe(
+    1
+  );
+  db.run(
+    "UPDATE content_vectors SET embedded_at = '2000-01-01' WHERE model = 'legacy-model'"
+  );
+  expect((await coverage(store, {})).backlog).toBe(3);
+  db.run(
+    "UPDATE content_vectors SET embedded_at = '2999-01-01' WHERE model = 'legacy-model'"
+  );
+  const replacement = await createVectorVariantStore(db, {
+    ...statusIdentity,
+    model: "legacy-model",
+  });
+  replacement.selectForEmbedding();
+  expect((await coverage(store, {})).backlog).toBe(3);
+});

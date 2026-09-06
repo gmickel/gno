@@ -1,3 +1,7 @@
+---
+satisfies: [R1, R2, R3, R4]
+---
+
 # fn-161-align-embedding-status-with-active.1 Fix authoritative embedding status and regression coverage
 
 ## Description
