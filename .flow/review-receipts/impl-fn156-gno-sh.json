@@ -1,0 +1,121 @@
+{
+  "type": "impl_review",
+  "id": "branch",
+  "mode": "claude",
+  "base": "55b4925",
+  "verdict": "SHIP",
+  "session_id": "bc56496b-17dc-4be7-9d67-51df8c27ad18",
+  "model": "claude-fable-5-1",
+  "effort": "medium",
+  "spec": "claude:claude-fable-5-1:medium",
+  "timestamp": "2026-09-06T14:16:05.568856Z",
+  "review": "Prior finding #1: fixed\nPrior finding #2: fixed\nPrior finding #3: not-fixed\nPrior finding #4: fixed\nPrior finding #5: not-fixed\nPrior finding #6: fixed\n\n## Verification of the follow-up commit (904553c)\n\n- **#1 orphan definitions**: `prepareReaderNote` now collects definitions first, expands `linkReference`/`imageReference`, then filters `definition` nodes out of every `children` array before recursing (`src/lib/reader-note-text.ts:186`). The old `link || definition` branch that produced the stray placeholder is gone. New test asserts no `Nonportable link omitted`, no unused definition, and no `[safe]:`/`[hidden]:` lines in the output.\n- **#2 held j/k**: the scaffold handler now only rejects `event.repeat` for keys other than `j`/`k` (`src/components/reader/reader-scaffold.tsx:138`), and `ignoreReaderShortcut` no longer checks `repeat` itself. The Shift+Y handler adds its own `event.repeat` guard (`src/components/reader/reader-utilities.tsx:133`). Test covers repeat j/k firing, repeat+ctrl and repeat inside a textbox not firing, and Shift+Y ignoring repeat.\n- **#4 pluralization**: visible text and `aria-label` both switch on `views === 1`.\n- **#6 migration**: `db/migrations/156-reader-views.sql` exists with the same idempotent statements as `schema.sql`. Not referenced from a runbook the way 155 was, but that is documentation only.\n- **#3 and #5**: unchanged by design per the focus note. Both were P3 and never blocked; the request count and the inline SQL remain observations for the performance gate and a future cleanup, not defects.\n\nNo new regressions introduced by the fixes: the definition filter runs on the same mutable tree before stringify, and the repeat exemption is scoped to the two navigation keys.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Unchanged from prior review. |\n| R2 | met | Unchanged; singular/plural label fixed. |\n| R3 | met | Unchanged. |\n| R4 | met | Unchanged. |\n| R5 | met | Copy output no longer contains orphan definition placeholders; held-key repeat excluded for copy only; navigation keys preserved. |\n| R6 | met | Unchanged. |\n| R7 | partial | Docs/privacy done; live QA and performance evidence remain host gates. |\n\nUnaddressed R-IDs: []\n\nClassification counts: 0 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":0,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>SHIP</verdict>",
+  "focus": "Quick continuation: prior SHIP accepted. Only inspect followup commit904553c: remove orphan/unused Markdown definition output after reference expansion, restore held j/k repeat with copy repeat exclusion, singular1view visible+aria, add idempotent156SQLmigration. Focused12tests pass and migration applied twice successfully; finalcheck/types/unit/build underway. No SQL structural refactor or new countrequest architecture is warranted from speculative concerns; actual controlled performance QA remains host gate. Report actual regressions or remaining correctness/security blockers, not generic style/taste. Preserve prior scope and quick Fable5.1medium request.",
+  "introduced_count": 0,
+  "pre_existing_count": 0,
+  "unaddressed": [],
+  "findings": {
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b",
+    "reviewKind": "implementation",
+    "backend": "claude",
+    "round": 2,
+    "baseSha": "55b4925d382cf82be2201da022af505c941f72e0",
+    "headSha": "904553cf056b160d22d722faad47530faef9750e",
+    "supersedesReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
+    "items": [
+      {
+        "id": "finding-4f971237695afb5073e33b7bd87b3133",
+        "ordinal": 2,
+        "severity": "P3",
+        "confidence": 100,
+        "classification": "introduced",
+        "status": "fixed",
+        "title": "The scaffold's keydown handler now routes through `ignoreReaderShortcut`, which rejects `event",
+        "body": "The scaffold's keydown handler now routes through `ignoreReaderShortcut`, which rejects `event.repeat`. That was specified for Shift+Y, but it also applies to `j`/`k`/`h`/`o`/`/`, so holding `j` to step through notes no longer repeats. Spec says \"Preserve existing reader navigation keys\".",
+        "rIds": [
+          "R5"
+        ],
+        "suggestion": "Either accept and document, or apply the repeat/modifier filter only in the Shift+Y handler and keep the original typing-context check for navigation keys.",
+        "firstSeenReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
+        "lastSeenReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b"
+      },
+      {
+        "id": "finding-731411eb3f92ebb8c4073c7e983d64c5",
+        "ordinal": 4,
+        "severity": "P3",
+        "confidence": 100,
+        "classification": "introduced",
+        "status": "fixed",
+        "title": "Renders `1 views` and `1 min read` is fine but `1 views` is not",
+        "body": "Renders `1 views` and `1 min read` is fine but `1 views` is not.",
+        "rIds": [
+          "R2"
+        ],
+        "suggestion": "`views === 1 ? \"1 view\" : ...`.",
+        "firstSeenReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
+        "lastSeenReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b"
+      },
+      {
+        "id": "finding-eaeecd3a64af8e85a971b2a6587e641e",
+        "ordinal": 6,
+        "severity": "P3",
+        "confidence": 100,
+        "classification": "introduced",
+        "status": "fixed",
+        "title": "fn-153 and fn-155 shipped both `db/schema",
+        "body": "fn-153 and fn-155 shipped both `db/schema.sql` changes and a `db/migrations/<n>.sql`; this change only updates `schema.sql`. Bootstrap applies `schema.sql` at startup so production is covered, but the runbook convention for controlled migration is not followed.",
+        "rIds": [],
+        "suggestion": "Add `db/migrations/156-reader-views.sql` with the same idempotent statements, or note the omission in the release checklist.",
+        "firstSeenReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
+        "lastSeenReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b"
+      },
+      {
+        "id": "finding-79db5b3b8cf8218132daeddb4b04dfa9",
+        "ordinal": 1,
+        "severity": "P3",
+        "confidence": 75,
+        "classification": "introduced",
+        "status": "fixed",
+        "title": "A protected `definition` node (e",
+        "body": "A protected `definition` node (e.g. `[private]: https://gno.sh/secret/...`) is rewritten into a root-level `text` node with the value `[Nonportable link omitted]`, since definitions have no children. remark-stringify emits it as its own paragraph (`\\[Nonportable link omitted]`), so the copied document ends with an orphan placeholder line unrelated to any inline reference. Unprotected definitions are also kept even though every `linkReference` has already been inlined, producing duplicate link data. The test only asserts absence of the token, not absence of the stray line.",
+        "rIds": [
+          "R5"
+        ],
+        "suggestion": "After inlining references, drop `definition` nodes from `tree.children` entirely instead of converting them to text.",
+        "firstSeenReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
+        "lastSeenReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b"
+      },
+      {
+        "id": "finding-fb7ae1b1174766606b2edb79bda2d5c7",
+        "ordinal": 3,
+        "severity": "P3",
+        "confidence": 75,
+        "classification": "introduced",
+        "status": "not_fixed",
+        "title": "Each displayed note fires `view`, an immediate `count`, and a second `count` at 5",
+        "body": "Each displayed note fires `view`, an immediate `count`, and a second `count` at 5.5 s. Each request resolves the target with a multi-join query on the analytics pool (`max: 2`, 1 s connect timeout). Under moderate concurrency the pool queue will hit the timeout and return 503, which is safe for reading but wastes work; the delayed re-count only exists to show the reader their own increment.",
+        "rIds": [
+          "R4"
+        ],
+        "suggestion": "Return the current total in the `view` 202 body and drop the delayed re-count, or keep a single `count` request. Not a blocker; the failure path is already non-blocking.",
+        "firstSeenReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
+        "lastSeenReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b"
+      },
+      {
+        "id": "finding-f88ad418bb627ce1870f8266acea3043",
+        "ordinal": 5,
+        "severity": "P3",
+        "confidence": 75,
+        "classification": "introduced",
+        "status": "not_fixed",
+        "title": "`handleReaderViews` is ~110 lines and builds the WHERE clause with three chained ternaries inside a template literal:",
+        "body": "`handleReaderViews` is ~110 lines and builds the WHERE clause with three chained ternaries inside a template literal:",
+        "rIds": [],
+        "suggestion": "Split into three small named query builders (public/private, secret, locked) returning `{text, values}`. No new abstraction beyond that.",
+        "firstSeenReceiptId": "review-b31042502909d0e2a8f2d3b7df2b49d34e4444a3cd7ea391b0c89244622ee098",
+        "lastSeenReceiptId": "review-017ccb920ef4ab543fbdb2dff69484726471987c581be131c71a6735af6b031b"
+      }
+    ]
+  }
+}

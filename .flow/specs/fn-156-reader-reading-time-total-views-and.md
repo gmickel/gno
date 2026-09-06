@@ -95,7 +95,7 @@ Performance means no measurable reader regression, not literally zero CPU or net
 
 ## Boundaries
 
-- Hosted reader only; no Studio/account dashboard redesign beyond what fn-153 already covers. No collection-wide total, engagement analytics, visitor profiles, unique counting, funnels, referrer reports, read receipts, tracking SDK, or new billing restriction. [paraphrase]
+- Hosted reader utilities and their required local export identities; no Studio/account dashboard redesign beyond what fn-153 already covers. No collection-wide total, engagement analytics, visitor profiles, unique counting, funnels, referrer reports, read receipts, tracking SDK, or new billing restriction. [paraphrase]
 - No whole-bundle clipboard export, image-byte copying, new publication mode, or relaxing access/encryption boundaries. [inferred]
 - Retain existing required authentication and operational security logging. This feature must not repurpose those records for identifying visitors. [inferred]
 
@@ -109,7 +109,7 @@ Markdown copy supports deliberate reuse of published knowledge in agent workflow
 
 ## Verification and Handoff
 
-Implement in the hosted gno.sh repository using its existing reader, publish read service/telemetry, Markdown/agent projection, and database layers. Flow tracking remains in GNO. Depend on fn-153 so the common lifecycle behavior and reader changes are available; fn-155 is not a prerequisite. Inspect current code rather than assuming this conversation's baseline is unchanged. No remaining product decision requires another interview.
+Implement reader utilities in the hosted gno.sh repository using its existing reader, publish read service/telemetry, Markdown/agent projection, and database layers. Implement durable export identities in GNO with the contract described above. Flow tracking remains in GNO. Depend on fn-153 so the common lifecycle behavior and reader changes are available; fn-155 is not a prerequisite. Inspect current code rather than assuming this conversation's baseline is unchanged. No remaining product decision requires another interview.
 
 Test word-count fixtures; canonical versus block-based Markdown; title duplication; tables/code; image placeholders; clipboard failures; shortcut modifiers/input fields; unlock/change/lock cleanup; view navigation versus hydration/prefetch; concurrent atomic deltas; buffer bounds; ambiguous and definite DB failures; multiple owners; withdrawn/deleted notes; and count persistence across revisions versus separate copies.
 
