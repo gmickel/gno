@@ -490,7 +490,7 @@
     "plan": 0
   },
   "spec_path": ".flow/specs/fn-136-pdf-viewing-over-a-remote-link.md",
-  "status": "open",
+  "status": "done",
   "title": "PDF viewing over a remote link",
   "tracker": {
     "baseHashFlow": null,
@@ -503,5 +503,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-02T18:08:43.340528Z"
+  "updated_at": "2026-09-06T14:30:20.510519Z"
 }

@@ -28,9 +28,8 @@ Close the remote-link half of R6 and R7 and mirror the docs to the hosted site. 
 
 
 ## Done summary
-TBD
-
+Completed remote-link verification (R6 and R7) and the hosted documentation mirror, as confirmed by Gordon on 2026-09-06. This reconciliation records owner-confirmed completion; it does not invent measurements or claim a new remote QA run.
 ## Evidence
-- Commits:
+- Commits: d17ac7d8577c87fbd14a072deef3f39db121edae
 - Tests:
-- PRs:
+- PRs: https://github.com/gmickel/gno/pull/206

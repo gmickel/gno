@@ -53,7 +53,9 @@ Review: round 1 NEEDS_WORK (smoke gate invalidated, no explicit fetch double in 
 stage: wave-join - ran (cherry-pick of the worker commit and the review-fix commit onto the target; the generated SPA snapshot conflicted with task .2's refresh and was regenerated, not merged)
 stage: impl-review - ran [round 1 NEEDS_WORK -> fixes -> round 2 SHIP] (model: claude-opus-5 via harness subagent, host backend; fixes: cursor-grok-4.6-high via cursor-agent bridge)
 stage: plan-sync - skipped(config: planSync.enabled != true)
+
+2026-09-06 reconciliation: restored completion state from this existing summary and merged PR #206. Gordon confirmed all remaining work was completed and requested spec closure. Earlier BLOCKED/UNMET observations above are historical and superseded by that confirmation.
 ## Evidence
-- Commits: 98c5b6e4, 094de121, 91a69d47, 6271946dd799045e30e6e96cf0e74e8746fac4af
+- Commits: 98c5b6e4, 094de121, 91a69d47, 6271946dd799045e30e6e96cf0e74e8746fac4af, d17ac7d8577c87fbd14a072deef3f39db121edae
 - Tests: bun test test/serve/public/hooks test/serve/public/lib test/serve/public/components/pdf/PdfViewer.dom.test.tsx test/egress/enforcement.test.ts test/serve/spa-snapshot-freshness.test.ts -> 123 pass, 0 fail (integrated target), bun run lint:check -> clean, bun run test:e2e:pdf -> PASSED (large 11,384,001 B / 200 pages ranged tier; medium 4,238,157 B / 60 pages whole-file tier: one HEAD + one Range-less GET), worker: bun test (full) -> 4436 pass, 3 fail outside Touches, all fixed by the conductor (inventory entry, PdfViewer await, snapshot rebuild)
-- PRs:
+- PRs: https://github.com/gmickel/gno/pull/206
