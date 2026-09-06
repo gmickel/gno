@@ -1,0 +1,78 @@
+{
+  "type": "impl_review",
+  "id": "branch",
+  "mode": "claude",
+  "base": "649bc4c29f81d92184239c26fbf8dbadd6ad7a2c",
+  "verdict": "SHIP",
+  "session_id": "97405c50-535b-4f86-8575-9b339f600ea5",
+  "model": "claude-fable-5-1",
+  "effort": "medium",
+  "spec": "claude:claude-fable-5-1:medium",
+  "timestamp": "2026-09-06T09:29:01.113598Z",
+  "review": "All three prior findings are verified against the current code.\n\nPrior finding #1: fixed\nPrior finding #2: fixed\nPrior finding #3: fixed\n\n**Finding 1 verification.** `ModerationTarget` now carries `canReinstate`, set from the target's own active `publish_moderation` row in `targetView` and from `row.active` on the tombstone branch. The page shows an inherited-restriction instruction and disables submit when `restricted && !canReinstate`, with a guard in the submit handler too. The new integration case takes down a target, looks up its sibling copy by URL, asserts `restricted: true, canReinstate: false` with the shared explanation, and confirms a direct reinstate on the sibling still throws `NOT_FOUND`. Server enforcement is unchanged, so the client flag is advisory only.\n\n**Finding 2 verification.** The docs now state that exact copies created before the migration under a different source identity and slug have no stored fingerprint, that their next update is checked and rejected, and that the migration does not scan legacy copies. That is the documentation option I suggested and it matches the code.\n\n**Finding 3 verification.** `refresh()` now calls `setExplanation(\"\")` alongside resetting reason, confirmation, and pending state. Successful mutation calls `refresh()`, so the reinstatement form starts empty.\n\n**No new findings.** The fix diff is limited to one boolean field, a UI guard, a doc paragraph, and one integration case. It does not touch authorization, the transaction body, the read predicates, or the digest logic. Nothing in the changed hunks introduces a regression or a new \u2265 Major issue.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Unchanged from prior review: contextual report page, canonicalization tests, copy controls, \"does not submit\" copy |\n| R2 | met | Reader and agent denial integration case; owner lifecycle ops CONFLICT; typed outcomes |\n| R3 | met | Exact-ID allowlist, unit tests for billing admin, org role, forged actor, cross-origin POST |\n| R4 | met | Renamed and post-deletion exact copies rejected; access/rotate/update blocked; content-free rows |\n| R5 | met | Studio explanation and contact; reinstatement preserves other states; new inherited-restriction lookup case |\n| R6 | met | Audit rollback trigger test, concurrency, replay, retention pruning |\n| R7 | met | Four policy pages, processors in `legal.ts`, `docs/publish-moderation.md` including legacy-copy limitation |\n| R8 | met | Real PostgreSQL integration cases (36 reported green), unit gates green, live QA reported for the fixes |\n\nUnaddressed R-IDs: []\n\nClassification counts: 0 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":0,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>SHIP</verdict>",
+  "focus": "Quick follow-up on previous SHIP review: HEAD1c340de fixes all3minor findings with inherited-restriction instruction and disabled reinstate, cleared explanation on refresh, and documented pre-migration-copy limitation. New integration case passes. All canonical gates green: check,typecheck,346unit,36realintegration,build. Verify these bounded fixes and any actual regression; avoid speculative architecture, new services, broad refactors or unrelated polish. Keep original fn155 R1-R8 scope and verified policy facts. Live QA confirms inherited instruction/disabled action and empty explanation. Report prior finding status and verdict.",
+  "introduced_count": 0,
+  "pre_existing_count": 0,
+  "unaddressed": [],
+  "findings": {
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-73feb4483f005d977c1ec67f2553561a8673a79eccae301fe8a7e9c21a3dc84b",
+    "reviewKind": "implementation",
+    "backend": "claude",
+    "round": 2,
+    "baseSha": "649bc4c29f81d92184239c26fbf8dbadd6ad7a2c",
+    "headSha": "1c340de22a7aa858843d0b79be4c8e021b97ae21",
+    "supersedesReceiptId": "review-910d8a0c8dabc3395e657700549f77500e06353819d4febbbfec99852a0df5f0",
+    "items": [
+      {
+        "id": "finding-333832953af130f523362b223c9d625b",
+        "ordinal": 1,
+        "severity": "P3",
+        "confidence": 75,
+        "classification": "introduced",
+        "status": "fixed",
+        "title": "A sibling target that is `operator_blocked` only because it matches another restriction's source key or digest has no own `publish_moderation` row",
+        "body": "A sibling target that is `operator_blocked` only because it matches another restriction's source key or digest has no own `publish_moderation` row. Lookup reports it `restricted: true` with `revision = target.revision`, the UI offers \"Reinstate after review\", and the mutation then throws `NOT_FOUND: Active restriction not found.` A takedown on it throws `CONFLICT: ... already restricted`. The operator has no path from this view to the restriction that actually governs the target.",
+        "rIds": [
+          "R2",
+          "R5"
+        ],
+        "suggestion": "In `targetView`, when `restrictions.rows[0].id` is not the target's own row, return the governing restriction's target key or a message saying \"restricted through another publication of this owner; reinstate that one\". No schema change needed.",
+        "firstSeenReceiptId": "review-910d8a0c8dabc3395e657700549f77500e06353819d4febbbfec99852a0df5f0",
+        "lastSeenReceiptId": "review-73feb4483f005d977c1ec67f2553561a8673a79eccae301fe8a7e9c21a3dc84b"
+      },
+      {
+        "id": "finding-b5bac864941b4e2bfa722c55118915bc",
+        "ordinal": 2,
+        "severity": "P3",
+        "confidence": 75,
+        "classification": "introduced",
+        "status": "fixed",
+        "title": "Takedown fingerprints the restricted target's own snapshots",
+        "body": "Takedown fingerprints the restricted target's own snapshots. Sibling targets of the same owner get `moderation_source_key` backfilled in the loop, but `moderation_digest` is never backfilled. An exact copy that was published under another slug before this migration keeps `moderation_digest = NULL` and stays live until its next upsert. The spec bounds scope to \"one public publication\", and the docs say \"re-import\", so this is within the bounded guarantee. Flagging so the limitation is understood; it is not a spec breach.",
+        "rIds": [
+          "R4"
+        ],
+        "suggestion": "Either leave as is and add one line to `docs/publish-moderation.md` that pre-migration siblings are only caught on their next update, or compute the digest for sibling rows in the same loop (one extra query per snapshot). The doc line is the simpler fix.",
+        "firstSeenReceiptId": "review-910d8a0c8dabc3395e657700549f77500e06353819d4febbbfec99852a0df5f0",
+        "lastSeenReceiptId": "review-73feb4483f005d977c1ec67f2553561a8673a79eccae301fe8a7e9c21a3dc84b"
+      },
+      {
+        "id": "finding-b9d7179eed496625a98ec75843ea5e6e",
+        "ordinal": 3,
+        "severity": "P3",
+        "confidence": 75,
+        "classification": "introduced",
+        "status": "fixed",
+        "title": "After a successful takedown, `refresh()` switches the reason to `review-approved` but leaves the `explanation` textarea holding the takedown text",
+        "body": "After a successful takedown, `refresh()` switches the reason to `review-approved` but leaves the `explanation` textarea holding the takedown text. That text is persisted into `publish_moderation.explanation` on reinstate. Owner-visible impact is nil because inactive rows are not shown, but the audit row and the operator page will carry a misleading explanation for the reinstatement.",
+        "rIds": [
+          "R5"
+        ],
+        "suggestion": "`setExplanation(\"\")` inside `refresh()` on success.",
+        "firstSeenReceiptId": "review-910d8a0c8dabc3395e657700549f77500e06353819d4febbbfec99852a0df5f0",
+        "lastSeenReceiptId": "review-73feb4483f005d977c1ec67f2553561a8673a79eccae301fe8a7e9c21a3dc84b"
+      }
+    ]
+  }
+}

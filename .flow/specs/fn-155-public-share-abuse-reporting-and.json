@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-155-public-share-abuse-reporting-and",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-06T09:30:41.076216Z",
   "created_at": "2026-09-05T10:12:38.175250Z",
   "default_impl": null,
   "default_review": null,
@@ -31,5 +31,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-05T12:32:50.325657Z"
+  "updated_at": "2026-09-06T09:30:41.076222Z"
 }
