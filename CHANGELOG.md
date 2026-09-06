@@ -14,6 +14,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and current document inputs instead of reporting missing legacy vectors.
   Thanks to @gmickel for reporting the discrepancy.
 
+## [2.1.0] - 2026-09-06
+
+### Added
+
+- Choose public, secret-link, invite-only, or encrypted access explicitly when
+  exporting a document or collection from the Web UI, with plan guidance and
+  passphrase confirmation for encrypted exports.
+- Document the coordinated gno.sh Studio publication workflow: review access,
+  update existing publications, withdraw public access, and delete publications
+  or source content with clear confirmation and cleanup status.
+
+### Fixed
+
+- Keep encrypted collection export help accurate and make export dialog controls
+  usable in the packaged Web UI.
+
 ## [2.0.1] - 2026-09-05
 
 ### Changed
@@ -2683,7 +2699,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/gmickel/gno/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/gmickel/gno/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/gmickel/gno/compare/v1.46.0...v2.0.0
 [1.46.0]: https://github.com/gmickel/gno/compare/v1.45.1...v1.46.0
