@@ -18,7 +18,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-153-publishing-permissions-public.md",
-  "status": "open",
+  "status": "done",
   "title": "Publishing permissions, public revocation, and a usable Studio",
   "tracker": {
     "baseHashFlow": null,
@@ -31,5 +31,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-05T12:32:50.047296Z"
+  "updated_at": "2026-09-06T04:57:03.278000Z"
 }

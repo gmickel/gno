@@ -125,7 +125,11 @@
     "backup_hold_removed": true,
     "evidence": "Read-only SSH checks on both production hosts found no host-managed content backup jobs or dumps in inspected locations; PostgreSQL archiving off, zero replication connections/slots. User screenshots show Hetzner automatic backups disabled on both servers.",
     "limits": "Manual snapshots and independent copies remain unverified. Retention and restore reconciliation apply to any backup/snapshot used, including a pre-migration backup.",
-    "remaining": "Release authorization, migration safeguards, coordinated policy effective date and production QA after deployment. No production deployment or publishing mutations performed.",
-    "qa_identity": "Original tested code heads and QA timestamp preserved; this follow-up changes release interpretation only."
+    "remaining": "No fn-153 release work remains. Separate cosmetic mobile reader follow-up: fn-162.",
+    "qa_identity": "Original tested code heads and QA timestamp preserved; this follow-up changes release interpretation only.",
+    "completed_at": "2026-09-06T04:57:53.725014+00:00",
+    "release_verification": ".flow/artifacts/fn-153-publishing-permissions-public/release/release-verification.json",
+    "production_verification": ".flow/artifacts/fn-153-publishing-permissions-public/release/production-verification.json",
+    "recovery_copy": "Root-only pre-migration database copy retained with manual retention pending authorized cleanup; current denial state must be reconciled before any restore reopens readers."
   }
 }

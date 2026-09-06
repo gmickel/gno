@@ -1,0 +1,170 @@
+{
+  "type": "production-verification",
+  "spec": "fn-153-publishing-permissions-public",
+  "verified_at": "2026-09-06T04:18:21.395951+00:00",
+  "target": "https://gno.sh",
+  "deployed_revision": "17d71fbe6f4a4a4a7e94f6c0d6caad8f837fec6b",
+  "service": "active",
+  "runtime": "Bun 1.4.2",
+  "verdict": "PASS",
+  "scope": [
+    "anonymous production routes and existing synthetic fixtures",
+    "desktop and mobile docs, publish page, Terms, Privacy and reader navigation",
+    "database lifecycle schema presence"
+  ],
+  "checks": {
+    "http_launch_script": "pass",
+    "fixture_content_sha256": "9b9463df9a9318639cab3fcb2208e12da873044bcb34f47314a77394199c6248",
+    "fixture_bytes": 73,
+    "fixture_lines": 3,
+    "restricted_and_unknown_routes": "404 with no-store",
+    "conditional_manifest": "304 with no-store",
+    "lifecycle_columns": 4,
+    "lifecycle_tables": 4,
+    "cleanup_jobs": 0,
+    "browser_uncaught_errors": 0,
+    "docs_copy_button": "Copied feedback observed",
+    "reader_navigation": "Latency Budget For Reader Pages selected and rendered",
+    "mobile_width": 390,
+    "desktop_widths": [
+      1280,
+      1380
+    ],
+    "service_restart_bootstrap": "ExecStartPost exited 0; service active; launch verifier passed again",
+    "additional_reference_pages": [
+      "/docs/configuration",
+      "/docs/publish-visibility"
+    ]
+  },
+  "resolved_deployment_findings": [
+    {
+      "finding": "Remote build killed by host OOM before service switch",
+      "resolution": "Retried same pinned commit with remote NODE_OPTIONS=--max-old-space-size=4096; build and service switch passed"
+    },
+    {
+      "finding": "Homepage health passed before lazy database bootstrap; public manifest returned missing lifecycle_state column error",
+      "resolution": "GET /api/auth/get-session completed bootstrap; repeated launch verifier passed; deployment runbook documents bootstrap health URL"
+    }
+  ],
+  "limitations": [
+    "Authenticated destructive lifecycle flows were exercised against isolated local PostgreSQL/object-store fixtures before merge, not repeated on production customer data.",
+    "No production deletion job was created; bootstrap and service restart passed with zero queued jobs.",
+    "Viewport emulation is not physical mobile-device testing."
+  ],
+  "evidence": [
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-browser-errors.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-db-migration-verification.txt",
+      "sha256": "c9da50f251973872bbf1538b94ace3da67986345d6aca6476abf70fb6515cf2e"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-docs-desktop.png",
+      "sha256": "2841b177ea81c20979113631dcdbd2138bccf76c4a0b9f347d6527da7d781f54"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-docs-mobile.png",
+      "sha256": "25cf015665c162a3d64cf25d8ab7e2bda42c812b61bbe4e62959fad3596bb939"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-home-headers.txt",
+      "sha256": "3386f7f8ee94e2cc26591a7cb5d6a4ab972e1bcb51c7f67152ddc0b8e790ad35"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-launch-verification.log",
+      "sha256": "3920478e6c7696f6e48bd2edd900ead4c94531afb4791424204e60a60655a41b"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-privacy-desktop.png",
+      "sha256": "bc3d62a5367409cfc3e27204adf025ac4046803abb0938d92eb67dcfaa8cb5b2"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-privacy-mobile.png",
+      "sha256": "74185c017fff6e44246e78cf5361a9e3b8f738245c2761b66ed50757fac3de51"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-publish-desktop.png",
+      "sha256": "6d6ef0dcf9aa4630d7ed36c5daceb3a120ea20aedc2e224a25990910d8302dbf"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-publish-mobile.png",
+      "sha256": "37bd792670cfe3d2a8abdb364e100e0f1b18ee07e62abc0cf47d7608428a33de"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-reader-desktop.png",
+      "sha256": "1dc1491cf698ade3d8a71385bfca4f4038a3b1a369f083bdd142c5ab79fde634"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-reader-mobile.png",
+      "sha256": "7b2f060a04e11deba06189609f4d25ead17650b45dd396cdb8b14e7a31e7e9ee"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-revision-verification.txt",
+      "sha256": "341a599edec494e088ea49b49b2d3910bff1073662994f832366267100e00148"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-terms-desktop.png",
+      "sha256": "96465263da8472a13cefbb41c9e83324315c37e2ee90ea2b593c4638e5ba0c51"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-terms-mobile.png",
+      "sha256": "3a1172b47e7c32df384b74a6edbb432c0a7623adc003cbc9b660721991d0a6cb"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-service-bootstrap.log",
+      "sha256": "db47ebb4f16341200b7ff658edbb2245b66e6a702327638d43f0726a89619e54"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-launch-after-restart.log",
+      "sha256": "3920478e6c7696f6e48bd2edd900ead4c94531afb4791424204e60a60655a41b"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-configuration-desktop.png",
+      "sha256": "2b04dc79fcec2f4d72f07eb27ac2f4e71be4757c3831b9bff4b01940e4ef6932"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-configuration-mobile.png",
+      "sha256": "47d694469e00792f1d41be687930e856dc521699c4d2202406a39d9dad5838f7"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-visibility-desktop.png",
+      "sha256": "5a9802e656ff610d19a484b66383cc82e63b5e88957a611ca463e900cad50980"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-visibility-mobile.png",
+      "sha256": "8aea9458f629abf295b5b8941cb516d5f61f4dd858bc1f06beceabfc3110b756"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-reference-browser-errors.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-reader-mobile-fresh.png",
+      "sha256": "0bce597345b603bc1d29ce6c6998b0c35e301f68f1d9637878a89f69d59c4f70"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-configuration-changed-desktop.png",
+      "sha256": "3e8e8be7ccab8e367de6272089f9e801746552122f9be61cbe85e40183879c88"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-configuration-changed-mobile.png",
+      "sha256": "6414c2bdd47323ab5308866eec0ade148399e86b96d0605da165b42dab5e86fb"
+    },
+    {
+      "path": "/home/gordon/.cache/agent-tmp/fn153/prod-visibility-changed-desktop.png",
+      "sha256": "4fb66e7dddd7d8438bdd665d2590a91b1bc3eb989df045d04a1f55447d16d4c5"
+    }
+  ],
+  "followups": [
+    {
+      "spec": "fn-162-prevent-mobile-reader-home-control-from",
+      "priority": "P2",
+      "finding": "Reader home control overlaps the visibility badge on a fresh 390 x 844 load",
+      "blocks_lifecycle_release": false
+    }
+  ],
+  "source_checkout_after_runbook_only_update": "444fc825014f42513056bdd1281faf761eb69ff6",
+  "source_checkout_note": "Only docs/PUBLISHING_LIFECYCLE_RUNBOOK.md changed after the deployed application commit; .output/REVISION remains the runtime identity."
+}

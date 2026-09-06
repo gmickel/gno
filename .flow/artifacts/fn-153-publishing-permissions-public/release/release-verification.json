@@ -1,0 +1,94 @@
+{
+  "type": "release_verification",
+  "verdict": "PASS",
+  "verified_at": "2026-09-06T04:57:53.725014+00:00",
+  "spec": "fn-153-publishing-permissions-public",
+  "version": "2.1.0",
+  "tag": "v2.1.0",
+  "source_commit": "932d7ec43a4810fa6af02de07f4f9aebaf183ec9",
+  "release_url": "https://github.com/gmickel/gno/releases/tag/v2.1.0",
+  "workflow_url": "https://github.com/gmickel/gno/actions/runs/34011785628",
+  "jobs": [
+    {
+      "name": "test (windows-latest)",
+      "conclusion": "success"
+    },
+    {
+      "name": "test (macos-latest)",
+      "conclusion": "success"
+    },
+    {
+      "name": "test (ubuntu-latest)",
+      "conclusion": "success"
+    },
+    {
+      "name": "package-windows-desktop",
+      "conclusion": "success"
+    },
+    {
+      "name": "package-macos-desktop",
+      "conclusion": "success"
+    },
+    {
+      "name": "pack-test",
+      "conclusion": "success"
+    },
+    {
+      "name": "publish",
+      "conclusion": "success"
+    },
+    {
+      "name": "release",
+      "conclusion": "success"
+    }
+  ],
+  "npm": {
+    "name": "@gmickel/gno",
+    "version": "2.1.0",
+    "source_commit": "932d7ec43a4810fa6af02de07f4f9aebaf183ec9",
+    "workflow": "https://github.com/gmickel/gno/actions/runs/34011785628",
+    "bytes": 16567276,
+    "sha256": "b8c97ab4c81ad7d4f3b4925ff07cb91b19e5bfd95be6f3a4ab58703ca41e6d1c",
+    "integrity": "sha512-YXuQjFtfbRcFWPEZ3b15yt6gu5XAp7AHidFJxiDGeo7RmbBvSL6MUrARMsQdrHONPh8dTvWT3s2cvUOONLTc0Q==",
+    "published_bytes_equal_tested_archive": true
+  },
+  "assets": [
+    {
+      "name": "gno-desktop-beta-windows-x64.zip",
+      "bytes": 628981801,
+      "sha256": "7d6de9d97cd1dc052d86f9dae087113367b9a50ea6f3193d2bca9bc7801917fe",
+      "ci_download_matches_release_asset_digest": true
+    },
+    {
+      "name": "gno-desktop-beta-2.1.0.dmg",
+      "bytes": 408700987,
+      "sha256": "2c3b3fddbd89d09123719c4775bd5c9a75ed1e8184a70cba939922af75059aab",
+      "ci_download_matches_release_asset_digest": true
+    },
+    {
+      "name": "gno-desktop-beta-2.1.0.zip",
+      "bytes": 247643766,
+      "sha256": "5c6191a4ff1fd18dd211d33a004fcd672e618ce1377f5c8a724ada97c7ce536a",
+      "ci_download_matches_release_asset_digest": true
+    },
+    {
+      "name": "gno-browser-clipper-v2.1.0.zip",
+      "bytes": 359854,
+      "sha256": "8dd833b01ebc0a0cb5747de65a9cd60b06cafcf645c2a74d697c918fe7c642d7",
+      "ci_download_matches_release_asset_digest": true
+    },
+    {
+      "name": "gno-browser-clipper-v2.1.0.zip.sha256",
+      "bytes": 97,
+      "sha256": "9d6043b3ddbcedaf7012977e391e3b033e96909b0c8db2f4f63ac0f0843936ca",
+      "ci_download_matches_release_asset_digest": true
+    }
+  ],
+  "desktop_runtime_version": "2.1.0 in both downloaded desktop ZIPs",
+  "macos_acceptance": "CI signing, notarization, stapling, and signed launch test passed; no physical-device acceptance claimed",
+  "feature_merge_commits": {
+    "gno": "1d6e8ba08820f2027cbea2b6b4857b2d7fd62c44",
+    "gno.sh": "17d71fbe6f4a4a4a7e94f6c0d6caad8f837fec6b"
+  },
+  "production_receipt": ".flow/artifacts/fn-153-publishing-permissions-public/release/production-verification.json"
+}
