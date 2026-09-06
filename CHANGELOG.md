@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Correct embedding backlog and collection counts in CLI and web status after
+  exact-input vector storage activates. Status checks the selected partition
+  and current document inputs instead of reporting missing legacy vectors.
+  Thanks to @gmickel for reporting the discrepancy.
+
 ## [2.0.1] - 2026-09-05
 
 ### Changed

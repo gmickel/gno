@@ -19,7 +19,10 @@ import {
 import { migration } from "../../src/store/migrations/028-vector-variants";
 import { createVectorIndexPort } from "../../src/store/vector/sqlite-vec";
 import { createVectorStatsPort } from "../../src/store/vector/stats";
-import { createVectorVariantStore } from "../../src/store/vector/variants";
+import {
+  createVectorVariantStore,
+  SELECTED_VECTOR_PARTITION_PREFIX,
+} from "../../src/store/vector/variants";
 
 const variantDatabases: Database[] = [];
 afterEach(() => {
@@ -29,7 +32,8 @@ afterEach(() => {
 async function variantFixture(titles = ["Alpha", "Beta", "Alpha"]) {
   const db = new Database(":memory:");
   variantDatabases.push(db);
-  db.exec(`CREATE TABLE documents(id INTEGER PRIMARY KEY, mirror_hash TEXT, title TEXT, active INTEGER, collection TEXT);
+  db.exec(`CREATE TABLE schema_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT);
+    CREATE TABLE documents(id INTEGER PRIMARY KEY, mirror_hash TEXT, title TEXT, active INTEGER, collection TEXT);
     CREATE TABLE content_chunks(mirror_hash TEXT, seq INTEGER, text TEXT, PRIMARY KEY(mirror_hash, seq));
     CREATE TABLE content_vectors(mirror_hash TEXT, seq INTEGER, model TEXT, embedding BLOB);
     INSERT INTO content_chunks VALUES ('body', 0, 'Shared body');
@@ -194,6 +198,14 @@ test("production stats select exact runtime partition and retain authority on me
     ok: true,
     value: { embedded: 0 },
   });
+  const selectedPartition = () =>
+    db
+      .query<{ value: string }, [string]>(
+        "SELECT value FROM schema_meta WHERE key = ?"
+      )
+      .get(SELECTED_VECTOR_PARTITION_PREFIX + "test-model")?.value;
+  const originalSelection = selectedPartition();
+  expect(originalSelection).toBeString();
   identity.contextSize = 256;
   expect(await embedBacklog(automatic)).toMatchObject({
     ok: true,
@@ -202,6 +214,8 @@ test("production stats select exact runtime partition and retain authority on me
   expect(db.query("SELECT count(*) AS n FROM vector_variants").get()).toEqual({
     n: 4,
   });
+  expect(selectedPartition()).toBeString();
+  expect(selectedPartition()).not.toBe(originalSelection);
   port.getIdentity = () => undefined;
   expect(await embedBacklog(automatic)).toMatchObject({
     ok: false,

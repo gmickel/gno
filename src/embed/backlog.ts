@@ -272,6 +272,7 @@ export async function prepareEmbeddingBacklog(
           truncationPolicy: identity.truncationPolicy,
           dimensions,
         });
+        variantStore.selectForEmbedding();
         return ok({
           ...deps,
           variantStore,
