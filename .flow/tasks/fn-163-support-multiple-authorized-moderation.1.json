@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-09-06T13:30:32.704526Z",
+  "depends_on": [],
+  "id": "fn-163-support-multiple-authorized-moderation.1",
+  "priority": null,
+  "spec": "fn-163-support-multiple-authorized-moderation",
+  "spec_path": ".flow/tasks/fn-163-support-multiple-authorized-moderation.1.md",
+  "status": "todo",
+  "title": "Support and release the approved operator allowlist",
+  "updated_at": "2026-09-06T13:30:32.704526Z"
+}

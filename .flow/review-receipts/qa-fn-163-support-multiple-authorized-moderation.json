@@ -1,0 +1,45 @@
+{
+  "branch": "fix/moderation-second-admin",
+  "deployed_head_sha": "55b4925d382cf82be2201da022af505c941f72e0",
+  "evidence_directory": ".flow/tmp/qa-fn-163-support-multiple-authorized-moderation",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "d9287bde802ec531b80e4f5c11b3ba601fd63828",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-25277ebf305ee7740ecc2d37ff76d6ec1b6dd7bb64d76f65e50a68ff63fab275"
+  },
+  "head_sha": "d9287bde802ec531b80e4f5c11b3ba601fd63828",
+  "id": "fn-163-support-multiple-authorized-moderation",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "product_head_sha": "46700f3e0a9477a9bb3ee3770cfc11f8ac06b2aa",
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 4,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      }
+    ],
+    "total": 4
+  },
+  "timestamp": "2026-09-06T13:52:08Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
