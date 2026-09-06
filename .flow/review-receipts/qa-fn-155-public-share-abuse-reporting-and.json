@@ -1,0 +1,79 @@
+{
+  "branch": "fn-155-public-share-abuse-reporting-and",
+  "evidence_directory": ".flow/tmp/qa-fn-155-public-share-abuse-reporting-and",
+  "evidence_manifest_sha256": "51c236fdad5acc116608a74f1b2f76ffb08490ffe54121f04eeef89f57410b9d",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "7f9650dfbeca5d1307a2b8d735f140192ec22815",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-97ddcd981ccd7eca093017dc69f5d16ebe789292ab21d02a6b0de359fab83aef"
+  },
+  "head_sha": "7f9650dfbeca5d1307a2b8d735f140192ec22815",
+  "id": "fn-155-public-share-abuse-reporting-and",
+  "limitations": [
+    "No real report sent or real customer moderated.",
+    "Browser fixture had no assets; historical/asset guard coverage comes from real integration tests.",
+    "Initial stale synthetic owner slug resolved as fixture setup issue, not product defect.",
+    "Policy browser clipboard-read permission denied; root contextual-template check used actual paste instead.",
+    "Pre-migration exact copies under independent source identities are checked on next update, as documented."
+  ],
+  "mode": "interactive",
+  "open_p0p1": [],
+  "product_head_sha": "1c340de22a7aa858843d0b79be4c8e021b97ae21",
+  "product_repository": "gmickel/gno.sh",
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 8,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      },
+      {
+        "coverage": "live",
+        "id": "R8"
+      }
+    ],
+    "total": 8
+  },
+  "scenarios": {
+    "S1": "Canonical contextual report, escaped mailto, actual pasted clipboard template, invalid/general targets",
+    "S2": "Anonymous and ordinary account operator denial",
+    "S3": "Persisted takedown and five actual reader/agent route denials",
+    "S4": "Owner restriction reason; same-source and renamed exact-copy rejection",
+    "S5": "Normal reinstatement; owner deletion remains404; related-copy governing restriction and empty explanation",
+    "S6": "36 real PostgreSQL integration tests incl rollback, concurrency, retention, inherited denial",
+    "S7": "Six running policy/help pages desktop/mobile, links/copy controls/no overflow"
+  },
+  "target_url": "http://localhost:3345",
+  "timestamp": "2026-09-06T09:33:20Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
