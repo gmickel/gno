@@ -3610,13 +3610,24 @@ artifact.
 }
 ```
 
-Optional `visibility` values are `public`, `secret-link`, `invite-only`, and
-`encrypted`. Encrypted export also requires `encryptionPassphrase`. The
-response contains `artifact`, `fileName`, `uploadUrl`, sanitizer `warnings`,
+Optional `visibility` values are `public` (the backward-compatible default),
+`secret-link`, `invite-only`, and `encrypted`. Encrypted export also requires
+`encryptionPassphrase`, used only by the local GNO server before upload;
+missing required encryption input or an invalid visibility returns validation
+failure without an artifact. Local Web UI callers require explicit visibility.
+The response reports the selected mode in `artifact.spaces[].visibility` and
+contains `artifact`, `fileName`, `uploadUrl`, sanitizer `warnings`,
 and deterministic `assetSummary` egress accounting. `assetSummary` reports
 asset/reference counts, raw and encoded bytes, deduplication savings, external
 image count, diagnostics, and exact final upload bytes; asset-free exports
 return the same shape with zero counts.
+
+This endpoint creates a local export only. It does not choose a hosted
+subscription, override hosted entitlement or audience checks, update a live
+publication, or perform hosted deletion. Upload/review/Publish is a separate
+Studio operation. Unpublish retains hosted source/history; Delete permanently
+denies access before durable cleanup and leaves local files untouched. See
+[Publishing](PUBLISHING.md) for hosted lifecycle and retention limits.
 
 Public artifact spaces carry a manifest conforming to
 `gno://schemas/publish-artifact@1.0`: a stable projection revision, sorted

@@ -42,6 +42,27 @@ project-aware ranking is desired.
 | **Graph**         | Interactive knowledge graph visualization                       |
 | **Trace History** | Inspect, label, export, delete, and purge private receipts      |
 
+### Export for gno.sh
+
+Use **Export for gno.sh** in Document view or a Collections menu. Both dialogs
+start with no access mode selected. Review the audience and choose Public,
+Secret link, Invite-only, or Encrypted before exporting. Local GNO does not
+know your hosted subscription: the dialog explains plan availability and links
+to hosted pricing, where account-specific access is checked.
+
+Encrypted export requires a passphrase and encrypts on your local GNO boundary
+before the artifact is uploaded. Cancelling, an invalid mode, or missing
+required encryption input produces no artifact. Export downloads a file; it
+does not publish it. Upload that file to [Studio](https://gno.sh/studio), review
+its declared and effective access, and explicitly publish.
+
+Studio keeps a source library with publication status and history. Select an
+existing publication to update it or deliberately publish a separate copy.
+Unpublish stops access but retains the hosted source; Delete permanently stops
+access before background cleanup and does not delete your local files. Failed
+cleanup stays denied and can be retried. See [Publishing](PUBLISHING.md) for
+audiences, access changes, independent copies, and retention boundaries.
+
 ### App-Level Tabs
 
 GNO now keeps an app-level tab strip inside the workspace itself.

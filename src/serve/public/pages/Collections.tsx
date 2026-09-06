@@ -37,6 +37,7 @@ import {
 } from "../components/CollectionModelDialog";
 import { CollectionsEmptyState } from "../components/CollectionsEmptyState";
 import { IndexingProgress } from "../components/IndexingProgress";
+import { PublishExportDialog } from "../components/PublishExportDialog";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -67,10 +68,6 @@ import {
   TooltipTrigger,
 } from "../components/ui/tooltip";
 import { apiFetch } from "../hooks/use-api";
-import {
-  downloadPublishArtifactFile,
-  type PublishExportResponse,
-} from "../lib/publish-export";
 
 interface PageProps {
   navigate: (to: string | number) => void;
@@ -129,7 +126,6 @@ interface CollectionCardProps {
   onModelSettings: () => void;
   onReindex: () => void;
   onRemove: () => void;
-  isExporting: boolean;
   isReindexing: boolean;
 }
 
@@ -161,7 +157,6 @@ function CollectionCard({
   onModelSettings,
   onReindex,
   onRemove,
-  isExporting,
   isReindexing,
 }: CollectionCardProps) {
   const embedPercent =
@@ -227,17 +222,13 @@ function CollectionCard({
                 Embedding cleanup
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={actionsDisabled || isExporting}
+                disabled={actionsDisabled}
                 onClick={(event) => {
                   event.stopPropagation();
                   onExport();
                 }}
               >
-                {isExporting ? (
-                  <Loader2Icon className="mr-2 size-4 animate-spin" />
-                ) : (
-                  <Share2Icon className="mr-2 size-4" />
-                )}
+                <Share2Icon className="mr-2 size-4" />
                 Export for gno.sh
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -361,8 +352,7 @@ export default function Collections({ navigate }: PageProps) {
   const [syncJobId, setSyncJobId] = useState<string | null>(null);
   const [syncTarget, setSyncTarget] = useState<SyncTarget>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-  const [exportingCollectionName, setExportingCollectionName] = useState<
+  const [exportCollectionName, setExportCollectionName] = useState<
     string | null
   >(null);
   const [removeDialog, setRemoveDialog] = useState<CollectionStats | null>(
@@ -499,30 +489,6 @@ export default function Collections({ navigate }: PageProps) {
     await loadCollections();
   };
 
-  const handleExport = async (name: string) => {
-    setExportError(null);
-    setExportingCollectionName(name);
-
-    const { data, error: err } = await apiFetch<PublishExportResponse>(
-      "/api/publish/export",
-      {
-        body: JSON.stringify({ target: name }),
-        method: "POST",
-      }
-    );
-
-    setExportingCollectionName(null);
-
-    if (err) {
-      setExportError(err);
-      return;
-    }
-
-    if (data) {
-      downloadPublishArtifactFile(data);
-    }
-  };
-
   // Loading state
   if (loading) {
     return (
@@ -643,12 +609,13 @@ export default function Collections({ navigate }: PageProps) {
           </Card>
         )}
 
-        {exportError && (
-          <Card className="mx-auto mb-6 max-w-3xl border-destructive bg-destructive/10">
-            <CardContent className="py-4">
-              <p className="text-destructive text-sm">{exportError}</p>
-            </CardContent>
-          </Card>
+        {exportCollectionName !== null && (
+          <PublishExportDialog
+            key={exportCollectionName}
+            onClose={() => setExportCollectionName(null)}
+            target={exportCollectionName}
+            title={exportCollectionName}
+          />
         )}
 
         {/* Error */}
@@ -687,7 +654,6 @@ export default function Collections({ navigate }: PageProps) {
               <CollectionCard
                 actionsDisabled={Boolean(syncJobId)}
                 collection={collection}
-                isExporting={exportingCollectionName === collection.name}
                 isReindexing={
                   Boolean(syncJobId) &&
                   syncTarget?.kind === "collection" &&
@@ -704,7 +670,7 @@ export default function Collections({ navigate }: PageProps) {
                   setEmbeddingCleanupNote(null);
                 }}
                 onExport={() => {
-                  void handleExport(collection.name);
+                  setExportCollectionName(collection.name);
                 }}
                 onModelSettings={() => setModelDialogCollection(collection)}
                 onReindex={() => void handleReindex(collection.name)}
