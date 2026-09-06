@@ -1,0 +1,123 @@
+{
+  "branch": "fn-153-publishing-permissions-public",
+  "evidence_root": ".flow/tmp/qa-fn-153-publishing-permissions-public",
+  "fixed_findings": [
+    "P1 short-window encrypted export: 525d2c75, desktop/mobile actual download rechecked",
+    "P2 encrypted counts: 3e93e13, library refresh and deletion review rechecked",
+    "P2 deleting source offered republish: 3c26c5d2, polling and absent action rechecked"
+  ],
+  "head_sha": "73e5f94a8e10ea4d805e080ad29ddb5af3850773",
+  "id": "fn-153-publishing-permissions-public",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "release_hold": "Production backup retention and restore reconciliation remain unverified. No production deployment or publishing mutations; legal effective date changes on release and production QA after authorized deployment remain required.",
+  "rid_coverage": {
+    "covered": 14,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      },
+      {
+        "coverage": "live",
+        "id": "R8"
+      },
+      {
+        "coverage": "live",
+        "id": "R9"
+      },
+      {
+        "coverage": "live",
+        "id": "R10"
+      },
+      {
+        "coverage": "live",
+        "id": "R11"
+      },
+      {
+        "coverage": "live",
+        "id": "R12"
+      },
+      {
+        "coverage": "live",
+        "id": "R13"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R14"
+      }
+    ],
+    "total": 14
+  },
+  "scenario_evidence": {
+    "S1": [
+      "worker-export-after-1280x633.png",
+      "worker-export-after-375x633.png",
+      "/home/gordon/.cache/agent-tmp/fn153/worker-smoke/evidence.json"
+    ],
+    "S2": [
+      "host-team-encrypted-review.png",
+      "host-encrypted-entitlement-denied.png",
+      "/home/gordon/.cache/agent-tmp/fn153/invite-qa/evidence.json"
+    ],
+    "S3": [
+      "/home/gordon/.cache/agent-tmp/fn153/worker-smoke/artifact-update-receipt.json",
+      "/home/gordon/.cache/agent-tmp/fn153/worker-smoke/artifact-copy-receipt.json"
+    ],
+    "S4": [
+      "host-encrypted-withdrawn.headers",
+      "/home/gordon/.cache/agent-tmp/fn153/backend/live-api-results.json",
+      "/home/gordon/.cache/agent-tmp/fn153/invite-qa/evidence.json"
+    ],
+    "S5": [
+      "/home/gordon/.cache/agent-tmp/fn153/backend/live-recovery-results.json",
+      "/home/gordon/.cache/agent-tmp/fn153/backend/whole-app-restart-results.json"
+    ],
+    "S6": [
+      "/home/gordon/.cache/agent-tmp/fn153/worker-smoke/evidence.json",
+      "/home/gordon/.cache/agent-tmp/fn153/studio-encrypted-count-library.png"
+    ],
+    "S7": [
+      "host-docs-paste-value.txt",
+      "/home/gordon/.cache/agent-tmp/fn153/worker-smoke/evidence.json"
+    ],
+    "S8": [
+      "/home/gordon/.cache/agent-tmp/fn153/backend/live-recovery-results.json",
+      "/home/gordon/.cache/agent-tmp/fn153/backend/live-tenant-results.json",
+      "/home/gordon/.cache/agent-tmp/fn153/backend/whole-app-restart-results.json"
+    ]
+  },
+  "scope": "Synthetic local running apps with real PostgreSQL/MinIO production adapters; viewport and CDP touch emulation. Service/worker evidence is distinguished from browser journeys.",
+  "tested_repositories": {
+    "gno": "525d2c75",
+    "gno.sh": "3e93e13"
+  },
+  "timestamp": "2026-09-06T03:14:25Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
