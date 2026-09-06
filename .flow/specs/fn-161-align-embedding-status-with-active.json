@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-161-align-embedding-status-with-active.md",
-  "status": "open",
+  "status": "done",
   "title": "Align embedding status with active vector storage",
   "tracker": {
     "baseHashFlow": null,
@@ -20,5 +20,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-06T04:11:58.843198Z"
+  "updated_at": "2026-09-06T05:17:45.975134Z"
 }
