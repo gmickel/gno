@@ -1,0 +1,48 @@
+{
+  "branch": "fn-161-align-embedding-status-with-active",
+  "evidence_root": ".flow/tmp/qa-fn-161-align-embedding-status-with-active",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "5818ced2d4684d9f2a1961c014f0e6746ee29092",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-6b7ceb5f80ac0f91490f69c98ca359832b648a76f67473b402cb969e1cefaf94"
+  },
+  "head_sha": "5818ced2d4684d9f2a1961c014f0e6746ee29092",
+  "id": "fn-161-align-embedding-status-with-active",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "release_hold": "Publication waits for concurrent 2.1.0 release; production verification follows deployment.",
+  "rid_coverage": {
+    "covered": 4,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live and release preparation",
+        "id": "R4"
+      }
+    ],
+    "total": 4
+  },
+  "scenarios": [
+    "Real index: CLI reports zero embedding backlog for 1910 documents.",
+    "Synthetic active variant fixture: CLI and API report zero; removing one owner reports one pending chunk; live UI displays the same count."
+  ],
+  "timestamp": "2026-09-06T04:35:05.786113+00:00",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
