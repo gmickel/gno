@@ -224,6 +224,14 @@ setup and emits `setup-profile-result@1.0`.
 
 Display index status and health information.
 
+Embedding backlog follows the last verified partition for the selected model
+when exact-input storage is authoritative, counting pending document/chunk
+owners. Per-collection chunk totals remain deduplicated by canonical chunk;
+embedded counts require matching current inputs for every active owner within
+that collection. Status reads persisted identity and coverage without loading
+models. Legacy storage remains the fallback before variant authority; ambiguous
+older partition selection is conservative until a normal embed records it.
+
 **Synopsis:**
 
 ```bash

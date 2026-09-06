@@ -37,6 +37,11 @@ describe("runEmbed", () => {
       testDir = await mkdtemp(join(tmpdir(), "gno-sdk-embed-test-"));
       db = new Database(join(testDir, "index.sqlite"), { create: true });
       db.exec(`
+      CREATE TABLE schema_meta (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
       CREATE TABLE documents (
         id INTEGER PRIMARY KEY,
         mirror_hash TEXT,
@@ -123,6 +128,9 @@ describe("runEmbed", () => {
       );
 
       expect(result.embedded).toBe(1);
+      expect(
+        db.query("SELECT count(*) AS count FROM schema_meta").get()
+      ).toEqual({ count: verified ? 1 : 0 });
       if (verified) {
         expect(
           (await runEmbed({ config, store, llm }, { model: MODEL_URI }))

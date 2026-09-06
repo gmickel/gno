@@ -144,6 +144,7 @@ import { getSchemaVersion, migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
 import { getStoredEmbeddingFingerprint } from "../vector/freshness";
 import { modelTableName } from "../vector/sqlite-vec";
+import { getVariantStatus } from "../vector/status";
 import {
   deleteSavedCapsuleRegistration as deleteStoredSavedCapsuleRegistration,
   getSavedCapsuleRegistration as getStoredSavedCapsuleRegistration,
@@ -5697,6 +5698,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         options?.embedFingerprint ??
         (embedModel ? getStoredEmbeddingFingerprint(db, embedModel) : null);
 
+      const variantStatus = getVariantStatus(db, options);
+
       // Get version
       const versionRow = db
         .query<{ value: string }, []>(
@@ -5873,12 +5876,14 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           errorDocuments: s.errored,
           chunkedDocuments: s.chunked,
           totalChunks: s.chunk_count,
-          embeddedChunks: s.embedded_count,
+          embeddedChunks: variantStatus
+            ? (variantStatus.embeddedByCollection.get(s.name) ?? 0)
+            : s.embedded_count,
         })),
         totalDocuments: totalsRow?.total ?? 0,
         activeDocuments: totalsRow?.active ?? 0,
         totalChunks: chunkCount,
-        embeddingBacklog: backlogRow?.count ?? 0,
+        embeddingBacklog: variantStatus?.backlog ?? backlogRow?.count ?? 0,
         recentErrors,
         lastUpdatedAt: lastUpdatedRow?.last_updated ?? null,
         healthy,

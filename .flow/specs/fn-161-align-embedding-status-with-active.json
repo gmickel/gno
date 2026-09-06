@@ -1,0 +1,24 @@
+{
+  "branch_name": "fn-161-align-embedding-status-with-active",
+  "created_at": "2026-09-06T04:11:58.843189Z",
+  "depends_on_epics": [],
+  "id": "fn-161-align-embedding-status-with-active",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-161-align-embedding-status-with-active.md",
+  "status": "open",
+  "title": "Align embedding status with active vector storage",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-06T04:11:58.843198Z"
+}

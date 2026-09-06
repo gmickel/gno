@@ -6,6 +6,8 @@ import type { VectorOwnerInput, VectorVariantIdentity } from "./types";
 import { formatDocForEmbedding } from "../../pipeline/contextual";
 import { decodeEmbedding, encodeEmbedding } from "./sqlite-vec";
 
+export const SELECTED_VECTOR_PARTITION_PREFIX = "vector_selected_partition:";
+
 export function embeddingInputHash(input: string): string {
   return new Bun.CryptoHasher("sha256").update(input).digest("hex");
 }
@@ -92,6 +94,15 @@ export class VectorVariantStore {
         )`);
       }
     }).immediate();
+  }
+
+  /** Persist only after embedding has resolved the actual runtime identity. */
+  selectForEmbedding(): void {
+    this.db.run(
+      `INSERT INTO schema_meta (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+      [SELECTED_VECTOR_PARTITION_PREFIX + this.identity.model, this.partitionId]
+    );
   }
 
   epoch(): number {

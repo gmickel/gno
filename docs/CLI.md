@@ -1829,6 +1829,17 @@ configured collection passed. Status exits 0 even when those fields are false
 so automation can inspect remediation. It does not start connector children,
 initialize/download models, or invoke remote inference.
 
+Embedding backlog uses the last verified embedding partition for the selected
+model once exact-input storage is in use. It counts pending document/chunk
+owners, so documents sharing text can need separate embeddings when their
+titles differ. Collection chunk totals stay deduplicated; a shared chunk counts
+as embedded only when every active owner in that collection has matching input
+coverage. Older indexes without exact-input storage retain legacy counts.
+Status reads saved coverage without loading the model; `gno embed --dry-run`
+also resolves the current runtime identity. If an older index has several
+possible partitions and no recorded selection, run normal `gno embed` once to
+record the selection. `--force` is unnecessary for correcting status.
+
 Semantic availability is separate: unknown resident capability is
 `semantic_not_checked`; only a positively known unavailable vector runtime is
 `vector_unavailable`. Connector status is a bounded passive projection of
