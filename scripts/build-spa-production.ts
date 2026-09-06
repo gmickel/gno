@@ -13,6 +13,10 @@ import { buildProductionSpaAssets } from "../src/serve/spa-production-build";
 const repoRoot = join(import.meta.dir, "..");
 const outPath = join(repoRoot, "assets", "spa-production.json.gz");
 
+// index.html consumes prebuilt CSS. Rebuild it before hashing or bundling so
+// new component styles cannot disappear from an otherwise fresh SPA snapshot.
+await Bun.$`${process.execPath} run build:css`.cwd(repoRoot);
+
 const assets = await buildProductionSpaAssets();
 const json = JSON.stringify(assets);
 const gzip = Bun.gzipSync(json);

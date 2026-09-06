@@ -267,9 +267,10 @@ to the fail-closed local default.
 Migration does not recall data already disclosed. Tightening a collection
 blocks future GNO-controlled transfers, but an artifact previously uploaded to
 a remote service may require deletion or takedown at that service. For gno.sh,
-revoke or expire supported private links in Studio; public-space deletion is
-not yet self-service, so request takedown before creating and uploading a new
-artifact. Encrypted artifacts remain client-encrypted; gno.sh never receives
+unpublish or delete the hosted item in Studio, including public publications.
+Unpublish denies access but retains source and history; deletion denies access
+before durable cleanup. Neither removes local files or independent copies.
+Encrypted artifacts remain client-encrypted; gno.sh never receives
 the passphrase and cannot decrypt or recover them.
 
 Policy decisions create bounded, content-free local audit receipts. Use

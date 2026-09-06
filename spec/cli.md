@@ -2305,6 +2305,14 @@ gno publish export <target> \
   [--json]
 ```
 
+The CLI and `POST /api/publish/export` MUST preserve the existing `public`
+default when visibility is omitted. Local Web UI export dialogs MUST instead
+require an explicit mode. Both successful export results MUST report the
+selected mode in `artifact.spaces[].visibility`. Invalid modes and missing required encryption input
+MUST fail without an artifact. Encrypted CLI export requires `--passphrase`;
+the local API requires `encryptionPassphrase`. Neither sends that input to
+gno.sh. Export is a local operation, not hosted activation or deletion.
+
 Public V1 spaces MUST carry a `manifest` conforming to
 [`publish-artifact.schema.json`](./output-schemas/publish-artifact.schema.json).
 The manifest contains schema version `1.0`, a deterministic projection

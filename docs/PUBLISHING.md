@@ -21,8 +21,10 @@ gno publish export work-docs --preview
 ```
 
 Then open [gno.sh Studio](https://gno.sh/studio), sign in, and upload the JSON
-artifact. Republishing is another explicit export and upload; it creates a new
-snapshot for the same route.
+artifact. File selection creates a draft; review access and choose Publish to
+activate it. To replace an existing publication, explicitly choose its target
+and Update publication. Matching filenames or slugs do not authorize overwrite.
+Publish a copy creates an independent item with a distinct route.
 
 Local Markdown images and Obsidian image embeds are bundled when they resolve
 inside the exported collection and are PNG, JPEG, GIF, WebP, or AVIF. GNO
@@ -31,8 +33,9 @@ HTTPS images, and reports unresolved, ambiguous, unsupported, or unsafe local
 references in the export summary. The exact final serialized artifact —
 including base64 or encryption overhead — must remain within 100 MiB.
 
-Public readers receive immutable generation-bound image URLs. Secret-link
-readers receive capability-authorized, no-store URLs. Encrypted exports keep
+Public readers receive generation-bound image routes that check current
+publication access. Secret-link readers receive capability-authorized routes.
+Both disable caching so a withdrawn publication cannot keep serving images. Encrypted exports keep
 the asset descriptors and bytes inside ciphertext; the browser creates scoped
 Blob URLs after decryption and revokes them on replacement or unmount. Hosted
 invite-only bundled-image delivery is not available yet: image-bearing
@@ -66,9 +69,9 @@ gno collection policy set work-docs remote --confirm-relaxation <revision>
 ```
 
 Tightening policy does not retract an artifact already uploaded or copied.
-Revoke or expire supported private links in Studio; public-space deletion is
-not yet self-service, so request remote takedown before regenerating and
-reviewing any replacement artifact. Never assume republishing, deleting a local
+Unpublish or delete the hosted item separately in Studio, including public
+publications. Unpublish retains source and history; deletion denies access
+before background cleanup. Never assume republishing, deleting a local
 export, or changing local policy removed independently retained remote copies.
 
 ## Bundled local images
@@ -97,8 +100,8 @@ Visibility delivery:
 
 - **public** / **secret-link** / **invite-only**: assets travel in the V1
   plaintext envelope with `requiredCapabilities: ["bundled-raster-assets@1"]`.
-  gno.sh currently delivers public images via immutable generation-bound URLs
-  and secret images via capability-authorized no-store routes. Invite-only
+  gno.sh delivers public images via generation-bound routes that check current
+  access, and secret images via capability-authorized routes, both no-store. Invite-only
   note text still publishes, but invite-only **bundled-image delivery is not
   supported** on gno.sh yet (fail-closed; images will not render for invite
   readers until that consumer path ships).
@@ -112,10 +115,37 @@ Visibility delivery:
 Human-reader access modes:
 
 - `public`: anyone with the route can read it;
-- `secret`: anyone with the secret link can read it;
-- `invite`: authenticated invited readers can read it;
+- `secret-link`: anyone with the secret link can read it, including someone
+  it was forwarded to;
+- `invite-only`: signed-in readers must pass the displayed access checks.
+  Personal shares allow their owner by default; organization shares use
+  membership and access settings;
 - `encrypted`: GNO encrypts locally before upload and gno.sh stores the
   encrypted artifact.
+
+The local Web UI starts with no visibility selected and requires an explicit
+choice for both note and collection exports. Cancelling or omitting a required
+encryption passphrase produces no artifact. CLI and REST API exports retain
+their `public` default for compatibility; pass `--visibility` or `visibility`
+explicitly when another mode is intended. The export result reports its mode.
+Local help describes hosted plan availability but cannot inspect your account;
+private publishing is paid and encrypted publishing has its own entitlement.
+Check [pricing](https://gno.sh/pricing) for your hosted account.
+
+Studio preserves uploaded artifact access. For new Markdown or source content,
+it starts with secret-link when your plan allows private publishing, and public
+otherwise. Review declared/effective access and the intended audience before
+Publish. Unsupported choices require explicit correction or upgrade; Studio
+never silently makes a restricted artifact public. Unsupported multi-space
+imports or updates are rejected before activation; export one space separately.
+
+Public, secret-link, and invite-only access can convert after review. A
+content-only update preserves the active route, mode, and token. An access
+change invalidates the old route/token before activating the new mode; a
+withdrawn public URL is not reused by a later conversion back to public.
+A stale edit requires refresh and review. Conversion into or out of encrypted
+mode requires a new local export in that mode; hosted controls cannot decrypt
+or re-encrypt an existing payload.
 
 Public artifacts also carry the shipped read-only agent projection: a closed
 manifest, deterministic Markdown, `llms.txt`, content hashes, and exact line
@@ -130,6 +160,33 @@ projection. Their wrappers retain the same redacted egress lineage for local
 verification without exposing an agent manifest or decrypting content. gno.sh
 does not currently provide token-authenticated private agent access. Do not
 treat a secret link as an agent API credential.
+
+## Unpublish and delete permanently
+
+Studio keeps retained sources distinct from their publications. The library
+shows item titles, note/collection type, counts, access, and states such as
+Draft, Published, Unpublished, Expired, Deleting, and Cleanup failed. Item
+details contain publication history and advanced operations.
+
+**Unpublish** stops hosted access for every mode, including public, while
+retaining the source and history. A retained source can be explicitly published
+again. Reader pages, historical routes, assets, search, and public Markdown,
+manifest, and llms projections stop serving the withdrawn publication.
+
+**Delete permanently** names the selected item and affected publication,
+snapshot, and asset counts before confirmation. It denies access first, then
+cleans the selected hosted source, its associated history, and unreferenced
+payloads through durable background cleanup. Deleting means cleanup is still
+pending. Cleanup failed keeps access denied and offers retry; refresh or
+restart does not lose the job. Completed cleanup retains only a minimal
+content-free operation receipt.
+
+Deletion does not touch local vault files, independently published notes or
+copies, or objects still referenced by another item. Downloads and third-party
+caches cannot be recalled. Live cleanup does not promise immediate backup
+erasure; see [Privacy](https://gno.sh/privacy) and [Terms](https://gno.sh/terms)
+for retention boundaries. Deleting local files or tightening local egress
+policy does not perform hosted deletion.
 
 ## Encrypted export
 

@@ -47,6 +47,7 @@ import {
   OutgoingLinksPanel,
   type OutgoingLink,
 } from "../components/OutgoingLinksPanel";
+import { PublishExportDialog } from "../components/PublishExportDialog";
 import { RefactorImpactPreview } from "../components/RefactorImpactPreview";
 import { RelatedNotesSidebar } from "../components/RelatedNotesSidebar";
 import { TagInput } from "../components/TagInput";
@@ -81,10 +82,6 @@ import {
   isPdfDocument,
 } from "../lib/doc-asset-url";
 import { waitForDocumentAvailability } from "../lib/document-availability";
-import {
-  downloadPublishArtifactFile,
-  type PublishExportResponse,
-} from "../lib/publish-export";
 import {
   buildReadableSectionUrl,
   createCitationSectionUrl,
@@ -411,11 +408,7 @@ export default function DocView({ navigate }: PageProps) {
   const [externalChangeNotice, setExternalChangeNotice] = useState<
     string | null
   >(null);
-  const [exportingPublishArtifact, setExportingPublishArtifact] =
-    useState(false);
-  const [publishExportError, setPublishExportError] = useState<string | null>(
-    null
-  );
+  const [publishExportOpen, setPublishExportOpen] = useState(false);
 
   // Tag editing state
   const [editingTags, setEditingTags] = useState(false);
@@ -878,32 +871,6 @@ export default function DocView({ navigate }: PageProps) {
       navigate(`/edit?uri=${encodeURIComponent(data.uri)}`);
     }
   }, [doc, navigate]);
-
-  const handlePublishExport = useCallback(async () => {
-    if (!doc) {
-      return;
-    }
-
-    setPublishExportError(null);
-    setExportingPublishArtifact(true);
-    const { data, error: err } = await apiFetch<PublishExportResponse>(
-      "/api/publish/export",
-      {
-        body: JSON.stringify({ target: doc.uri }),
-        method: "POST",
-      }
-    );
-    setExportingPublishArtifact(false);
-
-    if (err) {
-      setPublishExportError(err);
-      return;
-    }
-
-    if (data) {
-      downloadPublishArtifactFile(data);
-    }
-  }, [doc]);
 
   const handleDelete = async () => {
     if (!doc) return;
@@ -1784,18 +1751,13 @@ export default function DocView({ navigate }: PageProps) {
                     </Button>
                     <Button
                       className="gap-1.5"
-                      disabled={exportingPublishArtifact}
                       onClick={() => {
-                        void handlePublishExport();
+                        setPublishExportOpen(true);
                       }}
                       size="sm"
                       variant="outline"
                     >
-                      {exportingPublishArtifact ? (
-                        <Loader2Icon className="size-4 animate-spin" />
-                      ) : (
-                        <Share2Icon className="size-4" />
-                      )}
+                      <Share2Icon className="size-4" />
                       Export for gno.sh
                     </Button>
                     <Button
@@ -1847,18 +1809,13 @@ export default function DocView({ navigate }: PageProps) {
                     )}
                     <Button
                       className="gap-1.5"
-                      disabled={exportingPublishArtifact}
                       onClick={() => {
-                        void handlePublishExport();
+                        setPublishExportOpen(true);
                       }}
                       size="sm"
                       variant="outline"
                     >
-                      {exportingPublishArtifact ? (
-                        <Loader2Icon className="size-4 animate-spin" />
-                      ) : (
-                        <Share2Icon className="size-4" />
-                      )}
+                      <Share2Icon className="size-4" />
                       Export for gno.sh
                     </Button>
                     {localClient && doc.source.absPath && (
@@ -1945,11 +1902,16 @@ export default function DocView({ navigate }: PageProps) {
             </>
           )}
         </div>
-        {publishExportError && (
-          <p className="pt-2 text-destructive text-sm">{publishExportError}</p>
-        )}
       </header>
 
+      {publishExportOpen && doc && (
+        <PublishExportDialog
+          key={doc.uri}
+          onClose={() => setPublishExportOpen(false)}
+          target={doc.uri}
+          title={doc.title ?? doc.uri}
+        />
+      )}
       <div className="mx-auto flex max-w-[1800px] gap-5 px-6 xl:px-8">
         {/* Left rail — metadata + outline */}
         {doc && (

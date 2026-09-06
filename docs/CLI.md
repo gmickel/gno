@@ -1408,6 +1408,19 @@ Options are `--out`, `--visibility`, `--passphrase`, `--slug`, `--title`,
 platform Downloads directory. A note with `publish: false` is refused; such
 notes are omitted from collection exports.
 
+`--visibility` accepts `public` (default), `secret-link`, `invite-only`, and
+`encrypted`. The default remains public for CLI compatibility; use an explicit
+mode for restricted content. Encrypted export requires `--passphrase` and
+performs encryption locally. The result reports the selected mode in
+`artifact.spaces[].visibility`.
+Unlike the CLI, local Web UI dialogs require an explicit access choice.
+
+Export does not upload or mutate an existing publication. In Studio, review the
+artifact and explicitly select Update publication or Publish a copy; a matching
+slug alone does not authorize replacement. Hosted entitlements and audience
+checks still apply. Unpublish retains the hosted source, while Delete
+permanently denies access before durable cleanup; neither changes local files.
+
 Public artifacts include the canonical
 `gno://schemas/publish-artifact@1.0` manifest: stable projection revision,
 published Markdown paths and line locators, SHA-256 content/evidence identity,
