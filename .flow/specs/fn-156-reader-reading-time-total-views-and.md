@@ -14,7 +14,7 @@
 
 Readers of hosted gno.sh notes can estimate the time needed to read a page, see its total view count, and copy its Markdown into an agent. Keep the UI compact and the implementation small. Total page views replace the initial unique-person request; the number represents page opens, not distinct people or completed reads.
 
-This feature extends the hosted reader shared by public, secret-link, invite-only, and encrypted publications. fn-153 owns the Studio/lifecycle/navigation revamp; this spec adds reader utilities on that foundation. fn-155's moderation work is separate. No additional local GNO export feature is required.
+This feature extends the hosted reader shared by public, secret-link, invite-only, and encrypted publications. fn-153 owns the Studio/lifecycle/navigation revamp; this spec adds reader utilities on that foundation. fn-155's moderation work is separate. Local GNO exports also carry stable opaque note IDs and an encrypted note-ID roster. Gordon renewed the instruction to finish and release this feature after the missing export identity contract was explained; this is the required narrow exporter extension.
 
 ## Architecture & Data Models
 <!-- scope: technical; source: inferred from inspected implementation and accepted scope -->
@@ -24,6 +24,14 @@ This feature extends the hosted reader shared by public, secret-link, invite-onl
 Show a compact estimate beside the note metadata, for the current note only. Use visible prose word count at 200 words per minute, rounded up to whole minutes with a minimum of one minute for nonempty text. Exclude frontmatter, Markdown syntax, code blocks, navigation, URLs, and image binary payloads; count link labels and table text. Hide the estimate for an empty note. This is an estimate, not a measurement of reader behavior.
 
 Derive from the same content the reader displays. Compute once per note revision and reuse it; do not parse the whole document on scroll or each render. For encrypted notes, compute only in the browser after successful decryption, without sending plaintext or derived word counts to the server. Use existing text-processing utilities where suitable; do not add a package solely to count words.
+
+### Stable export identity
+
+The local exporter assigns random UUIDv4 note IDs through a private `publish-identities.json` registry under the actual GNO configuration directory, outside the disposable index. Keys identify canonical collection root and source relative path. The registry uses private permissions and atomic writes; malformed state or write failures produce an explicit error instead of silently assigning replacement identities. Export does not edit source Markdown.
+
+Version 1 notes may carry `id`; version 2 encrypted spaces may carry a unique `noteIds` roster (1–5000 UUIDs). The decrypted current-note IDs must match the authorized envelope roster. The hosted collector resolves membership and counts by publication target plus stable note ID. The encrypted roster exposes opaque IDs and note count, never note names, paths, titles, or plaintext.
+
+Identity survives content changes, index rebuilds, and published slug/route changes when the source path remains the same. Arbitrary source-file moves cannot be inferred safely; moving a source path creates a new identity unless a supported source-identity operation explicitly preserves it. Do not add fuzzy matching or non-atomic filesystem/database rename hooks. Legacy plain exports retain slug-based compatibility; legacy encrypted bundles require a new export before note counts are available.
 
 ### Total page views
 

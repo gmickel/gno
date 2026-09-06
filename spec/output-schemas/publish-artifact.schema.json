@@ -173,11 +173,16 @@
         ]
       }
     },
+    "noteId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
     "note": {
       "type": "object",
       "additionalProperties": false,
       "required": ["markdown", "slug", "summary", "title"],
       "properties": {
+        "id": { "$ref": "#/definitions/noteId" },
         "markdown": { "type": "string" },
         "metadata": { "$ref": "#/definitions/metadata" },
         "slug": { "$ref": "#/definitions/slug" },
@@ -347,6 +352,13 @@
         "visibility"
       ],
       "properties": {
+        "noteIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/noteId" }
+        },
         "encryptedPayload": {
           "type": "object",
           "additionalProperties": false,

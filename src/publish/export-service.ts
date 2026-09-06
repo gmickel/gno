@@ -34,12 +34,15 @@ import {
   sanitizeNoteMarkdown,
   type NoteBuildAccumulator,
 } from "./export-attachments";
+import { resolvePublishNoteIds } from "./identities";
 import {
   isPublishDisabledByFrontmatter,
   type SanitizeWarning,
 } from "./obsidian-sanitize";
 
 export interface PublishExportCoreOptions {
+  /** Actual loaded config file; defaults to the platform config directory. */
+  configPath?: string;
   encryptionPassphrase?: string;
   routeSlug?: string;
   summary?: string;
@@ -199,6 +202,7 @@ async function exportCollectionArtifact(
     preDedupRawBytes: 0,
   };
   const notes: PublishArtifactNote[] = [];
+  const sourceRelPaths: string[] = [];
 
   for (const doc of activeDocs) {
     if (!doc.mirrorHash) {
@@ -230,6 +234,7 @@ async function exportCollectionArtifact(
     acc.externalCount += sanitized.externalCount;
     acc.preDedupRawBytes += sanitized.preDedupRawBytes;
     acc.encodedAssetBytes += mergePayloads(acc.payloads, sanitized.payloads);
+    sourceRelPaths.push(doc.relPath);
     notes.push({
       markdown: sanitized.markdown,
       metadata: buildExportedMetadata(
@@ -267,6 +272,13 @@ async function exportCollectionArtifact(
     contentClass: "source",
     store,
   });
+
+  const noteIds = await resolvePublishNoteIds({
+    collectionRoot: collection.path,
+    sourceRelPaths,
+    configPath: options.configPath,
+  });
+  for (const [index, note] of notes.entries()) note.id = noteIds[index];
 
   if (visibility === "encrypted") {
     if (!options.encryptionPassphrase) {
@@ -362,7 +374,15 @@ async function exportDocumentArtifact(
     store,
   });
 
+  if (!collection)
+    throw new Error(`Collection not configured: ${doc.collection}`);
+  const [id] = await resolvePublishNoteIds({
+    collectionRoot: collection.path,
+    sourceRelPaths: [doc.relPath],
+    configPath: options.configPath,
+  });
   const note: PublishArtifactNote = {
+    id,
     markdown,
     metadata: buildExportedMetadata(doc, frontmatter, tags),
     slug,

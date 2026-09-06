@@ -6,6 +6,9 @@
 
 import { MAX_PUBLISH_UPLOAD_BYTES } from "./artifact-asset-contract";
 
+export const PUBLISH_NOTE_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+
 export const MAX_PUBLISH_SLUG_LENGTH = 80;
 /**
  * Ciphertext base64 character ceiling aligned to the 100 MiB final-envelope
@@ -33,6 +36,7 @@ const SOURCE_TYPES = new Set(["collection", "note"]);
 const READER_VISIBILITIES = new Set(["invite-only", "public", "secret-link"]);
 
 export interface ValidatedPublishNote {
+  id?: string;
   markdown: string;
   metadata?: Record<string, string | string[]>;
   slug: string;
@@ -51,6 +55,7 @@ export interface ValidatedPublishSpaceInput {
 }
 
 export interface ValidatedEncryptedPublishInput {
+  noteIds?: string[];
   encryptedPayload: {
     ciphertext: string;
     iterations: number;
@@ -158,6 +163,21 @@ const projectMetadata = (
   return result;
 };
 
+function requireNoteId(value: unknown): string {
+  if (typeof value !== "string" || !PUBLISH_NOTE_ID_PATTERN.test(value))
+    throw new Error("Publish note ID must be a lowercase UUIDv4");
+  return value;
+}
+
+function projectNoteIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 5000)
+    throw new Error("noteIds must contain 1 to 5000 UUIDv4 IDs");
+  const ids = value.map(requireNoteId);
+  if (new Set(ids).size !== ids.length)
+    throw new Error("Duplicate publish note ID");
+  return ids;
+}
+
 const projectNote = (value: unknown, index: number): ValidatedPublishNote => {
   const field = `notes[${index}]`;
   const input = requireRecord(value, field);
@@ -168,6 +188,7 @@ const projectNote = (value: unknown, index: number): ValidatedPublishNote => {
     summary: requireString(input.summary, `${field}.summary`),
     title: requireNonblankString(input.title, `${field}.title`),
   };
+  if (input.id !== undefined) note.id = requireNoteId(input.id);
   if (metadata !== undefined) note.metadata = metadata;
   return note;
 };
@@ -181,6 +202,9 @@ export const validateAndProjectPublishSpaceInput = (
   }
 
   const notes = input.notes.map(projectNote);
+  const ids = notes.flatMap((note) => (note.id ? [note.id] : []));
+  if (new Set(ids).size !== ids.length)
+    throw new Error("Duplicate publish note ID");
   const noteSlugs = new Set<string>();
   for (const note of notes) {
     if (noteSlugs.has(note.slug)) {
@@ -246,6 +270,9 @@ export const validateAndProjectEncryptedPublishInput = (
   }
 
   return {
+    ...(input.noteIds === undefined
+      ? {}
+      : { noteIds: projectNoteIds(input.noteIds) }),
     encryptedPayload: {
       ciphertext: requireEncryptedCiphertext(payload.ciphertext),
       iterations,

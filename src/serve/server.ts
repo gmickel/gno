@@ -802,7 +802,8 @@ export async function startServer(
                 (dependencies.handlePublishExport ?? handlePublishExport)(
                   ctxHolder.config,
                   store,
-                  req
+                  req,
+                  runtime.actualConfigPath
                 )
               ),
               isDev

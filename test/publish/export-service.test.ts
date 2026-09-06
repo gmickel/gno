@@ -19,6 +19,7 @@ import {
   serializePublishArtifact,
   validatePublishAssetContract,
 } from "../../src/publish/artifact-assets";
+import { decryptEncryptedArtifactPayload } from "../../src/publish/encrypted-export";
 import { exportPublishArtifact } from "../../src/publish/export-service";
 import { ok } from "../../src/store/types";
 import { assertValid, loadSchema } from "../spec/schemas/validator";
@@ -107,10 +108,55 @@ describe("exportPublishArtifact attachment bundling", () => {
 
     const { artifact, assetSummary, warnings } = await exportPublishArtifact({
       collections,
-      options: { routeSlug: "atlas", visibility: "public" },
+      options: {
+        configPath: join(root, "config/config.yml"),
+        routeSlug: "atlas",
+        visibility: "public",
+      },
       store,
       target: "atlas",
     });
+
+    const firstId =
+      artifact.version === 1 ? artifact.spaces[0]?.notes[0]?.id : undefined;
+    expect(firstId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
+    );
+    published.title = "Updated title";
+    published.id = 99; // Simulate reindexing with a new internal row ID and source hash.
+    published.docid = "#different";
+    published.sourceHash = "f".repeat(64);
+    content.set(published.mirrorHash!, "Changed content after rebuild");
+    const rebuilt = await exportPublishArtifact({
+      collections,
+      store,
+      target: "atlas",
+      options: {
+        configPath: join(root, "config/config.yml"),
+        routeSlug: "new-route",
+        visibility: "encrypted",
+        encryptionPassphrase: "test passphrase",
+      },
+    });
+    if (rebuilt.artifact.version !== 2) throw new Error("expected v2");
+    const encryptedSpace = rebuilt.artifact.spaces[0]!;
+    expect(encryptedSpace.noteIds).toEqual([firstId!]);
+    const payload = await decryptEncryptedArtifactPayload(
+      "test passphrase",
+      encryptedSpace.encryptedPayload
+    );
+    expect(payload.noteCards.map((note) => note.noteId)).toEqual(
+      encryptedSpace.noteIds!
+    );
+    expect(payload.currentNote.noteId).toBe(firstId!);
+    expect(payload.searchIndex.map((note) => note.noteId)).toEqual(
+      encryptedSpace.noteIds!
+    );
+    const outer = JSON.stringify(rebuilt.artifact);
+    expect(outer).not.toContain(root);
+    expect(outer).not.toContain(published.relPath);
+    expect(outer).not.toContain("Updated title");
+    expect(outer).not.toContain("Changed content");
 
     expect(artifact.version).toBe(1);
     if (artifact.version !== 1) throw new Error("expected v1");
@@ -182,7 +228,11 @@ describe("exportPublishArtifact attachment bundling", () => {
           pattern: "**/*",
         },
       ],
-      options: { routeSlug: "plain", visibility: "public" },
+      options: {
+        configPath: join(root, "config/config.yml"),
+        routeSlug: "plain",
+        visibility: "public",
+      },
       store,
       target: "atlas",
     });
@@ -246,6 +296,7 @@ describe("exportPublishArtifact attachment bundling", () => {
         },
       ],
       options: {
+        configPath: join(root, "config/config.yml"),
         encryptionPassphrase: "correct horse battery staple",
         routeSlug: "locked-home",
         visibility: "encrypted",

@@ -98,6 +98,7 @@ export async function publishExport(
     const { artifact, assetSummary, warnings } = await exportPublishArtifact({
       collections,
       options: {
+        configPath: initResult.actualConfigPath,
         routeSlug: options.slug,
         encryptionPassphrase: options.encryptionPassphrase,
         summary: options.summary,

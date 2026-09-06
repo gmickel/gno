@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Give exported notes stable opaque IDs so hosted view counts survive content
+  updates, index rebuilds, and published URL changes. Encrypted exports include
+  an opaque note-ID roster for per-note counting without exposing note content.
+  IDs live in the private GNO configuration directory; exports do not edit source
+  Markdown. Moving a source file creates a new identity.
+
 ## [2.1.1] - 2026-09-06
 
 ### Fixed

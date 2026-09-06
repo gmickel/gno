@@ -1,4 +1,8 @@
-import { beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+// node:fs/promises and node:os/path — temporary directory lifecycle has no Bun equivalent.
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import type { Collection } from "../../src/config/types";
 import type { EgressLineage } from "../../src/core/egress-provenance";
@@ -23,6 +27,11 @@ import {
   assertValid,
   loadSchema,
 } from "../spec/schemas/validator";
+
+const privateRoot = await mkdtemp(join(tmpdir(), "gno-publish-private-"));
+afterAll(async () => {
+  await rm(privateRoot, { recursive: true, force: true });
+});
 
 const PUBLISHED_MARKDOWN =
   "# Atlas\n\nThe public decision owner is Mina.\nReview is due Friday.";
@@ -210,14 +219,18 @@ describe("publish artifact contract", () => {
         exclude: [],
         include: [],
         name: "atlas",
-        path: "/Users/gordon/private-client-vault",
+        path: privateRoot,
         pattern: "**/*",
       },
     ];
 
     const { artifact } = await exportPublishArtifact({
       collections,
-      options: { routeSlug: "public-atlas", visibility: "public" },
+      options: {
+        configPath: join(privateRoot, "config/config.yml"),
+        routeSlug: "public-atlas",
+        visibility: "public",
+      },
       store,
       target: "atlas",
     });
