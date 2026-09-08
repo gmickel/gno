@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-164-make-watcher-lifecycle-test-phase.md",
-  "status": "open",
+  "status": "done",
   "title": "Make watcher lifecycle test phase coordination deterministic",
   "tracker": {
     "baseHashFlow": null,
@@ -20,5 +20,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-06T22:02:21.144062Z"
+  "updated_at": "2026-09-08T06:52:21.983486Z"
 }

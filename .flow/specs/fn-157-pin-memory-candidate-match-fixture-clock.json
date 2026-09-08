@@ -7,7 +7,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-157-pin-memory-candidate-match-fixture-clock.md",
-  "status": "open",
+  "status": "done",
   "title": "Pin memory candidate-match fixture clock",
   "tracker": {
     "baseHashFlow": null,
@@ -20,5 +20,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-05T12:42:03.298120Z"
+  "updated_at": "2026-09-08T06:52:21.701697Z"
 }
