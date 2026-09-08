@@ -21,6 +21,19 @@ import {
 
 installWatchServiceSyncReset();
 
+async function waitUntil(
+  predicate: () => boolean,
+  phase: string
+): Promise<void> {
+  const deadline = Date.now() + 3_000;
+  while (!predicate()) {
+    if (Date.now() >= deadline) {
+      throw new Error(`Timed out waiting for ${phase}`);
+    }
+    await Bun.sleep(10);
+  }
+}
+
 describe("watcherCollectionFingerprint", () => {
   test("tracks the effective collection and run-level source availability", () => {
     const collection = createCollection("notes", "/tmp/notes");
@@ -300,31 +313,41 @@ describe("CollectionWatchService lifecycle", () => {
       }) as never,
     });
 
-    service.start();
-    callbacks.get("/tmp/old-notes")?.("change", "old.md");
-    await Bun.sleep(350);
-    expect(seenPaths).toEqual([["old.md"]]);
+    try {
+      service.start();
+      callbacks.get("/tmp/old-notes")?.("change", "old.md");
+      await waitUntil(() => seenPaths.length > 0, "first path sync to start");
+      expect(seenPaths).toEqual([["old.md"]]);
 
-    service.updateCollections([]);
-    service.updateCollections([
-      createCollection("notes", "/tmp/replacement-notes"),
-    ]);
-    callbacks.get("/tmp/replacement-notes")?.("change", "new.md");
-    await Bun.sleep(350);
-    expect(seenPaths).toEqual([["old.md"]]);
+      service.updateCollections([]);
+      service.updateCollections([
+        createCollection("notes", "/tmp/replacement-notes"),
+      ]);
+      callbacks.get("/tmp/replacement-notes")?.("change", "new.md");
+      expect(service.getState().queuedCollections).toEqual(["notes"]);
+      expect(seenPaths).toEqual([["old.md"]]);
 
-    finishFirstSync?.();
-    await Bun.sleep(20);
-    expect(syncCollection).toHaveBeenCalledTimes(1);
-    expect(seenPaths).toEqual([["old.md"], ["new.md"]]);
-    expect(notifySyncComplete).toHaveBeenCalledTimes(1);
-    expect(emit).toHaveBeenCalledTimes(1);
-    expect(emit.mock.calls[0]?.[0]).toMatchObject({
-      collection: "notes",
-      relPath: "new.md",
-      uri: "gno://notes/new.md",
-    });
-    await service.dispose();
+      finishFirstSync?.();
+      await waitUntil(
+        () =>
+          seenPaths.some((batch) => batch.includes("new.md")) &&
+          service.getState().syncingCollections.length === 0,
+        "replacement path sync to complete"
+      );
+      expect(syncCollection).toHaveBeenCalledTimes(1);
+      expect(seenPaths).toEqual([["old.md"], ["new.md"]]);
+      expect(notifySyncComplete).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit.mock.calls[0]?.[0]).toMatchObject({
+        collection: "notes",
+        relPath: "new.md",
+        uri: "gno://notes/new.md",
+      });
+    } finally {
+      // Release blocked work before draining it, even when an assertion fails.
+      finishFirstSync?.();
+      await service.dispose();
+    }
   });
 
   test("reprocesses an edit queued after full reconciliation scanned its path", async () => {
@@ -335,15 +358,12 @@ describe("CollectionWatchService lifecycle", () => {
     const seenPaths: string[][] = [];
     let finishFirstSync: (() => void) | undefined;
     let finishFullSync: (() => void) | undefined;
-    let markFullSyncStarted: (() => void) | undefined;
+    let fullSyncStarted = false;
     const firstSync = new Promise<void>((resolve) => {
       finishFirstSync = resolve;
     });
     const fullSyncGate = new Promise<void>((resolve) => {
       finishFullSync = resolve;
-    });
-    const fullSyncStarted = new Promise<void>((resolve) => {
-      markFullSyncStarted = resolve;
     });
 
     defaultSyncService.syncPaths = (async (_collection, _store, relPaths) => {
@@ -361,7 +381,7 @@ describe("CollectionWatchService lifecycle", () => {
       });
     }) as typeof defaultSyncService.syncPaths;
     defaultSyncService.syncCollection = (async () => {
-      markFullSyncStarted?.();
+      fullSyncStarted = true;
       await fullSyncGate;
       return createSyncResult({
         filesProcessed: 1,
@@ -388,23 +408,33 @@ describe("CollectionWatchService lifecycle", () => {
       }) as never,
     });
 
-    service.start();
-    callbacks.get("/tmp/old-notes")?.("change", "old.md");
-    await Bun.sleep(350);
-    service.updateCollections([
-      createCollection("notes", "/tmp/replacement-notes"),
-    ]);
+    try {
+      service.start();
+      callbacks.get("/tmp/old-notes")?.("change", "old.md");
+      await waitUntil(() => seenPaths.length > 0, "first path sync to start");
+      service.updateCollections([
+        createCollection("notes", "/tmp/replacement-notes"),
+      ]);
 
-    finishFirstSync?.();
-    await fullSyncStarted;
-    callbacks.get("/tmp/replacement-notes")?.("change", "new.md");
-    await Bun.sleep(350);
-    finishFullSync?.();
-    await Bun.sleep(800);
+      finishFirstSync?.();
+      await waitUntil(() => fullSyncStarted, "full reconciliation to start");
+      callbacks.get("/tmp/replacement-notes")?.("change", "new.md");
+      expect(service.getState().queuedCollections).toEqual(["notes"]);
+      finishFullSync?.();
+      await waitUntil(
+        () =>
+          seenPaths.some((batch) => batch.includes("new.md")) &&
+          service.getState().syncingCollections.length === 0,
+        "post-reconciliation path sync to complete"
+      );
 
-    expect(seenPaths[0]).toEqual(["old.md"]);
-    expect(seenPaths.some((batch) => batch.includes("new.md"))).toBe(true);
-    await service.dispose();
+      expect(seenPaths[0]).toEqual(["old.md"]);
+      expect(seenPaths.some((batch) => batch.includes("new.md"))).toBe(true);
+    } finally {
+      finishFirstSync?.();
+      finishFullSync?.();
+      await service.dispose();
+    }
   });
 
   test("updateCollections refreshes sync options for later watcher syncs", async () => {

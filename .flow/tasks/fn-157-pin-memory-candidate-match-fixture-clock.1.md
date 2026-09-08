@@ -32,9 +32,8 @@ Both determinism cases pass repeatedly under fixed fixture time; complete memory
 Pin existing MemoryServiceDeps.now for fixtures; preserve all equality/threshold/candidate assertions; run both determinism cases repeatedly and full test/core/memory.test.ts; retain collision/control reproduction evidence.
 
 ## Done summary
-TBD
-
+Pinned the candidate determinism fixtures through MemoryServiceDeps.now, using the verified control clock 2026-09-05T12:29:45.287Z. Corrected the comment to acknowledge metadata-inclusive FTS. Preserved all equality, matching-mode, threshold, and candidate assertions. Both modes passed 20 repetitions; the full memory file and full local suite passed. Collision/control probes and logs remain in /home/gordon/.cache/agent-tmp/fixture-fixes-probes/. Test-only change; no release requested.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: f5ac56bbfb7d18ccb78cbaacb2c755d85d866327
+- Tests: bun test: 5261 pass, 2 existing opt-in skips, 0 fail, Affected memory and watcher files: 38 pass, 0 fail, Four target tests repeated 20 times: 80 pass, 0 fail, Type-aware oxlint with explicit absolute paths: 2 files, 0 warnings/errors; oxfmt passed, Delayed watcher starts (450ms) and completions (60ms): original fails, fixed passes, Forced assertion failure: dispose drains all queued/in-flight work; next test passes, Memory collision clock .286Z fails; fixed control .287Z passes
 - PRs:

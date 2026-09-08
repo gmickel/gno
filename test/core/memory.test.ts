@@ -73,7 +73,11 @@ function fakeEmbedPort(): EmbeddingPort {
 
 async function createHarness(
   prefix: string,
-  options: { embedPort?: EmbeddingPort | null; dbPath?: string } = {}
+  options: {
+    embedPort?: EmbeddingPort | null;
+    dbPath?: string;
+    now?: () => Date;
+  } = {}
 ): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), `gno-${prefix}-`));
   await mkdir(join(root, "memory"), { recursive: true });
@@ -110,6 +114,7 @@ async function createHarness(
     lockPath,
     lockWaitMs: 5_000,
     embedPort: options.embedPort ?? null,
+    now: options.now,
   });
   return { root, store, config, collections, lockPath, service };
 }
@@ -725,7 +730,12 @@ describe("candidate-match determinism contract", () => {
   const incoming = "deploy window tuesday 09:00 utc";
 
   async function seeded(prefix: string, embedPort: EmbeddingPort | null) {
-    const harness = await createHarness(prefix, { embedPort });
+    const harness = await createHarness(prefix, {
+      embedPort,
+      // Record IDs are indexed metadata too: a wall-clock-derived ID can
+      // accidentally match the query's 0900 prefix and change the candidate pool.
+      now: () => new Date("2026-09-05T12:29:45.287Z"),
+    });
     for (const text of corpus) {
       const result = await remember(harness, {
         text,
@@ -763,7 +773,8 @@ describe("candidate-match determinism contract", () => {
         threshold: 0.5,
         semanticUnavailable: "no embedding model available",
       });
-      // Only facts sharing a token enter the BM25 pool; the rest never appear.
+      // BM25 searches fact text and metadata; this fixed fixture has three
+      // matching records, including one below the likely-match threshold.
       expect(parsed.candidates.map((c: { match: string }) => c.match)).toEqual([
         "likely",
         "likely",
