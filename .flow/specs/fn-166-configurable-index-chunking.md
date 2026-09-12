@@ -11,6 +11,7 @@ The quoted research request was supplied by Gordon. Its statements describe the 
 > user (quoted research request, part 4): "With that, chunk size becomes a variable and I could publish something on how structure and chunk boundaries interact."
 > user (compatibility clarification): "this will not change anything for existing users that dont care about this or regress in any way right?"
 > user (execution authorization): "ok continue with $flow-next-flow until this is released, then we'll draft a reply to the guy, with prose skill, express thanks and interest in his work etc, tell him what we did."
+> user (execution correction): "new ways of working here will not be via grok implementer, you will implement yourself (obviously via work) and it should be a no plan spec after you remove the tasks. no review, instead you will QA the changes yourself and then proceed as normally"
 
 ## Goal & Context
 <!-- scope: business -->
@@ -74,21 +75,29 @@ The quoted research request was supplied by Gordon. Its statements describe the 
 
 - Supports Trustworthy retrieval and evidence, Local knowledge lifecycle, and Coherent agent and application surfaces through reproducible retrieval inputs, dependable rebuilding, and consistent applied settings. [strategy:Local knowledge lifecycle]
 
-## Requirement coverage
+## Implementation findings
 
-| Requirement | Task(s) | Gap justification |
-| --- | --- | --- |
-| R1 | fn-166.1, fn-166.2, fn-166.4 | |
-| R2 | fn-166.1, fn-166.2 | |
-| R3 | fn-166.1, fn-166.2 | |
-| R4 | fn-166.2 | |
-| R5 | fn-166.3 | |
-| R6 | fn-166.4 | |
-| R7 | fn-166.4 | |
+- The current defaults are 800 approximate tokens and 0.15 overlap. The chunker estimates four characters per token, clamps direct internal calls to at least 10 tokens and overlap at most 0.5, and uses source extension and language hint when selecting boundaries. Config validation must reject invalid inputs rather than rely on that internal clamp. Source: src/ingestion/types.ts, src/ingestion/chunker.ts.
+- Ordinary files and imported records independently pass the fixed defaults. Both must consume the same resolved policy. Most CLI, SDK, MCP, capture, watcher, and resident entry points already call withContentTypeRules; extending its options avoids parallel configuration plumbing. Source: src/ingestion/sync-options.ts, src/ingestion/sync.ts, src/ingestion/record-container.ts, src/sdk/client.ts, src/serve/resident-runtime.ts.
+- Unchanged files skip before conversion/chunking. Incrementing INGEST_VERSION or introducing a mandatory document fingerprint would make ordinary upgrades rebuild. Keep that version and the unchanged-file decision intact; reconcile policy changes from cached canonical mirrors. Source: src/ingestion/sync.ts.
+- Chunks are keyed by mirror_hash and sequence, shared across documents and collections. Applied policy belongs to that mirror. Per-document markers alone fail the duplicate A/B case: A rechunks shared content, B retains a legacy-default marker, then a targeted reset through B can falsely skip the changed layout. Source: spec/db/schema.sql, src/store/sqlite/adapter.ts.
+- Cached Markdown alone is insufficient to reproduce code/language boundary selection. Retain the path and language used for an applied layout; choose a deterministic active-document representative for legacy content lacking provenance. Preserve ordinary default-path behavior rather than adding a new canonicalization algorithm. Source: src/ingestion/chunker.ts, src/ingestion/sync.ts, src/ingestion/record-container.ts.
+- Existing upsertChunks removes changed or vanished chunk rows and their vector owners while preserving unchanged rows. Existing withTransaction already supports asynchronous, nested SQLite operations and wraps successful file/record persistence. Reuse those mechanisms for the policy-token check, layout, FTS, and applied marker. Verify both legacy and active vector-variant retrieval paths. Source: src/store/sqlite/adapter.ts, src/store/vector/variants.ts.
+- SDK update calls the sync service directly, while CLI/MCP paths also use write leases. A store-level target generation check is needed to reject stale clients and obsolete writes consistently; a lease-only guard would miss SDK callers. Source: src/sdk/client.ts, src/cli/commands/update.ts, src/mcp/tools/sync.ts.
+- The latest migration is 029. Append a content-policy migration and reuse schema_meta for index target state. Legacy missing state resolves to defaults without eager backfill. Successfully applied empty content needs an explicit marker so it is distinguishable from unfinished work. Source: src/store/migrations/index.ts, src/store/migrations/029-graph-reference-state.ts.
+- Status is shared across CLI, SDK, MCP and REST. Add one consistent projection and update its JSON schema; retain the active-vector embedding readiness semantics. Reading status must not claim a target or perform work. Source: src/store/types.ts, src/store/sqlite/adapter.ts, src/cli/commands/status.ts, src/mcp/tools/status.ts, src/sdk/client.ts, spec/output-schemas/status.schema.json.
+- A named index selects a different database, while configuration remains separately selected. Reproducibility examples need both a distinct index and an explicit configuration file per policy. Source: src/cli/commands/shared.ts, src/app/constants.ts.
 
-## Early proof point
+## Verification evidence and remaining checks
 
-The policy/state task proves legacy defaults remain untouched and stale store instances cannot advance or apply an obsolete target. The ingestion task then proves atomic shared-mirror transitions using real SQLite and the existing chunker before diagnostics depend on that state.
+- Source baseline is commit 815d4875. A synthetic corpus of 75 files produced 289 chunks, including English/German/French prose, duplicate content, an empty document, and TypeScript. Seven repeat CLI syncs preserved document/chunk/timestamp snapshots exactly; their median elapsed time was 0.500537923 seconds. This is a local comparison baseline, not a latency guarantee.
+- Retained baseline files are under /tmp/gno-fn166-compatibility; the generator is /tmp/gno-fn166-baseline.py. Snapshot SHA-256 values are 8e64ab6e7abb184af95b468bc11518efd429a9cacdfc7c7d9e342de08c87281f for documents and 8b2d4af0d2f49ad44ce48aea89ba7b2dea8864ef7a74d56095da09f26b58ea02 for chunks. Four lexical result sets are retained. This baseline has no embeddings; embedding preservation still requires explicit evidence.
+- Pre-change configuration/store checks passed 131 tests with 501 assertions. The log is /tmp/fn166-task1-baseline.log. No implementation code landed from the cancelled bridge.
+- Exercise legacy upgrade with zero chunker/converter/embedding calls; explicit defaults and partial config; default-to-custom-to-default; duplicate targeted sync; empty mirrors; code/language provenance; record imports; SDK/resident parity; stale concurrent clients; failed FTS/layout rollback; unavailable original sources; and repeated-policy vector preservation.
+- Drive real CLI, SDK, MCP and REST commands against isolated data/config/cache roots. Capture status before a policy claim, after partial work, after layout completion, and after embedding. Retain command outputs and observed index state.
+- User documentation belongs in docs and the hosted gno.sh repository. Its configuration, CLI, API, MCP and SDK pages derive HTML and Markdown from src/lib/gno-docs.tsx. Verify local desktop/mobile pages, navigation and copy controls, then reverify the changed production pages after deployment. Leave the retired in-repo website untouched.
+- Bun 1.4.2 is pinned by the repository/CI. The host default 1.3.14 cannot read the current lockfile; use a matching runtime. Frozen installation succeeded with isolated Bun 1.4.2. The pinned embeddinggemma package-smoke model is available and SHA-256 verified.
+- The autoresearch experiment is gmickel/autoresearch-experiments, gno-skill directory. The previously documented standalone checkout was absent here; the repository is available at ~/repos/autoresearch-experiments. Evaluate the candidate shipped skill, preserve the fixed evaluator/model and negative results, and do not overwrite current skill content with an older experiment copy.
 
 ## Quick commands
 
