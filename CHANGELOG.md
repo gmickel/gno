@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-09-12
+
 ### Added
 
 - Configure chunk size and overlap per index, with cached rechunking and
@@ -2729,7 +2731,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.2.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/gmickel/gno/compare/v2.2.1...v2.3.0
 [2.2.1]: https://github.com/gmickel/gno/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/gmickel/gno/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/gmickel/gno/compare/v2.1.0...v2.1.1
