@@ -116,6 +116,88 @@ These machine-local provenance records are written under the shared config
 lock; they are never copied into the tracked profile or exposed by public
 profile receipts.
 
+## Chunking
+
+Chunk size and overlap are optional, index-wide settings:
+
+```yaml
+chunking:
+  maxTokens: 256
+  overlapPercent: 0
+```
+
+Omitting `chunking`, or explicitly setting `maxTokens: 800` and
+`overlapPercent: 0.15`, preserves the existing defaults. Upgrading with those
+settings does not rechunk or re-embed unchanged documents. Each omitted field
+inherits its default.
+
+- `maxTokens` is an integer of at least 10. GNO estimates four characters per
+  token; this is not an exact embedding-model token count. The character
+  estimate must fit a JavaScript safe integer.
+- `overlapPercent` is a fraction from `0` through `0.5`. Use `0.15` for 15%
+  overlap; `15` is invalid. Invalid configuration fails before indexing.
+
+After changing the effective policy, run `gno index` to rechunk and embed.
+`gno update` or `gno index --no-embed` rechunks without generating embeddings;
+follow with `gno embed` for semantic search. Changed chunks lose obsolete
+embeddings, while identical chunks retain theirs.
+
+Rechunking uses cached canonical Markdown and retains code/language boundary
+information. It does not reread or edit source files. The policy covers the
+whole index, so even a collection-scoped or targeted sync can rechunk other
+cached mirrors. Source refresh and collection-scoped embedding keep their
+usual scope. Use unscoped `gno index` to finish the whole index.
+
+`gno status --json` reports `chunking.configured`, `chunking.applied`, `state`,
+`pendingDocuments`, and `pendingMirrors`. `applied` is null for empty or mixed
+layouts. `legacy-default` means the existing default layout is current without
+an eager metadata backfill. Failed or interrupted mirror work stays pending
+for the next indexing run. Source errors and `embeddingBacklog` remain
+separate; a current cached layout does not prove its original file was
+refreshed.
+
+If another client changes the policy, a stale client receives
+`CHUNKING_POLICY_CONFLICT`. Reopen that client or restart its resident runtime
+with the intended configuration. Chunking has no per-collection overrides or
+temporary update flags.
+
+### Comparing policies
+
+Use a separate configuration file and named index for each experiment. Create
+`research-256.yml` with this content, replacing the corpus path:
+
+```yaml
+version: "1.0"
+collections:
+  - name: research
+    path: /absolute/path/to/research
+    pattern: "**/*.md"
+chunking:
+  maxTokens: 256
+  overlapPercent: 0.15
+```
+
+Copy it to `research-800.yml` and change only `maxTokens` to `800`. Then:
+
+```bash
+gno --config ./research-256.yml --index research-256 index --no-embed
+gno --config ./research-800.yml --index research-800 index --no-embed
+gno --config ./research-256.yml --index research-256 status --json
+gno --config ./research-800.yml --index research-800 status --json
+```
+
+For vector or hybrid comparisons, use the same cached embedding model in both
+configs, run `gno embed` with each matching `--config` and `--index`, and check
+that both pending chunking counts and `embeddingBacklog` are zero. Save the
+configs, GNO/model versions, corpus hashes, query set, and results. Repeating a
+policy against unchanged input should preserve its layout.
+
+BM25 ranks whole documents, so changing chunk size alone can leave lexical
+ranking unchanged. Chunk boundaries affect semantic retrieval and selected
+evidence spans. Hold content-type boosts and other ranking settings constant
+when testing structural changes; boosting a type is a separate intervention.
+No chunk size is promised to improve retrieval for every corpus.
+
 ## Project affinity
 
 `projectAffinity.enabled` defaults to `true` and controls only the fallback

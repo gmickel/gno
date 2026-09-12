@@ -1,0 +1,33 @@
+{
+  "branch_name": "fn-166-configurable-index-chunking",
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-12T14:58:38.068824Z",
+  "created_at": "2026-09-12T12:46:10.896371Z",
+  "default_impl": null,
+  "default_review": "none",
+  "default_sync": null,
+  "depends_on_epics": [],
+  "id": "fn-166-configurable-index-chunking",
+  "impl_review_rounds": {},
+  "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "ready": true,
+  "spec_path": ".flow/specs/fn-166-configurable-index-chunking.md",
+  "status": "open",
+  "title": "Configurable index chunking",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-12T14:58:38.068830Z"
+}

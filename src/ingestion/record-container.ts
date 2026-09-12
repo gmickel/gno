@@ -23,6 +23,7 @@ import {
 } from "../core/change-diff";
 import { createEgressLineage } from "../core/egress-provenance";
 import { normalizeTag, validateTag } from "../core/tags";
+import { persistChunkLayout } from "./chunking";
 import { runRecordAdapter } from "./record-adapter";
 import { recordVirtualPath } from "./record-path";
 import { reconcileRecordSnapshot, type RecordSyncPlan } from "./record-sync";
@@ -397,7 +398,7 @@ const persistRecord = async (
     const chunks: ChunkInput[] = input.chunker
       .chunk(
         record.markdown,
-        DEFAULT_CHUNK_PARAMS,
+        input.options.chunkingToken?.params ?? DEFAULT_CHUNK_PARAMS,
         record.languageHint ?? input.collection.languageHint,
         virtualPath
       )
@@ -410,13 +411,13 @@ const persistRecord = async (
         language: chunk.language ?? undefined,
         tokenCount: chunk.tokenCount ?? undefined,
       }));
-    mustOk(
-      await input.store.upsertChunks(record.mirrorHash, chunks),
-      "upsertChunks"
-    );
-    mustOk(
-      await input.store.rebuildFtsForHash(record.mirrorHash),
-      "rebuildFtsForHash"
+    await persistChunkLayout(
+      input.store,
+      record.mirrorHash,
+      chunks,
+      input.options.chunkingToken,
+      virtualPath,
+      record.languageHint ?? input.collection.languageHint
     );
     mustOk(
       await input.store.setDocTags(document.id, categories, "frontmatter"),

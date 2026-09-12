@@ -622,6 +622,13 @@ a receipt miss, but it never starts connector children or remote inference.
 SDK status. It exposes only rule IDs, normalized factors, and the full ranking
 fingerprint; configured path prefixes remain private.
 
+`chunking` reports the shared index-wide layout state. `configured` and
+`applied` contain `maxTokens` and `overlapPercent`; `applied` is null for
+empty/mixed layouts. `state` is `empty`, `legacy-default`, `current`, `pending`,
+or `mixed`. `pendingDocuments` and `pendingMirrors` count active cached content
+that needs rechunking. Source-refresh errors and embedding backlog are
+independent. See [Chunking](CONFIGURATION.md#chunking).
+
 `activePreset.name`, `bootstrap.models.estimatedFootprint`, and the footprint
 text inside `bootstrap.models.summary` preserve legacy approximate labels from
 the built-in preset name. They are not measurements of a clean download or the

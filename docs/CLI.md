@@ -947,6 +947,12 @@ Options:
 
 Use `gno update` when you only need keyword search, or when you want to quickly sync changes and run `gno embed` separately.
 
+If the optional index-wide `chunking` configuration changed, update also
+rechunks cached Markdown mirrors without rereading their sources. The receipt
+adds `rechunkedMirrors` when work occurred; ordinary file counters still
+describe source refresh. Changed chunks need new embeddings. See
+[Chunking](CONFIGURATION.md#chunking) for defaults and isolated comparisons.
+
 Password-protected PDFs and XLSX files are recorded as per-file `PERMISSION`
 errors and skipped without aborting the rest of the run.
 
@@ -1838,6 +1844,13 @@ Show index status plus the shared retrieval activation contract.
 gno status
 gno status --json
 ```
+
+`chunking` in JSON reports configured and applied size/overlap, an
+`empty`, `legacy-default`, `current`, `pending`, or `mixed` state, and pending
+document/mirror counts. `applied` is null for empty/mixed layouts. These counts
+describe cached chunks; check source errors and embedding backlog separately.
+Healthy default terminal output stays unchanged. Custom or pending settings
+are shown with the applied policy and any required `gno update` work.
 
 `activation.usable` means at least one configured collection passed a local,
 corpus-derived lexical retrieval proof; `activation.healthy` means every

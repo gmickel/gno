@@ -1425,6 +1425,13 @@ the shared serve/daemon lifecycle. Stdio reports `mode:"stdio"`,
 `contentTypeBoost` contains the effective rule IDs/factors and full ranking
 fingerprint. Configured path prefixes are omitted.
 
+`chunking` contains configured/applied size and overlap, the layout state, and
+pending document/mirror counts. Empty or mixed layouts have `applied: null`.
+Reading status never changes the policy or starts a rebuild. Write-enabled
+sync/index tools consume the configured index-wide policy; chunking backlog,
+embedding backlog, and source-refresh errors are separate. See
+[Chunking](CONFIGURATION.md#chunking).
+
 ### gno_capture
 
 Create a new document (requires `--enable-write`).

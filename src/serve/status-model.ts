@@ -1,5 +1,6 @@
 import type { ContentTypeBoostStatus } from "../config/content-types";
 import type { ActivationStatus } from "../core/activation-status";
+import type { ChunkingStatus } from "../store/chunking";
 
 export type HealthCheckStatus = "ok" | "warn" | "error";
 
@@ -176,6 +177,7 @@ export interface BootstrapState {
 }
 
 export interface AppStatusResponse {
+  chunking?: ChunkingStatus;
   resident: ResidentStatus;
   indexName: string;
   configPath: string;

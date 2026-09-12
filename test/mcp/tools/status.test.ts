@@ -10,6 +10,44 @@ import type { ToolContext } from "../../../src/mcp/server";
 import { handleStatus } from "../../../src/mcp/tools/status";
 import { createMockContext } from "../../serve/helpers/activation-status-fixtures";
 
+test("MCP status passes chunking config and exposes the shared layout state", async () => {
+  const server = createMockContext();
+  const configured = { maxTokens: 256, overlapPercent: 0 };
+  server.config.chunking = configured;
+  const chunking = {
+    configured,
+    applied: { maxTokens: 800, overlapPercent: 0.15 },
+    state: "pending" as const,
+    pendingDocuments: 2,
+    pendingMirrors: 1,
+  };
+  const original = server.store.getStatus.bind(server.store);
+  server.store.getStatus = async (options) => {
+    expect(options?.chunking).toEqual(server.config.chunking);
+    const result = await original();
+    return result.ok
+      ? { ok: true, value: { ...result.value, chunking } }
+      : result;
+  };
+  const ctx = {
+    ...server,
+    collections: [],
+    actualConfigPath: "/tmp/config.yml",
+    toolMutex: { acquire: async () => () => undefined },
+    jobManager: {},
+    serverInstanceId: "chunking-status",
+    writeLockPath: "/tmp/.lock",
+    enableWrite: false,
+    isShuttingDown: () => false,
+  } as unknown as ToolContext;
+  const result = await handleStatus({}, ctx);
+  expect(result.isError).not.toBe(true);
+  expect(result.structuredContent?.chunking).toEqual(chunking);
+  expect(JSON.stringify(result.content)).toContain(
+    "2 documents / 1 mirrors pending"
+  );
+});
+
 // Test the status input/output schemas match spec
 describe("gno_status schema", () => {
   test("projects effective boost rules without path prefixes", async () => {

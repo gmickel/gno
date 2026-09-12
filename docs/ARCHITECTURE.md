@@ -189,7 +189,7 @@ File on disk
     │
     ├─[ mirrorHash exists ]─► Reuse content (deduplication)
     │
-    ▼ Chunker (~800 tokens, 15% overlap, code-aware for ts/js/python/go/rust family)
+    ▼ Chunker (default ~800 tokens, 15% overlap; optional index-wide config; code-aware)
     │
     ▼ Store (SQLite: documents, content, chunks, document-level FTS)
     │
@@ -388,15 +388,15 @@ CLI/MCP/Web UI/SDK → new Adapter() → adapter.createPort() → Port interface
 
 ### Storage
 
-| Table           | Purpose                                                                        |
-| --------------- | ------------------------------------------------------------------------------ |
-| documents       | Source file tracking (path, hash, docid)                                       |
-| content         | Canonical markdown by mirrorHash                                               |
-| content_chunks  | Chunked text (800 tokens each; structural first-pass for supported code files) |
-| documents_fts   | Document-level FTS5 with Snowball stemmer                                      |
-| content_vectors | Chunk embeddings with title context (optional)                                 |
-| doc_tags        | Document tags (frontmatter and user-added)                                     |
-| doc_links       | Wiki and markdown links between documents                                      |
+| Table           | Purpose                                                                            |
+| --------------- | ---------------------------------------------------------------------------------- |
+| documents       | Source file tracking (path, hash, docid)                                           |
+| content         | Canonical Markdown by mirrorHash                                                   |
+| content_chunks  | Chunked text (default ~800 tokens; structural first-pass for supported code files) |
+| documents_fts   | Document-level FTS5 with Snowball stemmer                                          |
+| content_vectors | Chunk embeddings with title context (optional)                                     |
+| doc_tags        | Document tags (frontmatter and user-added)                                         |
+| doc_links       | Wiki and markdown links between documents                                          |
 
 ### Content Addressing
 
@@ -409,6 +409,15 @@ Identical canonical content shares chunk storage. Verified vectors share storage
 only when the complete formatted embedding input and model/runtime identity match;
 different title context can require separate variants. Providers without verified
 identity use the legacy ownership rules described below.
+
+Optional chunking configuration has one target policy per index. Existing
+`schema_meta` entries record its generation and each mirror's applied policy
+and path/language used for boundaries. No database migration is required. Missing
+legacy policy metadata means the original defaults, without eager backfill.
+Policy changes rechunk cached mirrors under an optimistic generation check;
+chunks, FTS, applied metadata, and affected vector ownership commit together.
+An obsolete writer cannot overwrite a newer policy. Source-refresh metadata
+stays separate from cached layout readiness.
 
 ### LLM Models
 

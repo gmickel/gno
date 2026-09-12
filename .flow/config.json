@@ -24,29 +24,6 @@
   "memory": {
     "enabled": true
   },
-  "models": {
-    "roles": {
-      "delegate": {
-        "codex": "gpt-5.6-terra:medium",
-        "cursor": "cursor-grok-4.6-high"
-      },
-      "fastJudge": {
-        "codex": "gpt-5.6-luna:low"
-      },
-      "review": {
-        "codex": "gpt-5.6-sol:medium",
-        "cursor": "claude-opus-5-thinking-high"
-      },
-      "scoutFast": {
-        "codex": "gpt-5.6-luna:low"
-      },
-      "scoutIntelligent": {
-        "codex": "gpt-5.6-sol:medium"
-      }
-    },
-    "verifiedAt": "2026-08-09",
-    "verifiedWith": "codex 0.146.0; cursor-agent 2026.08.04-aaa8809; copilot 1.0.78 (model probe timed out)"
-  },
   "pilot": {
     "autonomy": "ready",
     "gateClasses": []
@@ -138,13 +115,5 @@
     "staleAfterHours": 24,
     "type": null,
     "version": 1
-  },
-  "work": {
-    "delegate": false,
-    "delegateConsent": false,
-    "delegateDecision": "auto",
-    "delegateEffort": "medium",
-    "delegateModel": "gpt-5.5",
-    "delegateSandbox": "yolo"
   }
 }

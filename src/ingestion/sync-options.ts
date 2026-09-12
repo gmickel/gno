@@ -20,11 +20,13 @@ export function resolveContentTypeRules(
 
 export function withContentTypeRules(
   options: SyncOptions = {},
-  config?: Pick<Config, "contentTypes">
+  config?: Pick<Config, "contentTypes" | "chunking">
 ): SyncOptions {
   const rules = options.contentTypeRules ?? resolveContentTypeRules(config);
+  const chunking = options.chunking ?? config?.chunking;
   return {
     ...options,
+    ...(chunking ? { chunking } : {}),
     contentTypeRules: rules,
     contentTypeRulesFingerprint:
       options.contentTypeRulesFingerprint ??

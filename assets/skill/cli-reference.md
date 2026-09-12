@@ -24,6 +24,22 @@ punctuation. NFC/case-equivalent spellings share one identity. See
 
 ## Initialization
 
+### Optional index-wide chunking
+
+User YAML can set `chunking: { maxTokens: 256, overlapPercent: 0.15 }`.
+Defaults remain 800 approximate tokens and 0.15 overlap; unchanged/default
+config does not force a rebuild. The token estimate uses four characters per
+token, and overlap accepts a fraction from 0 through 0.5.
+
+After changing policy, `gno index` rechunks cached mirrors and embeds changed
+chunks. `gno update` performs the rechunking without embedding. The policy
+applies across the index even for targeted source sync; original files are not
+read merely to rechunk. `gno status --json` reports configured/applied policy,
+pending mirrors/documents, and a separate embedding backlog. On
+`CHUNKING_POLICY_CONFLICT`, reopen the client with the intended configuration.
+Compare policies with separate `--config` files and `--index` names, holding
+corpus, models, query set, and type boosts constant.
+
 ### gno setup
 
 Preferred activation path: add one folder, prove a real exact lexical result,

@@ -96,6 +96,36 @@ function statusResult(): StatusResult {
   };
 }
 
+test("default chunking preserves terminal output while custom pending state is explicit", () => {
+  const result = statusResult();
+  if (!result.success) throw new Error("Expected status fixture");
+  const original = formatStatus(result, {});
+  result.status.chunking = {
+    configured: { maxTokens: 800, overlapPercent: 0.15 },
+    applied: { maxTokens: 800, overlapPercent: 0.15 },
+    state: "legacy-default",
+    pendingDocuments: 0,
+    pendingMirrors: 0,
+  };
+  expect(formatStatus(result, {})).toBe(original);
+  result.status.chunking.configured = { maxTokens: 256, overlapPercent: 0 };
+  result.status.chunking.state = "pending";
+  result.status.chunking.pendingDocuments = 2;
+  result.status.chunking.pendingMirrors = 1;
+  expect(formatStatus(result, {})).toContain(
+    "configured 256 approximate tokens / 0% overlap"
+  );
+  expect(formatStatus(result, {})).toContain(
+    "applied 800 approximate tokens / 15% overlap"
+  );
+  expect(formatStatus(result, { md: true })).toContain(
+    "2 documents / 1 mirrors pending"
+  );
+  expect(JSON.parse(formatStatus(result, { json: true })).chunking).toEqual(
+    result.status.chunking
+  );
+});
+
 describe("gno status activation output", () => {
   test("keeps legacy fields and makes lexical failure visibly degraded", () => {
     const result = statusResult();

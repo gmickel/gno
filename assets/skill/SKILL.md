@@ -509,6 +509,13 @@ gno embed --collection travel
 
 MCP `gno.sync` and `gno.capture` do NOT auto-embed. Use CLI for embedding.
 
+Optional index-wide YAML `chunking.maxTokens` and `chunking.overlapPercent`
+control size and overlap (`0.15` means 15%). Leave defaults unless asked to
+tune them. After a change, `gno index` rechunks cached mirrors and embeds;
+`gno update` rechunks only. Check `gno status --json` fields
+`chunking.pendingMirrors` and `embeddingBacklog`. Use separate `--config`
+files and `--index` names for comparisons; see [cli-reference.md](cli-reference.md).
+
 ## Capture Notes
 
 Use `gno capture` for quick second-brain writes into an editable collection:

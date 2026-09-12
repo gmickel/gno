@@ -1352,6 +1352,15 @@ counters; it never claims attachment to another process.
 normalized IDs/factors plus the rules fingerprint; path prefixes are never
 returned.
 
+`chunking` reports the index-wide configuration and cached layout readiness:
+`configured` and `applied` contain `maxTokens` and `overlapPercent` (`applied`
+is null for empty/mixed layouts); `state` is `empty`, `legacy-default`,
+`current`, `pending`, or `mixed`; `pendingDocuments` and `pendingMirrors` count
+active cached content using another policy. Source refresh errors and embedding
+backlog remain separate. Reading status never rechunks or changes the policy.
+Sync results may include `rechunkedMirrors` when a policy change updates cached
+layouts. A stale client must reopen on `CHUNKING_POLICY_CONFLICT`.
+
 ---
 
 ### gno_recall

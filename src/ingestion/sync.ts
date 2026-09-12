@@ -58,6 +58,7 @@ import {
 import { extractMemoryScopes } from "../core/memory-record";
 import { normalizeTag, validateTag } from "../core/tags";
 import { defaultChunker } from "./chunker";
+import { persistChunkLayout, prepareChunking } from "./chunking";
 import {
   extractHashtags,
   parseFrontmatter,
@@ -937,7 +938,7 @@ export class SyncService {
         // 9. Chunk content
         const chunks = this.chunker.chunk(
           artifact.markdown,
-          DEFAULT_CHUNK_PARAMS,
+          options.chunkingToken?.params ?? DEFAULT_CHUNK_PARAMS,
           artifact.languageHint ?? collection.languageHint,
           entry.relPath
         );
@@ -953,21 +954,15 @@ export class SyncService {
           tokenCount: c.tokenCount ?? undefined,
         }));
 
-        // 11. Upsert chunks - CHECKED
-        const chunksResult = await store.upsertChunks(
+        // 11-12. Apply chunks and lexical projection under the policy token.
+        await persistChunkLayout(
+          store,
           artifact.mirrorHash,
-          chunkInputs
+          chunkInputs,
+          options.chunkingToken,
+          entry.relPath,
+          artifact.languageHint ?? collection.languageHint
         );
-        mustOk(chunksResult, "upsertChunks", {
-          mirrorHash: artifact.mirrorHash,
-          chunkCount: chunkInputs.length,
-        });
-
-        // 12. Rebuild FTS for this hash - CHECKED
-        const ftsResult = await store.rebuildFtsForHash(artifact.mirrorHash);
-        mustOk(ftsResult, "rebuildFtsForHash", {
-          mirrorHash: artifact.mirrorHash,
-        });
 
         // 13. Extract and store tags from frontmatter and body hashtags
         // Always call setDocTags to clear removed tags on re-sync
@@ -1249,8 +1244,9 @@ export class SyncService {
     options: SyncOptions = {}
   ): Promise<CollectionSyncResult> {
     const startedAt = Date.now();
+    const prepared = await prepareChunking(store, this.chunker, options);
     const syncOptions: SyncOptions = {
-      ...options,
+      ...prepared.options,
       contentTypeRules: options.contentTypeRules ?? [],
       contentTypeRulesFingerprint:
         options.contentTypeRulesFingerprint ??
@@ -1511,13 +1507,18 @@ export class SyncService {
       syncOptions.projectTypedEdges === false
         ? []
         : await this.projectTypedEdges(store, syncOptions, projectionSourceIds);
-    return summarizePathResults(
-      collection.name,
-      results,
-      markedInactive,
-      startedAt,
-      errors
-    );
+    return {
+      ...summarizePathResults(
+        collection.name,
+        results,
+        markedInactive,
+        startedAt,
+        errors
+      ),
+      ...(prepared.rechunkedMirrors
+        ? { rechunkedMirrors: prepared.rechunkedMirrors }
+        : {}),
+    };
   }
 
   /**
@@ -1717,8 +1718,9 @@ export class SyncService {
     options: SyncOptions = {}
   ): Promise<CollectionSyncResult> {
     const startTime = Date.now();
+    const prepared = await prepareChunking(store, this.chunker, options);
     const syncOptions: SyncOptions = {
-      ...options,
+      ...prepared.options,
       contentTypeRules: options.contentTypeRules ?? [],
       contentTypeRulesFingerprint:
         options.contentTypeRulesFingerprint ??
@@ -2038,6 +2040,9 @@ export class SyncService {
 
     return {
       collection: collection.name,
+      ...(prepared.rechunkedMirrors
+        ? { rechunkedMirrors: prepared.rechunkedMirrors }
+        : {}),
       filesProcessed: entries.length + inventoryErrored,
       filesAdded: added,
       filesUpdated: updated,
@@ -2060,9 +2065,10 @@ export class SyncService {
     options: SyncOptions = {}
   ): Promise<SyncResult> {
     const startTime = Date.now();
+    const prepared = await prepareChunking(store, this.chunker, options);
     const results: CollectionSyncResult[] = [];
     const deferredProjectionOptions: SyncOptions = {
-      ...options,
+      ...prepared.options,
       projectTypedEdges: false,
     };
 
@@ -2094,6 +2100,9 @@ export class SyncService {
 
     return {
       collections: results,
+      ...(prepared.rechunkedMirrors
+        ? { rechunkedMirrors: prepared.rechunkedMirrors }
+        : {}),
       totalDurationMs: Date.now() - startTime,
       totalFilesProcessed: totals.processed,
       totalFilesAdded: totals.added,

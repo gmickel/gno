@@ -627,49 +627,9 @@ Oxlint will catch most issues automatically. Focus your attention on:
 
 Most formatting and common issues are automatically fixed. Run `bun run lint` before committing to ensure compliance.
 
-<!-- flow-next:model-routing:start -->
-## Picking models for Flow-Next workflows and subagents
+## Flow-Next execution
 
-_Scaffolded by Flow-Next setup — edit freely; rerun setup to regenerate. These scores are starting opinions as of July 2026._
-
-Rankings: higher is better. **Cost** means subscription headroom, not token pricing. Each provider has a separate quota.
-
-| Model | Cost | Speed | Intelligence | Taste |
-|---|---:|---:|---:|---:|
-| opus-5 @ medium | 5 | 4 | 9 | 9 |
-| fable-5 | 2 | 2 | 10 | 9 |
-| opus-4.8 | 4 | 3 | 7 | 8 |
-| gpt-5.6-sol | 8 | 5 | 9 | 6 |
-| gpt-5.6-terra | 9 | 7 | 7 | 5 |
-| grok-4.5 | 9 | 9 | 7 | 5 |
-| composer-2.5 | 9 | 10 | 6 | 6 |
-| sonnet-5 | 5 | 6 | 7 | 7 |
-| haiku-4.5 | 8 | 9 | 4 | 4 |
-
-Default orchestration:
-
-- The active harness owns capture, interviews, research synthesis, planning, task decomposition, review verdicts, acceptance checks, git, releases, and final user-facing judgment.
-- Planning and review stay in-harness. Use native agents or subagents where useful. Never shell out to `codex`, `cursor-agent`, `grok`, Copilot, or RepoPrompt for planning or review.
-- Implementation defaults to Grok 4.6 through exactly one editing bridge:
-  - Cursor quota available: `cursor-agent -p --force --model cursor-grok-4.6-high "<self-contained implementation brief>"`
-  - Grok quota available: `grok --always-approve --no-plan -m grok-4.6 --reasoning-effort high -p "<self-contained implementation brief>"`
-- Do not use Grok `acceptEdits` for shell-using implementation tasks; it can skip Bash and silently truncate the work.
-- Pick the bridge with usable quota. If it returns an authentication, rate-limit, credit, or quota error, try the other bridge once. Do not run both speculatively.
-- Run implementation bridges in the foreground from the verified repository root. Give them a self-contained task brief: scope, relevant paths, requirements, acceptance criteria, tests, and explicit prohibitions.
-- Grok edits code only. The host retains task state, review, validation, documentation reconciliation, commits, pushes, releases, and tracker updates.
-- After delegated implementation, inspect the diff and run an in-harness review before accepting it. `review.backend=none` intentionally disables external Flow-Next review subprocesses; it does not waive review.
-- User-facing UI, copy, API design, architecture, security-sensitive work, and ambiguous decisions require final judgment by the active harness.
-- If neither Grok route is usable, implement in the active harness and report the quota fallback; never block the task solely because a bridge is unavailable.
-- Explicit user instructions override this policy.
-
-Persisted role pins:
-
-- Fast triage: `models.roles.fastJudge.codex = gpt-5.6-luna:low`
-- Fast scouting: `models.roles.scoutFast.codex = gpt-5.6-luna:low`
-- Judgment-heavy scouting: `models.roles.scoutIntelligent.codex = gpt-5.6-sol:medium`
-- Cursor implementation: `models.roles.delegate.cursor = cursor-grok-4.6-high`
-- No external-review role pin.
-- No Codex implementation-delegate pin.
-
-For Flow-Next work commands (`$flow-next-work` in Codex, `/flow-next:work` in Claude Code), this project policy overrides the generic packaged delegation defaults.
-<!-- flow-next:model-routing:end -->
+- Implement directly in the active harness through `/flow-next:work`. Do not hand implementation to another model or CLI.
+- Use one no-plan spec unless Gordon explicitly requests task planning. Keep useful implementation findings and verification requirements in the spec.
+- Skip plan, implementation, and completion review stages. The implementing harness runs the required tests and live QA, fixes failures, and continues the authorized PR, merge, and release workflow.
+- These repository rules take precedence over packaged or generated orchestration defaults.

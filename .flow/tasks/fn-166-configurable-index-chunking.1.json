@@ -1,0 +1,15 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-09-12T13:10:13.304109Z",
+  "depends_on": [],
+  "id": "fn-166-configurable-index-chunking.1",
+  "implicit_owner": true,
+  "priority": null,
+  "spec": "fn-166-configurable-index-chunking",
+  "spec_path": ".flow/tasks/fn-166-configurable-index-chunking.1.md",
+  "status": "todo",
+  "title": "Implement configurable index chunking",
+  "updated_at": "2026-09-12T13:10:13.304109Z"
+}

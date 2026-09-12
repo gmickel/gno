@@ -160,6 +160,12 @@ export function formatSyncResultLines(
 ): string[] {
   const lines: string[] = [];
 
+  if (syncResult.rechunkedMirrors) {
+    lines.push(
+      `Rechunked ${syncResult.rechunkedMirrors} cached mirrors. Run gno embed if embedding was skipped.`
+    );
+  }
+
   for (const c of syncResult.collections) {
     lines.push(`${c.collection}:`);
     lines.push(

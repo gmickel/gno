@@ -13,6 +13,39 @@ import {
 } from "./helpers/activation-status-fixtures";
 
 describe("GET /api/status", () => {
+  test("projects configured and applied chunking independently of embedding backlog", async () => {
+    const ctx = createMockContext();
+    const configured = { maxTokens: 256, overlapPercent: 0 };
+    ctx.config.chunking = configured;
+    const chunking = {
+      configured,
+      applied: null,
+      state: "mixed" as const,
+      pendingDocuments: 4,
+      pendingMirrors: 2,
+    };
+    const original = ctx.store.getStatus.bind(ctx.store);
+    ctx.store.getStatus = async (options) => {
+      expect(options?.chunking).toEqual(ctx.config.chunking);
+      const result = await original();
+      return result.ok
+        ? {
+            ok: true,
+            value: { ...result.value, chunking, embeddingBacklog: 7 },
+          }
+        : result;
+    };
+    const response = await handleStatus(ctx, {
+      inspectDisk: async () => null,
+      isModelCached: async () => false,
+      listSuggestedCollections: async () => [],
+      listConnectorTargets: async () => [],
+      buildActivation: async () => activationStatus([]),
+    });
+    const body = await response.json();
+    expect(body.chunking).toEqual(chunking);
+    expect(body.embeddingBacklog).toBe(7);
+  });
   test("keeps /api/health as liveness-only", async () => {
     const response = handleHealth();
     expect(response.status).toBe(200);

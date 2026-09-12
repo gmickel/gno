@@ -1352,6 +1352,7 @@ class GnoClientImpl implements GnoClient {
     const status = unwrapStore(
       await this.store.getStatus({
         embedModel: resolveModelUri(this.config, "embed"),
+        chunking: this.config.chunking ?? {},
       })
     );
     return {
