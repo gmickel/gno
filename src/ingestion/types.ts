@@ -12,7 +12,13 @@ import type {
   RecordAttachmentInventoryItem,
 } from "../converters/types";
 import type { EgressLineage } from "../core/egress-provenance";
+import type { ChunkingPolicyToken } from "../store/chunking";
 import type { DirectoryAvailabilityPort } from "./source-availability/types";
+
+import {
+  DEFAULT_CHUNKING_PARAMS,
+  type ChunkingParams,
+} from "../config/chunking";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Walker Types
@@ -115,8 +121,7 @@ export interface ChunkParams {
 
 /** Default chunk params */
 export const DEFAULT_CHUNK_PARAMS: ChunkParams = {
-  maxTokens: 800,
-  overlapPercent: 0.15,
+  ...DEFAULT_CHUNKING_PARAMS,
 };
 
 /** Chunked output */
@@ -157,6 +162,10 @@ export interface ChunkerPort {
 
 /** Sync options */
 export interface SyncOptions {
+  /** Index-wide configured policy; omitted means the existing defaults. */
+  chunking?: Partial<ChunkingParams>;
+  /** Internal token passed from an outer sync; never a public CLI override. */
+  chunkingToken?: ChunkingPolicyToken;
   /** Run git pull before scanning */
   gitPull?: boolean;
   /** Run collection updateCmd before scanning */
@@ -266,6 +275,8 @@ export interface FileSyncResult {
 
 /** Collection sync summary */
 export interface CollectionSyncResult {
+  /** Cached layouts updated independently of source-refresh file counters. */
+  rechunkedMirrors?: number;
   collection: string;
   filesProcessed: number;
   filesAdded: number;
@@ -285,6 +296,8 @@ export interface CollectionSyncResult {
 
 /** Full sync summary */
 export interface SyncResult {
+  /** Cached layouts updated independently of source-refresh file counters. */
+  rechunkedMirrors?: number;
   collections: CollectionSyncResult[];
   totalDurationMs: number;
   totalFilesProcessed: number;

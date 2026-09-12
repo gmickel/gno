@@ -114,6 +114,11 @@ import type { SqliteDbProvider } from "./types";
 
 import { buildUri, deriveDocid, stripUriIndex } from "../../app/constants";
 import {
+  DEFAULT_CHUNKING_PARAMS,
+  resolveChunkingParams,
+  type ChunkingParams,
+} from "../../config/chunking";
+import {
   type Collection,
   type Context,
   DEFAULT_BUSY_TIMEOUT_MS,
@@ -140,6 +145,11 @@ import {
   parseActivationReceipt,
   serializeActivationReceipt,
 } from "../activation-receipts";
+import {
+  ChunkingPolicyConflictError,
+  type ChunkingPolicyToken,
+  type PendingChunkingMirror,
+} from "../chunking";
 import { getSchemaVersion, migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
 import { getStoredEmbeddingFingerprint } from "../vector/freshness";
@@ -164,6 +174,15 @@ import {
   purgeDocumentChanges as purgeStoredDocumentChanges,
   snapshotDocumentChange,
 } from "./change-journal-store";
+import {
+  assertChunkingTarget,
+  claimChunkingTarget,
+  getChunkingStatus,
+  markChunkingApplied,
+  pendingChunkingMirrors,
+  pruneChunkingMetadata,
+  readChunkingTarget,
+} from "./chunking-policy";
 import {
   appendEgressAuditReceipt as appendStoredEgressAuditReceipt,
   appendEgressAuditReceiptWithRetention as appendStoredEgressAuditReceiptWithRetention,
@@ -535,6 +554,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private shutdownFenced = false;
   private shutdownDeadline?: number;
   private contextGeneration = 0;
+  private chunkingGeneration = 0;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Lifecycle
@@ -603,6 +623,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         return result;
       }
 
+      this.chunkingGeneration = readChunkingTarget(this.db).generation;
       this.contextGeneration += 1;
       return result;
     } catch (cause) {
@@ -2631,12 +2652,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
   async upsertChunks(
     mirrorHash: string,
-    chunks: ChunkInput[]
+    chunks: ChunkInput[],
+    policy?: ChunkingPolicyToken
   ): Promise<StoreResult<void>> {
     try {
       const db = this.ensureOpen();
 
       const transaction = db.transaction(() => {
+        assertChunkingTarget(
+          db,
+          policy ?? {
+            params: DEFAULT_CHUNKING_PARAMS,
+            generation: this.chunkingGeneration,
+          }
+        );
         // Retain stable rows: DELETE cascades erase valid legacy vectors even
         // when duplicate ingestion produces exactly the same embedding input.
         const nextBySequence = new Map(
@@ -2693,11 +2722,81 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return ok(undefined);
     } catch (cause) {
       return err(
-        "QUERY_FAILED",
+        cause instanceof ChunkingPolicyConflictError
+          ? cause.code
+          : "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to upsert chunks",
         cause
       );
     }
+  }
+
+  async claimChunkingPolicy(
+    input: ChunkingParams
+  ): Promise<StoreResult<ChunkingPolicyToken>> {
+    const params = resolveChunkingParams(input);
+    const result = await this.withTransaction(async () =>
+      claimChunkingTarget(this.ensureOpen(), this.chunkingGeneration, params)
+    );
+    if (result.ok) this.chunkingGeneration = result.value.generation;
+    else if (result.error.cause instanceof ChunkingPolicyConflictError) {
+      return err(
+        "CHUNKING_POLICY_CONFLICT",
+        result.error.message,
+        result.error.cause
+      );
+    }
+    return result;
+  }
+
+  async listPendingChunkingMirrors(
+    policy: ChunkingPolicyToken,
+    afterHash = ""
+  ): Promise<StoreResult<PendingChunkingMirror[]>> {
+    try {
+      return ok(pendingChunkingMirrors(this.ensureOpen(), policy, afterHash));
+    } catch (cause) {
+      return err(
+        cause instanceof ChunkingPolicyConflictError
+          ? cause.code
+          : "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list pending chunk layouts",
+        cause
+      );
+    }
+  }
+
+  async applyChunkLayout(
+    mirrorHash: string,
+    chunks: ChunkInput[],
+    policy: ChunkingPolicyToken,
+    sourcePath: string,
+    languageHint?: string
+  ): Promise<StoreResult<void>> {
+    const result = await this.withTransaction(async () => {
+      const db = this.ensureOpen();
+      assertChunkingTarget(db, policy);
+      const applied = await this.upsertChunks(mirrorHash, chunks, policy);
+      if (!applied.ok)
+        throw applied.error.cause ?? new Error(applied.error.message);
+      const indexed = await this.rebuildFtsForHash(mirrorHash);
+      if (!indexed.ok)
+        throw indexed.error.cause ?? new Error(indexed.error.message);
+      markChunkingApplied(db, mirrorHash, policy, sourcePath, languageHint);
+    });
+    if (
+      !result.ok &&
+      result.error.cause instanceof ChunkingPolicyConflictError
+    ) {
+      return err(
+        "CHUNKING_POLICY_CONFLICT",
+        result.error.message,
+        result.error.cause
+      );
+    }
+    return result;
   }
 
   async getChunks(mirrorHash: string): Promise<StoreResult<ChunkRow[]>> {
@@ -5690,6 +5789,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   async getStatus(options?: {
     embedModel?: string;
     embedFingerprint?: string;
+    chunking?: Partial<ChunkingParams>;
   }): Promise<StoreResult<IndexStatus>> {
     try {
       const db = this.ensureOpen();
@@ -5884,6 +5984,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         activeDocuments: totalsRow?.active ?? 0,
         totalChunks: chunkCount,
         embeddingBacklog: variantStatus?.backlog ?? backlogRow?.count ?? 0,
+        chunking: getChunkingStatus(db, options?.chunking),
         recentErrors,
         lastUpdatedAt: lastUpdatedRow?.last_updated ?? null,
         healthy,
@@ -5968,6 +6069,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           )
         `);
         orphanedContent = contentResult.changes;
+        pruneChunkingMetadata(db);
 
         // Delete chunks for deleted content
         const chunksResult = db.run(`

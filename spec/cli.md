@@ -531,6 +531,27 @@ protection remain authoritative.
 `graphHints` is active: ordered hints type
 projected wiki/markdown edges and surface in graph traversal/diagnose metadata.
 
+Optional root `chunking` sets one policy per index. `maxTokens` defaults to 800
+and accepts integers from 10 through 2251799813685247; the chunker estimates
+four characters per token. `overlapPercent` defaults to 0.15 and accepts a
+fraction from 0 through 0.5. Missing fields inherit defaults. Invalid values
+fail configuration validation before index mutation.
+
+Omitted or explicitly default settings preserve existing chunks and embeddings
+on upgrade. A policy change rechunks cached Markdown mirrors during the next
+index/update or targeted sync, including mirrors outside the source-refresh
+collection. Rechunking does not read original files or claim source freshness.
+Sync-only operations leave changed chunks pending embedding; `gno index`
+also embeds. A stale writer receives `CHUNKING_POLICY_CONFLICT` and must reopen
+its client/runtime with the intended configuration.
+
+Status JSON adds `chunking` with `configured` parameters, `applied` parameters
+(null for empty/mixed layouts), `state` (`empty`, `legacy-default`, `current`,
+`pending`, or `mixed`), `pendingDocuments`, and `pendingMirrors`. These counts
+cover active cached content, independently of source errors and embedding
+backlog. Sync receipts optionally add `rechunkedMirrors` when cached layouts
+were updated; existing file counters keep their source-refresh meaning.
+
 `collections[].sourceAvailability` is optional; omitted means `any`. Exact
 values: `any` | `local`. There is no separate public knob beyond these two
 modes and no claim that availability is egress policy. `any` preserves

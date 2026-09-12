@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Configure chunk size and overlap per index, with cached rechunking and
+  applied-policy status for reproducible retrieval experiments. Existing users
+  retain the 800-token estimate and 15% overlap without an upgrade rebuild.
+  Thanks to Lance Cummings for the research use case.
+
 ## [2.2.1] - 2026-09-06
 
 ### Changed

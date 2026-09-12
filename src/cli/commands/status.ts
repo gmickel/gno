@@ -19,6 +19,7 @@ import {
 } from "../../config";
 import { isConnectorActivationComplete } from "../../core/activation-connector-health";
 import { buildActivationStatus } from "../../core/activation-status";
+import { formatChunkingStatus } from "../../core/chunking-status";
 import {
   buildMemoryStatus,
   formatMemoryStatusLines,
@@ -112,6 +113,9 @@ function formatTerminal(
     lines.push(`Embedding backlog: ${indexStatus.embeddingBacklog} chunks`);
   }
 
+  const chunking = formatChunkingStatus(indexStatus.chunking);
+  if (chunking) lines.push(chunking);
+
   if (indexStatus.recentErrors > 0) {
     lines.push(`Recent errors: ${indexStatus.recentErrors} (last 24h)`);
   }
@@ -198,6 +202,9 @@ function formatMarkdown(
   lines.push(`- **Embedding backlog**: ${indexStatus.embeddingBacklog}`);
   lines.push(`- **Recent errors**: ${indexStatus.recentErrors}`);
 
+  const chunking = formatChunkingStatus(indexStatus.chunking);
+  if (chunking) lines.push(`- ${chunking}`);
+
   if (indexStatus.lastUpdatedAt) {
     lines.push(`- **Last updated**: ${indexStatus.lastUpdatedAt}`);
   }
@@ -274,6 +281,7 @@ export async function status(
   try {
     const statusResult = await store.getStatus({
       embedModel: resolveModelUri(config, "embed"),
+      chunking: config.chunking ?? {},
     });
     if (!statusResult.ok) {
       return { success: false, error: statusResult.error.message };
@@ -339,6 +347,7 @@ export function formatStatus(
         totalDocuments: s.activeDocuments,
         totalChunks: s.totalChunks,
         embeddingBacklog: s.embeddingBacklog,
+        chunking: s.chunking,
         lastUpdated: s.lastUpdatedAt,
         healthy: isStatusHealthy(s, result.activation),
         contentTypeBoost: result.contentTypeBoost,

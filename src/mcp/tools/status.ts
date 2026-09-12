@@ -8,6 +8,7 @@ import type { IndexStatus } from "../../store/types";
 import type { ToolContext } from "../server";
 
 import { buildContentTypeBoostStatus } from "../../config/content-types";
+import { formatChunkingStatus } from "../../core/chunking-status";
 import { resolveModelUri } from "../../llm/registry";
 import { createStandaloneResidentStatus } from "../../serve/resident-status";
 import { runTool, type ToolResult } from "./index";
@@ -55,6 +56,9 @@ function formatStatus(status: IndexStatus): string {
     lines.push(`Embedding backlog: ${status.embeddingBacklog} chunks`);
   }
 
+  const chunking = formatChunkingStatus(status.chunking);
+  if (chunking) lines.push(chunking);
+
   if (status.recentErrors > 0) {
     lines.push(`Recent errors: ${status.recentErrors} (last 24h)`);
   }
@@ -79,6 +83,7 @@ export function handleStatus(
     async () => {
       const result = await ctx.store.getStatus({
         embedModel: resolveModelUri(ctx.config, "embed"),
+        chunking: ctx.config.chunking ?? {},
       });
       if (!result.ok) {
         throw new Error(result.error.message);

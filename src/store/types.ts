@@ -5,6 +5,7 @@
  * @module src/store/types
  */
 
+import type { ChunkingParams } from "../config/chunking";
 import type {
   Collection,
   Context,
@@ -19,6 +20,11 @@ import type {
   FileRefactorRecoveryReceipt,
   FileRefactorRecoveryReceiptDraft,
 } from "../core/file-refactor-journal";
+import type {
+  ChunkingPolicyToken,
+  ChunkingStatus,
+  PendingChunkingMirror,
+} from "./chunking";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Error Types
@@ -42,6 +48,7 @@ export type StoreErrorCode =
   | "QUERY_FAILED"
   | "TRANSACTION_FAILED"
   | "INVALID_INPUT"
+  | "CHUNKING_POLICY_CONFLICT"
   | "IO_ERROR"
   | "INTERNAL"
   | "EGRESS_DENIED"
@@ -806,6 +813,8 @@ export interface IndexStatus {
   totalChunks: number;
   /** Chunks without embeddings */
   embeddingBacklog: number;
+  /** Configuration and applied cached layouts; separate from source freshness. */
+  chunking?: ChunkingStatus;
   /** Recent ingest errors (last 24h) */
   recentErrors: number;
   /** Last successful update timestamp (ISO 8601) */
@@ -2036,7 +2045,28 @@ export interface StorePort {
    */
   upsertChunks(
     mirrorHash: string,
-    chunks: ChunkInput[]
+    chunks: ChunkInput[],
+    policy?: ChunkingPolicyToken
+  ): Promise<StoreResult<void>>;
+
+  /** Claim an index-wide policy against the generation observed at open. */
+  claimChunkingPolicy?(
+    params: ChunkingParams
+  ): Promise<StoreResult<ChunkingPolicyToken>>;
+
+  /** Page cached mirrors whose applied policy differs from the claimed target. */
+  listPendingChunkingMirrors?(
+    policy: ChunkingPolicyToken,
+    afterHash?: string
+  ): Promise<StoreResult<PendingChunkingMirror[]>>;
+
+  /** Atomically replace a layout, refresh FTS and mark its actual policy. */
+  applyChunkLayout?(
+    mirrorHash: string,
+    chunks: ChunkInput[],
+    policy: ChunkingPolicyToken,
+    sourcePath: string,
+    languageHint?: string
   ): Promise<StoreResult<void>>;
 
   /**
@@ -2288,6 +2318,7 @@ export interface StorePort {
   getStatus(options?: {
     embedModel?: string;
     embedFingerprint?: string;
+    chunking?: Partial<ChunkingParams>;
   }): Promise<StoreResult<IndexStatus>>;
 
   // ─────────────────────────────────────────────────────────────────────────

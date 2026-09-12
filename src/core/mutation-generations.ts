@@ -1,6 +1,7 @@
 /** Shared mutation detection for resident content and vector generations. */
 
 interface SyncMutationCounts {
+  rechunkedMirrors?: number;
   filesAdded?: number;
   filesUpdated?: number;
   filesMarkedInactive?: number;
@@ -11,6 +12,7 @@ interface SyncMutationCounts {
 
 export function hasContentMutation(result: SyncMutationCounts): boolean {
   return (
+    (result.rechunkedMirrors ?? 0) > 0 ||
     (result.filesAdded ?? result.totalFilesAdded ?? 0) > 0 ||
     (result.filesUpdated ?? result.totalFilesUpdated ?? 0) > 0 ||
     (result.filesMarkedInactive ?? 0) > 0 ||

@@ -654,6 +654,7 @@ export async function buildAppStatus(
 ): Promise<AppStatusResponse> {
   const result = await ctx.store.getStatus({
     embedModel: resolveModelUri(ctx.config, "embed"),
+    chunking: ctx.config.chunking ?? {},
   });
   if (!result.ok) {
     throw result.error;
@@ -733,6 +734,7 @@ export async function buildAppStatus(
     totalDocuments: status.activeDocuments,
     totalChunks: status.totalChunks,
     embeddingBacklog: status.embeddingBacklog,
+    chunking: status.chunking,
     lastUpdated: status.lastUpdatedAt,
     recentErrors: status.recentErrors,
     healthy: checks.every((check) => check.status === "ok"),

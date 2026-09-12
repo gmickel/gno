@@ -12,6 +12,7 @@ import { z } from "zod";
 import { URI_PREFIX } from "../app/constants";
 import { JsonlFieldMappingSchema } from "../converters/adapters/jsonl/config";
 import { MCP_TOOL_PROFILES } from "../mcp/tool-profile";
+import { ChunkingConfigSchema, type ChunkingParams } from "./chunking";
 import { RetrievalTraceConfigSchema } from "./retrieval-traces";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -595,6 +596,9 @@ export const ConfigSchema = z.object({
   /** Opt-in schema-lite content type rules */
   contentTypes: z.array(ContentTypeSchema).default([]),
 
+  /** Optional index-wide chunk size/overlap; omitted preserves legacy defaults. */
+  chunking: ChunkingConfigSchema.optional(),
+
   /** Model configuration */
   models: ModelConfigSchema.optional(),
 
@@ -632,9 +636,10 @@ export const ConfigSchema = z.object({
 
 export type Config = Omit<
   z.infer<typeof ConfigSchema>,
-  "contentTypes" | "busyTimeoutMs"
+  "contentTypes" | "busyTimeoutMs" | "chunking"
 > & {
   contentTypes?: ContentTypeConfig[];
+  chunking?: Partial<ChunkingParams>;
   /** Present after schema parse; omitted on hand-built Config objects. */
   busyTimeoutMs?: number;
 };

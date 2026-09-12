@@ -24,6 +24,47 @@
     "resident"
   ],
   "properties": {
+    "chunking": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "configured",
+        "applied",
+        "state",
+        "pendingDocuments",
+        "pendingMirrors"
+      ],
+      "properties": {
+        "configured": { "$ref": "#/properties/chunking/definitions/params" },
+        "applied": {
+          "oneOf": [
+            { "$ref": "#/properties/chunking/definitions/params" },
+            { "type": "null" }
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": ["empty", "legacy-default", "current", "pending", "mixed"]
+        },
+        "pendingDocuments": { "type": "integer", "minimum": 0 },
+        "pendingMirrors": { "type": "integer", "minimum": 0 }
+      },
+      "definitions": {
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maxTokens", "overlapPercent"],
+          "properties": {
+            "maxTokens": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 2251799813685247
+            },
+            "overlapPercent": { "type": "number", "minimum": 0, "maximum": 0.5 }
+          }
+        }
+      }
+    },
     "resident": {
       "$ref": "gno://schemas/resident-status@1.0"
     },

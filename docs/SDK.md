@@ -610,6 +610,14 @@ console.log(
 
 Status exposes normalized rule IDs/factors, not configured path prefixes.
 
+`status.chunking` reports configured/applied parameters, layout state, and
+pending document/mirror counts. Pass optional `chunking` in the client config
+to set `maxTokens` and `overlapPercent`; partial config inherits defaults.
+The same cached rechunking behavior applies to `update()` and `index()`.
+A client that encounters `CHUNKING_POLICY_CONFLICT` must be closed and reopened
+with the intended config. See [Chunking](CONFIGURATION.md#chunking) for units,
+upgrade compatibility, and separate-index comparisons.
+
 ### Changes, Structural Diff, and Impact
 
 ```ts
