@@ -14,7 +14,7 @@
     "ciFixBudget": 3,
     "cleanReviewCommentPattern": "(Didn'?t find any( major)? issues|No( major)? issues found).*Reviewed commit|\\*\\*Code Review\\*\\*.*\\*\\*Completed\\*\\*",
     "mergeVerdictCommand": "",
-    "patienceMinutes": 30,
+    "patienceMinutes": 0,
     "patienceMinutesAfterReview": null,
     "release": true,
     "requestReviewers": "",

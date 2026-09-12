@@ -631,5 +631,5 @@ Most formatting and common issues are automatically fixed. Run `bun run lint` be
 
 - Implement directly in the active harness through `/flow-next:work`. Do not hand implementation to another model or CLI.
 - Use one no-plan spec unless Gordon explicitly requests task planning. Keep useful implementation findings and verification requirements in the spec.
-- Skip plan, implementation, and completion review stages. The implementing harness runs the required tests and live QA, fixes failures, and continues the authorized PR, merge, and release workflow.
+- Skip all review stages, reviewer requests, and review waiting windows. The implementing harness runs the required tests and live QA, fixes failures, and continues the authorized PR, merge, and release workflow. Required code-host checks still apply.
 - These repository rules take precedence over packaged or generated orchestration defaults.

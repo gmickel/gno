@@ -113,3 +113,13 @@ Run focused configuration, store, ingestion, status, and frozen Ask parity tests
 - Preserve the existing automatic chunker and document configuration as a later extension; the code-aware ADR is historical. Source: docs/adr/003-code-aware-chunking.md.
 
 No relevant repository memory entry or blocking spec dependency was found. The existing-path retrieval-quality effort and granular model-resolution effort remain separate; this feature does not alter their retrieval or model-selection contracts.
+
+## Delivery evidence
+
+- Implementation merged in gmickel/gno#233 at 5a574f24767a62ec9b5b0abc7f305404b00c5874. Hosted documentation merged in gmickel/gno.sh#64 at 45d196a97f5e93678fd86f0229030c662909fbb7.
+- Final legacy comparison retained all 75 documents, 289 chunks, timestamps and 61 lexical results. Seven-repeat medians were 0.540s before and 0.525s after; a separate three-pair fresh-index check measured 0.694s before and 0.711s after (about 18ms additional work on 75 files). These are small synthetic local measurements.
+- Real-model upgrade retained six vector variants/owners unchanged and repeated indexing embedded zero. The 128-token comparison produced 27 chunks versus six at defaults. Live MCP/SDK/REST status and search agreed.
+- A real SIGTERM after one cached mirror left 73 mirrors pending. The next CLI invocation reported an interrupted lexical stage and completed those 73. Stale SDK writes were rejected without changing chunks and reopening recovered.
+- Full suite: 5,303 passed with two existing skips. Skill evaluation: 47/47. Hybrid evaluation: 33 cases, 86%. Packed-package smoke and real-user state sentinel passed. Five hosted documentation pages passed desktop/mobile checks.
+- The docs CI required a prerequisite repair: its Docker Hub MinIO image had disappeared. CI and Compose now use the same release from Quay, pinned to the verified manifest digest; integration checks remain enabled and passed.
+- Coordinated release target: v2.3.0. Publication and production-site verification follow the repository release workflow; spec completion records merged implementation rather than a publication claim.
