@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-09-12T12:58:54.707893Z",
+  "depends_on": [
+    "fn-166-configurable-index-chunking.2"
+  ],
+  "id": "fn-166-configurable-index-chunking.3",
+  "priority": null,
+  "spec": "fn-166-configurable-index-chunking",
+  "spec_path": ".flow/tasks/fn-166-configurable-index-chunking.3.md",
+  "status": "todo",
+  "title": "Chunking readiness across status surfaces",
+  "updated_at": "2026-09-12T12:58:54.707893Z"
+}
