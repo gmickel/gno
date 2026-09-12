@@ -1,0 +1,45 @@
+{
+  "branch": "fn-166-configurable-index-chunking",
+  "head_sha": "1a97e8da319d98f299132f83ee5b16983f2d3539",
+  "id": "fn-166-configurable-index-chunking",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 7,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      }
+    ],
+    "total": 7
+  },
+  "timestamp": "2026-09-12T14:58:37.484742+00:00",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
