@@ -246,7 +246,7 @@
     "playwright": "1.63.0",
     "pptxgenjs": "4.0.1",
     "ultracite": "7.1.5",
-    "vitest": "4.1.10",
+    "vitest": "4.1.11",
     "web-tree-sitter": "0.26.13"
   },
   "peerDependencies": {
