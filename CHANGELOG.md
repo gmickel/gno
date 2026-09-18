@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Installing with pnpm, aube or mise no longer fails with an exotic dependency
+  error. `xlsx` now resolves from the npm registry as `@e965/xlsx@0.20.3`
+  instead of the SheetJS CDN tarball URL; the parser code is byte-identical.
+  Thanks to @iki for the report and fix (#235).
+
 ## [2.3.0] - 2026-09-12
 
 ### Added

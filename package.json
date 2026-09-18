@@ -218,7 +218,7 @@
     "tesseract.js": "7.0.0",
     "turndown": "7.2.4",
     "use-stick-to-bottom": "1.1.6",
-    "xlsx": "npm:@e965/xlsx@^0.20.3",
+    "xlsx": "npm:@e965/xlsx@0.20.3",
     "zod": "4.4.3"
   },
   "devDependencies": {

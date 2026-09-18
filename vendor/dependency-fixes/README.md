@@ -6,15 +6,24 @@ packages. Their original manifests and licenses are retained verbatim for
 provenance. No upstream manifest was patched. GNO's root dependencies supply
 their external imports, including these corrected parser edges:
 
-| Distribution         | Upstream dependency | GNO dependency                  |
-| -------------------- | ------------------- | ------------------------------- |
-| markitdown-ts 0.0.10 | xlsx ^0.18.5        | official SheetJS 0.20.3 tarball |
-| officeparser 7.8.0   | pdfjs-dist 6.1.200  | pdfjs-dist 6.3.289              |
+| Distribution         | Upstream dependency | GNO dependency                |
+| -------------------- | ------------------- | ----------------------------- |
+| markitdown-ts 0.0.10 | xlsx ^0.18.5        | SheetJS 0.20.3 (`@e965/xlsx`) |
+| officeparser 7.8.0   | pdfjs-dist 6.1.200  | pdfjs-dist 6.3.289            |
 
-The official SheetJS URL is
-`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`.
-Its 2,409,319 bytes have integrity
-`sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==`.
+SheetJS stopped publishing to npm after the vulnerable 0.18.5, and its official
+distribution is the URL tarball
+`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`. URL dependencies are
+rejected by installers that block exotic transitive specifiers (pnpm, aube and
+mise `blockExoticSubdeps`), so GNO resolves `xlsx` through the registry alias
+`npm:@e965/xlsx@0.20.3`, an automated republish with npm build provenance from
+`github.com/e965/sheetjs-npm-publisher`. Its integrity is
+`sha512-703RN/3OdsRD5mtse2HBX7Um7xwaP9tlswEG6svOtjqokXoX7rJdQj7DyabD2I+xk22RgaIIU+R6BHgkpZGB/w==`.
+Keep the version exact, never ranged: the republisher is a third party, so a
+bump must be re-verified by extracting both tarballs and running `diff -r`.
+For 0.20.3 only `package.json` (name, repository, whitespace) and `README.md`
+(a republisher note and absolute links) differ; every code, type and dist file
+is byte-identical to the official tarball.
 It has no install lifecycle scripts. MarkItDown uses the retained `read` and
 `utils.sheet_to_html` APIs for GNO's buffer conversion path. PDF-parse retains
 its independent PDF.js 5.4.296 dependency; do not globally override it to 6.
