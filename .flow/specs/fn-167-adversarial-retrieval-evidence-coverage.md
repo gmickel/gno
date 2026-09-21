@@ -6,13 +6,13 @@
 
 Protect useful evidence through GNO's existing retrieval ladder. A result can match the right document while omitting the passage needed to answer, or retrieve one correct source while losing the rest. Add a small reproducible acceptance corpus and paired evaluation that expose these failures before defaults change.
 
-This spec owns the reusable evidence gate and its diagnostics. `fn-165-existing-path-retrieval-quality-and` owns its existing ranking/passage/performance experiments. Consume its actual current baseline and receipts where available; do not reimplement its force-first ablation or vector optimization. `fn-78-future-external-retrieval-eval-corpus` remains responsible for licensed external-corpus curation; this spec authors original focused fixtures and requires no external fixture import.
+This spec owns the reusable evidence gate and its diagnostics. `fn-165-existing-path-retrieval-quality-and` owns its existing ranking/passage/performance experiments. Reuse the shipped paired-acceptance model-input capture and manifest/case facilities. The native capture already records the exact reranker query and document arguments; do not add a second capture hook just because runtime diagnosis has no reranker-text field. This spec owns the new adversarial evidence scoring and extends the shared case manifest. fn-165 owns ranking/passage/performance experiments and can consume this gate when available; neither spec needs to wait for the other to build another capture producer or baseline corpus. Reference shared cases by stable identity rather than copying them. `fn-78-future-external-retrieval-eval-corpus` remains responsible for licensed external-corpus curation; this spec authors original focused fixtures and requires no external fixture import.
 
 ## Architecture & Data Models
 
 <!-- scope: technical; source: inferred -->
 
-Extend the existing paired retrieval acceptance and agentic eval facilities. Each versioned, content-hashed case names its query, intent when relevant, eligible scope, required source spans or explicitly acceptable alternative evidence sets, answerability, and fixed usable token budget. Keep retrieval-only and fixed-reader task results separate. Retain original, expansion, semantic and graph provenance through candidate fusion, actual reranker input selection, final ranking and Capsule packing.
+Extend the existing paired retrieval acceptance and agentic eval facilities. The source anchor for this reuse decision is `evals/acceptance/native-capture.ts`, whose rerank wrapper records its first two arguments before executing the model. Each versioned, content-hashed case names its query, intent when relevant, eligible scope, required source spans or explicitly acceptable alternative evidence sets, answerability, and fixed usable token budget. Keep retrieval-only and fixed-reader task results separate. Retain original, expansion, semantic and graph provenance through candidate fusion, actual reranker input selection, final ranking and Capsule packing.
 
 Cover exact identifiers/phrases, punctuation and multilingual near-matches; paraphrased concepts against popular hub pages; relevant graph relationships absent from page prose; multi-source and temporal questions; weak lexical matches versus strong semantic evidence; intent text contaminating expansions; duplicate expansion votes; no-contribution cached expansions; source eligibility before top-K; stale/missing sources; and correct abstention. Graph cases must carry valid cited evidence, not unsupported synthetic answers.
 
@@ -30,7 +30,7 @@ function completeEvidence(
 }
 ```
 
-Span IDs represent sufficient, verified source ranges within the declared budget. Document/session presence alone does not satisfy this predicate. Abstention cases use their own outcome rule rather than an empty evidence set.
+Span IDs represent sufficient, verified source ranges within the declared budget. Evidence survives only when the actual text supplied at that stage covers the entire required range and verifies its source-span hash after clipping. Partial overlap and clipped tails are misses. Adjacent fragments may jointly cover a span only when supplied together in the same evaluated model input or final handoff; separate reranker invocations cannot pool evidence. A partial line cannot pass merely because its line number matches. Record partial, split-across-inputs and clipped losses distinctly. Document/session presence alone does not satisfy this predicate. Abstention cases use their own outcome rule rather than an empty evidence set. Pin the usable token budget and any independent model-visible byte cap separately in the case manifest.
 
 ## API Contracts
 
@@ -54,18 +54,18 @@ Keep public query syntax and retrieval modes stable. Extend developer eval resul
 
 Separate cold/fresh generation from cached results; compare identical model/runtime/fixture identities. Pin test queries separately from development cases. Run title/path realism checks so synthetic naming does not accidentally reveal gold evidence. Missing neural execution, dropped cases, contaminated holdouts, unresolved source hashes and unavailable judge models are explicit invalid/blocked comparisons, never passes. Use tiny fixtures for deterministic guards and one bounded native-model acceptance run for finalist checks.
 
-An experiment may compare expansion disabled, a fixed total expansion contribution, intent isolation or evidence selection. These are eval arms, not product options or predetermined changes. This spec ships the gate and findings; mechanism adoption belongs to the existing appropriate implementation spec.
+The required paired smoke compares current behavior with the existing noExpand option, proving that the gate can compare real arms without adding a mechanism. Other arms, such as a fixed total expansion contribution, intent isolation or evidence selection, are supplied by their owning implementation specs and are optional consumers of this gate. This spec ships the gate and findings, not candidate ranking code or new product options.
 
 ## Acceptance Criteria
 
 <!-- scope: both -->
 
 - **R1:** [paraphrase] Ship a reproducible acceptance set spanning the failure families above with required answer-bearing spans and multi-source evidence sets. Errors: missing gold provenance, empty required sets, stale hashes or duplicate case IDs fail fixture validation; abstention is scored separately.
-- **R2:** [inferred] Trace evidence survival through candidate retrieval, fusion, reranker input and final budgeted delivery. Errors: unknown stages or unavailable raw inputs remain unclassified failures, not invented diagnoses; bounded diagnostics do not disclose excluded content.
-- **R3:** [paraphrase] Compare current behavior with bounded experimental arms using fixed models, scope and usable evidence budgets; report paired gains/losses, all-evidence coverage, grounded task success, abstention, tokens and latency. Errors: degraded neural paths, incomparable budgets and failed executions invalidate the comparison.
+- **R2:** [inferred] Score evidence survival through candidate retrieval, fusion, reranker input and final budgeted delivery using the shipped paired-acceptance capture records, with complete verified text coverage as defined above. Errors: unknown stages or unavailable raw inputs remain unclassified failures, not invented diagnoses; bounded diagnostics do not disclose excluded content.
+- **R3:** [paraphrase] Compare current behavior with the existing noExpand arm using fixed models, scope, usable token budgets and explicit byte caps; report paired gains/losses, all-evidence coverage, grounded task success, abstention, tokens and latency. Errors: degraded neural paths, incomparable budgets and failed executions invalidate the comparison.
 - **R4:** [inferred] Freeze guards before candidate runs: all deterministic identity/scope/exclusion/provenance cases pass, every designated must-cover evidence set survives, and no candidate reduces held-out all-evidence or grounded-task success against its pinned baseline. Errors: an existing baseline miss is retained as a failing finding; average score gains cannot conceal guard failures.
 - **R5:** [inferred] Verify existing original-query weights, strong-signal expansion bypass, graph evidence and strict lexical behavior without assuming a new policy wins. Errors: no default or public option changes on the strength of an unverified external claim or a single aggregate score.
-- **R6:** [paraphrase] Produce replayable per-candidate adoption/rejection evidence consumable by fn-165 and later retrieval changes. Errors: preserve negative results and limitations; source-only inspection, session-level hits and model-disabled runs cannot be labeled answer-quality success.
+- **R6:** [paraphrase] Produce replayable per-candidate adoption/rejection evidence for later retrieval changes, extending the shipped acceptance case set and capture format, reusable by fn-165 without a circular dependency. Errors: preserve negative results and limitations; source-only inspection, session-level hits and model-disabled runs cannot be labeled answer-quality success.
 
 **Documentation and delivery obligations.** [paraphrase] Complete the topic-specific documentation work listed in the surface matrix as part of this feature, across the two canonical documentation surfaces: repository Markdown rendered by Git hosting, and `gno.sh`. Update affected README capability/setup examples, changelog, user guides, CLI/MCP/API/configuration reference, architecture explanation, interface specs and structured-output schemas. Keep examples executable and distinguish defaults, opt-ins, unsupported cases and recovery behavior. Update the shipped GNO skill and relevant reference files, connector/harness instructions, and installed-skill verification. Do not create a third documentation site or update the retired in-repository website pages.
 
@@ -80,7 +80,7 @@ For the hosted site run `bun run check`, `bun run typecheck`, `bun run build` an
 <!-- scope: business -->
 
 - [inferred] No ranking-default adoption, model replacement/training, public leaderboard, new retrieval mode, automatic relaxed search, or general benchmark dashboard.
-- [inferred] No duplicate implementation of fn-165 experiments and no licensed external corpus collection under this spec.
+- [inferred] No duplicate implementation of fn-165 experiments or the shipped reranker capture producer/baseline task set and no licensed external corpus collection under this spec.
 
 ## Decision Context
 
@@ -88,4 +88,5 @@ For the hosted site run `bun run check`, `bun run typecheck`, `bun run build` an
 
 - [inferred] A separately shippable evidence gate supplies reusable regression coverage to several retrieval changes without conflating a better metric with a better algorithm.
 - [inferred] Original fixtures and actual delivered passages expose failures cheaply; larger public benchmark results remain supplemental and must not replace task grounding.
+- [inferred] Maintainability (plan review): duplication - the shipped acceptance native-capture facility records reranker inputs already; fn-167 scores those records and extends the shared manifest while fn-165 owns mechanism experiments. Structure - score captured records outside the production hybrid pipeline; no new parallel tracing framework.
 - [inferred] CLI/MCP/UI changes are limited to necessary evidence and diagnosis parity. Unchanged surfaces receive verification and accurate documentation rather than decorative new controls.

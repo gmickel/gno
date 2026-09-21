@@ -14,8 +14,106 @@
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
-  "plan_review_status": "unknown",
-  "plan_reviewed_at": null,
+  "plan_review_status": "ship",
+  "plan_reviewed_at": "2026-09-21T22:27:28.571287Z",
+  "review_attempts": [
+    {
+      "artifact_sha256": "79b89a0b4ffdf530d04e4d8315269a2dc11e326eaef48659305c3a9908771933",
+      "backend": "claude",
+      "base_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "claude-fable-5-1",
+      "outcome": "verdict",
+      "output_bytes": 5946,
+      "output_sha256": "db341262303edf8de68237e0cb5c1c7724e4f2d7548cbac9cb3ebc4a99bd8464",
+      "reservation_id": "3330050749d8496eb310ae9bf62b781e",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-09-21T22:19:17.976542Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "6dbb2861d41f927ffed69792ab91dab1c5c35959ff36dfe72a9ad51bf09fa006",
+      "backend": "claude",
+      "base_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "claude-fable-5-1",
+      "outcome": "verdict",
+      "output_bytes": 3255,
+      "output_sha256": "9a2274fc694fc51a4c0a51f374c0cfff7d37c59159af50d01013696955d91372",
+      "reservation_id": "8c970c8d5d5049fc82da742832f8b682",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-09-21T22:25:28.213206Z",
+      "verdict": "SHIP"
+    },
+    {
+      "artifact_sha256": "2aa9e8ff48b9d2fae09f63486956ad5cecfc45ca9435655a81e49eedd93c9857",
+      "backend": "claude",
+      "base_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "forced": false,
+      "hash_epoch": 1,
+      "head_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "claude-fable-5-1",
+      "outcome": "verdict",
+      "output_bytes": 2141,
+      "output_sha256": "6abb8313800a9ebc32d481765b9b356edb6520742b32e5158fd129ae94344930",
+      "reservation_id": "b1f1cca3070b4a3eb65f0eb5ae3ca273",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-09-21T22:27:28.569468Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "plan": 2,
+    "plan#completion": 0
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "plan": 0
+  },
   "spec_path": ".flow/specs/fn-172-opt-in-session-hooks-and-scheduled.md",
   "status": "open",
   "title": "Opt-in session hooks and scheduled ingestion",
@@ -30,5 +128,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-21T20:55:58.223803Z"
+  "updated_at": "2026-09-21T22:27:28.571734Z"
 }

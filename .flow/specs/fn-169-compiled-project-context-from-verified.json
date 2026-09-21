@@ -12,8 +12,77 @@
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
-  "plan_review_status": "unknown",
-  "plan_reviewed_at": null,
+  "plan_review_status": "ship",
+  "plan_reviewed_at": "2026-09-21T22:23:59.905280Z",
+  "review_attempts": [
+    {
+      "artifact_sha256": "349e69e98cb1b41780f4a3a7030021cd3bd6355794333de13d4a51645b894a04",
+      "backend": "claude",
+      "base_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "claude-fable-5-1",
+      "outcome": "verdict",
+      "output_bytes": 7732,
+      "output_sha256": "d795f7c24c19597b58351bef0df704b403ff11bf3ef9c422e79e9e17d5e8e604",
+      "reservation_id": "d8574308710a4e45a685d4b95eccf84f",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-09-21T22:17:08.634065Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "4766360f2105dae4e11b708aa5b784553f8588bf238db5dda685a1bd72adb6ce",
+      "backend": "claude",
+      "base_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "claude-fable-5-1",
+      "outcome": "verdict",
+      "output_bytes": 3100,
+      "output_sha256": "4a7aba76db2004ece6b03cc1a6813b24236689921c5a33388de1cf18d582d35b",
+      "reservation_id": "95a5c09932734d0da03f62aca4fde547",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-09-21T22:23:59.903679Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "plan": 1,
+    "plan#completion": 0
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "plan": 0
+  },
   "spec_path": ".flow/specs/fn-169-compiled-project-context-from-verified.md",
   "status": "open",
   "title": "Compiled project context from verified Capsules",
@@ -28,5 +97,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-21T20:55:16.935186Z"
+  "updated_at": "2026-09-21T22:23:59.905733Z"
 }

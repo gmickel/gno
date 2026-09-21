@@ -12,8 +12,83 @@
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
-  "plan_review_status": "unknown",
-  "plan_reviewed_at": null,
+  "plan_review_status": "ship",
+  "plan_reviewed_at": "2026-09-21T22:24:34.838413Z",
+  "review_attempts": [
+    {
+      "artifact_sha256": "77d13b748f552ba6791f79a5706c61fe83651e3dd23bc08446a7673874438bae",
+      "backend": "claude",
+      "base_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "claude-fable-5-1",
+      "outcome": "verdict",
+      "output_bytes": 7503,
+      "output_sha256": "94ecf36fe86ba1c6488af75c42b117668b3435f9402ca5faa0e97221e8657ce5",
+      "reservation_id": "fd9303b0337243a49f503ef3e4f20214",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-09-21T22:19:18.385391Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "dd2173abc9ccaad89d6c6b31783bba19c111fdd0f3d0196b554dec2bf2f5c05d",
+      "backend": "claude",
+      "base_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "findings_digest": {
+        "backend": "claude",
+        "digest_truncated": false,
+        "items": [],
+        "reviewKind": "plan"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "claude-fable-5-1",
+      "outcome": "verdict",
+      "output_bytes": 2626,
+      "output_sha256": "109e3784eb02947cc2289359fe3a16a7ad819ff4cb6059c978096a0589f483f9",
+      "reservation_id": "a60afb7529c74fea97e558eaee2ab9aa",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-09-21T22:24:34.836829Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "plan": 1,
+    "plan#completion": 0
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "plan": 0
+  },
   "spec_path": ".flow/specs/fn-170-durable-receipts-for-safe-mutation.md",
   "status": "open",
   "title": "Durable receipts for safe mutation retries",
@@ -28,5 +103,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-21T20:55:17.637345Z"
+  "updated_at": "2026-09-21T22:24:34.838890Z"
 }

@@ -12,8 +12,77 @@
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
-  "plan_review_status": "unknown",
-  "plan_reviewed_at": null,
+  "plan_review_status": "ship",
+  "plan_reviewed_at": "2026-09-21T22:24:23.507420Z",
+  "review_attempts": [
+    {
+      "artifact_sha256": "b2f1a76a30d05f6bd5479c9ea95f04f24300d391a6d9e8575850db50ad6dd0d6",
+      "backend": "claude",
+      "base_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "claude-fable-5-1",
+      "outcome": "verdict",
+      "output_bytes": 8620,
+      "output_sha256": "a58013169a165d5872492e2f7954656342d01ac5356f15ed892f97f350a9a61f",
+      "reservation_id": "73a83999d3474ee283db1989ceb77f00",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-09-21T22:19:25.554547Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "cc4cae1930e91e04c1e1dd68d2691d913f432abe0f62905e5a73ad5900ed30f4",
+      "backend": "claude",
+      "base_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "claude-fable-5-1",
+      "outcome": "verdict",
+      "output_bytes": 4075,
+      "output_sha256": "714ec8a0e7f6289fa476c83cc454cac6fdac54de7c4848f2509ae4efb4a2838e",
+      "reservation_id": "6ea16d57432d4ebaa01fa10513cd631a",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-09-21T22:24:23.505617Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "plan": 1,
+    "plan#completion": 0
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "plan": 0
+  },
   "spec_path": ".flow/specs/fn-168-typed-metadata-predicates-across.md",
   "status": "open",
   "title": "Typed metadata predicates across retrieval surfaces",
@@ -28,5 +97,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-21T20:55:16.250556Z"
+  "updated_at": "2026-09-21T22:24:23.507897Z"
 }

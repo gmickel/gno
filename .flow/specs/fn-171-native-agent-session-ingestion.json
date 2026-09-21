@@ -12,8 +12,106 @@
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
-  "plan_review_status": "unknown",
-  "plan_reviewed_at": null,
+  "plan_review_status": "ship",
+  "plan_reviewed_at": "2026-09-21T22:26:57.447217Z",
+  "review_attempts": [
+    {
+      "artifact_sha256": "6943a45982bc9243843bb990d0f6edf53552681180085e553ad94a5e6d4fd985",
+      "backend": "claude",
+      "base_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "claude-fable-5-1",
+      "outcome": "verdict",
+      "output_bytes": 7579,
+      "output_sha256": "dc6551dd734f7fb0227c914748b6c09168b5a3d67c6c0f9fe57691bb972c301c",
+      "reservation_id": "da14e5e6f65f4e7d966f09ebfad4574e",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-09-21T22:17:50.665386Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "9ab1abcfad0708ae77e803888fb030e88cb3ed349eef540b63888ed8f43d5e7b",
+      "backend": "claude",
+      "base_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "claude-fable-5-1",
+      "outcome": "verdict",
+      "output_bytes": 4466,
+      "output_sha256": "9486ea17b3e85cc00351896c0700858529ffa5fcdadfec165d9dd098390dae9e",
+      "reservation_id": "4fd2902445c3475bab81057f1308a734",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-09-21T22:24:43.002921Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "019bccc0ae45be9e5962880cecf335836c3495aa60eb9d863a088faa51638002",
+      "backend": "claude",
+      "base_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "12c81792e731fa46fff6b08ffdefedbb96aaaa6d",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "claude-fable-5-1",
+      "outcome": "verdict",
+      "output_bytes": 2681,
+      "output_sha256": "f64dfde5ebd209b37fb7293ddb3d8eb415b41fc4718033a8b5d4efcfecbb4609",
+      "reservation_id": "8853685801934ed5b062979019191bdc",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-09-21T22:26:57.445506Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "plan": 1,
+    "plan#completion": 0
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "plan": 0
+  },
   "spec_path": ".flow/specs/fn-171-native-agent-session-ingestion.md",
   "status": "open",
   "title": "Native agent-session ingestion",
@@ -28,5 +126,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-21T20:55:57.517569Z"
+  "updated_at": "2026-09-21T22:26:57.447749Z"
 }
