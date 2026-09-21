@@ -228,11 +228,22 @@ After adding new features or changing CLI/MCP behavior, re-run the autoresearch 
 
 Version is managed in `package.json` (single source of truth). `src/app/constants.ts` imports it.
 
-**IMPORTANT**: Bump version on EVERY merge to main:
+Bump the version when preparing a product release:
 
 - Features/new functionality → `version:minor`
 - Bug fixes/patches → `version:patch`
 - Breaking changes → `version:major`
+
+README, documentation, developer-instruction, and CI-only changes do not require
+a product version bump, release tag, or npm/desktop publication. Commit and merge
+them after their applicable checks. Keep a docs-only PR free of incidental
+`package.json`/lockfile changes so CI can select its documentation path.
+
+Shipped skill instructions (`assets/skill/`), runtime code, dependencies, and
+packaging changes remain release-relevant. Check the contents of a mixed PR;
+a Markdown extension alone does not make it documentation-only. CI changes
+must exercise the jobs or selection logic they affect, without creating a
+product release solely to test CI.
 
 **Bump version:**
 
@@ -245,7 +256,7 @@ bun run version:major   # 0.1.0 → 1.0.0 (breaking)
 **Release workflow:**
 
 ```bash
-bun run prerelease       # lint:check + test
+bun run prerelease       # full release gates, including docs and package checks
 bun run release:dry-run  # trigger CI without publishing
 bun run release:trigger  # trigger CI with publish (uses OIDC, no token needed)
 ```
@@ -265,12 +276,17 @@ gh workflow run publish.yml -f publish=true   # actual publish
 - For native/runtime deps, explicitly check upstream freshness and package scripts before release maintenance: `node-llama-cpp`, `sqlite-vec`, `web-tree-sitter`, and any package listed in `trustedDependencies`.
 - Only add packages to `trustedDependencies` when their lifecycle scripts are required and reviewed.
 
-**Post-merge workflow (EVERY merge to main):**
+**After merging:** documentation-only and CI-only changes skip the product
+release workflow. Complete any requested website deployment or other delivery
+steps. Product releases follow the user's release intent or an already-authorized
+shipping workflow; merging a PR alone does not authorize publication.
+
+**For an authorized product release:**
 
 1. **Check for OG image PRs** - `gh pr list` and merge any `chore/regenerate-og-images` PRs
 2. `bun run version:patch` (or minor/major based on changes)
-3. **Update CHANGELOG.md** - Move [Unreleased] items to new version section, keep empty [Unreleased], update compare links
-4. `git add package.json CHANGELOG.md`
+3. **Update release documentation** - Move [Unreleased] items to the new CHANGELOG.md version section, keep empty [Unreleased], update compare links, and match README.md's current-source-version stamp to package.json.
+4. `git add package.json README.md CHANGELOG.md`
 5. `git commit -m "chore: bump to vX.Y.Z"`
 6. `git tag vX.Y.Z && git push --tags`
 7. Workflow auto-triggers on `v*` tag push
@@ -479,10 +495,10 @@ Turn the stage off with `flowctl config set pipeline.qa off`.
 **When ending a work session:**
 
 1. **File issues** - Create Flow-Next epics/tasks for remaining/discovered work
-2. **Quality gates** (if code changed) - `bun run lint:check && bun test`
+2. **Quality gates** - Run the checks required for the changed scope. Application/runtime changes use `bun run lint:check && bun test`; docs-only changes use documentation/format checks, and CI-only changes use lint plus focused workflow/classifier tests. Required code-host checks still apply.
 3. **Live QA** (if user-facing surface changed, incl. `~/work/gno.sh`) - `/flow-next:qa <spec-id>`; see "Live QA Gate"
 4. **Update Flow-Next** - Mark tasks done via `flowctl done`
-5. **Commit & push** - `git push` (see Versioning for release pushes)
+5. **Commit & push** - `git push`. Omit product version/tag/publication steps for documentation-only and CI-only merges; complete any requested website deployment or other delivery.
 6. **Verify** - `git status` shows up to date with origin
 
 Work is NOT complete until pushed to remote.

@@ -2,17 +2,19 @@
 
 ## CI/CD Matrix
 
-CI always reports **CI result** and runs lint/typecheck once. The result checks
-that every selected job succeeded; failed classification, missing outputs,
-cancellation, or unexpectedly skipped jobs fail the result. The existing
-`test (ubuntu-latest)` and `test (macos-latest)` names remain available to branch
-protection. Documentation-only PRs skip runtime jobs, with that decision checked
-by the aggregate. Unknown paths and unavailable diffs select full coverage.
+CI always reports **CI result**, runs lint/typecheck, and checks the CI selector
+and documentation contracts. The result checks that every selected job succeeded; failed classification, missing outputs,
+cancellation, or unexpectedly skipped jobs fail the result. Branch protection
+requires `CI result` for conditional runtime coverage, alongside CodeQL and
+Dependency Review. Do not require the conditional per-platform job names;
+docs-only runs do not emit those names. Documentation-only PRs and main pushes
+skip runtime jobs, with that decision checked by the aggregate. Unknown paths
+and unavailable diffs select full coverage.
 
 | Trigger                        | Core Linux/macOS            | Windows full suite                                         | Watcher                             | Clipper Chromium E2E                                          |
 | ------------------------------ | --------------------------- | ---------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------- |
 | Relevant PR                    | Bun 1.4.2                   | Runtime/filesystem/package changes or `test-windows` label | Bun 1.3.11 on three OSes            | Clipper, web ingestion, package/dependency or unknown changes |
-| Main push                      | Relevant changes            | Always                                                     | Relevant changes                    | Relevant changes                                              |
+| Main push                      | Relevant changes            | Non-documentation changes or `test-windows` label          | Relevant changes                    | Relevant changes                                              |
 | Weekly Monday / manual CI      | Bun 1.4.2                   | Always                                                     | Bun 1.3.11 and latest on three OSes | Always                                                        |
 | Release tag / publish dispatch | Bun 1.4.2 on all three OSes | Always                                                     | Covered by release tests            | Package verification                                          |
 
@@ -22,8 +24,11 @@ compatibility runs weekly and on demand, separate from the pinned PR gate.
 
 Repository installs use Bun 1.4.2 to read the current lockfile format. Watcher
 jobs install with 1.4.2 before selecting their declared compatibility runtime.
-Windows desktop packaging runs for runtime, asset, dependency and shell changes,
-with PR cancellation and the same pinned build runtime.
+Windows desktop packaging runs for runtime, asset, dependency, shell, and its
+own workflow changes, with PR cancellation and the same pinned build runtime.
+Root `README.md` and user-facing `docs/` pages do not trigger it. Files under
+runtime/asset directories retain coverage even when they are Markdown; shipped
+skill instructions under `assets/skill/` are outside the docs-only allowlist.
 
 Real macOS File Provider/cloud-placeholder acceptance, physical desktop behavior,
 and retrieval/model performance acceptance remain local. Hosted platform checks
@@ -42,6 +47,17 @@ do not substitute for them. Evalite remains opt-in.
 - Batch transactions in SyncService (50 docs/tx)
 
 ## Release Process
+
+Documentation-only and CI-only merges do not require a version bump or release
+tag. Do not add incidental package/lockfile changes to a docs-only PR; those
+paths correctly select full runtime coverage. Use documentation/format checks
+for docs and relevant workflow/classifier tests for CI changes. Changes to build
+or test machinery can still require the affected jobs to run.
+
+Prepare a product release for shipped behavior, skill assets, dependencies, or
+packaging changes within an authorized shipping workflow, or when explicitly
+requested. A merge alone does not authorize publishing. The full release gates
+below continue to apply to release tags and publish dispatches.
 
 Desktop beta rollout scaffolding:
 
@@ -74,7 +90,8 @@ reproduce those only with their recorded commands and pinned inputs.
 ```bash
 bun run version:patch   # bump version
 # Update CHANGELOG.md (move Unreleased, keep empty header, update compare links)
-git add package.json CHANGELOG.md
+# Match README.md current-source-version to package.json
+git add package.json README.md CHANGELOG.md
 git commit -m "chore: bump to vX.Y.Z"
 git tag vX.Y.Z && git push --tags
 ```

@@ -34,15 +34,17 @@ describe("CI relevance", () => {
     }
   });
   test("documentation skips runtime checks but labels still select Windows", () => {
-    expect(
-      selectJobs(
-        ["README.md", "docs/CLI.md", ".flow/tasks/task.md"],
-        "pull_request"
-      )
-    ).toEqual({ core: false, clipper: false, windows: false, latest: false });
-    expect(
-      selectJobs(["README.md"], "pull_request", ["test-windows"]).windows
-    ).toBe(true);
+    for (const event of ["pull_request", "push"]) {
+      expect(
+        selectJobs(
+          ["README.md", "AGENTS.md", "docs/CLI.md", ".flow/tasks/task.md"],
+          event
+        )
+      ).toEqual({ core: false, clipper: false, windows: false, latest: false });
+      expect(selectJobs(["README.md"], event, ["test-windows"]).windows).toBe(
+        true
+      );
+    }
   });
   test("runtime Markdown and extension changes cannot masquerade as documentation", () => {
     for (const path of [
@@ -71,7 +73,7 @@ describe("CI relevance", () => {
       true
     );
   });
-  test("weekly/manual always exercise latest and main always covers Windows", () => {
+  test("weekly/manual retain full coverage and runtime main pushes cover Windows", () => {
     for (const event of ["schedule", "workflow_dispatch"]) {
       expect(selectJobs([], event)).toEqual({
         core: true,
@@ -80,11 +82,37 @@ describe("CI relevance", () => {
         latest: true,
       });
     }
-    expect(selectJobs([], "push").windows).toBe(true);
+    expect(selectJobs([], "push").windows).toBe(false);
+    expect(selectJobs(["src/serve/public/app.tsx"], "push").windows).toBe(true);
+    expect(selectJobs(["README.md", "package.json"], "push")).toEqual({
+      core: true,
+      clipper: true,
+      windows: true,
+      latest: false,
+    });
   });
 });
 
 describe("CI aggregate", () => {
+  test("accepts documentation-only skips on PRs and main pushes", () => {
+    for (const event of ["pull_request", "push"]) {
+      const selection = selectJobs(["README.md"], event);
+      const needs = green();
+      needs.changes.outputs = {
+        core: String(selection.core),
+        clipper: String(selection.clipper),
+        windows: String(selection.windows),
+        latest: String(selection.latest),
+      };
+      needs.test.result = "skipped";
+      needs["watcher-cross-platform"].result = "skipped";
+      needs["test-windows"].result = "skipped";
+      needs["clipper-e2e"].result = "skipped";
+      expect(() => checkResults(needs)).not.toThrow();
+      needs["test-windows"].result = "success";
+      expect(() => checkResults(needs)).toThrow();
+    }
+  });
   test("accepts all and only selected successful jobs", () =>
     expect(() => checkResults(green())).not.toThrow());
   test("rejects failed/cancelled/skipped/missing selected jobs", () => {
@@ -109,6 +137,44 @@ describe("CI aggregate", () => {
 });
 
 describe("release and workflow safety", () => {
+  test("desktop packaging excludes docs while retaining artifact inputs", async () => {
+    const workflow = Bun.YAML.parse(
+      await Bun.file(
+        new URL(
+          "../../.github/workflows/windows-packaging.yml",
+          import.meta.url
+        )
+      ).text()
+    ) as {
+      on: { pull_request: { paths: string[] }; workflow_dispatch: unknown };
+    };
+    const matches = (path: string) =>
+      workflow.on.pull_request.paths.some((pattern) =>
+        new Bun.Glob(pattern).match(path)
+      );
+    for (const path of [
+      "README.md",
+      "AGENTS.md",
+      "docs/INSTALLATION.md",
+      "docs/WINDOWS.md",
+      "docs/DESKTOP-BETA-ROLLOUT.md",
+    ]) {
+      expect(matches(path)).toBe(false);
+    }
+    for (const path of [
+      ".github/workflows/windows-packaging.yml",
+      "desktop/electrobun-shell/src/index.ts",
+      "src/index.ts",
+      "assets/skill/SKILL.md",
+      "vendor/native.so",
+      "package.json",
+      "bun.lock",
+      "bunfig.toml",
+    ]) {
+      expect(matches(path)).toBe(true);
+    }
+    expect(Object.hasOwn(workflow.on, "workflow_dispatch")).toBe(true);
+  });
   test("publication depends on every coordinated artifact and consumes the tested archive", async () => {
     const workflow = Bun.YAML.parse(
       await Bun.file(
