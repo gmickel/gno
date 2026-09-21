@@ -1186,7 +1186,7 @@ bun test
 bun run lint && bun run typecheck
 ```
 
-> **Contributing**: [CONTRIBUTING.md](.github/CONTRIBUTING.md)
+> **Contributing**: See [checks and release policy](.github/CONTRIBUTING.md). Documentation-only and CI-only changes do not require a product version bump or release.
 
 ### Evals and Benchmark Deltas
 
