@@ -108,6 +108,32 @@ does not claim Chrome Web Store availability or Firefox parity. See
 [Browser Clipper](integrations/browser-clipper.md) for checksum, pairing,
 privacy, provenance, and recovery details.
 
+## Recommended agent setup
+
+For a second brain or LLM wiki, install both a connector and the retrieval
+protocol. The skill teaches GNO commands and workflows; the instruction block
+teaches the harness when to retrieve, how to choose an efficient search path,
+and how to cite and maintain knowledge. A connector alone does not establish
+that discipline.
+
+```bash
+gno skill install --target claude --scope user
+gno agents install --target claude
+gno agents verify --target claude
+```
+
+Choose your harness target (`claude`, `codex`, `opencode`, `openclaw`, or
+`hermes`). For MCP clients, install the MCP connector instead of the skill,
+then add the protocol where the harness supports it. `gno agents install`
+without a target covers detected supported harnesses; see the
+[agent instructions guide](AGENT-INSTRUCTIONS.md) for the target matrix and
+manual guidance. It preserves text outside its managed block.
+
+Start a fresh agent session and ask a question answered by an indexed document.
+Check that the agent retrieves it and cites the source. `gno agents verify`
+checks the installed block, not model behavior. CLI and Web UI users can skip
+agent setup.
+
 ## Requirements
 
 | Component | Version | Notes                                       |

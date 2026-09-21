@@ -4,7 +4,33 @@ Use GNO as a skill in AI coding agents like Claude Code, OpenAI Codex, OpenCode,
 
 > **Why Skills?** Skills are the preferred integration method due to progressive discovery: tools are only loaded when invoked via `/gno`, avoiding context pollution from unused tool definitions. See [agentskills.io](https://agentskills.io/home) for the specification.
 >
-> Skills work in clients that support the spec. GNO has first-class install targets for Claude Code, Codex, OpenCode, and OpenClaw. VS Code Copilot and Cursor require manual setup (see below).
+> Skills work in clients that support the spec. GNO has first-class install targets for Claude Code, Codex, OpenCode, OpenClaw, and Hermes. VS Code Copilot and Cursor require manual setup (see below).
+
+## Teach the harness how to retrieve
+
+For a second brain or LLM wiki, install both a connector and the retrieval
+protocol. The skill teaches GNO commands and workflows; the instruction block
+teaches the harness when to retrieve, how to choose an efficient search path,
+and how to cite and maintain knowledge. A connector alone does not establish
+that discipline.
+
+```bash
+gno skill install --target claude --scope user
+gno agents install --target claude
+gno agents verify --target claude
+```
+
+Choose your harness target (`claude`, `codex`, `opencode`, `openclaw`, or
+`hermes`). For MCP clients, install the MCP connector instead of the skill,
+then add the protocol where the harness supports it. `gno agents install`
+without a target covers detected supported harnesses; see the
+[agent instructions guide](../AGENT-INSTRUCTIONS.md) for the target matrix and
+manual guidance. It preserves text outside its managed block.
+
+Start a fresh agent session and ask a question answered by an indexed document.
+Check that the agent retrieves it and cites the source. `gno agents verify`
+checks the installed block, not model behavior. CLI and Web UI users can skip
+agent setup.
 
 ## Quick Install
 
@@ -110,43 +136,34 @@ gno skill paths [options]      # Show installation paths
 
 > "Find my architecture docs and summarize the relevant parts for this change"
 
-## Manual Configuration
+## Targeted installation
 
-### Claude Code
-
-Add to `~/.claude/settings.json`:
-
-```json
-{
-  "skills": ["@gmickel/gno"]
-}
-```
-
-### Codex
-
-Add to `~/.codex/config.json`:
-
-```json
-{
-  "skills": ["@gmickel/gno"]
-}
-```
-
-### OpenCode
-
-Install directly:
+Use the supported installer instead of editing harness configuration by hand:
 
 ```bash
+gno skill install --target claude --scope user
+gno skill install --target codex --scope user
 gno skill install --target opencode --scope user
-```
-
-### OpenClaw
-
-Install directly:
-
-```bash
 gno skill install --target openclaw --scope user
+gno skill install --target hermes --scope user
 ```
+
+Then run `gno agents install --target <harness>` for the same harness.
+
+## Distribution and updates
+
+The bundled skill matches the installed GNO release. After upgrading GNO,
+run `gno skill install --target <harness> --scope user --force`, then
+`gno agents update --target <harness>` and `gno agents verify --target <harness>`.
+`--force` replaces local skill edits; preserve customizations first.
+
+ClawHub-managed installations use `bunx clawhub@0.23.3 update @gmickel/gno`
+from the original workspace. Hermes hub installations use
+`hermes skills install clawhub/gno # May require review; prefer the local installer`, then `hermes skills check` and
+`hermes skills update gno`. GNO itself must be installed separately.
+Use one installer per skill directory. See the
+[bundle guide](../../assets/skill/README.md) for scheduled updates and the
+[public listing](https://clawhub.ai/gmickel/gno).
 
 ## Other Compatible Clients
 
@@ -178,14 +195,14 @@ Enable Agent Skills in Cursor Settings → Rules.
 
 ## Skills vs MCP
 
-| Feature  | Skills               | MCP                        |
-| :------- | :------------------- | :------------------------- |
-| Access   | `/gno` slash command | Automatic tool calls       |
-| Setup    | `gno skill install`  | `gno mcp install`          |
-| Protocol | Direct CLI           | JSON-RPC over stdio        |
-| Best for | Quick searches       | Complex multi-tool queries |
+| Feature  | Skills                    | MCP                        |
+| :------- | :------------------------ | :------------------------- |
+| Access   | Agent selection or `/gno` | Tool calls                 |
+| Setup    | `gno skill install`       | `gno mcp install`          |
+| Protocol | Direct CLI                | JSON-RPC over stdio        |
+| Best for | Quick searches            | Complex multi-tool queries |
 
-Use Skills for quick access, MCP for deeper integration. You can install both.
+Both expose the same retrieval capabilities. Choose the interface your harness supports and pair it with the retrieval protocol.
 
 ## Troubleshooting
 

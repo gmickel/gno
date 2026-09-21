@@ -101,3 +101,27 @@ gh workflow run windows-packaging.yml         # build + verify packaged Windows 
 gh workflow run publish.yml -f publish=false  # dry run
 gh workflow run publish.yml -f publish=true   # actual publish
 ```
+
+## Skill distribution
+
+`assets/skill/` is the canonical skill bundle for every harness. After the
+coordinated release succeeds, `publish.yml` calls `publish-skill.yml` with
+that release tag. The pinned ClawHub CLI skips unchanged content and
+publishes changed bundles with explicit `--slug gno --owner gmickel`; its skill version is independent
+of the GNO package version. No mirror repository is needed.
+
+Configure the repository secret `CLAWHUB_TOKEN` once with a ClawHub publisher
+token. Never put the token in a file committed to this repository. Missing
+credentials fail the distribution job visibly; the npm release stays published.
+Retry a released tag with the standalone workflow (dry-run defaults to true):
+
+```bash
+gh workflow run publish-skill.yml -f ref=vX.Y.Z -f dry_run=true
+gh workflow run publish-skill.yml -f ref=vX.Y.Z -f dry_run=false
+```
+
+The workflow accepts only stable, existing public releases. Inspect its
+`clawhub-skill-publish-json` artifact and the public listing after publication.
+Skill publication uses a token; ClawHub's package OIDC support does not cover
+skills. ClawHub publishes skills under MIT-0. Runtime code retains this
+repository's license.

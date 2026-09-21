@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Pair agent connector setup with `gno agents install` and verification for second-brain and LLM-wiki retrieval. Include Hermes and document skill updates.
+- Correct GNO Recall setup to use its verified runtime and link the published Omarchy marketplace listing.
+
+### Added
+
+- Release-driven ClawHub skill publishing with explicit GNO identity, stable-release validation, dry runs, and retry support.
+
 ## [2.3.0] - 2026-09-12
 
 ### Added
