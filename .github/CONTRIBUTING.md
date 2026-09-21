@@ -3,8 +3,7 @@
 ## CI/CD Matrix
 
 CI always reports **CI result**, runs lint/typecheck, and checks the CI selector
-and documentation contracts. The result checks
-that every selected job succeeded; failed classification, missing outputs,
+and documentation contracts. The result checks that every selected job succeeded; failed classification, missing outputs,
 cancellation, or unexpectedly skipped jobs fail the result. Branch protection
 requires `CI result` for conditional runtime coverage, alongside CodeQL and
 Dependency Review. Do not require the conditional per-platform job names;
@@ -27,8 +26,9 @@ Repository installs use Bun 1.4.2 to read the current lockfile format. Watcher
 jobs install with 1.4.2 before selecting their declared compatibility runtime.
 Windows desktop packaging runs for runtime, asset, dependency, shell, and its
 own workflow changes, with PR cancellation and the same pinned build runtime.
-README and documentation edits do not trigger it. Shipped skill Markdown under
-`assets/skill/` remains a runtime asset, outside the documentation-only allowlist.
+Root `README.md` and user-facing `docs/` pages do not trigger it. Files under
+runtime/asset directories retain coverage even when they are Markdown; shipped
+skill instructions under `assets/skill/` are outside the docs-only allowlist.
 
 Real macOS File Provider/cloud-placeholder acceptance, physical desktop behavior,
 and retrieval/model performance acceptance remain local. Hosted platform checks
