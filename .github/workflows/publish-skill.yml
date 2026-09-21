@@ -108,7 +108,7 @@ jobs:
 
           receipt = json.loads(Path("skill-publish.json").read_text())
           version = receipt["version"]
-          url = f"https://clawhub.ai/api/v1/skills/gno/versions/{quote(version, safe='')}?ownerHandle=gmickel"
+          url = f"https://clawhub.ai/api/v1/skills/gno/verify?version={quote(version, safe='')}&ownerHandle=gmickel"
           deadline = time.monotonic() + 600
           while True:
               remaining = deadline - time.monotonic()
@@ -118,8 +118,11 @@ jobs:
               try:
                   with urlopen(Request(url, headers={"Cache-Control": "no-cache"}), timeout=min(20, remaining)) as response:
                       inspected = json.load(response)
-                  if inspected.get("version", {}).get("version") != version:
-                      raise SystemExit("Unexpected public skill version")
+                  if (inspected.get("schema") != "clawhub.skill.verify.v1"
+                      or inspected.get("slug") != "gno"
+                      or inspected.get("publisherHandle") != "gmickel"
+                      or inspected.get("version") != version):
+                      raise SystemExit("Unexpected public skill identity or verification schema")
                   Path("skill-inspect.json").write_text(json.dumps(inspected))
                   break
               except HTTPError as error:
@@ -138,10 +141,10 @@ jobs:
           root = Path("assets/skill")
           expected = {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
                       for p in root.rglob("*") if p.is_file()}
-          actual = {f["path"]: f["sha256"] for f in json.load(open("skill-inspect.json"))["version"]["files"]}
+          actual = {f["path"]: f["sha256"] for f in json.load(open("skill-inspect.json"))["artifact"]["files"]}
           if actual != expected:
               raise SystemExit("Published skill file hashes differ from the released bundle")
-          print(f"Verified {len(expected)} released skill files on ClawHub")
+          print(f"Verified {len(expected)} released source files on ClawHub; registry-generated Skill Card is separate")
           PYTHON
       - uses: actions/upload-artifact@v7
         if: always()

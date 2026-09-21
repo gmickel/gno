@@ -15,7 +15,9 @@ A local knowledge engine for your notes, code, PDFs, and Office docs. Hybrid sea
 ```bash
 bun install -g @gmickel/gno
 gno setup ~/notes --name notes     # returns only after retrieval actually works
-gno mcp install --target cursor    # or claude-code, claude-desktop, zed, ...
+gno skill install --target claude --scope user # choose your agent below
+gno agents install --target claude # teach retrieval and writing discipline
+gno agents verify --target claude
 ```
 
 ## What you get
@@ -66,6 +68,11 @@ bun install -g @gmickel/gno
 # semantic embedding continues independently in the background.
 gno setup ~/notes --name notes
 
+# Connect your agent and teach the retrieval protocol (Claude shown)
+gno skill install --target claude --scope user
+gno agents install --target claude
+gno agents verify --target claude
+
 # Add more sources
 gno collection add ~/work/docs --name work-docs --pattern "**/*.{md,pdf,docx}"
 gno collection add ~/work/gno/src --name gno-code --pattern "**/*.{ts,tsx,js,jsx}"
@@ -97,7 +104,9 @@ gno daemon --detach  # headless indexing + resident MCP gateway
 > [!TIP]
 > **[gno.sh/publish](https://gno.sh/publish) is live.** Turn any GNO note or collection into a reader-first URL — editorial typography, scoped search, and four visibility modes from public to encrypted-before-upload. **[See the reader →](#publish-to-gnosh)**
 
-> **ClawdHub**: GNO skills bundled for Clawdbot — [clawdhub.com/gmickel/gno](https://clawdhub.com/gmickel/gno)
+> [!TIP]
+> **OpenClaw and Hermes Agent:** Use GNO as a second brain or LLM wiki. Install the skill and retrieval protocol together so your agent knows when to retrieve, which search path to use, and how to cite and maintain knowledge.
+> [OpenClaw setup](https://gno.sh/integrations/openclaw) · [Hermes setup](https://gno.sh/integrations/hermes) · [Shared ClawHub bundle](https://clawhub.ai/gmickel/gno)
 
 ---
 
@@ -117,7 +126,7 @@ gno daemon --detach  # headless indexing + resident MCP gateway
 
 <!-- public-truth:current-version -->
 
-> Current source version: **v2.3.2**. See [CHANGELOG.md](./CHANGELOG.md).
+> Current source version: **v2.3.3**. See [CHANGELOG.md](./CHANGELOG.md).
 
 <!-- /public-truth -->
 
