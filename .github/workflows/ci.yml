@@ -44,7 +44,8 @@ jobs:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - run: bun run lint:check
-      - run: bun test test/scripts/ci.test.ts
+      - name: Check CI selection and documentation contracts
+        run: bun test test/scripts/ci.test.ts test/scripts/docs-verify.test.ts
   watcher-cross-platform:
     needs: changes
     if: needs.changes.outputs.core == 'true'

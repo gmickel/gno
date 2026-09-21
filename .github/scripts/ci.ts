@@ -30,7 +30,7 @@ export function selectJobs(
     core,
     clipper: changed.some((path) => !clipperIndependent.test(path)),
     windows:
-      event === "push" ||
+      (event === "push" && core) ||
       labels.includes("test-windows") ||
       changed.some((path) => !windowsIndependent.test(path)),
     latest,

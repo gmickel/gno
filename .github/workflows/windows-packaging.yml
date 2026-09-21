@@ -13,10 +13,6 @@ on:
       - "package.json"
       - "bun.lock"
       - "bunfig.toml"
-      - "docs/INSTALLATION.md"
-      - "docs/WINDOWS.md"
-      - "docs/DESKTOP-BETA-ROLLOUT.md"
-      - "README.md"
 
 concurrency:
   group: windows-packaging-${{ github.event.pull_request.number || github.run_id }}
