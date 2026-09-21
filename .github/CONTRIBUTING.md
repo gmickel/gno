@@ -125,3 +125,17 @@ The workflow accepts only stable, existing public releases. Inspect its
 Skill publication uses a token; ClawHub's package OIDC support does not cover
 skills. ClawHub publishes skills under MIT-0. Runtime code retains this
 repository's license.
+
+ClawHub can accept an upload as `pending-publication` before the version is
+public. The workflow waits up to ten minutes for that exact public version,
+then verifies every file hash. Processing or moderation that exceeds the wait
+fails visibly and retains the upload receipt. Resume verification without a
+second upload using the version from that receipt:
+
+```bash
+gh workflow run publish-skill.yml -f ref=vX.Y.Z -f dry_run=false -f verify_version=1.2.1
+```
+
+Use the original GNO release tag and submitted skill version. A pending upload
+is not a published skill. The public-version check needs no token and cannot
+mistake a private staged version for a public release.
