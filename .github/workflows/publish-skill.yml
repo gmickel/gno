@@ -15,6 +15,11 @@ on:
         description: Released GNO tag to publish (for example v2.2.1)
         required: true
         type: string
+      verify_version:
+        description: Resume verification of an already submitted skill version without uploading
+        required: false
+        default: ""
+        type: string
       dry_run:
         description: Preview without publishing
         default: true
@@ -70,7 +75,17 @@ jobs:
         env:
           RELEASE_REF: ${{ inputs.ref }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+          VERIFY_VERSION: ${{ inputs.verify_version }}
         run: |
+          if [[ -n "$VERIFY_VERSION" ]]; then
+            [[ "$DRY_RUN" == "false" && "$VERIFY_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+            python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          Path("skill-publish.json").write_text(json.dumps({"status": "verification-only", "version": os.environ["VERIFY_VERSION"]}))
+          PYTHON
+            exit 0
+          fi
           args=()
           if [[ "$DRY_RUN" == "true" ]]; then args+=(--dry-run); fi
           bunx clawhub@0.23.3 skill publish assets/skill \
@@ -84,11 +99,42 @@ jobs:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
         run: |
           if [[ "$DRY_RUN" == "true" ]]; then exit 0; fi
-          version=$(python3 -c 'import json; print(json.load(open("skill-publish.json"))["version"])')
-          bunx clawhub@0.23.3 inspect @gmickel/gno --version "$version" --files --json > skill-inspect.json
           python3 - <<'PYTHON'
-          import hashlib, json
+          import hashlib, json, time
           from pathlib import Path
+          from urllib.error import HTTPError, URLError
+          from urllib.parse import quote
+          from urllib.request import Request, urlopen
+
+          receipt = json.loads(Path("skill-publish.json").read_text())
+          version = receipt["version"]
+          url = f"https://clawhub.ai/api/v1/skills/gno/versions/{quote(version, safe='')}?ownerHandle=gmickel"
+          deadline = time.monotonic() + 600
+          while True:
+              remaining = deadline - time.monotonic()
+              if remaining <= 0:
+                  raise SystemExit(f"Skill {version} is not publicly available yet. Check ClawHub processing/moderation and resume with verify_version={version}; do not re-upload.")
+              delay = 15
+              try:
+                  with urlopen(Request(url, headers={"Cache-Control": "no-cache"}), timeout=min(20, remaining)) as response:
+                      inspected = json.load(response)
+                  if inspected.get("version", {}).get("version") != version:
+                      raise SystemExit("Unexpected public skill version")
+                  Path("skill-inspect.json").write_text(json.dumps(inspected))
+                  break
+              except HTTPError as error:
+                  if error.code not in (404, 429) and error.code < 500:
+                      raise SystemExit(f"Public verification returned HTTP {error.code}") from None
+                  if error.code == 429:
+                      try:
+                          delay = max(delay, float(error.headers.get("Retry-After", "15")))
+                      except ValueError:
+                          pass
+              except (URLError, TimeoutError):
+                  pass
+              print(f"Waiting for public skill {version}; upload receipt is retained.", flush=True)
+              time.sleep(min(delay, max(0, deadline - time.monotonic())))
+
           root = Path("assets/skill")
           expected = {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
                       for p in root.rglob("*") if p.is_file()}
