@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Verify ClawHub source-file hashes through its canonical verification API, which separates the registry-generated Skill Card from uploaded files.
 - Give OpenClaw and Hermes equal README callouts and setup links, replace retired ClawdHub branding, and include retrieval instructions in the opening install examples.
 
 ## [2.3.2] - 2026-09-21
