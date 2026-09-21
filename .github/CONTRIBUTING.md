@@ -14,7 +14,7 @@ and unavailable diffs select full coverage.
 | Trigger                        | Core Linux/macOS            | Windows full suite                                         | Watcher                             | Clipper Chromium E2E                                          |
 | ------------------------------ | --------------------------- | ---------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------- |
 | Relevant PR                    | Bun 1.4.2                   | Runtime/filesystem/package changes or `test-windows` label | Bun 1.3.11 on three OSes            | Clipper, web ingestion, package/dependency or unknown changes |
-| Main push                      | Relevant changes            | Non-documentation changes or `test-windows` label          | Relevant changes                    | Relevant changes                                              |
+| Main push                      | Relevant changes            | Non-documentation changes                                  | Relevant changes                    | Relevant changes                                              |
 | Weekly Monday / manual CI      | Bun 1.4.2                   | Always                                                     | Bun 1.3.11 and latest on three OSes | Always                                                        |
 | Release tag / publish dispatch | Bun 1.4.2 on all three OSes | Always                                                     | Covered by release tests            | Package verification                                          |
 
