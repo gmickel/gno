@@ -117,7 +117,7 @@ gno daemon --detach  # headless indexing + resident MCP gateway
 
 <!-- public-truth:current-version -->
 
-> Current source version: **v2.3.0**. See [CHANGELOG.md](./CHANGELOG.md).
+> Current source version: **v2.3.1**. See [CHANGELOG.md](./CHANGELOG.md).
 
 <!-- /public-truth -->
 
@@ -288,6 +288,9 @@ gno query "ECONNREFUSED 127.0.0.1:5432" --thorough
 
 ```bash
 gno setup ~/notes --name notes   # Build BM25 and prove an exact local result
+gno skill install --target claude --scope user # Choose your agent
+gno agents install --target claude # Teach retrieval and writing discipline
+gno agents verify --target claude
 gno daemon --detach              # Keep index fresh in the background (macOS/Linux)
 gno query "auth best practices"  # Hybrid search
 gno ask "summarize the API" --answer  # AI answer with citations
@@ -365,6 +368,30 @@ See also: [docs/DAEMON.md](./docs/DAEMON.md)
 
 ### Connect to AI Agents
 
+For a second brain or LLM wiki, install both a connector and the retrieval
+protocol. The skill teaches GNO commands and workflows; the instruction block
+teaches the harness when to retrieve, how to choose an efficient search path,
+and how to cite and maintain knowledge. A connector alone does not establish
+that discipline.
+
+```bash
+gno skill install --target claude --scope user
+gno agents install --target claude
+gno agents verify --target claude
+```
+
+Choose your harness target (`claude`, `codex`, `opencode`, `openclaw`, or
+`hermes`). For MCP clients, install the MCP connector instead of the skill,
+then add the protocol where the harness supports it. `gno agents install`
+without a target covers detected supported harnesses; see the
+[agent instructions guide](docs/AGENT-INSTRUCTIONS.md) for the target matrix and
+manual guidance. It preserves text outside its managed block.
+
+Start a fresh agent session and ask a question answered by an indexed document.
+Check that the agent retrieves it and cites the source. `gno agents verify`
+checks the installed block, not model behavior. CLI and Web UI users can skip
+agent setup.
+
 #### MCP Server (Claude Desktop, Cursor, Zed, etc.)
 
 One command to add GNO to your AI assistant:
@@ -391,7 +418,7 @@ target, add `--force` to preview the replacement without writing it.
 
 Check status: `gno mcp status`
 
-#### Skills (Claude Code, Codex, OpenCode, OpenClaw)
+#### Skills (Claude Code, Codex, OpenCode, OpenClaw, Hermes)
 
 Skills integrate via CLI with no MCP overhead and include second-brain recipe playbooks:
 
@@ -400,6 +427,7 @@ gno skill install --scope user        # User-wide
 gno skill install --target codex      # Codex
 gno skill install --target opencode   # OpenCode
 gno skill install --target openclaw   # OpenClaw
+gno skill install --target hermes     # Hermes
 gno skill install --target all        # All targets
 ```
 
@@ -627,10 +655,12 @@ Give your local LLM agents a long-term memory. GNO integrates as a Claude Code s
 
 ### Skills
 
-Skills add GNO search to Claude Code, Codex, OpenCode, and OpenClaw without MCP protocol overhead:
+Skills teach Claude Code, Codex, OpenCode, OpenClaw, and Hermes how to use GNO. Pair the skill with the retrieval protocol for second-brain and LLM-wiki work:
 
 ```bash
 gno skill install --scope user
+gno agents install --target claude
+gno agents verify --target claude
 ```
 
 ![GNO Skill in Claude Code](./assets/screenshots/claudecodeskill.jpg)
@@ -818,7 +848,23 @@ On [Omarchy](https://omarchy.org/), [**GNO Recall**](https://github.com/gmickel/
 omarchy plugin add https://github.com/gmickel/omarchy-gno-recall --enable
 ```
 
-Requires gno >= 1.36.0 on `PATH`.
+Then install the plugin's verified runtime and, optionally, the Super+R binding:
+
+```bash
+cd ~/.config/omarchy/plugins/gmickel.gno-recall
+./scripts/install-runtime.sh
+./scripts/install-keybind.sh # Optional; checks for conflicts
+```
+
+[Marketplace listing](https://omarchyplugins.com/plugin.html?id=gmickel.gno-recall)
+· [Setup and runtime compatibility](https://github.com/gmickel/omarchy-gno-recall#install)
+· [Screenshots](https://github.com/gmickel/omarchy-gno-recall#screenshots)
+
+Recall uses its own verified GNO/Bun runtime. A global GNO upgrade does not
+update it; follow the plugin's update instructions and shared-index
+compatibility guidance.
+
+![GNO Recall searching a demo index](https://raw.githubusercontent.com/gmickel/omarchy-gno-recall/main/assets/screenshots/overlay-search.png)
 
 ---
 

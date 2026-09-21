@@ -1,0 +1,107 @@
+name: Publish GNO skill
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+    secrets:
+      CLAWHUB_TOKEN:
+        required: true
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Released GNO tag to publish (for example v2.2.1)
+        required: true
+        type: string
+      dry_run:
+        description: Preview without publishing
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gno-clawhub-publish
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require an existing public release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_REF: ${{ inputs.ref }}
+        run: |
+          [[ "$RELEASE_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          gh release view "$RELEASE_REF" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease --jq 'if .isDraft or .isPrerelease then error("Stable public release required") else . end'
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Configure publishing credentials
+        env:
+          CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          token = os.environ.get("CLAWHUB_TOKEN", "")
+          if not token and os.environ["DRY_RUN"] != "true":
+              raise SystemExit("Configure the CLAWHUB_TOKEN repository secret before publishing.")
+          path = Path(os.environ["RUNNER_TEMP"]) / "clawhub-config.json"
+          path.write_text(json.dumps({"registry": "https://clawhub.ai", "token": token}))
+          path.chmod(0o600)
+          with open(os.environ["GITHUB_ENV"], "a") as env:
+              env.write(f"CLAWHUB_CONFIG_PATH={path}\n")
+          PYTHON
+      - name: Publish released skill bundle
+        env:
+          RELEASE_REF: ${{ inputs.ref }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+        run: |
+          args=()
+          if [[ "$DRY_RUN" == "true" ]]; then args+=(--dry-run); fi
+          bunx clawhub@0.23.3 skill publish assets/skill \
+            --slug gno --owner gmickel --name GNO \
+            --source-repo "$GITHUB_REPOSITORY" \
+            --source-ref "$RELEASE_REF" --source-commit "$(git rev-parse HEAD)" \
+            --source-path assets/skill --json "${args[@]}" > skill-publish.json
+          cat skill-publish.json
+      - name: Verify published file hashes
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+        run: |
+          if [[ "$DRY_RUN" == "true" ]]; then exit 0; fi
+          version=$(python3 -c 'import json; print(json.load(open("skill-publish.json"))["version"])')
+          bunx clawhub@0.23.3 inspect @gmickel/gno --version "$version" --files --json > skill-inspect.json
+          python3 - <<'PYTHON'
+          import hashlib, json
+          from pathlib import Path
+          root = Path("assets/skill")
+          expected = {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+                      for p in root.rglob("*") if p.is_file()}
+          actual = {f["path"]: f["sha256"] for f in json.load(open("skill-inspect.json"))["version"]["files"]}
+          if actual != expected:
+              raise SystemExit("Published skill file hashes differ from the released bundle")
+          print(f"Verified {len(expected)} released skill files on ClawHub")
+          PYTHON
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: clawhub-skill-publish-json
+          path: |
+            skill-publish.json
+            skill-inspect.json
+          if-no-files-found: ignore

@@ -427,6 +427,8 @@ jobs:
         # No install/build/repack here: this is the archive pack-test exercised.
 
   release:
+    outputs:
+      tag: v${{ steps.version.outputs.version }}
     needs: [publish, package-windows-desktop, package-macos-desktop]
     runs-on: ubuntu-latest
     permissions:
@@ -491,3 +493,13 @@ jobs:
             release-assets/windows/*.zip
             release-assets/macos/*.zip
             release-assets/macos/*.dmg
+
+  publish-skill:
+    needs: release
+    permissions:
+      contents: read
+    uses: ./.github/workflows/publish-skill.yml
+    with:
+      ref: ${{ needs.release.outputs.tag }}
+    secrets:
+      CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
