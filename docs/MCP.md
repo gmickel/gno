@@ -125,6 +125,14 @@ For interactive lookup and manual retrieval control, start with `gno_query`. It
 combines BM25, vector search, and reranking, then returns `uri`, `docid`,
 snippets, and line anchors for follow-up retrieval.
 
+A document hit or citation alone does not establish complete evidence. For a
+multi-source question, use `gno_get` or `gno_multi_get` to inspect every required
+passage and preserve its URI/line citation. Diagnose a known missing target with
+`gno_query_diagnose`; it reports document-stage presence, not a guarantee that all
+answer-bearing text reached the reader. Respect Capsule gaps, omissions, and
+abstention. Support against retained evidence does not prove corpus completeness;
+state any unanswered part explicitly.
+
 Use the narrower tools when the request is explicit:
 
 | Tool                 | Use When                                                                        | Follow-up                                           |

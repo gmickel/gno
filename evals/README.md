@@ -245,6 +245,51 @@ citation and source timestamps remain strict; raw responses remain unaltered.
 Corrected bugs require predeclared complete baseline/candidate
 record hashes and an exhaustive oracle in both manifests; no wildcard deltas.
 
+## Adversarial evidence coverage (development only)
+
+Document recall does not establish that every passage needed for an answer reached
+the reader. This gate scores verified source spans at retrieval, fusion, reranker
+input, and final budgeted delivery, with separate fixed-reader and abstention
+outcomes. A clipped passage or one source from a required multi-source set is not
+complete evidence. Unknown capture stages remain unknown; snippets reconstructed
+after execution do not count as model input.
+
+```bash
+# Score an existing observation bundle; output must not already exist
+bun evals/acceptance/evidence-cli.ts --input observations.json --output new-report.json
+
+# Explicit native CUDA screen; use a new canonical directory with an existing parent
+GNO_LLAMA_GPU=cuda GNO_LLAMA_BUILD=never bun evals/acceptance/evidence-cli.ts --native --output /absolute/new-directory
+```
+
+The native screen uses cached models only, with no downloads or native builds.
+Use `GNO_LLAMA_GPU=metal` on a supported Metal host. It creates an isolated
+synthetic corpus and indexes, then compares current retrieval with the existing
+`noExpand: true` option under matching fixture, model, runtime, scope, and budget
+identities. It does not open your normal index. Missing models, neural fallback,
+incomplete observations, or incomparable identities invalidate a native pair.
+This bounded screen is not a general latency benchmark or proof of other
+transport/platform behavior.
+
+Fixtures pin source and span hashes, acceptable complete evidence sets, held-out
+cases, must-cover cases, and independent token/UTF-8 byte budgets. The declared
+Unicode-conservative estimator is kept separate from exact native tokenization
+observations; tokenizer observations are not total inference billing. Partial
+lines, split evidence across separate reranker inputs, clipped tails, and duplicate
+appearances cannot manufacture complete coverage.
+
+Adoption requires all deterministic guards and must-cover cases, no held-out
+complete-evidence or fixed-reader regression, and a valid paired run. Retain both
+arms, baseline misses, negative results, raw captures, and unavailable measurements.
+Do not lower guards or regenerate fixture pins to hide a failure. Replay can test
+the scorer but never certify native execution or answer quality. The gate itself
+does not change production ranking defaults or add public CLI/MCP options.
+
+Exit `0` means the reported gate passed, `1` means it did not pass, and `2` means
+command/preflight execution failed. Inspect `kind`, validity, per-case outcomes,
+and limitations before interpreting a successful replay as evidence. See the
+[fixture and observation contract](../spec/evals.md#adversarial-evidence-gate-development-only).
+
 ## Current Scores
 
 See [scores.md](scores.md) for latest results. Updated automatically by `bun run evals`.
@@ -467,3 +512,24 @@ See `evalite.config.ts`:
 - `maxConcurrency`: 5
 - `scoreThreshold`: 70% (global; per-eval overrides such as `memory.eval.ts` at 100 live in `EVAL_THRESHOLDS` in `scripts/update-eval-scores.ts` and are passed as `--threshold` by `bun run evals`)
 - `cache`: true (faster iteration)
+
+The evidence gate also accepts `GNO_LLAMA_GPU=false` for an explicitly CPU-only
+native screen using the same cached GGUFs. The receipt labels that backend;
+it does not certify CUDA/Metal behavior and is not a cross-backend timing
+comparison. `rssBytes` is the parent process only. Exact tokenization events
+are retained separately from the conservative handoff budget, not billed-token
+or total native-memory estimates. Do not stop existing workloads to obtain a
+cleaner timing result.
+
+The native screen uses the same 120-second model execution ceiling on both
+arms and single-item embedding batches during untimed index preparation.
+GNO's existing five-second expansion deadline is unchanged; an expansion timeout
+invalidates that observation instead of turning a fallback into a successful
+comparison. The fixed reader returns only literal answer values under a closed JSON
+grammar; an empty array means abstention. This is a narrow fixture task score, not an
+open-ended answer-quality claim.
+
+`readerOutputBytes` records the raw returned reader text. `readerOutputTokens`
+remains null because the reused generation port does not expose decoder token
+usage; no byte heuristic is presented as actual output-token usage. Older
+observation bundles without these fields replay with explicit null values.
