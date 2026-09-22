@@ -1,0 +1,50 @@
+{
+  "branch": "fn-167-adversarial-retrieval-evidence-coverage",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "a136372f50591587db6f1ce2f9204c43fc275f4a",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-5df3bbdea103d8ae06b1862a8cafb030ec0249258bf2fc1297a70b280e56d827"
+  },
+  "head_sha": "a136372f50591587db6f1ce2f9204c43fc275f4a",
+  "id": "fn-167-adversarial-retrieval-evidence-coverage",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "timestamp": "2026-09-22T22:24:22.527505+00:00",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
