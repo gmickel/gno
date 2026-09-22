@@ -207,7 +207,7 @@
     "plan": 0
   },
   "spec_path": ".flow/specs/fn-167-adversarial-retrieval-evidence-coverage.md",
-  "status": "open",
+  "status": "done",
   "title": "Adversarial retrieval evidence coverage gate",
   "tracker": {
     "baseHashFlow": null,
@@ -220,5 +220,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-22T22:24:23.486083Z"
+  "updated_at": "2026-09-22T22:25:54.167942Z"
 }

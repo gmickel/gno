@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-167-adversarial-retrieval-evidence-coverage",
   "spec_path": ".flow/tasks/fn-167-adversarial-retrieval-evidence-coverage.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement adversarial retrieval evidence coverage gate",
   "updated_at": "2026-09-22T22:21:14.433952Z"
 }
