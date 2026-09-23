@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 // node:fs/promises provides temporary-directory lifecycle and directory listing without Bun equivalents.
 import { mkdir, mkdtemp, readdir } from "node:fs/promises";
 // node:os provides the temporary root.
@@ -42,6 +43,51 @@ describe("SQLite write-lock fallback", () => {
     const blocked = await acquireSqliteWriteLock(fixture.lockPath, 20);
     expect(blocked).toBeNull();
     await first?.release();
+  });
+
+  test("lets a same-process owner release while a contender waits", async () => {
+    const fixture = await createLockFixture("async-contention");
+    const first = await acquireSqliteWriteLock(fixture.lockPath, 0);
+    expect(first).not.toBeNull();
+    const attempted = Promise.withResolvers<void>();
+    // Preserve the real method; the spy below binds each actual database via call.
+    // oxlint-disable-next-line typescript-eslint/unbound-method
+    const originalExec = Database.prototype.exec;
+    const execSpy = spyOn(Database.prototype, "exec").mockImplementation(
+      function (this: Database, sql, ...bindings) {
+        if (sql === "BEGIN IMMEDIATE") attempted.resolve();
+        return originalExec.call(this, sql, ...bindings);
+      }
+    );
+    let contender:
+      | Promise<Awaited<ReturnType<typeof acquireSqliteWriteLock>>>
+      | undefined;
+    try {
+      contender = acquireSqliteWriteLock(fixture.lockPath, 250);
+      // The contender has actually attempted the locked transaction before
+      // releasing the owner; a synchronous busy wait prevents this release.
+      await attempted.promise;
+      await first?.release();
+      expect(await contender).not.toBeNull();
+    } finally {
+      execSpy.mockRestore();
+      await first?.release();
+      await (await contender)?.release();
+    }
+  });
+
+  test("zero timeout acquires once and reports immediate contention", async () => {
+    const fixture = await createLockFixture("zero-timeout");
+    const first = await acquireSqliteWriteLock(fixture.lockPath, 0);
+    expect(first).not.toBeNull();
+    try {
+      expect(await acquireSqliteWriteLock(fixture.lockPath, 0)).toBeNull();
+    } finally {
+      await first?.release();
+    }
+    const next = await acquireSqliteWriteLock(fixture.lockPath, 0);
+    expect(next).not.toBeNull();
+    await next?.release();
   });
 
   test("permits the next acquisition after release", async () => {

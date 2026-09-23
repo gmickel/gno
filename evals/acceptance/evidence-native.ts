@@ -169,7 +169,7 @@ export async function runNativeEvidenceScreen(outputDirectory: string) {
           async (name) =>
             [
               name,
-              await hashFile(new URL(name, import.meta.url).pathname),
+              await hashFile(Bun.fileURLToPath(new URL(name, import.meta.url))),
             ] as const
         )
       )

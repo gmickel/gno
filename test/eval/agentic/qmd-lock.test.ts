@@ -245,6 +245,13 @@ const createExactFixture = async () => {
         stdout: dirty ? " M package.json\n" : "",
         stderr: "",
       };
+    if (key === "ls-tree HEAD -- bin/qmd") {
+      return {
+        exitCode: 0,
+        stdout: "100755 blob fixture\tbin/qmd\n",
+        stderr: "",
+      };
+    }
     if (key === "config --get remote.origin.url") {
       return { exitCode: 0, stdout: `${lock.repository.url}\n`, stderr: "" };
     }
@@ -299,7 +306,21 @@ describe("qmd static preflight", () => {
     const fixture = await createExactFixture();
     await chmod(join(fixture.repoPath, "bin/qmd"), 0o644);
     await expectRejectCode(
-      preflightExactFixture(fixture),
+      preflightExactFixture(
+        fixture,
+        process.platform === "win32"
+          ? {
+              commandRunner: (input) =>
+                input.args[0] === "ls-tree"
+                  ? Promise.resolve({
+                      exitCode: 0,
+                      stdout: "100644 blob fixture\tbin/qmd\n",
+                      stderr: "",
+                    })
+                  : fixture.commandRunner(input),
+            }
+          : {}
+      ),
       "qmd_entrypoint_invalid"
     );
   });

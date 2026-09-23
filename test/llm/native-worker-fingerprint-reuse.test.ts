@@ -154,7 +154,8 @@ test.each(["mutation", "replacement"])(
     const initial = await first.execute("init");
     await first.execute("dispose");
     if (change === "mutation") {
-      await Bun.write(path, "synthetic weights B");
+      // Change size as well as bytes: same-tick timestamps can be coarse.
+      await Bun.write(path, "synthetic changed weights B");
     } else {
       const replacement = join(root, "replacement.gguf");
       await Bun.write(replacement, "synthetic weights B");

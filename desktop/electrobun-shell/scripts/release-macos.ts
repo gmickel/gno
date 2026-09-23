@@ -3,7 +3,7 @@ import { cp, mkdir, mkdtemp, readdir, rm, stat } from "node:fs/promises";
 // node:os: temp dir lookup has no Bun equivalent.
 import { tmpdir } from "node:os";
 // node:path: path manipulation has no Bun equivalent.
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, join, posix, resolve } from "node:path";
 
 import shellConfig from "../electrobun.config";
 
@@ -477,6 +477,7 @@ function isCodeSignableExtension(path: string): boolean {
 
 /**
  * Limit expensive `file` probes to paths that the signing policy can act on.
+ * Bundle paths use macOS/POSIX semantics even when classifiers run on another host.
  * A packaged runtime contains tens of thousands of assets; probing every one
  * serially adds minutes without changing which binaries are signed.
  */
@@ -486,7 +487,7 @@ export function isPotentialSigningPath(
 ): boolean {
   return (
     isCodeSignableExtension(candidatePath) ||
-    dirname(candidatePath) === join(appPath, "Contents", "MacOS")
+    posix.dirname(candidatePath) === posix.join(appPath, "Contents", "MacOS")
   );
 }
 
@@ -519,7 +520,7 @@ export type NestedSigningTargets = {
 
 /** The bundled runtime the launcher actually execs. Never resolved by name. */
 export function bundledBunPath(appPath: string): string {
-  return join(appPath, "Contents", "MacOS", "bun");
+  return posix.join(appPath, "Contents", "MacOS", "bun");
 }
 
 /**
@@ -539,7 +540,7 @@ export function classifyNestedSigningTargets(
   appPath: string,
   candidates: SigningCandidate[]
 ): NestedSigningTargets {
-  const macOsDir = join(appPath, "Contents", "MacOS");
+  const macOsDir = posix.join(appPath, "Contents", "MacOS");
   const targets: NestedSigningTargets = {
     extensionMatched: [],
     machOExecutables: [],
@@ -552,7 +553,7 @@ export function classifyNestedSigningTargets(
     }
     if (isCodeSignableExtension(candidate.path)) {
       targets.extensionMatched.push(candidate.path);
-    } else if (dirname(candidate.path) === macOsDir) {
+    } else if (posix.dirname(candidate.path) === macOsDir) {
       targets.machOExecutables.push(candidate.path);
     } else {
       targets.skipped.push(candidate.path);

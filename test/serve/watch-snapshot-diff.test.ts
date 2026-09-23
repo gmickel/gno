@@ -94,7 +94,8 @@ describe("buildWatcherSnapshot + diffWatcherSnapshot", () => {
       return;
     }
 
-    await writeWatchFixture(root, "sub/edit.md", "new");
+    // Change size as well, independent of filesystem timestamp granularity.
+    await writeWatchFixture(root, "sub/edit.md", "new-body");
 
     const diff = await diffWatcherSnapshot(root, built.snapshot, ["sub"], {
       fs,

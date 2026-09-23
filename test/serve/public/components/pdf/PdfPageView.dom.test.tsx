@@ -1180,7 +1180,9 @@ describe("PdfPageView", () => {
       }
     };
     walk(root);
-    const rel = hits.map((h) => h.replace(/.*\/src\//u, "src/"));
+    const rel = hits.map((h) =>
+      h.replaceAll("\\", "/").replace(/.*\/src\//u, "src/")
+    );
     expect(rel).toEqual(["src/serve/public/lib/pdf.ts"]);
   });
 });

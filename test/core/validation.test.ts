@@ -6,9 +6,9 @@ import { afterAll, describe, expect, test } from "bun:test";
 // node:fs/promises for mkdtemp/symlink (no Bun equivalent for structure ops)
 import { mkdtemp, symlink } from "node:fs/promises";
 // node:os for tmpdir (no Bun os utils)
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 // node:path for join (no Bun path utils)
-import { join } from "node:path";
+import { join, parse, resolve } from "node:path";
 
 import {
   validateCollectionRoot,
@@ -55,6 +55,23 @@ describe("validateCollectionRoot", () => {
       error = e;
     }
     expect(error).toBeTruthy();
+  });
+
+  test("rejects filesystem roots on every local drive used by the process", async () => {
+    const roots = new Set([
+      parse(resolve(tmpdir())).root,
+      parse(homedir()).root,
+    ]);
+    for (const root of roots) {
+      let error: unknown;
+      try {
+        await validateCollectionRoot(root);
+      } catch (cause) {
+        error = cause;
+      }
+      expect(error).toBeInstanceOf(Error);
+      expect(String(error)).toContain("dangerous root");
+    }
   });
 
   // Skip on Windows: /etc doesn't exist, symlink creation may need admin

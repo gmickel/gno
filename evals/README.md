@@ -171,6 +171,14 @@ not required. Verification reads the archive and source without extracting or
 modifying them. Missing Python fails before native launch. The report records the actual source root, archive config
 or Git dirty status, per-process identity, preflight duration and raw receipt paths.
 
+Archived instrumentation stays in the development harness. Its Windows observation
+helper bundles the shared ACL implementation into `evals/acceptance/`; installation
+never adds or replaces runtime source files. Receipts record the original helper
+and ACL source hashes separately from deployed file hashes. The archive installation
+mapping also records the Bun version, build settings and bundle hash; a changed
+bundle fails mapping verification. Matching source fingerprints do not imply that
+the current-source wrapper and archived bundle have identical deployed bytes.
+
 ```sh
 bun run eval:acceptance --config /scratch/pair/run.json --native
 ```
@@ -184,13 +192,24 @@ Fresh-process time includes process acquisition, cached-model preflight and the
 whole request. Resident-model-cold requires observed unloaded native models;
 warm and post-idle retain the primer's actual process. Preflight and preparation
 remain visible separately. No model loading, capture, projection or transport
-time is subtracted. Idle duration must fit the observation timeout. Memory
+time is subtracted. Windows model-pin checks reread file bytes because timestamp
+metadata alone can miss rapid same-size edits. Idle duration must fit the observation timeout. Memory
 recovery before/after idle must be read together with the complete next-query
 cost; no universal allowable slowdown is invented.
 
 RSS and optional NVIDIA PID accounting are sampled, may miss peaks, and are not
 added together. Apple unified-memory GPU counters remain null rather than being
 invented or double-counted. Report unrelated host-load caveats explicitly.
+Windows native capture requires Windows PowerShell (`powershell.exe`) and CIM
+process access. CIM supplies RSS, parentage and process creation identity; missing
+observations remain errors rather than zero usage or successful coverage. Capture
+directories receive a protected, inheritable DACL allowing only the current user
+before evidence is written. Bootstrap files are checked again before capture.
+Filesystem ownership must match the current token's User or default Owner SID;
+other owners, reparse paths and broader allowed access are refused. ACL operations
+have bounded time and output, and failure prevents capture. POSIX capture retains
+its owner-only permission checks. Windows mode bits alone are not privacy evidence.
+
 Fewer than 30 paired observations per case/state is inconclusive; p99 is null
 below 100 observations and empirical thereafter. Noisy samples remain
 inconclusive. Retain raw samples and slower block IDs. Exit 0 means `screened`,

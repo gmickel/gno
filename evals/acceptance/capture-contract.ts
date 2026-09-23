@@ -69,7 +69,10 @@ export async function hashFile(path: string): Promise<string> {
   const physical = await realpath(path);
   const identity = await fileIdentity(physical);
   const previous = verifiedFiles.get(physical);
-  if (previous?.identity === identity) return previous.sha256;
+  // Windows timestamp metadata can remain unchanged across rapid same-size edits.
+  // Re-read bytes there; metadata alone cannot prove a pinned model is unchanged.
+  if (process.platform !== "win32" && previous?.identity === identity)
+    return previous.sha256;
   const hash = new Bun.CryptoHasher("sha256");
   const reader = Bun.file(physical).stream().getReader();
   try {

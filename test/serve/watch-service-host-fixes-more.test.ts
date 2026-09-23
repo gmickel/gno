@@ -24,6 +24,7 @@ import {
   type WatchLifecycleHost,
 } from "../../src/serve/watch-service-lifecycle";
 import { safeRm } from "../helpers/cleanup";
+import { portableWatchOptions } from "./helpers/watch-portable-fixtures";
 
 function createCollection(
   name: string,
@@ -90,6 +91,7 @@ describe("ambiguous suppression after dirty classify", () => {
     try {
       await writeFile(join(root, "note.md"), "x");
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -128,6 +130,7 @@ describe("ambiguous suppression after dirty classify", () => {
     try {
       await writeFile(join(root, "only.md"), "x");
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -176,6 +179,7 @@ describe("pattern-matching directory exact path", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,

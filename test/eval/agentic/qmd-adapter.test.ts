@@ -171,7 +171,7 @@ const createHarness = async (
       cwd: command.cwd,
       env: command.env ? { ...command.env } : undefined,
     });
-    if (command.command === "/usr/bin/git") {
+    if (command.command === "git") {
       return { exitCode: 0, stdout: "", stderr: "" };
     }
     if (input.commandFailure) {
@@ -321,7 +321,7 @@ describe("qmd adapter", () => {
     );
     expect(
       harness.commands
-        .filter(({ command }) => command !== "/usr/bin/git")
+        .filter(({ command }) => command !== "git")
         .every(
           ({ command, args }) =>
             command === process.execPath &&

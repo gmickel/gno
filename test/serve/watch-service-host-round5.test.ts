@@ -22,6 +22,10 @@ import {
 import { CollectionWatchService } from "../../src/serve/watch-service";
 import { safeRm } from "../helpers/cleanup";
 import {
+  portableWatchOptions,
+  createPortableWatcherFs,
+} from "./helpers/watch-portable-fixtures";
+import {
   createSyncResult,
   installWatchServiceSyncReset,
 } from "./helpers/watch-service-fixtures";
@@ -136,6 +140,7 @@ describe("proven removal authority", () => {
       await writeFile(join(root, "slot.md"), "was-file");
       // Baseline snapshot while still a file.
       const serviceBoot = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -176,6 +181,7 @@ describe("proven removal authority", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -209,6 +215,7 @@ describe("proven removal authority", () => {
       await writeFile(join(root, "keep.md"), "k");
       // Store reports gone.md active; disk has no file (simulate special/missing).
       const classified = await classifyDirtyHints({
+        snapshotOptions: { fs: createPortableWatcherFs() },
         collection: coll("notes", root),
         store: stubStore({
           listActiveSourcePaths: async () => ({
@@ -285,6 +292,7 @@ describe("overflow progression to full sync", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -325,7 +333,9 @@ describe("overflow progression to full sync", () => {
       await writeFile(join(root, "b.md"), "b");
       const { buildWatcherSnapshot } =
         await import("../../src/serve/watch-snapshot");
-      const built = await buildWatcherSnapshot(root);
+      const built = await buildWatcherSnapshot(root, {
+        fs: createPortableWatcherFs(),
+      });
       expect(built.status).toBe("ok");
       if (built.status !== "ok") {
         throw new Error("baseline required");
@@ -337,7 +347,7 @@ describe("overflow progression to full sync", () => {
         rootAbs: root,
         previous: built.snapshot,
         dirtyHints: [""],
-        snapshotOptions: { entryCeiling: 0 },
+        snapshotOptions: { fs: createPortableWatcherFs(), entryCeiling: 0 },
       });
       expect(classified.status).toBe("full_reconcile");
       if (classified.status === "full_reconcile") {
@@ -359,6 +369,7 @@ describe("overflow progression to full sync", () => {
 
       // Service: real baseline, then entryCeiling 0 forces snapshot overflow→full.
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,

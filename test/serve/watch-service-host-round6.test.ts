@@ -1,6 +1,5 @@
-/** Host review round-6: special exact path + dirty generation retention. */
-
 import { describe, expect, test } from "bun:test";
+/** Host review round-6: special exact path + dirty generation retention. */
 // node:fs/promises — test fixture setup
 import { mkdtemp, unlink, writeFile } from "node:fs/promises";
 // node:os — tmpdir
@@ -12,6 +11,7 @@ import { defaultSyncService } from "../../src/ingestion";
 import { CollectionWatchService } from "../../src/serve/watch-service";
 import { computeTargetedRetry } from "../../src/serve/watch-service-flush-helpers";
 import { safeRm } from "../helpers/cleanup";
+import { portableWatchOptions } from "./helpers/watch-portable-fixtures";
 import {
   coll,
   createSyncResult,
@@ -20,8 +20,8 @@ import {
   originalInactivate,
   statefulInactiveStore,
   stubStore,
-  tryMkfifo,
 } from "./helpers/watch-service-round6-fixtures";
+import { mockSpecialWatcherFile } from "./helpers/watch-special-fixture";
 
 installWatchServiceSyncReset();
 
@@ -31,9 +31,11 @@ describe("exact special path (lstat kind)", () => {
     let cb: ((e: string, f: string | null) => void) | undefined;
     const inactiveBatches: string[][] = [];
     const syncBatches: string[][] = [];
+    let restoreSpecial: (() => void) | undefined;
     try {
       await writeFile(join(root, "special.md"), "was-file");
       const serviceBoot = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -47,9 +49,8 @@ describe("exact special path (lstat kind)", () => {
       await serviceBoot.dispose();
 
       await unlink(join(root, "special.md"));
-      if (!(await tryMkfifo(join(root, "special.md")))) {
-        return;
-      }
+      await Bun.write(join(root, "special.md"), "special fixture");
+      restoreSpecial = mockSpecialWatcherFile(join(root, "special.md"));
 
       const { store, inactive } = statefulInactiveStore(["special.md"]);
       defaultSyncService.inactivateAbsentSources = (async (
@@ -75,6 +76,7 @@ describe("exact special path (lstat kind)", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -94,6 +96,7 @@ describe("exact special path (lstat kind)", () => {
       expect(syncBatches.every((b) => !b.includes("special.md"))).toBe(true);
       await service.dispose();
     } finally {
+      restoreSpecial?.();
       await safeRm(root);
     }
   });
@@ -186,6 +189,7 @@ describe("dirty generation retention", () => {
       }) as typeof defaultSyncService.inactivateAbsentSources;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -264,6 +268,7 @@ describe("dirty generation retention", () => {
         })) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,

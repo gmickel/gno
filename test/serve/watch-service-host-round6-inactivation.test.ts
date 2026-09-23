@@ -1,6 +1,5 @@
-/** Host review round-6: inactivation lookup/edge error surfaces. */
-
 import { describe, expect, test } from "bun:test";
+/** Host review round-6: inactivation lookup/edge error surfaces. */
 // node:fs/promises — test fixture setup
 import { mkdtemp, unlink, writeFile } from "node:fs/promises";
 // node:os — tmpdir
@@ -14,6 +13,7 @@ import type { DocumentRow } from "../../src/store/types";
 import { defaultSyncService } from "../../src/ingestion";
 import { CollectionWatchService } from "../../src/serve/watch-service";
 import { safeRm } from "../helpers/cleanup";
+import { portableWatchOptions } from "./helpers/watch-portable-fixtures";
 import {
   coll,
   createSyncResult,
@@ -121,6 +121,7 @@ describe("inactivateAbsentSources error surfaces", () => {
         })) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -309,6 +310,7 @@ describe("edge failure retains watcher authority", () => {
         })) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,

@@ -81,7 +81,7 @@ jobs:
       - name: Test (Windows)
         if: matrix.os == 'windows-latest'
         shell: cmd
-        run: bun test --concurrency 1
+        run: bun test --max-concurrency=1
         env:
           CI: "true"
 

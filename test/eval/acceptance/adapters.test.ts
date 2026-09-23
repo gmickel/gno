@@ -318,6 +318,9 @@ test.each(["timing", "verdict", "citation"] as const)(
   }
 );
 
+// Each Windows observation pays native PowerShell startup; keep latency assertions unchanged.
+const nativeTestTimeout = process.platform === "win32" ? 60000 : 5000;
+
 test("exact actual inputs, scores and selected evidence survive serialization", async () => {
   const result = await projectAcceptance(
     request,
@@ -406,38 +409,51 @@ test("capture forbids overlap and restores native prototypes after missing cache
   next.restore();
 });
 
-test("owned CLI output cannot turn uninstrumented vectorsUsed into native coverage", async () => {
-  // Bun has no directory creation/removal or canonicalization API.
-  const { mkdtemp, realpath, rm } = await import("node:fs/promises");
-  const { runSurfaceAcceptance } =
-    await import("../../../evals/acceptance/surface-adapter");
-  // Bun has no platform temporary-directory utility.
-  const { tmpdir } = await import("node:os");
-  const root = await realpath(await mkdtemp(`${tmpdir()}/gno-acceptance-cli-`));
-  const req = structuredClone(request);
-  req.manifest.cases[0]!.surface = "cli";
-  try {
-    const result = await runSurfaceAcceptance(
-      req,
-      {
-        cwd: process.cwd(),
-        isolatedRoot: root,
-        args: ["--eval", `console.log(${JSON.stringify(JSON.stringify(raw))})`],
-        env: { GNO_CONFIG_DIR: root, GNO_DATA_DIR: root, GNO_CACHE_DIR: root },
-        capturePath: `${root}/capture.json`,
-        timeoutMs: 10000,
-      },
-      { surface: "cli" },
-      read
+test(
+  "owned CLI output cannot turn uninstrumented vectorsUsed into native coverage",
+  async () => {
+    // Bun has no directory creation/removal or canonicalization API.
+    const { mkdtemp, realpath, rm } = await import("node:fs/promises");
+    const { runSurfaceAcceptance } =
+      await import("../../../evals/acceptance/surface-adapter");
+    // Bun has no platform temporary-directory utility.
+    const { tmpdir } = await import("node:os");
+    const root = await realpath(
+      await mkdtemp(`${tmpdir()}/gno-acceptance-cli-`)
     );
-    expect(result.coverage).toBe("incomplete");
-    expect(result.receipt.modelInputs).toEqual([]);
-    expect(result.reasons).toContain("model_not_exercised:embedding");
-    expect(result.record.deterministic.semanticState.vectorsUsed).toBe(true);
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
+    const req = structuredClone(request);
+    req.manifest.cases[0]!.surface = "cli";
+    try {
+      const result = await runSurfaceAcceptance(
+        req,
+        {
+          cwd: process.cwd(),
+          isolatedRoot: root,
+          args: [
+            "--eval",
+            `console.log(${JSON.stringify(JSON.stringify(raw))})`,
+          ],
+          env: {
+            GNO_CONFIG_DIR: root,
+            GNO_DATA_DIR: root,
+            GNO_CACHE_DIR: root,
+          },
+          capturePath: `${root}/capture.json`,
+          timeoutMs: 10000,
+        },
+        { surface: "cli" },
+        read
+      );
+      expect(result.coverage).toBe("incomplete");
+      expect(result.receipt.modelInputs).toEqual([]);
+      expect(result.reasons).toContain("model_not_exercised:embedding");
+      expect(result.record.deterministic.semanticState.vectorsUsed).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  },
+  nativeTestTimeout
+);
 
 test.each(["used", "false-vector", "fallback", "missing-trace"] as const)(
   "SDK decoration captures actual hidden outcomes with tracing off: %s",

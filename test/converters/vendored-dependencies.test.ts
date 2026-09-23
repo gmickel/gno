@@ -21,7 +21,7 @@ test("vendored converters retain upstream bytes and resolve repaired parser depe
     ["markitdown-ts", "xlsx", "0.20.3"],
     ["officeparser", "pdfjs-dist", "6.3.289"],
   ] as const) {
-    const directory = new URL(`${converter}/`, root).pathname;
+    const directory = Bun.fileURLToPath(new URL(`${converter}/`, root));
     const metadata = await Bun.file(
       Bun.resolveSync(`${parser}/package.json`, directory)
     ).json();

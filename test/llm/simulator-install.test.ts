@@ -98,7 +98,7 @@ test("dependency source and version drift fail closed", async () => {
 
 test("factory installs from an extracted GNO location with a nested dependency copy", async () => {
   const root = await realpath(
-    await mkdtemp(join(tmpdir(), "gno-simulator-package-"))
+    await mkdtemp(join(tmpdir(), "gno simulator package-"))
   );
   const repository = fileURLToPath(new URL("../../", import.meta.url));
   const modules = join(root, "node_modules");

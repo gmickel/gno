@@ -18,6 +18,7 @@ import {
 } from "../../../evals/acceptance/child-receipt";
 import { installNativeCapture } from "../../../evals/acceptance/native-capture";
 import { installParentCapture } from "../../../evals/acceptance/parent-capture";
+import { privateCapturePath } from "../../../evals/acceptance/windows-observation";
 import {
   frameNativeMessage,
   NativeFrameDecoder,
@@ -46,6 +47,7 @@ test("child capture transparently forwards operational arguments and exact reque
     "evals/acceptance/native-child-preload.ts"
   );
   const dispatcher = join(process.cwd(), "src/llm/native-worker/dispatcher.ts");
+  await privateCapturePath(root, true);
   const bootstrap = join(root, "bootstrap.json");
   const exactRequest = {
     version: 1,
@@ -216,6 +218,7 @@ test("actual selected child captures input and hash failure without loading a ba
   const root = await realpath(
     await mkdtemp(join(tmpdir(), "gno-child-capture-"))
   );
+  await privateCapturePath(root, true);
   const path = join(root, "not-a-model.gguf");
   await Bun.write(path, "deliberately not a native model");
   const modelUri = `file:${path}`;
@@ -362,10 +365,10 @@ test("resource scope samples validated actual descendants and leaves unrelated p
   let nativePid = 0;
   let probePid = 0;
   const nativeProgram = `
-    const probe = Bun.spawn([process.execPath, "--no-env-file", "-e", "process.on('disconnect',()=>process.exit(0));setInterval(()=>{},1000)"], {stdout:"ignore",stderr:"ignore",ipc(){}});
+    const probe = Bun.spawn([process.execPath, "--no-env-file", "-e", "process.on('disconnect',()=>process.exit(0));process.on('message',()=>process.exit(0));setInterval(()=>{},1000)"], {stdout:"ignore",stderr:"ignore",ipc(){}});
     process.send({probePid:probe.pid});
     process.on("disconnect",async()=>{probe.kill("SIGTERM");await probe.exited;process.exit(0)});
-    process.on("SIGTERM",async()=>{probe.kill("SIGTERM");await probe.exited;process.exit(0)});
+    process.on("message",async()=>{probe.send("stop");await probe.exited;process.exit(0)});
     setInterval(()=>{},1000);
   `;
   const owner = Bun.spawn(
@@ -376,7 +379,7 @@ test("resource scope samples validated actual descendants and leaves unrelated p
       `
     const child = Bun.spawn([process.execPath, '--no-env-file', '-e', ${JSON.stringify(nativeProgram)}], {stdout:'ignore',stderr:'ignore',ipc(message){process.send(message)}});
     process.send({pid:child.pid});
-    process.on('message', async () => { child.kill('SIGTERM'); await child.exited; process.send({exited:true}); });
+    process.on('message', async () => { child.send('stop'); await child.exited; process.send({exited:true}); });
     process.on('exit',()=>child.kill('SIGTERM'));
   `,
     ],
@@ -451,6 +454,7 @@ test("candidate adapter import and parent capture do not load native leaf module
     await mkdtemp(join(tmpdir(), "gno-native-free-parent-"))
   );
   try {
+    await privateCapturePath(root, true);
     const adapter = join(process.cwd(), "evals/acceptance/native-adapter.ts");
     const bridge = join(process.cwd(), "evals/acceptance/parent-capture.ts");
     const child = Bun.spawn(
@@ -632,6 +636,7 @@ test("actual worker removes only its QA preload before dependency fork; nonentry
     "evals/acceptance/native-child-preload.ts"
   );
   const entry = join(process.cwd(), "src/llm/native-worker/entry.ts");
+  await privateCapturePath(root, true);
   const bootstrap = join(root, "bootstrap.json");
   const probe = join(root, "binding-probe.cjs");
   const observer = join(root, "fork-observer.ts");
@@ -640,7 +645,7 @@ test("actual worker removes only its QA preload before dependency fork; nonentry
   // Bun.spawn does not reproduce that Node compatibility behavior.
   await Bun.write(
     probe,
-    "process.send({args:process.execArgv,ran:true});process.disconnect();"
+    "process.send({args:process.execArgv,ran:true}, () => { process.disconnect(); process.exit(0); });"
   );
   await Bun.write(
     observer,
@@ -698,7 +703,15 @@ test("actual worker removes only its QA preload before dependency fork; nonentry
     const deadline = Date.now() + 5000;
     while (!ready && child.exitCode === null && Date.now() < deadline)
       await Bun.sleep(10);
-    expect(ready).toBe(true);
+    if (!ready) {
+      if (child.exitCode === null) child.kill("SIGKILL");
+      await child.exited;
+      const stderr =
+        child.stderr && typeof child.stderr !== "number"
+          ? await new Response(child.stderr).text()
+          : "stderr unavailable";
+      throw new Error(`Worker readiness failed: ${stderr}`);
+    }
     const observed = await Bun.file(output).json();
     expect(observed.ran).toBe(true);
     expect(observed.args).not.toContain(preload);

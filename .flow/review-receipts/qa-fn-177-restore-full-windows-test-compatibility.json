@@ -1,0 +1,17 @@
+{
+  "branch": "fn-176-run-the-full-windows-suite-in-ci-and",
+  "head_sha": "14dcd93a8d837e85acbeff30469844cdd7be4c60",
+  "id": "fn-177-restore-full-windows-test-compatibility",
+  "mode": "interactive",
+  "na_reason": "No new UI-observable acceptance criteria in this Windows compatibility spec. Real CLI/REST/native execution and packaged runtime checks are recorded in task evidence; hosted documentation passed separate desktop/mobile QA in gno.sh PR70. This is not a visual UI pass.",
+  "open_p0p1": [],
+  "qa_outcome": "NA",
+  "rid_coverage": {
+    "covered": 0,
+    "rids": [],
+    "total": 0
+  },
+  "timestamp": "2026-09-23T22:15:02Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

@@ -19,6 +19,8 @@ import { safeRm } from "../helpers/cleanup";
 const TEST_DIR = join(import.meta.dir, ".temp-mcp-tool-profile-tests");
 const FAKE_HOME = join(TEST_DIR, "home");
 const FAKE_CWD = join(TEST_DIR, "project");
+const ORIGINAL_APPDATA = process.env.APPDATA;
+const ORIGINAL_XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME;
 
 let stdoutOutput: string[] = [];
 const originalWrite = process.stdout.write.bind(process.stdout);
@@ -34,6 +36,8 @@ const profileArgs = (args: ReadonlyArray<string>) => {
 
 describe("gno mcp install --tool-profile", () => {
   beforeEach(async () => {
+    process.env.APPDATA = join(TEST_DIR, "appdata");
+    process.env.XDG_CONFIG_HOME = join(TEST_DIR, "xdg");
     process.stdout.write = mockWrite as typeof process.stdout.write;
     stdoutOutput = [];
     resetGlobals();
@@ -43,6 +47,16 @@ describe("gno mcp install --tool-profile", () => {
   });
 
   afterEach(async () => {
+    if (ORIGINAL_APPDATA === undefined) {
+      delete process.env.APPDATA;
+    } else {
+      process.env.APPDATA = ORIGINAL_APPDATA;
+    }
+    if (ORIGINAL_XDG_CONFIG_HOME === undefined) {
+      delete process.env.XDG_CONFIG_HOME;
+    } else {
+      process.env.XDG_CONFIG_HOME = ORIGINAL_XDG_CONFIG_HOME;
+    }
     process.stdout.write = originalWrite;
     await safeRm(TEST_DIR);
   });

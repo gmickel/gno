@@ -24,6 +24,7 @@ import {
   type WatchLifecycleHost,
 } from "../../src/serve/watch-service-lifecycle";
 import { safeRm } from "../helpers/cleanup";
+import { portableWatchOptions } from "./helpers/watch-portable-fixtures";
 
 function createCollection(
   name: string,
@@ -99,6 +100,7 @@ describe("ownership guard", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -228,6 +230,7 @@ describe("no readiness polling", () => {
       }) as typeof setTimeout;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -292,6 +295,7 @@ describe("no readiness polling", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,

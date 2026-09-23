@@ -1,0 +1,675 @@
+{
+  "source": "https://github.com/gmickel/gno/actions/runs/35921740601/job/107387122846",
+  "probeBranch": "fn177-acl-probe",
+  "bun": "1.4.2",
+  "timeoutMs": 10000,
+  "interpretation": "No stall reproduced in the isolated probe; full-suite synchronous ACL reliability remains unproven.",
+  "groups": [
+    {
+      "group": "original-full-encoded",
+      "samples": 16,
+      "failures": 0,
+      "minimumMs": 287,
+      "maximumMs": 2310
+    },
+    {
+      "group": "original-filtered-plain",
+      "samples": 16,
+      "failures": 0,
+      "minimumMs": 269,
+      "maximumMs": 305
+    },
+    {
+      "group": "original-full-plain",
+      "samples": 16,
+      "failures": 0,
+      "minimumMs": 286,
+      "maximumMs": 338
+    },
+    {
+      "group": "original-filtered-encoded",
+      "samples": 16,
+      "failures": 0,
+      "minimumMs": 269,
+      "maximumMs": 407
+    },
+    {
+      "group": "instrumented-full-encoded",
+      "samples": 3,
+      "failures": 0,
+      "minimumMs": 306,
+      "maximumMs": 330
+    },
+    {
+      "group": "instrumented-filtered-plain",
+      "samples": 3,
+      "failures": 0,
+      "minimumMs": 278,
+      "maximumMs": 297
+    },
+    {
+      "group": "instrumented-full-plain",
+      "samples": 3,
+      "failures": 0,
+      "minimumMs": 296,
+      "maximumMs": 305
+    },
+    {
+      "group": "instrumented-filtered-encoded",
+      "samples": 3,
+      "failures": 0,
+      "minimumMs": 280,
+      "maximumMs": 294
+    }
+  ],
+  "observations": [
+    {
+      "label": "original-0-full-encoded",
+      "elapsedMs": 2310,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-0-filtered-plain",
+      "elapsedMs": 275,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-0-full-plain",
+      "elapsedMs": 298,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-0-filtered-encoded",
+      "elapsedMs": 315,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-1-filtered-plain",
+      "elapsedMs": 269,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-1-full-plain",
+      "elapsedMs": 296,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-1-filtered-encoded",
+      "elapsedMs": 274,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-1-full-encoded",
+      "elapsedMs": 292,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-2-full-plain",
+      "elapsedMs": 338,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-2-filtered-encoded",
+      "elapsedMs": 276,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-2-full-encoded",
+      "elapsedMs": 288,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-2-filtered-plain",
+      "elapsedMs": 281,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-3-filtered-encoded",
+      "elapsedMs": 270,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-3-full-encoded",
+      "elapsedMs": 314,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-3-filtered-plain",
+      "elapsedMs": 281,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-3-full-plain",
+      "elapsedMs": 294,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-4-full-encoded",
+      "elapsedMs": 292,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-4-filtered-plain",
+      "elapsedMs": 298,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-4-full-plain",
+      "elapsedMs": 296,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-4-filtered-encoded",
+      "elapsedMs": 287,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-5-filtered-plain",
+      "elapsedMs": 285,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-5-full-plain",
+      "elapsedMs": 286,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-5-filtered-encoded",
+      "elapsedMs": 276,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-5-full-encoded",
+      "elapsedMs": 298,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-6-full-plain",
+      "elapsedMs": 292,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-6-filtered-encoded",
+      "elapsedMs": 277,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-6-full-encoded",
+      "elapsedMs": 307,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-6-filtered-plain",
+      "elapsedMs": 295,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-7-filtered-encoded",
+      "elapsedMs": 271,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-7-full-encoded",
+      "elapsedMs": 293,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-7-filtered-plain",
+      "elapsedMs": 270,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-7-full-plain",
+      "elapsedMs": 325,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-8-full-encoded",
+      "elapsedMs": 290,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-8-filtered-plain",
+      "elapsedMs": 288,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-8-full-plain",
+      "elapsedMs": 292,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-8-filtered-encoded",
+      "elapsedMs": 273,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-9-filtered-plain",
+      "elapsedMs": 305,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-9-full-plain",
+      "elapsedMs": 290,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-9-filtered-encoded",
+      "elapsedMs": 273,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-9-full-encoded",
+      "elapsedMs": 295,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-10-full-plain",
+      "elapsedMs": 297,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-10-filtered-encoded",
+      "elapsedMs": 291,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-10-full-encoded",
+      "elapsedMs": 305,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-10-filtered-plain",
+      "elapsedMs": 282,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-11-filtered-encoded",
+      "elapsedMs": 269,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-11-full-encoded",
+      "elapsedMs": 289,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-11-filtered-plain",
+      "elapsedMs": 285,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-11-full-plain",
+      "elapsedMs": 295,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-12-full-encoded",
+      "elapsedMs": 294,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-12-filtered-plain",
+      "elapsedMs": 276,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-12-full-plain",
+      "elapsedMs": 318,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-12-filtered-encoded",
+      "elapsedMs": 286,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-13-filtered-plain",
+      "elapsedMs": 280,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-13-full-plain",
+      "elapsedMs": 294,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-13-filtered-encoded",
+      "elapsedMs": 276,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-13-full-encoded",
+      "elapsedMs": 301,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-14-full-plain",
+      "elapsedMs": 302,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-14-filtered-encoded",
+      "elapsedMs": 278,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-14-full-encoded",
+      "elapsedMs": 287,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-14-filtered-plain",
+      "elapsedMs": 274,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-15-filtered-encoded",
+      "elapsedMs": 407,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-15-full-encoded",
+      "elapsedMs": 294,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-15-filtered-plain",
+      "elapsedMs": 282,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "original-15-full-plain",
+      "elapsedMs": 297,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "not-instrumented"
+    },
+    {
+      "label": "instrumented-16-full-encoded",
+      "elapsedMs": 330,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "2026-09-23T21:21:39.9517161Z entry\r\n2026-09-23T21:21:39.9615930Z attributes\r\n2026-09-23T21:21:39.9702065Z identity\r\n2026-09-23T21:21:39.9742587Z acl-read\r\n2026-09-23T21:21:39.9923723Z acl-set\r\n2026-09-23T21:21:39.9933164Z acl-set-done\r\n2026-09-23T21:21:39.9973355Z acl-read\r\n2026-09-23T21:21:39.9973355Z acl-verify\r\n2026-09-23T21:21:40.0091343Z done\r\n"
+    },
+    {
+      "label": "instrumented-16-filtered-plain",
+      "elapsedMs": 290,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "2026-09-23T21:21:40.2454487Z entry\r\n2026-09-23T21:21:40.2534600Z attributes\r\n2026-09-23T21:21:40.2628893Z identity\r\n2026-09-23T21:21:40.2669075Z acl-read\r\n2026-09-23T21:21:40.2847379Z acl-set\r\n2026-09-23T21:21:40.2847379Z acl-set-done\r\n2026-09-23T21:21:40.2887548Z acl-read\r\n2026-09-23T21:21:40.2887548Z acl-verify\r\n2026-09-23T21:21:40.3013355Z done\r\n"
+    },
+    {
+      "label": "instrumented-16-full-plain",
+      "elapsedMs": 305,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "2026-09-23T21:21:40.5516168Z entry\r\n2026-09-23T21:21:40.5608835Z attributes\r\n2026-09-23T21:21:40.5686680Z identity\r\n2026-09-23T21:21:40.5726871Z acl-read\r\n2026-09-23T21:21:40.5913946Z acl-set\r\n2026-09-23T21:21:40.5934216Z acl-set-done\r\n2026-09-23T21:21:40.5962873Z acl-read\r\n2026-09-23T21:21:40.5962873Z acl-verify\r\n2026-09-23T21:21:40.6091303Z done\r\n"
+    },
+    {
+      "label": "instrumented-16-filtered-encoded",
+      "elapsedMs": 280,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "2026-09-23T21:21:40.8329955Z entry\r\n2026-09-23T21:21:40.8413299Z attributes\r\n2026-09-23T21:21:40.8507831Z identity\r\n2026-09-23T21:21:40.8548387Z acl-read\r\n2026-09-23T21:21:40.8728132Z acl-set\r\n2026-09-23T21:21:40.8748218Z acl-set-done\r\n2026-09-23T21:21:40.8773750Z acl-read\r\n2026-09-23T21:21:40.8773750Z acl-verify\r\n2026-09-23T21:21:40.8897991Z done\r\n"
+    },
+    {
+      "label": "instrumented-17-filtered-plain",
+      "elapsedMs": 278,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "2026-09-23T21:21:41.1138536Z entry\r\n2026-09-23T21:21:41.1216435Z attributes\r\n2026-09-23T21:21:41.1316953Z identity\r\n2026-09-23T21:21:41.1354611Z acl-read\r\n2026-09-23T21:21:41.1532896Z acl-set\r\n2026-09-23T21:21:41.1552988Z acl-set-done\r\n2026-09-23T21:21:41.1581090Z acl-read\r\n2026-09-23T21:21:41.1593204Z acl-verify\r\n2026-09-23T21:21:41.1691126Z done\r\n"
+    },
+    {
+      "label": "instrumented-17-full-plain",
+      "elapsedMs": 296,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "2026-09-23T21:21:41.4120490Z entry\r\n2026-09-23T21:21:41.4201553Z attributes\r\n2026-09-23T21:21:41.4291743Z identity\r\n2026-09-23T21:21:41.4332164Z acl-read\r\n2026-09-23T21:21:41.4511599Z acl-set\r\n2026-09-23T21:21:41.4529281Z acl-set-done\r\n2026-09-23T21:21:41.4569697Z acl-read\r\n2026-09-23T21:21:41.4569697Z acl-verify\r\n2026-09-23T21:21:41.4688024Z done\r\n"
+    },
+    {
+      "label": "instrumented-17-filtered-encoded",
+      "elapsedMs": 294,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "2026-09-23T21:21:41.7052600Z entry\r\n2026-09-23T21:21:41.7151294Z attributes\r\n2026-09-23T21:21:41.7250011Z identity\r\n2026-09-23T21:21:41.7290432Z acl-read\r\n2026-09-23T21:21:41.7469495Z acl-set\r\n2026-09-23T21:21:41.7489658Z acl-set-done\r\n2026-09-23T21:21:41.7509830Z acl-read\r\n2026-09-23T21:21:41.7509830Z acl-verify\r\n2026-09-23T21:21:41.7628361Z done\r\n"
+    },
+    {
+      "label": "instrumented-17-full-encoded",
+      "elapsedMs": 306,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "2026-09-23T21:21:42.0137017Z entry\r\n2026-09-23T21:21:42.0233468Z attributes\r\n2026-09-23T21:21:42.0315122Z identity\r\n2026-09-23T21:21:42.0355660Z acl-read\r\n2026-09-23T21:21:42.0531461Z acl-set\r\n2026-09-23T21:21:42.0551550Z acl-set-done\r\n2026-09-23T21:21:42.0594314Z acl-read\r\n2026-09-23T21:21:42.0594314Z acl-verify\r\n2026-09-23T21:21:42.0714915Z done\r\n"
+    },
+    {
+      "label": "instrumented-18-full-plain",
+      "elapsedMs": 298,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "2026-09-23T21:21:42.3145364Z entry\r\n2026-09-23T21:21:42.3225730Z attributes\r\n2026-09-23T21:21:42.3327151Z identity\r\n2026-09-23T21:21:42.3367688Z acl-read\r\n2026-09-23T21:21:42.3550096Z acl-set\r\n2026-09-23T21:21:42.3562314Z acl-set-done\r\n2026-09-23T21:21:42.3600008Z acl-read\r\n2026-09-23T21:21:42.3600008Z acl-verify\r\n2026-09-23T21:21:42.3700550Z done\r\n"
+    },
+    {
+      "label": "instrumented-18-filtered-encoded",
+      "elapsedMs": 289,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "2026-09-23T21:21:42.6008406Z entry\r\n2026-09-23T21:21:42.6089438Z attributes\r\n2026-09-23T21:21:42.6185999Z identity\r\n2026-09-23T21:21:42.6226511Z acl-read\r\n2026-09-23T21:21:42.6460634Z acl-set\r\n2026-09-23T21:21:42.6460634Z acl-set-done\r\n2026-09-23T21:21:42.6501081Z acl-read\r\n2026-09-23T21:21:42.6501081Z acl-verify\r\n2026-09-23T21:21:42.6619820Z done\r\n"
+    },
+    {
+      "label": "instrumented-18-full-encoded",
+      "elapsedMs": 307,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "2026-09-23T21:21:42.9139644Z entry\r\n2026-09-23T21:21:42.9220493Z attributes\r\n2026-09-23T21:21:42.9319046Z identity\r\n2026-09-23T21:21:42.9359465Z acl-read\r\n2026-09-23T21:21:42.9538868Z acl-set\r\n2026-09-23T21:21:42.9555038Z acl-set-done\r\n2026-09-23T21:21:42.9579749Z acl-read\r\n2026-09-23T21:21:42.9579749Z acl-verify\r\n2026-09-23T21:21:42.9701102Z done\r\n"
+    },
+    {
+      "label": "instrumented-18-filtered-plain",
+      "elapsedMs": 297,
+      "exitCode": 0,
+      "success": true,
+      "stderr": "",
+      "phases": "2026-09-23T21:21:43.2076006Z entry\r\n2026-09-23T21:21:43.2159449Z attributes\r\n2026-09-23T21:21:43.2255346Z identity\r\n2026-09-23T21:21:43.2311186Z acl-read\r\n2026-09-23T21:21:43.2513737Z acl-set\r\n2026-09-23T21:21:43.2533889Z acl-set-done\r\n2026-09-23T21:21:43.2571280Z acl-read\r\n2026-09-23T21:21:43.2571280Z acl-verify\r\n2026-09-23T21:21:43.2690130Z done\r\n"
+    }
+  ]
+}

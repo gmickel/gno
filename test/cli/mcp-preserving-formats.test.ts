@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { installMcp } from "../../src/cli/commands/mcp/install";
+import { resolveMcpConfigPath } from "../../src/cli/commands/mcp/paths";
 import { checkMcpTargetStatus } from "../../src/cli/commands/mcp/status";
 import { uninstallMcp } from "../../src/cli/commands/mcp/uninstall";
 import { safeRm } from "../helpers/cleanup";
@@ -11,8 +12,10 @@ const TEST_DIR = join(import.meta.dir, ".temp-mcp-preserving-formats");
 const HOME_DIR = join(TEST_DIR, "home");
 const PROJECT_DIR = join(TEST_DIR, "project");
 const ORIGINAL_XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME;
+const ORIGINAL_APPDATA = process.env.APPDATA;
 
 beforeEach(async () => {
+  process.env.APPDATA = join(TEST_DIR, "appdata");
   await safeRm(TEST_DIR);
   await Promise.all([
     mkdir(HOME_DIR, { recursive: true }),
@@ -22,6 +25,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  if (ORIGINAL_APPDATA === undefined) {
+    delete process.env.APPDATA;
+  } else {
+    process.env.APPDATA = ORIGINAL_APPDATA;
+  }
   if (ORIGINAL_XDG_CONFIG_HOME === undefined) {
     delete process.env.XDG_CONFIG_HOME;
   } else {
@@ -32,8 +40,11 @@ afterEach(async () => {
 
 describe("comment-preserving MCP config formats", () => {
   test("Zed JSONC comments and trailing commas survive install, update, and uninstall", async () => {
-    const configPath = join(TEST_DIR, "xdg", "zed", "settings.json");
-    await mkdir(join(TEST_DIR, "xdg", "zed"), { recursive: true });
+    const { configPath } = resolveMcpConfigPath({
+      target: "zed",
+      homeDir: HOME_DIR,
+    });
+    await mkdir(dirname(configPath), { recursive: true });
     const original = `{
   // keep this Zed setting
   "theme": "Ayu Dark",

@@ -5,6 +5,8 @@
 import type { WatchListener } from "node:fs";
 
 import { describe, expect, mock, test } from "bun:test";
+// node:path — Bun has no path utilities.
+import { normalize } from "node:path";
 
 import {
   defaultSyncService,
@@ -12,6 +14,7 @@ import {
 } from "../../src/ingestion";
 import { CollectionWatchService } from "../../src/serve/watch-service";
 import { watcherCollectionFingerprint } from "../../src/serve/watch-service-lifecycle";
+import { portableWatchOptions } from "./helpers/watch-portable-fixtures";
 import {
   createCollection,
   createStubStore,
@@ -36,7 +39,7 @@ async function waitUntil(
 
 describe("watcherCollectionFingerprint", () => {
   test("tracks the effective collection and run-level source availability", () => {
-    const collection = createCollection("notes", "/tmp/notes");
+    const collection = createCollection("notes", normalize("/tmp/notes"));
     const defaultFingerprint = watcherCollectionFingerprint(collection, {});
     const explicitAnyFingerprint = watcherCollectionFingerprint(
       { ...collection, sourceAvailability: "any" },
@@ -67,7 +70,8 @@ describe("CollectionWatchService lifecycle", () => {
     const watchCalls: string[] = [];
 
     const service = new CollectionWatchService({
-      collections: [createCollection("notes", "/tmp/notes")],
+      ...portableWatchOptions(),
+      collections: [createCollection("notes", normalize("/tmp/notes"))],
       eventBus: { emit: () => undefined } as never,
       scheduler: null,
       store: createStubStore(),
@@ -85,24 +89,30 @@ describe("CollectionWatchService lifecycle", () => {
     expect(service.getState().activeCollections).toEqual(["notes"]);
 
     service.updateCollections([
-      createCollection("work", "/tmp/work"),
-      createCollection("notes", "/tmp/notes"),
+      createCollection("work", normalize("/tmp/work")),
+      createCollection("notes", normalize("/tmp/notes")),
     ]);
 
     expect(service.getState().activeCollections.sort()).toEqual([
       "notes",
       "work",
     ]);
-    expect(watchCalls).toEqual(["/tmp/notes", "/tmp/work"]);
+    expect(watchCalls).toEqual([
+      normalize("/tmp/notes"),
+      normalize("/tmp/work"),
+    ]);
 
-    service.updateCollections([createCollection("work", "/tmp/work")]);
+    service.updateCollections([
+      createCollection("work", normalize("/tmp/work")),
+    ]);
     expect(service.getState().activeCollections).toEqual(["work"]);
-    expect(closed).toEqual(["/tmp/notes"]);
+    expect(closed).toEqual([normalize("/tmp/notes")]);
   });
 
   test("failed watcher starts are surfaced in state", () => {
     const service = new CollectionWatchService({
-      collections: [createCollection("notes", "/tmp/notes")],
+      ...portableWatchOptions(),
+      collections: [createCollection("notes", normalize("/tmp/notes"))],
       eventBus: { emit: () => undefined } as never,
       scheduler: null,
       store: createStubStore(),
@@ -140,7 +150,8 @@ describe("CollectionWatchService lifecycle", () => {
       syncCollection as typeof defaultSyncService.syncCollection;
 
     const service = new CollectionWatchService({
-      collections: [createCollection("notes", "/tmp/notes")],
+      ...portableWatchOptions(),
+      collections: [createCollection("notes", normalize("/tmp/notes"))],
       eventBus: { emit } as never,
       scheduler: null,
       store: createStubStore(),
@@ -158,7 +169,9 @@ describe("CollectionWatchService lifecycle", () => {
     watcherCallback?.("change", "note.md");
     await Bun.sleep(350);
 
-    service.updateCollections([createCollection("notes", "/tmp/notes")]);
+    service.updateCollections([
+      createCollection("notes", normalize("/tmp/notes")),
+    ]);
     finishSync?.();
     await Bun.sleep(20);
 
@@ -188,7 +201,8 @@ describe("CollectionWatchService lifecycle", () => {
       syncCollection as typeof defaultSyncService.syncCollection;
 
     const service = new CollectionWatchService({
-      collections: [createCollection("notes", "/tmp/notes")],
+      ...portableWatchOptions(),
+      collections: [createCollection("notes", normalize("/tmp/notes"))],
       eventBus: { emit } as never,
       scheduler: { notifySyncComplete } as never,
       store: createStubStore(),
@@ -225,7 +239,8 @@ describe("CollectionWatchService lifecycle", () => {
       (eventType: string, filename: string) => void
     >();
     const service = new CollectionWatchService({
-      collections: [createCollection("notes", "/tmp/old-notes")],
+      ...portableWatchOptions(),
+      collections: [createCollection("notes", normalize("/tmp/old-notes"))],
       eventBus: null,
       scheduler: null,
       store: createStubStore(),
@@ -249,11 +264,14 @@ describe("CollectionWatchService lifecycle", () => {
 
     service.start();
     service.updateCollections([
-      createCollection("notes", "/tmp/replacement-notes"),
+      createCollection("notes", normalize("/tmp/replacement-notes")),
     ]);
 
-    expect(watchedPaths).toEqual(["/tmp/old-notes", "/tmp/replacement-notes"]);
-    expect(closedPaths).toEqual(["/tmp/old-notes"]);
+    expect(watchedPaths).toEqual([
+      normalize("/tmp/old-notes"),
+      normalize("/tmp/replacement-notes"),
+    ]);
+    expect(closedPaths).toEqual([normalize("/tmp/old-notes")]);
     expect(service.getState().activeCollections).toEqual(["notes"]);
     expect(callbacks.size).toBe(2);
     await service.dispose();
@@ -296,7 +314,8 @@ describe("CollectionWatchService lifecycle", () => {
       syncCollection as typeof defaultSyncService.syncCollection;
 
     const service = new CollectionWatchService({
-      collections: [createCollection("notes", "/tmp/old-notes")],
+      ...portableWatchOptions(),
+      collections: [createCollection("notes", normalize("/tmp/old-notes"))],
       eventBus: { emit } as never,
       scheduler: { notifySyncComplete } as never,
       store: createStubStore(),
@@ -315,15 +334,15 @@ describe("CollectionWatchService lifecycle", () => {
 
     try {
       service.start();
-      callbacks.get("/tmp/old-notes")?.("change", "old.md");
+      callbacks.get(normalize("/tmp/old-notes"))?.("change", "old.md");
       await waitUntil(() => seenPaths.length > 0, "first path sync to start");
       expect(seenPaths).toEqual([["old.md"]]);
 
       service.updateCollections([]);
       service.updateCollections([
-        createCollection("notes", "/tmp/replacement-notes"),
+        createCollection("notes", normalize("/tmp/replacement-notes")),
       ]);
-      callbacks.get("/tmp/replacement-notes")?.("change", "new.md");
+      callbacks.get(normalize("/tmp/replacement-notes"))?.("change", "new.md");
       expect(service.getState().queuedCollections).toEqual(["notes"]);
       expect(seenPaths).toEqual([["old.md"]]);
 
@@ -391,7 +410,8 @@ describe("CollectionWatchService lifecycle", () => {
     }) as typeof defaultSyncService.syncCollection;
 
     const service = new CollectionWatchService({
-      collections: [createCollection("notes", "/tmp/old-notes")],
+      ...portableWatchOptions(),
+      collections: [createCollection("notes", normalize("/tmp/old-notes"))],
       eventBus: null,
       scheduler: null,
       store: createStubStore(),
@@ -410,15 +430,15 @@ describe("CollectionWatchService lifecycle", () => {
 
     try {
       service.start();
-      callbacks.get("/tmp/old-notes")?.("change", "old.md");
+      callbacks.get(normalize("/tmp/old-notes"))?.("change", "old.md");
       await waitUntil(() => seenPaths.length > 0, "first path sync to start");
       service.updateCollections([
-        createCollection("notes", "/tmp/replacement-notes"),
+        createCollection("notes", normalize("/tmp/replacement-notes")),
       ]);
 
       finishFirstSync?.();
       await waitUntil(() => fullSyncStarted, "full reconciliation to start");
-      callbacks.get("/tmp/replacement-notes")?.("change", "new.md");
+      callbacks.get(normalize("/tmp/replacement-notes"))?.("change", "new.md");
       expect(service.getState().queuedCollections).toEqual(["notes"]);
       finishFullSync?.();
       await waitUntil(
@@ -483,7 +503,8 @@ describe("CollectionWatchService lifecycle", () => {
     }) as typeof defaultSyncService.syncCollection;
 
     const service = new CollectionWatchService({
-      collections: [createCollection("notes", "/tmp/notes")],
+      ...portableWatchOptions(),
+      collections: [createCollection("notes", normalize("/tmp/notes"))],
       eventBus: null,
       scheduler: null,
       store: createStubStore(),
@@ -501,9 +522,12 @@ describe("CollectionWatchService lifecycle", () => {
     });
 
     service.start();
-    service.updateCollections([createCollection("notes", "/tmp/notes")], {
-      contentTypeRulesFingerprint: "after",
-    });
+    service.updateCollections(
+      [createCollection("notes", normalize("/tmp/notes"))],
+      {
+        contentTypeRulesFingerprint: "after",
+      }
+    );
     await Bun.sleep(400);
     watcherCallback?.("change", "doc.md");
     await Bun.sleep(400);
@@ -514,7 +538,7 @@ describe("CollectionWatchService lifecycle", () => {
   });
 
   test("source availability changes invalidate the generation and reconcile with the effective mode", async () => {
-    const collection = createCollection("notes", "/tmp/notes");
+    const collection = createCollection("notes", normalize("/tmp/notes"));
     const seenModes: string[] = [];
 
     defaultSyncService.syncCollection = (async (
@@ -527,6 +551,7 @@ describe("CollectionWatchService lifecycle", () => {
     }) as typeof defaultSyncService.syncCollection;
 
     const service = new CollectionWatchService({
+      ...portableWatchOptions(),
       collections: [collection],
       eventBus: null,
       scheduler: null,

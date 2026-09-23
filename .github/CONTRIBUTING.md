@@ -45,6 +45,9 @@ do not substitute for them. Evalite remains opt-in.
 - TEMP on D: drive (faster than C: on GH runners)
 - SQLite CI-mode pragmas (synchronous=OFF, journal_mode=MEMORY)
 - Batch transactions in SyncService (50 docs/tx)
+- Use `bun test --max-concurrency=1` for the complete Windows inventory.
+  `test/scripts/windows-test-scope.test.ts` executes both workflow commands
+  against numbered and unnumbered files to catch accidental filename filters.
 
 ## Release Process
 

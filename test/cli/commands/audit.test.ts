@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 // node:fs/promises provides filesystem metadata mutation with no Bun equivalent.
 import { chmod, mkdir, mkdtemp, rename, stat, utimes } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { getIndexDbPath } from "../../../src/app/constants";
 import { audit } from "../../../src/cli/commands/audit";
 import { runCli } from "../../../src/cli/run";
+import { windowsPrivatePath } from "../../../src/core/windows-private-path";
 import { safeRm } from "../../helpers/cleanup";
 
 const hashFile = async (path: string): Promise<string> =>
@@ -440,7 +441,25 @@ describe("gno audit CLI", () => {
 
   test("reports an unreadable source as unavailable instead of failing", async () => {
     const sourcePath = join(notes, "a.md");
-    await chmod(sourcePath, 0o000);
+    const originalFile = Bun.file;
+    const fileSpy = spyOn(Bun, "file").mockImplementation((path, options) => {
+      const file =
+        typeof path === "number"
+          ? originalFile(path, options)
+          : typeof path === "string" || path instanceof URL
+            ? originalFile(path, options)
+            : originalFile(path, options);
+      if (path === sourcePath) {
+        // POSIX chmod does not deny reads on Windows or under root. Exercise
+        // the same unreadable-source branch with a deterministic OS error.
+        file.slice = () => {
+          throw Object.assign(new Error("Permission denied"), {
+            code: "EACCES",
+          });
+        };
+      }
+      return file;
+    });
     try {
       const result = await audit({ category: "provenance" });
       expect(result.success).toBe(true);
@@ -456,7 +475,7 @@ describe("gno audit CLI", () => {
         );
       }
     } finally {
-      await chmod(sourcePath, 0o644);
+      fileSpy.mockRestore();
     }
   });
 
@@ -741,25 +760,55 @@ describe("gno audit CLI", () => {
     expect(await runCli(["bun", "gno", "audit", "--json"])).toBe(2);
   });
 
-  test("writes an explicitly requested private report artifact", async () => {
-    const reportPath = join(root, "audit.json");
-    await Bun.write(reportPath, "pre-existing\n");
-    await chmod(reportPath, 0o644);
-    const originalInode = (await stat(reportPath)).ino;
-    const code = await runCli([
-      "bun",
-      "gno",
-      "audit",
-      "links",
-      "--json",
-      "--output",
-      reportPath,
-    ]);
-    expect(code).toBe(0);
-    expect(JSON.parse(await Bun.file(reportPath).text()).schemaVersion).toBe(
-      "1.0"
-    );
-    expect((await stat(reportPath)).mode & 0o777).toBe(0o600);
-    expect((await stat(reportPath)).ino).not.toBe(originalInode);
-  });
+  // Three bounded Windows ACL subprocesses may each consume up to 10 seconds.
+  test(
+    "writes an explicitly requested private report artifact",
+    async () => {
+      process.stdout.write = originalStdoutWrite;
+      const reportPath = join(root, "audit.json");
+      await Bun.write(reportPath, "pre-existing\n");
+      await chmod(reportPath, 0o644);
+      const originalInode = (await stat(reportPath)).ino;
+      const child = Bun.spawn(
+        [
+          process.execPath,
+          "--no-env-file",
+          Bun.fileURLToPath(new URL("../../../src/index.ts", import.meta.url)),
+          "audit",
+          "links",
+          "--json",
+          "--output",
+          reportPath,
+        ],
+        {
+          env: process.env,
+          stdin: "ignore",
+          stdout: "pipe",
+          stderr: "pipe",
+          timeout: 25000,
+        }
+      );
+      let stdout: string;
+      try {
+        const [captured, stderr, code] = await Promise.all([
+          new Response(child.stdout).text(),
+          new Response(child.stderr).text(),
+          child.exited,
+        ]);
+        stdout = captured;
+        expect({ code, stderr }).toEqual({ code: 0, stderr: "" });
+      } finally {
+        if (child.exitCode === null) child.kill("SIGKILL");
+        await child.exited;
+      }
+      const report = JSON.parse(await Bun.file(reportPath).text());
+      expect(report.schemaVersion).toBe("1.0");
+      expect(JSON.parse(stdout)).toEqual(report);
+      if (process.platform === "win32")
+        await expect(windowsPrivatePath(reportPath)).resolves.toBeUndefined();
+      else expect((await stat(reportPath)).mode & 0o777).toBe(0o600);
+      expect((await stat(reportPath)).ino).not.toBe(originalInode);
+    },
+    process.platform === "win32" ? 35000 : 5000
+  );
 });

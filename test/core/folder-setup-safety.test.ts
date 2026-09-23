@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, realpath, symlink, writeFile } from "node:fs/promises";
 // node:os has no Bun temp-directory helper.
 import { tmpdir } from "node:os";
 // node:path has no Bun path utilities.
-import { join } from "node:path";
+import { join, sep } from "node:path";
 
 import type { Collection, Config } from "../../src/config";
 
@@ -99,7 +99,12 @@ describe("verified folder setup safety boundaries", () => {
       folderRealpath: "/tmp/folder",
     });
     expect(path).toBe(
-      "/var/gno/setup-receipts/default/04bd648861b09d5058192fc6e12328a75f65478f1437b920d1ad871037f9af94.json"
+      join(
+        "/var/gno",
+        "setup-receipts",
+        "default",
+        "04bd648861b09d5058192fc6e12328a75f65478f1437b920d1ad871037f9af94.json"
+      )
     );
   });
 
@@ -155,7 +160,9 @@ describe("verified folder setup safety boundaries", () => {
           },
         });
         expect(writes).toBe(failedWrite);
-        expect(result.receipt?.paths.receipt).toContain("/setup-receipts/");
+        expect(result.receipt?.paths.receipt).toContain(
+          `${sep}setup-receipts${sep}`
+        );
       } finally {
         await harness.store.close();
       }

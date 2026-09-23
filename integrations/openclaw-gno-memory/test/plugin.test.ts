@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 // node:fs/promises + node:os + node:path: tmp dirs, symlinks, and expected
 // path forms for the root-normalization cases (no Bun equivalents).
-import { mkdtemp, rm, symlink } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -37,7 +37,7 @@ import {
   type FakeScript,
 } from "./fake-gno";
 
-const ROOT = "/sandbox/workspace";
+const ROOT = resolve("/sandbox/workspace");
 const tmpDirs: string[] = [];
 
 afterEach(async () => {
@@ -221,7 +221,7 @@ describe("collection provisioning", () => {
     );
     const error = await rejection(backend.ensureCollection(ROOT));
     expect(error.kind).toBe("gno_command_failed");
-    expect(error.message).toContain("/elsewhere");
+    expect(error.message).toContain(resolve("/elsewhere"));
   });
 
   test("an uninitialized GNO is a clear error, not a silent add", async () => {
@@ -302,7 +302,11 @@ describe("collection provisioning", () => {
     const real = join(base, "real");
     const link = join(base, "link");
     await Bun.write(join(real, ".keep"), "");
-    await symlink(real, link);
+    await symlink(
+      real,
+      link,
+      process.platform === "win32" ? "junction" : "dir"
+    );
     const canonical = normalizeRoot(real);
     expect(normalizeRoot(`${link}/`)).toBe(canonical);
     const { backend } = backendWith(
@@ -542,15 +546,20 @@ describe("execFileRunner spawn failures", () => {
   test("a non-executable binary reports the spawn error, not exit null", async () => {
     const dir = await mkdtemp(join(tmpdir(), "gno-memory-runner-"));
     try {
-      const binary = join(dir, "not-executable");
-      await Bun.write(binary, "#!/bin/sh\necho hi\n");
+      // A directory cannot be executed on either POSIX or Windows.
+      const binary = join(dir, "not-executable.exe");
+      await mkdir(binary);
       const result = await execFileRunner(binary, ["--version"], {
         timeoutMs: 5000,
       });
       expect(result.code).toBe(1);
-      expect(result.notFound).toBe(false);
+      // Windows reports ENOENT for a directory used as an executable;
+      // POSIX reports EACCES. Both must retain the actual spawn diagnostic.
+      expect(result.notFound).toBe(process.platform === "win32");
       expect(result.timedOut).toBe(false);
-      expect(result.stderr).toMatch(/EACCES|spawn/);
+      expect(result.stderr).toMatch(
+        process.platform === "win32" ? /ENOENT/ : /EACCES/
+      );
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

@@ -1,0 +1,16 @@
+{
+  "head": "fc94700b520b984c2bb71394a5f4e04c987d70ff",
+  "run": 35912746439,
+  "job": 107356736844,
+  "command": "bun test --max-concurrency=1",
+  "bun": "1.4.2",
+  "complete": true,
+  "pass": 5373,
+  "skip": 29,
+  "fail": 0,
+  "tests": 5402,
+  "files": 643,
+  "elapsedSeconds": 450.14,
+  "url": "https://github.com/gmickel/gno/actions/runs/35912746439/job/107356736844",
+  "remainingGate": "CodeQL bootstrap pathname check/read race; remediation requires new verification."
+}

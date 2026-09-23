@@ -48,7 +48,10 @@ describe("CLI config writer routing", () => {
     const directWriters: string[] = [];
     for await (const path of new Bun.Glob("src/**/*.ts").scan(".")) {
       const source = await Bun.file(path).text();
-      if (/\bsaveConfig(?:ToPath)?\s*\(/.test(source) && !allowed.has(path)) {
+      if (
+        /\bsaveConfig(?:ToPath)?\s*\(/.test(source) &&
+        !allowed.has(path.replaceAll("\\", "/"))
+      ) {
         directWriters.push(path);
       }
     }

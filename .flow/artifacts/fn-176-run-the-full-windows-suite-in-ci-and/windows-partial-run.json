@@ -1,0 +1,726 @@
+{
+  "run": "https://github.com/gmickel/gno/actions/runs/35879140015",
+  "job": "https://github.com/gmickel/gno/actions/runs/35879140015/job/107242846993",
+  "complete": false,
+  "reason": "Cancelled after about20minutes to retrieve diagnostics; no release publication",
+  "passedBeforeCancellation": 4135,
+  "failedBeforeCancellation": 179,
+  "failures": [
+    {
+      "file": "test/bench/cjk-benchmark.test.ts",
+      "test": "CJK benchmark contracts > runs production ingestion, BM25, model-free hybrid, and diagnostics [107.24ms]"
+    },
+    {
+      "file": "test/bench/cjk-benchmark.test.ts",
+      "test": "CJK benchmark contracts > keeps the semantically unique ranking source below rank five in production BM25 [146.69ms]"
+    },
+    {
+      "file": "test/bench/cjk-fixtures.test.ts",
+      "test": "CJK lexical benchmark fixture contract > freezes every opaque corpus document with license and digest [1.49ms]"
+    },
+    {
+      "file": "test/changes/restoration.test.ts",
+      "test": "identical restoration activates once per cycle (verified=%s) [5013.95ms]"
+    },
+    {
+      "file": "test/changes/restoration.test.ts",
+      "test": "identical restoration activates once per cycle (verified=%s) [5001.61ms]"
+    },
+    {
+      "file": "test/changes/restoration.test.ts",
+      "test": "filename rename recomputes changed title input and matches clean rebuild (verified=%s) [5001.11ms]"
+    },
+    {
+      "file": "test/changes/restoration.test.ts",
+      "test": "filename rename recomputes changed title input and matches clean rebuild (verified=%s) [5001.74ms]"
+    },
+    {
+      "file": "test/cli/config-writer-routing.test.ts",
+      "test": "CLI config writer routing > keeps raw config saves behind the canonical mutation primitive [105.12ms]"
+    },
+    {
+      "file": "test/cli/mcp-config-validation.test.ts",
+      "test": "MCP config structural validation > invalid low-level server entries fail before every format and dry-run write [1.37ms]"
+    },
+    {
+      "file": "test/cli/mcp-config-validation.test.ts",
+      "test": "MCP config structural validation > invalid low-level server entries fail before every format and dry-run write [1.07ms]"
+    },
+    {
+      "file": "test/cli/mcp-config-validation.test.ts",
+      "test": "MCP config structural validation > invalid low-level server entries fail before every format and dry-run write [1.18ms]"
+    },
+    {
+      "file": "test/cli/mcp-config-validation.test.ts",
+      "test": "MCP config structural validation > invalid low-level server entries fail before every format and dry-run write [1.04ms]"
+    },
+    {
+      "file": "test/cli/mcp-config-validation.test.ts",
+      "test": "MCP config structural validation > invalid low-level server entries fail before every format and dry-run write [1.13ms]"
+    },
+    {
+      "file": "test/cli/mcp-config-validation.test.ts",
+      "test": "MCP config structural validation > invalid low-level server entries fail before every format and dry-run write [1.08ms]"
+    },
+    {
+      "file": "test/cli/mcp-install-tool-profile.test.ts",
+      "test": "gno mcp install --tool-profile > dry-run JSON carries the profile for every target [4.26ms]"
+    },
+    {
+      "file": "test/cli/mcp-preserving-formats.test.ts",
+      "test": "comment-preserving MCP config formats > Zed JSONC comments and trailing commas survive install, update, and uninstall [2.33ms]"
+    },
+    {
+      "file": "test/cli/mcp-workspace-environment.test.ts",
+      "test": "MCP workspace environment projection > zed pins data and cache roots in its native format [1.53ms]"
+    },
+    {
+      "file": "test/cli/mcp.test.ts",
+      "test": "MCP CLI commands > builds a verifier-trusted entry from the current GNO runtime [1.43ms]"
+    },
+    {
+      "file": "test/cli/mcp.test.ts",
+      "test": "MCP CLI commands > accepts the audited standard workspace environment [1.65ms]"
+    },
+    {
+      "file": "test/cli/mcp.test.ts",
+      "test": "MCP CLI commands > accepts OpenCode's audited workspace environment [2.08ms]"
+    },
+    {
+      "file": "test/cli/peek.test.ts",
+      "test": "gno peek --json > failed database read returns RUNTIME envelope and exit 2 [1051.72ms]"
+    },
+    {
+      "file": "test/cli/query-smoke.test.ts",
+      "test": "query command > formatQuery > formats terminal output with hyperlink policy when tty enabled [0.45ms]"
+    },
+    {
+      "file": "test/cli/search-results-format.test.ts",
+      "test": "formatSearchResults terminal links > emits OSC 8 hyperlinks for terminal TTY output [0.45ms]"
+    },
+    {
+      "file": "test/cli/search-smoke.test.ts",
+      "test": "gno search smoke tests > search --query-file - reads stdin [754.29ms]"
+    },
+    {
+      "file": "test/cli/setup-semantic.test.ts",
+      "test": "setup semantic handoff > schedules once and reuses a matching live worker concurrently [5246.19ms]"
+    },
+    {
+      "file": "test/config/project-profile-portability.test.ts",
+      "test": "project profile clean-machine portability > reproduces identical semantics under POSIX and Windows-shaped roots [21.89ms]"
+    },
+    {
+      "file": "test/converters/email.test.ts",
+      "test": "email export adapter > preserves folded identity, thread, dates, safe body, and attachment inventory [1.25ms]"
+    },
+    {
+      "file": "test/converters/email.test.ts",
+      "test": "email export adapter > reduces HTML-only messages to text without retaining executable or remote attributes [0.46ms]"
+    },
+    {
+      "file": "test/converters/email.test.ts",
+      "test": "email export adapter > streams MBOX siblings while preserving repeated and missing identities [0.40ms]"
+    },
+    {
+      "file": "test/converters/vendored-dependencies.test.ts",
+      "test": "vendored converters retain upstream bytes and resolve repaired parser dependencies [32.26ms]"
+    },
+    {
+      "file": "test/core/connector-environment.test.ts",
+      "test": "connector workspace environment accepts only audited absolute roots [0.36ms]"
+    },
+    {
+      "file": "test/core/findings-run-state.test.ts",
+      "test": "findings run state > state path sits next to the index database [0.62ms]"
+    },
+    {
+      "file": "test/core/folder-setup-safety.test.ts",
+      "test": "verified folder setup safety boundaries > hashes exact UTF-8 realpath bytes for the receipt filename [0.31ms]"
+    },
+    {
+      "file": "test/core/folder-setup-safety.test.ts",
+      "test": "verified folder setup safety boundaries > maps every receipt persistence boundary to a stable in-memory failure [1047.87ms]"
+    },
+    {
+      "file": "test/core/folder-setup.test.ts",
+      "test": "verified folder setup > rejects empty, unsupported-only, secret-risk, missing, file, and dangerous inputs before config mutation [675.64ms]"
+    },
+    {
+      "file": "test/core/folder-setup.test.ts",
+      "test": "verified folder setup > concurrent setup calls converge on one config entry and document [1070.98ms]"
+    },
+    {
+      "file": "test/core/memory.test.ts",
+      "test": "MemoryService remember/recall contracts > racing supersedes yield exactly one current record and one conflict [5181.51ms]"
+    },
+    {
+      "file": "test/core/memory.test.ts",
+      "test": "MemoryService remember/recall contracts > a caller that pre-holds the lease fails fast with a clear error (no nesting) [1071.69ms]"
+    },
+    {
+      "file": "test/core/memory.test.ts",
+      "test": "MemoryService remember/recall contracts > source evidence round-trips remember -> fact file -> recall [5150.40ms]"
+    },
+    {
+      "file": "test/core/memory.test.ts",
+      "test": "concurrent identical adds > two racing adds of the same text write exactly one file and agree on the record [5158.77ms]"
+    },
+    {
+      "file": "test/core/project-profile-apply.test.ts",
+      "test": "applyProjectProfile > resumes after interruption and serializes concurrent apply calls [5247.51ms]"
+    },
+    {
+      "file": "test/egress/enforcement.test.ts",
+      "test": "network boundary enforcement inventory > matches every shipped structural network callsite exactly [1597.99ms]"
+    },
+    {
+      "file": "test/llm/lifecycle.fixture.ts",
+      "test": "ModelManager > uses prebuilt-only build mode when initializing llama by default [5.57ms]"
+    },
+    {
+      "file": "test/llm/lifecycle.fixture.ts",
+      "test": "ModelManager > concurrent backend startup is deduplicated and shutdown disposes its late owner once [1.01ms]"
+    },
+    {
+      "file": "test/llm/lifecycle.fixture.ts",
+      "test": "ModelManager > timed out backend is disposed exactly once when initialization eventually completes [0.51ms]"
+    },
+    {
+      "file": "test/llm/lifecycle.fixture.ts",
+      "test": "ModelManager > allows opt-in source builds for llama backends [1.46ms]"
+    },
+    {
+      "file": "test/llm/lifecycle.fixture.ts",
+      "test": "ModelManager > retries CPU when Windows auto backend initialization fails [0.87ms]"
+    },
+    {
+      "file": "test/llm/lifecycle.fixture.ts",
+      "test": "ModelManager > times out backend initialization [1.12ms]"
+    },
+    {
+      "file": "test/llm/lifecycle.fixture.ts",
+      "test": "ModelManager > counts one physical load across warm reuse [2.17ms]"
+    },
+    {
+      "file": "test/llm/lifecycle.fixture.ts",
+      "test": "ModelManager > retiring model leaves cache before await and late timed-out load cleans once [1.62ms]"
+    },
+    {
+      "file": "test/llm/lifecycle.fixture.ts",
+      "test": "ModelManager lifecycle suite runs with isolated module mocks [773.08ms]"
+    },
+    {
+      "file": "test/llm/native-worker-fingerprint-reuse.test.ts",
+      "test": "mutation after port disposal rejects retained weights; a later generation reloads provenance [2.63ms]"
+    },
+    {
+      "file": "test/llm/native-worker-integration.test.ts",
+      "test": "packed native entry and client preserve lifecycle, fault, framing and request identity contracts [0.89ms]"
+    },
+    {
+      "file": "test/llm/native-worker-lifecycle.test.ts",
+      "test": "production entry holds pending delivery, metadata does not renew TTL, parent IPC EOF exits [2005.20ms]"
+    },
+    {
+      "file": "test/llm/simulator-install.test.ts",
+      "test": "factory installation is shared and creates the guarded session before native work [6.16ms]"
+    },
+    {
+      "file": "test/llm/simulator-install.test.ts",
+      "test": "3.20 CLIP simulator rejection precedes all native backend access [0.80ms]"
+    },
+    {
+      "file": "test/mcp/memory.test.ts",
+      "test": "memory tools never acquire ctx.writeLockPath themselves > a concurrent external lease holder serialises with MCP remember via the core lease [62254.41ms]"
+    },
+    {
+      "file": "test/mcp/memory.test.ts",
+      "test": "2026-07-28 sessionless leg: memory identity is per caller > two modern callers get distinct sessions; one caller is stable; nobody gets the server id [62553.63ms]"
+    },
+    {
+      "file": "test/pipeline/ask-hydration.test.ts",
+      "test": "Ask retains frozen before-source output, citation provenance and actual model arguments [5001.18ms]"
+    },
+    {
+      "file": "test/scripts/docs-verify.test.ts",
+      "test": "default truth scan ignores retired snapshots but checks active README and consumed OG templates [10.12ms]"
+    },
+    {
+      "file": "test/scripts/macos-file-provider-smoke.test.ts",
+      "test": "macos-file-provider-smoke refusals > refuses nonexistent root [0.20ms]"
+    },
+    {
+      "file": "test/scripts/macos-file-provider-smoke.test.ts",
+      "test": "macos-file-provider-smoke refusals > classifies only exact provider-root shapes 0 [0.25ms]"
+    },
+    {
+      "file": "test/scripts/macos-file-provider-smoke.test.ts",
+      "test": "macos-file-provider-smoke refusals > classifies only exact provider-root shapes 1 [0.14ms]"
+    },
+    {
+      "file": "test/scripts/macos-file-provider-smoke.test.ts",
+      "test": "macos-file-provider-smoke refusals > classifies only exact provider-root shapes 2 [0.19ms]"
+    },
+    {
+      "file": "test/scripts/package-smoke-resident-support.test.ts",
+      "test": "packed resident shutdown exits > allows graceful shutdown before a supplied deadline [16.09ms]"
+    },
+    {
+      "file": "test/scripts/release-macos-signing.test.ts",
+      "test": "classifyNestedSigningTargets > selects the four Contents/MacOS extensionless executables [0.54ms]"
+    },
+    {
+      "file": "test/scripts/release-macos-signing.test.ts",
+      "test": "classifyNestedSigningTargets > never selects the vendored @oven bun for signing [0.36ms]"
+    },
+    {
+      "file": "test/scripts/release-macos-signing.test.ts",
+      "test": "isPotentialSigningPath > probes only extension candidates and direct Contents/MacOS entries [0.23ms]"
+    },
+    {
+      "file": "test/scripts/release-macos-signing.test.ts",
+      "test": "buildNestedSignArgv > applies --entitlements only to Contents/MacOS/bun [0.30ms]"
+    },
+    {
+      "file": "test/scripts/release-macos-signing.test.ts",
+      "test": "buildNestedSignArgv > resolves the entitlement target by explicit relative path [0.18ms]"
+    },
+    {
+      "file": "test/serve/api-doc-assets.test.ts",
+      "test": "pdfjs file URLs decode spaces, percent escapes, and Unicode [0.38ms]"
+    },
+    {
+      "file": "test/serve/connectors.test.ts",
+      "test": "connector service > reports missing connectors before install [2.89ms]"
+    },
+    {
+      "file": "test/serve/connectors.test.ts",
+      "test": "connector service > returns a structured verification failure for an invalid skill path [41.57ms]"
+    },
+    {
+      "file": "test/serve/connectors.test.ts",
+      "test": "connector service > installs MCP connector using existing installer logic [1.61ms]"
+    },
+    {
+      "file": "test/serve/connectors.test.ts",
+      "test": "connector service > preserves the active serve index and config in installed MCP argv [1.42ms]"
+    },
+    {
+      "file": "test/serve/connectors.test.ts",
+      "test": "connector service > reports installed skill execution as explicitly unverifiable [48.09ms]"
+    },
+    {
+      "file": "test/serve/shutdown-lifecycle.test.ts",
+      "test": "foreground serve completes graceful teardown before the CLI exits on SIGINT [594.36ms]"
+    },
+    {
+      "file": "test/serve/spa-compile-executable.test.ts",
+      "test": "compiled production SPA source serves the mount entry without bunfs Bun.build [1192.17ms]"
+    },
+    {
+      "file": "test/serve/watch-reconciliation-fallback-bounds.test.ts",
+      "test": "fallback root and forceFallback > recursive-glob subtree hints skip availability classification [2.05ms]"
+    },
+    {
+      "file": "test/serve/watch-reconciliation-fallback-bounds.test.ts",
+      "test": "fallback root and forceFallback > root dirty compares nested active store sources via bounded inventory [0.97ms]"
+    },
+    {
+      "file": "test/serve/watch-reconciliation-fallback-bounds.test.ts",
+      "test": "fallback root and forceFallback > forceFallback lists present eligible finals even when baseline absorbed them [1.64ms]"
+    },
+    {
+      "file": "test/serve/watch-reconciliation-fallback-bounds.test.ts",
+      "test": "root inventory scale without false overflow > 5000 root files/sources + record-container dups do not false-overflow [6611.39ms]"
+    },
+    {
+      "file": "test/serve/watch-reconciliation-fallback-bounds.test.ts",
+      "test": "root inventory scale without false overflow > 5000 files under sub/ + overlapping sub/subchild hints no false overflow [7294.78ms]"
+    },
+    {
+      "file": "test/serve/watch-reconciliation.test.ts",
+      "test": "classifyDirtyHints and widenVanishedExactPaths > snapshot path selects only changed candidate among siblings [1.70ms]"
+    },
+    {
+      "file": "test/serve/watch-reconciliation.test.ts",
+      "test": "classifyDirtyHints and widenVanishedExactPaths > recursive deletion expands removals from prior snapshot [1.89ms]"
+    },
+    {
+      "file": "test/serve/watch-reconciliation.test.ts",
+      "test": "classifyDirtyHints and widenVanishedExactPaths > new directory children become candidates [1.06ms]"
+    },
+    {
+      "file": "test/serve/watch-reconciliation.test.ts",
+      "test": "classifyDirtyHints and widenVanishedExactPaths > store failure does not infer inactivation [1.28ms]"
+    },
+    {
+      "file": "test/serve/watch-reconciliation.test.ts",
+      "test": "classifyDirtyHints and widenVanishedExactPaths > widenVanishedExactPaths moves FIFO/other out of keepExact into dirty only [27.61ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-fixes-more.test.ts",
+      "test": "pattern-matching directory exact path > folder.md directory with eligible child dirties without NOT_FILE [483.03ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-fixes.test.ts",
+      "test": "init absorption forceFallback > temp event during init still content-hashes final path [822.31ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-fixes.test.ts",
+      "test": "init absorption forceFallback > null filename during init still content-hashes present eligible finals [820.99ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round2-more.test.ts",
+      "test": "no readiness polling > dirty before ready leaves queued work; onReady schedules once [628.66ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round2-more.test.ts",
+      "test": "no readiness polling > init failure still flips readiness and runs classification fallback [602.03ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round2.test.ts",
+      "test": "durable forceFallback / overflow > init temp forceFallback survives first store failure then hashes final [1402.99ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round2.test.ts",
+      "test": "durable forceFallback / overflow > pattern-directory child failure retries with forced discovery [1484.05ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round2.test.ts",
+      "test": "generation options freshness > blocked syncPaths then updateCollections passes new options to syncCollection [1050.64ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round4.test.ts",
+      "test": "top-level errors retain work > dirty-only success files + EDGE_FAIL retries dirty, withholds snapshot [1803.52ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round4.test.ts",
+      "test": "top-level errors retain work > generation success files + EDGE_FAIL keeps durable retry [1864.22ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round5.test.ts",
+      "test": "proven removal authority > file\u2192directory: inactivate old file; children reach syncPaths separately [1261.43ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round5.test.ts",
+      "test": "proven removal authority > file\u2192FIFO/device: inactivate old file; special is not a candidate [1.43ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round5.test.ts",
+      "test": "overflow progression to full sync > injected snapshot ceiling overflow escalates to full sync [2.06ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round6-inactivation.test.ts",
+      "test": "inactivateAbsentSources error surfaces > getDocument failure blocks watcher snapshot advance and retries [2005.24ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round6-inactivation.test.ts",
+      "test": "edge failure retains watcher authority > inactivate edge clear failure requeues without losing dirty work [2032.06ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round6.test.ts",
+      "test": "exact special path (lstat kind) > file\u2192FIFO: inactivates active source; special never NOT_FILE candidate [1350.56ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round6.test.ts",
+      "test": "dirty generation retention > dirty candidate fails once then succeeds; later delete inactivates via snapshot [1804.43ms]"
+    },
+    {
+      "file": "test/serve/watch-service-host-round6.test.ts",
+      "test": "dirty generation retention > removal partial failure retains dirty hints for retry [2005.33ms]"
+    },
+    {
+      "file": "test/serve/watch-service-lifecycle.test.ts",
+      "test": "CollectionWatchService lifecycle > does not reconcile an in-flight sync for an equivalent config refresh [372.88ms]"
+    },
+    {
+      "file": "test/serve/watch-service-reconciliation.test.ts",
+      "test": "CollectionWatchService reconciliation integration > atomic temp replacement via dirty hint discovers final path [457.65ms]"
+    },
+    {
+      "file": "test/serve/watch-service-reconciliation.test.ts",
+      "test": "CollectionWatchService reconciliation integration > sustained unique-temp churn flushes within hard deadline [1537.30ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-availability.test.ts",
+      "test": "watcher snapshot source-availability descent > build refuses descent into dataless child directory [0.77ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-availability.test.ts",
+      "test": "watcher snapshot source-availability descent > build refuses a child that becomes dataless before enumeration [0.38ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-availability.test.ts",
+      "test": "watcher snapshot source-availability descent > proven deletion of an unproven snapshot subtree forces full reconciliation [0.90ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-availability.test.ts",
+      "test": "watcher snapshot source-availability descent > diff preserves prior subtree when availability changes before enumeration [0.34ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-availability.test.ts",
+      "test": "watcher snapshot source-availability descent > new-subtree scan refuses a directory that changes before enumeration [0.43ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-availability.test.ts",
+      "test": "watcher snapshot source-availability descent > fallback preserves descendants when availability changes before enumeration [1.60ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-availability.test.ts",
+      "test": "watcher snapshot source-availability descent > snapshot init honors a local run-level override [0.52ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-other-kind.test.ts",
+      "test": "watcher snapshot other-kind contract (injected) > newly added other (FIFO) is fingerprint-only \u2014 not a candidate [0.66ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-other-kind.test.ts",
+      "test": "watcher snapshot other-kind contract (injected) > file \u2192 other: old path in removals, no candidate, other fingerprint retained [0.38ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-other-kind.test.ts",
+      "test": "watcher snapshot other-kind contract (injected) > directory \u2192 other: expands nested removals, no candidate for special entry [0.37ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-other-kind.test.ts",
+      "test": "watcher snapshot other-kind contract (injected) > other \u2192 file: candidates the new source [0.40ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-other-kind.test.ts",
+      "test": "watcher snapshot other-kind contract (injected) > other \u2192 directory: scans descendants without removal [0.35ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-other-kind.test.ts",
+      "test": "watcher snapshot other-kind contract (injected) > other metadata-only change is not a candidate or removal [0.33ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-other-kind.test.ts",
+      "test": "watcher snapshot other-kind contract (injected) > removed other is not a removal candidate [0.39ms]"
+    },
+    {
+      "file": "test/serve/watch-snapshot-other-kind.test.ts",
+      "test": "watcher snapshot other-kind contract (injected) > new directory scan ignores nested other and only candidates files [0.36ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > prefetch maps the turn query to gno recall --json with config scopes and session identity [873.90ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > remember tool maps add and supersede inputs; scopes never come from tool args [87.28ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > remember forwards the session's latest recall receipt via --receipt in a private temp file [84.40ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > an empty recall still yields a receipt; a session switch drops it [86.14ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > remember without a decision proposes only: no --add/--supersede, candidates returned [74.62ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > invalid remember args {\"text\":\"\"} are rejected before any gno call [76.81ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > invalid remember args {\"text\":\"x\",\"decision\":\"forget\"} are rejected before any gno call [80.37ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > invalid remember args {\"text\":\"x\",\"decision\":\"supersede\",\"predecessor_uri\":\"gno://memory/facts/2026-09-03/mem-10e4745c90d3b7ec.md\"} are rejected before any gno call [78.10ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > sync_turn performs no GNO writes (ambient-store negative) [91.71ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > gno timeout: prefetch degrades to empty and the tool reports kind gno_timeout [76.71ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > gno malformed: prefetch degrades to empty and the tool reports kind gno_malformed_json [80.18ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > gno fail: prefetch degrades to empty and the tool reports kind gno_command_failed [78.42ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > gno below the pinned minimum disables the provider with a clear error; session continues [89.34ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > session switch rebinds the session identity used by remember [78.05ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "hermes gno memory provider > non-primary agent contexts cannot write [84.27ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "plugin entry > the CLI namespace registers search/get/status/sync and prints hits [3.04ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "config > explicit values win and the collection name is lowercased [0.38ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "collection provisioning > registers the workspace memory paths once, with pattern and excludes [0.63ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "collection provisioning > refuses a same-name collection rooted elsewhere [0.47ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "collection provisioning > root /sandbox/workspace/ normalizes to /sandbox/workspace and matches GNO's stored absolute path [0.23ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "collection provisioning > root /sandbox//workspace/./ normalizes to /sandbox/workspace and matches GNO's stored absolute path [0.22ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "collection provisioning > needs a root from config or the OpenClaw workspace [0.60ms]"
+    },
+    {
+      "file": "test/traces/trace-retrieval-outcomes.test.ts",
+      "test": "execFileRunner spawn failures > a non-executable binary reports the spawn error, not exit null [3.35ms]"
+    },
+    {
+      "file": "test/cli/commands/audit.test.ts",
+      "test": "gno audit CLI > reports an unreadable source as unavailable instead of failing [683.46ms]"
+    },
+    {
+      "file": "test/cli/commands/audit.test.ts",
+      "test": "gno audit CLI > uses exit 2 when the configured index is unavailable [1081.40ms]"
+    },
+    {
+      "file": "test/cli/commands/audit.test.ts",
+      "test": "gno audit CLI > writes an explicitly requested private report artifact [1105.18ms]"
+    },
+    {
+      "file": "test/eval/acceptance/adapters.test.ts",
+      "test": "owned CLI output cannot turn uninstrumented vectorsUsed into native coverage [208.73ms]"
+    },
+    {
+      "file": "test/eval/acceptance/child-capture.test.ts",
+      "test": "child capture transparently forwards operational arguments and exact request [267.76ms]"
+    },
+    {
+      "file": "test/eval/acceptance/child-capture.test.ts",
+      "test": "actual selected child captures input and hash failure without loading a backend; unrelated spawn unchanged [2.21ms]"
+    },
+    {
+      "file": "test/eval/acceptance/child-capture.test.ts",
+      "test": "resource scope samples validated actual descendants and leaves unrelated processes alive [108.49ms]"
+    },
+    {
+      "file": "test/eval/acceptance/child-capture.test.ts",
+      "test": "candidate adapter import and parent capture do not load native leaf modules or bindings [236.47ms]"
+    },
+    {
+      "file": "test/eval/acceptance/child-capture.test.ts",
+      "test": "actual worker removes only its QA preload before dependency fork; nonentry inherited preload is harmless [60.26ms]"
+    },
+    {
+      "file": "test/eval/acceptance/command.test.ts",
+      "test": "source identity rejects actual runtime and archive link mutations, tolerating extraction timestamps [1483.42ms]"
+    },
+    {
+      "file": "test/eval/acceptance/fixtures.test.ts",
+      "test": "forward indexes preserve ownership, title inputs, independent state, and real environment [1279.62ms]"
+    },
+    {
+      "file": "test/eval/acceptance/fixtures.test.ts",
+      "test": "reverse indexes preserve ownership, title inputs, independent state, and real environment [1335.88ms]"
+    },
+    {
+      "file": "test/eval/acceptance/parent-capture.test.ts",
+      "test": "selected pipeline attachment captures direct-surface metadata without tracing and restores property hook [1.96ms]"
+    },
+    {
+      "file": "test/eval/acceptance/runner.test.ts",
+      "test": "lifecycle screens retain owned sessions for primer and idle, complete timing, seed/order and raw samples [841.46ms]"
+    },
+    {
+      "file": "test/eval/acceptance/runner.test.ts",
+      "test": "30 valid paired observations screen; noisy samples and missing pairs are inconclusive [75.51ms]"
+    },
+    {
+      "file": "test/eval/acceptance/runner.test.ts",
+      "test": "declared overlap runs two owned sessions and compares background evidence before speed summaries [150.20ms]"
+    },
+    {
+      "file": "test/eval/acceptance/session-driver.test.ts",
+      "test": "retained actual child has truthful cold state, lossless replies, and explicit close [350.21ms]"
+    },
+    {
+      "file": "test/eval/acceptance/session-driver.test.ts",
+      "test": "fresh opens use different OS processes and invalid request stops its child [341.76ms]"
+    },
+    {
+      "file": "test/eval/acceptance/session-driver.test.ts",
+      "test": "driver pins declared backend/build policy and only explicit canonical CUDA_PATH [39.57ms]"
+    },
+    {
+      "file": "test/eval/acceptance/session-driver.test.ts",
+      "test": "installed harness imports inside a fresh selected product root without native access [1.67ms]"
+    },
+    {
+      "file": "test/eval/acceptance/surfaces.test.ts",
+      "test": "real owned REST, stdio MCP and resident MCP HTTP retain output and stop children without claiming native coverage [203.96ms]"
+    },
+    {
+      "file": "test/eval/agentic/baseline.test.ts",
+      "test": "committed authoritative agentic baseline > contains the separate closed project-affinity promotion [323.74ms]"
+    },
+    {
+      "file": "test/eval/agentic/capsule-prototype.test.ts",
+      "test": "Capsule prototype with production model-visible projection > enforces active task scope for unscoped search and every read [145.53ms]"
+    },
+    {
+      "file": "test/eval/agentic/fixture-db.test.ts",
+      "test": "production-native fixture index > ingests the immutable snapshot without global config mutation [171.21ms]"
+    },
+    {
+      "file": "test/eval/agentic/fixture-db.test.ts",
+      "test": "production-native fixture index > produces the same native index fingerprint from unchanged bytes [348.55ms]"
+    },
+    {
+      "file": "test/eval/agentic/lexical-adapter.test.ts",
+      "test": "agentic lexical adapter > enforces active task scope for unscoped search and every read [144.35ms]"
+    },
+    {
+      "file": "test/eval/agentic/project-affinity-promotion.test.ts",
+      "test": "project-affinity promotion cases > passes the real vector pipeline promotion and structural gates [278.47ms]"
+    },
+    {
+      "file": "test/eval/agentic/project-affinity-promotion.test.ts",
+      "test": "project-affinity promotion cases > is byte-deterministic across independent temporary indexes [277.66ms]"
+    },
+    {
+      "file": "test/eval/agentic/project-affinity-promotion.test.ts",
+      "test": "project-affinity promotion cases > independently rejects ranking, receipt, gate, and fingerprint mutations [283.15ms]"
+    },
+    {
+      "file": "test/eval/agentic/project-affinity-promotion.test.ts",
+      "test": "targeted chunk receipts preserve full legacy payload and citations for every fixture task [259.79ms]"
+    },
+    {
+      "file": "test/eval/agentic/qmd-lock.test.ts",
+      "test": "qmd static preflight > accepts only a clean exact checkout with all pinned cached models [7.01ms]"
+    },
+    {
+      "file": "test/eval/agentic/qmd-lock.test.ts",
+      "test": "qmd static preflight > fails closed on missing, stale, and real currently unavailable model caches [5.15ms]"
+    }
+  ]
+}

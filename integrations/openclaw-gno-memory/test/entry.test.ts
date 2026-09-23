@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+// Native absolute path fixtures; Bun has no path API.
+import { resolve } from "node:path";
 
 import plugin, { buildPromptSection, register, type PluginApi } from "../index";
 import { GnoMemoryBackend, type BackendLogger } from "../src/backend";
@@ -19,7 +21,7 @@ import {
   type FakeScript,
 } from "./fake-gno";
 
-const ROOT = "/sandbox/workspace";
+const ROOT = resolve("/sandbox/workspace");
 
 function logger(): BackendLogger & { lines: string[] } {
   const lines: string[] = [];
@@ -167,9 +169,7 @@ describe("plugin entry", () => {
     }
     expect(calls).toHaveLength(callsBeforeBad);
     await actions.status?.({});
-    expect(out.at(-1)).toContain(
-      "collection openclaw-memory -> /sandbox/workspace"
-    );
+    expect(out.at(-1)).toContain(`collection openclaw-memory -> ${ROOT}`);
     expect(out.at(-1)).toContain("registered");
     expect(log.lines.length).toBeGreaterThan(0);
   });

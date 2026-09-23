@@ -24,6 +24,7 @@ import { createDefaultConfig, loadConfig, saveConfig } from "../../src/config";
 import { setupFolder } from "../../src/core/folder-setup";
 import {
   getSetupReceiptPath,
+  persistSetupReceipt,
   serializeSetupReceipt,
   type SetupStageName,
 } from "../../src/core/setup-receipt";
@@ -467,12 +468,33 @@ describe("verified folder setup", () => {
         join(harness.folder, "note.md"),
         "Concurrent setup convergence proof"
       );
+      const receiptErrors: string[] = [];
+      const options: FolderSetupOptions = {
+        ...harness.options,
+        receiptWriter: async (receipt) => {
+          try {
+            await persistSetupReceipt(receipt);
+          } catch (cause) {
+            receiptErrors.push(String(cause));
+            throw cause;
+          }
+        },
+      };
       const [left, right] = await Promise.all([
-        setupFolder(harness.options),
-        setupFolder(harness.options),
+        setupFolder(options),
+        setupFolder(options),
       ]);
-      expect(left.ok).toBe(true);
-      expect(right.ok).toBe(true);
+      expect(receiptErrors).toEqual([]);
+      expect(left).toMatchObject({ ok: true });
+      expect(right).toMatchObject({ ok: true });
+      const receiptPath = left.receipt!.paths.receipt;
+      expect(await Bun.file(receiptPath).json()).toMatchObject({
+        status: "completed",
+        stages: { completed: { status: "passed" } },
+      });
+      if (process.platform !== "win32") {
+        expect((await stat(receiptPath)).mode & 0o777).toBe(0o600);
+      }
       expect(await configuredCollections(harness.configPath)).toHaveLength(1);
       const documents = await harness.store.listDocuments("docs");
       expect(documents.ok && documents.value).toHaveLength(1);

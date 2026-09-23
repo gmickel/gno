@@ -1,3 +1,5 @@
+import { join } from "node:path"; // Bun has no path joining API.
+
 import type { SessionBootstrap, SessionCommand } from "./session-driver";
 
 import { ModelCache } from "../../src/llm/cache";
@@ -106,7 +108,7 @@ try {
         await session!.close();
         response = { closed: true };
       } else throw new Error("Unknown session operation");
-      const resultPath = `${directory}/${sequence}.reply.json.gz`;
+      const resultPath = join(directory, `${sequence}.reply.json.gz`);
       await Bun.write(
         resultPath,
         Bun.gzipSync(

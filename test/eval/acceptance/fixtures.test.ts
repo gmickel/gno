@@ -1,4 +1,6 @@
 import { expect, test } from "bun:test";
+// Bun has no platform path separator constant.
+import { sep } from "node:path";
 
 import {
   exhaustiveEligibleOracle,
@@ -111,7 +113,7 @@ test.each(["forward", "reverse"] as const)(
         ).toHaveLength(1000);
         expect(
           Object.values(index.env).every((path) =>
-            path.startsWith(`${index.root}/`)
+            path.startsWith(`${index.root}${sep}`)
           )
         ).toBe(true);
       }

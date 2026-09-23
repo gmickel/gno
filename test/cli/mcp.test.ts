@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 
 import { installMcp } from "../../src/cli/commands/mcp/install";
 import {
@@ -32,6 +32,8 @@ import { safeRm } from "../helpers/cleanup";
 const TEST_DIR = join(import.meta.dir, ".temp-mcp-tests");
 const FAKE_HOME = join(TEST_DIR, "home");
 const FAKE_CWD = join(TEST_DIR, "project");
+const ORIGINAL_APPDATA = process.env.APPDATA;
+const ORIGINAL_XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME;
 
 // Capture stdout output
 let stdoutOutput: string[] = [];
@@ -43,6 +45,8 @@ const mockWrite = (chunk: string | Uint8Array): boolean => {
 
 describe("MCP CLI commands", () => {
   beforeEach(async () => {
+    process.env.APPDATA = join(TEST_DIR, "appdata");
+    process.env.XDG_CONFIG_HOME = join(TEST_DIR, "xdg");
     // Set up mocks
     process.stdout.write = mockWrite as typeof process.stdout.write;
     stdoutOutput = [];
@@ -55,6 +59,16 @@ describe("MCP CLI commands", () => {
   });
 
   afterEach(async () => {
+    if (ORIGINAL_APPDATA === undefined) {
+      delete process.env.APPDATA;
+    } else {
+      process.env.APPDATA = ORIGINAL_APPDATA;
+    }
+    if (ORIGINAL_XDG_CONFIG_HOME === undefined) {
+      delete process.env.XDG_CONFIG_HOME;
+    } else {
+      process.env.XDG_CONFIG_HOME = ORIGINAL_XDG_CONFIG_HOME;
+    }
     // Restore mocks
     process.stdout.write = originalWrite;
 
@@ -80,10 +94,12 @@ describe("MCP CLI commands", () => {
         "mcp",
       ],
       env: {
-        GNO_DATA_DIR: expect.stringMatching(/^\//),
-        GNO_CACHE_DIR: expect.stringMatching(/^\//),
+        GNO_DATA_DIR: expect.any(String),
+        GNO_CACHE_DIR: expect.any(String),
       },
     });
+    expect(isAbsolute(entry.env?.GNO_DATA_DIR ?? "")).toBe(true);
+    expect(isAbsolute(entry.env?.GNO_CACHE_DIR ?? "")).toBe(true);
     expect(await isSafeLocalGnoMcpCommand(entry)).toBe(true);
   });
 
@@ -810,8 +826,8 @@ describe("MCP CLI commands", () => {
             command: "/usr/local/bin/gno",
             args: ["mcp"],
             env: {
-              GNO_DATA_DIR: "/alternate/data",
-              GNO_CACHE_DIR: "/alternate/cache",
+              GNO_DATA_DIR: join(TEST_DIR, "alternate", "data"),
+              GNO_CACHE_DIR: join(TEST_DIR, "alternate", "cache"),
             },
           },
         },
@@ -825,8 +841,8 @@ describe("MCP CLI commands", () => {
       configured: true,
       serverEntry: {
         env: {
-          GNO_DATA_DIR: "/alternate/data",
-          GNO_CACHE_DIR: "/alternate/cache",
+          GNO_DATA_DIR: join(TEST_DIR, "alternate", "data"),
+          GNO_CACHE_DIR: join(TEST_DIR, "alternate", "cache"),
         },
       },
     });
@@ -844,8 +860,8 @@ describe("MCP CLI commands", () => {
             command: ["gno", "mcp"],
             enabled: true,
             environment: {
-              GNO_DATA_DIR: "/alternate/data",
-              GNO_CACHE_DIR: "/alternate/cache",
+              GNO_DATA_DIR: join(TEST_DIR, "alternate", "data"),
+              GNO_CACHE_DIR: join(TEST_DIR, "alternate", "cache"),
             },
           },
         },
@@ -860,8 +876,8 @@ describe("MCP CLI commands", () => {
     const projected = toMcpConnectorVerificationTarget("opencode", status);
     expect(projected.configured).toBe(true);
     expect(projected.serverEntry?.env).toEqual({
-      GNO_DATA_DIR: "/alternate/data",
-      GNO_CACHE_DIR: "/alternate/cache",
+      GNO_DATA_DIR: join(TEST_DIR, "alternate", "data"),
+      GNO_CACHE_DIR: join(TEST_DIR, "alternate", "cache"),
     });
     expect(projected.configIdentity).toMatch(/^[a-f0-9]{64}$/);
     expect(JSON.stringify(status)).not.toContain("configIdentity");

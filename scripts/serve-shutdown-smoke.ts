@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { saveConfigToPath } from "../src/config/saver";
+import { isExpectedResidentShutdownExit } from "./package-smoke-resident-support";
 
 const CRASH_PATTERN = /Bun has crashed|panic|segmentation fault|SIGSEGV/i;
 
@@ -143,8 +144,12 @@ async function main(): Promise<void> {
     const output = `${stdout}\n${stderr}`;
 
     const bootstrapRacedShutdown = stderr.includes("Interrupted");
+    // Windows terminates the process without invoking POSIX JS signal handlers.
+    const expectedSignalExit =
+      process.platform === "win32" &&
+      isExpectedResidentShutdownExit(process.platform, exitCode);
     if (
-      exitCode !== 0 ||
+      (exitCode !== 0 && !expectedSignalExit) ||
       CRASH_PATTERN.test(output) ||
       bootstrapRacedShutdown
     ) {
@@ -154,7 +159,7 @@ async function main(): Promise<void> {
     }
 
     console.log(
-      `Serve shutdown passed: ${options.bunPath} ${options.environment} ${options.signal}`
+      `Serve shutdown passed: ${options.bunPath} ${options.environment} ${options.signal} (${expectedSignalExit ? "platform signal termination" : "graceful teardown"})`
     );
   } finally {
     if (child.exitCode === null) {

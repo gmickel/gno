@@ -424,7 +424,8 @@ export async function resolveSetupFolder(
     };
   }
   try {
-    await validateCollectionRoot(folder);
+    // Validate the original absolute path: Windows realpath can return a bare drive root.
+    await validateCollectionRoot(absolute);
   } catch {
     return {
       error: setupError(

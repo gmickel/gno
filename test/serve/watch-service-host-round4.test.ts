@@ -16,6 +16,7 @@ import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { defaultSyncService } from "../../src/ingestion";
 import { CollectionWatchService } from "../../src/serve/watch-service";
 import { safeRm } from "../helpers/cleanup";
+import { portableWatchOptions } from "./helpers/watch-portable-fixtures";
 import {
   createSyncResult,
   installWatchServiceSyncReset,
@@ -100,6 +101,7 @@ describe("idle material config/root change", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -135,6 +137,7 @@ describe("idle material config/root change", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -180,6 +183,7 @@ describe("idle material config/root change", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", rootA)],
         eventBus: null,
         scheduler: null,
@@ -236,6 +240,7 @@ describe("top-level errors retain work", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -310,6 +315,7 @@ describe("top-level errors retain work", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", rootA)],
         eventBus: null,
         scheduler: {
@@ -375,6 +381,7 @@ describe("ownership after onSyncComplete callbacks", () => {
         })) as typeof defaultSyncService.syncCollection;
 
       service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", rootA)],
         ...bus(eventUris, schedulerPaths),
         store: stubStore(),
@@ -436,6 +443,7 @@ describe("ownership after onSyncComplete callbacks", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", rootA)],
         ...bus(eventUris, schedulerPaths),
         store: stubStore(),

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { resolve } from "node:path"; // Bun has no path resolution helper.
 
 import type { SearchResults } from "../../src/pipeline/types";
 
@@ -38,7 +39,9 @@ describe("formatSearchResults terminal links", () => {
       terminalLinks: { isTTY: true, editorUriTemplate: null },
     });
 
-    expect(output).toContain("\u001B]8;;file:///tmp/notes/test.md\u0007");
+    expect(output).toContain(
+      `\u001B]8;;${Bun.pathToFileURL(resolve("/tmp/notes/test.md")).href}\u0007`
+    );
     expect(output).toContain("gno://notes/test.md");
     expect(output).toContain("\u001B]8;;\u0007");
   });

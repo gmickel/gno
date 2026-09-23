@@ -186,7 +186,7 @@ describe("prefix helpers", () => {
       stat: {
         lstatFlags: (absPath: string) => {
           calls.push(absPath);
-          if (absPath.endsWith("/cloud")) {
+          if (absPath.replaceAll("\\", "/").endsWith("/cloud")) {
             return { ok: true, stFlags: SF_DATALESS };
           }
           return { ok: true, stFlags: 0 };

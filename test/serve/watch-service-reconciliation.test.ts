@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { defaultSyncService } from "../../src/ingestion";
 import { CollectionWatchService } from "../../src/serve/watch-service";
 import { safeRm } from "../helpers/cleanup";
+import { portableWatchOptions } from "./helpers/watch-portable-fixtures";
 import {
   createCollection,
   createStubStore,
@@ -43,6 +44,7 @@ describe("CollectionWatchService reconciliation integration", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -87,6 +89,7 @@ describe("CollectionWatchService reconciliation integration", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -129,6 +132,7 @@ describe("CollectionWatchService reconciliation integration", () => {
         exclude: ["private"],
       });
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [collection],
         eventBus: null,
         scheduler: null,
@@ -168,6 +172,7 @@ describe("CollectionWatchService reconciliation integration", () => {
     try {
       await writeFile(join(root, "note.md"), "x");
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -215,6 +220,7 @@ describe("CollectionWatchService reconciliation integration", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -266,6 +272,7 @@ describe("CollectionWatchService reconciliation integration", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -322,6 +329,7 @@ describe("CollectionWatchService reconciliation integration", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -377,6 +385,7 @@ describe("CollectionWatchService reconciliation integration", () => {
         })) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", rootA)],
         eventBus: null,
         scheduler: null,
@@ -434,6 +443,7 @@ describe("CollectionWatchService reconciliation integration", () => {
         },
       });
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [collection],
         eventBus: null,
         scheduler: null,

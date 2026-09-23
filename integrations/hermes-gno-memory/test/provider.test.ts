@@ -8,15 +8,15 @@
  * invokes `gno remember`).
  */
 
-import { afterEach, describe, expect, test } from "bun:test";
 import {
-  chmod,
-  mkdtemp,
-  mkdir,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises"; // filesystem structure ops (no Bun equivalent)
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  test,
+} from "bun:test";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises"; // filesystem structure ops (no Bun equivalent)
 import { tmpdir } from "node:os"; // no Bun os utils
 import { join } from "node:path"; // no Bun path utils
 
@@ -38,6 +38,49 @@ interface Fixture {
 }
 
 const cleanups: string[] = [];
+let nativeLauncherRoot: string | undefined;
+let nativeLauncher: string | undefined;
+
+beforeAll(async () => {
+  nativeLauncherRoot = await mkdtemp(join(tmpdir(), "hermes-gno-launcher-"));
+  nativeLauncher = join(
+    nativeLauncherRoot,
+    process.platform === "win32" ? "gno.exe" : "gno"
+  );
+  const built = Bun.spawnSync([
+    process.execPath,
+    "build",
+    "--compile",
+    join(HERE, "fake-gno-launcher.ts"),
+    "--outfile",
+    nativeLauncher,
+  ]);
+  expect(built.exitCode).toBe(0);
+  // Finish first-launch executable scanning during fixture setup, before the
+  // lifecycle tests exercise their intentionally short operation timeouts.
+  const ready = Bun.spawn([nativeLauncher, "--version"], {
+    env: {
+      ...process.env,
+      FAKE_GNO_PYTHON: PYTHON as string,
+      FAKE_GNO_SCRIPT: FAKE_GNO,
+      FAKE_GNO_MODE: "ok",
+    },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [readyCode, readyOutput] = await Promise.all([
+    ready.exited,
+    new Response(ready.stdout).text(),
+    new Response(ready.stderr).text(),
+  ]);
+  expect(readyCode).toBe(0);
+  expect(readyOutput.trim()).toMatch(/^\d+\.\d+\.\d+$/);
+}, 60_000);
+
+afterAll(async () => {
+  if (nativeLauncherRoot)
+    await rm(nativeLauncherRoot, { recursive: true, force: true });
+});
 
 afterEach(async () => {
   for (const dir of cleanups.splice(0)) {
@@ -55,14 +98,10 @@ async function fixture(
   const bin = join(root, "bin");
   await mkdir(join(home, "gno"), { recursive: true });
   await mkdir(bin, { recursive: true });
-  const gnoPath = join(bin, "gno");
-  if (!opts.missingBinary) {
-    await writeFile(
-      gnoPath,
-      `#!/bin/sh\nexec "${PYTHON}" "${FAKE_GNO}" "$@"\n`
-    );
-    await chmod(gnoPath, 0o755);
-  }
+  const gnoPath =
+    !opts.missingBinary && nativeLauncher
+      ? nativeLauncher
+      : join(bin, process.platform === "win32" ? "gno.exe" : "gno");
   const log = join(root, "gno-calls.log");
   const merged = {
     scopes: "project:gno, family",
@@ -97,6 +136,8 @@ async function drive(
       HERMES_HOME: fx.home,
       FAKE_GNO_LOG: fx.log,
       FAKE_GNO_MODE: "ok",
+      FAKE_GNO_PYTHON: PYTHON as string,
+      FAKE_GNO_SCRIPT: FAKE_GNO,
       ...env,
     },
     stdout: "pipe",
@@ -130,13 +171,17 @@ interface ReceiptSeen {
   receipt: Record<string, unknown>;
   path: string;
   mode: string;
+  private: boolean;
 }
 
 /** What `gno remember --receipt` found in the receipt file while it ran. */
 async function receiptsSeen(fx: Fixture): Promise<ReceiptSeen[]> {
   return (await logLines(fx)).filter(
     (line): line is ReceiptSeen =>
-      !Array.isArray(line) && typeof line === "object" && line !== null
+      !Array.isArray(line) &&
+      typeof line === "object" &&
+      line !== null &&
+      "receipt" in line
   );
 }
 
@@ -152,6 +197,28 @@ function flags(argv: string[], name: string): string[] {
 }
 
 describe.skipIf(!PYTHON)("hermes gno memory provider", () => {
+  test("receipt privacy checks native identities and rejects broader access", async () => {
+    const probe = Bun.spawn(
+      [PYTHON as string, join(HERE, "privacy_probe.py")],
+      {
+        env: { ...process.env, FAKE_GNO_LOG: "" },
+        stdout: "pipe",
+        stderr: "pipe",
+      }
+    );
+    const [code, stdout, stderr] = await Promise.all([
+      probe.exited,
+      new Response(probe.stdout).text(),
+      new Response(probe.stderr).text(),
+    ]);
+    expect(stderr).toBe("");
+    expect(code).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      native: process.platform === "win32" ? "windows" : "posix",
+      cases: process.platform === "win32" ? 7 : 2,
+    });
+  });
+
   test("prefetch maps the turn query to gno recall --json with config scopes and session identity", async () => {
     const fx = await fixture();
     const [, pre] = await drive(fx, [
@@ -269,7 +336,13 @@ describe.skipIf(!PYTHON)("hermes gno memory provider", () => {
     expect(receiptPath).toMatch(/hermes-gno-receipt-.*\.json$/);
     const [seen] = await receiptsSeen(fx);
     expect(seen?.path).toBe(receiptPath);
-    expect(seen?.mode).toBe("0o600");
+    if (!seen?.private) {
+      throw new Error(
+        `Receipt privacy failed: ${await readFile(fx.log, "utf-8")}`
+      );
+    }
+    expect(seen.private).toBe(true);
+    if (process.platform !== "win32") expect(seen?.mode).toBe("0o600");
     expect(seen?.receipt).toMatchObject({
       caller: "hermes:ivan",
       session: "sess-initial",

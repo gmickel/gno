@@ -1,7 +1,3 @@
-/**
- * Fallback root/error/forceFallback bounds for host review findings.
- */
-
 import {
   afterEach,
   beforeEach,
@@ -10,6 +6,9 @@ import {
   setDefaultTimeout,
   test,
 } from "bun:test";
+/**
+ * Fallback root/error/forceFallback bounds for host review findings.
+ */
 // node:fs/promises — test fixture setup
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 // node:os — tmpdir
@@ -32,6 +31,7 @@ import { inspectNoFollowPresence } from "../../src/serve/watch-reconciliation-fa
 import { buildWatcherSnapshot } from "../../src/serve/watch-snapshot";
 import { SqliteAdapter as RealSqliteAdapter } from "../../src/store";
 import { safeRm } from "../helpers/cleanup";
+import { createPortableWatcherFs } from "./helpers/watch-portable-fixtures";
 
 if (process.platform === "win32") {
   setDefaultTimeout(30_000);
@@ -171,7 +171,10 @@ describe("fallback root and forceFallback", () => {
         rootAbs: root,
         previous: null,
         dirtyHints: ["cloud"],
-        snapshotOptions: { directoryAvailability },
+        snapshotOptions: {
+          fs: createPortableWatcherFs(),
+          directoryAvailability,
+        },
       });
 
       expect(classified.status).toBe("ok");
@@ -187,6 +190,7 @@ describe("fallback root and forceFallback", () => {
 
   test("missing collection root errors instead of proving deletion", async () => {
     const classified = await classifyDirtyHints({
+      snapshotOptions: { fs: createPortableWatcherFs() },
       collection: createCollection("notes", "/no/such/root-missing-xyz"),
       store: createStubStore({
         listActiveDirectChildSourcePaths: async () => ({
@@ -214,6 +218,7 @@ describe("fallback root and forceFallback", () => {
     try {
       await writeFile(join(root, "keep.md"), "k");
       const classified = await classifyDirtyHints({
+        snapshotOptions: { fs: createPortableWatcherFs() },
         collection: createCollection("notes", root),
         store: createStubStore({
           listActiveDirectChildSourcePaths: async (_c: string, dir: string) => {
@@ -247,12 +252,15 @@ describe("fallback root and forceFallback", () => {
     const root = await mkdtemp(join(tmpdir(), "gno-watch-force-fb-"));
     try {
       await writeFile(join(root, "doc.md"), "final-content");
-      const built = await buildWatcherSnapshot(root);
+      const built = await buildWatcherSnapshot(root, {
+        fs: createPortableWatcherFs(),
+      });
       expect(built.status).toBe("ok");
       if (built.status !== "ok") {
         throw new Error("snapshot required");
       }
       const classified = await classifyDirtyHints({
+        snapshotOptions: { fs: createPortableWatcherFs() },
         collection: createCollection("notes", root),
         store: createStubStore(),
         rootAbs: root,
@@ -343,6 +351,7 @@ describe("root inventory scale without false overflow", () => {
       }) as typeof adapter.listActiveDirectChildSourcePaths;
 
       const classified = await classifyDirtyHints({
+        snapshotOptions: { fs: createPortableWatcherFs() },
         collection: {
           name: "notes",
           path: root,
@@ -406,6 +415,7 @@ describe("root inventory scale without false overflow", () => {
       }) as typeof adapter.listActiveDescendantSourcePaths;
 
       const classified = await classifyDirtyHints({
+        snapshotOptions: { fs: createPortableWatcherFs() },
         collection: {
           name: "notes",
           path: root,

@@ -581,12 +581,15 @@ const collectDocuments = async (
   const documents: PublicTruthDocument[] = [];
   for (const path of [...resolvedPaths].sort()) {
     const absolutePath = isAbsolute(path) ? path : join(rootDir, path);
+    const documentPath = (
+      isAbsolute(path) ? relative(rootDir, path) : path
+    ).replaceAll("\\", "/");
     if (!(await Bun.file(absolutePath).exists())) {
-      documents.push({ path, content: "" });
+      documents.push({ path: documentPath, content: "" });
       continue;
     }
     documents.push({
-      path: isAbsolute(path) ? relative(rootDir, path) : path,
+      path: documentPath,
       content: await Bun.file(absolutePath).text(),
     });
   }

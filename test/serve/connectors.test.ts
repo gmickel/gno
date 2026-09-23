@@ -18,6 +18,7 @@ async function createTempWorkspace(): Promise<{
   cwd: string;
 }> {
   const base = await mkdtemp(join(tmpdir(), "gno-connectors-"));
+  process.env.APPDATA = join(base, "appdata");
   return {
     homeDir: join(base, "home"),
     cwd: join(base, "project"),
@@ -26,8 +27,11 @@ async function createTempWorkspace(): Promise<{
 
 describe("connector service", () => {
   const cleanupPaths: string[] = [];
+  const originalAppData = process.env.APPDATA;
 
   afterEach(async () => {
+    if (originalAppData === undefined) delete process.env.APPDATA;
+    else process.env.APPDATA = originalAppData;
     while (cleanupPaths.length > 0) {
       const path = cleanupPaths.pop();
       if (path) {

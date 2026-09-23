@@ -21,6 +21,7 @@ import {
 import { runWorkspaceAudit } from "../../core/audit-workspace";
 import { normalizeTag, validateTag } from "../../core/tags";
 import { normalizeCollectionName } from "../../core/validation";
+import { windowsPrivatePath } from "../../core/windows-private-path";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 
 export interface AuditCommandOptions {
@@ -218,12 +219,15 @@ export const writeAuditReport = async (
   );
   const temporaryPath = join(temporaryDirectory, "report");
   try {
+    if (process.platform === "win32")
+      await windowsPrivatePath(temporaryDirectory, true);
     await Bun.write(temporaryPath, `${formatAuditReport(report, options)}\n`, {
       createPath: false,
       mode: 0o600,
     });
     await chmod(temporaryPath, 0o600);
     await rename(temporaryPath, path);
+    if (process.platform === "win32") await windowsPrivatePath(path);
   } finally {
     await unlink(temporaryPath).catch(() => undefined);
     await rmdir(temporaryDirectory).catch(() => undefined);

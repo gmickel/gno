@@ -3,6 +3,8 @@ import { afterEach, expect, test } from "bun:test";
 import { mkdtemp, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+// node:url — file URL conversion has no Bun equivalent.
+import { fileURLToPath } from "node:url";
 
 import { withBackgroundInference } from "../../src/llm/inference-scope";
 import { NativeWorkerClient } from "../../src/llm/native-worker/client";
@@ -370,7 +372,9 @@ test("production entry holds pending delivery, metadata does not renew TTL, pare
     cmd: [
       process.execPath,
       "--no-env-file",
-      new URL("../../src/llm/native-worker/entry.ts", import.meta.url).pathname,
+      fileURLToPath(
+        new URL("../../src/llm/native-worker/entry.ts", import.meta.url)
+      ),
       JSON.stringify(config),
     ],
     env: nativeWorkerEnvironment(),

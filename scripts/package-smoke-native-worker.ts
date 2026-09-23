@@ -1,6 +1,8 @@
 /** Exercise the real installed client/entry without downloading native models. */
 // node:path: Bun has no portable path joining API.
 import { join } from "node:path";
+// node:url — file URL decoding has no Bun equivalent.
+import { fileURLToPath } from "node:url";
 
 export async function verifyPackedNativeWorker(input: {
   packageRoot: string;
@@ -22,10 +24,12 @@ export async function verifyPackedNativeWorker(input: {
       throw new Error(`Packed native runtime missing ${file}`);
     }
   }
-  const runner = new URL(
-    "../evals/fixtures/acceptance/native-lifecycle/runner.ts",
-    import.meta.url
-  ).pathname;
+  const runner = fileURLToPath(
+    new URL(
+      "../evals/fixtures/acceptance/native-lifecycle/runner.ts",
+      import.meta.url
+    )
+  );
   const fixtureHash = new Bun.CryptoHasher("sha256")
     .update(await Bun.file(runner).bytes())
     .digest("hex");
