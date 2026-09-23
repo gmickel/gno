@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-176-run-the-full-windows-suite-in-ci-and",
   "spec_path": ".flow/tasks/fn-176-run-the-full-windows-suite-in-ci-and.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Correct Windows test scope and verify CI commands",
   "updated_at": "2026-09-23T15:03:00.936534Z"
 }

@@ -15,7 +15,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-176-run-the-full-windows-suite-in-ci-and.md",
-  "status": "open",
+  "status": "done",
   "title": "Run the full Windows suite in CI and releases",
   "tracker": {
     "baseHashFlow": null,
@@ -28,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-23T15:05:05.230813Z"
+  "updated_at": "2026-09-23T15:06:17.156711Z"
 }
