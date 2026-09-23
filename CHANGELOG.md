@@ -7,16 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- Release SQLite statements when closing an index and let Windows lock waiters yield so the current writer can finish.
-- Reject Windows drive roots during folder setup and recognize compiled Windows server assets.
-- Enforce private filesystem permissions on Windows audit reports before writing report contents.
-- Keep the CLI alive while waiting for piped `--query-file -` input on Windows.
-- Serialize setup-receipt replacements and set permissions before atomic publication to avoid Windows concurrent-rename failures. Hermes memory receipts now receive a protected user-only Windows ACL before any contents are written.
-- Run the complete Windows regression suite in CI and release checks; correct platform-specific fixtures and path handling.
-
-## [2.5.0] - 2026-09-23
+## [2.5.1] - 2026-09-23
 
 ### Added
 
@@ -26,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Keep distinct relevant, nonoverlapping Capsule passages eligible within budget and per-source share limits after their keyword facets are covered; lexical coverage no longer drops complementary evidence by itself.
 - Preserve retrieval coverage warnings in MCP text responses, including empty results, and explain safe typed-filter use in tool inputs. Verified Ask text now identifies incomplete metadata coverage.
+- Release SQLite statements when closing an index and let Windows lock waiters yield so the current writer can finish.
+- Reject Windows drive roots during folder setup and recognize compiled Windows server assets.
+- Enforce private filesystem permissions on Windows audit reports before writing report contents.
+- Keep the CLI alive while waiting for piped `--query-file -` input on Windows.
+- Serialize setup-receipt replacements and set permissions before atomic publication to avoid Windows concurrent-rename failures. Hermes memory receipts now receive a protected user-only Windows ACL before any contents are written.
+- Run the complete Windows regression suite in CI and release checks; correct platform-specific fixtures and path handling.
 
 ## [2.4.0] - 2026-09-23
 
@@ -2785,8 +2782,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.5.0...HEAD
-[2.5.0]: https://github.com/gmickel/gno/compare/v2.4.0...v2.5.0
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.5.1...HEAD
+[2.5.1]: https://github.com/gmickel/gno/compare/v2.4.0...v2.5.1
 [2.4.0]: https://github.com/gmickel/gno/compare/v2.3.3...v2.4.0
 [2.3.3]: https://github.com/gmickel/gno/compare/v2.3.2...v2.3.3
 [2.3.2]: https://github.com/gmickel/gno/compare/v2.3.1...v2.3.2
