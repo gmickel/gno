@@ -1,0 +1,277 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "gno-evidence-run-v1"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["replay", "native"]
+    },
+    "observations": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/__schema0"
+      }
+    }
+  },
+  "required": ["schemaVersion", "kind", "observations"],
+  "additionalProperties": false,
+  "definitions": {
+    "__schema0": {
+      "type": "object",
+      "properties": {
+        "caseId": {
+          "$ref": "#/definitions/__schema1"
+        },
+        "arm": {
+          "type": "string",
+          "enum": ["current", "noExpand"]
+        },
+        "fixtureSha256": {
+          "$ref": "#/definitions/__schema2"
+        },
+        "identitySha256": {
+          "$ref": "#/definitions/__schema2"
+        },
+        "noExpand": {
+          "type": "boolean"
+        },
+        "tokenBudget": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "byteBudget": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "coverage": {
+          "type": "string",
+          "enum": ["complete", "incomplete"]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/__schema1"
+          }
+        },
+        "stages": {
+          "type": "object",
+          "properties": {
+            "retrieval": {
+              "$ref": "#/definitions/__schema3"
+            },
+            "fusion": {
+              "$ref": "#/definitions/__schema3"
+            },
+            "rerank_input": {
+              "$ref": "#/definitions/__schema3"
+            },
+            "delivery": {
+              "$ref": "#/definitions/__schema3"
+            }
+          },
+          "required": ["retrieval", "fusion", "rerank_input", "delivery"],
+          "additionalProperties": false
+        },
+        "reader": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "answer": {
+                  "type": "string"
+                },
+                "abstained": {
+                  "type": "boolean"
+                },
+                "verified": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["answer", "abstained", "verified"],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cost": {
+          "type": "object",
+          "properties": {
+            "visibleBytes": {
+              "$ref": "#/definitions/__schema4"
+            },
+            "usedTokens": {
+              "$ref": "#/definitions/__schema4"
+            },
+            "estimator": {
+              "type": "string",
+              "enum": ["unicode_conservative", "active_tokenizer"]
+            },
+            "readerOutputBytes": {
+              "default": null,
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/__schema4"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "readerOutputTokens": {
+              "default": null,
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/__schema4"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tokenizations": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "modelId": {
+                        "$ref": "#/definitions/__schema1"
+                      },
+                      "inputSha256": {
+                        "$ref": "#/definitions/__schema2"
+                      },
+                      "count": {
+                        "$ref": "#/definitions/__schema4"
+                      }
+                    },
+                    "required": ["modelId", "inputSha256", "count"],
+                    "additionalProperties": false
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "durationMs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "rssBytes": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/__schema4"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "visibleBytes",
+            "usedTokens",
+            "estimator",
+            "readerOutputBytes",
+            "readerOutputTokens",
+            "tokenizations",
+            "durationMs",
+            "rssBytes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "caseId",
+        "arm",
+        "fixtureSha256",
+        "identitySha256",
+        "noExpand",
+        "tokenBudget",
+        "byteBudget",
+        "coverage",
+        "reasons",
+        "stages",
+        "reader",
+        "cost"
+      ],
+      "additionalProperties": false
+    },
+    "__schema1": {
+      "type": "string",
+      "minLength": 1
+    },
+    "__schema2": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "__schema3": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "uri": {
+                "$ref": "#/definitions/__schema1"
+              },
+              "sourceHash": {
+                "$ref": "#/definitions/__schema2"
+              },
+              "start": {
+                "$ref": "#/definitions/__schema4"
+              },
+              "end": {
+                "$ref": "#/definitions/__schema4"
+              },
+              "text": {
+                "type": "string"
+              },
+              "inputId": {
+                "$ref": "#/definitions/__schema1"
+              },
+              "selectedEnd": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/__schema4"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "uri",
+              "sourceHash",
+              "start",
+              "end",
+              "text",
+              "inputId",
+              "selectedEnd"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema4": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  }
+}

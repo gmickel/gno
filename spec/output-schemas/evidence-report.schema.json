@@ -1,0 +1,322 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "gno-evidence-report-v1"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["replay", "native"]
+    },
+    "fixtureSha256": {
+      "$ref": "#/definitions/__schema0"
+    },
+    "valid": {
+      "type": "boolean"
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/__schema1"
+      }
+    },
+    "scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "caseId": {
+            "$ref": "#/definitions/__schema1"
+          },
+          "arm": {
+            "type": "string",
+            "enum": ["current", "noExpand"]
+          },
+          "valid": {
+            "type": "boolean"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/__schema1"
+            }
+          },
+          "stages": {
+            "type": "object",
+            "properties": {
+              "retrieval": {
+                "$ref": "#/definitions/__schema2"
+              },
+              "fusion": {
+                "$ref": "#/definitions/__schema2"
+              },
+              "rerank_input": {
+                "$ref": "#/definitions/__schema2"
+              },
+              "delivery": {
+                "$ref": "#/definitions/__schema2"
+              }
+            },
+            "required": ["retrieval", "fusion", "rerank_input", "delivery"],
+            "additionalProperties": false
+          },
+          "firstLossStage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["retrieval", "fusion", "rerank_input", "delivery"]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "groundedTaskSuccess": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "correctAbstention": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cost": {
+            "type": "object",
+            "properties": {
+              "visibleBytes": {
+                "$ref": "#/definitions/__schema3"
+              },
+              "usedTokens": {
+                "$ref": "#/definitions/__schema3"
+              },
+              "estimator": {
+                "type": "string",
+                "enum": ["unicode_conservative", "active_tokenizer"]
+              },
+              "readerOutputBytes": {
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/__schema3"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "readerOutputTokens": {
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/__schema3"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tokenizations": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "modelId": {
+                          "$ref": "#/definitions/__schema1"
+                        },
+                        "inputSha256": {
+                          "$ref": "#/definitions/__schema0"
+                        },
+                        "count": {
+                          "$ref": "#/definitions/__schema3"
+                        }
+                      },
+                      "required": ["modelId", "inputSha256", "count"],
+                      "additionalProperties": false
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "durationMs": {
+                "type": "number",
+                "minimum": 0
+              },
+              "rssBytes": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/__schema3"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "visibleBytes",
+              "usedTokens",
+              "estimator",
+              "readerOutputBytes",
+              "readerOutputTokens",
+              "tokenizations",
+              "durationMs",
+              "rssBytes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "caseId",
+          "arm",
+          "valid",
+          "reasons",
+          "stages",
+          "firstLossStage",
+          "groundedTaskSuccess",
+          "correctAbstention",
+          "cost"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "paired": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "caseId": {
+            "$ref": "#/definitions/__schema1"
+          },
+          "allEvidenceDelta": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -1,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "groundedTaskDelta": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -1,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "baselineMiss": {
+            "type": "boolean"
+          },
+          "candidateMiss": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "caseId",
+          "allEvidenceDelta",
+          "groundedTaskDelta",
+          "baselineMiss",
+          "candidateMiss"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "kind",
+    "fixtureSha256",
+    "valid",
+    "passed",
+    "reasons",
+    "scores",
+    "paired"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "__schema0": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "__schema1": {
+      "type": "string",
+      "minLength": 1
+    },
+    "__schema2": {
+      "type": "object",
+      "properties": {
+        "all": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "any": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "spans": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/definitions/__schema1"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "partial",
+              "clipped",
+              "split-across-inputs",
+              "missing",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "required": ["all", "any", "spans"],
+      "additionalProperties": false
+    },
+    "__schema3": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  }
+}

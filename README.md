@@ -1203,6 +1203,13 @@ bun run eval:hybrid:delta
 - Benchmark guide: [evals/README.md](./evals/README.md)
 - Latest baseline snapshot: [evals/fixtures/hybrid-baseline/latest.json](./evals/fixtures/hybrid-baseline/latest.json)
 
+Document-level benchmark hits do not prove that every answer-bearing passage
+survives retrieval and a context budget. The opt-in
+[adversarial evidence gate](./evals/README.md#adversarial-evidence-coverage-development-only)
+checks complete required source spans, multi-source coverage, and fixed-reader
+abstention with replay and explicit cached-model native runs. It preserves baseline
+misses and does not change ranking defaults.
+
 ### Code Embedding Benchmark Harness
 
 GNO also has a dedicated harness for comparing alternate embedding models on code retrieval without touching product defaults:

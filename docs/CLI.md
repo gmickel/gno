@@ -383,6 +383,15 @@ includes `target.status`
 chunk/line selected for the target. In BM25-only mode, vector/rerank stages are
 reported as skipped while fusion remains active with `sourceCount: 1`.
 
+A target document appearing in diagnosis is not proof that the answer-bearing
+passage reached the final context. Inspect the selected lines with `gno get`;
+for a question requiring multiple sources, retrieve and cite each required
+passage. If an expected source is missing, diagnose that target before changing
+filters or retrying. Capsule gaps and omissions can expose a bounded handoff's
+limits, but neither a result count nor verified claim support proves that the
+corpus contains every relevant source. State missing evidence or abstain instead
+of treating a partial answer as complete.
+
 **Migration notes (retrieval v2):**
 
 - Existing calls keep working (`gno query "..."`, `--fast`, `--thorough`, `--no-expand`, `--no-rerank`).

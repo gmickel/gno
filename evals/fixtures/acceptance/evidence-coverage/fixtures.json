@@ -1,0 +1,351 @@
+{
+  "schemaVersion": "gno-evidence-fixtures-v1",
+  "documents": [
+    {
+      "uri": "gno://notes/operations.md",
+      "title": "Operations notes",
+      "content": "# Operations notes\n\nThe retry code RPC.E_TIMEOUT uses a backoff of 750 milliseconds.\nThe worker limit for service Atlas is 12 concurrent tasks.\n",
+      "sourceHash": "a91e1a7266e3ca3347ac0c1df21688ed7b00a660e75d7658f0bcf7a545bf4296"
+    },
+    {
+      "uri": "gno://notes/release-checklist.md",
+      "title": "Release checklist",
+      "content": "# Release checklist\n\nEngineering approval is recorded by Lina Mora.\nOperations approval is recorded by Pavel Reed.\nBoth approvals are required before a production launch.\n",
+      "sourceHash": "8e37ecda5974d86330ead84124380e916edf789d130f40cf0c2b9c6572306441"
+    },
+    {
+      "uri": "gno://notes/retention.md",
+      "title": "Retention policy",
+      "content": "# Retention policy\n\nCompleted event records expire after 45 days.\nRecords under an active investigation are retained until the case closes.\n",
+      "sourceHash": "8a5237ec9faaf76e57c69a7afcc9ca7df55cda917cea672c1392a8089e83c4e3"
+    },
+    {
+      "uri": "gno://notes/team-guide.md",
+      "title": "Team guide",
+      "content": "# Team guide\n\nService Atlas is owned by [[people/lina-mora.md|Lina Mora]].\nThe service owner approves Atlas rollout requests.\n",
+      "sourceHash": "0a0885348d0a8d1d1cd739344fe62e8fb313cd2f1487052be55b8ad4960c94d0"
+    },
+    {
+      "uri": "gno://notes/people/lina-mora.md",
+      "title": "Team member",
+      "content": "# Team member\n\nLina Mora is the platform engineering lead.\nHer release review window starts at 09:30 UTC.\n",
+      "sourceHash": "a378b6f8fc5f9cc6ed7d095004510f1e270ef89ba68d13f4b4a4cc27e55b85c6"
+    },
+    {
+      "uri": "gno://notes/archiv.md",
+      "title": "Betriebshinweise",
+      "content": "# Betriebshinweise\n\nDie Aufbewahrungsfrist für abgeschlossene Ereignisse beträgt 45 Tage.\nDie Freigabe erfolgt durch das Betriebsteam.\n",
+      "sourceHash": "c2d9d1806a42c3573ce664cc3ebecef86d5690f266bd801b400c5a6a65f4c060"
+    },
+    {
+      "uri": "gno://notes/2026-07-policy.md",
+      "title": "July policy",
+      "content": "# July policy\n\nAs of July 2026, the trial quota was 80 requests per minute.\n",
+      "sourceHash": "b29f52a475bb294c90402f675bb6bbbaeffc8caf69b900e49c03ff58d591dd3a"
+    },
+    {
+      "uri": "gno://notes/2026-09-policy.md",
+      "title": "September policy",
+      "content": "# September policy\n\nEffective September 2026, the trial quota is 120 requests per minute.\nThis replaces the July trial quota.\n",
+      "sourceHash": "5597581a7c7b2d30c4209cf43b8235c52ba042c6af679fe41639a8760c2d1329"
+    },
+    {
+      "uri": "gno://notes/overview.md",
+      "title": "System overview",
+      "content": "# System overview\n\nEvent retention, retries, quotas and release approvals are covered by the linked operational notes.\nThis overview contains no authoritative limits.\nSee [[retention.md]], [[operations.md]], [[release-checklist.md]] and [[2026-09-policy.md]].\n",
+      "sourceHash": "dbd99f81b41eaf3a704147293809e6a88dc8e8f77e687dc08d95ba62b92d5e4b"
+    },
+    {
+      "uri": "gno://private/customer-notes.md",
+      "title": "Customer operations",
+      "content": "# Customer operations\n\nThe retry code RPC.E_TIMEOUT uses a backoff of 900 milliseconds for this private deployment.\nPrivate deployment launch token: CANARY-PRIVATE-71.\n",
+      "sourceHash": "b70baf0db40ac0912722eedde538e9105cc5d7ba5f81324a2bb63cb36652c76e"
+    },
+    {
+      "uri": "gno://notes/reference.md",
+      "title": "Operational reference",
+      "content": "# Operational reference\n\nRetry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. Retry handling and event retention are part of normal operation. \nThe escalation desk extension is 4832.\n",
+      "sourceHash": "6c4c15965d8487f8df8a070fe641aa438d52239f64db6dbe680762f0a32e426b"
+    }
+  ],
+  "spans": [
+    {
+      "id": "retry",
+      "uri": "gno://notes/operations.md",
+      "sourceHash": "a91e1a7266e3ca3347ac0c1df21688ed7b00a660e75d7658f0bcf7a545bf4296",
+      "startLine": 3,
+      "endLine": 3,
+      "spanHash": "0a22fe1582f6cf112fd5eeadc402719d9093d3e0f692e063548c797969c9c3dd"
+    },
+    {
+      "id": "workers",
+      "uri": "gno://notes/operations.md",
+      "sourceHash": "a91e1a7266e3ca3347ac0c1df21688ed7b00a660e75d7658f0bcf7a545bf4296",
+      "startLine": 4,
+      "endLine": 4,
+      "spanHash": "8c342e1c05716fb7fce21f9162cacabb3853e29d6b8c685bfed9475a41046f25"
+    },
+    {
+      "id": "engineering",
+      "uri": "gno://notes/release-checklist.md",
+      "sourceHash": "8e37ecda5974d86330ead84124380e916edf789d130f40cf0c2b9c6572306441",
+      "startLine": 3,
+      "endLine": 3,
+      "spanHash": "19e2ff4565142a7efd84d722141c8db0986ca7ccf9092fe1a132f0ae7a14c040"
+    },
+    {
+      "id": "operations",
+      "uri": "gno://notes/release-checklist.md",
+      "sourceHash": "8e37ecda5974d86330ead84124380e916edf789d130f40cf0c2b9c6572306441",
+      "startLine": 4,
+      "endLine": 4,
+      "spanHash": "b2542fb488ba3b18c6c5153b36cc5fd94bf14984c599feafb539da775d6cc855"
+    },
+    {
+      "id": "retention",
+      "uri": "gno://notes/retention.md",
+      "sourceHash": "8a5237ec9faaf76e57c69a7afcc9ca7df55cda917cea672c1392a8089e83c4e3",
+      "startLine": 3,
+      "endLine": 3,
+      "spanHash": "bc4cfc01b623c346b8d58d31dd49eb4fc775df7ec4f41ffd050c8ede462cae59"
+    },
+    {
+      "id": "owner",
+      "uri": "gno://notes/team-guide.md",
+      "sourceHash": "0a0885348d0a8d1d1cd739344fe62e8fb313cd2f1487052be55b8ad4960c94d0",
+      "startLine": 3,
+      "endLine": 3,
+      "spanHash": "9f626bb984e6b7690bb1b66c5994de7696b689360a1dc063abb1f7685dff9f00"
+    },
+    {
+      "id": "role",
+      "uri": "gno://notes/people/lina-mora.md",
+      "sourceHash": "a378b6f8fc5f9cc6ed7d095004510f1e270ef89ba68d13f4b4a4cc27e55b85c6",
+      "startLine": 3,
+      "endLine": 3,
+      "spanHash": "fd27694869477ed840e5b4e04ad5cd53b2956802f1a4dc5c091a584d14d425e4"
+    },
+    {
+      "id": "german",
+      "uri": "gno://notes/archiv.md",
+      "sourceHash": "c2d9d1806a42c3573ce664cc3ebecef86d5690f266bd801b400c5a6a65f4c060",
+      "startLine": 3,
+      "endLine": 3,
+      "spanHash": "c77bc7ba6fa790f770582422685d5287002117f9ce54368f3b68baa34da428d5"
+    },
+    {
+      "id": "quota",
+      "uri": "gno://notes/2026-09-policy.md",
+      "sourceHash": "5597581a7c7b2d30c4209cf43b8235c52ba042c6af679fe41639a8760c2d1329",
+      "startLine": 3,
+      "endLine": 3,
+      "spanHash": "f4373410830f0792909bf465100e9169b20507964bf86e56d38eb3c6ebdd050c"
+    },
+    {
+      "id": "escalation",
+      "uri": "gno://notes/reference.md",
+      "sourceHash": "6c4c15965d8487f8df8a070fe641aa438d52239f64db6dbe680762f0a32e426b",
+      "startLine": 4,
+      "endLine": 4,
+      "spanHash": "9d379e852f45f68c9ea88261ccc38985169c22984864b88f30d96ddce7fc2778"
+    }
+  ],
+  "cases": [
+    {
+      "caseId": "exact-code",
+      "family": "exact_identifier",
+      "query": "What backoff is configured for RPC.E_TIMEOUT?",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [["retry"]],
+      "expectAbstention": false,
+      "expectedValues": ["750"],
+      "mustCover": true,
+      "split": "development"
+    },
+    {
+      "caseId": "punctuated-code",
+      "family": "punctuation",
+      "query": "\"RPC.E_TIMEOUT\" backoff",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [["retry"]],
+      "expectAbstention": false,
+      "expectedValues": ["750"],
+      "mustCover": true,
+      "split": "held-out"
+    },
+    {
+      "caseId": "event-expiry",
+      "family": "concept_hub",
+      "query": "When are completed event records removed?",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [["retention"]],
+      "expectAbstention": false,
+      "expectedValues": ["45"],
+      "mustCover": false,
+      "split": "development"
+    },
+    {
+      "caseId": "launch-approvals",
+      "family": "multi_source",
+      "query": "Who must approve a production launch?",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [["engineering", "operations"]],
+      "expectAbstention": false,
+      "expectedValues": ["Lina Mora", "Pavel Reed"],
+      "mustCover": true,
+      "split": "held-out"
+    },
+    {
+      "caseId": "service-owner",
+      "family": "graph_relationship",
+      "query": "Who owns Atlas and what is their role?",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [["owner", "role"]],
+      "expectAbstention": false,
+      "expectedValues": ["Lina Mora", "platform engineering lead"],
+      "mustCover": false,
+      "split": "held-out"
+    },
+    {
+      "caseId": "current-quota",
+      "family": "temporal",
+      "query": "What trial quota applies in September 2026?",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [["quota"]],
+      "expectAbstention": false,
+      "expectedValues": ["120"],
+      "mustCover": false,
+      "split": "held-out"
+    },
+    {
+      "caseId": "german-retention",
+      "family": "multilingual",
+      "query": "Wie lange werden abgeschlossene Ereignisse aufbewahrt?",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [["german"], ["retention"]],
+      "expectAbstention": false,
+      "expectedValues": ["45"],
+      "mustCover": false,
+      "split": "held-out"
+    },
+    {
+      "caseId": "weak-keywords",
+      "family": "weak_lexical",
+      "query": "How long do finished activity entries remain available?",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [["retention"]],
+      "expectAbstention": false,
+      "expectedValues": ["45"],
+      "mustCover": false,
+      "split": "held-out"
+    },
+    {
+      "caseId": "intent-limit",
+      "family": "intent_contamination",
+      "query": "What is the limit?",
+      "intent": "Concurrent tasks for service Atlas; not the trial request quota.",
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [["workers"]],
+      "expectAbstention": false,
+      "expectedValues": ["12"],
+      "mustCover": false,
+      "split": "development"
+    },
+    {
+      "caseId": "repeat-evidence",
+      "family": "duplicate_votes",
+      "query": "Atlas worker concurrency limit tasks parallel workers",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [["workers"]],
+      "expectAbstention": false,
+      "expectedValues": ["12"],
+      "mustCover": false,
+      "split": "held-out"
+    },
+    {
+      "caseId": "scoped-retry",
+      "family": "scope_before_top_k",
+      "query": "RPC.E_TIMEOUT deployment backoff",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [["retry"]],
+      "expectAbstention": false,
+      "expectedValues": ["750"],
+      "mustCover": true,
+      "split": "held-out"
+    },
+    {
+      "caseId": "tail-passage",
+      "family": "clipped_passage",
+      "query": "What is the escalation desk extension?",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [["escalation"]],
+      "expectAbstention": false,
+      "expectedValues": ["4832"],
+      "mustCover": false,
+      "split": "held-out"
+    },
+    {
+      "caseId": "missing-policy",
+      "family": "missing_evidence",
+      "query": "What is the approved 2027 database migration date?",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [],
+      "expectAbstention": true,
+      "expectedValues": [],
+      "mustCover": false,
+      "split": "held-out"
+    },
+    {
+      "caseId": "unknown-record",
+      "family": "stale_missing_source",
+      "query": "What password rotation interval is mandated?",
+      "intent": null,
+      "collection": "notes",
+      "tokenBudget": 4096,
+      "byteBudget": 24000,
+      "requiredSets": [],
+      "expectAbstention": true,
+      "expectedValues": [],
+      "mustCover": false,
+      "split": "held-out"
+    }
+  ]
+}

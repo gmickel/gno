@@ -205,6 +205,13 @@ is supported. Semantic verification failures remain uncertain and fail closed.
 This mode classifies support against retained evidence; it does not guarantee
 that the corpus is complete or its sources are true.
 
+Open source citations and check the actual passages, especially when a question
+compares several documents or dates. A relevant document in Search does not mean
+all required passages survived into the answer's context. Preserve displayed
+gaps, freshness warnings, and abstention; a supported answer can still leave part
+of a broader question unanswered. For a known missing source, use
+[`gno query diagnose`](CLI.md#gno-query) to inspect retrieval and filter state.
+
 Both **Search** and **Ask** accept multi-line structured query documents. Press `Shift+Enter` to add a new line, then use:
 
 ```text

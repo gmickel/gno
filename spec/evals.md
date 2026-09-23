@@ -1110,3 +1110,51 @@ ordering, and rerank interaction without LLM or fixture drift.
    - CONTRIBUTING.md updated with DoD eval requirements
    - This spec (spec/evals.md) matches implementation
 ````
+
+## Adversarial evidence gate (development only)
+
+`bun evals/acceptance/evidence-cli.ts --input <observations.json> --output <report.json>`
+validates and scores a frozen `gno-evidence-run-v1` observation bundle. Native
+collection is explicit (`--native --output <new-directory>`), uses only cached
+models and isolated synthetic indexes, and compares current defaults with
+`noExpand: true`. This is not a public GNO command or a default CI eval.
+
+The fixture contract `gno-evidence-fixtures-v1` contains documents (URI, title,
+exact content and SHA-256), verified required spans (stable ID, source hash,
+1-based inclusive line range and span hash), and cases. Cases pin query/intent,
+collection, family, usable token budget, independent UTF-8 byte cap, acceptable
+alternative sets of required span IDs, answerability, expected literal answer
+values, and a must-cover flag. Empty answerable evidence sets, invalid ranges,
+duplicate IDs, stale hashes, unknown span references and answer-bearing names
+in synthetic paths are rejected. Fixture bytes are pinned separately; baseline
+pins are never regenerated to hide a failure.
+
+Every observation names a case, arm (`current` or `noExpand`), fixture digest,
+runtime/model/settings identity, native coverage and invalid-run reasons. Its
+stages (`retrieval`, `fusion`, `rerank_input`, `delivery`) contain observed
+passages with URI, source hash, UTF-16 source offsets, exact text and an input
+identity. Stages not captured are null, not empty successful stages. Clipping
+metadata retains the original selected extent when known. Passage validity is
+checked against the pinned source. A required span survives only when verified
+passages in one actual input together cover every character; separate reranker
+inputs cannot pool coverage. Partial, clipped, split-across-inputs, missing and
+unknown outcomes remain distinct. Duplicate appearances cannot add coverage.
+
+The `gno-evidence-report-v1` output retains per-span/stage outcomes, all-required
+and any-required evidence coverage, first observed loss stage, fixed-reader
+answer/abstention outcome, UTF-8 bytes, declared-estimator token cost, exact native
+tokenization observations when available, elapsed time and resource samples.
+Actual tokenizer observations are not mislabeled as total inference billing;
+missing observations remain null. Reader outcomes use delivered verified spans,
+expected fixture values and the actual answer verification result, not document
+hits or reconstructed snippets. Retrieval-only runs have a null reader outcome.
+
+Comparison requires exactly one observation per case/arm, matching fixture,
+model/runtime identity and budgets; only the declared noExpand setting differs.
+Native fallback or missing required model execution invalidates a native pair.
+Replay success never certifies native execution. Both arms and baseline misses
+are retained. Candidate adoption requires all deterministic guard cases and
+must-cover cases, no reduction in held-out complete evidence or fixed-reader
+success, and valid comparisons. A baseline miss is a finding; this gate does not
+change ranking defaults to make itself green. The exact strict JSON schemas
+ship beside the other evaluation output schemas.
