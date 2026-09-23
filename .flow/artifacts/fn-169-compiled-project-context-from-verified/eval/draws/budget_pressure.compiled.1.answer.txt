@@ -1,0 +1,4 @@
+Q1: YES
+Q2: YES
+
+Sources: gno://eval/lumen.md

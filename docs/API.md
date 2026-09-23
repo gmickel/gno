@@ -3823,3 +3823,23 @@ before candidate limits and intersects server authority. Document detail exposes
 stored `typedMetadata` and `metadataError`; clients should not reparse YAML to
 infer types. See [Typed metadata filters](TYPED-METADATA.md) for the shared
 contract, coverage warnings, limits, and privacy behavior.
+
+## Compiled project context
+
+`POST /api/context/compiled/preview` accepts
+`{capsule, budgetTokens, budgetBytes?}` and returns the server-produced Markdown,
+whole-output budget costs, coverage, evidence IDs, omissions, and digests.
+`POST /api/context/compiled/check` accepts `{capsule, markdown}` and returns
+`{schemaVersion, status, reasons, digest, capsuleId}` with status `current`,
+`stale`, `conflict`, or `unverifiable`. Both are read-only and inline-only; no
+server filesystem paths are accepted. Capsule/artifact inputs and output are
+bounded to 4 MiB, token budget to 1,000,000. Current collection/egress authority
+is enforced even for inline requests. Drift checks do not return evidence bytes.
+
+Local SDK methods are `compiledContextPreview(input)`,
+`compiledContextCheck(input)`, `compileContextFile({capsulePath, outputPath,
+budgetTokens, budgetBytes?})`, `checkContextFile({outputPath, capsulePath?})`, and
+`refreshContextFile({outputPath, capsuleOutputPath})`. Only file helpers write.
+Refresh requires a fresh explicit `.gno-context.capsule.json` destination when
+stale. See [compiled context](COMPILED-CONTEXT.md) and its
+[output contract](../spec/compiled-context.md).

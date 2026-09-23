@@ -2262,3 +2262,22 @@ gno search "rollout" --filter '{"op":"gte","key":"confidence","value":0.8}'
 See [Typed metadata filters](TYPED-METADATA.md) for source YAML, operators,
 missing-field truth tables, limits, and sync recovery. Fixed flags such as
 `--tags-all` and `--collection` still intersect the custom predicate.
+
+## Compiled project context
+
+`gno context compiled` exports verified Capsules to owned Markdown artifacts.
+
+```bash
+gno context compiled preview --capsule capsule.json --budget 12000 --json
+gno context compiled compile --capsule capsule.json --budget 12000 --output project.gno-context.md
+gno context compiled check project.gno-context.md
+gno context compiled refresh project.gno-context.md --capsule-output project-refresh-01.gno-context.capsule.json
+```
+
+Run `gno update` first when source files changed: freshness checks indexed state.
+`check` exits 0 current, 3 stale, 4 conflict, 2 unverifiable; invalid input exits 1.
+Compile requires a new output and creates an adjacent private ownership sidecar.
+For each stale refresh choose a fresh Capsule output filename; current refresh is
+a verified no-op. Budgets include all output bytes, and missing required facets
+remain explicit. See [compiled context](COMPILED-CONTEXT.md) for bounds, inclusion
+recipes, source privacy, and recovery. Existing `gno context check` is unchanged.

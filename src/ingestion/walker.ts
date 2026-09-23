@@ -1,3 +1,5 @@
+// node:fs - Bun has no synchronous Dirent enumeration for the guarded local walk.
+import { readdirSync } from "node:fs";
 /**
  * File walker implementation.
  * Walks collection directories using Bun.Glob (`any`) or hierarchical
@@ -5,9 +7,6 @@
  *
  * @module src/ingestion/walker
  */
-
-// node:fs - Bun has no synchronous Dirent enumeration for the guarded local walk.
-import { readdirSync } from "node:fs";
 // node:fs/promises - Bun has no realpath equivalent for symlink-safe containment.
 import { lstat, realpath } from "node:fs/promises";
 // node:path - Bun has no path manipulation module
@@ -28,6 +27,7 @@ import {
   matchesCollectionExclusion,
   matchesCollectionSubtreeExclusion,
 } from "../core/path-rules";
+import { isCompiledContextPath } from "./compiled-context";
 import { isRecordVirtualPath } from "./record-path";
 import {
   createDirectoryAvailability,
@@ -204,7 +204,8 @@ export function matchesWalkPath(
   if (
     isAbsolute(normalizedPath) ||
     DANGEROUS_PATTERN_REGEX.test(normalizedPath) ||
-    isRecordVirtualPath(normalizedPath)
+    isRecordVirtualPath(normalizedPath) ||
+    isCompiledContextPath(normalizedPath)
   ) {
     return false;
   }

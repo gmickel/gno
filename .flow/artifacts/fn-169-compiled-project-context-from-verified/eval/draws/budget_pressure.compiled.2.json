@@ -1,0 +1,156 @@
+{
+  "arm": "compiled",
+  "case": "budget_pressure",
+  "draw": 2,
+  "elapsedSeconds": 9.656723152147606,
+  "modelIdentities": [
+    "claude-sonnet-4-5-20250929"
+  ],
+  "modelUsage": {
+    "claude-sonnet-4-5-20250929": {
+      "cacheCreationInputTokens": 1293,
+      "cacheReadInputTokens": 0,
+      "canonicalModel": "claude-sonnet-4-5",
+      "contextWindow": 200000,
+      "costBasis": "list",
+      "costUSD": 0.013125000000000001,
+      "inputTokens": 9,
+      "maxOutputTokens": 32000,
+      "outputTokens": 356,
+      "provider": "firstParty",
+      "thinkingTokens": 330,
+      "webSearchRequests": 0
+    }
+  },
+  "response": {
+    "api_error_status": null,
+    "duration_api_ms": 8725,
+    "duration_ms": 8747,
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "fast_mode_state": "off",
+    "first_content_frame_ms": 1364,
+    "is_error": false,
+    "modelUsage": {
+      "claude-sonnet-4-5-20250929": {
+        "cacheCreationInputTokens": 1293,
+        "cacheReadInputTokens": 0,
+        "canonicalModel": "claude-sonnet-4-5",
+        "contextWindow": 200000,
+        "costBasis": "list",
+        "costUSD": 0.013125000000000001,
+        "inputTokens": 9,
+        "maxOutputTokens": 32000,
+        "outputTokens": 356,
+        "provider": "firstParty",
+        "thinkingTokens": 330,
+        "webSearchRequests": 0
+      }
+    },
+    "num_turns": 1,
+    "permission_denials": [],
+    "queued_turn_count": 0,
+    "result": "Q1: YES\nQ2: YES\n\nSources: gno://eval/lumen.md",
+    "result_index": 0,
+    "session_id": "6f25327d-4eb2-49b8-baeb-02a4c986b4c7",
+    "stop_reason": "end_turn",
+    "subagent_stats": {
+      "by_type": {},
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "system": 0,
+        "user": 0
+      },
+      "max_depth": 0,
+      "refused": {
+        "budget": 0,
+        "concurrency_limit": 0,
+        "depth_limit": 0
+      },
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "spawned": 0,
+      "spawned_by_subagents": 0,
+      "started_in_background": 0
+    },
+    "subtype": "success",
+    "terminal_reason": "completed",
+    "time_to_request_ms": 20,
+    "total_cost_usd": 0.013125000000000001,
+    "ttft_ms": 8602,
+    "ttft_stream_ms": 1364,
+    "type": "result",
+    "usage": {
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 1293,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 1293,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "not_available",
+      "input_tokens": 9,
+      "iterations": [
+        {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 1293,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 1293,
+          "cache_read_input_tokens": 0,
+          "input_tokens": 9,
+          "output_tokens": 356,
+          "type": "message"
+        }
+      ],
+      "output_tokens": 356,
+      "output_tokens_details": {
+        "thinking_tokens": 330
+      },
+      "server_tool_use": {
+        "web_fetch_requests": 0,
+        "web_search_requests": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+    },
+    "uuid": "bb234a7b-4d0b-4380-b47b-61d6847f3dc6"
+  },
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 1293,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 1293,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "not_available",
+    "input_tokens": 9,
+    "iterations": [
+      {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 1293,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 1293,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 9,
+        "output_tokens": 356,
+        "type": "message"
+      }
+    ],
+    "output_tokens": 356,
+    "output_tokens_details": {
+      "thinking_tokens": 330
+    },
+    "server_tool_use": {
+      "web_fetch_requests": 0,
+      "web_search_requests": 0
+    },
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "valid": true
+}

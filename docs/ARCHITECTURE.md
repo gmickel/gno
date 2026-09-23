@@ -637,3 +637,15 @@ SQL eligibility before candidate budgets; no whole-corpus in-memory post-filter
 is needed. Authority and fixed filters remain conjunctive constraints.
 Capsule scope and private trace identity retain the predicate for verification
 and replay. See [Typed metadata filters](TYPED-METADATA.md).
+
+## Compiled project context
+
+Verified Capsules can be rendered deterministically into bounded Markdown, using
+the existing evidence selection and verification contracts. Source text stays
+fenced as untrusted evidence; the whole artifact includes framing/citation cost
+and reports coverage gaps. CLI and local SDK file helpers add explicit ownership
+sidecars and checked publication. MCP/REST/Web UI expose only inline preview and
+check; browser downloads preserve exact returned bytes. No new inference engine,
+automatic instruction edits, or background refresh is introduced. Verification
+uses indexed source state, so sync precedes checks after filesystem edits.
+See [compiled context](COMPILED-CONTEXT.md).

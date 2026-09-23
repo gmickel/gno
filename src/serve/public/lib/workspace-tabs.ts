@@ -65,6 +65,8 @@ function getLocationLabel(location: string): string {
       return "Connectors";
     case "/graph":
       return "Graph";
+    case "/context/compiled":
+      return "Compiled context";
     case "/traces":
       return "Trace history";
     case "/doc":

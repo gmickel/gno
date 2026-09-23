@@ -1185,3 +1185,18 @@ a shared URL can disclose filter values. Document details display the indexed
 typed map and extraction diagnostics instead of guessing types from frontmatter.
 Coverage warnings require sync/source repair before interpreting empty results.
 See [Typed metadata filters](TYPED-METADATA.md).
+
+## Compiled project context
+
+Open **Compiled context** from the dashboard or footer (`/context/compiled`).
+Upload/paste Capsule JSON (up to 4 MiB), set token/optional byte budgets, and
+preview verified evidence. Inspect exact cost, covered/unresolved facets,
+omissions, and digests. Markdown is displayed as inert text; Download Markdown
+saves exactly the returned bytes, without installing agent instructions.
+Upload/paste a compiled artifact alongside its Capsule to check freshness and
+see current/stale/conflict/unverifiable reasons. Edits invalidate old results.
+
+The browser never submits server output paths or starts background refresh.
+Downloads lack the local ownership sidecar; use the displayed CLI recipe for
+managed compile/refresh. Run `gno update` after source edits before checking
+indexed freshness. See [compiled context](COMPILED-CONTEXT.md).

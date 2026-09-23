@@ -3080,3 +3080,14 @@ also exposes the Capsule's metadata coverage warning. The compact agent
 protocol block and retrieval ladder remain unchanged.
 
 Coverage counts describe the scoped corpus, not the existence or metadata state of a particular matching document. With no known target, report the coverage limit instead of inventing a target or broadening the requested search.
+
+### Compiled context tools
+
+`gno_context_compiled_preview` accepts an inline Capsule, `budgetTokens` and
+optional `budgetBytes`; returns verified Markdown, digest, whole-output cost,
+coverage and omissions. `gno_context_compiled_check` accepts an inline Capsule
+and `markdown`; returns current/stale/conflict/unverifiable with bounded reasons.
+Both are read-only full-profile tools. Inputs are strict: no host paths, output
+destinations, or caller authorization fields. Current runtime scope and transport
+egress policy apply even to caller-supplied Capsules. See
+[compiled context](compiled-context.md) for exact shared schemas and bounds.

@@ -1,0 +1,36 @@
+{
+  "posthocByteAudit": true,
+  "notARescore": true,
+  "records": [
+    {
+      "id": "owner",
+      "sourceEvidenceCount": 1,
+      "allProvidedEvidencePreserved": true
+    },
+    {
+      "id": "two_sources",
+      "sourceEvidenceCount": 1,
+      "allProvidedEvidencePreserved": true
+    },
+    {
+      "id": "polarity",
+      "sourceEvidenceCount": 1,
+      "allProvidedEvidencePreserved": true
+    },
+    {
+      "id": "injection",
+      "sourceEvidenceCount": 1,
+      "allProvidedEvidencePreserved": true
+    },
+    {
+      "id": "abstention",
+      "sourceEvidenceCount": 1,
+      "allProvidedEvidencePreserved": true
+    },
+    {
+      "id": "budget_pressure",
+      "sourceEvidenceCount": 1,
+      "allProvidedEvidencePreserved": true
+    }
+  ]
+}

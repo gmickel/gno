@@ -122,7 +122,15 @@ gno daemon --detach  # headless indexing + resident MCP gateway
 
 **Under the hood** · [How It Works](#how-it-works) · [Features](#features) · [Local Models](#local-models) · [Fine-Tuned Models](#fine-tuned-models) · [Architecture](#architecture) · [Development](#development)
 
-**Deep dives on gno.sh** · [Context Capsules](https://gno.sh/docs/context-capsules) · [Knowledge Delta](https://gno.sh/docs/knowledge-delta) · [Retrieval learning](https://gno.sh/docs/retrieval-learning) · [Project profiles](https://gno.sh/docs/project-profiles) · [Egress policies](https://gno.sh/docs/collection-egress) · [Export adapters](https://gno.sh/docs/file-export-adapters)
+### Compiled project context
+
+Export a verified Capsule to a separate, cited Markdown artifact with an explicit
+whole-output budget. Check indexed freshness and refresh owned files locally;
+preview/check through MCP, REST, or Web UI without server file writes. Source
+passages remain untrusted evidence and agent instructions stay user-owned.
+See the [guide](docs/COMPILED-CONTEXT.md).
+
+**Deep dives on gno.sh** · [Compiled project context](https://gno.sh/docs/compiled-context) · [Context Capsules](https://gno.sh/docs/context-capsules) · [Knowledge Delta](https://gno.sh/docs/knowledge-delta) · [Retrieval learning](https://gno.sh/docs/retrieval-learning) · [Project profiles](https://gno.sh/docs/project-profiles) · [Egress policies](https://gno.sh/docs/collection-egress) · [Export adapters](https://gno.sh/docs/file-export-adapters)
 
 ---
 

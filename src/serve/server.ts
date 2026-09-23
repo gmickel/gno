@@ -1,3 +1,4 @@
+import type { HttpGatewayOverrides } from "../mcp/http-security";
 /**
  * Bun.serve() web server for GNO web UI.
  * Uses Bun's fullstack dev server with HTML imports.
@@ -5,8 +6,6 @@
  *
  * @module src/serve/server
  */
-
-import type { HttpGatewayOverrides } from "../mcp/http-security";
 import type { RequestPeerServer } from "./request-locality";
 import type { ResidentRuntime } from "./resident-runtime";
 import type { ContextHolder } from "./routes/api";
@@ -16,6 +15,7 @@ import {
   resolveHttpGatewayConfig,
 } from "../mcp/http-security";
 import { startBackgroundRuntime } from "./background-runtime";
+import { handleCompiledContext } from "./compiled-context";
 import { handleContextBuild, handleContextVerify } from "./context-capsule";
 import { DocumentEventBus } from "./doc-events";
 import {
@@ -566,6 +566,7 @@ export async function startServer(
         "/collections": spaPageRoute,
         "/connectors": spaPageRoute,
         "/traces": spaPageRoute,
+        "/context/compiled": spaPageRoute,
         "/ask": spaPageRoute,
         "/graph": spaPageRoute,
         "/clipper/pair": spaPageRoute,
@@ -1158,6 +1159,46 @@ export async function startServer(
                   handleContextBuild(
                     ctxHolder.current,
                     new Request(req, { signal })
+                  )
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/context/compiled/preview": {
+          POST: async (req: Request, server: RequestPeerServer) => {
+            if (!isRequestAllowed(req, port))
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            return withSecurityHeaders(
+              await handleResidentRead(
+                runtime as ResidentRuntime,
+                req,
+                (signal) =>
+                  handleCompiledContext(
+                    ctxHolder.current,
+                    new Request(req, { signal }),
+                    { requestIP: () => server.requestIP(req) },
+                    "preview"
+                  )
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/context/compiled/check": {
+          POST: async (req: Request, server: RequestPeerServer) => {
+            if (!isRequestAllowed(req, port))
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            return withSecurityHeaders(
+              await handleResidentRead(
+                runtime as ResidentRuntime,
+                req,
+                (signal) =>
+                  handleCompiledContext(
+                    ctxHolder.current,
+                    new Request(req, { signal }),
+                    { requestIP: () => server.requestIP(req) },
+                    "check"
                   )
               ),
               isDev

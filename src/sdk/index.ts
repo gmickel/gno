@@ -128,3 +128,10 @@ export type {
   RetrievalTracePurgeResult,
   RetrievalTraceSummary,
 } from "../core/retrieval-trace-management";
+
+export type {
+  CompiledContextPreviewInput,
+  CompiledContextCheckInput,
+  CompiledContextPreview,
+  CompiledContextCheck,
+} from "../core/compiled-context";

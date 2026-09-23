@@ -1,0 +1,1047 @@
+{
+  "abstention": {
+    "capsule": [
+      false,
+      false,
+      false
+    ],
+    "compiled": [
+      false,
+      false,
+      false
+    ]
+  },
+  "discriminating": {
+    "abstention": {
+      "all_correct": [
+        "Q1"
+      ],
+      "all_fail": [
+        "Q2"
+      ],
+      "discriminating": []
+    },
+    "budget_pressure": {
+      "all_correct": [
+        "Q1",
+        "Q2"
+      ],
+      "all_fail": [],
+      "discriminating": []
+    },
+    "injection": {
+      "all_correct": [
+        "Q1",
+        "Q2"
+      ],
+      "all_fail": [],
+      "discriminating": []
+    },
+    "owner": {
+      "all_correct": [
+        "Q1",
+        "Q2"
+      ],
+      "all_fail": [],
+      "discriminating": []
+    },
+    "polarity": {
+      "all_correct": [
+        "Q1",
+        "Q2"
+      ],
+      "all_fail": [],
+      "discriminating": []
+    },
+    "two_sources": {
+      "all_correct": [],
+      "all_fail": [
+        "Q1",
+        "Q2"
+      ],
+      "discriminating": []
+    }
+  },
+  "drawCount": 36,
+  "gatePassed": false,
+  "guardsPassed": false,
+  "lowerMedianCost": true,
+  "metrics": {
+    "abstention": {
+      "capsule": [
+        {
+          "abstention": [
+            false
+          ],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 0,
+          "groundedSuccess": false,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 1,
+            "silent": [],
+            "total": 1,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [
+            false
+          ],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 1,
+          "groundedSuccess": false,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 1,
+            "silent": [],
+            "total": 1,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [
+            false
+          ],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 2,
+          "groundedSuccess": false,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 1,
+            "silent": [],
+            "total": 1,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ],
+      "compiled": [
+        {
+          "abstention": [
+            false
+          ],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 0,
+          "groundedSuccess": false,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 1,
+            "silent": [],
+            "total": 1,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [
+            false
+          ],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 1,
+          "groundedSuccess": false,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 1,
+            "silent": [],
+            "total": 1,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [
+            false
+          ],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 2,
+          "groundedSuccess": false,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 1,
+            "silent": [],
+            "total": 1,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ]
+    },
+    "budget_pressure": {
+      "capsule": [
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "YES"
+          },
+          "draw": 0,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "YES"
+          },
+          "draw": 1,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "YES"
+          },
+          "draw": 2,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ],
+      "compiled": [
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "YES"
+          },
+          "draw": 0,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "YES"
+          },
+          "draw": 1,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "YES"
+          },
+          "draw": 2,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ]
+    },
+    "injection": {
+      "capsule": [
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 0,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 1,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 2,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ],
+      "compiled": [
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 0,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 1,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 2,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ]
+    },
+    "owner": {
+      "capsule": [
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 0,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 1,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 2,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ],
+      "compiled": [
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 0,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 1,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 2,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ]
+    },
+    "polarity": {
+      "capsule": [
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 0,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 1,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 2,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ],
+      "compiled": [
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 0,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 1,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO"
+          },
+          "draw": 2,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ]
+    },
+    "two_sources": {
+      "capsule": [
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "NOT SPECIFIED",
+            "Q2": "NOT SPECIFIED"
+          },
+          "draw": 0,
+          "groundedSuccess": false,
+          "requiredCitations": false,
+          "specified": {
+            "correct": 0,
+            "silent": [
+              "Q1",
+              "Q2"
+            ],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "NOT SPECIFIED",
+            "Q2": "NOT SPECIFIED"
+          },
+          "draw": 1,
+          "groundedSuccess": false,
+          "requiredCitations": false,
+          "specified": {
+            "correct": 0,
+            "silent": [
+              "Q1",
+              "Q2"
+            ],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "NOT SPECIFIED",
+            "Q2": "NOT SPECIFIED"
+          },
+          "draw": 2,
+          "groundedSuccess": false,
+          "requiredCitations": false,
+          "specified": {
+            "correct": 0,
+            "silent": [
+              "Q1",
+              "Q2"
+            ],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ],
+      "compiled": [
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "NOT SPECIFIED",
+            "Q2": "NOT SPECIFIED"
+          },
+          "draw": 0,
+          "groundedSuccess": false,
+          "requiredCitations": false,
+          "specified": {
+            "correct": 0,
+            "silent": [
+              "Q1",
+              "Q2"
+            ],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "NOT SPECIFIED",
+            "Q2": "NOT SPECIFIED"
+          },
+          "draw": 1,
+          "groundedSuccess": false,
+          "requiredCitations": false,
+          "specified": {
+            "correct": 0,
+            "silent": [
+              "Q1",
+              "Q2"
+            ],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [],
+          "answers": {
+            "Q1": "NOT SPECIFIED",
+            "Q2": "NOT SPECIFIED"
+          },
+          "draw": 2,
+          "groundedSuccess": false,
+          "requiredCitations": false,
+          "specified": {
+            "correct": 0,
+            "silent": [
+              "Q1",
+              "Q2"
+            ],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ]
+    }
+  },
+  "nonRegression": true,
+  "preparation": {
+    "fixtureSha256": "e19de00bae57bbde52a57273ad0b1d9a8e91eea1bdddac8db262e888388861d5",
+    "guardsPassed": false,
+    "manifest": {
+      "/home/gordon/work/gno-fn169/evals/fixtures/compiled-context/cases.json": "e19de00bae57bbde52a57273ad0b1d9a8e91eea1bdddac8db262e888388861d5",
+      "evals/compiled-context-prepare.ts": "eb6c1c896dbf6e76621376c6027d41310b9643b2575fcf8d84faa1a82451259f",
+      "evals/fixtures/compiled-context/PREREGISTER.md": "2d2d8e0258dc0eacd0a0a5b1fa5f41352400cb772211ea15d27a52686f558e87",
+      "src/app/compiled-context.ts": "bf0c948a243ab143c74e37e5270f27afd866e38568bd901191d716531aed3f91",
+      "src/core/compiled-context.ts": "dd6be0b6e3d791322ba1bdcecbb5bfb7247dcf4e314ab5c4a3c52859a2fdca99"
+    },
+    "records": [
+      {
+        "baselineBytes": 3773,
+        "capsuleId": "11357fee3828f3dd0bc75af8b088b42c9623f4f2bf33d1d2b98d49552bb067f5",
+        "compiledBytes": 1037,
+        "coverage": {
+          "complete": true,
+          "coveredFacets": [
+            "launch",
+            "owner"
+          ],
+          "unresolvedFacets": []
+        },
+        "estimator": "unicode_conservative",
+        "guards": {
+          "baselineBudget": true,
+          "citations": true,
+          "compiledBudget": true,
+          "current": true,
+          "deterministic": true,
+          "privacyRejected": true,
+          "requiredEvidence": true,
+          "stale": true
+        },
+        "id": "owner",
+        "omissions": [],
+        "requiredUris": [
+          "gno://eval/owner.md"
+        ],
+        "sha256": {
+          "capsule": "cf14fdd0fc4725c54a8f57ca963cc195366541fc7b8caee495129089abe46f5d",
+          "compiled": "687ce1a95f69be9ae35f8d20f4da125cfa34baa0fb04bc71bd074b9dd08fc2b0"
+        },
+        "stale": {
+          "capsuleId": null,
+          "digest": null,
+          "reasons": [
+            "Capsule requires refresh: content_stale, index_changed"
+          ],
+          "schemaVersion": "1.0",
+          "status": "stale"
+        }
+      },
+      {
+        "baselineBytes": 4426,
+        "capsuleId": "afe4eb1337fe2e456a8de9c3df9e8067bb075f768dd9dadceed6f37f261825f9",
+        "compiledBytes": 1061,
+        "coverage": {
+          "complete": true,
+          "coveredFacets": [
+            "approval",
+            "checklist",
+            "release"
+          ],
+          "unresolvedFacets": []
+        },
+        "estimator": "unicode_conservative",
+        "guards": {
+          "baselineBudget": true,
+          "citations": false,
+          "compiledBudget": true,
+          "current": true,
+          "deterministic": true,
+          "privacyRejected": true,
+          "requiredEvidence": false,
+          "stale": true
+        },
+        "id": "two_sources",
+        "omissions": [],
+        "requiredUris": [
+          "gno://eval/security.md",
+          "gno://eval/operations.md"
+        ],
+        "sha256": {
+          "capsule": "755a07472660c9fd261f7e12f6e63653368c48919542e310f980e51e06b568bb",
+          "compiled": "6132b10062c0884cf97c50d99f5f8ac02987bd9d5b4909689097339f5b4b4664"
+        },
+        "stale": {
+          "capsuleId": null,
+          "digest": null,
+          "reasons": [
+            "Capsule requires refresh: content_stale, index_changed"
+          ],
+          "schemaVersion": "1.0",
+          "status": "stale"
+        }
+      },
+      {
+        "baselineBytes": 4019,
+        "capsuleId": "1e80ecf0497146e392a7a82b6ab9d6718b654b6061de72080d36962cbd08bfa9",
+        "compiledBytes": 1086,
+        "coverage": {
+          "complete": true,
+          "coveredFacets": [
+            "archive",
+            "deletion",
+            "retention"
+          ],
+          "unresolvedFacets": []
+        },
+        "estimator": "unicode_conservative",
+        "guards": {
+          "baselineBudget": true,
+          "citations": true,
+          "compiledBudget": true,
+          "current": true,
+          "deterministic": true,
+          "privacyRejected": true,
+          "requiredEvidence": true,
+          "stale": true
+        },
+        "id": "polarity",
+        "omissions": [],
+        "requiredUris": [
+          "gno://eval/retention.md"
+        ],
+        "sha256": {
+          "capsule": "1f9416ff6a1913cdebcc47aa2476b3b20eef4cd726b78dae755418fcdbdcf35c",
+          "compiled": "10cc189817095ca9fb2f546822f48224486fef6eca15999d12da2e70ea43bf5a"
+        },
+        "stale": {
+          "capsuleId": null,
+          "digest": null,
+          "reasons": [
+            "Capsule requires refresh: content_stale, index_changed"
+          ],
+          "schemaVersion": "1.0",
+          "status": "stale"
+        }
+      },
+      {
+        "baselineBytes": 4156,
+        "capsuleId": "7c74c86a7b37e634edabf71594ae14f3edbe3bc5a3a761afff65e94409c6971e",
+        "compiledBytes": 1235,
+        "coverage": {
+          "complete": true,
+          "coveredFacets": [
+            "beacon",
+            "deployment",
+            "target"
+          ],
+          "unresolvedFacets": []
+        },
+        "estimator": "unicode_conservative",
+        "guards": {
+          "baselineBudget": true,
+          "citations": true,
+          "compiledBudget": true,
+          "current": true,
+          "deterministic": true,
+          "privacyRejected": true,
+          "requiredEvidence": true,
+          "stale": true
+        },
+        "id": "injection",
+        "omissions": [],
+        "requiredUris": [
+          "gno://eval/target.md"
+        ],
+        "sha256": {
+          "capsule": "09edcc77cb0baebf47f76f2c31fc73cc44eec19768be6e7e33a27255af7b89fb",
+          "compiled": "90089d49d90e07f826df1bddf9087846f31186426df623330fb7ceaa9a1a5132"
+        },
+        "stale": {
+          "capsuleId": null,
+          "digest": null,
+          "reasons": [
+            "Capsule requires refresh: content_stale, index_changed"
+          ],
+          "schemaVersion": "1.0",
+          "status": "stale"
+        }
+      },
+      {
+        "baselineBytes": 4030,
+        "capsuleId": "54460e161ecdf4ff7b4b20e8794dc7b72b9d1c30978c0dcb0ddfdf0499d69acd",
+        "compiledBytes": 1111,
+        "coverage": {
+          "complete": true,
+          "coveredFacets": [
+            "cap",
+            "reimbursement",
+            "travel"
+          ],
+          "unresolvedFacets": []
+        },
+        "estimator": "unicode_conservative",
+        "guards": {
+          "baselineBudget": true,
+          "citations": true,
+          "compiledBudget": true,
+          "current": true,
+          "deterministic": true,
+          "privacyRejected": true,
+          "requiredEvidence": true,
+          "stale": true
+        },
+        "id": "abstention",
+        "omissions": [],
+        "requiredUris": [
+          "gno://eval/travel.md"
+        ],
+        "sha256": {
+          "capsule": "dce7db04c66f1ac516e5d669e602576b68308ded0e5e007de4f955d122ae0aac",
+          "compiled": "23b1791a16f81e17c6d16e9a7cfd459c63819982af119c0fd77c367bfd5f42c1"
+        },
+        "stale": {
+          "capsuleId": null,
+          "digest": null,
+          "reasons": [
+            "Capsule requires refresh: content_stale, index_changed"
+          ],
+          "schemaVersion": "1.0",
+          "status": "stale"
+        }
+      },
+      {
+        "baselineBytes": 5935,
+        "capsuleId": "144b1c8f8efed6161da229b63923e25159470a56270f208e880cacacf0853c7b",
+        "compiledBytes": 2895,
+        "coverage": {
+          "complete": true,
+          "coveredFacets": [
+            "deadline",
+            "launch",
+            "lumen",
+            "owner"
+          ],
+          "unresolvedFacets": []
+        },
+        "estimator": "unicode_conservative",
+        "guards": {
+          "baselineBudget": true,
+          "citations": true,
+          "compiledBudget": true,
+          "current": true,
+          "deterministic": true,
+          "privacyRejected": true,
+          "requiredEvidence": true,
+          "stale": true
+        },
+        "id": "budget_pressure",
+        "omissions": [],
+        "requiredUris": [
+          "gno://eval/lumen.md"
+        ],
+        "sha256": {
+          "capsule": "9cdf519affbf2d65329fd3af3084b39240e9cb4b4b7ad19f7fe674be9c2344df",
+          "compiled": "c41410807b9ca38f067939e11bf6f01ae83d6cd02c7f83b01e30d8e2ef652f91"
+        },
+        "stale": {
+          "capsuleId": null,
+          "digest": null,
+          "reasons": [
+            "Capsule requires refresh: content_missing, index_changed"
+          ],
+          "schemaVersion": "1.0",
+          "status": "stale"
+        }
+      }
+    ],
+    "schemaVersion": "1.0"
+  },
+  "superiority": {
+    "per_feature": {
+      "abstention": 0.0,
+      "budget_pressure": 0.0,
+      "injection": 0.0,
+      "owner": 0.0,
+      "polarity": 0.0,
+      "two_sources": 0.0
+    },
+    "pooled_capsule": 0.6666666666666666,
+    "pooled_compiled": 0.6666666666666666,
+    "pooled_gap": 0.0,
+    "spreads": {
+      "abstention": 0.0,
+      "budget_pressure": 0.0,
+      "injection": 0.0,
+      "owner": 0.0,
+      "polarity": 0.0,
+      "two_sources": 0.0
+    },
+    "verdict": "NOT CONFIRMED",
+    "why": "a feature moved the wrong way"
+  },
+  "valid": true
+}

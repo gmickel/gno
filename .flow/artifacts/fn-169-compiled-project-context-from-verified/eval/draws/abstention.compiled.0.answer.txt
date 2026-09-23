@@ -1,0 +1,4 @@
+Q1: YES
+Q2: NO
+
+Sources: gno://eval/travel.md

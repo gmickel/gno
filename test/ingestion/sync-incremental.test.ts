@@ -29,6 +29,66 @@ describe("incremental sync orchestration", () => {
     await safeRm(tempDir);
   });
 
+  for (const concurrency of [1, 2]) {
+    test(`compiled context is excluded and old renamed copies inactivated (concurrency ${concurrency})`, async () => {
+      const directory = join(tempDir, "docs");
+      await mkdir(directory);
+      const collection: Collection = {
+        name: "docs",
+        path: directory,
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      };
+      await store.syncCollections([collection]);
+      for (const file of ["full.md", "targeted.md", "sidecar.md", "source.md"])
+        await Bun.write(
+          join(directory, file),
+          "# Ordinary source\nOriginal fact.\n"
+        );
+      const service = new SyncService();
+      await service.syncCollection(collection, store, { concurrency });
+      await Bun.write(
+        join(directory, "project.gno-context.md"),
+        "Generated filename without marker"
+      );
+      await Bun.write(
+        join(directory, "full.md"),
+        '<!-- gno:compiled-context {"rendererVersion":"1"} -->\nDerived evidence'
+      );
+      await Bun.write(
+        join(directory, "targeted.md"),
+        '<!-- gno:compiled-context {"rendererVersion":"1"} -->\nDerived evidence'
+      );
+      await Bun.write(
+        join(directory, "sidecar.md"),
+        JSON.stringify({
+          artifactKind: "gno_compiled_context_sidecar",
+          schemaVersion: "1.0",
+        })
+      );
+      const targeted = await service.syncPaths(collection, store, [
+        "targeted.md",
+        "project.gno-context.md",
+      ]);
+      expect(targeted.filesMarkedInactive).toBe(1);
+      const target = await store.getDocument("docs", "targeted.md");
+      expect(target.ok && target.value?.active).toBe(false);
+      await service.syncCollection(collection, store, { concurrency });
+      for (const file of ["full.md", "sidecar.md"]) {
+        const result = await store.getDocument("docs", file);
+        expect(result.ok && result.value?.active).toBe(false);
+      }
+      const source = await store.getDocument("docs", "source.md");
+      expect(source.ok && source.value?.active).toBe(true);
+      const generated = await store.getDocument(
+        "docs",
+        "project.gno-context.md"
+      );
+      expect(generated.ok && generated.value).toBeNull();
+    });
+  }
+
   test("syncAll projects once and an unchanged scoped sync skips projection", async () => {
     const firstDir = join(tempDir, "first");
     const secondDir = join(tempDir, "second");

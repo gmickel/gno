@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Compiled project context from verified Capsules: deterministic budgeted Markdown, explicit local compile/check/refresh with ownership protection, inline MCP/REST previews, SDK helpers, and Web UI download/freshness checks.
+
 ### Fixed
 
 - Preserve retrieval coverage warnings in MCP text responses, including empty results, and explain safe typed-filter use in tool inputs. Verified Ask text now identifies incomplete metadata coverage.

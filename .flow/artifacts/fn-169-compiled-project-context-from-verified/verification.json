@@ -1,0 +1,55 @@
+{
+  "unitTests": {
+    "passed": 5385,
+    "skipped": 2,
+    "failed": 0,
+    "command": "mise exec bun@1.4.2 -- bun test",
+    "log": "/tmp/gno-fn169-tests-verified.log"
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 27,
+    "note": "Existing await-thenable/unbound-method warnings; affected files clean"
+  },
+  "docs": {
+    "passed": 15,
+    "skipped": 2,
+    "failed": 0
+  },
+  "site": {
+    "check": "pass",
+    "typecheck": "pass",
+    "build": "pass",
+    "tests": 27,
+    "pr": "https://github.com/gmickel/gno.sh/pull/69"
+  },
+  "liveQa": {
+    "cli": "compile/current/stale exit3/refresh/current/no-op",
+    "mcp": "preview/check current and strict unknown-path refusal; tools36/55",
+    "rest": "same digest as CLI/MCP; denies forwarded remote, host-path input and undersized budget",
+    "ui": "desktop1380x880/mobile390x844; upload, preview, exact byte download, current/stale keyboard check; no horizontal overflow",
+    "site": "8 documentation pages and Markdown twins, mobile new guide, copy button observed, product-to-guide link, expanded FAQ; fresh browser no errors",
+    "fixedDuringQa": [
+      "SPA direct route404",
+      "fieldset horizontal overflow"
+    ],
+    "screenshots": ".flow/tmp/qa-fn-169-compiled-project-context-from-verified/"
+  },
+  "readerEval": {
+    "draws": 36,
+    "gate": "FAIL",
+    "pairedRegression": false,
+    "groundedSuccess": {
+      "capsule": "12/18",
+      "compiled": "12/18"
+    },
+    "medianConservativeTokens": {
+      "capsule": 4093,
+      "compiled": 1098.5
+    },
+    "blocker": "Baseline Capsule omitted complementary source; frozen abstention key failed both arms, ambiguity retained without rescoring",
+    "followup": "fn-174-preserve-complementary-capsule-evidence"
+  },
+  "publication": "Not authorized; no release/deployment performed",
+  "reviews": "Skipped under repository instructions"
+}

@@ -1,13 +1,16 @@
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
+
+import type { Config } from "../config/types";
 /**
  * GNO SDK client.
  *
  * @module src/sdk/client
  */
-
-import { mkdir } from "node:fs/promises";
-import { dirname } from "node:path";
-
-import type { Config } from "../config/types";
+import type {
+  CompiledContextPreviewInput,
+  CompiledContextCheckInput,
+} from "../core/compiled-context";
 import type { DownloadPolicy } from "../llm/policy";
 import type { EmbeddingPort, GenerationPort, RerankPort } from "../llm/types";
 import type { AskResult, SearchResults } from "../pipeline/types";
@@ -59,6 +62,15 @@ import type {
   SectionTargetV1,
 } from "./types";
 
+import {
+  previewCompiledContext,
+  checkCompiledContext,
+} from "../app/compiled-context";
+import {
+  compileContextFile,
+  checkContextFile,
+  refreshContextFile,
+} from "../app/compiled-context-files";
 import {
   decorateUriForIndex,
   DEFAULT_INDEX_NAME,
@@ -1253,6 +1265,61 @@ class GnoClientImpl implements GnoClient {
     } finally {
       if (ports) await this.disposeRuntimePorts(ports);
     }
+  }
+
+  compiledContextPreview(
+    input: CompiledContextPreviewInput
+  ): ReturnType<typeof previewCompiledContext> {
+    this.assertOpen();
+    return previewCompiledContext(input, {
+      store: this.store,
+      config: this.config,
+      indexName: this.indexName,
+    });
+  }
+
+  compiledContextCheck(
+    input: CompiledContextCheckInput
+  ): ReturnType<typeof checkCompiledContext> {
+    this.assertOpen();
+    return checkCompiledContext(input, {
+      store: this.store,
+      config: this.config,
+      indexName: this.indexName,
+    });
+  }
+
+  compileContextFile(
+    input: Parameters<typeof compileContextFile>[0]
+  ): ReturnType<typeof compileContextFile> {
+    this.assertOpen();
+    return compileContextFile(input, {
+      store: this.store,
+      config: this.config,
+      indexName: this.indexName,
+    });
+  }
+
+  checkContextFile(
+    input: Parameters<typeof checkContextFile>[0]
+  ): ReturnType<typeof checkContextFile> {
+    this.assertOpen();
+    return checkContextFile(input, {
+      store: this.store,
+      config: this.config,
+      indexName: this.indexName,
+    });
+  }
+
+  refreshContextFile(
+    input: Parameters<typeof refreshContextFile>[0]
+  ): ReturnType<typeof refreshContextFile> {
+    this.assertOpen();
+    return refreshContextFile(
+      input,
+      { store: this.store, config: this.config, indexName: this.indexName },
+      (request) => this.context(request)
+    );
   }
 
   async verifyContext(

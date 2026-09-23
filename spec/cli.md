@@ -4201,3 +4201,14 @@ For executable examples and the missing-field truth table, see
 [Typed metadata filters](../docs/TYPED-METADATA.md). `ne` additionally requires
 the field's scalar type to match the operand; `nin` matches a present scalar or
 array with no exact typed member match. Ordering never coerces strings.
+
+### Compiled context
+
+`gno context compiled preview --capsule FILE --budget N [--bytes N] [--json]`
+returns verified Markdown (JSON with exact bytes/digest when requested).
+`compile` takes the same options plus required `--output NAME.gno-context.md`.
+`check NAME.gno-context.md [--capsule FILE] [--json]` is read-only: exits
+0 current, 3 stale, 4 conflict, 2 unverifiable; invalid command inputs exit1.
+`refresh NAME.gno-context.md --capsule-output FILE.gno-context.capsule.json`
+rebuilds from the saved request and replaces only an unchanged owned artifact.
+No command installs agent instructions. See [compiled context](compiled-context.md).
