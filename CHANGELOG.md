@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-09-23
+
 ### Added
 
 - Compiled project context from verified Capsules: deterministic budgeted Markdown, explicit local compile/check/refresh with ownership protection, inline MCP/REST previews, SDK helpers, and Web UI download/freshness checks.
@@ -14,7 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Keep distinct relevant, nonoverlapping Capsule passages eligible within budget and per-source share limits after their keyword facets are covered; lexical coverage no longer drops complementary evidence by itself.
-
 - Preserve retrieval coverage warnings in MCP text responses, including empty results, and explain safe typed-filter use in tool inputs. Verified Ask text now identifies incomplete metadata coverage.
 
 ## [2.4.0] - 2026-09-23
@@ -2775,7 +2776,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/gmickel/gno/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/gmickel/gno/compare/v2.3.3...v2.4.0
 [2.3.3]: https://github.com/gmickel/gno/compare/v2.3.2...v2.3.3
 [2.3.2]: https://github.com/gmickel/gno/compare/v2.3.1...v2.3.2
