@@ -1,0 +1,43 @@
+{
+  "branch": "fn-169-compiled-project-context-from-verified",
+  "evidence": ".flow/artifacts/fn-169-compiled-project-context-from-verified/verification.json",
+  "head_sha": "d5d7e292623f638ab57762006dc919d0ca3c3c74",
+  "id": "fn-169-compiled-project-context-from-verified",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "NEEDS_WORK",
+  "quality_gate": "R6 failed; retained paired eval and fn-174 follow-up. No open UI defects after deep-link and mobile-overflow fixes.",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "timestamp": "2026-09-23T12:42:11.620076+00:00",
+  "type": "qa_verdict",
+  "verdict": "NEEDS_WORK"
+}
