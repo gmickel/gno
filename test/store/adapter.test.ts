@@ -8,6 +8,7 @@ import {
   describe,
   expect,
   setDefaultTimeout,
+  spyOn,
   test,
 } from "bun:test";
 
@@ -59,6 +60,43 @@ describe("SqliteAdapter", () => {
       await adapter.close();
       expect(() => statement.get()).toThrow("Database has closed");
       await adapter.close();
+    });
+
+    test("falls back to deferred close only for native statement contention", async () => {
+      expect((await adapter.open(dbPath, "unicode61")).ok).toBe(true);
+      const db = adapter.getRawDb();
+      const statement = db.prepare("SELECT 1 AS value");
+      const nativeClose = db.close.bind(db);
+      const closeSpy = spyOn(db, "close").mockImplementation((strict) => {
+        // Older Bun leaves noncached statements outstanding after strict close.
+        if (strict) throw new Error("database is locked");
+        nativeClose(strict);
+      });
+      try {
+        await adapter.close();
+        expect(closeSpy.mock.calls).toEqual([[true], [false]]);
+        expect(adapter.isOpen()).toBe(false);
+        expect(statement.get()).toEqual({ value: 1 });
+      } finally {
+        closeSpy.mockRestore();
+        statement.finalize();
+      }
+    });
+
+    test("does not hide unrelated native close errors", async () => {
+      expect((await adapter.open(dbPath, "unicode61")).ok).toBe(true);
+      const db = adapter.getRawDb();
+      const failure = new Error("disk I/O error");
+      const closeSpy = spyOn(db, "close").mockImplementation(() => {
+        throw failure;
+      });
+      try {
+        const result = await adapter.close().catch((cause: unknown) => cause);
+        expect(result).toBe(failure);
+        expect(closeSpy.mock.calls).toEqual([[true]]);
+      } finally {
+        closeSpy.mockRestore();
+      }
     });
 
     test("opens and closes database", async () => {

@@ -1,0 +1,24 @@
+{
+  "head": "8d5112e10230c59e73e8a61be43cf620a6c74f72",
+  "platform": "linux x64",
+  "bun": "1.4.2",
+  "fullSuite": {
+    "pass": 5396,
+    "skip": 2,
+    "fail": 0,
+    "files": 643
+  },
+  "checks": {
+    "lint": "pass with existing warnings",
+    "docs": "15 passed, 2 skipped",
+    "packageSmoke": "pass; real-user GNO state unchanged",
+    "skillEval": "47/47"
+  },
+  "liveCli": {
+    "privateAuditReport": "complete; expected orphan finding; output mode 0600",
+    "rootSetup": "refused dangerous_root"
+  },
+  "windows": "pending native CI; no compatibility verdict yet",
+  "bun1311": "Native strict-close busy reproduced; exact SQLITE_BUSY message fallback restored prior deferred semantics. Live watcher smoke passes; watcher tests11/11, fallback regressions2/2.",
+  "followup142": "Adapter/watcher suites62/62; scoped lint clean"
+}

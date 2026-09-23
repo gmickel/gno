@@ -669,8 +669,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   async close(): Promise<void> {
     this.fenceForShutdown();
     if (this.db) {
-      // Finalize prepared statements too, so Windows releases the file handle now.
-      this.db.close(true);
+      try {
+        // Current Bun finalizes all statements and releases Windows handles now.
+        this.db.close(true);
+      } catch (cause) {
+        // Older Bun only finalizes cached statements. Its native SQLITE_BUSY
+        // error has no code field; retain deferred close for that exact case.
+        if (
+          !(cause instanceof Error) ||
+          cause.message !== "database is locked"
+        ) {
+          throw cause;
+        }
+        this.db.close(false);
+      }
       this.db = null;
     }
   }
