@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-173-preserve-mcp-retrieval-coverage-warnings",
   "spec_path": ".flow/tasks/fn-173-preserve-mcp-retrieval-coverage-warnings.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Preserve MCP retrieval warnings and advertise safe filter usage",
   "updated_at": "2026-09-23T11:03:39.438842Z"
 }

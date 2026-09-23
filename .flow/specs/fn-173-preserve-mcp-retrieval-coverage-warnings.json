@@ -16,7 +16,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-173-preserve-mcp-retrieval-coverage-warnings.md",
-  "status": "open",
+  "status": "done",
   "title": "Preserve MCP retrieval coverage warnings",
   "tracker": {
     "baseHashFlow": null,
@@ -29,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-23T11:23:14.920199Z"
+  "updated_at": "2026-09-23T11:24:40.434647Z"
 }
