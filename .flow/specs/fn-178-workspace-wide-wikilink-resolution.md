@@ -111,7 +111,7 @@ Process: repo checks green, docs-verify passes, and the shipped skill (`assets/s
 
 Workspace-wide resolution over explicit prefixes: Gordon decided users must not rewrite links into `[[collection:Note]]` because it breaks Obsidian rendering, backlinks and rename handling and couples content to index topology that changes; every mainstream linked-notes tool resolves workspace-wide. [paraphrase]
 
-Detection by `.obsidian/` ancestor with an explicit override (rather than config-only grouping): zero configuration for the dominant case, no drift between config and folder layout, and an explicit escape hatch for other tools or deliberate isolation. [inferred] Confirm before implementation.
+Detection by `.obsidian/` ancestor with an explicit override (rather than config-only grouping): zero configuration for the dominant case, no drift between config and folder layout, and an explicit escape hatch for other tools or deliberate isolation. Confirmed (D1).
 
 Separating resolution from scope: making an edge resolvable and deciding whether its endpoint may be returned are two different questions. Keeping the scope and egress filter mandatory and downstream of resolution means a more permissive resolver cannot leak confidential collections into a scoped query, capsule or remote answer. [paraphrase]
 
@@ -135,6 +135,15 @@ A split into three specs (workspace resolution; pipe truncation; audit finding c
 - Egress policy is per collection (`local_only` default, `lan`, `remote`) in `src/config/types.ts`, enforced through `src/core/egress-enforcement.ts`.
 - Prior related specs: fn-2 (Obsidian-compatible wiki link resolution), fn-150 (incremental graph reconciliation with global parity), fn-111 (collection egress policies), fn-79 (graph-aware retrieval), fn-86 (read-only knowledge integrity audits).
 
+## Decisions (Gordon, 2026-09-23)
+
+- **D1 Detection: confirmed.** Nearest `.obsidian/` ancestor, with the per-collection override (absolute root or opt-out).
+- **D2 Match order: confirmed.** Path/filename first across the workspace; frontmatter-title match only as a fallback inside the source collection. Obsidian itself never resolves by title.
+- **D3 Audit cap: confirmed.** `--max-findings all` plus a numeric ceiling of at least 100,000; no cursor.
+- **D4 Out of scope: confirmed** as listed.
+- **D5 Upgrade default: ON by default** for existing indexes, not a one-release opt-in. Reasons: the mandatory scope and egress filter (R5-R6) means resolution alone never returns a document outside the caller's collection scope or egress policy, so a user who split one vault into isolated collections keeps isolated retrieval; the only visible change for scoped calls is correct graph and audit results. Opt-in would leave the primary use case (Obsidian vaults split into collections) broken by default. Guard rails that ship with it: `gno status` / `collection list` show each collection's effective workspace root and whether it was detected or configured; the per-collection opt-out restores today's behaviour; the first sync after upgrade runs a full graph reconciliation; the changelog carries an explicit upgrade note.
+- **D6 Delivery order:** one spec, but R9 (piped JSON truncation) and R10 (audit cap) land first as an independent early task and PR; resolution work follows.
+
 ## Parked unknowns
 
-- Whether auto-detection should be on by default for existing indexes or gated behind a one-release opt-in; resolves with Gordon's call on upgrade risk for users who deliberately split one vault into isolated collections.
+- None blocking. External review by GPT-6 Astra scheduled before implementation.
