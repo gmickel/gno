@@ -1,0 +1,32 @@
+{
+  "branch_name": "fn-176-run-the-full-windows-suite-in-ci-and",
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-23T15:05:05.230799Z",
+  "created_at": "2026-09-23T15:02:05.602351Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [],
+  "id": "fn-176-run-the-full-windows-suite-in-ci-and",
+  "impl_review_rounds": {},
+  "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-176-run-the-full-windows-suite-in-ci-and.md",
+  "status": "open",
+  "title": "Run the full Windows suite in CI and releases",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-23T15:05:05.230813Z"
+}

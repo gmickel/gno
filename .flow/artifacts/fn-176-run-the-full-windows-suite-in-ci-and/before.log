@@ -1,0 +1,36 @@
+bun test v1.4.2 (744846f84)
+
+test/scripts/windows-test-scope.test.ts:
+29 |         stdout: "pipe",
+30 |         stderr: "pipe",
+31 |       });
+32 |       const output = result.stdout.toString() + result.stderr.toString();
+33 |       expect(result.exitCode).toBe(0);
+34 |       expect(output).toContain("2 pass");
+                          ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "2 pass"
+Received: "bun test v1.4.2 (744846f84)\n\nnumber1.test.ts:\n(pass) included [0.02ms]\n\n 1 pass\n 0 fail\n 1 expect() calls\nRan 1 test across 1 file. [2.00ms]\n"
+
+      at <anonymous> (/home/gordon/work/gno-release-2.5.0/test/scripts/windows-test-scope.test.ts:34:22)
+(fail) .github/workflows/ci.yml Windows command runs numbered and unnumbered files [6.25ms]
+29 |         stdout: "pipe",
+30 |         stderr: "pipe",
+31 |       });
+32 |       const output = result.stdout.toString() + result.stderr.toString();
+33 |       expect(result.exitCode).toBe(0);
+34 |       expect(output).toContain("2 pass");
+                          ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "2 pass"
+Received: "bun test v1.4.2 (744846f84)\n\nnumber1.test.ts:\n(pass) included [0.02ms]\n\n 1 pass\n 0 fail\n 1 expect() calls\nRan 1 test across 1 file. [2.00ms]\n"
+
+      at <anonymous> (/home/gordon/work/gno-release-2.5.0/test/scripts/windows-test-scope.test.ts:34:22)
+(fail) .github/workflows/publish.yml Windows command runs numbered and unnumbered files [4.37ms]
+
+ 0 pass
+ 2 fail
+ 8 expect() calls
+Ran 2 tests across 1 file. [126.00ms]

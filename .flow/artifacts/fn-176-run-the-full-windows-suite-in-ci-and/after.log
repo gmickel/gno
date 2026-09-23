@@ -1,0 +1,23 @@
+bun test v1.4.2 (744846f84)
+
+test/scripts/ci.test.ts:
+(pass) CI relevance > unknown files and missing diffs retain full coverage [0.76ms]
+(pass) CI relevance > documentation skips runtime checks but labels still select Windows [0.09ms]
+(pass) CI relevance > runtime Markdown and extension changes cannot masquerade as documentation [0.04ms]
+(pass) CI relevance > clipper relevant dependencies include capture, web, converters and packaging [0.06ms]
+(pass) CI relevance > weekly/manual retain full coverage and runtime main pushes cover Windows [0.05ms]
+(pass) CI aggregate > accepts documentation-only skips on PRs and main pushes [0.27ms]
+(pass) CI aggregate > accepts all and only selected successful jobs [0.04ms]
+(pass) CI aggregate > rejects failed/cancelled/skipped/missing selected jobs [0.11ms]
+(pass) CI aggregate > classifier failures, absent outputs, and unexpectedly skipped lint fail closed [0.07ms]
+(pass) release and workflow safety > desktop packaging excludes docs while retaining artifact inputs [0.44ms]
+(pass) release and workflow safety > publication depends on every coordinated artifact and consumes the tested archive [0.46ms]
+
+test/scripts/windows-test-scope.test.ts:
+(pass) .github/workflows/ci.yml Windows command runs numbered and unnumbered files [4.66ms]
+(pass) .github/workflows/publish.yml Windows command runs numbered and unnumbered files [4.78ms]
+
+ 13 pass
+ 0 fail
+ 68 expect() calls
+Ran 13 tests across 2 files. [120.00ms]
