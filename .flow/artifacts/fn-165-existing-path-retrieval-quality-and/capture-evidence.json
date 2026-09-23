@@ -1,0 +1,70 @@
+{
+  "spec": "fn-165-existing-path-retrieval-quality-and",
+  "purpose": "Planning evidence register; local experiment artifacts remain outside product source",
+  "evidence": [
+    {
+      "path": "/home/gordon/work/agent-scripts/gno-bench-lab/EXPERIMENTS.md",
+      "sha256": "6e40d90278f714560da082b7218d554a5ce2dbd52f00e689ee2ed177c03ce624"
+    },
+    {
+      "path": "/home/gordon/work/agent-scripts/gno-bench-lab/runs/lexical-v6-20260908/INTERPRETATION.md",
+      "sha256": "c133dfb85cabe6d074b99c7aa8fcc43c4dc26fb1c5fcb771d521f3311cb71c80"
+    },
+    {
+      "path": "/home/gordon/work/agent-scripts/gno-bench-lab/runs/lexical-v6-20260908/vector-stage-observation.json",
+      "sha256": "b2fd598dbab39479df1c8e176cbe7e01cc5de8c92aa17ae7d1c8d05dcec7fa43"
+    },
+    {
+      "path": "/home/gordon/work/agent-scripts/gno-bench-lab/runs/lexical-v6-20260908/vector-integrity-probe.json",
+      "sha256": "591b2c9bb0d5c41a3f758165fdfaa2b6caf454aef8786616a9b468e6c31a98a5"
+    },
+    {
+      "path": "/home/gordon/work/agent-scripts/gno-bench-lab/runs/lexical-v6-20260908/vector-integrity-materialized-probe.json",
+      "sha256": "ca193f61aa5cb7f03e64b76b5b9c14ba8d23ba8ad5cc97cb4924e0ccbc0aaed0"
+    },
+    {
+      "path": "/home/gordon/work/agent-scripts/gno-bench-lab/runs/lexical-v6-20260908/loss-diagnostics.json",
+      "sha256": "f761b3d8119ec003c36849618846052001924512378e4cad3757e87fe6140eb9"
+    },
+    {
+      "path": "/home/gordon/work/agent-scripts/gno-bench-lab/runs/transfer-v7-20260908/RESULTS.md",
+      "sha256": "9c410cf017d7987210034e991c89312eedc72c47448228be098ff8f4ddfa9ab0"
+    },
+    {
+      "path": "/home/gordon/work/agent-scripts/gno-bench-lab/runs/transfer-v7-20260908/ranking-diagnostics.json",
+      "sha256": "65d04b7e566486652a9678c72acd18dd58e93986774aceb8fd32634bbc21869b"
+    },
+    {
+      "path": "/home/gordon/work/agent-scripts/gno-bench-lab/runs/precision-v8-20260908/RESULTS.md",
+      "sha256": "1255236d4b241794bcda5f2f1c686d66c4952307c94f46f26b5260e5e5c2dea3"
+    },
+    {
+      "path": "/home/gordon/work/agent-scripts/gno-bench-lab/runs/precision-v8-20260908/strict-ranking-followup.json",
+      "sha256": "e1b6c60d7d5ba031012e2f3c50cc6b199b4cdd8ee1cb8aee0b6dc3b81937c15d"
+    },
+    {
+      "path": "/home/gordon/work/agent-scripts/gno-bench-lab/runs/precision-v8-20260908/decision-20260909.json",
+      "sha256": "58b1bf9c7e8c770a2aee5accb013109ab66706624ad250de033dcbc452c6dd70"
+    }
+  ],
+  "priorArt": {
+    "completed": [
+      "fn-97-agentic-retrieval-outcome-benchmark",
+      "fn-143-paired-retrieval-quality-and-resource",
+      "fn-145-token-sized-reranker-contexts-with",
+      "fn-148-eligible-candidates-before-retrieval",
+      "fn-149-request-local-retrieval-hydration-reuse"
+    ],
+    "relatedOpen": "fn-121-search-snippet-quality-skip-frontmatter",
+    "separateScope": "fn-137-recall-lexical-leg-any-term-matching"
+  },
+  "strategy": "Trustworthy retrieval and evidence; Coherent agent and application surfaces",
+  "notes": [
+    "One new spec captures all four related workstreams; no completed spec reopened or existing spec overwritten.",
+    "Unknown numeric budgets are explicit; no hardware or performance SLA invented.",
+    "Source tags distinguish quoted user content, captured direction and proposed verification detail.",
+    "Tracker disabled; no external issue or communication created."
+  ],
+  "specSha256": "0e3b43ca306334610ed8150075240215e77691234c5fb94031da57a8f98678d4",
+  "readBack": "PASS exact draft bytes, seven requirements and preserved boundaries"
+}
