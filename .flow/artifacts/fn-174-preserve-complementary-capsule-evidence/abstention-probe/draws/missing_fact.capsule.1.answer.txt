@@ -1,0 +1,5 @@
+Q1: YES
+Q2: NO
+Q3: NOT SPECIFIED
+
+Sources: gno://eval/contacts.md

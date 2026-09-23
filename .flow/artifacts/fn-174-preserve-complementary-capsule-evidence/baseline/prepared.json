@@ -1,0 +1,273 @@
+{
+  "schemaVersion": "1.0",
+  "fixtureSha256": "3b03f567dd40d17d60ed58ae13cdfcb35a8d50cdc0afa6b2e65d9db070c06c5f",
+  "manifest": {
+    "/home/gordon/work/gno-fn169/evals/fixtures/compiled-context/cases.json": "3b03f567dd40d17d60ed58ae13cdfcb35a8d50cdc0afa6b2e65d9db070c06c5f",
+    "evals/fixtures/compiled-context/PREREGISTER.md": "2d2d8e0258dc0eacd0a0a5b1fa5f41352400cb772211ea15d27a52686f558e87",
+    "evals/compiled-context-prepare.ts": "c6fe1dbeff6b7ffa8aab9dca314a3890f59e612cbaf823263edc1ddfa06ae722",
+    "src/core/compiled-context.ts": "32a68e28bed783768ec239140a5609b29a1f182d4805c61dbfd91a8708caf06f",
+    "src/app/compiled-context.ts": "bf0c948a243ab143c74e37e5270f27afd866e38568bd901191d716531aed3f91"
+  },
+  "records": [
+    {
+      "id": "owner",
+      "requiredUris": [
+        "gno://eval/owner.md"
+      ],
+      "guards": {
+        "deterministic": true,
+        "baselineBudget": true,
+        "compiledBudget": true,
+        "requiredEvidence": true,
+        "citations": true,
+        "privacyRejected": true,
+        "current": true,
+        "stale": true
+      },
+      "capsuleId": "1ac0545fc18fd8bd26c0b3a6a014102b070c8f483e695037fa9d55b95d5c94a1",
+      "baselineBytes": 3773,
+      "compiledBytes": 1037,
+      "estimator": "unicode_conservative",
+      "omissions": [],
+      "coverage": {
+        "complete": true,
+        "coveredFacets": [
+          "launch",
+          "owner"
+        ],
+        "unresolvedFacets": []
+      },
+      "stale": {
+        "schemaVersion": "1.0",
+        "status": "stale",
+        "reasons": [
+          "Capsule requires refresh: content_stale, index_changed"
+        ],
+        "digest": null,
+        "capsuleId": null
+      },
+      "sha256": {
+        "capsule": "d54ae444fd5e6d09e8ef0ea3172d8cfb7b87d78fae5430b40548eafd06459642",
+        "compiled": "d9db0eb3a45a43322c60adc713d954bb743922de3c3b7284e157f467965c8e0c"
+      }
+    },
+    {
+      "id": "two_sources",
+      "requiredUris": [
+        "gno://eval/security.md",
+        "gno://eval/operations.md"
+      ],
+      "guards": {
+        "deterministic": true,
+        "baselineBudget": true,
+        "compiledBudget": true,
+        "requiredEvidence": false,
+        "citations": false,
+        "privacyRejected": true,
+        "current": true,
+        "stale": true
+      },
+      "capsuleId": "f21a5a325fc2a28b633be07fa55ae53ee4da13c8747fedbe17cfc877e773239d",
+      "baselineBytes": 4426,
+      "compiledBytes": 1061,
+      "estimator": "unicode_conservative",
+      "omissions": [],
+      "coverage": {
+        "complete": true,
+        "coveredFacets": [
+          "approval",
+          "checklist",
+          "release"
+        ],
+        "unresolvedFacets": []
+      },
+      "stale": {
+        "schemaVersion": "1.0",
+        "status": "stale",
+        "reasons": [
+          "Capsule requires refresh: content_stale, index_changed"
+        ],
+        "digest": null,
+        "capsuleId": null
+      },
+      "sha256": {
+        "capsule": "c85b13761fc07b331b09d6e79cc6c70efa0b1ce6e93cf89c2fcf0f5b3e8ed84f",
+        "compiled": "0931d2bf68b28cd8d2ba1df7d6506b8f4bf5b4e8b4997a9dfa215fef722dd827"
+      }
+    },
+    {
+      "id": "polarity",
+      "requiredUris": [
+        "gno://eval/retention.md"
+      ],
+      "guards": {
+        "deterministic": true,
+        "baselineBudget": true,
+        "compiledBudget": true,
+        "requiredEvidence": true,
+        "citations": true,
+        "privacyRejected": true,
+        "current": true,
+        "stale": true
+      },
+      "capsuleId": "ba034a8d3ea721eca58ff863eca0a02eb99eb970571f265644f47ab7df24ce25",
+      "baselineBytes": 4019,
+      "compiledBytes": 1086,
+      "estimator": "unicode_conservative",
+      "omissions": [],
+      "coverage": {
+        "complete": true,
+        "coveredFacets": [
+          "archive",
+          "deletion",
+          "retention"
+        ],
+        "unresolvedFacets": []
+      },
+      "stale": {
+        "schemaVersion": "1.0",
+        "status": "stale",
+        "reasons": [
+          "Capsule requires refresh: content_stale, index_changed"
+        ],
+        "digest": null,
+        "capsuleId": null
+      },
+      "sha256": {
+        "capsule": "01a0ee207f0891d14b54d425c6a50ad21566b972523e8b9e32e5d96a67ffc34e",
+        "compiled": "b5f037a0bd2f102be2582111a0696dd7b017653d3ec8d60f343e1bd921c8e867"
+      }
+    },
+    {
+      "id": "injection",
+      "requiredUris": [
+        "gno://eval/target.md"
+      ],
+      "guards": {
+        "deterministic": true,
+        "baselineBudget": true,
+        "compiledBudget": true,
+        "requiredEvidence": true,
+        "citations": true,
+        "privacyRejected": true,
+        "current": true,
+        "stale": true
+      },
+      "capsuleId": "7e33e00a98b18b3338f083be5bea2e99585618e3bee90ea5f3ac0e998f68936a",
+      "baselineBytes": 4156,
+      "compiledBytes": 1235,
+      "estimator": "unicode_conservative",
+      "omissions": [],
+      "coverage": {
+        "complete": true,
+        "coveredFacets": [
+          "beacon",
+          "deployment",
+          "target"
+        ],
+        "unresolvedFacets": []
+      },
+      "stale": {
+        "schemaVersion": "1.0",
+        "status": "stale",
+        "reasons": [
+          "Capsule requires refresh: content_stale, index_changed"
+        ],
+        "digest": null,
+        "capsuleId": null
+      },
+      "sha256": {
+        "capsule": "065c688aba4c94db574398304e553585cda743678002ea87c1c6263f3aa612e4",
+        "compiled": "af8beb783a410df38d4d78903b348a4335b29e171194288470235fa55476a114"
+      }
+    },
+    {
+      "id": "abstention",
+      "requiredUris": [
+        "gno://eval/travel.md"
+      ],
+      "guards": {
+        "deterministic": true,
+        "baselineBudget": true,
+        "compiledBudget": true,
+        "requiredEvidence": true,
+        "citations": true,
+        "privacyRejected": true,
+        "current": true,
+        "stale": true
+      },
+      "capsuleId": "7180dbc39037e1b755ecb504c346015f26f8a50e33582f869443e1a7ba458315",
+      "baselineBytes": 4030,
+      "compiledBytes": 1111,
+      "estimator": "unicode_conservative",
+      "omissions": [],
+      "coverage": {
+        "complete": true,
+        "coveredFacets": [
+          "cap",
+          "reimbursement",
+          "travel"
+        ],
+        "unresolvedFacets": []
+      },
+      "stale": {
+        "schemaVersion": "1.0",
+        "status": "stale",
+        "reasons": [
+          "Capsule requires refresh: content_stale, index_changed"
+        ],
+        "digest": null,
+        "capsuleId": null
+      },
+      "sha256": {
+        "capsule": "c224864b7c190bb42b530545482aa7bc1c451c5bdda88cb78cf6aa30928ab135",
+        "compiled": "f009d0a1cf681fa5fb16f4475e9f68a70008250fb97579464e8227988fc1f824"
+      }
+    },
+    {
+      "id": "budget_pressure",
+      "requiredUris": [
+        "gno://eval/lumen.md"
+      ],
+      "guards": {
+        "deterministic": true,
+        "baselineBudget": true,
+        "compiledBudget": true,
+        "requiredEvidence": true,
+        "citations": true,
+        "privacyRejected": true,
+        "current": true,
+        "stale": true
+      },
+      "capsuleId": "0d47b18252bb3691e95d49801e307619c34ed431694aba2c83901ccfc6b44d69",
+      "baselineBytes": 5935,
+      "compiledBytes": 2895,
+      "estimator": "unicode_conservative",
+      "omissions": [],
+      "coverage": {
+        "complete": true,
+        "coveredFacets": [
+          "deadline",
+          "launch",
+          "lumen",
+          "owner"
+        ],
+        "unresolvedFacets": []
+      },
+      "stale": {
+        "schemaVersion": "1.0",
+        "status": "stale",
+        "reasons": [
+          "Capsule requires refresh: content_missing, index_changed"
+        ],
+        "digest": null,
+        "capsuleId": null
+      },
+      "sha256": {
+        "capsule": "0a7648b5dd0b92f3691754e0cd4fcad072477ba4d0d22a11e1b24432589e5f9a",
+        "compiled": "bee352684ecd6f1341a55e11249b233dcaa71020b8d6ca15a3383ea807531c87"
+      }
+    }
+  ],
+  "guardsPassed": false
+}

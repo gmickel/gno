@@ -643,7 +643,11 @@ and replay. See [Typed metadata filters](TYPED-METADATA.md).
 Verified Capsules can be rendered deterministically into bounded Markdown, using
 the existing evidence selection and verification contracts. Source text stays
 fenced as untrusted evidence; the whole artifact includes framing/citation cost
-and reports coverage gaps. CLI and local SDK file helpers add explicit ownership
+and reports coverage gaps. The shared selector uses keyword facet coverage as a
+lexical signal, not a semantic completeness judgment; it keeps distinct relevant,
+nonoverlapping passages eligible after those facets are covered, within budgets
+and per-source share limits. Deduplication and overlap handling still apply.
+CLI and local SDK file helpers add explicit ownership
 sidecars and checked publication. MCP/REST/Web UI expose only inline preview and
 check; browser downloads preserve exact returned bytes. No new inference engine,
 automatic instruction edits, or background refresh is introduced. Verification

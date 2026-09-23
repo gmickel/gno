@@ -1,0 +1,156 @@
+{
+  "arm": "compiled",
+  "case": "budget_pressure",
+  "draw": 1,
+  "elapsedSeconds": 15.212789444020018,
+  "modelIdentities": [
+    "claude-sonnet-4-5-20250929"
+  ],
+  "modelUsage": {
+    "claude-sonnet-4-5-20250929": {
+      "cacheCreationInputTokens": 1288,
+      "cacheReadInputTokens": 0,
+      "canonicalModel": "claude-sonnet-4-5",
+      "contextWindow": 200000,
+      "costBasis": "list",
+      "costUSD": 0.01629,
+      "inputTokens": 9,
+      "maxOutputTokens": 32000,
+      "outputTokens": 569,
+      "provider": "firstParty",
+      "thinkingTokens": 542,
+      "webSearchRequests": 0
+    }
+  },
+  "response": {
+    "api_error_status": null,
+    "duration_api_ms": 14220,
+    "duration_ms": 14242,
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "fast_mode_state": "off",
+    "first_content_frame_ms": 1568,
+    "is_error": false,
+    "modelUsage": {
+      "claude-sonnet-4-5-20250929": {
+        "cacheCreationInputTokens": 1288,
+        "cacheReadInputTokens": 0,
+        "canonicalModel": "claude-sonnet-4-5",
+        "contextWindow": 200000,
+        "costBasis": "list",
+        "costUSD": 0.01629,
+        "inputTokens": 9,
+        "maxOutputTokens": 32000,
+        "outputTokens": 569,
+        "provider": "firstParty",
+        "thinkingTokens": 542,
+        "webSearchRequests": 0
+      }
+    },
+    "num_turns": 1,
+    "permission_denials": [],
+    "queued_turn_count": 0,
+    "result": "Q1: YES\nQ2: YES\n\nSources: gno://eval/lumen.md",
+    "result_index": 0,
+    "session_id": "91e96165-5ef8-4648-8eee-404c9410695a",
+    "stop_reason": "end_turn",
+    "subagent_stats": {
+      "by_type": {},
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "system": 0,
+        "user": 0
+      },
+      "max_depth": 0,
+      "refused": {
+        "budget": 0,
+        "concurrency_limit": 0,
+        "depth_limit": 0
+      },
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "spawned": 0,
+      "spawned_by_subagents": 0,
+      "started_in_background": 0
+    },
+    "subtype": "success",
+    "terminal_reason": "completed",
+    "time_to_request_ms": 22,
+    "total_cost_usd": 0.01629,
+    "ttft_ms": 14046,
+    "ttft_stream_ms": 1568,
+    "type": "result",
+    "usage": {
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 1288,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 1288,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "not_available",
+      "input_tokens": 9,
+      "iterations": [
+        {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 1288,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 1288,
+          "cache_read_input_tokens": 0,
+          "input_tokens": 9,
+          "output_tokens": 569,
+          "type": "message"
+        }
+      ],
+      "output_tokens": 569,
+      "output_tokens_details": {
+        "thinking_tokens": 542
+      },
+      "server_tool_use": {
+        "web_fetch_requests": 0,
+        "web_search_requests": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+    },
+    "uuid": "63271f9b-fe95-417f-a150-59f4ba6dd767"
+  },
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 1288,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 1288,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "not_available",
+    "input_tokens": 9,
+    "iterations": [
+      {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 1288,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 1288,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 9,
+        "output_tokens": 569,
+        "type": "message"
+      }
+    ],
+    "output_tokens": 569,
+    "output_tokens_details": {
+      "thinking_tokens": 542
+    },
+    "server_tool_use": {
+      "web_fetch_requests": 0,
+      "web_search_requests": 0
+    },
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "valid": true
+}

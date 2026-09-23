@@ -28,7 +28,11 @@ passages all count. Inputs are bounded to 4 MiB. `--json` exposes actual token
 and byte costs, estimator identity, coverage, evidence IDs, omissions, output
 digest, and verification digest. A budget can omit required facets: inspect
 `coverage.complete` and `unresolvedFacets`, not just whether compilation worked.
-A budget too small for framing fails.
+Keyword facet coverage is a lexical signal, not semantic completeness or proof
+that every required source was found. Distinct relevant, nonoverlapping passages
+remain eligible even when their keyword facets are already covered, subject to
+the remaining budget and per-source share limits. Duplicate and overlapping
+evidence is still collapsed. A budget too small for framing fails.
 
 Compilation requires Capsule 1.1/1.2 retrieval and egress provenance and current
 source/authority checks. Rebuild older Capsules. A recorded active tokenizer

@@ -1194,7 +1194,10 @@ gno context build "pure vector/lexical" --budget 12000 --no-graph --json
 The budget applies to the complete canonical payload, not separately to each
 document. Evidence keeps exact canonical-mirror line ranges and source, mirror,
 and passage hashes. Selection collapses duplicates, rewards uncovered query
-facets, and records every omission and gap. `--fast` avoids model loading;
+facets, and records every omission and gap. Keyword facet coverage does not
+establish semantic completeness. Distinct relevant, nonoverlapping passages
+remain eligible after their facets are covered, subject to budgets and per-source
+share limits. `--fast` avoids model loading;
 default and `--thorough` use available semantic/rerank capabilities plus
 bounded graph expansion and record
 fallbacks when attempted but unavailable. The persisted retrieval plan records

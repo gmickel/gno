@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "1.0",
+  "fixtureSha256": "7e3c10269bf64427be5966134793f71e5a05ef6991b5d2808632c4b031be49e7",
+  "manifest": {
+    "/home/gordon/work/gno-fn169/.flow/artifacts/fn-174-preserve-complementary-capsule-evidence/abstention-probe/cases.json": "7e3c10269bf64427be5966134793f71e5a05ef6991b5d2808632c4b031be49e7",
+    "evals/fixtures/compiled-context/PREREGISTER.md": "2d2d8e0258dc0eacd0a0a5b1fa5f41352400cb772211ea15d27a52686f558e87",
+    "evals/compiled-context-prepare.ts": "c6fe1dbeff6b7ffa8aab9dca314a3890f59e612cbaf823263edc1ddfa06ae722",
+    "src/core/compiled-context.ts": "32a68e28bed783768ec239140a5609b29a1f182d4805c61dbfd91a8708caf06f",
+    "src/app/compiled-context.ts": "bf0c948a243ab143c74e37e5270f27afd866e38568bd901191d716531aed3f91"
+  },
+  "records": [
+    {
+      "id": "missing_fact",
+      "requiredUris": [
+        "gno://eval/contacts.md"
+      ],
+      "guards": {
+        "deterministic": true,
+        "baselineBudget": true,
+        "compiledBudget": true,
+        "requiredEvidence": true,
+        "citations": true,
+        "privacyRejected": true,
+        "current": true,
+        "stale": true
+      },
+      "capsuleId": "f28797811e0ac015088509806dc3e4f441edeedee4f4d4bae887e17a950f5a36",
+      "baselineBytes": 3985,
+      "compiledBytes": 1087,
+      "estimator": "unicode_conservative",
+      "omissions": [],
+      "coverage": {
+        "complete": true,
+        "coveredFacets": [
+          "contact",
+          "policy",
+          "travel"
+        ],
+        "unresolvedFacets": []
+      },
+      "stale": {
+        "schemaVersion": "1.0",
+        "status": "stale",
+        "reasons": [
+          "Capsule requires refresh: content_stale, index_changed"
+        ],
+        "digest": null,
+        "capsuleId": null
+      },
+      "sha256": {
+        "capsule": "e1184a110f259985aefff4385891e271d3169b12a7572c78874b8ca9a8e90f39",
+        "compiled": "47c62ddd3de5c54c99124fd5e92ff9f63be453c0a97104076f4f2ab5b52dd69f"
+      }
+    }
+  ],
+  "guardsPassed": true
+}

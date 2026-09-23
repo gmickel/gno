@@ -1,0 +1,14 @@
+{
+  "startedAt": "2026-09-23T13:21:14.634804+00:00",
+  "unchangedParsedFixtures": true,
+  "protocol": "unchanged fn169 prereg; all36draws and original keys; no changes to scoring or thresholds",
+  "hashes": {
+    "src/core/context-budget.ts": "8fbfeef5c8bee0f23b76cc5d33319c51a7bc59bebd8f3b690fa5128064883435",
+    "src/core/compiled-context.ts": "32a68e28bed783768ec239140a5609b29a1f182d4805c61dbfd91a8708caf06f",
+    "src/app/compiled-context.ts": "bf0c948a243ab143c74e37e5270f27afd866e38568bd901191d716531aed3f91",
+    "evals/compiled-context-prepare.ts": "c6fe1dbeff6b7ffa8aab9dca314a3890f59e612cbaf823263edc1ddfa06ae722",
+    "evals/compiled-context-reader.py": "cab93a82db2e42367cfece5d66f2ed304c5b11dd94a5380e7667b2aa8568e0eb",
+    "evals/fixtures/compiled-context/cases.json": "3b03f567dd40d17d60ed58ae13cdfcb35a8d50cdc0afa6b2e65d9db070c06c5f",
+    "evals/fixtures/compiled-context/PREREGISTER.md": "2d2d8e0258dc0eacd0a0a5b1fa5f41352400cb772211ea15d27a52686f558e87"
+  }
+}
