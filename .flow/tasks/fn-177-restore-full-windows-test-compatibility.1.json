@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-177-restore-full-windows-test-compatibility",
   "spec_path": ".flow/tasks/fn-177-restore-full-windows-test-compatibility.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Restore full Windows regression compatibility",
   "updated_at": "2026-09-23T16:22:41.570822Z"
 }
