@@ -1,3 +1,11 @@
+/**
+ * Deterministic retrieval planning for Context Capsules.
+ *
+ * Retrieval, strict context snapshot loading, exact line materialization, and
+ * canonical payload projection are injected. Indexed text is only compared as
+ * untrusted data; it never controls planner behavior.
+ */
+
 import type {
   FusionSource,
   HybridSearchOptions,
@@ -7,13 +15,6 @@ import type {
   SearchResult,
   SearchResults,
 } from "../pipeline/types";
-/**
- * Deterministic retrieval planning for Context Capsules.
- *
- * Retrieval, strict context snapshot loading, exact line materialization, and
- * canonical payload projection are injected. Indexed text is only compared as
- * untrusted data; it never controls planner behavior.
- */
 import type { ContextRow } from "../store/types";
 import type {
   ContextBudgetLimits,

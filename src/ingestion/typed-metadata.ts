@@ -25,10 +25,7 @@ export function extractTypedMetadata(
   try {
     parsed = Bun.YAML.parse(yaml);
   } catch {
-    // Malformed ordinary frontmatter keeps its existing search semantics.
-    return GNO_KEY.test(yaml)
-      ? { metadataError: "gno.metadata: invalid YAML" }
-      : { typedMetadata: {} };
+    return { metadataError: "gno.metadata: invalid YAML" };
   }
   if (!parsed || typeof parsed !== "object" || !Object.hasOwn(parsed, "gno"))
     return { typedMetadata: {} };

@@ -106,8 +106,14 @@ export const buildContextCapsule = async (
             store: deps.store,
             hydration: deps.hydration,
             config: deps.config,
-            vectorIndex: deps.vectorIndex ?? null,
-            embedPort: deps.embedPort ?? null,
+            vectorIndex:
+              normalized.depthPolicy === "fast"
+                ? null
+                : (deps.vectorIndex ?? null),
+            embedPort:
+              normalized.depthPolicy === "fast"
+                ? null
+                : (deps.embedPort ?? null),
             expandPort: null,
             rerankPort: requestNoRerank ? null : (deps.rerankPort ?? null),
           },

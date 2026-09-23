@@ -583,7 +583,7 @@ describe("Context Capsule REST/MCP parity", () => {
   });
 
   test("reports requested unavailable and used retrieval capabilities through REST", async () => {
-    const request = (depthPolicy: "balanced" | "thorough") =>
+    const request = (depthPolicy: "fast" | "balanced" | "thorough") =>
       new Request("http://localhost/api/context", {
         method: "POST",
         body: JSON.stringify({
@@ -609,10 +609,14 @@ describe("Context Capsule REST/MCP parity", () => {
       graphExpansion: { requested: true },
     });
 
+    let embeddingCalls = 0;
     const embedPort: EmbeddingPort = {
       modelUri: "test:embed",
       init: async () => ({ ok: true, value: undefined }),
-      embed: async () => ({ ok: true, value: [0.1, 0.2, 0.3] }),
+      embed: async () => {
+        embeddingCalls += 1;
+        return { ok: true, value: [0.1, 0.2, 0.3] };
+      },
       embedBatch: async () => ({ ok: true, value: [[0.1, 0.2, 0.3]] }),
       dimensions: () => 3,
       dispose: async () => {},
@@ -643,6 +647,30 @@ describe("Context Capsule REST/MCP parity", () => {
       }),
       dispose: async () => {},
     };
+    const fastResponse = await handleContextBuild(
+      { ...serverContext, vectorIndex, embedPort, rerankPort },
+      request("fast")
+    );
+    expect(fastResponse.status).toBe(200);
+    expect(embeddingCalls).toBe(0);
+    const fast = await fastResponse.json();
+    expect(fast.retrieval.capabilityStates).toMatchObject({
+      semanticSearch: {
+        requested: false,
+        attempted: false,
+        outcome: "not_requested",
+      },
+      reranking: {
+        requested: false,
+        attempted: false,
+        outcome: "not_requested",
+      },
+      graphExpansion: {
+        requested: false,
+        attempted: false,
+        outcome: "not_requested",
+      },
+    });
     const usedResponse = await handleContextBuild(
       { ...serverContext, vectorIndex, embedPort, rerankPort },
       request("thorough")

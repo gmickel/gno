@@ -1,9 +1,6 @@
 import type { RecordAnchor, RecordMetadata } from "../converters/types";
 
-export interface RecordEvidenceMetadata extends Omit<
-  RecordMetadata,
-  "custom" | "customError"
-> {
+export interface RecordEvidenceMetadata extends Omit<RecordMetadata, "custom"> {
   recordKey: string;
   sourceLocator: string;
   anchors: RecordAnchor[];
