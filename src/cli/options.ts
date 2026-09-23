@@ -1,14 +1,17 @@
+import {
+  normalizeProjectAffinityValues,
+  ProjectAffinityInputError,
+} from "../core/project-affinity-surface";
 /**
  * Output format selection and validation.
  * Implements conditional defaults per spec.
  *
  * @module src/cli/options
  */
-
 import {
-  normalizeProjectAffinityValues,
-  ProjectAffinityInputError,
-} from "../core/project-affinity-surface";
+  normalizeMetadataPredicate,
+  type MetadataPredicate,
+} from "../core/typed-metadata";
 import { CliError } from "./errors";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -259,3 +262,18 @@ export function parseOptionalFloat(
   }
   return num;
 }
+
+export const parseCliMetadataFilter = (
+  value: unknown
+): MetadataPredicate | undefined => {
+  if (value === undefined) return undefined;
+  try {
+    if (typeof value !== "string") throw new Error("Expected JSON text");
+    return normalizeMetadataPredicate(JSON.parse(value));
+  } catch (error) {
+    throw new CliError(
+      "VALIDATION",
+      `filter: ${error instanceof Error ? error.message : "Invalid predicate"}`
+    );
+  }
+};

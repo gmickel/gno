@@ -708,3 +708,22 @@ The package root is the SDK entrypoint. The CLI remains available through the `g
 - [Structured Query Syntax](./SYNTAX.md)
 - [Architecture](./ARCHITECTURE.md)
 - [Configuration](./CONFIGURATION.md)
+
+## Typed metadata predicates
+
+Retrieval options accept the exported `MetadataPredicate` type:
+
+```ts
+import type { MetadataPredicate } from "@gmickel/gno";
+
+const filter: MetadataPredicate = {
+  op: "gte",
+  key: "confidence",
+  value: 0.8,
+};
+const approved = await client.search("rollout", { filter });
+```
+
+The same `filter` option is available to vector/hybrid/structured retrieval,
+ask, and Context Capsule building. Validation rejects invalid types rather than
+coercing strings. See [Typed metadata filters](TYPED-METADATA.md).

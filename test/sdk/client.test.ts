@@ -754,3 +754,21 @@ describe("SDK client", () => {
     expect((error as Error).message).toContain("closed");
   });
 });
+
+test("SDK rejects malformed typed filters before model or retrieval execution", async () => {
+  const options = {
+    filter: { op: "gte", key: "confidence", value: "0.8" },
+  } as unknown as GnoSearchOptions;
+  for (const run of [
+    () => client.search("needle", options),
+    () => client.vsearch("needle", options),
+    () => client.query("needle", options),
+    () => client.ask("needle", options),
+    () => client.context({ goal: "needle", budgetTokens: 1000, ...options }),
+  ]) {
+    await expect(run()).rejects.toMatchObject({
+      code: "VALIDATION",
+      message: expect.stringContaining("filter"),
+    });
+  }
+});

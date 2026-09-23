@@ -126,6 +126,7 @@ export const handleContextBuild = async (
         since: input.since,
         until: input.until,
         categories: input.categories,
+        filter: input.filter,
         author: input.author,
         graph: input.graph,
         candidateLimit: input.candidateLimit,

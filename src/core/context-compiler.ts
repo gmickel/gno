@@ -1,11 +1,3 @@
-/**
- * Deterministic retrieval planning for Context Capsules.
- *
- * Retrieval, strict context snapshot loading, exact line materialization, and
- * canonical payload projection are injected. Indexed text is only compared as
- * untrusted data; it never controls planner behavior.
- */
-
 import type {
   FusionSource,
   HybridSearchOptions,
@@ -15,6 +7,13 @@ import type {
   SearchResult,
   SearchResults,
 } from "../pipeline/types";
+/**
+ * Deterministic retrieval planning for Context Capsules.
+ *
+ * Retrieval, strict context snapshot loading, exact line materialization, and
+ * canonical payload projection are injected. Indexed text is only compared as
+ * untrusted data; it never controls planner behavior.
+ */
 import type { ContextRow } from "../store/types";
 import type {
   ContextBudgetLimits,
@@ -26,6 +25,7 @@ import type {
   MaterializedContextCandidate,
 } from "./context-budget";
 import type { ContextConfiguredGuidance } from "./context-guidance";
+import type { MetadataPredicate } from "./typed-metadata";
 
 import { decorateUriForIndex } from "../app/constants";
 import { canonicalizeIndexName } from "../app/index-name";
@@ -96,6 +96,7 @@ export interface ContextCompilerInput {
   tagsAll?: string[];
   tagsAny?: string[];
   categories?: string[];
+  filter?: MetadataPredicate;
   author?: string;
   lang?: string;
   intent?: string;
@@ -358,6 +359,7 @@ export const planContextEvidence = async <T, P>(
         tagsAll: input.tagsAll,
         tagsAny: input.tagsAny,
         categories: input.categories,
+        filter: input.filter,
         author: input.author,
         lang: input.lang,
         intent: input.intent,

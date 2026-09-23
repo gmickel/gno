@@ -2249,3 +2249,16 @@ native `~/.codex/config.toml` or project `.codex/config.toml` tables. Use
 `gno mcp install --dry-run --json` to inspect the exact command, arguments, and
 workspace values. If the target already has GNO configured, add `--force` to
 preview the replacement without writing it.
+
+## Custom metadata filters
+
+Pass `--filter` with a JSON predicate to `search`, `vsearch`, `query` (including
+structured input and `query diagnose`), `ask`, or `context build`:
+
+```bash
+gno search "rollout" --filter '{"op":"gte","key":"confidence","value":0.8}'
+```
+
+See [Typed metadata filters](TYPED-METADATA.md) for source YAML, operators,
+missing-field truth tables, limits, and sync recovery. Fixed flags such as
+`--tags-all` and `--collection` still intersect the custom predicate.

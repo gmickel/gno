@@ -74,6 +74,7 @@ export const buildContextCapsule = async (
       tagsAll: normalized.tagsAll,
       tagsAny: normalized.tagsAny,
       categories: normalized.categories,
+      filter: normalized.filter,
       author: normalized.author ?? undefined,
       lang: normalized.lang ?? undefined,
       intent: normalized.intent ?? undefined,
@@ -122,6 +123,19 @@ export const buildContextCapsule = async (
             "retrieval_failed",
             result.error.message,
             result.error.cause
+          );
+        }
+        if (
+          normalized.filter &&
+          result.value.meta.warnings?.some(
+            (warning) =>
+              warning.code === "METADATA_COVERAGE_UNKNOWN" ||
+              warning.code === "METADATA_COVERAGE_INCOMPLETE"
+          )
+        ) {
+          throw new ContextRuntimeError(
+            "invalid_filter",
+            "Typed metadata coverage is incomplete or unknown. Sync the collection and correct invalid gno.metadata values before building a filtered Context Capsule."
           );
         }
         return result.value;

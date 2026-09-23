@@ -183,4 +183,85 @@ describe("Search page DOM interactions", () => {
       );
     });
   });
+  test("invalid typed filter blocks retrieval; correction sends typed predicate and shows coverage warning", async () => {
+    apiFetch.mockImplementation(async (...args: unknown[]) => {
+      if (args[0] === "/api/capabilities")
+        return apiOk({
+          bm25: true,
+          vector: false,
+          hybrid: false,
+          answer: false,
+        });
+      if (args[0] === "/api/collections") return apiOk([]);
+      if (args[0] === "/api/presets") return apiOk({ activePreset: "local" });
+      return apiOk({
+        results: [
+          {
+            docid: "previous",
+            uri: "gno://notes/previous.md",
+            title: "Previous filtered result",
+            snippet: "Earlier result",
+            score: 1,
+          },
+        ],
+        meta: {
+          query: "decision",
+          mode: "search",
+          totalResults: 0,
+          warnings: [
+            {
+              code: "METADATA_COVERAGE_INCOMPLETE",
+              message: "Metadata coverage incomplete: 1 pending document.",
+            },
+          ],
+        },
+      });
+    });
+    const url = new URL("http://localhost/search");
+    url.searchParams.set(
+      "filter",
+      '{"op":"gte","key":"confidence","value":"bad"}'
+    );
+    window.history.replaceState({}, "", url.toString());
+    const { default: Search } =
+      await import("../../../../src/serve/public/pages/Search");
+    const { user } = renderWithUser(<Search navigate={() => undefined} />);
+    await user.type(
+      screen.getByPlaceholderText(/Search your documents/),
+      "decision"
+    );
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    expect(
+      apiFetch.mock.calls.some(
+        ([endpoint]) => endpoint === "/api/search" || endpoint === "/api/query"
+      )
+    ).toBe(false);
+    const editor = screen.getByLabelText("Advanced filter (JSON)");
+    await user.clear(editor);
+    await user.click(editor);
+    await user.paste('{"op":"gte","key":"confidence","value":0.8}');
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    await screen.findByText(
+      "Metadata coverage incomplete: 1 pending document."
+    );
+    const call = apiFetch.mock.calls.find(
+      ([endpoint]) => endpoint === "/api/search"
+    );
+    expect(call).toBeDefined();
+    if (!call) throw new Error("Expected search request");
+    expect(JSON.parse((call[1] as { body: string }).body).filter).toEqual({
+      op: "gte",
+      key: "confidence",
+      value: 0.8,
+    });
+    expect(screen.getByText("Previous filtered result")).toBeTruthy();
+    await user.clear(editor);
+    await user.paste('{"op":"gte","key":"confidence","value":"invalid"}');
+    await waitFor(() =>
+      expect(screen.queryByText("Previous filtered result")).toBeNull()
+    );
+    expect(
+      screen.queryByText("Metadata coverage incomplete: 1 pending document.")
+    ).toBeNull();
+  });
 });

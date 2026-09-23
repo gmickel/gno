@@ -21,20 +21,28 @@
     "evidence"
   ],
   "properties": {
-    "schemaVersion": { "enum": ["1.0", "1.1"] },
+    "schemaVersion": {
+      "enum": ["1.0", "1.1", "1.2"]
+    },
     "coordinateSpace": { "const": "canonical_mirror" },
     "capsuleId": { "$ref": "#/definitions/sha256" },
     "operationStatus": { "const": "completed" },
-    "contentStatus": { "enum": ["unchanged", "stale", "missing"] },
+    "contentStatus": {
+      "enum": ["unchanged", "stale", "missing"]
+    },
     "contentCode": {
       "enum": ["verified_unchanged", "content_stale", "content_missing"]
     },
-    "rankingStatus": { "enum": ["unchanged", "reranked", "unavailable"] },
+    "rankingStatus": {
+      "enum": ["unchanged", "reranked", "unavailable"]
+    },
     "rankingCode": {
       "enum": ["ranking_unchanged", "ranking_changed", "ranking_unavailable"]
     },
     "currentFingerprints": { "$ref": "#/definitions/currentFingerprints" },
-    "fingerprintStatus": { "enum": ["unchanged", "drifted"] },
+    "fingerprintStatus": {
+      "enum": ["unchanged", "drifted"]
+    },
     "fingerprintReasons": {
       "oneOf": [
         {
@@ -1111,7 +1119,9 @@
     {
       "if": { "properties": { "rankingStatus": { "const": "unavailable" } } },
       "then": {
-        "properties": { "rankingCode": { "const": "ranking_unavailable" } }
+        "properties": {
+          "rankingCode": { "const": "ranking_unavailable" }
+        }
       }
     },
     {
@@ -1134,7 +1144,14 @@
   "definitions": {
     "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "nullableSha256": {
-      "oneOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+      "oneOf": [
+        {
+          "$ref": "#/definitions/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "currentFingerprints": {
       "type": "object",
@@ -1199,7 +1216,9 @@
       "properties": {
         "evidenceId": { "$ref": "#/definitions/sha256" },
         "uri": { "$ref": "#/definitions/gnoUri" },
-        "contentStatus": { "enum": ["unchanged", "stale", "missing"] },
+        "contentStatus": {
+          "enum": ["unchanged", "stale", "missing"]
+        },
         "contentCode": {
           "enum": [
             "verified_unchanged",
@@ -1213,7 +1232,9 @@
             "mirror_missing"
           ]
         },
-        "rankingStatus": { "enum": ["unchanged", "reranked", "unavailable"] },
+        "rankingStatus": {
+          "enum": ["unchanged", "reranked", "unavailable"]
+        },
         "rankingCode": {
           "enum": [
             "ranking_unchanged",
@@ -1268,7 +1289,9 @@
           "if": { "properties": { "contentStatus": { "const": "missing" } } },
           "then": {
             "properties": {
-              "contentCode": { "enum": ["source_missing", "mirror_missing"] },
+              "contentCode": {
+                "enum": ["source_missing", "mirror_missing"]
+              },
               "rankingStatus": { "const": "unavailable" },
               "rankingCode": { "const": "ranking_unavailable" },
               "currentRetrievalRank": { "type": "null" }

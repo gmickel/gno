@@ -119,3 +119,11 @@ cookies, passwords, or session databases; fetch message or bookmark URLs;
 download remote attachments; execute embedded content; or unpack archives.
 HTML is reduced to inert text and Markdown metacharacters from exported content
 are escaped before indexing.
+
+## Custom typed fields
+
+Record adapters can supply `RecordMetadata.custom` through the same bounded
+validator as Markdown `gno.metadata`. Adapter fingerprint changes participate
+in normal re-ingestion. Unsupported values produce metadata diagnostics and
+exclude that record from typed-filtered retrieval without disabling ordinary
+search. See [Typed metadata filters](../TYPED-METADATA.md).

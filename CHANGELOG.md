@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Opt-in typed custom metadata and shared retrieval predicates across CLI, MCP, SDK, REST, and Web UI, with strict type checks, sync repair warnings, and filtered Context Capsule/replay support.
+
 ## [2.3.3] - 2026-09-21
 
 ### Fixed

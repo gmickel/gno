@@ -1,13 +1,12 @@
+import { join as pathJoin } from "node:path"; // No Bun path utils equivalent
+
+import type { ChunkRow, FtsResult, StorePort } from "../store/types";
 /**
  * BM25 search pipeline.
  * Wraps StorePort.searchFts() to produce SearchResults.
  *
  * @module src/pipeline/search
  */
-
-import { join as pathJoin } from "node:path"; // No Bun path utils equivalent
-
-import type { ChunkRow, FtsResult, StorePort } from "../store/types";
 import type {
   SearchOptions,
   SearchResult,
@@ -16,6 +15,7 @@ import type {
 } from "./types";
 
 import { projectRecordEvidenceMetadata } from "../core/record-metadata";
+import { normalizeMetadataPredicate } from "../core/typed-metadata";
 import { getContentBatch } from "../store/content-batch";
 import { err, ok } from "../store/types";
 import { createChunkLookup } from "./chunk-lookup";
@@ -26,6 +26,7 @@ import {
 } from "./content-type-boost";
 import { attachSearchResultEgressLineage } from "./egress-lineage";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
+import { typedMetadataWarnings } from "./filters";
 import { selectBestChunkForSteering } from "./intent";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
@@ -176,6 +177,11 @@ export async function searchBm25(
   query: string,
   options: SearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
+  if (options.filter !== undefined)
+    options = {
+      ...options,
+      filter: normalizeMetadataPredicate(options.filter),
+    };
   const traceStartedAt = options.traceSession ? performance.now() : 0;
   const limit = options.limit ?? 20;
   const minScore = options.minScore ?? 0;
@@ -213,6 +219,7 @@ export async function searchBm25(
     until: temporalRange.until,
     categories: options.categories,
     author: options.author,
+    filter: options.filter,
     memoryScopesAny: options.memoryFilter?.scopes,
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
   });
@@ -482,6 +489,9 @@ export async function searchBm25(
       until: temporalRange.until,
       categories: options.categories,
       author: options.author,
+      ...(options.filter
+        ? { warnings: await typedMetadataWarnings(store, query, options) }
+        : {}),
       queryLanguage,
     },
   };

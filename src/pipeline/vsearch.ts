@@ -12,6 +12,7 @@ import type { SearchOptions, SearchResult, SearchResults } from "./types";
 
 import { normalizeContentTypes } from "../config/content-types";
 import { projectRecordEvidenceMetadata } from "../core/record-metadata";
+import { normalizeMetadataPredicate } from "../core/typed-metadata";
 import {
   assertInferenceActive,
   assertInferenceResult,
@@ -29,6 +30,7 @@ import {
 import { formatQueryForEmbedding } from "./contextual";
 import { attachSearchResultEgressLineage } from "./egress-lineage";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
+import { typedMetadataWarnings, typedMetadataFilterReason } from "./filters";
 import { selectBestChunkForSteering } from "./intent";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
@@ -93,6 +95,11 @@ export async function searchVectorWithEmbedding(
   queryEmbedding: Float32Array,
   options: SearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
+  if (options.filter !== undefined)
+    options = {
+      ...options,
+      filter: normalizeMetadataPredicate(options.filter),
+    };
   return withInferenceScope(options, () =>
     searchVectorWithEmbeddingOwned(deps, query, queryEmbedding, options)
   );
@@ -162,6 +169,7 @@ async function searchVectorWithEmbeddingOwned(
         until: temporalRange.until,
         categories: options.categories,
         author: options.author,
+        filter: options.filter,
         exclude: options.exclude,
         language: options.lang,
       },
@@ -198,6 +206,7 @@ async function searchVectorWithEmbeddingOwned(
       until: temporalRange.until,
       categories: options.categories,
       author: options.author,
+      filter: options.filter,
       mirrorHashes: uniqueHashes,
     });
 
@@ -526,6 +535,9 @@ async function searchVectorWithEmbeddingOwned(
       until: temporalRange.until,
       categories: options.categories,
       author: options.author,
+      ...(options.filter
+        ? { warnings: await typedMetadataWarnings(store, query, options) }
+        : {}),
       queryLanguage,
     },
   };
@@ -552,6 +564,11 @@ export async function searchVector(
   query: string,
   options: SearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
+  if (options.filter !== undefined)
+    options = {
+      ...options,
+      filter: normalizeMetadataPredicate(options.filter),
+    };
   return withInferenceScope(options, () =>
     searchVectorOwned(deps, query, options)
   );
@@ -639,6 +656,7 @@ interface DocumentMapOptions {
   until?: string;
   categories?: string[];
   author?: string;
+  filter?: SearchOptions["filter"];
   mirrorHashes?: string[];
 }
 
@@ -731,6 +749,7 @@ async function buildDocumentMap(
 
   for (const doc of activeDocs) {
     assertInferenceActive();
+    if (typedMetadataFilterReason(doc, options.filter)) continue;
     const sourceRelPath = doc.recordSourcePath ?? doc.relPath;
     if (
       options.relPathPrefix !== undefined &&

@@ -729,3 +729,50 @@ describe("streaming record adapter contract", () => {
     expect(observedAbort).toBe(true);
   });
 });
+
+test("custom metadata validates without dropping ordinary record evidence", async () => {
+  const good = await runRecordAdapter(
+    adapter([
+      {
+        type: "record",
+        record: {
+          stableId: "good",
+          sourceLocator: "line:1",
+          markdown: "ordinary evidence",
+          metadata: {
+            custom: { approved: false, confidence: 0, teams: ["search"] },
+          },
+        },
+      },
+      complete,
+    ]),
+    input()
+  );
+  expect(good.records).toHaveLength(1);
+  expect(good.records[0]?.metadata?.custom).toEqual({
+    approved: false,
+    confidence: 0,
+    teams: ["search"],
+  });
+  const bad = await runRecordAdapter(
+    adapter([
+      {
+        type: "record",
+        record: {
+          stableId: "bad",
+          sourceLocator: "line:1",
+          markdown: "ordinary evidence",
+          metadata: { custom: JSON.parse('{"approved":null}') },
+        },
+      },
+      complete,
+    ]),
+    input()
+  );
+  expect(bad.records).toHaveLength(1);
+  expect(bad.records[0]?.markdown).toContain("ordinary evidence");
+  expect(bad.records[0]?.metadata?.custom).toBeUndefined();
+  expect(bad.records[0]?.metadata?.customError).toContain(
+    "invalid typed metadata"
+  );
+});

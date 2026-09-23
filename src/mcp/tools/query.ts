@@ -1,10 +1,9 @@
+import { join as pathJoin } from "node:path";
 /**
  * MCP gno_query tool - Hybrid search with expansion and reranking.
  *
  * @module src/mcp/tools/query
  */
-
-import { join as pathJoin } from "node:path";
 
 import type {
   EmbeddingPort,
@@ -38,6 +37,10 @@ import {
   type RetrievalTraceSession,
 } from "../../core/retrieval-trace-session";
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
+import {
+  normalizeMetadataPredicate,
+  type MetadataPredicate,
+} from "../../core/typed-metadata";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
@@ -60,6 +63,7 @@ interface QueryInput {
   until?: string;
   categories?: string[];
   author?: string;
+  filter?: MetadataPredicate;
   queryModes?: QueryModeInput[];
   fast?: boolean;
   thorough?: boolean;
@@ -251,6 +255,10 @@ export function handleQuery(
         until: args.until,
         categories: args.categories,
         author: args.author,
+        filter:
+          args.filter === undefined
+            ? undefined
+            : normalizeMetadataPredicate(args.filter),
         noExpand,
         noRerank,
         graph: args.graph,
@@ -524,6 +532,10 @@ export function handleQueryDiagnose(
           until: args.until,
           categories: args.categories,
           author: args.author,
+          filter:
+            args.filter === undefined
+              ? undefined
+              : normalizeMetadataPredicate(args.filter),
           noExpand,
           noRerank,
           graph: args.graph,

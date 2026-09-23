@@ -1,11 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/server";
+
+import { z } from "zod";
 /**
  * MCP tool registration and shared utilities.
  *
  * @module src/mcp/tools
  */
-
-import { z } from "zod";
 
 import type { ToolContext } from "../server";
 
@@ -17,6 +17,7 @@ import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
 import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
 import { RETRIEVAL_TRACE_METADATA } from "../../core/retrieval-trace-session";
 import { normalizeTag } from "../../core/tags";
+import { metadataPredicateSchema } from "../../core/typed-metadata";
 import {
   assertInferenceActive,
   acquireInferencePermit,
@@ -258,6 +259,9 @@ export const searchInputSchema = z.object({
     .string()
     .optional()
     .describe("Filter by author (case-insensitive substring match)"),
+  filter: metadataPredicateSchema
+    .optional()
+    .describe("Typed custom metadata predicate; intersects existing scope"),
   tagsAll: z
     .array(z.string())
     .optional()
@@ -488,6 +492,9 @@ export const vsearchInputSchema = z.object({
     .string()
     .optional()
     .describe("Filter by author (case-insensitive substring)"),
+  filter: metadataPredicateSchema
+    .optional()
+    .describe("Typed custom metadata predicate; intersects existing scope"),
   tagsAll: z.array(z.string()).optional().describe("Require ALL of these tags"),
   tagsAny: z.array(z.string()).optional().describe("Require ANY of these tags"),
 });
@@ -614,6 +621,9 @@ export const queryInputSchema = z.object({
     .boolean()
     .optional()
     .describe("Include deterministic stage and per-result scoring metadata"),
+  filter: metadataPredicateSchema
+    .optional()
+    .describe("Typed custom metadata predicate; intersects existing scope"),
   tagsAll: z.array(z.string()).optional().describe("Require ALL of these tags"),
   tagsAny: z.array(z.string()).optional().describe("Require ANY of these tags"),
 });

@@ -35,19 +35,31 @@
         "pendingMirrors"
       ],
       "properties": {
-        "configured": { "$ref": "#/properties/chunking/definitions/params" },
+        "configured": {
+          "$ref": "#/properties/chunking/definitions/params"
+        },
         "applied": {
           "oneOf": [
-            { "$ref": "#/properties/chunking/definitions/params" },
-            { "type": "null" }
+            {
+              "$ref": "#/properties/chunking/definitions/params"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "state": {
           "type": "string",
           "enum": ["empty", "legacy-default", "current", "pending", "mixed"]
         },
-        "pendingDocuments": { "type": "integer", "minimum": 0 },
-        "pendingMirrors": { "type": "integer", "minimum": 0 }
+        "pendingDocuments": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pendingMirrors": {
+          "type": "integer",
+          "minimum": 0
+        }
       },
       "definitions": {
         "params": {
@@ -60,7 +72,11 @@
               "minimum": 10,
               "maximum": 2251799813685247
             },
-            "overlapPercent": { "type": "number", "minimum": 0, "maximum": 0.5 }
+            "overlapPercent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.5
+            }
           }
         }
       }
@@ -949,6 +965,21 @@
               }
             }
           }
+        }
+      }
+    },
+    "typedMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pending", "invalid"],
+      "properties": {
+        "pending": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     }

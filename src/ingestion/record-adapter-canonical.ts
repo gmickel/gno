@@ -10,6 +10,7 @@ import type {
 
 import { canonicalize, mirrorHash } from "../converters/canonicalize";
 import { RECORD_METADATA_LIMITS } from "../converters/types";
+import { validateRecordMetadata } from "./typed-metadata";
 
 const HASH_PATTERN = /^[a-f\d]{64}$/;
 const CONTROL_PATTERN = new RegExp(
@@ -225,7 +226,12 @@ const normalizeMetadata = (
   ) {
     throw new Error("record metadata out of bounds");
   }
+  const custom = Object.hasOwn(metadata, "custom")
+    ? validateRecordMetadata(metadata.custom)
+    : undefined;
   return {
+    custom: custom?.typedMetadata,
+    customError: custom?.metadataError,
     author: boundedText(metadata.author, RECORD_METADATA_LIMITS.maxPersonChars),
     participants: normalizeList(
       metadata.participants,

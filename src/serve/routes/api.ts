@@ -1,12 +1,11 @@
+// node:fs/promises structure ops + realpath have no Bun equivalent
+import { readdir, realpath } from "node:fs/promises";
 /**
  * REST API routes for GNO web UI.
  * All routes return JSON with consistent error format.
  *
  * @module src/serve/routes/api
  */
-
-// node:fs/promises structure ops + realpath have no Bun equivalent
-import { readdir, realpath } from "node:fs/promises";
 // node:path has no Bun equivalent
 import { posix as pathPosix } from "node:path";
 
@@ -124,6 +123,11 @@ import {
   parseAndValidateTagFilter,
   validateTag,
 } from "../../core/tags";
+import {
+  metadataPredicateSchema,
+  normalizeMetadataPredicate,
+  type MetadataPredicate,
+} from "../../core/typed-metadata";
 import { validateRelPath } from "../../core/validation";
 import { writeLeasePath } from "../../core/write-lease";
 import {
@@ -287,6 +291,7 @@ export interface SearchRequestBody {
   /** Comma-separated category filters */
   category?: string;
   author?: string;
+  filter?: MetadataPredicate;
   /** Comma-separated tags - filter to docs having ALL (AND) */
   tagsAll?: string;
   /** Comma-separated tags - filter to docs having ANY (OR) */
@@ -308,6 +313,7 @@ export interface QueryRequestBody {
   /** Comma-separated category filters */
   category?: string;
   author?: string;
+  filter?: MetadataPredicate;
   queryModes?: QueryModeInput[];
   noExpand?: boolean;
   noRerank?: boolean;
@@ -339,6 +345,7 @@ export interface AskRequestBody {
   /** Comma-separated category filters */
   category?: string;
   author?: string;
+  filter?: MetadataPredicate;
   maxAnswerTokens?: number;
   verify?: boolean;
   contextBudgetTokens?: number;
@@ -369,6 +376,7 @@ const ASK_REQUEST_KEYS = new Set<keyof AskRequestBody>([
   "until",
   "category",
   "author",
+  "filter",
   "maxAnswerTokens",
   "verify",
   "contextBudgetTokens",
@@ -584,6 +592,29 @@ function errorResponse(
     },
     status
   );
+}
+
+function parseRestMetadataFilter(
+  value: unknown
+):
+  | { ok: true; filter: MetadataPredicate | undefined }
+  | { ok: false; response: Response } {
+  if (value === undefined) return { ok: true, filter: undefined };
+  const parsed = metadataPredicateSchema.safeParse(value);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const path = ["filter", ...(issue?.path ?? [])].join(".");
+    return {
+      ok: false,
+      response: errorResponse(
+        "VALIDATION",
+        `${path}: ${issue?.message ?? "Invalid predicate"}`,
+        400,
+        { field: path }
+      ),
+    };
+  }
+  return { ok: true, filter: normalizeMetadataPredicate(parsed.data) };
 }
 
 function fileRefactorHttpErrorResponse(error: FileRefactorHttpError): Response {
@@ -2090,6 +2121,8 @@ export async function handleDoc(
     title: doc.title,
     content,
     contentAvailable,
+    typedMetadata: doc.typedMetadata ?? null,
+    metadataError: doc.metadataError ?? null,
     collection: doc.collection,
     relPath,
     tags,
@@ -4194,6 +4227,9 @@ export async function handleSearch(
     ? parseCommaSeparatedValues(body.exclude)
     : undefined;
   const author = body.author?.trim() || undefined;
+  const parsedFilter = parseRestMetadataFilter(body.filter);
+  if (!parsedFilter.ok) return parsedFilter.response;
+  const filter = parsedFilter.filter;
   let projectAffinity: ProjectAffinityScoringInput | undefined;
   try {
     projectAffinity = context
@@ -4221,6 +4257,7 @@ export async function handleSearch(
     until: body.until,
     categories,
     author,
+    filter,
     projectAffinity,
     contentTypeRules: context
       ? normalizeContentTypes(context.config.contentTypes ?? []).rules
@@ -4388,6 +4425,9 @@ export async function handleQuery(
     ? parseCommaSeparatedValues(body.exclude)
     : undefined;
   const author = body.author?.trim() || undefined;
+  const parsedFilter = parseRestMetadataFilter(body.filter);
+  if (!parsedFilter.ok) return parsedFilter.response;
+  const filter = parsedFilter.filter;
   let projectAffinity: ProjectAffinityScoringInput | undefined;
   try {
     projectAffinity = await resolveRemoteProjectAffinity(
@@ -4425,6 +4465,7 @@ export async function handleQuery(
     until: body.until,
     categories,
     author,
+    filter,
     projectAffinity,
     explain: body.explain,
   };
@@ -4603,6 +4644,9 @@ export async function handleQueryDiagnose(
     ? parseCommaSeparatedValues(body.exclude)
     : undefined;
   const author = body.author?.trim() || undefined;
+  const parsedFilter = parseRestMetadataFilter(body.filter);
+  if (!parsedFilter.ok) return parsedFilter.response;
+  const filter = parsedFilter.filter;
   const contentTypeRules = normalizeContentTypes(
     ctx.config.contentTypes ?? []
   ).rules;
@@ -4654,6 +4698,7 @@ export async function handleQueryDiagnose(
       until: body.until,
       categories,
       author,
+      filter,
       projectAffinity,
       contentTypeRules,
       contentTypeRulesFingerprint:
@@ -4847,6 +4892,9 @@ export async function handleAsk(
     ? parseCommaSeparatedValues(body.exclude)
     : undefined;
   const author = body.author?.trim() || undefined;
+  const parsedFilter = parseRestMetadataFilter(body.filter);
+  if (!parsedFilter.ok) return parsedFilter.response;
+  const filter = parsedFilter.filter;
   let projectAffinity: ProjectAffinityScoringInput | undefined;
   try {
     projectAffinity = await resolveRemoteProjectAffinity(
@@ -4885,6 +4933,7 @@ export async function handleAsk(
     until: body.until,
     categories,
     author,
+    filter,
     verify: body.verify,
     contextBudgetTokens: body.contextBudgetTokens,
     contextBudgetBytes: body.contextBudgetBytes,

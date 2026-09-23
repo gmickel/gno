@@ -179,7 +179,7 @@ function AppContent({
           <div className="ornament mx-auto mb-4 max-w-[8rem] text-muted-foreground/20">
             <span className="text-[10px]">◆</span>
           </div>
-          <div className="flex items-center justify-center gap-5 text-muted-foreground/60">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 px-4 text-muted-foreground/60 sm:gap-x-5">
             <button
               className="transition-colors duration-300 hover:text-primary"
               onClick={() => navigate("/collections")}

@@ -64,7 +64,9 @@ test("opening a pre-feature schema preserves schema identity, chunks and legacy 
   const beforeChunks = old.query("SELECT * FROM content_chunks").all();
   const beforeVectors = old.query("SELECT * FROM content_vectors").all();
   const beforeSchema = old
-    .query("SELECT name, sql FROM sqlite_master ORDER BY name")
+    .query(
+      "SELECT name, sql FROM sqlite_master WHERE name != 'documents' ORDER BY name"
+    )
     .all();
   old.close();
 
@@ -83,8 +85,19 @@ test("opening a pre-feature schema preserves schema identity, chunks and legacy 
       beforeVectors
     );
     expect(
-      db.query("SELECT name, sql FROM sqlite_master ORDER BY name").all()
+      db
+        .query(
+          "SELECT name, sql FROM sqlite_master WHERE name != 'documents' ORDER BY name"
+        )
+        .all()
     ).toEqual(beforeSchema);
+    // Migration 30 adds only typed document metadata; chunk policy still
+    // performs no schema migration or legacy vector rewrite.
+    const columns = db
+      .query<{ name: string }, []>("PRAGMA table_info(documents)")
+      .all();
+    expect(columns.map((column) => column.name)).toContain("typed_metadata");
+    expect(columns.map((column) => column.name)).toContain("metadata_error");
     expect(
       db
         .query(

@@ -1275,3 +1275,10 @@ cat ~/Library/Application\ Support/gno/config/index.yml
 ```
 
 After manual edits, run `gno update` to apply changes.
+
+## Custom document metadata
+
+Opt in per source note with a nested YAML `gno.metadata` map; no collection-wide
+schema or model configuration is required. Ordinary tags/author/category fields
+keep their existing behavior. See [Typed metadata filters](TYPED-METADATA.md)
+for supported values, executable examples, limits, and normal sync backfill.

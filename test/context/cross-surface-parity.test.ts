@@ -295,6 +295,38 @@ describe("Context Capsule REST/MCP parity", () => {
     expect(normalizeGraph("balanced", false)).toBe(false);
   });
 
+  test("filtered Capsules reject incomplete extraction and preserve predicates after repair", async () => {
+    const filter = { op: "exists" as const, key: "project", value: false };
+    const input = { ...buildInput, filter };
+    await expect(buildContextCapsule(input, { store, config })).rejects.toThrow(
+      "Sync the collection"
+    );
+    for (const relPath of ["decision.md", "mirror.md"]) {
+      const loaded = await store.getDocument("notes", relPath);
+      if (!loaded.ok || !loaded.value) throw new Error("fixture missing");
+      const row = loaded.value;
+      const updated = await store.upsertDocument({
+        collection: row.collection,
+        relPath: row.relPath,
+        sourceHash: row.sourceHash,
+        sourceMime: row.sourceMime,
+        sourceExt: row.sourceExt,
+        sourceSize: row.sourceSize,
+        sourceMtime: row.sourceMtime,
+        mirrorHash: row.mirrorHash ?? undefined,
+        typedMetadata: {},
+        ingestVersion: 7,
+      });
+      expect(updated.ok).toBe(true);
+    }
+    const capsule = await buildContextCapsule(input, { store, config });
+    expect(capsule.schemaVersion).toBe("1.2");
+    if (capsule.schemaVersion !== "1.2")
+      throw new Error("expected filtered Capsule");
+    expect(capsule.scope.filter).toEqual(filter);
+    expect(capsule.retrieval.request.filter).toEqual(filter);
+  });
+
   test("keeps full REST/application payloads and emits the production MCP projection once", async () => {
     const direct = await buildContextCapsule(
       { ...buildInput, indexName: "default" },

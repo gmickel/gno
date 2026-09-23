@@ -724,3 +724,11 @@ does not extend it. Inspect stage outcomes and fallbacks when comparing runs.
 - [CLI Commands](CLI.md) - Full command reference
 - [Configuration](CONFIGURATION.md) - Model presets and settings
 - [Glossary](GLOSSARY.md) - Term definitions
+
+## Custom metadata eligibility
+
+Typed `filter` predicates constrain eligible documents before lexical/vector
+candidate limits, fusion, graph expansion, reranking, and context packing.
+A high score cannot rescue an ineligible document. No filter preserves ordinary
+retrieval behavior. [Typed metadata filters](TYPED-METADATA.md) explains strict
+types, missing fields, coverage warnings, and reproducible query examples.

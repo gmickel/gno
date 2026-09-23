@@ -5,6 +5,10 @@ import type { ContextCapsuleBuildInput } from "./context-runtime-types";
 
 import { isValidLanguageHint } from "../config/types";
 import { normalizeTag, validateTag } from "../core/tags";
+import {
+  metadataPredicateSchema,
+  normalizeMetadataPredicate,
+} from "../core/typed-metadata";
 import { resolveTemporalRange } from "../pipeline/temporal";
 import { buildUri, parseUri } from "./constants";
 import { ContextRuntimeError } from "./context-runtime-types";
@@ -355,8 +359,21 @@ export const normalizeContextBuildInput = (
       "Context author or language filter is invalid"
     );
   }
+  const parsedFilter =
+    input.filter === undefined
+      ? undefined
+      : metadataPredicateSchema.safeParse(input.filter);
+  if (parsedFilter && !parsedFilter.success) {
+    throw new ContextRuntimeError(
+      "invalid_filter",
+      `filter: ${parsedFilter.error.message}`
+    );
+  }
   return {
     ...input,
+    ...(parsedFilter?.success
+      ? { filter: normalizeMetadataPredicate(parsedFilter.data) }
+      : {}),
     goal,
     query,
     indexName,

@@ -4,9 +4,11 @@ import { canonicalizeIndexName } from "../app/index-name";
 import {
   contextCapsulePayloadV1Schema,
   contextCapsulePayloadV1_1Schema,
+  contextCapsulePayloadV1_2Schema,
   type ContextCapsulePayload,
 } from "./context-capsule-schema";
 import { createEgressLineage, type EgressLineage } from "./egress-provenance";
+import { normalizeMetadataPredicate } from "./typed-metadata";
 
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
 
@@ -61,6 +63,9 @@ const normalizePayload = (
     query: normalizeText(value.query),
     scope: {
       ...value.scope,
+      ...(value.schemaVersion === "1.2"
+        ? { filter: normalizeMetadataPredicate(value.scope.filter) }
+        : {}),
       indexName: canonicalizeIndexName(value.scope.indexName),
       collections: normalizeSet(value.scope.collections),
       uriPrefix:
@@ -79,6 +84,13 @@ const normalizePayload = (
       queryVariants: value.retrieval.queryVariants.map(normalizeText),
       request: {
         ...value.retrieval.request,
+        ...(value.schemaVersion === "1.2"
+          ? {
+              filter: normalizeMetadataPredicate(
+                value.retrieval.request.filter
+              ),
+            }
+          : {}),
         author:
           value.retrieval.request.author === null
             ? null
@@ -116,7 +128,7 @@ const normalizePayload = (
         `${right.code}\0${right.capability}`
       )
     ),
-    ...(value.schemaVersion === "1.1"
+    ...(value.schemaVersion !== "1.0"
       ? {
           egressLineage: {
             ...value.egressLineage,
@@ -291,6 +303,7 @@ const contractError = (
 const contextCapsulePayloadSchema = z.union([
   contextCapsulePayloadV1Schema,
   contextCapsulePayloadV1_1Schema,
+  contextCapsulePayloadV1_2Schema,
 ]);
 
 const parsePayload = (input: unknown): ContextCapsulePayload => {
@@ -391,6 +404,7 @@ const fixedPointCapsule = (
 const contextCapsuleBaseV1Schema = z.union([
   contextCapsulePayloadV1Schema.extend({ capsuleId: sha256Schema }),
   contextCapsulePayloadV1_1Schema.extend({ capsuleId: sha256Schema }),
+  contextCapsulePayloadV1_2Schema.extend({ capsuleId: sha256Schema }),
 ]);
 
 export const contextCapsuleV1Schema = contextCapsuleBaseV1Schema.superRefine(
@@ -503,7 +517,7 @@ export const canonicalContextCapsuleAccountingJson = (input: unknown): string =>
  */
 export const contextCapsuleEgressLineage = (input: unknown): EgressLineage => {
   const capsule = parseContextCapsuleV1(input);
-  if (capsule.schemaVersion === "1.1") return capsule.egressLineage;
+  if (capsule.schemaVersion !== "1.0") return capsule.egressLineage;
   return createEgressLineage(
     [...new Set(capsule.evidence.map(({ collection }) => collection))].map(
       (collection) => ({

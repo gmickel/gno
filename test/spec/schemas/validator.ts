@@ -50,6 +50,7 @@ async function loadAllSchemas(): Promise<void> {
     "setup-profile-result",
     "project-profile-command",
     "project-profile-apply",
+    "metadata-predicate",
     "context-capsule-v1",
     "context-capsule-verification",
     "saved-capsule-registration",

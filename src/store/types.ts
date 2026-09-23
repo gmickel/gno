@@ -1,11 +1,10 @@
+import type { ChunkingParams } from "../config/chunking";
 /**
  * Store layer types and interfaces.
  * Defines StorePort (port interface) and all data types for persistence.
  *
  * @module src/store/types
  */
-
-import type { ChunkingParams } from "../config/chunking";
 import type {
   Collection,
   Context,
@@ -20,6 +19,7 @@ import type {
   FileRefactorRecoveryReceipt,
   FileRefactorRecoveryReceiptDraft,
 } from "../core/file-refactor-journal";
+import type { MetadataPredicate, TypedMetadata } from "../core/typed-metadata";
 import type {
   ChunkingPolicyToken,
   ChunkingStatus,
@@ -119,6 +119,8 @@ export interface ContextRow {
 
 /** Document row from DB */
 export interface DocumentRow {
+  typedMetadata?: TypedMetadata | null;
+  metadataError?: string | null;
   id: number;
   collection: string;
   relPath: string;
@@ -377,6 +379,8 @@ export interface DocEdgeInput {
 
 /** Input for upserting a document */
 export interface DocumentInput {
+  typedMetadata?: TypedMetadata;
+  metadataError?: string;
   collection: string;
   relPath: string;
   sourceHash: string;
@@ -667,6 +671,7 @@ export interface GraphReferenceStore {
 }
 
 export interface DocumentEligibilityOptions {
+  filter?: MetadataPredicate;
   /** Internal owner eligibility; public lexical language remains reserved. */
   chunkLanguage?: string;
   /** Include author, content type and categories in whole-owner exclusion. */
@@ -793,6 +798,7 @@ export interface CollectionStatus {
 
 /** Index-level status */
 export interface IndexStatus {
+  typedMetadata?: { pending: number; invalid: number };
   /** Config version string */
   version: string;
   /** Index name (from dbPath) */
@@ -1522,6 +1528,9 @@ export type WithTransaction = <T>(
  * Implementations: SQLite adapter (src/store/sqlite/adapter.ts)
  */
 export interface StorePort {
+  getTypedMetadataCoverage?(
+    options: DocumentEligibilityOptions
+  ): Promise<StoreResult<{ pending: number; invalid: number }>>;
   // ─────────────────────────────────────────────────────────────────────────
   // Lifecycle
   // ─────────────────────────────────────────────────────────────────────────
@@ -1869,6 +1878,7 @@ export interface StorePort {
     options?: {
       collection?: string;
       activeOnly?: boolean;
+      eligibility?: DocumentEligibilityOptions;
     }
   ): Promise<StoreResult<DocumentRow[]>>;
 

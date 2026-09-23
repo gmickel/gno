@@ -435,3 +435,10 @@ export interface GnoClient {
   ): Promise<SectionTargetResolveResult>;
   close(): Promise<void>;
 }
+
+export type {
+  MetadataPredicate,
+  MetadataScalar,
+  TypedMetadata,
+  TypedValue,
+} from "../core/typed-metadata";

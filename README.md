@@ -20,6 +20,10 @@ gno agents install --target claude # teach retrieval and writing discipline
 gno agents verify --target claude
 ```
 
+Custom fields such as project, approval status, and numeric confidence can
+constrain retrieval with [typed metadata filters](docs/TYPED-METADATA.md),
+across CLI, MCP, SDK, REST, and the Web UI.
+
 ## What you get
 
 **One local index across everything you have.** Markdown, PDFs, Office documents, plain text, source code, and portable mail, calendar and transcript exports. Point it at a folder that mixes all of them and it handles the mix.

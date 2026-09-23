@@ -4171,3 +4171,33 @@ because reindexing is temporarily unavailable
 - [MCP Specification](./mcp.md)
 - [Output Schemas](./output-schemas/)
 - [PRD](../docs/prd.md)
+
+### Typed metadata predicates
+
+Retrieval commands accept `--filter '<JSON>'`. The same `filter` object is
+accepted by SDK, MCP and REST retrieval inputs. Metadata comes from the nested
+YAML `gno.metadata` map; ordinary frontmatter keys remain unchanged.
+
+The bounded recursive contract is:
+
+- `{op:"and"|"or", predicates: Predicate[]}` (nonempty).
+- `{op:"not", predicate: Predicate}`.
+- `{op:"eq"|"ne", key:string, value:string|number|boolean}`.
+- `{op:"gt"|"gte"|"lt"|"lte", key:string, value:number}`.
+- `{op:"in"|"nin"|"all", key:string, values:Scalar[]}` (nonempty, homogeneous).
+- `{op:"exists", key:string, value:boolean}`.
+
+Comparison is type-strict and text is exact/case-sensitive. Positive comparisons,
+`ne` and `nin` require a present field. Logical `not` negates the complete child,
+so missing fields satisfy `not(eq(...))`. `eq/ne` require scalar fields; `in/nin`
+accept scalar or array fields; `all` requires an array. Invalid metadata and
+documents awaiting ingestion repair are ineligible for every typed predicate,
+including negation. Filtered queries report incomplete coverage until repaired.
+Limits: 64 metadata keys, 128-character keys, 4096-character strings, 128 array
+members, 64 KiB serialized metadata/filter, 128 predicate nodes, depth 8.
+Keys `__proto__`, `prototype`, and `constructor` are reserved.
+
+For executable examples and the missing-field truth table, see
+[Typed metadata filters](../docs/TYPED-METADATA.md). `ne` additionally requires
+the field's scalar type to match the operand; `nin` matches a present scalar or
+array with no exact typed member match. Ordering never coerces strings.

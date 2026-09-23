@@ -28,6 +28,18 @@
             "type": "object",
             "required": ["verificationRequested", "abstained"],
             "properties": {
+              "warnings": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["code", "message"],
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  }
+                }
+              },
               "verificationRequested": { "const": true },
               "abstained": {}
             }

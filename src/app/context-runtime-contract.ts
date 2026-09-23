@@ -286,7 +286,23 @@ export const projectContextCapsule = (
     ],
   };
   try {
-    const value = createContextCapsuleV1(payload, {
+    const versionedPayload =
+      input.filter === undefined
+        ? payload
+        : {
+            ...payload,
+            schemaVersion: "1.2" as const,
+            scope: { ...payload.scope, filter: input.filter },
+            retrieval: {
+              ...payload.retrieval,
+              request: { ...payload.retrieval.request, filter: input.filter },
+            },
+          };
+    versionedPayload.fingerprints.retrieval = retrievalFingerprint(
+      versionedPayload,
+      snapshots.contextFingerprint
+    );
+    const value = createContextCapsuleV1(versionedPayload, {
       countTokens: deps.countTokens,
     });
     return {

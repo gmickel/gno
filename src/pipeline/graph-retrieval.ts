@@ -1,18 +1,20 @@
+import type { MetadataPredicate } from "../core/typed-metadata";
+import type {
+  ChunkRow,
+  DocumentRow,
+  DocumentEligibilityOptions,
+  GraphEdgeConfidence,
+  GraphLink,
+  StorePort,
+} from "../store/types";
 /**
  * Bounded graph expansion for hybrid retrieval.
  *
  * @module src/pipeline/graph-retrieval
  */
-
-import type {
-  ChunkRow,
-  DocumentRow,
-  GraphEdgeConfidence,
-  GraphLink,
-  StorePort,
-} from "../store/types";
 import type { FusionCandidate } from "./types";
 
+import { typedMetadataFilterReason } from "./filters";
 import { isWithinTemporalRange } from "./temporal";
 
 export interface GraphRetrievalMeta {
@@ -65,9 +67,11 @@ const matchesDocumentFilters = (
     until?: string;
     categories?: string[];
     author?: string;
+    filter?: MetadataPredicate;
     relPathPrefix?: string;
   }
 ): boolean => {
+  if (typedMetadataFilterReason(doc, options.filter)) return false;
   if (
     !isWithinTemporalRange(doc.sourceMtime, {
       since: options.since,
@@ -235,6 +239,7 @@ export async function expandGraphCandidates(
   options: {
     collection?: string;
     includeSimilar?: boolean;
+    eligibility?: DocumentEligibilityOptions;
     limit?: number;
     candidateLimit?: number;
     disabled?: boolean;
@@ -245,6 +250,7 @@ export async function expandGraphCandidates(
     until?: string;
     categories?: string[];
     author?: string;
+    filter?: MetadataPredicate;
     relPathPrefix?: string;
   } = {},
   hydration: Pick<
@@ -300,7 +306,7 @@ export async function expandGraphCandidates(
 
   const rankedSeedDocs: Array<{ doc: DocumentRow; rank: number }> = [];
   for (const doc of seedDocsResult.value) {
-    if (!doc.mirrorHash) {
+    if (!doc.mirrorHash || typedMetadataFilterReason(doc, options.filter)) {
       continue;
     }
     if (
@@ -394,6 +400,7 @@ export async function expandGraphCandidates(
   }
 
   const docsResult = await store.getDocumentsByDocids(rankedNeighborDocids, {
+    eligibility: options.eligibility,
     collection: options.collection,
     activeOnly: true,
   });

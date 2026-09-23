@@ -8,7 +8,9 @@
       "additionalProperties": false,
       "required": ["mode", "text"],
       "properties": {
-        "mode": { "enum": ["term", "intent", "hyde"] },
+        "mode": {
+          "enum": ["term", "intent", "hyde"]
+        },
         "text": { "type": "string", "maxLength": 8192 }
       }
     },
@@ -63,7 +65,10 @@
           "maxItems": 100,
           "items": { "$ref": "#/definitions/queryMode" }
         },
-        "uriPrefix": { "type": "string", "maxLength": 4096 }
+        "uriPrefix": { "type": "string", "maxLength": 4096 },
+        "filter": {
+          "$ref": "gno://schemas/metadata-predicate@1.0"
+        }
       }
     },
     "metadataShape": {
@@ -133,7 +138,11 @@
     }
   },
   "oneOf": [
-    { "$ref": "#/definitions/filters" },
-    { "$ref": "#/definitions/metadataFilters" }
+    {
+      "$ref": "#/definitions/filters"
+    },
+    {
+      "$ref": "#/definitions/metadataFilters"
+    }
   ]
 }

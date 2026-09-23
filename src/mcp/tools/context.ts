@@ -261,6 +261,7 @@ export const handleContext = (
           until: parsed.input.until,
           categories: parsed.input.categories,
           author: parsed.input.author,
+          filter: parsed.input.filter,
           graph: parsed.input.graph,
           candidateLimit: parsed.input.candidateLimit,
           queryModes: parsed.input.queryModes,

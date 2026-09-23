@@ -3807,3 +3807,19 @@ In that case `meta.vectorsUsed` is false unless at least one vector search actua
 succeeded, and a wholly lexical fallback reports `meta.mode: "bm25_only"`.
 A successful vector search with no matches can legitimately report
 `vectorsUsed: true`. Native reload failure is not evidence of a semantic no-match.
+
+## Typed metadata predicates
+
+Retrieval requests to `/api/search`, `/api/query`, `/api/query/diagnose`,
+`/api/ask`, and `/api/context` accept `filter` as a JSON object:
+
+```bash
+curl -sS http://localhost:3000/api/search -H 'Content-Type: application/json' \
+  -d '{"query":"rollout","filter":{"op":"eq","key":"status","value":"approved"}}'
+```
+
+Malformed predicates return a client error with a field path. Filtering applies
+before candidate limits and intersects server authority. Document detail exposes
+stored `typedMetadata` and `metadataError`; clients should not reparse YAML to
+infer types. See [Typed metadata filters](TYPED-METADATA.md) for the shared
+contract, coverage warnings, limits, and privacy behavior.

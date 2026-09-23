@@ -1,6 +1,13 @@
 import { expect, test } from "bun:test";
 
-import { handleSearch } from "../../src/serve/routes/api";
+import type { ServerContext } from "../../src/serve/context";
+
+import {
+  handleSearch,
+  handleQuery,
+  handleQueryDiagnose,
+  handleAsk,
+} from "../../src/serve/routes/api";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
 test("lexical input failures return validation 400 while store failures remain runtime 500", async () => {
@@ -27,5 +34,36 @@ test("lexical input failures return validation 400 while store failures remain r
     expect(await failed.json()).toMatchObject({ error: { code: "RUNTIME" } });
   } finally {
     await store.close();
+  }
+});
+
+test("REST retrieval rejects invalid typed filters with a stable field path before storage or models", async () => {
+  const store = new SqliteAdapter();
+  const ctx = { store } as ServerContext;
+  for (const [index, handler] of [
+    (req: Request) => handleSearch(store, req),
+    (req: Request) => handleQuery(ctx, req),
+    (req: Request) => handleQueryDiagnose(ctx, req),
+    (req: Request) => handleAsk(ctx, req),
+  ].entries()) {
+    const response = await handler(
+      new Request("http://localhost/api/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: "needle",
+          ...(index === 2 ? { target: "gno://notes/needle.md" } : {}),
+          filter: { op: "gte", key: "confidence", value: "0.8" },
+        }),
+      })
+    );
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: "VALIDATION",
+        message: expect.stringContaining("filter"),
+        details: { field: expect.stringContaining("filter") },
+      },
+    });
   }
 });
