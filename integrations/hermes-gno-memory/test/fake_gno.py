@@ -89,26 +89,51 @@ def recall(argv):
 def receipt_private(path):
     if os.name != "nt":
         return os.stat(path).st_mode & 0o777 == 0o600
-    # Windows privacy is enforced by the DACL, not POSIX mode bits. Pass the
-    # path through the environment, never interpolate it into PowerShell code.
-    script = """
-$identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-$allowed = @($identity.User.Value, 'S-1-5-18', 'S-1-5-32-544')
-$acl = Get-Acl -LiteralPath $env:FAKE_RECEIPT_PATH -ErrorAction Stop
-$unexpected = @($acl.Access | Where-Object {
-    $_.AccessControlType -eq 'Allow' -and
-    $allowed -notcontains $_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value
-})
-if ($unexpected.Count -ne 0) { exit 1 }
-if ($acl.Access.Count -eq 0) { exit 1 }
-exit 0
-"""
-    result = subprocess.run(
-        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
-        env={**os.environ, "FAKE_RECEIPT_PATH": path},
-        capture_output=True, timeout=5, check=False,
+    # Query the actual DACL without starting PowerShell inside the provider's
+    # two-second subprocess budget. ctypes is Python's standard Win32 bridge.
+    import csv
+    import ctypes
+    import re
+    from ctypes import wintypes
+
+    advapi = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    get_security = advapi.GetNamedSecurityInfoW
+    get_security.argtypes = [wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD,
+                             ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
+                             ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    get_security.restype = wintypes.DWORD
+    to_sddl = advapi.ConvertSecurityDescriptorToStringSecurityDescriptorW
+    to_sddl.argtypes = [ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.POINTER(wintypes.LPWSTR), ctypes.c_void_p]
+    to_sddl.restype = wintypes.BOOL
+    kernel.LocalFree.argtypes = [ctypes.c_void_p]
+    kernel.LocalFree.restype = ctypes.c_void_p
+    descriptor = ctypes.c_void_p()
+    sddl = wintypes.LPWSTR()
+    if get_security(path, 1, 4, None, None, None, None, ctypes.byref(descriptor)):
+        return False
+    try:
+        if not to_sddl(descriptor, 1, 4, ctypes.byref(sddl), None):
+            return False
+        acl = sddl.value
+    finally:
+        if sddl:
+            kernel.LocalFree(ctypes.cast(sddl, ctypes.c_void_p))
+        kernel.LocalFree(descriptor)
+    identity = subprocess.run(
+        ["whoami.exe", "/user", "/fo", "csv", "/nh"],
+        capture_output=True, text=True, check=True, timeout=1,
     )
-    return result.returncode == 0
+    user_sid = next(csv.reader([identity.stdout.strip()]))[1]
+    allowed = {user_sid, "SY", "BA"}
+    entries = [entry.split(";") for entry in re.findall(r"\(([^()]*)\)", acl)]
+    # No/null DACL and unfamiliar ACE forms fail closed. Ordinary deny entries
+    # grant nothing; every allow entry must name the user, SYSTEM or admins.
+    return bool(entries) and all(
+        len(entry) == 6 and (entry[0] == "D" or (entry[0] == "A" and entry[5] in allowed))
+        for entry in entries
+    )
 
 
 def remember(argv):

@@ -26,7 +26,8 @@ export function privateCapturePath(path: string, create = false): void {
 
 const PROCESSES = `
 $ErrorActionPreference='Stop'
-$ids=@($env:GNO_QA_PROCESS_IDS.Split(',',[StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object { [int]$_ })
+$idText=[string]$env:GNO_QA_PROCESS_IDS
+$ids=@($idText.Split(',',[StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object { [int]$_ })
 $rows=@(Get-CimInstance Win32_Process | Where-Object { $ids.Count -eq 0 -or $ids -contains [int]$_.ProcessId })
 foreach ($p in $rows) {
   switch ($env:GNO_QA_PROCESS_FIELDS) {

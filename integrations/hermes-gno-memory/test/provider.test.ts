@@ -56,6 +56,25 @@ beforeAll(async () => {
     nativeLauncher,
   ]);
   expect(built.exitCode).toBe(0);
+  // Finish first-launch executable scanning during fixture setup, before the
+  // lifecycle tests exercise their intentionally short operation timeouts.
+  const ready = Bun.spawn([nativeLauncher, "--version"], {
+    env: {
+      ...process.env,
+      FAKE_GNO_PYTHON: PYTHON as string,
+      FAKE_GNO_SCRIPT: FAKE_GNO,
+      FAKE_GNO_MODE: "ok",
+    },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [readyCode, readyOutput] = await Promise.all([
+    ready.exited,
+    new Response(ready.stdout).text(),
+    new Response(ready.stderr).text(),
+  ]);
+  expect(readyCode).toBe(0);
+  expect(readyOutput.trim()).toMatch(/^\d+\.\d+\.\d+$/);
 }, 60_000);
 
 afterAll(async () => {

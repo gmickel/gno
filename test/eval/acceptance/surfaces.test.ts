@@ -123,7 +123,8 @@ async function fixture(mode: string) {
       GNO_CACHE_DIR: join(root, "cache"),
     },
     capturePath: join(root, "capture.json"),
-    timeoutMs: 5000,
+    // Native Windows ACL setup and CIM sampling are included in this deadline.
+    timeoutMs: process.platform === "win32" ? 15000 : 5000,
   };
   const invocation: SurfaceInvocation =
     surface === "mcp"
@@ -150,54 +151,61 @@ async function fixture(mode: string) {
 }
 const read = async () => ({ content: "", sourceHash: "a".repeat(64) });
 
-test("real owned REST, stdio MCP and resident MCP HTTP retain output and stop children without claiming native coverage", async () => {
-  for (const mode of ["api", "stdio", "http"]) {
-    const f = await fixture(mode);
-    try {
-      const result = await runSurfaceAcceptance(
-        f.request,
-        f.launch,
-        f.invocation,
-        read
-      );
-      expect(result.raw).toEqual(raw);
-      expect(result.coverage).toBe("incomplete");
-      const diagnostics = await Bun.file(
-        `${f.launch.capturePath}.diagnostics.json`
-      ).json();
-      expect(diagnostics.failure).toBeNull();
-      expect(diagnostics.pid).toBeGreaterThan(0);
-      expect(() => process.kill(diagnostics.pid, 0)).toThrow();
-      expect(
-        await Bun.file(`${f.launch.capturePath}.stderr.log`).text()
-      ).toContain("synthetic-surface-start");
-      expect(
-        await Bun.file(`${f.launch.capturePath}.stderr.log`).text()
-      ).toContain("cuda never");
-      expect(
-        await Bun.file(`${f.launch.capturePath}.stdout.log`).exists()
-      ).toBe(true);
-      if (mode === "stdio") {
-        const messages = (
-          await Bun.file(`${f.launch.capturePath}.stdout.log`).text()
-        )
-          .trim()
-          .split("\n")
-          .map((line) => JSON.parse(line));
+// Three real transports include Windows ACL initialization and CIM observations.
+const surfaceTestTimeout = process.platform === "win32" ? 60000 : 20000;
+
+test(
+  "real owned REST, stdio MCP and resident MCP HTTP retain output and stop children without claiming native coverage",
+  async () => {
+    for (const mode of ["api", "stdio", "http"]) {
+      const f = await fixture(mode);
+      try {
+        const result = await runSurfaceAcceptance(
+          f.request,
+          f.launch,
+          f.invocation,
+          read
+        );
+        expect(result.raw).toEqual(raw);
+        expect(result.coverage).toBe("incomplete");
+        const diagnostics = await Bun.file(
+          `${f.launch.capturePath}.diagnostics.json`
+        ).json();
+        expect(diagnostics.failure).toBeNull();
+        expect(diagnostics.pid).toBeGreaterThan(0);
+        expect(() => process.kill(diagnostics.pid, 0)).toThrow();
         expect(
-          messages.filter(
-            (message) => message.result?.protocolVersion === "2025-11-25"
+          await Bun.file(`${f.launch.capturePath}.stderr.log`).text()
+        ).toContain("synthetic-surface-start");
+        expect(
+          await Bun.file(`${f.launch.capturePath}.stderr.log`).text()
+        ).toContain("cuda never");
+        expect(
+          await Bun.file(`${f.launch.capturePath}.stdout.log`).exists()
+        ).toBe(true);
+        if (mode === "stdio") {
+          const messages = (
+            await Bun.file(`${f.launch.capturePath}.stdout.log`).text()
           )
-        ).toHaveLength(1);
+            .trim()
+            .split("\n")
+            .map((line) => JSON.parse(line));
+          expect(
+            messages.filter(
+              (message) => message.result?.protocolVersion === "2025-11-25"
+            )
+          ).toHaveLength(1);
+        }
+        expect(
+          await Bun.file(`${f.launch.capturePath}.response.json`).exists()
+        ).toBe(true);
+      } finally {
+        await rm(f.root, { recursive: true, force: true });
       }
-      expect(
-        await Bun.file(`${f.launch.capturePath}.response.json`).exists()
-      ).toBe(true);
-    } finally {
-      await rm(f.root, { recursive: true, force: true });
     }
-  }
-}, 20000);
+  },
+  surfaceTestTimeout
+);
 
 test("resident timeout and unexpected REST wrapper retain diagnostics and incomplete output", async () => {
   for (const mode of ["never", "wrapped"]) {

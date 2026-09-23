@@ -1,0 +1,105 @@
+{
+  "run": 35892408902,
+  "job": 107287965371,
+  "head": "8d5112e10230c59e73e8a61be43cf620a6c74f72",
+  "complete": true,
+  "bun": "1.4.2",
+  "pass": 5335,
+  "skip": 29,
+  "fail": 34,
+  "files": 643,
+  "elapsedSeconds": 447.66,
+  "failureGroups": [
+    {
+      "file": "test/cli/query-smoke.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round2/test__cli__query-smoke.test.ts"
+    },
+    {
+      "file": "test/cli/search-results-format.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round2/test__cli__search-results-format.test.ts"
+    },
+    {
+      "file": "test/cli/search-smoke.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round2/test__cli__search-smoke.test.ts"
+    },
+    {
+      "file": "test/core/folder-setup.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round2/test__core__folder-setup.test.ts"
+    },
+    {
+      "file": "test/llm/native-worker-integration.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round2/test__llm__native-worker-integration.test.ts"
+    },
+    {
+      "file": "test/serve/watch-reconciliation.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round2/test__serve__watch-reconciliation.test.ts"
+    },
+    {
+      "file": "test/serve/watch-service-host-round6.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round2/test__serve__watch-service-host-round6.test.ts"
+    },
+    {
+      "file": "integrations/hermes-gno-memory/test/provider.test.ts",
+      "failures": 4,
+      "log": ".flow/tmp/fn177-round2/integrations__hermes-gno-memory__test__provider.test.ts"
+    },
+    {
+      "file": "integrations/openclaw-gno-memory/test/plugin.test.ts",
+      "failures": 2,
+      "log": ".flow/tmp/fn177-round2/integrations__openclaw-gno-memory__test__plugin.test.ts"
+    },
+    {
+      "file": "test/eval/acceptance/adapters.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round2/test__eval__acceptance__adapters.test.ts"
+    },
+    {
+      "file": "test/eval/acceptance/child-capture.test.ts",
+      "failures": 3,
+      "log": ".flow/tmp/fn177-round2/test__eval__acceptance__child-capture.test.ts"
+    },
+    {
+      "file": "test/eval/acceptance/runner.test.ts",
+      "failures": 7,
+      "log": ".flow/tmp/fn177-round2/test__eval__acceptance__runner.test.ts"
+    },
+    {
+      "file": "test/eval/acceptance/session-driver.test.ts",
+      "failures": 4,
+      "log": ".flow/tmp/fn177-round2/test__eval__acceptance__session-driver.test.ts"
+    },
+    {
+      "file": "test/eval/acceptance/surfaces.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round2/test__eval__acceptance__surfaces.test.ts"
+    },
+    {
+      "file": "test/ingestion/source-availability/directory.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round2/test__ingestion__source-availability__directory.test.ts"
+    },
+    {
+      "file": "test/ingestion/source-availability/traversal-reconcile.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round2/test__ingestion__source-availability__traversal-reconcile.test.ts"
+    },
+    {
+      "file": "test/serve/public/lib/doc-asset-url.test.ts",
+      "failures": 2,
+      "log": ".flow/tmp/fn177-round2/test__serve__public__lib__doc-asset-url.test.ts"
+    },
+    {
+      "file": "test/serve/public/components/pdf/PdfPageView.dom.test.tsx",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round2/test__serve__public__components__pdf__PdfPageView.dom.test.tsx"
+    }
+  ],
+  "log": "https://github.com/gmickel/gno/actions/runs/35892408902/job/107287965371"
+}

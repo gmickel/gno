@@ -221,7 +221,7 @@ describe("collection provisioning", () => {
     );
     const error = await rejection(backend.ensureCollection(ROOT));
     expect(error.kind).toBe("gno_command_failed");
-    expect(error.message).toContain("/elsewhere");
+    expect(error.message).toContain(resolve("/elsewhere"));
   });
 
   test("an uninitialized GNO is a clear error, not a silent add", async () => {
@@ -553,9 +553,13 @@ describe("execFileRunner spawn failures", () => {
         timeoutMs: 5000,
       });
       expect(result.code).toBe(1);
-      expect(result.notFound).toBe(false);
+      // Windows reports ENOENT for a directory used as an executable;
+      // POSIX reports EACCES. Both must retain the actual spawn diagnostic.
+      expect(result.notFound).toBe(process.platform === "win32");
       expect(result.timedOut).toBe(false);
-      expect(result.stderr).toMatch(/EACCES|spawn/);
+      expect(result.stderr).toMatch(
+        process.platform === "win32" ? /ENOENT/ : /EACCES/
+      );
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

@@ -38,8 +38,10 @@ function mapClassifier(
   byRel: Record<string, DirectoryAvailabilityResult>,
   rootAbs: string
 ): DirectoryAvailabilityPort {
+  rootAbs = rootAbs.replaceAll("\\", "/");
   const rootPrefix = rootAbs.endsWith("/") ? rootAbs.slice(0, -1) : rootAbs;
   const classify = (absPath: string): DirectoryAvailabilityResult => {
+    absPath = absPath.replaceAll("\\", "/");
     const normalized = absPath.endsWith("/") ? absPath.slice(0, -1) : absPath;
     if (normalized === rootPrefix) {
       return byRel[""] ?? { kind: "available" };

@@ -39,6 +39,7 @@ import {
 } from "../../src/serve/watch-snapshot";
 import { safeRm } from "../helpers/cleanup";
 import { createPortableWatcherFs } from "./helpers/watch-portable-fixtures";
+import { mockSpecialWatcherFile } from "./helpers/watch-special-fixture";
 
 function createCollection(
   name: string,
@@ -459,28 +460,20 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
     const root = await mkdtemp(join(tmpdir(), "gno-watch-widen-fifo-"));
     try {
       const fifoPath = join(root, "special.md");
-      let mkfifoOk = false;
+      await Bun.write(fifoPath, "special fixture");
+      const restore = mockSpecialWatcherFile(fifoPath);
       try {
-        const proc = Bun.spawn(["mkfifo", fifoPath], {
-          stdout: "ignore",
-          stderr: "pipe",
-        });
-        mkfifoOk = (await proc.exited) === 0;
-      } catch {
-        mkfifoOk = false;
+        const widened = await widenVanishedExactPaths(root, [
+          "special.md",
+          "missing.md",
+        ]);
+        expect(widened.keepExact).toEqual(["missing.md"]);
+        expect(widened.extraDirty).toContain("special.md");
+        expect(widened.directoryDirty).toContain("special.md");
+        expect(widened.keepExact).not.toContain("special.md");
+      } finally {
+        restore();
       }
-      if (!mkfifoOk) {
-        // Platform without mkfifo — skip only this special-file unit.
-        return;
-      }
-      const widened = await widenVanishedExactPaths(root, [
-        "special.md",
-        "missing.md",
-      ]);
-      expect(widened.keepExact).toEqual(["missing.md"]);
-      expect(widened.extraDirty).toContain("special.md");
-      expect(widened.directoryDirty).toContain("special.md");
-      expect(widened.keepExact).not.toContain("special.md");
     } finally {
       await safeRm(root);
     }

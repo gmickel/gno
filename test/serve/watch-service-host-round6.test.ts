@@ -20,8 +20,8 @@ import {
   originalInactivate,
   statefulInactiveStore,
   stubStore,
-  tryMkfifo,
 } from "./helpers/watch-service-round6-fixtures";
+import { mockSpecialWatcherFile } from "./helpers/watch-special-fixture";
 
 installWatchServiceSyncReset();
 
@@ -31,6 +31,7 @@ describe("exact special path (lstat kind)", () => {
     let cb: ((e: string, f: string | null) => void) | undefined;
     const inactiveBatches: string[][] = [];
     const syncBatches: string[][] = [];
+    let restoreSpecial: (() => void) | undefined;
     try {
       await writeFile(join(root, "special.md"), "was-file");
       const serviceBoot = new CollectionWatchService({
@@ -48,9 +49,8 @@ describe("exact special path (lstat kind)", () => {
       await serviceBoot.dispose();
 
       await unlink(join(root, "special.md"));
-      if (!(await tryMkfifo(join(root, "special.md")))) {
-        return;
-      }
+      await Bun.write(join(root, "special.md"), "special fixture");
+      restoreSpecial = mockSpecialWatcherFile(join(root, "special.md"));
 
       const { store, inactive } = statefulInactiveStore(["special.md"]);
       defaultSyncService.inactivateAbsentSources = (async (
@@ -96,6 +96,7 @@ describe("exact special path (lstat kind)", () => {
       expect(syncBatches.every((b) => !b.includes("special.md"))).toBe(true);
       await service.dispose();
     } finally {
+      restoreSpecial?.();
       await safeRm(root);
     }
   });

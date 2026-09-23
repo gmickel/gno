@@ -29,7 +29,7 @@ describe("doc-asset-url (fn-112 task .5 N5)", () => {
 
   test("dirname+basename resolves nested document and not sibling dir", () => {
     // Mirrors handleDocAsset: resolve(dirname(fullPath), basename(relPath))
-    const coll = "/collections/notes";
+    const coll = resolve("/collections/notes");
     const nestedFull = join(coll, "nested/dir/report.pdf");
     const siblingFull = join(coll, "other/report.pdf");
     const bas = "report.pdf";
@@ -49,7 +49,7 @@ describe("doc-asset-url (fn-112 task .5 N5)", () => {
   test("recordSourcePath-shaped relPath still basename-resolves", () => {
     // API returns relPath = recordSourcePath ?? relPath
     const recordRel = "imports/container/doc.pdf";
-    const full = join("/collections/vault", recordRel);
+    const full = resolve("/collections/vault", recordRel);
     expect(resolve(dirname(full), assetPathFromRelPath(recordRel))).toBe(full);
   });
 

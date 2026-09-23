@@ -82,53 +82,66 @@ async function fixture(): Promise<{
   };
 }
 
-test("retained actual child has truthful cold state, lossless replies, and explicit close", async () => {
-  const { root, options } = await fixture();
-  const scope = new OwnedResources();
-  try {
-    const session = await createSessionDriverFactory(options).open(scope);
-    expect(session.processId).not.toBe(process.pid);
-    expect(scope.owns(session.processId)).toBe(true);
-    expect(await session.modelState()).toBe(false);
-    const result = await session.run("test");
-    expect(result.coverage).toBe("incomplete");
-    expect(result.record.caseId).toBe("test");
-    await session.idle(1);
-    expect(await session.modelState()).toBe(false);
-    const file = join(session.processIdentity.directory, "2.reply.json.gz");
-    const captured = JSON.parse(
-      new TextDecoder().decode(
-        Bun.gunzipSync(await Bun.file(file).arrayBuffer())
-      )
-    );
-    expect(captured.pid).toBe(session.processId);
-    expect(captured.response.result.record).toEqual(result.record);
-    await session.close();
-    expect(scope.owns(session.processId)).toBe(false);
-  } finally {
-    await scope.close();
-    await rm(root, { recursive: true, force: true });
-  }
-});
+// Each Windows observation pays native PowerShell startup; keep latency assertions unchanged.
+const nativeTestTimeout = process.platform === "win32" ? 60000 : 5000;
 
-test("fresh opens use different OS processes and invalid request stops its child", async () => {
-  const { root, options } = await fixture();
-  const scope = new OwnedResources();
-  try {
-    const factory = createSessionDriverFactory(options);
-    const first = await factory.open(scope);
-    const firstPid = first.processId;
-    await first.close();
-    const second = await factory.open(scope);
-    expect(second.processId).not.toBe(firstPid);
-    await expect(second.run("unknown")).rejects.toThrow("Unknown session case");
-    expect(scope.owns(second.processId)).toBe(false);
-    await second.close();
-  } finally {
-    await scope.close();
-    await rm(root, { recursive: true, force: true });
-  }
-});
+test(
+  "retained actual child has truthful cold state, lossless replies, and explicit close",
+  async () => {
+    const { root, options } = await fixture();
+    const scope = new OwnedResources();
+    try {
+      const session = await createSessionDriverFactory(options).open(scope);
+      expect(session.processId).not.toBe(process.pid);
+      expect(scope.owns(session.processId)).toBe(true);
+      expect(await session.modelState()).toBe(false);
+      const result = await session.run("test");
+      expect(result.coverage).toBe("incomplete");
+      expect(result.record.caseId).toBe("test");
+      await session.idle(1);
+      expect(await session.modelState()).toBe(false);
+      const file = join(session.processIdentity.directory, "2.reply.json.gz");
+      const captured = JSON.parse(
+        new TextDecoder().decode(
+          Bun.gunzipSync(await Bun.file(file).arrayBuffer())
+        )
+      );
+      expect(captured.pid).toBe(session.processId);
+      expect(captured.response.result.record).toEqual(result.record);
+      await session.close();
+      expect(scope.owns(session.processId)).toBe(false);
+    } finally {
+      await scope.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  },
+  nativeTestTimeout
+);
+
+test(
+  "fresh opens use different OS processes and invalid request stops its child",
+  async () => {
+    const { root, options } = await fixture();
+    const scope = new OwnedResources();
+    try {
+      const factory = createSessionDriverFactory(options);
+      const first = await factory.open(scope);
+      const firstPid = first.processId;
+      await first.close();
+      const second = await factory.open(scope);
+      expect(second.processId).not.toBe(firstPid);
+      await expect(second.run("unknown")).rejects.toThrow(
+        "Unknown session case"
+      );
+      expect(scope.owns(second.processId)).toBe(false);
+      await second.close();
+    } finally {
+      await scope.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  },
+  nativeTestTimeout
+);
 
 test("startup timeout and closed resource scope cannot leave owned children running", async () => {
   const { root, options } = await fixture();
@@ -409,6 +422,8 @@ test("archived harness bundles shared privacy support without adding runtime sou
       const result = Bun.spawnSync(
         [
           "git",
+          "-c",
+          "core.autocrlf=false",
           "-c",
           "user.name=Harness fixture",
           "-c",

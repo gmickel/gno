@@ -192,7 +192,8 @@ Fresh-process time includes process acquisition, cached-model preflight and the
 whole request. Resident-model-cold requires observed unloaded native models;
 warm and post-idle retain the primer's actual process. Preflight and preparation
 remain visible separately. No model loading, capture, projection or transport
-time is subtracted. Idle duration must fit the observation timeout. Memory
+time is subtracted. Windows model-pin checks reread file bytes because timestamp
+metadata alone can miss rapid same-size edits. Idle duration must fit the observation timeout. Memory
 recovery before/after idle must be read together with the complete next-query
 cost; no universal allowable slowdown is invented.
 

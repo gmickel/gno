@@ -114,90 +114,105 @@ function factories(change?: (record: AcceptanceRecord) => void) {
   };
 }
 
-test("lifecycle screens retain owned sessions for primer and idle, complete timing, seed/order and raw samples", async () => {
-  const f = factories();
-  let tick = 0;
-  const report = await runPairedAcceptance({
-    ...f,
-    observations: 2,
-    seed: 2,
-    idleMs: 1,
-    clock: () => (tick += 10),
-  });
-  expect(report.status).toBe("inconclusive");
-  expect(report.samples).toHaveLength(16);
-  expect(
-    report.samples
-      .filter((row) => row.state === "fresh-process")
-      .every((row) => row.durationMs === 30)
-  ).toBe(true);
-  expect(
-    report.samples
-      .filter((row) => row.state !== "fresh-process")
-      .every((row) => row.durationMs === 10)
-  ).toBe(true);
-  expect(report.samples[0]?.order).toEqual(["baseline", "candidate"]);
-  expect(report.samples[2]?.order).toEqual(["candidate", "baseline"]);
-  expect(
-    report.samples
-      .filter((row) => row.state === "post-idle")
-      .every((row) => row.beforeIdle?.rssBytes && row.afterIdle?.rssBytes)
-  ).toBe(true);
-  expect(f.calls.filter((n) => n === 2)).toHaveLength(8);
-  expect(
-    f.children.every(
-      (child) => child.exitCode !== null || child.signalCode !== null
-    )
-  ).toBe(true);
-});
+// Each Windows observation pays native PowerShell startup; keep latency assertions unchanged.
+const nativeTestTimeout = process.platform === "win32" ? 60000 : 5000;
 
-test("equal empty answers and equal hidden fallbacks fail before performance summaries", async () => {
-  for (const change of [
-    (record: AcceptanceRecord) => {
-      record.generatedAnswer = " ";
-    },
-    (record: AcceptanceRecord) => {
-      record.deterministic.semanticState.fallbacks = ["lexical"];
-    },
-  ]) {
-    const f = factories(change);
+test(
+  "lifecycle screens retain owned sessions for primer and idle, complete timing, seed/order and raw samples",
+  async () => {
+    const f = factories();
+    let tick = 0;
     const report = await runPairedAcceptance({
       ...f,
-      observations: 1,
-      seed: 1,
-      strata: ["fresh-process"],
+      observations: 2,
+      seed: 2,
+      idleMs: 1,
+      clock: () => (tick += 10),
     });
-    expect(report.status).toBe("quality-failed");
-    expect(report.summaries).toEqual([]);
+    expect(report.status).toBe("inconclusive");
+    expect(report.samples).toHaveLength(16);
+    expect(
+      report.samples
+        .filter((row) => row.state === "fresh-process")
+        .every((row) => row.durationMs === 30)
+    ).toBe(true);
+    expect(
+      report.samples
+        .filter((row) => row.state !== "fresh-process")
+        .every((row) => row.durationMs === 10)
+    ).toBe(true);
+    expect(report.samples[0]?.order).toEqual(["baseline", "candidate"]);
+    expect(report.samples[2]?.order).toEqual(["candidate", "baseline"]);
+    expect(
+      report.samples
+        .filter((row) => row.state === "post-idle")
+        .every((row) => row.beforeIdle?.rssBytes && row.afterIdle?.rssBytes)
+    ).toBe(true);
+    expect(f.calls.filter((n) => n === 2)).toHaveLength(8);
     expect(
       f.children.every(
         (child) => child.exitCode !== null || child.signalCode !== null
       )
     ).toBe(true);
-  }
-});
+  },
+  nativeTestTimeout
+);
 
-test("clock failure and missing owned resource process are explicit incomplete observations", async () => {
-  const f = factories();
-  const clock = await runPairedAcceptance({
-    ...f,
-    observations: 1,
-    seed: 1,
-    strata: ["fresh-process"],
-    clock: () => Number.NaN,
-  });
-  expect(clock.status).toBe("incomplete");
-  expect(
-    clock.samples.every((row) =>
-      row.errors.some((error) => error.includes("Clock"))
-    )
-  ).toBe(true);
-  const scope = new OwnedResources();
-  await scope.sample();
-  await scope.close();
-  expect(scope.errors).toHaveLength(1);
-  expect(scope.samples[0]?.rssBytes).toBeNull();
-});
+test(
+  "equal empty answers and equal hidden fallbacks fail before performance summaries",
+  async () => {
+    for (const change of [
+      (record: AcceptanceRecord) => {
+        record.generatedAnswer = " ";
+      },
+      (record: AcceptanceRecord) => {
+        record.deterministic.semanticState.fallbacks = ["lexical"];
+      },
+    ]) {
+      const f = factories(change);
+      const report = await runPairedAcceptance({
+        ...f,
+        observations: 1,
+        seed: 1,
+        strata: ["fresh-process"],
+      });
+      expect(report.status).toBe("quality-failed");
+      expect(report.summaries).toEqual([]);
+      expect(
+        f.children.every(
+          (child) => child.exitCode !== null || child.signalCode !== null
+        )
+      ).toBe(true);
+    }
+  },
+  nativeTestTimeout
+);
+
+test(
+  "clock failure and missing owned resource process are explicit incomplete observations",
+  async () => {
+    const f = factories();
+    const clock = await runPairedAcceptance({
+      ...f,
+      observations: 1,
+      seed: 1,
+      strata: ["fresh-process"],
+      clock: () => Number.NaN,
+    });
+    expect(clock.status).toBe("incomplete");
+    expect(
+      clock.samples.every((row) =>
+        row.errors.some((error) => error.includes("Clock"))
+      )
+    ).toBe(true);
+    const scope = new OwnedResources();
+    await scope.sample();
+    await scope.close();
+    expect(scope.errors).toHaveLength(1);
+    expect(scope.samples[0]?.rssBytes).toBeNull();
+  },
+  nativeTestTimeout
+);
 
 test("timeout kills only owned children and prevents late registration leaks", async () => {
   const f = fixture();
@@ -247,110 +262,122 @@ test("percentiles retain slower tails and require 100 observations for empirical
   ).toMatchObject({ p99: 99, p99Label: "empirical" });
 });
 
-test("30 valid paired observations screen; noisy samples and missing pairs are inconclusive", async () => {
-  const f = factories();
-  const small = await runPairedAcceptance({
-    ...f,
-    observations: 1,
-    seed: 4,
-    strata: ["fresh-process"],
-  });
-  const samples = small.samples;
-  const report = (): PairedReport => ({
-    ...small,
-    summaries: [],
-    samples: Array.from({ length: 30 }, (_, block) =>
-      samples.map((row) => ({ ...row, block, durationMs: 10 }))
-    ).flat(),
-  });
-  expect(summarizeReport(report(), ["fresh-process"], 30).status).toBe(
-    "screened"
-  );
-  const noisy = report();
-  for (const sample of noisy.samples)
-    if (sample.block > 25) sample.durationMs = 100;
-  expect(summarizeReport(noisy, ["fresh-process"], 30).status).toBe(
-    "inconclusive"
-  );
-  const missing = report();
-  missing.samples.pop();
-  expect(summarizeReport(missing, ["fresh-process"], 30).status).toBe(
-    "inconclusive"
-  );
-});
-
-test("unobserved or falsely cold model state cannot produce a lifecycle screen", async () => {
-  for (const observed of [null, true]) {
+test(
+  "30 valid paired observations screen; noisy samples and missing pairs are inconclusive",
+  async () => {
     const f = factories();
-    const original = f.factories.baseline.open.bind(f.factories.baseline);
-    f.factories.baseline.open = async (scope) => ({
-      ...(await original(scope)),
-      modelState: () => Promise.resolve(observed),
-    });
-    const report = await runPairedAcceptance({
+    const small = await runPairedAcceptance({
       ...f,
       observations: 1,
-      seed: 7,
-      strata: ["resident-model-cold"],
-    });
-    expect(report.status).toBe("incomplete");
-    expect(
-      report.samples.find((row) => row.side === "baseline")?.errors.length
-    ).toBeGreaterThan(0);
-    expect(report.summaries).toHaveLength(0);
-  }
-});
-
-test("declared overlap runs two owned sessions and compares background evidence before speed summaries", async () => {
-  for (const corruptBackground of [false, true]) {
-    const f = factories();
-    f.baseline.cases[0]!.configuration.backgroundCaseId = "one";
-    f.candidate.cases[0]!.configuration.backgroundCaseId = "one";
-    for (const side of ["baseline", "candidate"] as const) {
-      const original = f.factories[side].open.bind(f.factories[side]);
-      let opened = 0;
-      f.factories[side].open = async (scope) => {
-        const session = await original(scope);
-        const background = opened++ % 2 === 0;
-        return {
-          ...session,
-          async run(caseId) {
-            await Bun.sleep(20);
-            const result = await session.run(caseId);
-            if (corruptBackground && side === "candidate" && background)
-              result.record.deterministic.scope = { leaked: true };
-            return result;
-          },
-        };
-      };
-    }
-    const report = await runPairedAcceptance({
-      ...f,
-      observations: 1,
-      seed: 0,
+      seed: 4,
       strata: ["fresh-process"],
     });
-    expect(report.status).toBe(
-      corruptBackground ? "quality-failed" : "inconclusive"
+    const samples = small.samples;
+    const report = (): PairedReport => ({
+      ...small,
+      summaries: [],
+      samples: Array.from({ length: 30 }, (_, block) =>
+        samples.map((row) => ({ ...row, block, durationMs: 10 }))
+      ).flat(),
+    });
+    expect(summarizeReport(report(), ["fresh-process"], 30).status).toBe(
+      "screened"
     );
-    expect(
-      report.samples.every((row) => (row.overlap?.overlappingMs ?? 0) > 0)
-    ).toBe(true);
-    expect(
-      report.samples.every((row) =>
-        row.resources.some((sample) => sample.pids.length === 2)
-      )
-    ).toBe(true);
-    if (corruptBackground)
+    const noisy = report();
+    for (const sample of noisy.samples)
+      if (sample.block > 25) sample.durationMs = 100;
+    expect(summarizeReport(noisy, ["fresh-process"], 30).status).toBe(
+      "inconclusive"
+    );
+    const missing = report();
+    missing.samples.pop();
+    expect(summarizeReport(missing, ["fresh-process"], 30).status).toBe(
+      "inconclusive"
+    );
+  },
+  nativeTestTimeout
+);
+
+test(
+  "unobserved or falsely cold model state cannot produce a lifecycle screen",
+  async () => {
+    for (const observed of [null, true]) {
+      const f = factories();
+      const original = f.factories.baseline.open.bind(f.factories.baseline);
+      f.factories.baseline.open = async (scope) => ({
+        ...(await original(scope)),
+        modelState: () => Promise.resolve(observed),
+      });
+      const report = await runPairedAcceptance({
+        ...f,
+        observations: 1,
+        seed: 7,
+        strata: ["resident-model-cold"],
+      });
+      expect(report.status).toBe("incomplete");
       expect(
-        report.comparisons[0]?.result.failures.some((failure) =>
-          failure.field.startsWith("background.")
+        report.samples.find((row) => row.side === "baseline")?.errors.length
+      ).toBeGreaterThan(0);
+      expect(report.summaries).toHaveLength(0);
+    }
+  },
+  nativeTestTimeout
+);
+
+test(
+  "declared overlap runs two owned sessions and compares background evidence before speed summaries",
+  async () => {
+    for (const corruptBackground of [false, true]) {
+      const f = factories();
+      f.baseline.cases[0]!.configuration.backgroundCaseId = "one";
+      f.candidate.cases[0]!.configuration.backgroundCaseId = "one";
+      for (const side of ["baseline", "candidate"] as const) {
+        const original = f.factories[side].open.bind(f.factories[side]);
+        let opened = 0;
+        f.factories[side].open = async (scope) => {
+          const session = await original(scope);
+          const background = opened++ % 2 === 0;
+          return {
+            ...session,
+            async run(caseId) {
+              await Bun.sleep(20);
+              const result = await session.run(caseId);
+              if (corruptBackground && side === "candidate" && background)
+                result.record.deterministic.scope = { leaked: true };
+              return result;
+            },
+          };
+        };
+      }
+      const report = await runPairedAcceptance({
+        ...f,
+        observations: 1,
+        seed: 0,
+        strata: ["fresh-process"],
+      });
+      expect(report.status).toBe(
+        corruptBackground ? "quality-failed" : "inconclusive"
+      );
+      expect(
+        report.samples.every((row) => (row.overlap?.overlappingMs ?? 0) > 0)
+      ).toBe(true);
+      expect(
+        report.samples.every((row) =>
+          row.resources.some((sample) => sample.pids.length === 2)
         )
       ).toBe(true);
-    expect(
-      f.children.every(
-        (child) => child.exitCode !== null || child.signalCode !== null
-      )
-    ).toBe(true);
-  }
-});
+      if (corruptBackground)
+        expect(
+          report.comparisons[0]?.result.failures.some((failure) =>
+            failure.field.startsWith("background.")
+          )
+        ).toBe(true);
+      expect(
+        f.children.every(
+          (child) => child.exitCode !== null || child.signalCode !== null
+        )
+      ).toBe(true);
+    }
+  },
+  nativeTestTimeout
+);

@@ -37,8 +37,8 @@ process.on("SIGINT", () => {
   });
 });
 
-// Run CLI and exit
-runCli(process.argv)
+// Await module completion so pending piped stdin keeps Windows Bun alive.
+await runCli(process.argv)
   .then((code) => cleanupAndExit(interruptExitCode || code))
   .catch((err) => {
     process.stderr.write(

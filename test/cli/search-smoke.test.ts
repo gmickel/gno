@@ -231,6 +231,9 @@ describe("gno search smoke tests", () => {
         stderr: "pipe",
       }
     );
+    // A pending read must keep the CLI alive before a producer sends its query.
+    await Bun.sleep(100);
+    expect(proc.exitCode).toBeNull();
     await proc.stdin.write("markdown\n");
     await proc.stdin.end();
     const [stdout, stderr, exitCode] = await Promise.all([
