@@ -1,6 +1,0 @@
-Q1: NOT SPECIFIED
-Q2: NOT SPECIFIED
-
-Sources: gno://eval/security.md
-
-The evidence establishes that security approval is mandatory before launch, but does not address whether operations approval is required, optional, or relates to the release process at all.

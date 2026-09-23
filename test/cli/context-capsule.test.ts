@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { mkdir } from "node:fs/promises";
+// Bun has no directory creation or realpath primitive.
+import { mkdir, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -58,7 +59,10 @@ describe("Context Capsule CLI and SDK", () => {
   let capsulePath: string;
 
   beforeEach(async () => {
-    testDir = join(tmpdir(), `gno-context-capsule-${crypto.randomUUID()}`);
+    testDir = join(
+      await realpath(tmpdir()),
+      `gno-context-capsule-${crypto.randomUUID()}`
+    );
     const docsDir = join(testDir, "docs");
     await mkdir(docsDir, { recursive: true });
     process.env.GNO_CONFIG_DIR = join(testDir, "config");
