@@ -35,12 +35,18 @@ const variants = [
   ["filtered", "encoded"],
 ] as const;
 const samples: unknown[] = [];
+const report = join(
+  process.env.RUNNER_TEMP ?? tmpdir(),
+  "windows-acl-probe.json"
+);
 try {
-  for (let repetition = 0; repetition < 3; repetition++) {
+  for (let repetition = 0; repetition < 19; repetition++) {
+    const instrumented = repetition >= 16;
+    const command = instrumented ? script : original;
     for (let index = 0; index < variants.length; index++) {
       const [environment, argument] =
         variants[(index + repetition) % variants.length]!;
-      const label = `${repetition}-${environment}-${argument}`;
+      const label = `${instrumented ? "instrumented" : "original"}-${repetition}-${environment}-${argument}`;
       const directory = join(root, label);
       const phases = join(root, `${label}.log`);
       await mkdir(directory);
@@ -53,8 +59,8 @@ try {
           "-NonInteractive",
           argument === "encoded" ? "-EncodedCommand" : "-Command",
           argument === "encoded"
-            ? Buffer.from(script, "utf16le").toString("base64")
-            : script,
+            ? Buffer.from(command, "utf16le").toString("base64")
+            : command,
         ],
         {
           env: {
@@ -81,26 +87,26 @@ try {
         stderr: result.stderr.toString(),
         phases: (await Bun.file(phases).exists())
           ? await Bun.file(phases).text()
-          : "not-entered",
+          : instrumented
+            ? "not-entered"
+            : "not-instrumented",
       };
       samples.push(sample);
       console.log(JSON.stringify(sample));
+      await Bun.write(
+        report,
+        JSON.stringify(
+          {
+            bun: Bun.version,
+            executable: Bun.which("powershell.exe"),
+            samples,
+          },
+          null,
+          2
+        )
+      );
     }
   }
-  const report = join(
-    process.env.RUNNER_TEMP ?? tmpdir(),
-    "windows-acl-probe.json"
-  );
-  await Bun.write(
-    report,
-    JSON.stringify(
-      { bun: Bun.version, executable: Bun.which("powershell.exe"), samples },
-      null,
-      2
-    )
-  );
-  if (process.env.GITHUB_OUTPUT)
-    await Bun.write(process.env.GITHUB_OUTPUT, `report=${report}\n`);
 } finally {
   await rm(root, { recursive: true, force: true });
 }

@@ -20,7 +20,7 @@ concurrency:
 jobs:
   windows-acl-probe:
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -36,10 +36,10 @@ jobs:
       - id: probe
         run: bun .github/scripts/windows-acl-probe.ts
       - uses: actions/upload-artifact@v7
-        if: always() && steps.probe.outputs.report != ''
+        if: always()
         with:
           name: windows-acl-probe
-          path: ${{ steps.probe.outputs.report }}
+          path: ${{ runner.temp }}/windows-acl-probe.json
 
   changes:
     runs-on: ubuntu-latest
