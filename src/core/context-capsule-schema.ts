@@ -4,6 +4,7 @@ import { buildUri, deriveDocid, parseUri } from "../app/constants";
 import { isValidIndexName } from "../app/index-name";
 import { RECORD_METADATA_LIMITS } from "../converters/types";
 import { contextCapsuleIndexSnapshotSchema } from "./context-capsule-index-schema";
+import { contextCapsuleRetrievalV1_2Schema } from "./context-capsule-retrieval-schema";
 import { contextCapsuleRetrievalSchema } from "./context-capsule-retrieval-schema";
 import {
   contextCapsuleEvidenceIdentity,
@@ -12,11 +13,15 @@ import {
   validateContextCapsulePayload,
 } from "./context-capsule-validation";
 import { egressLineageSchema } from "./egress-provenance";
+import {
+  normalizeMetadataPredicate,
+  metadataPredicateSchema,
+} from "./typed-metadata";
 
 export { contextCapsuleIndexSnapshotSchema } from "./context-capsule-index-schema";
 
 export const CONTEXT_CAPSULE_SCHEMA_VERSION = "1.0" as const;
-export const CONTEXT_CAPSULE_CURRENT_SCHEMA_VERSION = "1.1" as const;
+export const CONTEXT_CAPSULE_CURRENT_SCHEMA_VERSION = "1.2" as const;
 export const CONTEXT_CAPSULE_COORDINATE_SPACE = "canonical_mirror" as const;
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
@@ -654,7 +659,7 @@ const validateContextCapsuleV1_1Lineage = (
 
 export const contextCapsulePayloadV1_1Schema = z
   .object({
-    schemaVersion: z.literal(CONTEXT_CAPSULE_CURRENT_SCHEMA_VERSION),
+    schemaVersion: z.literal("1.1"),
     coordinateSpace: z.literal(CONTEXT_CAPSULE_COORDINATE_SPACE),
     goal: nonEmptyTextSchema,
     query: nonEmptyTextSchema,
@@ -682,6 +687,45 @@ export type ContextCapsulePayloadV1_1 = z.infer<
   typeof contextCapsulePayloadV1_1Schema
 >;
 
+export const contextCapsulePayloadV1_2Schema = z
+  .object({
+    ...contextCapsulePayloadV1_1Schema.shape,
+    schemaVersion: z.literal(CONTEXT_CAPSULE_CURRENT_SCHEMA_VERSION),
+    scope: scopeSchema.extend({ filter: metadataPredicateSchema }),
+    retrieval: contextCapsuleRetrievalV1_2Schema,
+    warnings: z
+      .array(
+        z
+          .object({
+            code: z.union([
+              contextCapsuleWarningCodeSchema,
+              z.literal("metadata_coverage_incomplete"),
+            ]),
+          })
+          .strict()
+      )
+      .max(32),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    validateContextCapsulePayload(value, context);
+    validateContextCapsuleV1_1Lineage(value, context);
+    if (
+      JSON.stringify(normalizeMetadataPredicate(value.scope.filter)) !==
+      JSON.stringify(normalizeMetadataPredicate(value.retrieval.request.filter))
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["retrieval", "request", "filter"],
+        message: "Retrieval predicate must match scope predicate",
+      });
+    }
+  });
+export type ContextCapsulePayloadV1_2 = z.infer<
+  typeof contextCapsulePayloadV1_2Schema
+>;
+
 export type ContextCapsulePayload =
   | ContextCapsulePayloadV1
-  | ContextCapsulePayloadV1_1;
+  | ContextCapsulePayloadV1_1
+  | ContextCapsulePayloadV1_2;

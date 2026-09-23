@@ -19,6 +19,7 @@ import {
   normalizeContentTypes,
 } from "../config";
 import { resolveDocRef } from "../core/ref-parser";
+import { normalizeMetadataPredicate } from "../core/typed-metadata";
 import { err, ok } from "../store/types";
 import {
   getContentTypeBoostMetadata,
@@ -184,6 +185,11 @@ export async function diagnoseQueryTarget(
   query: string,
   options: QueryDiagnoseOptions
 ): Promise<StoreResult<QueryDiagnoseResult>> {
+  if (options.filter !== undefined)
+    options = {
+      ...options,
+      filter: normalizeMetadataPredicate(options.filter),
+    };
   const resolved = await resolveDocRef(deps.store, options.target);
   if ("error" in resolved) {
     return ok(buildBaseResult(query, options.target, "not_found", null));

@@ -14,7 +14,7 @@
  *    test/fixtures/mcp/legacy-2025-11-25.sdk-v1.30.0.json, taken on
  *    @modelcontextprotocol/sdk 1.30.0 and never regenerated. The handshake
  *    must match byte-for-byte; tools/list must match after removing only the
- *    two SDK-owned deltas of the v1 -> v2 migration:
+ *    documented SDK-owned deltas of the v1 -> v2 migration:
  *      - the JSON Schema dialect stamp (`$schema`: draft-07 -> 2020-12, and
  *        its key position), which the SDK generates from the same zod
  *        schemas;
@@ -24,6 +24,10 @@
  *        `gno_move_note`), which SDK v1 flattened to an empty
  *        `{ "type": "object", "properties": {} }` placeholder and SDK v2
  *        advertises as the real `oneOf` schema. The zod sources are unchanged.
+ *    fn-168 additionally permits the optional typed metadata `filter` property
+ *    and its eight named predicate definitions on exactly six retrieval tools.
+ *    Their complete schemas remain pinned by the current byte-exact golden;
+ *    the historical SDK capture is immutable.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -254,15 +258,56 @@ function withoutSdkDeltas(schema: Record<string, unknown>): unknown {
   return rest;
 }
 
+const TYPED_FILTER_TOOLS = new Set([
+  "gno_context",
+  "gno_ask",
+  "gno_search",
+  "gno_vsearch",
+  "gno_query",
+  "gno_query_diagnose",
+]);
+const TYPED_FILTER_DEFINITIONS = new Set(
+  Array.from(
+    { length: 8 },
+    (_, index) => `gnoMetadataPredicateDepth${index + 1}`
+  )
+);
+
+/** Remove only the additive fn-168 inputs when comparing the frozen SDK capture. */
+function withoutTypedFilterExtension(tool: WireTool): Record<string, unknown> {
+  const schema = tool.inputSchema;
+  if (!TYPED_FILTER_TOOLS.has(tool.name)) return schema;
+  const { properties, $defs, ...rest } = schema;
+  const { filter: _filter, ...oldProperties } = properties as Record<
+    string,
+    unknown
+  >;
+  const oldDefinitions = Object.fromEntries(
+    Object.entries(($defs ?? {}) as Record<string, unknown>).filter(
+      ([key]) => !TYPED_FILTER_DEFINITIONS.has(key)
+    )
+  );
+  return {
+    ...rest,
+    properties: oldProperties,
+    ...(Object.keys(oldDefinitions).length ? { $defs: oldDefinitions } : {}),
+  };
+}
+
 function normalizeToolsList(line: string): string {
   const envelope = parseJsonRpc<ToolsListEnvelope>(line);
   const tools = envelope.result.tools.map((tool) => {
-    const { execution: _execution, inputSchema, outputSchema, ...rest } = tool;
+    const {
+      execution: _execution,
+      inputSchema: _inputSchema,
+      outputSchema,
+      ...rest
+    } = tool;
     return {
       ...rest,
       inputSchema: SDK_V1_UNION_PLACEHOLDER_TOOLS.has(tool.name)
         ? "<sdk-v1 union placeholder>"
-        : withoutSdkDeltas(inputSchema),
+        : withoutSdkDeltas(withoutTypedFilterExtension(tool)),
       ...(outputSchema ? { outputSchema: withoutSdkDeltas(outputSchema) } : {}),
     };
   });
@@ -317,7 +362,7 @@ describe("MCP legacy 2025-11-25 wire parity", () => {
     );
   });
 
-  test("matches the frozen SDK v1.30.0 capture modulo the documented SDK deltas", async () => {
+  test("matches the frozen SDK v1.30.0 capture modulo documented SDK and additive filter deltas", async () => {
     const actual = await captureLegacyWire();
     const reference = (await Bun.file(
       SDK_V1_REFERENCE_PATH
@@ -340,7 +385,7 @@ describe("MCP legacy 2025-11-25 wire parity", () => {
     );
 
     // tools/list: identical names, order, descriptions, annotations, and
-    // schemas (including key order) once the two SDK-owned deltas are removed.
+    // schemas once the SDK deltas and the six additive filter inputs are removed.
     for (const profile of ["read", "write"] as const) {
       expect(normalizeToolsList(actual.stdio[profile].toolsList)).toBe(
         normalizeToolsList(reference.stdio[profile].toolsList)
@@ -386,7 +431,38 @@ describe("MCP legacy 2025-11-25 wire parity", () => {
       }
       expect(tool.execution).toEqual({ taskSupport: "forbidden" });
     }
+    expect(
+      new Set(
+        actualTools
+          .filter((tool) =>
+            Object.hasOwn(
+              (tool.inputSchema.properties ?? {}) as object,
+              "filter"
+            )
+          )
+          .map((tool) => tool.name)
+      )
+    ).toEqual(TYPED_FILTER_TOOLS);
     for (const tool of actualTools) {
+      if (TYPED_FILTER_TOOLS.has(tool.name)) {
+        const properties = tool.inputSchema.properties as Record<
+          string,
+          unknown
+        >;
+        expect(properties.filter).toMatchObject({
+          $ref: "#/$defs/gnoMetadataPredicateDepth1",
+        });
+        expect(new Set(Object.keys(tool.inputSchema.$defs as object))).toEqual(
+          TYPED_FILTER_DEFINITIONS
+        );
+        expect((tool.inputSchema.required ?? []) as string[]).not.toContain(
+          "filter"
+        );
+        const historical = referenceTools.find(
+          (entry) => entry.name === tool.name
+        );
+        expect(historical?.inputSchema.properties).not.toHaveProperty("filter");
+      }
       expect(tool.inputSchema.$schema).toBe(SDK_V2_DIALECT);
       expect(tool.execution).toBeUndefined();
       if (SDK_V1_UNION_PLACEHOLDER_TOOLS.has(tool.name)) {

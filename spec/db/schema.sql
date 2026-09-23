@@ -121,6 +121,8 @@ CREATE TABLE IF NOT EXISTS contexts (
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS documents (
+  typed_metadata TEXT, -- validated gno.metadata, NULL until extraction
+  metadata_error TEXT, -- bounded path-only extraction diagnostic
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   collection TEXT NOT NULL,
   rel_path TEXT NOT NULL,

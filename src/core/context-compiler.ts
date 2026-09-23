@@ -26,6 +26,7 @@ import type {
   MaterializedContextCandidate,
 } from "./context-budget";
 import type { ContextConfiguredGuidance } from "./context-guidance";
+import type { MetadataPredicate } from "./typed-metadata";
 
 import { decorateUriForIndex } from "../app/constants";
 import { canonicalizeIndexName } from "../app/index-name";
@@ -96,6 +97,7 @@ export interface ContextCompilerInput {
   tagsAll?: string[];
   tagsAny?: string[];
   categories?: string[];
+  filter?: MetadataPredicate;
   author?: string;
   lang?: string;
   intent?: string;
@@ -358,6 +360,7 @@ export const planContextEvidence = async <T, P>(
         tagsAll: input.tagsAll,
         tagsAny: input.tagsAny,
         categories: input.categories,
+        filter: input.filter,
         author: input.author,
         lang: input.lang,
         intent: input.intent,

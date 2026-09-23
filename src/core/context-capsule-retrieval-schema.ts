@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import { contextCapsuleIndexSnapshotSchema } from "./context-capsule-index-schema";
+import { metadataPredicateSchema } from "./typed-metadata";
 
 const nonEmptyText = z.string().min(1);
 const capabilityOutcomeSchema = z.enum([
@@ -83,3 +84,10 @@ export const contextCapsuleRetrievalSchema = z
 export type ContextCapabilityState = z.infer<
   typeof contextCapabilityStateSchema
 >;
+
+export const contextCapsuleRetrievalV1_2Schema =
+  contextCapsuleRetrievalSchema.extend({
+    request: contextCapsuleRetrievalSchema.shape.request.extend({
+      filter: metadataPredicateSchema,
+    }),
+  });

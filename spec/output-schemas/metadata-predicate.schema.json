@@ -1,0 +1,460 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/__schema0"
+    },
+    {
+      "$ref": "#/definitions/__schema3"
+    },
+    {
+      "$ref": "#/definitions/__schema4"
+    },
+    {
+      "$ref": "#/definitions/__schema5"
+    },
+    {
+      "$ref": "#/definitions/__schema6"
+    },
+    {
+      "$ref": "#/definitions/__schema14"
+    }
+  ],
+  "definitions": {
+    "__schema0": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": ["eq", "ne"]
+        },
+        "key": {
+          "$ref": "#/definitions/__schema1"
+        },
+        "value": {
+          "$ref": "#/definitions/__schema2"
+        }
+      },
+      "required": ["op", "key", "value"],
+      "additionalProperties": false
+    },
+    "__schema1": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "__schema2": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 4096
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        }
+      ]
+    },
+    "__schema3": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": ["gt", "gte", "lt", "lte"]
+        },
+        "key": {
+          "$ref": "#/definitions/__schema1"
+        },
+        "value": {
+          "type": "number"
+        }
+      },
+      "required": ["op", "key", "value"],
+      "additionalProperties": false
+    },
+    "__schema4": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": ["in", "nin", "all"]
+        },
+        "key": {
+          "$ref": "#/definitions/__schema1"
+        },
+        "values": {
+          "maxItems": 128,
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/__schema2"
+          }
+        }
+      },
+      "required": ["op", "key", "values"],
+      "additionalProperties": false
+    },
+    "__schema5": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "exists"
+        },
+        "key": {
+          "$ref": "#/definitions/__schema1"
+        },
+        "value": {
+          "type": "boolean"
+        }
+      },
+      "required": ["op", "key", "value"],
+      "additionalProperties": false
+    },
+    "__schema6": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": ["and", "or"]
+        },
+        "predicates": {
+          "minItems": 1,
+          "maxItems": 128,
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/__schema7"
+          }
+        }
+      },
+      "required": ["op", "predicates"],
+      "additionalProperties": false
+    },
+    "__schema7": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/__schema0"
+        },
+        {
+          "$ref": "#/definitions/__schema3"
+        },
+        {
+          "$ref": "#/definitions/__schema4"
+        },
+        {
+          "$ref": "#/definitions/__schema5"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": ["and", "or"]
+            },
+            "predicates": {
+              "minItems": 1,
+              "maxItems": 128,
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/__schema8"
+              }
+            }
+          },
+          "required": ["op", "predicates"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "not"
+            },
+            "predicate": {
+              "$ref": "#/definitions/__schema8"
+            }
+          },
+          "required": ["op", "predicate"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema8": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/__schema0"
+        },
+        {
+          "$ref": "#/definitions/__schema3"
+        },
+        {
+          "$ref": "#/definitions/__schema4"
+        },
+        {
+          "$ref": "#/definitions/__schema5"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": ["and", "or"]
+            },
+            "predicates": {
+              "minItems": 1,
+              "maxItems": 128,
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/__schema9"
+              }
+            }
+          },
+          "required": ["op", "predicates"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "not"
+            },
+            "predicate": {
+              "$ref": "#/definitions/__schema9"
+            }
+          },
+          "required": ["op", "predicate"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema9": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/__schema0"
+        },
+        {
+          "$ref": "#/definitions/__schema3"
+        },
+        {
+          "$ref": "#/definitions/__schema4"
+        },
+        {
+          "$ref": "#/definitions/__schema5"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": ["and", "or"]
+            },
+            "predicates": {
+              "minItems": 1,
+              "maxItems": 128,
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/__schema10"
+              }
+            }
+          },
+          "required": ["op", "predicates"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "not"
+            },
+            "predicate": {
+              "$ref": "#/definitions/__schema10"
+            }
+          },
+          "required": ["op", "predicate"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema10": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/__schema0"
+        },
+        {
+          "$ref": "#/definitions/__schema3"
+        },
+        {
+          "$ref": "#/definitions/__schema4"
+        },
+        {
+          "$ref": "#/definitions/__schema5"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": ["and", "or"]
+            },
+            "predicates": {
+              "minItems": 1,
+              "maxItems": 128,
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/__schema11"
+              }
+            }
+          },
+          "required": ["op", "predicates"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "not"
+            },
+            "predicate": {
+              "$ref": "#/definitions/__schema11"
+            }
+          },
+          "required": ["op", "predicate"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema11": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/__schema0"
+        },
+        {
+          "$ref": "#/definitions/__schema3"
+        },
+        {
+          "$ref": "#/definitions/__schema4"
+        },
+        {
+          "$ref": "#/definitions/__schema5"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": ["and", "or"]
+            },
+            "predicates": {
+              "minItems": 1,
+              "maxItems": 128,
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/__schema12"
+              }
+            }
+          },
+          "required": ["op", "predicates"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "not"
+            },
+            "predicate": {
+              "$ref": "#/definitions/__schema12"
+            }
+          },
+          "required": ["op", "predicate"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema12": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/__schema0"
+        },
+        {
+          "$ref": "#/definitions/__schema3"
+        },
+        {
+          "$ref": "#/definitions/__schema4"
+        },
+        {
+          "$ref": "#/definitions/__schema5"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": ["and", "or"]
+            },
+            "predicates": {
+              "minItems": 1,
+              "maxItems": 128,
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/__schema13"
+              }
+            }
+          },
+          "required": ["op", "predicates"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "not"
+            },
+            "predicate": {
+              "$ref": "#/definitions/__schema13"
+            }
+          },
+          "required": ["op", "predicate"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema13": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/__schema0"
+        },
+        {
+          "$ref": "#/definitions/__schema3"
+        },
+        {
+          "$ref": "#/definitions/__schema4"
+        },
+        {
+          "$ref": "#/definitions/__schema5"
+        }
+      ]
+    },
+    "__schema14": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "not"
+        },
+        "predicate": {
+          "$ref": "#/definitions/__schema7"
+        }
+      },
+      "required": ["op", "predicate"],
+      "additionalProperties": false
+    }
+  },
+  "$id": "gno://schemas/metadata-predicate@1.0"
+}

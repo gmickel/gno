@@ -1089,3 +1089,11 @@ GNO_VERBOSE=1 gno mcp
 | "invalid path"              | Use absolute path                  |
 | "database not initialized"  | Run `gno init`                     |
 | "model not cached"          | Run `gno models pull`              |
+
+## Typed metadata query is empty or incomplete
+
+Check response warnings before treating an empty result as absence. Run
+`gno update` to repair older extraction versions, correct invalid `gno.metadata`
+YAML, then sync again. Numeric `0.8` and string `"0.8"` are different values;
+`ne`/`nin` require a present field. Diagnose the expected target with the same
+filter before broadening the query. See [Typed metadata filters](TYPED-METADATA.md).

@@ -123,6 +123,7 @@ export const contextCapsuleVerificationSchema = z
   .object({
     schemaVersion: z.union([
       z.literal(CONTEXT_CAPSULE_SCHEMA_VERSION),
+      z.literal("1.1"),
       z.literal(CONTEXT_CAPSULE_CURRENT_SCHEMA_VERSION),
     ]),
     coordinateSpace: z.literal(CONTEXT_CAPSULE_COORDINATE_SPACE),

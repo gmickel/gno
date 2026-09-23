@@ -29,6 +29,7 @@ import {
   useState,
 } from "react";
 
+import type { TypedMetadata } from "../../../core/typed-metadata";
 import type { PdfFallbackReason } from "../lib/pdf";
 
 import {
@@ -167,6 +168,8 @@ interface PageProps {
 }
 
 interface DocData {
+  typedMetadata?: TypedMetadata | null;
+  metadataError?: string | null;
   docid: string;
   uri: string;
   title: string | null;
@@ -1326,12 +1329,41 @@ export default function DocView({ navigate }: PageProps) {
     </nav>
   );
 
+  const storedMetadata =
+    doc?.metadataError ||
+    (doc?.typedMetadata && Object.keys(doc.typedMetadata).length > 0) ? (
+      <section
+        aria-label="Indexed custom metadata"
+        className="space-y-2 border-border/20 border-t px-3 py-3"
+      >
+        <h3 className="font-mono text-muted-foreground text-xs">
+          Indexed custom metadata
+        </h3>
+        {doc.metadataError ? (
+          <p className="break-words text-destructive text-xs" role="alert">
+            {doc.metadataError}. Correct the source and sync again; this
+            document is excluded from custom metadata filters.
+          </p>
+        ) : (
+          <dl className="space-y-1 text-xs">
+            {Object.entries(doc.typedMetadata ?? {}).map(([key, value]) => (
+              <div key={key}>
+                <dt className="break-all text-muted-foreground">{key}</dt>
+                <dd className="break-all font-mono">{JSON.stringify(value)}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </section>
+    ) : null;
+
   /** Left rail — metadata + outline */
   const renderDocumentFactsRail = () => (
     <nav
       aria-label="Document facts"
       className="w-full min-w-0 max-w-full space-y-0 overflow-x-hidden"
     >
+      {storedMetadata}
       {/* Frontmatter + tags */}
       {(hasFrontmatter || showStandaloneTags) && (
         <>
@@ -1623,6 +1655,7 @@ export default function DocView({ navigate }: PageProps) {
           </div>
         </div>
 
+        {storedMetadata}
         {(hasFrontmatter || showStandaloneTags) && (
           <div className="rounded-lg border border-border/40 bg-muted/10 p-2.5">
             {hasFrontmatter && (

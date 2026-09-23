@@ -142,6 +142,10 @@ import { buildWikiBestMatchSubquery } from "../../core/graph-resolver";
 import { buildContentPrefilterNeedles } from "../../core/link-relevance";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 import {
+  TYPED_METADATA_INGEST_VERSION,
+  typedMetadataSchema,
+} from "../../core/typed-metadata";
+import {
   parseActivationReceipt,
   serializeActivationReceipt,
 } from "../activation-receipts";
@@ -1427,6 +1431,30 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   // Documents
   // ─────────────────────────────────────────────────────────────────────────
 
+  async getTypedMetadataCoverage(
+    options: import("../types").DocumentEligibilityOptions
+  ): Promise<StoreResult<{ pending: number; invalid: number }>> {
+    try {
+      const db = this.ensureOpen();
+      const eligible = buildEligibleDocumentQuery(
+        { ...options, filter: undefined },
+        db
+      );
+      const row = db
+        .query<{ pending: number; invalid: number }, (string | number)[]>(`
+        SELECT COALESCE(SUM(CASE WHEN d.ingest_version IS NULL OR d.ingest_version < ${TYPED_METADATA_INGEST_VERSION} OR (d.typed_metadata IS NULL AND d.metadata_error IS NULL) THEN 1 ELSE 0 END),0) AS pending,
+        COALESCE(SUM(CASE WHEN d.metadata_error IS NOT NULL THEN 1 ELSE 0 END),0) AS invalid
+        FROM documents d WHERE d.mirror_hash IS NOT NULL AND d.id IN (SELECT id FROM (${eligible.sql}))
+      `)
+        .get(...eligible.params);
+      return ok(row ?? { pending: 0, invalid: 0 });
+    } catch (cause) {
+      return err("QUERY_FAILED", "Cannot determine typed metadata coverage", {
+        cause,
+      });
+    }
+  }
+
   async upsertDocument(
     doc: DocumentInput
   ): Promise<StoreResult<UpsertDocumentResult>> {
@@ -1457,13 +1485,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           collection, rel_path, source_hash, source_mime, source_ext,
           source_size, source_mtime, source_ctime, docid, uri, title, mirror_hash,
           converter_id, converter_version, language_hint, content_type, categories,
-          content_type_source, author, frontmatter_date, date_fields,
+          content_type_source, author, frontmatter_date, date_fields, typed_metadata, metadata_error,
           record_key, record_source_path, record_source_locator, record_metadata, record_anchors,
           record_adapter_fingerprint,
           content_type_rules_fingerprint,
           active, indexed_at, last_error_code, last_error_message, last_error_at,
           ingest_version, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?, ?, ?, ?, datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(collection, rel_path) DO UPDATE SET
           source_hash = excluded.source_hash,
           source_mime = excluded.source_mime,
@@ -1484,6 +1512,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           author = excluded.author,
           frontmatter_date = excluded.frontmatter_date,
           date_fields = excluded.date_fields,
+          typed_metadata = excluded.typed_metadata,
+          metadata_error = excluded.metadata_error,
           record_key = excluded.record_key,
           record_source_path = excluded.record_source_path,
           record_source_locator = excluded.record_source_locator,
@@ -1521,6 +1551,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             doc.author ?? null,
             doc.frontmatterDate ?? null,
             doc.dateFields ? JSON.stringify(doc.dateFields) : null,
+            doc.typedMetadata
+              ? JSON.stringify(typedMetadataSchema.parse(doc.typedMetadata))
+              : null,
+            doc.metadataError ?? null,
             doc.recordKey ?? null,
             doc.recordSourcePath ?? null,
             doc.recordSourceLocator ?? null,
@@ -2109,6 +2143,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     options: {
       collection?: string;
       activeOnly?: boolean;
+      eligibility?: import("../types").DocumentEligibilityOptions;
     } = {}
   ): Promise<StoreResult<DocumentRow[]>> {
     try {
@@ -2131,7 +2166,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         const batch = uniqueDocids.slice(i, i + SQL_PARAM_LIMIT);
         const placeholders = batch.map(() => "?").join(",");
         const clauses = [`docid IN (${placeholders})`];
-        const params: string[] = [...batch];
+        const params: (string | number)[] = [...batch];
 
         if (options.activeOnly ?? true) {
           clauses.push("active = 1");
@@ -2141,8 +2176,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           params.push(options.collection);
         }
 
+        if (options.eligibility) {
+          const eligible = buildEligibleDocumentQuery(options.eligibility, db);
+          clauses.push(`id IN (SELECT id FROM (${eligible.sql}))`);
+          params.push(...eligible.params);
+        }
         const sql = `SELECT * FROM documents WHERE ${clauses.join(" AND ")} ORDER BY id`;
-        rows.push(...db.query<DbDocumentRow, string[]>(sql).all(...params));
+        rows.push(
+          ...db.query<DbDocumentRow, (string | number)[]>(sql).all(...params)
+        );
       }
 
       return ok(rows.map(mapDocumentRow));
@@ -5960,7 +6002,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const recentErrors = recentErrorsRow?.count ?? 0;
       const healthy = recentErrors === 0;
 
+      const metadataCoverage = await this.getTypedMetadataCoverage({});
+      if (!metadataCoverage.ok) return metadataCoverage;
       return ok({
+        typedMetadata: metadataCoverage.value,
         version,
         indexName,
         configPath: this.configPath,
@@ -6286,6 +6331,8 @@ interface DbDocumentRow {
   author: string | null;
   frontmatter_date: string | null;
   date_fields: string | null;
+  typed_metadata: string | null;
+  metadata_error: string | null;
   record_key: string | null;
   record_source_path: string | null;
   record_source_locator: string | null;
@@ -6454,6 +6501,10 @@ function mapDocumentRow(row: DbDocumentRow): DocumentRow {
     author: row.author,
     frontmatterDate: row.frontmatter_date,
     dateFields,
+    typedMetadata: row.typed_metadata
+      ? typedMetadataSchema.parse(JSON.parse(row.typed_metadata))
+      : null,
+    metadataError: row.metadata_error,
     recordKey: row.record_key,
     recordSourcePath: row.record_source_path,
     recordSourceLocator: row.record_source_locator,

@@ -87,6 +87,11 @@ function formatTerminal(
 ): string {
   const lines: string[] = [];
 
+  if (indexStatus.typedMetadata) {
+    lines.push(
+      `Typed metadata: ${indexStatus.typedMetadata.pending} pending sync, ${indexStatus.typedMetadata.invalid} invalid`
+    );
+  }
   lines.push(`Index: ${indexStatus.indexName}`);
   lines.push(`Config: ${indexStatus.configPath}`);
   lines.push(`Database: ${indexStatus.dbPath}`);
@@ -200,6 +205,10 @@ function formatMarkdown(
   lines.push(`- **Documents**: ${indexStatus.activeDocuments}`);
   lines.push(`- **Chunks**: ${indexStatus.totalChunks}`);
   lines.push(`- **Embedding backlog**: ${indexStatus.embeddingBacklog}`);
+  if (indexStatus.typedMetadata)
+    lines.push(
+      `- **Typed metadata**: ${indexStatus.typedMetadata.pending} pending sync, ${indexStatus.typedMetadata.invalid} invalid`
+    );
   lines.push(`- **Recent errors**: ${indexStatus.recentErrors}`);
 
   const chunking = formatChunkingStatus(indexStatus.chunking);
@@ -347,6 +356,7 @@ export function formatStatus(
         totalDocuments: s.activeDocuments,
         totalChunks: s.totalChunks,
         embeddingBacklog: s.embeddingBacklog,
+        typedMetadata: s.typedMetadata,
         chunking: s.chunking,
         lastUpdated: s.lastUpdatedAt,
         healthy: isStatusHealthy(s, result.activation),

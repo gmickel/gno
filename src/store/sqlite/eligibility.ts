@@ -2,7 +2,9 @@ import type { Database } from "bun:sqlite";
 
 import type { DocumentEligibilityOptions } from "../types";
 
+import { TYPED_METADATA_INGEST_VERSION } from "../../core/typed-metadata";
 import { matchesExcludedText } from "../../pipeline/exclude";
+import { compileMetadataPredicate } from "./metadata-predicate";
 
 /** Unbounded owner selection; compose with FTS rowids or chunk mirror ownership
  * before ranking/LIMIT. EXISTS keeps multiple tags/scopes from duplicating owners.
@@ -14,6 +16,16 @@ export function buildEligibleDocumentQuery(
   // Build tag filter conditions using EXISTS subqueries
   const conditions: string[] = ["d.active = 1"];
   const params: (string | number)[] = [];
+  if (options.filter) {
+    const predicate = compileMetadataPredicate(options.filter);
+    conditions.push(
+      "d.ingest_version >= ?",
+      "d.metadata_error IS NULL",
+      "d.typed_metadata IS NOT NULL",
+      predicate.sql
+    );
+    params.push(TYPED_METADATA_INGEST_VERSION, ...predicate.params);
+  }
   if (options.chunkLanguage) {
     conditions.push(
       "EXISTS (SELECT 1 FROM content_chunks lc WHERE lc.mirror_hash = d.mirror_hash AND lc.language = ?)"

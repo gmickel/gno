@@ -322,6 +322,7 @@ describe("retrieval trace frozen management contract", () => {
     const started = await recorder.start({
       query: "filter order",
       filters: {
+        filter: { op: "in", key: "project", values: ["beta", "alpha", "beta"] },
         collections: ["zeta", "alpha", "zeta"],
         categories: ["policy", "decision", "policy"],
         exclude: ["draft", "archive", "draft"],
@@ -338,6 +339,7 @@ describe("retrieval trace frozen management contract", () => {
     expect(started.ok).toBeTrue();
     const stored = await store.getRetrievalTrace("canonical-filters");
     expect(stored.ok && stored.value?.trace.filters).toEqual({
+      filter: { op: "in", key: "project", values: ["alpha", "beta"] },
       categories: ["decision", "policy"],
       collections: ["alpha", "zeta"],
       exclude: ["archive", "draft"],

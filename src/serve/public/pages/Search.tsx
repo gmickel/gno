@@ -7,11 +7,12 @@ import {
   SlidersHorizontal,
   XIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { resolveDepthPolicy } from "../../../core/depth-policy";
 import { normalizeStructuredQueryInput } from "../../../core/structured-query";
 import { Loader } from "../components/ai-elements/loader";
+import { MetadataFilter } from "../components/MetadataFilter";
 import {
   ThoroughnessSelector,
   type Thoroughness,
@@ -37,6 +38,7 @@ import { apiFetch } from "../hooks/use-api";
 import { useDocEvents } from "../hooks/use-doc-events";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { buildDocDeepLink } from "../lib/deep-links";
+import { parseMetadataFilter } from "../lib/metadata-filter";
 import {
   applyFiltersToUrl,
   parseFiltersFromSearch,
@@ -111,6 +113,7 @@ interface SearchResult {
 interface SearchResponse {
   results: SearchResult[];
   meta: {
+    warnings?: { code: string; message: string }[];
     query: string;
     mode: string;
     totalResults: number;
@@ -152,6 +155,7 @@ export default function Search({ navigate }: PageProps) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [meta, setMeta] = useState<SearchResponse["meta"] | null>(null);
   const [loading, setLoading] = useState(false);
+  const searchRequest = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [capabilities, setCapabilities] = useState<ServerCapabilities | null>(
@@ -170,6 +174,7 @@ export default function Search({ navigate }: PageProps) {
       initialFilters.until ||
       initialFilters.category ||
       initialFilters.author ||
+      initialFilters.filter ||
       initialFilters.queryModes.length > 0
     )
   );
@@ -187,6 +192,9 @@ export default function Search({ navigate }: PageProps) {
   const [since, setSince] = useState(initialFilters.since);
   const [until, setUntil] = useState(initialFilters.until);
   const [category, setCategory] = useState(initialFilters.category);
+  const [metadataFilter, setMetadataFilter] = useState(
+    initialFilters.filter ?? ""
+  );
   const [author, setAuthor] = useState(initialFilters.author);
   const [queryModes, setQueryModes] = useState<QueryModeEntry[]>(
     initialFilters.queryModes
@@ -217,6 +225,7 @@ export default function Search({ navigate }: PageProps) {
   useEffect(() => {
     const url = new URL(window.location.href);
     applyFiltersToUrl(url, {
+      filter: metadataFilter,
       collection: selectedCollection,
       intent,
       candidateLimit,
@@ -232,6 +241,7 @@ export default function Search({ navigate }: PageProps) {
     window.history.replaceState({}, "", url.toString());
   }, [
     activeTags,
+    metadataFilter,
     author,
     candidateLimit,
     category,
@@ -319,10 +329,23 @@ export default function Search({ navigate }: PageProps) {
   const handleSearch = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault();
+      const request = ++searchRequest.current;
       if (!query.trim()) {
         return;
       }
+      const parsedFilter = parseMetadataFilter(metadataFilter);
+      if (parsedFilter.error) {
+        setLoading(false);
+        setResults([]);
+        setMeta(null);
+        setError(parsedFilter.error);
+        setShowAdvanced(true);
+        return;
+      }
       if (!structuredQueryState.ok) {
+        setLoading(false);
+        setResults([]);
+        setMeta(null);
         setError(structuredQueryState.error.message);
         return;
       }
@@ -351,6 +374,7 @@ export default function Search({ navigate }: PageProps) {
         limit: 20,
       };
 
+      if (parsedFilter.filter) body.filter = parsedFilter.filter;
       if (selectedCollection) {
         body.collection = selectedCollection;
       }
@@ -400,6 +424,7 @@ export default function Search({ navigate }: PageProps) {
         }
       );
 
+      if (request !== searchRequest.current) return;
       setLoading(false);
       if (fetchError) {
         setError(fetchError);
@@ -412,6 +437,7 @@ export default function Search({ navigate }: PageProps) {
     },
     [
       activeTags,
+      metadataFilter,
       author,
       candidateLimit,
       activePreset,
@@ -438,6 +464,7 @@ export default function Search({ navigate }: PageProps) {
   }, [
     activeTags,
     activePreset,
+    metadataFilter,
     author,
     candidateLimit,
     category,
@@ -477,6 +504,7 @@ export default function Search({ navigate }: PageProps) {
     since ? `since:${since}` : null,
     until ? `until:${until}` : null,
     category.trim() ? `category:${category.trim()}` : null,
+    metadataFilter.trim() ? "custom metadata" : null,
     author.trim() ? `author:${author.trim()}` : null,
     queryModes.length > 0 ? `${queryModes.length} query mode(s)` : null,
   ].filter((pill): pill is string => Boolean(pill));
@@ -493,6 +521,7 @@ export default function Search({ navigate }: PageProps) {
     setUntil("");
     setCategory("");
     setAuthor("");
+    setMetadataFilter("");
     setQueryModes([]);
     setQueryModeText("");
     setQueryModeError(null);
@@ -773,6 +802,11 @@ export default function Search({ navigate }: PageProps) {
                         </div>
                       </div>
 
+                      <MetadataFilter
+                        onChange={setMetadataFilter}
+                        value={metadataFilter}
+                      />
+
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-muted-foreground text-xs">
                           Tag match:
@@ -954,6 +988,15 @@ export default function Search({ navigate }: PageProps) {
               </div>
             )}
 
+            {meta?.warnings?.map((warning) => (
+              <p
+                className="mb-3 rounded border border-secondary/30 bg-secondary/10 p-3 text-sm"
+                key={warning.code}
+                role="status"
+              >
+                {warning.message}
+              </p>
+            ))}
             {error && (
               <Card className="mb-6 border-destructive bg-destructive/10">
                 <CardContent className="py-4 text-destructive">

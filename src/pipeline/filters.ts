@@ -7,6 +7,11 @@
 import type { ChunkRow, DocumentRow, StorePort } from "../store/types";
 import type { HybridSearchOptions } from "./types";
 
+import {
+  matchesMetadataPredicate,
+  TYPED_METADATA_INGEST_VERSION,
+  type MetadataPredicate,
+} from "../core/typed-metadata";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
 import { isWithinTemporalRange, resolveTemporalRange } from "./temporal";
 
@@ -85,6 +90,8 @@ export function evaluateDocumentChunkFilters(
   options: HybridSearchOptions
 ): QueryFilterEvaluation {
   const reasons: string[] = [];
+  const metadataReason = typedMetadataFilterReason(doc, options.filter);
+  if (metadataReason) reasons.push(metadataReason);
   const temporalRange = resolveTemporalRange(
     query,
     options.since,
@@ -179,4 +186,62 @@ export async function evaluateQueryTargetFilters(
     matches: reasons.length === 0,
     reasons,
   };
+}
+
+/** Invalid or unextracted documents are ineligible even for negated predicates. */
+export function typedMetadataFilterReason(
+  doc: DocumentRow,
+  filter?: MetadataPredicate
+): string | undefined {
+  if (!filter) return undefined;
+  if ((doc.ingestVersion ?? 0) < TYPED_METADATA_INGEST_VERSION)
+    return "metadata_backfill";
+  if (doc.metadataError || !doc.typedMetadata) return "metadata_invalid";
+  return matchesMetadataPredicate(doc.typedMetadata, filter)
+    ? undefined
+    : "metadata_filter";
+}
+
+export async function typedMetadataWarnings(
+  store: StorePort,
+  query: string,
+  options: HybridSearchOptions
+): Promise<{ code: string; message: string }[] | undefined> {
+  if (!options.filter) return undefined;
+  const unknown = [
+    {
+      code: "METADATA_COVERAGE_UNKNOWN",
+      message:
+        "Typed metadata coverage could not be checked; filtered results may be incomplete.",
+    },
+  ];
+  if (!store.getTypedMetadataCoverage) return unknown;
+  const range = resolveTemporalRange(query, options.since, options.until);
+  const result = await store.getTypedMetadataCoverage({
+    collection: options.collection,
+    relPathPrefix: options.retrievalScope?.relPathPrefix,
+    allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
+    chunkLanguage: options.lang,
+    tagsAll: options.tagsAll,
+    tagsAny: options.tagsAny,
+    since: range.since,
+    until: range.until,
+    categories: options.categories,
+    author: options.author,
+    exclude: options.exclude,
+    excludeMetadata: true,
+    semanticMetadata: true,
+    memoryScopesAny: options.memoryFilter?.scopes,
+    excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+  });
+  if (!result.ok) return unknown;
+  const { pending, invalid } = result.value;
+  return pending || invalid
+    ? [
+        {
+          code: "METADATA_COVERAGE_INCOMPLETE",
+          message: `Typed metadata coverage is incomplete: ${pending} documents need re-ingestion and ${invalid} have invalid metadata within the query scope.`,
+        },
+      ]
+    : undefined;
 }

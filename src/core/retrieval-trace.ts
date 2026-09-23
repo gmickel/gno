@@ -29,6 +29,7 @@ import {
   legacyLocalOnlyEgressLineage,
 } from "./egress-provenance";
 import { canonicalizeRetrievalTraceFilters } from "./retrieval-trace-filter-normalization";
+import { metadataPredicateSchema } from "./typed-metadata";
 
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
 const gnoUriSchema = z
@@ -57,6 +58,7 @@ export const traceFiltersSchema = z
     since: z.string().max(128).optional(),
     until: z.string().max(128).optional(),
     categories: z.array(z.string().max(512)).max(1000).optional(),
+    filter: metadataPredicateSchema.optional(),
     author: z.string().max(1024).optional(),
     intent: z.string().max(8192).optional(),
     exclude: z.array(z.string().max(1024)).max(1000).optional(),

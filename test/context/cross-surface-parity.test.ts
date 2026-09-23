@@ -295,6 +295,91 @@ describe("Context Capsule REST/MCP parity", () => {
     expect(normalizeGraph("balanced", false)).toBe(false);
   });
 
+  test("filtered Capsules retain valid evidence and report incomplete extraction until repair", async () => {
+    const filter = { op: "exists" as const, key: "project", value: false };
+    const input = { ...buildInput, filter };
+    for (const relPath of ["decision.md", "mirror.md"]) {
+      const loaded = await store.getDocument("notes", relPath);
+      if (!loaded.ok || !loaded.value) throw new Error("fixture missing");
+      const row = loaded.value;
+      const updated = await store.upsertDocument({
+        collection: row.collection,
+        relPath: row.relPath,
+        sourceHash: row.sourceHash,
+        sourceMime: row.sourceMime,
+        sourceExt: row.sourceExt,
+        sourceSize: row.sourceSize,
+        sourceMtime: row.sourceMtime,
+        mirrorHash: row.mirrorHash ?? undefined,
+        typedMetadata: {},
+        ingestVersion: 7,
+      });
+      expect(updated.ok).toBe(true);
+      if (relPath === "decision.md") {
+        const partial = await buildContextCapsule(input, { store, config });
+        expect(partial.schemaVersion).toBe("1.2");
+        expect(partial.coverage.complete).toBe(false);
+        expect(partial.warnings).toContainEqual({
+          code: "metadata_coverage_incomplete",
+        });
+        expect(partial.evidence.map(({ uri }) => uri)).toEqual([
+          "gno://notes/decision.md",
+        ]);
+        expect(
+          (await verifyContextCapsuleRuntime(partial, { store, config }))
+            .contentStatus
+        ).toBe("unchanged");
+      }
+    }
+    const capsule = await buildContextCapsule(input, { store, config });
+    expect(capsule.warnings).not.toContainEqual({
+      code: "metadata_coverage_incomplete",
+    });
+    expect(capsule.schemaVersion).toBe("1.2");
+    if (capsule.schemaVersion !== "1.2")
+      throw new Error("expected filtered Capsule");
+    expect(capsule.scope.filter).toEqual(filter);
+    expect(capsule.retrieval.request.filter).toEqual(filter);
+    const placeholder = {
+      collection: "notes",
+      relPath: "failed-conversion.bin",
+      sourceHash: sha256Text("failed conversion"),
+      sourceMime: "application/octet-stream",
+      sourceExt: ".bin",
+      sourceSize: 10,
+      sourceMtime: "2026-07-22T10:00:00.000Z",
+    };
+    expect((await store.upsertDocument(placeholder)).ok).toBe(true);
+    const withPlaceholder = await buildContextCapsule(input, { store, config });
+    expect(withPlaceholder.warnings).not.toContainEqual({
+      code: "metadata_coverage_incomplete",
+    });
+    const valid = await store.getDocument("notes", "decision.md");
+    if (!valid.ok || !valid.value?.mirrorHash)
+      throw new Error("fixture missing");
+    expect(
+      (
+        await store.upsertDocument({
+          ...placeholder,
+          relPath: "invalid-metadata.md",
+          sourceExt: ".md",
+          sourceMime: "text/markdown",
+          mirrorHash: valid.value.mirrorHash,
+          metadataError: "Invalid typed value",
+          ingestVersion: 7,
+        })
+      ).ok
+    ).toBe(true);
+    const withInvalid = await buildContextCapsule(input, { store, config });
+    expect(withInvalid.warnings).toContainEqual({
+      code: "metadata_coverage_incomplete",
+    });
+    expect(withInvalid.coverage.complete).toBe(false);
+    expect(
+      withInvalid.evidence.some(({ uri }) => uri.includes("invalid-metadata"))
+    ).toBe(false);
+  });
+
   test("keeps full REST/application payloads and emits the production MCP projection once", async () => {
     const direct = await buildContextCapsule(
       { ...buildInput, indexName: "default" },
@@ -498,7 +583,7 @@ describe("Context Capsule REST/MCP parity", () => {
   });
 
   test("reports requested unavailable and used retrieval capabilities through REST", async () => {
-    const request = (depthPolicy: "balanced" | "thorough") =>
+    const request = (depthPolicy: "fast" | "balanced" | "thorough") =>
       new Request("http://localhost/api/context", {
         method: "POST",
         body: JSON.stringify({
@@ -524,10 +609,14 @@ describe("Context Capsule REST/MCP parity", () => {
       graphExpansion: { requested: true },
     });
 
+    let embeddingCalls = 0;
     const embedPort: EmbeddingPort = {
       modelUri: "test:embed",
       init: async () => ({ ok: true, value: undefined }),
-      embed: async () => ({ ok: true, value: [0.1, 0.2, 0.3] }),
+      embed: async () => {
+        embeddingCalls += 1;
+        return { ok: true, value: [0.1, 0.2, 0.3] };
+      },
       embedBatch: async () => ({ ok: true, value: [[0.1, 0.2, 0.3]] }),
       dimensions: () => 3,
       dispose: async () => {},
@@ -558,6 +647,30 @@ describe("Context Capsule REST/MCP parity", () => {
       }),
       dispose: async () => {},
     };
+    const fastResponse = await handleContextBuild(
+      { ...serverContext, vectorIndex, embedPort, rerankPort },
+      request("fast")
+    );
+    expect(fastResponse.status).toBe(200);
+    expect(embeddingCalls).toBe(0);
+    const fast = await fastResponse.json();
+    expect(fast.retrieval.capabilityStates).toMatchObject({
+      semanticSearch: {
+        requested: false,
+        attempted: false,
+        outcome: "not_requested",
+      },
+      reranking: {
+        requested: false,
+        attempted: false,
+        outcome: "not_requested",
+      },
+      graphExpansion: {
+        requested: false,
+        attempted: false,
+        outcome: "not_requested",
+      },
+    });
     const usedResponse = await handleContextBuild(
       { ...serverContext, vectorIndex, embedPort, rerankPort },
       request("thorough")

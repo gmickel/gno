@@ -19,6 +19,10 @@ import {
   startRetrievalTraceRequest,
 } from "../../core/retrieval-trace-request";
 import { attachRetrievalTraceMetadata } from "../../core/retrieval-trace-session";
+import {
+  normalizeMetadataPredicate,
+  type MetadataPredicate,
+} from "../../core/typed-metadata";
 import { searchBm25 } from "../../pipeline/search";
 import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
@@ -35,6 +39,7 @@ interface SearchInput {
   until?: string;
   categories?: string[];
   author?: string;
+  filter?: MetadataPredicate;
   tagsAll?: string[];
   tagsAny?: string[];
 }
@@ -131,6 +136,10 @@ export function handleSearch(
         until: args.until,
         categories: args.categories,
         author: args.author,
+        filter:
+          args.filter === undefined
+            ? undefined
+            : normalizeMetadataPredicate(args.filter),
         tagsAll: normalizeTagFilters(args.tagsAll),
         tagsAny: normalizeTagFilters(args.tagsAny),
         projectAffinity,

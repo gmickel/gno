@@ -1,10 +1,11 @@
-import type { NormalizedContentTypeRule } from "../config/content-types";
 /**
  * Search pipeline types.
  * Defines SearchPipelinePort and related types for search operations.
  *
  * @module src/pipeline/types
  */
+
+import type { NormalizedContentTypeRule } from "../config/content-types";
 import type {
   ContextCapsuleV1,
   ContextCapsuleVerification,
@@ -12,6 +13,7 @@ import type {
 import type { EgressLineage } from "../core/egress-provenance";
 import type { RecordEvidenceMetadata } from "../core/record-metadata";
 import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
+import type { MetadataPredicate } from "../core/typed-metadata";
 import type { InferenceOptions } from "../llm/types";
 import type { StoreResult } from "../store/types";
 import type { ClaimVerificationResult } from "./claim-verification";
@@ -100,6 +102,8 @@ export type SearchMode = "bm25" | "vector" | "hybrid" | "bm25_only";
 
 /** Search metadata */
 export interface SearchMeta {
+  /** Typed-filter coverage limitations; absence does not certify model quality. */
+  warnings?: { code: string; message: string }[];
   query: string;
   mode: SearchMode;
   expanded?: boolean;
@@ -173,6 +177,8 @@ export interface SearchResults {
 
 /** Common options for all search commands */
 export interface SearchOptions extends InferenceOptions {
+  /** Type-strict custom metadata predicate, applied before candidate limits. */
+  filter?: MetadataPredicate;
   /** Internal receipt seam; never serialized or included in public schemas. */
   traceSession?: RetrievalTraceSession;
   /** Trusted, already-resolved project affinity; never accepts raw roots. */

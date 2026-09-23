@@ -49,6 +49,7 @@ import {
   collectRepeatableValue,
   getDefaultLimit,
   parseCliProjectAffinityOptions,
+  parseCliMetadataFilter,
   parseOptionalFloat,
   parsePositiveInt,
 } from "./options";
@@ -652,6 +653,7 @@ function wireSearchCommands(program: Command): void {
       "modified-at upper bound (ISO date/time or token)"
     )
     .option("--category <values>", "require category match (comma-separated)")
+    .option("--filter <json>", "typed custom metadata predicate (JSON)")
     .option("--author <text>", "filter by author (case-insensitive contains)")
     .option("--intent <text>", "disambiguating context for ambiguous queries")
     .option(
@@ -736,6 +738,7 @@ function wireSearchCommands(program: Command): void {
           until: cmdOpts.until as string | undefined,
           categories,
           author: cmdOpts.author as string | undefined,
+          filter: parseCliMetadataFilter(cmdOpts.filter),
           intent: cmdOpts.intent as string | undefined,
           exclude,
           tagsAll,
@@ -790,6 +793,7 @@ function wireSearchCommands(program: Command): void {
       "modified-at upper bound (ISO date/time or token)"
     )
     .option("--category <values>", "require category match (comma-separated)")
+    .option("--filter <json>", "typed custom metadata predicate (JSON)")
     .option("--author <text>", "filter by author (case-insensitive contains)")
     .option("--intent <text>", "disambiguating context for ambiguous queries")
     .option(
@@ -864,6 +868,7 @@ function wireSearchCommands(program: Command): void {
         until: cmdOpts.until as string | undefined,
         categories,
         author: cmdOpts.author as string | undefined,
+        filter: parseCliMetadataFilter(cmdOpts.filter),
         intent: cmdOpts.intent as string | undefined,
         exclude,
         tagsAll,
@@ -916,6 +921,7 @@ function wireSearchCommands(program: Command): void {
       "modified-at upper bound (ISO date/time or token)"
     )
     .option("--category <values>", "require category match (comma-separated)")
+    .option("--filter <json>", "typed custom metadata predicate (JSON)")
     .option("--author <text>", "filter by author (case-insensitive contains)")
     .option("--intent <text>", "disambiguating context for ambiguous queries")
     .option(
@@ -1080,6 +1086,7 @@ function wireSearchCommands(program: Command): void {
             until: cmdOpts.until as string | undefined,
             categories,
             author: cmdOpts.author as string | undefined,
+            filter: parseCliMetadataFilter(cmdOpts.filter),
             intent: cmdOpts.intent as string | undefined,
             exclude,
             tagsAll,
@@ -1116,6 +1123,7 @@ function wireSearchCommands(program: Command): void {
           until: cmdOpts.until as string | undefined,
           categories,
           author: cmdOpts.author as string | undefined,
+          filter: parseCliMetadataFilter(cmdOpts.filter),
           intent: cmdOpts.intent as string | undefined,
           exclude,
           tagsAll,
@@ -1219,6 +1227,7 @@ function wireSearchCommands(program: Command): void {
       "modified-at upper bound (ISO date/time or token)"
     )
     .option("--category <values>", "require category match (comma-separated)")
+    .option("--filter <json>", "typed custom metadata predicate (JSON)")
     .option("--author <text>", "filter by author (case-insensitive contains)")
     .option("--intent <text>", "disambiguating context for ambiguous queries")
     .option(
@@ -1350,6 +1359,7 @@ function wireSearchCommands(program: Command): void {
         until: cmdOpts.until as string | undefined,
         categories,
         author: cmdOpts.author as string | undefined,
+        filter: parseCliMetadataFilter(cmdOpts.filter),
         intent: cmdOpts.intent as string | undefined,
         exclude,
         minScore,
@@ -2695,6 +2705,7 @@ function wireManagementCommands(program: Command): void {
     .option("--tags-all <tags>", "require ALL tags (comma-separated)")
     .option("--tags-any <tags>", "require ANY tag (comma-separated)")
     .option("--category <values>", "require category match (comma-separated)")
+    .option("--filter <json>", "typed custom metadata predicate (JSON)")
     .option("--author <text>", "filter by author")
     .option("--lang <code>", "language hint (BCP-47)")
     .option("--since <date>", "modified-at lower bound")
@@ -2765,6 +2776,7 @@ function wireManagementCommands(program: Command): void {
         tagsAny: parseCsvValues(cmdOpts.tagsAny),
         categories: parseCsvValues(cmdOpts.category),
         author: cmdOpts.author as string | undefined,
+        filter: parseCliMetadataFilter(cmdOpts.filter),
         lang: cmdOpts.lang as string | undefined,
         since: cmdOpts.since as string | undefined,
         until: cmdOpts.until as string | undefined,

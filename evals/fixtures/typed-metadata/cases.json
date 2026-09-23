@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "sizes": [100, 1000, 10000],
+  "repetitions": 7,
+  "limit": 10,
+  "query": "needle",
+  "embedding": [1, 0],
+  "thresholds": {
+    "membershipParity": 1,
+    "topKParity": 1,
+    "scopeLeaks": 0,
+    "unfilteredRegression": 0
+  },
+  "predicates": [
+    { "op": "eq", "key": "approved", "value": true },
+    { "op": "eq", "key": "score", "value": 0 },
+    { "op": "gt", "key": "score", "value": 95 },
+    {
+      "op": "not",
+      "predicate": { "op": "eq", "key": "absent", "value": true }
+    },
+    { "op": "ne", "key": "score", "value": 0 },
+    { "op": "in", "key": "labels", "values": ["release"] },
+    { "op": "nin", "key": "labels", "values": ["private"] },
+    { "op": "all", "key": "labels", "values": ["release", "public"] },
+    { "op": "exists", "key": "absent", "value": false },
+    {
+      "op": "and",
+      "predicates": [
+        { "op": "gte", "key": "score", "value": 90 },
+        { "op": "eq", "key": "approved", "value": true }
+      ]
+    }
+  ]
+}

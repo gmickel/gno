@@ -1,0 +1,27 @@
+{
+  "type": "impl_review",
+  "id": "branch",
+  "mode": "claude",
+  "base": "bcd041381b9a8fa3b57467ad3f9e8d1492e13459",
+  "verdict": "SHIP",
+  "session_id": "f54966c3-37a1-4537-9ae6-55f20011173a",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "spec": "claude:claude-opus-5-5:high",
+  "timestamp": "2026-09-23T08:35:02.834226Z",
+  "review": "**Verdict: SHIP.** All four prior findings are now fixed, and nothing new at Major or above came in with the fixes.\n\nPrior findings: all fixed\n\n## How each is resolved\n\n- **#1 (P1): failed conversions blocked filtered capsules.** This stays fixed.\n  - The coverage query only counts rows that have a mirror (`src/store/sqlite/adapter.ts:1447`), so failed conversions no longer show as \"pending\" forever.\n  - `buildContextCapsule` no longer throws when coverage is incomplete. It records the gap and passes it on (`src/app/context-runtime.ts`, diff hunk at `@@ -124,10 +132,26 @@`).\n  - The capsule then sets `coverage.complete: false` and adds the `metadata_coverage_incomplete` warning.\n- **#2 (P2): the 64 KiB limit hit notes without the namespace.** This stays fixed. `src/ingestion/typed-metadata.ts:16` returns an empty valid map for frontmatter with no `gno` key, before the size limit applies.\n- **#3 (P3): module doc comments moved below imports.** Now fixed. The header in `src/core/context-compiler.ts:1-8` is back at the top of the file, and that file's diff is now only the 3 added lines.\n- **#4 (P3): record `custom` metadata validated and stored twice.** This stays fixed. The leftover `\"customError\"` in the Omit is also gone: `src/core/record-metadata.ts:3` is now `Omit<RecordMetadata, \"custom\">`. The branch that could never run in the YAML error handler was removed too (`src/ingestion/typed-metadata.ts:27-29`).\n\n## FYI (non-blocking)\n\n- This round, `src/app/context-runtime.ts` also passes `vectorIndex`/`embedPort` as `null` when `depthPolicy === \"fast\"`. That makes fast capsule retrieval lexical-only, matching the capsule contract (`semanticSearch.requested = depthPolicy !== \"fast\"`). It changes runtime behaviour for fast capsules built without a filter too, so the changelog should mention it if it's user-visible.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n| --- | --- | --- |\n| R1 | met | Extraction only applies to documents with a `gno` key. Invalid documents are excluded and counted, and no longer block capsules. |\n| R2 | met | One shared contract in `core/typed-metadata.ts`, with SQL-vs-JS truth-table parity tests. |\n| R3 | met | The filter goes through `buildEligibleDocumentQuery` before candidate limits on every retrieval path. |\n| R4 | met | Reuses the INGEST_VERSION repair path. Coverage leaves out failed conversions, and capsules state incomplete metadata coverage explicitly. |\n| R5 | met | CLI, MCP, SDK, REST and Web UI share the same `filter` and validation. |\n| R6 | met | Truth-table tests plus the exhaustive-oracle eval. |\n| R7 | met | The eval reports filtered and unfiltered latency, extraction time and RSS at the pinned corpus sizes. |\n\nUnaddressed R-IDs: []\n\nClassification counts: 0 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":0,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>SHIP</verdict>",
+  "focus": "Prioritize YAGNI, overengineering, unnecessary abstractions, duplicated logic, code/doc/test slop and misleading claims. Require concrete introduced defects or simplifications that preserve accepted requirements; do not request speculative frameworks or future-proofing. Check correctness and scope/authority preservation too.",
+  "introduced_count": 0,
+  "pre_existing_count": 0,
+  "unaddressed": [],
+  "findings": {
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-c93f71d99eae520fdfd7030b3b3f7ce57a221f55ec412186fff97ceaa9656714",
+    "reviewKind": "implementation",
+    "backend": "claude",
+    "round": 1,
+    "baseSha": "bcd041381b9a8fa3b57467ad3f9e8d1492e13459",
+    "headSha": "b732d999c4a12f3ac855032ac5cc66d3612f0c9f",
+    "items": []
+  }
+}

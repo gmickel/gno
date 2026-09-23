@@ -1,10 +1,11 @@
-import type { Config } from "../config/types";
 /**
  * Hybrid search orchestrator.
  * Combines BM25, vector search, expansion, fusion, and reranking.
  *
  * @module src/pipeline/hybrid
  */
+
+import type { Config } from "../config/types";
 import type { EmbeddingPort, GenerationPort, RerankPort } from "../llm/types";
 import type { DocumentRow, StorePort } from "../store/types";
 import type {
@@ -24,6 +25,7 @@ import type {
 
 import { normalizeContentTypes } from "../config/content-types";
 import { projectRecordEvidenceMetadata } from "../core/record-metadata";
+import { normalizeMetadataPredicate } from "../core/typed-metadata";
 import { embedTextsWithRecovery } from "../embed/batch";
 import {
   assertInferenceActive,
@@ -54,7 +56,7 @@ import {
   explainTimings,
   explainVector,
 } from "./explain";
-import { evaluateDocumentChunkFilters } from "./filters";
+import { evaluateDocumentChunkFilters, typedMetadataWarnings } from "./filters";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
 import { RequestHydration } from "./hydration";
@@ -148,6 +150,7 @@ async function checkBm25Strength(
     until?: string;
     categories?: string[];
     author?: string;
+    filter?: HybridSearchOptions["filter"];
     relPathPrefix?: string;
     allowedMirrorHashes?: string[];
     exclude?: string[];
@@ -173,6 +176,7 @@ async function checkBm25Strength(
     until: options?.until,
     categories: options?.categories,
     author: options?.author,
+    filter: options?.filter,
   });
 
   if (!result.ok || result.value.length === 0) {
@@ -221,6 +225,7 @@ async function searchFtsChunks(
     until?: string;
     categories?: string[];
     author?: string;
+    filter?: HybridSearchOptions["filter"];
     relPathPrefix?: string;
     allowedMirrorHashes?: string[];
     exclude?: string[];
@@ -246,6 +251,7 @@ async function searchFtsChunks(
     until: options.until,
     categories: options.categories,
     author: options.author,
+    filter: options.filter,
   });
   if (!result.ok) {
     // Propagate INVALID_INPUT for FTS syntax errors
@@ -356,6 +362,11 @@ export async function searchHybrid(
   query: string,
   options: HybridSearchOptions = {}
 ): Promise<ReturnType<typeof ok<SearchResults>>> {
+  if (options.filter !== undefined)
+    options = {
+      ...options,
+      filter: normalizeMetadataPredicate(options.filter),
+    };
   const hydration = deps.hydration ?? new RequestHydration(deps.store);
   try {
     return await withInferenceScope(options, () =>
@@ -483,6 +494,7 @@ async function searchHybridWithHydration(
           until: temporalRange.until,
           categories: options.categories,
           author: options.author,
+          filter: options.filter,
           relPathPrefix: options.retrievalScope?.relPathPrefix,
         });
 
@@ -531,6 +543,7 @@ async function searchHybridWithHydration(
     until: temporalRange.until,
     categories: options.categories,
     author: options.author,
+    filter: options.filter,
     exclude: options.exclude,
     excludeMetadata: true,
     semanticMetadata: true,
@@ -553,6 +566,7 @@ async function searchHybridWithHydration(
     until: temporalRange.until,
     categories: options.categories,
     author: options.author,
+    filter: options.filter,
     relPathPrefix: options.retrievalScope?.relPathPrefix,
   });
 
@@ -592,6 +606,7 @@ async function searchHybridWithHydration(
           until: temporalRange.until,
           categories: options.categories,
           author: options.author,
+          filter: options.filter,
           relPathPrefix: options.retrievalScope?.relPathPrefix,
         })
       )
@@ -767,6 +782,7 @@ async function searchHybridWithHydration(
     {
       collection: options.collection,
       includeSimilar: vectorAvailable,
+      eligibility: vectorEligibility,
       limit,
       candidateLimit,
       disabled: options.graph === false || options.noGraph === true,
@@ -778,6 +794,7 @@ async function searchHybridWithHydration(
       until: temporalRange.until,
       categories: options.categories,
       author: options.author,
+      filter: options.filter,
     },
     hydration
   );
@@ -1355,6 +1372,9 @@ async function searchHybridWithHydration(
       until: temporalRange.until,
       categories: options.categories,
       author: options.author,
+      ...(options.filter
+        ? { warnings: await typedMetadataWarnings(store, query, options) }
+        : {}),
       candidateLimit,
       graphExpansion: {
         enabled: graphExpansion.meta.enabled,

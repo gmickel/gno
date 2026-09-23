@@ -18,6 +18,7 @@ import { searchBm25 } from "../pipeline/search";
 import { SEARCH_RESULTS_TRACE_METADATA } from "../pipeline/types";
 import { searchVector } from "../pipeline/vsearch";
 import { err, ok } from "../store/types";
+import { normalizeMetadataPredicate } from "./typed-metadata";
 
 export interface RetrievalReplayDeps extends HybridSearchDeps {
   indexName?: string;
@@ -108,6 +109,10 @@ export const buildRetrievalReplaySearchOptions = (
     categories: Array.isArray(filters.categories)
       ? (filters.categories as string[])
       : undefined,
+    filter:
+      filters.filter === undefined
+        ? undefined
+        : normalizeMetadataPredicate(filters.filter),
     author: typeof filters.author === "string" ? filters.author : undefined,
     intent: typeof filters.intent === "string" ? filters.intent : undefined,
     exclude: Array.isArray(filters.exclude)

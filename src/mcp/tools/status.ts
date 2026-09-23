@@ -52,6 +52,10 @@ function formatStatus(status: IndexStatus): string {
     `Total: ${status.activeDocuments} documents, ${status.totalChunks} chunks`
   );
 
+  if (status.typedMetadata)
+    lines.push(
+      `Typed metadata: ${status.typedMetadata.pending} pending sync, ${status.typedMetadata.invalid} invalid`
+    );
   if (status.embeddingBacklog > 0) {
     lines.push(`Embedding backlog: ${status.embeddingBacklog} chunks`);
   }

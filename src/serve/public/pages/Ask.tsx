@@ -25,6 +25,7 @@ import {
   type AskVerification,
   AskVerificationPanel,
 } from "../components/AskVerificationPanel";
+import { MetadataFilter } from "../components/MetadataFilter";
 import {
   ThoroughnessSelector,
   type Thoroughness,
@@ -48,6 +49,7 @@ import {
 import { Textarea } from "../components/ui/textarea";
 import { apiFetch } from "../hooks/use-api";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { parseMetadataFilter } from "../lib/metadata-filter";
 import {
   parseTagsCsv,
   type QueryModeEntry,
@@ -92,6 +94,7 @@ interface AskResponse {
   citations?: Citation[];
   results: SearchResult[];
   meta: {
+    warnings?: { code: string; message: string }[];
     expanded: boolean;
     reranked: boolean;
     vectorsUsed: boolean;
@@ -200,14 +203,21 @@ export default function Ask({ navigate }: PageProps) {
   const [activePreset, setActivePreset] = useState("slim-tuned");
   const [verify, setVerify] = useState(false);
 
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [selectedCollection, setSelectedCollection] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(
+    Boolean(new URLSearchParams(window.location.search).get("filter"))
+  );
+  const [selectedCollection, setSelectedCollection] = useState(
+    new URLSearchParams(window.location.search).get("collection") ?? ""
+  );
   const [intent, setIntent] = useState("");
   const [candidateLimit, setCandidateLimit] = useState("");
   const [exclude, setExclude] = useState("");
   const [since, setSince] = useState("");
   const [until, setUntil] = useState("");
   const [category, setCategory] = useState("");
+  const [metadataFilter, setMetadataFilter] = useState(
+    new URLSearchParams(window.location.search).get("filter") ?? ""
+  );
   const [author, setAuthor] = useState("");
   const [tagMode, setTagMode] = useState<TagMode>("any");
   const [tagsInput, setTagsInput] = useState("");
@@ -255,6 +265,16 @@ export default function Ask({ navigate }: PageProps) {
     void bootstrap();
   }, []);
 
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (selectedCollection.trim())
+      url.searchParams.set("collection", selectedCollection.trim());
+    else url.searchParams.delete("collection");
+    if (metadataFilter) url.searchParams.set("filter", metadataFilter);
+    else url.searchParams.delete("filter");
+    window.history.replaceState({}, "", url.toString());
+  }, [metadataFilter, selectedCollection]);
+
   const cycleThoroughness = useCallback(() => {
     setThoroughness((current) => {
       if (!hybridAvailable) {
@@ -262,7 +282,7 @@ export default function Ask({ navigate }: PageProps) {
       }
       const currentIdx = THOROUGHNESS_ORDER.indexOf(current);
       const nextIdx = (currentIdx + 1) % THOROUGHNESS_ORDER.length;
-      return THOROUGHNESS_ORDER[nextIdx];
+      return THOROUGHNESS_ORDER[nextIdx] ?? current;
     });
   }, [hybridAvailable]);
 
@@ -304,12 +324,19 @@ export default function Ask({ navigate }: PageProps) {
       if (!query.trim()) {
         return;
       }
+      const parsedFilter = parseMetadataFilter(metadataFilter);
+      if (parsedFilter.error) {
+        setQueryModeError(parsedFilter.error);
+        setShowAdvanced(true);
+        return;
+      }
       if (!structuredQueryState.ok) {
         setQueryModeError(structuredQueryState.error.message);
         setShowAdvanced(true);
         return;
       }
 
+      setQueryModeError(null);
       const entryId = crypto.randomUUID();
       const currentQuery = query.trim();
 
@@ -334,6 +361,7 @@ export default function Ask({ navigate }: PageProps) {
         verify,
       };
 
+      if (parsedFilter.filter) requestBody.filter = parsedFilter.filter;
       if (selectedCollection) {
         requestBody.collection = selectedCollection;
       }
@@ -393,6 +421,7 @@ export default function Ask({ navigate }: PageProps) {
       );
     },
     [
+      metadataFilter,
       author,
       candidateLimit,
       activePreset,
@@ -428,6 +457,7 @@ export default function Ask({ navigate }: PageProps) {
     setUntil("");
     setCategory("");
     setAuthor("");
+    setMetadataFilter("");
     setTagsInput("");
     setTagMode("any");
     setQueryModes([]);
@@ -454,6 +484,7 @@ export default function Ask({ navigate }: PageProps) {
     since ? `since:${since}` : null,
     until ? `until:${until}` : null,
     category.trim() ? `category:${category.trim()}` : null,
+    metadataFilter.trim() ? "custom metadata" : null,
     author.trim() ? `author:${author.trim()}` : null,
     parseTagsCsv(tagsInput).length > 0
       ? `${tagMode}:${parseTagsCsv(tagsInput).join(",")}`
@@ -687,6 +718,11 @@ export default function Ask({ navigate }: PageProps) {
                     </div>
                   </div>
 
+                  <MetadataFilter
+                    onChange={setMetadataFilter}
+                    value={metadataFilter}
+                  />
+
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-muted-foreground text-xs">
                       Tag match:
@@ -857,6 +893,15 @@ export default function Ask({ navigate }: PageProps) {
 
                 {entry.response && (
                   <>
+                    {entry.response.meta.warnings?.map((warning) => (
+                      <p
+                        className="rounded border border-secondary/30 bg-secondary/10 p-3 text-sm"
+                        key={warning.code}
+                        role="status"
+                      >
+                        {warning.message}
+                      </p>
+                    ))}
                     {entry.response.answer && (
                       <div className="prose prose-sm prose-invert max-w-none rounded-lg border border-border/30 bg-card/60 p-5 shadow-[0_0_30px_-10px_hsl(var(--primary)/0.08)]">
                         <p className="whitespace-pre-wrap leading-relaxed">

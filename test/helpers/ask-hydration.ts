@@ -241,8 +241,33 @@ export function askGeneration(
   };
 }
 
-export async function captureAsk(caseId: AskCase, cached: boolean) {
+export async function captureAsk(
+  caseId: AskCase,
+  cached: boolean,
+  snapshotSchemaVersion?: number
+) {
   const { store, config, counts, close } = await askStore();
+  if (snapshotSchemaVersion !== undefined) {
+    // The historical hydration comparison holds index identity constant. Database
+    // migrations otherwise change Capsule/claim IDs and the verifier prompt even
+    // when every retrieved byte is identical. Preserve every other snapshot field;
+    // SDK and freshness tests continue to exercise the real current schema.
+    const snapshot = store.getActivationIndexSnapshot.bind(store);
+    store.getActivationIndexSnapshot = async (collection) => {
+      const result = await snapshot(collection);
+      if (!result.ok) return result;
+      return {
+        ...result,
+        value: {
+          ...result.value,
+          identity: {
+            ...result.value.identity,
+            schemaVersion: snapshotSchemaVersion,
+          },
+        },
+      };
+    };
+  }
   const hydration = new RequestHydration(store);
   const modelInputs: DeterministicRecord["modelInputs"] = [];
   const genPort = askGeneration(modelInputs, caseId === "unsupported");

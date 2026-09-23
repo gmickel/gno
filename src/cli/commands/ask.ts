@@ -323,6 +323,7 @@ export async function ask(
       until: options.until,
       categories: options.categories,
       author: options.author,
+      filter: options.filter,
       tagsAll: options.tagsAll,
       tagsAny: options.tagsAny,
       exclude: options.exclude,

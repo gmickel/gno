@@ -647,3 +647,33 @@ MCP-equivalent write tool:
 | Complete CLI reference (all commands, options, flags) | [cli-reference.md](cli-reference.md) |
 | MCP server setup and tools                            | [mcp-reference.md](mcp-reference.md) |
 | Usage examples and patterns                           | [examples.md](examples.md)           |
+
+## Custom metadata filters
+
+Use fixed flags for existing collection/tag/date/author/category fields. Custom
+fields must be indexed from nested YAML `gno.metadata`; arbitrary frontmatter
+keys are not automatically custom fields. CLI retrieval accepts `--filter`
+JSON; MCP/SDK/REST accept the same `filter` object:
+
+```json
+{
+  "op": "and",
+  "predicates": [
+    { "op": "eq", "key": "project", "value": "atlas" },
+    { "op": "gte", "key": "confidence", "value": 0.8 }
+  ]
+}
+```
+
+Membership operators `in`, `nin`, and `all` use plural `values`, not `value`:
+`{"op":"all","key":"reviewers","values":["ana","sam"]}`.
+Other leaves use singular `value`. `not` uses `predicate`; `and/or` use `predicates`.
+
+Strings are case-sensitive and never coerced to numbers or booleans. `eq/ne`
+accept scalars, ordering accepts numbers, `in/nin` test scalar/array membership,
+`all` requires an array, and `exists` takes a boolean. `ne/nin` require presence;
+`not(eq)`/`not(in)` can include missing fields. Invalid metadata is excluded even
+under negation. Never silently remove a requested filter. If coverage is
+incomplete, inspect warnings and diagnose the expected target with the same
+filter before relaxing it; correct source metadata and run `gno update` when
+repair is authorized. Preserve collection, authority, and memory scope.

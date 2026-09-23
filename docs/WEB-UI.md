@@ -1171,3 +1171,17 @@ curl http://localhost:3000/api/doc/abc123/backlinks
 # Get similar documents
 curl "http://localhost:3000/api/doc/abc123/similar?limit=5&threshold=0.5"
 ```
+
+## Custom metadata filters
+
+Search and Ask include **Custom metadata** controls. Add a field and operator;
+enter the value as JSON (`"approved"`, `0.8`, `false`, or `["ana","sam"]`).
+Use **Advanced filter (JSON)** for nested `and`, `or`, and `not` predicates.
+Invalid edits stay visible for correction and block submission rather than
+silently running a broader query. Clear the filter explicitly to remove it.
+
+Search navigation preserves the active predicate in query state where supported;
+a shared URL can disclose filter values. Document details display the indexed
+typed map and extraction diagnostics instead of guessing types from frontmatter.
+Coverage warnings require sync/source repair before interpreting empty results.
+See [Typed metadata filters](TYPED-METADATA.md).

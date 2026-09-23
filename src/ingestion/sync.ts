@@ -12,6 +12,7 @@ import { isAbsolute, join, relative, sep } from "node:path";
 
 import type { NormalizedContentTypeRule } from "../config";
 import type { Collection } from "../config/types";
+import type { TypedMetadata } from "../core/typed-metadata";
 import type {
   ChunkInput,
   DocLinkInput,
@@ -57,6 +58,7 @@ import {
 } from "../core/links";
 import { extractMemoryScopes } from "../core/memory-record";
 import { normalizeTag, validateTag } from "../core/tags";
+import { TYPED_METADATA_INGEST_VERSION } from "../core/typed-metadata";
 import { defaultChunker } from "./chunker";
 import { persistChunkLayout, prepareChunking } from "./chunking";
 import {
@@ -81,6 +83,7 @@ import {
   type SourceReadFailure,
 } from "./source-availability";
 import { getExcludedRanges } from "./strip";
+import { extractTypedMetadata } from "./typed-metadata";
 import { collectionToWalkConfig, DEFAULT_CHUNK_PARAMS } from "./types";
 import { defaultWalker } from "./walker";
 
@@ -98,7 +101,7 @@ const MAX_CONCURRENCY = 16;
  * Increment when ingestion adds new derived data (tags, metadata, etc.)
  * Documents with ingestVersion < INGEST_VERSION will be re-processed.
  */
-export const INGEST_VERSION = 6;
+export const INGEST_VERSION = TYPED_METADATA_INGEST_VERSION;
 const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT =
   fingerprintContentTypeMetadataRules([]);
 const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
@@ -211,6 +214,8 @@ function extractTags(markdown: string): string[] {
 }
 
 interface DocumentMetadata {
+  typedMetadata?: TypedMetadata;
+  metadataError?: string;
   contentType?: string;
   contentTypeSource: ContentTypeSource;
   categories?: string[];
@@ -404,6 +409,7 @@ export function extractDocumentMetadata(
   }
 
   return {
+    ...extractTypedMetadata(markdown),
     contentType,
     contentTypeSource,
     categories: [...categories],
@@ -493,6 +499,8 @@ const preserveDocumentWithError = (
   author: existing.author ?? undefined,
   frontmatterDate: existing.frontmatterDate ?? undefined,
   dateFields: existing.dateFields ?? undefined,
+  typedMetadata: existing.typedMetadata ?? undefined,
+  metadataError: existing.metadataError ?? undefined,
   recordKey: existing.recordKey ?? undefined,
   recordSourcePath: existing.recordSourcePath ?? undefined,
   recordSourceLocator: existing.recordSourceLocator ?? undefined,
@@ -913,6 +921,8 @@ export class SyncService {
           author: extractedMetadata.author,
           frontmatterDate: extractedMetadata.frontmatterDate,
           dateFields: extractedMetadata.dateFields,
+          typedMetadata: extractedMetadata.typedMetadata,
+          metadataError: extractedMetadata.metadataError,
           contentTypeRulesFingerprint,
           // Clear error fields on success (requires store to handle undefined → null)
           lastErrorCode: undefined,

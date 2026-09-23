@@ -3054,3 +3054,15 @@ Schemas: `collection-egress-policy.schema.json`,
 - [CLI Specification](./cli.md)
 - [Output Schemas](./output-schemas/)
 - [MCP Protocol Specification](https://modelcontextprotocol.io/specification/)
+
+### Typed metadata retrieval filter
+
+Applicable retrieval tools accept the same bounded `filter` predicate documented
+in `spec/cli.md`. Invalid filters fail validation with a field path. Predicates
+intersect caller scope before candidate limits and never expand authority.
+
+`gno_search`, `gno_vsearch`, `gno_query`, `gno_ask`, and `gno_context` expose
+`filter`. The strict discriminated contract is recorded in
+[metadata-predicate.schema.json](output-schemas/metadata-predicate.schema.json).
+See [Typed metadata filters](../docs/TYPED-METADATA.md) for exact membership,
+missing-field, invalid-document, and bounded-input semantics.

@@ -8,6 +8,7 @@ export interface QueryModeEntry {
 }
 
 export interface RetrievalFiltersState {
+  filter?: string;
   collection: string;
   intent: string;
   candidateLimit: string;
@@ -123,6 +124,7 @@ export function parseFiltersFromSearch(
   const tags = parseTagsCsv(tagsAll ?? tagsAny ?? "");
 
   return {
+    filter: params.get("filter") ?? defaults.filter ?? "",
     collection: params.get("collection") ?? defaults.collection ?? "",
     intent: params.get("intent") ?? defaults.intent ?? "",
     candidateLimit:
@@ -151,6 +153,7 @@ export function applyFiltersToUrl(
     }
   };
 
+  setOrDelete("filter", filters.filter ?? "");
   setOrDelete("collection", filters.collection);
   setOrDelete("intent", filters.intent);
   setOrDelete("candidateLimit", filters.candidateLimit);

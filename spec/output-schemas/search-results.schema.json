@@ -408,6 +408,18 @@
       "description": "Search metadata",
       "required": ["query", "mode", "totalResults"],
       "properties": {
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "message"],
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        },
         "query": {
           "type": "string",
           "description": "Original search query"

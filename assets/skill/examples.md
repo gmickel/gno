@@ -467,3 +467,18 @@ Press **N** in `gno serve`, write the note, and open **Source** only when you
 need provenance fields such as URL, author, observed date, or external id. The
 success view reports the write result, FTS sync state, and embed state
 separately.
+
+## Custom metadata filters
+
+Find Atlas decisions reviewed by both Ana and Sam:
+
+```bash
+gno query "rollout decision" --filter '{"op":"and","predicates":[{"op":"eq","key":"project","value":"atlas"},{"op":"all","key":"reviewers","values":["ana","sam"]}]}'
+```
+
+This requires indexed nested `gno.metadata` with `project: atlas` and a
+`reviewers` string array. To include documents without a status, use
+`{"op":"not","predicate":{"op":"eq","key":"status","value":"archived"}}`.
+To require a present non-archived string status, use
+`{"op":"ne","key":"status","value":"archived"}`. Invalid metadata matches
+neither; check coverage and diagnose before relaxing the query.

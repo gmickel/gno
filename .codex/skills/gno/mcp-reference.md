@@ -201,3 +201,19 @@ transport session, never from tool arguments.
 gno mcp uninstall
 gno mcp uninstall -t claude-code
 ```
+
+## Custom metadata filters
+
+`gno_search`, `gno_vsearch`, `gno_query`, `gno_ask`, and `gno_context` accept
+`filter` alongside their existing scope fields:
+
+```json
+{
+  "query": "rollout",
+  "filter": { "op": "gte", "key": "confidence", "value": 0.8 }
+}
+```
+
+Pass the object, not a JSON-encoded string. Preserve the filter on retries;
+inspect coverage warnings rather than silently broadening retrieval. See
+SKILL.md for strict types and missing-field semantics.

@@ -1,5 +1,7 @@
 /** Deterministic set-like retrieval-filter normalization before persistence. */
 
+import { normalizeMetadataPredicate } from "./typed-metadata";
+
 const SET_ARRAY_KEYS = [
   "categories",
   "collections",
@@ -23,5 +25,7 @@ export const canonicalizeRetrievalTraceFilters = <
       normalized[key] = [...new Set(values)].sort(compareCodeUnits);
     }
   }
+  if (filters.filter !== undefined)
+    normalized.filter = normalizeMetadataPredicate(filters.filter);
   return normalized as Filters;
 };

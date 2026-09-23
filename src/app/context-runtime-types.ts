@@ -3,6 +3,7 @@ import type { ContextCapsuleV1 } from "../core/context-capsule";
 import type { ContextEvidenceCompilerDeps } from "../core/context-evidence";
 import type { ContextVerifierDeps } from "../core/context-verifier";
 import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
+import type { MetadataPredicate } from "../core/typed-metadata";
 import type { EmbeddingPort, RerankPort } from "../llm/types";
 import type { RequestHydration } from "../pipeline/hydration";
 import type { ProjectAffinityScoringInput } from "../pipeline/project-affinity";
@@ -22,6 +23,7 @@ export interface ContextCapsuleBuildInput {
   tagsAll?: string[];
   tagsAny?: string[];
   categories?: string[];
+  filter?: MetadataPredicate;
   author?: string;
   lang?: string;
   intent?: string;

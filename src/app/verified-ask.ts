@@ -184,6 +184,7 @@ export const buildVerifiedAsk = async (
       tagsAll: options.tagsAll,
       tagsAny: options.tagsAny,
       categories: options.categories,
+      filter: options.filter,
       author: options.author,
       lang: options.lang,
       intent: options.intent,

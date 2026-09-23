@@ -1062,3 +1062,15 @@ gno completion output <bash|zsh|fish>
 | 1    | Validation error (bad args)                                          |
 | 2    | Runtime error (IO, DB, model)                                        |
 | 3    | `NOT_RUNNING` — `--status` / `--stop` found no live matching process |
+
+## Custom metadata filters
+
+```bash
+gno search "rollout" --filter '{"op":"eq","key":"status","value":"approved"}'
+gno query diagnose "rollout" --target gno://docs/decision.md --filter '{"op":"gte","key":"confidence","value":0.8}'
+```
+
+The same `--filter` JSON works on `vsearch`, `query`, `ask`, and `context build`.
+Use only indexed `gno.metadata` fields. See SKILL.md for strict types,
+missing-field semantics, and diagnose-before-relaxing guidance. Repair metadata
+with `gno update` when authorized; no predicate expands existing scope.

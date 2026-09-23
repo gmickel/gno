@@ -658,3 +658,100 @@ describe("Context Capsule V1 contract", () => {
     ).toThrow();
   });
 });
+
+test("Capsule 1.2 binds canonical typed predicates while legacy contracts reject them", async () => {
+  const legacy = buildPayload();
+  const lineage = createEgressLineage([
+    { collection: "notes", policy: "local_only", source: "explicit" },
+  ]);
+  const filter = {
+    op: "in" as const,
+    key: "project",
+    values: ["beta", "alpha", "beta"],
+  };
+  const payload = {
+    ...legacy,
+    schemaVersion: "1.2" as const,
+    scope: { ...legacy.scope, filter },
+    retrieval: {
+      ...legacy.retrieval,
+      request: { ...legacy.retrieval.request, filter },
+    },
+    egressLineage: lineage,
+    evidence: legacy.evidence.map((item) => ({
+      ...item,
+      egressLineage: lineage,
+    })),
+  };
+  const capsule = createContextCapsuleV1(payload);
+  const same = createContextCapsuleV1({
+    ...payload,
+    scope: {
+      ...payload.scope,
+      filter: { ...filter, values: ["alpha", "beta"] },
+    },
+  });
+  expect(capsule.schemaVersion).toBe("1.2");
+  expect(same.capsuleId).toBe(capsule.capsuleId);
+  expect(parseCanonicalContextCapsuleForVerification(capsule)).toBeDefined();
+  const changedFilter = { ...filter, values: ["gamma"] };
+  const changed = createContextCapsuleV1({
+    ...payload,
+    scope: { ...payload.scope, filter: changedFilter },
+    retrieval: {
+      ...payload.retrieval,
+      request: { ...payload.retrieval.request, filter: changedFilter },
+    },
+  });
+  expect(changed.capsuleId).not.toBe(capsule.capsuleId);
+  expect(() =>
+    createContextCapsuleV1({
+      ...payload,
+      retrieval: {
+        ...payload.retrieval,
+        request: { ...payload.retrieval.request, filter: changedFilter },
+      },
+    })
+  ).toThrow();
+  expect(() =>
+    createContextCapsuleV1({ ...payload, schemaVersion: "1.1" })
+  ).toThrow();
+  expect(() =>
+    parseContextCapsuleV1({
+      ...capsule,
+      scope: { ...capsule.scope, filter: changedFilter },
+    })
+  ).toThrow();
+  const schema = await loadSchema("context-capsule-v1");
+  assertValid(capsule, schema);
+  const incomplete = createContextCapsuleV1({
+    ...payload,
+    coverage: { ...payload.coverage, complete: false },
+    warnings: [
+      ...payload.warnings,
+      { code: "incomplete_coverage" },
+      { code: "metadata_coverage_incomplete" },
+    ],
+  });
+  assertValid(incomplete, schema);
+  expect(incomplete.capsuleId).not.toBe(capsule.capsuleId);
+  expect(parseCanonicalContextCapsuleForVerification(incomplete)).toBeDefined();
+  expect(() =>
+    parseContextCapsuleV1({ ...incomplete, warnings: capsule.warnings })
+  ).toThrow();
+  const legacyWarning = {
+    ...createContextCapsuleV1(legacy),
+    warnings: [{ code: "metadata_coverage_incomplete" }],
+  };
+  assertInvalid(legacyWarning, schema);
+  expect(() =>
+    createContextCapsuleV1({
+      ...legacy,
+      warnings: [{ code: "metadata_coverage_incomplete" }],
+    })
+  ).toThrow();
+  assertInvalid({ ...capsule, schemaVersion: "1.1" }, schema);
+  const { filter: omitted, ...scope } = payload.scope;
+  expect(omitted).toEqual(filter);
+  assertInvalid({ ...capsule, scope }, schema);
+});

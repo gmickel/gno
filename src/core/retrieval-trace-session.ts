@@ -380,7 +380,11 @@ export class RetrievalTraceSession {
     latencyMs?: number
   ): Promise<StoreResult<"inserted" | "duplicate" | "disabled">> {
     if (!this.hasCapacity(2)) return ok("disabled");
-    if (capsule.schemaVersion === "1.0" || capsule.schemaVersion === "1.1") {
+    if (
+      capsule.schemaVersion === "1.0" ||
+      capsule.schemaVersion === "1.1" ||
+      capsule.schemaVersion === "1.2"
+    ) {
       const widened = await this.ensureLineageCoverage([
         contextCapsuleEgressLineage(capsule),
       ]);

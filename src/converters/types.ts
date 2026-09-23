@@ -1,3 +1,4 @@
+import type { TypedMetadata } from "../core/typed-metadata";
 /**
  * Converter subsystem types.
  * PRD §8.2 - Converter interfaces
@@ -157,6 +158,7 @@ export const RECORD_METADATA_LIMITS = {
 
 /** Metadata shared by export adapters and later search/get projections. */
 export interface RecordMetadata {
+  custom?: TypedMetadata;
   author?: string;
   participants?: string[];
   categories?: string[];

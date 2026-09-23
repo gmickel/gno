@@ -1,6 +1,7 @@
 import type { NormalizedContentTypeRule } from "../config";
 import type { Collection } from "../config/types";
 import type { RecordAdapter, RecordMetadata } from "../converters/types";
+import type { TypedMetadata } from "../core/typed-metadata";
 import type {
   ChunkInput,
   DocumentRow,
@@ -36,6 +37,8 @@ interface RecordDocumentMetadata {
   author?: string;
   frontmatterDate?: string;
   dateFields?: Record<string, string>;
+  typedMetadata?: TypedMetadata;
+  metadataError?: string;
 }
 
 interface RecordContainerInput {
@@ -376,6 +379,12 @@ const persistRecord = async (
         author: record.metadata?.author ?? inferred.author,
         frontmatterDate: primaryDate(dateFields) ?? inferred.frontmatterDate,
         dateFields,
+        typedMetadata: record.metadataError
+          ? undefined
+          : (record.typedMetadata ?? inferred.typedMetadata),
+        metadataError:
+          record.metadataError ??
+          (record.typedMetadata ? undefined : inferred.metadataError),
         recordKey: record.recordKey,
         recordSourcePath: input.entry.relPath,
         recordSourceLocator: record.sourceLocator,

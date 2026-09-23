@@ -142,7 +142,9 @@ test("Ask retains frozen before-source output, citation provenance and actual mo
   expect(sha256Text(JSON.stringify(hydrationLongDocument()))).toBe(pin.sha256);
   expect(before.manifest.fixtures[1]?.sha256).toBe(fixtureHash);
   const after = [];
-  for (const caseId of askCases) after.push(await captureAsk(caseId, true));
+  // ask-before.json was captured at index schema 29. Hold only that identity
+  // field constant so this test remains an exact hydration/ranking/input gate.
+  for (const caseId of askCases) after.push(await captureAsk(caseId, true, 29));
   const records = after.map((run) => run.record);
   expect(
     compareAcceptance(

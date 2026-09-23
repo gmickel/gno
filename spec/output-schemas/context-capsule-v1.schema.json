@@ -27,7 +27,11 @@
   "allOf": [
     {
       "if": {
-        "properties": { "schemaVersion": { "const": "1.1" } },
+        "properties": {
+          "schemaVersion": {
+            "enum": ["1.1", "1.2"]
+          }
+        },
         "required": ["schemaVersion"]
       },
       "then": {
@@ -38,7 +42,9 @@
             "type": "array",
             "items": {
               "allOf": [
-                { "$ref": "#/definitions/evidence" },
+                {
+                  "$ref": "#/definitions/evidence"
+                },
                 {
                   "type": "object",
                   "required": ["egressLineage"],
@@ -66,7 +72,9 @@
             "type": "array",
             "items": {
               "allOf": [
-                { "$ref": "#/definitions/evidence" },
+                {
+                  "$ref": "#/definitions/evidence"
+                },
                 {
                   "not": {
                     "type": "object",
@@ -140,10 +148,93 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": {
+            "const": "1.2"
+          }
+        },
+        "required": ["schemaVersion"]
+      },
+      "then": {
+        "properties": {
+          "scope": {
+            "type": "object",
+            "required": ["filter"],
+            "properties": {
+              "filter": {}
+            }
+          },
+          "retrieval": {
+            "type": "object",
+            "properties": {
+              "request": {
+                "type": "object",
+                "required": ["filter"],
+                "properties": {
+                  "filter": {}
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "enum": [
+                    "incomplete_coverage",
+                    "omissions_truncated",
+                    "token_estimate_used"
+                  ]
+                }
+              }
+            }
+          },
+          "scope": {
+            "type": "object",
+            "not": {
+              "required": ["filter"],
+              "properties": {
+                "filter": {}
+              }
+            },
+            "properties": {
+              "filter": {}
+            }
+          },
+          "retrieval": {
+            "type": "object",
+            "properties": {
+              "request": {
+                "type": "object",
+                "not": {
+                  "required": ["filter"],
+                  "properties": {
+                    "filter": {}
+                  }
+                },
+                "properties": {
+                  "filter": {}
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "properties": {
-    "schemaVersion": { "enum": ["1.0", "1.1"] },
+    "schemaVersion": {
+      "enum": ["1.0", "1.1", "1.2"]
+    },
     "coordinateSpace": { "const": "canonical_mirror" },
     "capsuleId": { "$ref": "#/definitions/sha256" },
     "egressLineage": { "$ref": "#/definitions/egressLineage" },
@@ -171,15 +262,22 @@
         },
         "uriPrefix": {
           "oneOf": [
-            { "$ref": "#/definitions/gnoPrefixUri" },
-            { "type": "null" }
+            {
+              "$ref": "#/definitions/gnoPrefixUri"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "tagsAll": { "$ref": "#/definitions/filterValues" },
         "tagsAny": { "$ref": "#/definitions/filterValues" },
         "categories": { "$ref": "#/definitions/filterValues" },
         "since": { "$ref": "#/definitions/nullableDate" },
-        "until": { "$ref": "#/definitions/nullableDate" }
+        "until": { "$ref": "#/definitions/nullableDate" },
+        "filter": {
+          "$ref": "gno://schemas/metadata-predicate@1.0"
+        }
       }
     },
     "budget": {
@@ -223,7 +321,9 @@
         "indexSnapshot"
       ],
       "properties": {
-        "depthPolicy": { "enum": ["fast", "balanced", "thorough"] },
+        "depthPolicy": {
+          "enum": ["fast", "balanced", "thorough"]
+        },
         "facets": { "$ref": "#/definitions/facets" },
         "queryVariants": {
           "type": "array",
@@ -246,20 +346,38 @@
           "properties": {
             "author": {
               "oneOf": [
-                { "type": "string", "minLength": 1, "maxLength": 256 },
-                { "type": "null" }
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "lang": {
               "oneOf": [
-                { "type": "string", "minLength": 1, "maxLength": 64 },
-                { "type": "null" }
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "intent": {
               "oneOf": [
-                { "type": "string", "minLength": 1, "maxLength": 16384 },
-                { "type": "null" }
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 16384
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "exclude": {
@@ -269,8 +387,14 @@
             },
             "minScore": {
               "oneOf": [
-                { "type": "number", "minimum": 0, "maximum": 1 },
-                { "type": "null" }
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "queryModes": {
@@ -281,7 +405,10 @@
             "limit": { "type": "integer", "minimum": 1 },
             "candidateLimit": { "type": "integer", "minimum": 1 },
             "graphRequested": { "type": "boolean" },
-            "rerankRequested": { "type": "boolean" }
+            "rerankRequested": { "type": "boolean" },
+            "filter": {
+              "$ref": "gno://schemas/metadata-predicate@1.0"
+            }
           }
         },
         "capabilityStates": {
@@ -382,7 +509,8 @@
             "enum": [
               "incomplete_coverage",
               "omissions_truncated",
-              "token_estimate_used"
+              "token_estimate_used",
+              "metadata_coverage_incomplete"
             ]
           }
         }
@@ -414,7 +542,9 @@
           "minimum": 0,
           "maximum": 9007199254740991
         },
-        "disposition": { "enum": ["inline", "attachment"] },
+        "disposition": {
+          "enum": ["inline", "attachment"]
+        },
         "sha256": { "$ref": "#/definitions/sha256" }
       }
     },
@@ -484,10 +614,25 @@
     },
     "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "nullableSha256": {
-      "oneOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }]
+      "oneOf": [
+        {
+          "$ref": "#/definitions/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "nullableDate": {
-      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "gnoUri": {
       "type": "string",
@@ -511,7 +656,9 @@
       "additionalProperties": false,
       "required": ["effectivePolicy", "digest", "sources"],
       "properties": {
-        "effectivePolicy": { "enum": ["local_only", "lan", "remote"] },
+        "effectivePolicy": {
+          "enum": ["local_only", "lan", "remote"]
+        },
         "digest": { "$ref": "#/definitions/sha256" },
         "sources": {
           "type": "array",
@@ -523,7 +670,9 @@
             "required": ["collection", "policy", "source"],
             "properties": {
               "collection": { "$ref": "#/definitions/collection" },
-              "policy": { "enum": ["local_only", "lan", "remote"] },
+              "policy": {
+                "enum": ["local_only", "lan", "remote"]
+              },
               "source": {
                 "enum": ["explicit", "config_default", "legacy_default"]
               }
@@ -547,7 +696,9 @@
       "additionalProperties": false,
       "required": ["mode", "text"],
       "properties": {
-        "mode": { "enum": ["term", "intent", "hyde"] },
+        "mode": {
+          "enum": ["term", "intent", "hyde"]
+        },
         "text": { "type": "string", "minLength": 1, "maxLength": 4096 }
       }
     },
@@ -649,7 +800,9 @@
       "required": ["contextId", "scopeType", "scopeKey", "text"],
       "properties": {
         "contextId": { "$ref": "#/definitions/sha256" },
-        "scopeType": { "enum": ["global", "collection", "prefix"] },
+        "scopeType": {
+          "enum": ["global", "collection", "prefix"]
+        },
         "scopeKey": { "type": "string", "minLength": 1, "maxLength": 2048 },
         "text": { "type": "string", "minLength": 1, "maxLength": 16384 }
       },
@@ -710,8 +863,14 @@
         "uri": { "$ref": "#/definitions/gnoUri" },
         "docid": { "$ref": "#/definitions/docid" },
         "collection": { "$ref": "#/definitions/collection" },
-        "title": { "type": ["string", "null"], "maxLength": 2048 },
-        "heading": { "type": ["string", "null"], "maxLength": 2048 },
+        "title": {
+          "type": ["string", "null"],
+          "maxLength": 2048
+        },
+        "heading": {
+          "type": ["string", "null"],
+          "maxLength": 2048
+        },
         "startLine": { "type": "integer", "minimum": 1 },
         "endLine": { "type": "integer", "minimum": 1 },
         "text": { "type": "string", "minLength": 1 },
@@ -721,9 +880,17 @@
         "modifiedAt": { "$ref": "#/definitions/nullableDate" },
         "documentDate": {
           "oneOf": [
-            { "type": "string", "format": "date" },
-            { "type": "string", "format": "date-time" },
-            { "type": "null" }
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "observedAt": { "$ref": "#/definitions/nullableDate" },
@@ -832,8 +999,14 @@
         "candidateId": { "$ref": "#/definitions/sha256" },
         "uri": { "$ref": "#/definitions/gnoUri" },
         "docid": { "$ref": "#/definitions/docid" },
-        "startLine": { "type": ["integer", "null"], "minimum": 1 },
-        "endLine": { "type": ["integer", "null"], "minimum": 1 },
+        "startLine": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "endLine": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
         "passageHash": { "$ref": "#/definitions/nullableSha256" },
         "sourceHash": { "$ref": "#/definitions/sha256" },
         "mirrorHash": { "$ref": "#/definitions/sha256" },

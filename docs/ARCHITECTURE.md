@@ -627,3 +627,13 @@ Retrieval bulk-validates current eligible formatted inputs before distance ranki
 it does not approximate filtered top-K through global overfetch. This adds CPU
 hashing proportional to eligible owner/chunk bindings. The ranking pass uses the
 same eligible-domain exact-distance approach as other filtered vector queries.
+
+## Typed metadata eligibility
+
+Ingestion validates the opt-in `gno.metadata` map and persists its typed JSON
+and bounded error state per document. The existing ingestion version and repair
+path drive extraction upgrades. Shared predicate normalization feeds parameterized
+SQL eligibility before candidate budgets; no whole-corpus in-memory post-filter
+is needed. Authority and fixed filters remain conjunctive constraints.
+Capsule scope and private trace identity retain the predicate for verification
+and replay. See [Typed metadata filters](TYPED-METADATA.md).

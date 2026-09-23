@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-168-typed-metadata-predicates-across",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-23T08:36:25.143631Z",
   "created_at": "2026-09-21T20:53:41.926118Z",
   "default_impl": null,
   "default_review": null,
@@ -14,6 +14,7 @@
   "plan_review_rounds": 0,
   "plan_review_status": "ship",
   "plan_reviewed_at": "2026-09-21T22:24:23.507420Z",
+  "ready": true,
   "review_attempts": [
     {
       "artifact_sha256": "b2f1a76a30d05f6bd5479c9ea95f04f24300d391a6d9e8575850db50ad6dd0d6",
@@ -84,7 +85,7 @@
     "plan": 0
   },
   "spec_path": ".flow/specs/fn-168-typed-metadata-predicates-across.md",
-  "status": "open",
+  "status": "done",
   "title": "Typed metadata predicates across retrieval surfaces",
   "tracker": {
     "baseHashFlow": null,
@@ -97,5 +98,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-21T22:24:23.507897Z"
+  "updated_at": "2026-09-23T08:37:27.287204Z"
 }

@@ -99,6 +99,8 @@ describe("verified Ask application boundary", () => {
             mirrorHash,
             title: "Launch decision",
             languageHint: "en",
+            typedMetadata: { project: "atlas" },
+            ingestVersion: 7,
             contentType: "decision",
             contentTypeSource: "frontmatter-type",
           })
@@ -183,10 +185,31 @@ describe("verified Ask application boundary", () => {
       );
       expect(evidencePlan.selected).toHaveLength(1);
 
+      // A second eligible lexical owner must not enter filtered evidence.
+      expect(
+        (
+          await store.upsertDocument({
+            collection: "notes",
+            relPath: "wrong-project.md",
+            sourceHash: sha256Text("other source"),
+            sourceMime: "text/markdown",
+            sourceExt: ".md",
+            sourceSize: content.length,
+            sourceMtime: "2026-07-22T10:00:00.000Z",
+            mirrorHash,
+            languageHint: "en",
+            typedMetadata: { project: "other" },
+            ingestVersion: 7,
+          })
+        ).ok
+      ).toBe(true);
+      const filter = { op: "eq" as const, key: "project", value: "atlas" };
+
       const result = await buildVerifiedAsk(
         "Mina",
         {
           verify: true,
+          filter,
           collection: "notes",
           lang: "en",
           intent: "decision ownership",
@@ -209,7 +232,13 @@ describe("verified Ask application boundary", () => {
         }
       );
 
+      expect(result.verification?.capsule.schemaVersion).toBe("1.2");
+      expect(result.verification?.capsule.scope).toMatchObject({ filter });
+      expect(
+        result.verification?.capsule.evidence.map(({ uri }) => uri)
+      ).toEqual(["gno://notes/decision.md"]);
       expect(result.verification?.capsule.retrieval.request).toMatchObject({
+        filter,
         lang: "en",
         intent: "decision ownership",
         exclude: ["hiring"],

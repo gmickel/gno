@@ -122,6 +122,7 @@ export const retrievalTraceFilters = (
       since: options.since,
       until: options.until,
       categories: options.categories,
+      filter: options.filter,
       author: options.author,
       intent: options.intent,
       exclude: options.exclude,

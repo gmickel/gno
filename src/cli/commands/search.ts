@@ -113,6 +113,7 @@ export async function search(
         until: options.until,
         categories: options.categories,
         author: options.author,
+        filter: options.filter,
         intent: options.intent,
         exclude: options.exclude,
       },

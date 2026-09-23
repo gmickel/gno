@@ -22,6 +22,10 @@ import {
   attachRetrievalTraceMetadata,
   type RetrievalTraceSession,
 } from "../../core/retrieval-trace-session";
+import {
+  normalizeMetadataPredicate,
+  type MetadataPredicate,
+} from "../../core/typed-metadata";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
@@ -46,6 +50,7 @@ interface VsearchInput {
   until?: string;
   categories?: string[];
   author?: string;
+  filter?: MetadataPredicate;
   tagsAll?: string[];
   tagsAny?: string[];
 }
@@ -151,6 +156,10 @@ export function handleVsearch(
         until: args.until,
         categories: args.categories,
         author: args.author,
+        filter:
+          args.filter === undefined
+            ? undefined
+            : normalizeMetadataPredicate(args.filter),
         tagsAll: normalizeTagFilters(args.tagsAll),
         tagsAny: normalizeTagFilters(args.tagsAny),
         projectAffinity,

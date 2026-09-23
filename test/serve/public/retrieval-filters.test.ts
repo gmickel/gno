@@ -55,6 +55,7 @@ describe("retrieval filters", () => {
       "?collection=notes&intent=web%20performance&candidateLimit=12&exclude=reviews,onboarding&since=2025-01-01&until=2025-12-31&category=engineering&author=gordon&tagsAll=project/alpha,urgent&qm=term:vector%20search&qm=intent:find%20best%20docs"
     );
     expect(source).toEqual({
+      filter: "",
       collection: "notes",
       intent: "web performance",
       candidateLimit: "12",

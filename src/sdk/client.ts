@@ -1,9 +1,10 @@
-import { mkdir } from "node:fs/promises";
 /**
  * GNO SDK client.
  *
  * @module src/sdk/client
  */
+
+import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import type { Config } from "../config/types";
@@ -152,6 +153,10 @@ import {
 } from "../core/sections";
 import { normalizeStructuredQueryInput } from "../core/structured-query";
 import { parseAndValidateTagFilter } from "../core/tags";
+import {
+  normalizeMetadataPredicate,
+  type MetadataPredicate,
+} from "../core/typed-metadata";
 import { writeLeasePath } from "../core/write-lease";
 import {
   defaultSyncService,
@@ -205,6 +210,17 @@ interface RuntimePorts {
   rerankPort: RerankPort | null;
   vectorIndex: VectorIndexPort | null;
 }
+
+const normalizeSdkMetadataFilter = (value: unknown): MetadataPredicate => {
+  try {
+    return normalizeMetadataPredicate(value);
+  } catch (error) {
+    throw sdkError(
+      "VALIDATION",
+      `filter: ${error instanceof Error ? error.message : "Invalid predicate"}`
+    );
+  }
+};
 
 const resolveSdkProjectAffinity = async (
   config: Config,
@@ -640,6 +656,8 @@ class GnoClientImpl implements GnoClient {
     let traceSession: RetrievalTraceSession | null = null;
     try {
       const { projectHints, ...searchOptions } = options;
+      if (searchOptions.filter !== undefined)
+        searchOptions.filter = normalizeSdkMetadataFilter(searchOptions.filter);
       const projectAffinity = await resolveSdkProjectAffinity(
         this.config,
         projectHints
@@ -695,6 +713,8 @@ class GnoClientImpl implements GnoClient {
 
     try {
       const { projectHints, ...searchOptions } = options;
+      if (searchOptions.filter !== undefined)
+        searchOptions.filter = normalizeSdkMetadataFilter(searchOptions.filter);
       const projectAffinity = await resolveSdkProjectAffinity(
         this.config,
         projectHints
@@ -826,6 +846,8 @@ class GnoClientImpl implements GnoClient {
 
     try {
       const { projectHints, ...queryOptions } = options;
+      if (queryOptions.filter !== undefined)
+        queryOptions.filter = normalizeSdkMetadataFilter(queryOptions.filter);
       const projectAffinity = await resolveSdkProjectAffinity(
         this.config,
         projectHints
@@ -954,6 +976,8 @@ class GnoClientImpl implements GnoClient {
     const hydration = new RequestHydration(this.store);
     try {
       const { projectHints, ...askOptions } = options;
+      if (askOptions.filter !== undefined)
+        askOptions.filter = normalizeSdkMetadataFilter(askOptions.filter);
       const projectAffinity = await resolveSdkProjectAffinity(
         this.config,
         projectHints
@@ -1046,6 +1070,7 @@ class GnoClientImpl implements GnoClient {
             until: options.until,
             categories: options.categories,
             author: options.author,
+            filter: askOptions.filter,
             tagsAll: options.tagsAll,
             tagsAny: options.tagsAny,
             exclude: options.exclude,
@@ -1151,6 +1176,8 @@ class GnoClientImpl implements GnoClient {
   async context(input: GnoContextInput): Promise<GnoContextResult> {
     this.assertOpen();
     const { projectHints, ...contextInput } = input;
+    if (contextInput.filter !== undefined)
+      contextInput.filter = normalizeSdkMetadataFilter(contextInput.filter);
     validateContextCapsuleBuildInput(
       { ...contextInput, indexName: this.indexName },
       this.indexName,
@@ -1189,6 +1216,7 @@ class GnoClientImpl implements GnoClient {
             until: input.until,
             categories: input.categories,
             author: input.author,
+            filter: contextInput.filter,
             graph: input.graph,
             candidateLimit: input.candidateLimit,
             queryModes: input.queryModes,

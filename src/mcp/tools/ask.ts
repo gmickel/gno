@@ -1,6 +1,5 @@
-/** MCP verified Ask tool over the shared closed-evidence application boundary. */
-
 import { z } from "zod";
+/** MCP verified Ask tool over the shared closed-evidence application boundary. */
 
 import type { RetrievalTraceSession } from "../../core/retrieval-trace-session";
 import type { QueryModeInput } from "../../pipeline/types";
@@ -16,6 +15,10 @@ import {
 } from "../../core/retrieval-trace-request";
 import { attachRetrievalTraceMetadata } from "../../core/retrieval-trace-session";
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
+import {
+  metadataPredicateSchema,
+  normalizeMetadataPredicate,
+} from "../../core/typed-metadata";
 import { resolveModelUri } from "../../llm/registry";
 import { answerTraceTerminalStatus } from "../../pipeline/answer";
 import { createMcpModelPorts, type McpModelPortFactory } from "./context";
@@ -41,6 +44,7 @@ export const askInputSchema = z
     candidateLimit: z.number().int().min(1).max(100).optional(),
     exclude: z.array(z.string()).optional(),
     queryModes: z.array(queryModeSchema).optional(),
+    filter: metadataPredicateSchema.optional(),
     tagsAll: z.array(z.string()).optional(),
     tagsAny: z.array(z.string()).optional(),
     since: z.string().optional(),
@@ -163,6 +167,10 @@ export const handleAsk = (
       );
       const options = {
         ...askInput,
+        filter:
+          args.filter === undefined
+            ? undefined
+            : normalizeMetadataPredicate(args.filter),
         projectAffinity,
         queryModes:
           normalized.value.queryModes.length > 0

@@ -1967,3 +1967,20 @@ For hybrid queries, embedding/index failures retain lexical fallback but cannot
 claim `vectorsUsed: true` unless a vector search succeeded. A real zero-match vector
 search remains a successful operation. Native worker failures are contained in the
 host and follow each tool's existing error or fallback contract.
+
+## Custom metadata filters
+
+`gno_search`, `gno_vsearch`, `gno_query`, `gno_ask`, and `gno_context` accept
+`filter` as a typed object. For example, call `gno_search` with:
+
+```json
+{
+  "query": "rollout",
+  "filter": { "op": "eq", "key": "status", "value": "approved" }
+}
+```
+
+Use the tool's existing scope fields alongside the predicate. Invalid predicates
+fail validation; missing metadata is not an excuse to drop the filter. See
+[Typed metadata filters](TYPED-METADATA.md) for exact types, bounded schemas,
+coverage warnings, and the difference between `ne` and `not(eq)`.

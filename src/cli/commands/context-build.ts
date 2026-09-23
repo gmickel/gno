@@ -124,6 +124,7 @@ export const contextBuild = async (
         until: options.until,
         categories: options.categories,
         author: options.author,
+        filter: options.filter,
         graph: options.graph,
         candidateLimit: options.candidateLimit,
         queryModes: options.queryModes,

@@ -533,3 +533,18 @@ open-ended answer-quality claim.
 remains null because the reused generation port does not expose decoder token
 usage; no byte heuristic is presented as actual output-token usage. Older
 observation bundles without these fields replay with explicit null values.
+
+## Typed metadata eligibility gate
+
+`bun evals/acceptance/typed-metadata.ts --output /tmp/typed-metadata.json`
+runs a pinned, offline correctness gate against SQLite and sqlite-vec at
+100, 1,000 and 10,000 documents. It requires exact membership/top-K parity
+with an exhaustive eligible-set oracle, zero scope leaks and unchanged
+unfiltered results. The fixtures and thresholds live in
+`evals/fixtures/typed-metadata/`.
+
+Add `--negative-control` with a different output path to verify that treating
+unfiltered results as selective results fails the gate (exit 1). Reports retain
+fixture/runtime identity and descriptive extraction/query timings and process
+RSS. Fixed vectors isolate filtering correctness; this does not certify
+native-model relevance or answer quality. Output paths must be new.

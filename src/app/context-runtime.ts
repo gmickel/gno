@@ -63,6 +63,7 @@ export const buildContextCapsule = async (
     deps.config.collections.map((collection) => collection.name)
   );
   const noRerank = normalized.depthPolicy === "fast" || normalized.noRerank;
+  let metadataCoverageIncomplete = false;
   const plan = await compileContextEvidence<ContextCapsuleV1>(
     {
       goal: normalized.goal,
@@ -74,6 +75,7 @@ export const buildContextCapsule = async (
       tagsAll: normalized.tagsAll,
       tagsAny: normalized.tagsAny,
       categories: normalized.categories,
+      filter: normalized.filter,
       author: normalized.author ?? undefined,
       lang: normalized.lang ?? undefined,
       intent: normalized.intent ?? undefined,
@@ -104,8 +106,14 @@ export const buildContextCapsule = async (
             store: deps.store,
             hydration: deps.hydration,
             config: deps.config,
-            vectorIndex: deps.vectorIndex ?? null,
-            embedPort: deps.embedPort ?? null,
+            vectorIndex:
+              normalized.depthPolicy === "fast"
+                ? null
+                : (deps.vectorIndex ?? null),
+            embedPort:
+              normalized.depthPolicy === "fast"
+                ? null
+                : (deps.embedPort ?? null),
             expandPort: null,
             rerankPort: requestNoRerank ? null : (deps.rerankPort ?? null),
           },
@@ -124,10 +132,26 @@ export const buildContextCapsule = async (
             result.error.cause
           );
         }
+        if (
+          normalized.filter &&
+          result.value.meta.warnings?.some(
+            (warning) =>
+              warning.code === "METADATA_COVERAGE_UNKNOWN" ||
+              warning.code === "METADATA_COVERAGE_INCOMPLETE"
+          )
+        ) {
+          metadataCoverageIncomplete = true;
+        }
         return result.value;
       },
       projectCanonical: (draft, snapshots) =>
-        projectContextCapsule(draft, snapshots, normalized, deps),
+        projectContextCapsule(
+          draft,
+          snapshots,
+          normalized,
+          deps,
+          metadataCoverageIncomplete
+        ),
     }
   );
   if (!plan.projection) {
