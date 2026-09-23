@@ -45,3 +45,52 @@ test("Windows process observation uses fixed script and validates PID data", () 
     "Invalid observed PIDs"
   );
 });
+
+test("private evidence setup completes in an IPC child with the native worker environment", async () => {
+  const { nativeWorkerEnvironment } =
+    await import("../../../src/llm/native-worker/runtime-config");
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-private-child-"))
+  );
+  const helper = Bun.fileURLToPath(
+    new URL("../../../evals/acceptance/windows-observation.ts", import.meta.url)
+  );
+  let reported = false;
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      "--no-env-file",
+      "--eval",
+      `
+      import {privateCapturePath} from ${JSON.stringify(helper)};
+      privateCapturePath(${JSON.stringify(root)}, true);
+      process.send("private", () => process.disconnect());
+    `,
+    ],
+    {
+      env: nativeWorkerEnvironment(),
+      stdout: "pipe",
+      stderr: "pipe",
+      timeout: 15000,
+      ipc(message) {
+        if (message === "private") reported = true;
+      },
+    }
+  );
+  try {
+    const [stderr, code] = await Promise.all([
+      new Response(child.stderr).text(),
+      child.exited,
+    ]);
+    expect({ code, stderr, reported }).toEqual({
+      code: 0,
+      stderr: "",
+      reported: true,
+    });
+    privateCapturePath(root);
+  } finally {
+    if (child.exitCode === null) child.kill("SIGKILL");
+    await child.exited;
+    await rm(root, { recursive: true, force: true });
+  }
+}, 20000);

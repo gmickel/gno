@@ -285,11 +285,13 @@ export async function persistSetupReceipt(
   try {
     tempFile = await open(tempPath, "wx", 0o600);
     await tempFile.writeFile(serializeSetupReceipt(receipt), "utf8");
+    // Set permissions before publication. Opening the shared destination for
+    // chmod can prevent a concurrent atomic replacement on Windows.
+    await tempFile.chmod(0o600);
     await tempFile.sync();
     await tempFile.close();
     tempFile = null;
     await rename(tempPath, receipt.paths.receipt);
-    await chmod(receipt.paths.receipt, 0o600);
   } catch (error) {
     await tempFile?.close().catch(() => {
       /* best-effort temporary receipt handle cleanup */

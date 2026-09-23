@@ -760,27 +760,32 @@ describe("gno audit CLI", () => {
     expect(await runCli(["bun", "gno", "audit", "--json"])).toBe(2);
   });
 
-  test("writes an explicitly requested private report artifact", async () => {
-    const reportPath = join(root, "audit.json");
-    await Bun.write(reportPath, "pre-existing\n");
-    await chmod(reportPath, 0o644);
-    const originalInode = (await stat(reportPath)).ino;
-    const code = await runCli([
-      "bun",
-      "gno",
-      "audit",
-      "links",
-      "--json",
-      "--output",
-      reportPath,
-    ]);
-    expect(code).toBe(0);
-    expect(JSON.parse(await Bun.file(reportPath).text()).schemaVersion).toBe(
-      "1.0"
-    );
-    if (process.platform === "win32")
-      expect(() => windowsPrivatePath(reportPath)).not.toThrow();
-    else expect((await stat(reportPath)).mode & 0o777).toBe(0o600);
-    expect((await stat(reportPath)).ino).not.toBe(originalInode);
-  });
+  // Three bounded Windows ACL subprocesses may each consume up to 10 seconds.
+  test(
+    "writes an explicitly requested private report artifact",
+    async () => {
+      const reportPath = join(root, "audit.json");
+      await Bun.write(reportPath, "pre-existing\n");
+      await chmod(reportPath, 0o644);
+      const originalInode = (await stat(reportPath)).ino;
+      const code = await runCli([
+        "bun",
+        "gno",
+        "audit",
+        "links",
+        "--json",
+        "--output",
+        reportPath,
+      ]);
+      expect(code).toBe(0);
+      expect(JSON.parse(await Bun.file(reportPath).text()).schemaVersion).toBe(
+        "1.0"
+      );
+      if (process.platform === "win32")
+        expect(() => windowsPrivatePath(reportPath)).not.toThrow();
+      else expect((await stat(reportPath)).mode & 0o777).toBe(0o600);
+      expect((await stat(reportPath)).ino).not.toBe(originalInode);
+    },
+    process.platform === "win32" ? 35000 : 5000
+  );
 });

@@ -105,7 +105,8 @@ Writes are refused in non-primary agent contexts (`cron`, `subagent`,
 
 Every `gno_remember` call after a recall in the same session presents that
 recall's receipt (`gno remember --receipt <file>`): the provider keeps the
-latest `recall --json` receipt per session, writes it to a `0600` temp file
+latest `recall --json` receipt per session, writes it to a private temp file
+(`0600` on POSIX; a protected user-only DACL applied at creation on Windows)
 for the duration of the call, and removes it afterwards. GNO uses it to
 reject a recalled span replayed as a "new" fact (`MEMORY_FENCED_REPLAY`);
 recalled spans are context, not new facts. A session switch drops the

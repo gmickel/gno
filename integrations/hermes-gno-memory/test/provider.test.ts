@@ -178,7 +178,10 @@ interface ReceiptSeen {
 async function receiptsSeen(fx: Fixture): Promise<ReceiptSeen[]> {
   return (await logLines(fx)).filter(
     (line): line is ReceiptSeen =>
-      !Array.isArray(line) && typeof line === "object" && line !== null
+      !Array.isArray(line) &&
+      typeof line === "object" &&
+      line !== null &&
+      "receipt" in line
   );
 }
 
@@ -311,7 +314,12 @@ describe.skipIf(!PYTHON)("hermes gno memory provider", () => {
     expect(receiptPath).toMatch(/hermes-gno-receipt-.*\.json$/);
     const [seen] = await receiptsSeen(fx);
     expect(seen?.path).toBe(receiptPath);
-    expect(seen?.private).toBe(true);
+    if (!seen?.private) {
+      throw new Error(
+        `Receipt privacy failed: ${await readFile(fx.log, "utf-8")}`
+      );
+    }
+    expect(seen.private).toBe(true);
     if (process.platform !== "win32") expect(seen?.mode).toBe("0o600");
     expect(seen?.receipt).toMatchObject({
       caller: "hermes:ivan",

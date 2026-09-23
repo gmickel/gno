@@ -127,6 +127,7 @@ def receipt_private(path):
     )
     user_sid = next(csv.reader([identity.stdout.strip()]))[1]
     allowed = {user_sid, "SY", "BA"}
+    log({"receiptAcl": acl, "receiptUserSid": user_sid})
     entries = [entry.split(";") for entry in re.findall(r"\(([^()]*)\)", acl)]
     # No/null DACL and unfamiliar ACE forms fail closed. Ordinary deny entries
     # grant nothing; every allow entry must name the user, SYSTEM or admins.

@@ -1,0 +1,55 @@
+{
+  "run": 35894456008,
+  "job": 107294899591,
+  "head": "1231b0af8a2fbe6c25ca7aad510ec89febc562af",
+  "complete": true,
+  "bun": "1.4.2",
+  "pass": 5361,
+  "skip": 29,
+  "fail": 10,
+  "files": 643,
+  "elapsedSeconds": 431.07,
+  "failureGroups": [
+    {
+      "file": "test/core/folder-setup.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round3/test__core__folder-setup.test.ts"
+    },
+    {
+      "file": "integrations/hermes-gno-memory/test/provider.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round3/integrations__hermes-gno-memory__test__provider.test.ts"
+    },
+    {
+      "file": "test/cli/commands/audit.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round3/test__cli__commands__audit.test.ts"
+    },
+    {
+      "file": "test/eval/acceptance/adapters.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round3/test__eval__acceptance__adapters.test.ts"
+    },
+    {
+      "file": "test/eval/acceptance/child-capture.test.ts",
+      "failures": 2,
+      "log": ".flow/tmp/fn177-round3/test__eval__acceptance__child-capture.test.ts"
+    },
+    {
+      "file": "test/eval/acceptance/command.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round3/test__eval__acceptance__command.test.ts"
+    },
+    {
+      "file": "test/eval/acceptance/session-driver.test.ts",
+      "failures": 2,
+      "log": ".flow/tmp/fn177-round3/test__eval__acceptance__session-driver.test.ts"
+    },
+    {
+      "file": "test/eval/acceptance/surfaces.test.ts",
+      "failures": 1,
+      "log": ".flow/tmp/fn177-round3/test__eval__acceptance__surfaces.test.ts"
+    }
+  ],
+  "log": "https://github.com/gmickel/gno/actions/runs/35894456008/job/107294899591"
+}

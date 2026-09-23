@@ -434,12 +434,16 @@ def _tool_error(message: str) -> str:
 def _write_receipt_file(receipt: Optional[Dict[str, Any]]) -> str:
     """Persist the latest recall receipt for ``gno remember --receipt``.
 
-    ``mkstemp`` creates the file 0600; it lives only for the duration of the
-    remember call. Returns "" when no recall has happened this session.
+    POSIX uses 0600; Windows applies a protected user-only DACL at creation.
+    The file lives only for the duration of the remember call. Returns "" when no recall has happened this session.
     """
     if not receipt:
         return ""
-    fd, path = tempfile.mkstemp(prefix="hermes-gno-receipt-", suffix=".json")
+    if os.name == "nt":
+        from .private_receipt import create_private_receipt
+        fd, path = create_private_receipt()
+    else:
+        fd, path = tempfile.mkstemp(prefix="hermes-gno-receipt-", suffix=".json")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             json.dump({"receipt": receipt}, fh)

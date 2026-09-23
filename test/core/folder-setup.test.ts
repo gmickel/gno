@@ -487,6 +487,14 @@ describe("verified folder setup", () => {
       expect(receiptErrors).toEqual([]);
       expect(left).toMatchObject({ ok: true });
       expect(right).toMatchObject({ ok: true });
+      const receiptPath = left.receipt!.paths.receipt;
+      expect(await Bun.file(receiptPath).json()).toMatchObject({
+        status: "completed",
+        stages: { completed: { status: "passed" } },
+      });
+      if (process.platform !== "win32") {
+        expect((await stat(receiptPath)).mode & 0o777).toBe(0o600);
+      }
       expect(await configuredCollections(harness.configPath)).toHaveLength(1);
       const documents = await harness.store.listDocuments("docs");
       expect(documents.ok && documents.value).toHaveLength(1);

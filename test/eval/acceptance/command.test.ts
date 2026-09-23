@@ -243,95 +243,105 @@ test("executable returns a nonpassing exit for invalid config without a receipt"
   }
 });
 
-test("source identity rejects actual runtime and archive link mutations, tolerating extraction timestamps", async () => {
-  const root = await realpath(
-    await mkdtemp(join(tmpdir(), "acceptance-source-"))
-  );
-  const sourceRoot = join(root, "source");
-  const extracted = join(root, "extracted");
-  const git = (...args: string[]) => {
-    const result = Bun.spawnSync(
-      [
-        "git",
+// This fixture runs Git and Python repeatedly; Windows process startup is included.
+test(
+  "source identity rejects actual runtime and archive link mutations, tolerating extraction timestamps",
+  async () => {
+    const root = await realpath(
+      await mkdtemp(join(tmpdir(), "acceptance-source-"))
+    );
+    const sourceRoot = join(root, "source");
+    const extracted = join(root, "extracted");
+    const git = (...args: string[]) => {
+      const result = Bun.spawnSync(
+        [
+          "git",
+          "-c",
+          "core.hooksPath=/dev/null",
+          "-c",
+          "user.name=Acceptance fixture",
+          "-c",
+          "user.email=fixture@example.invalid",
+          ...args,
+        ],
+        { cwd: sourceRoot }
+      );
+      if (result.exitCode !== 0) throw new Error(result.stderr.toString());
+      return result.stdout.toString().trim();
+    };
+    try {
+      await mkdir(join(sourceRoot, "src"), { recursive: true });
+      await Bun.write(
+        join(sourceRoot, "src/main.ts"),
+        "export const fixture = 1;\n"
+      );
+      await symlink("main.ts", join(sourceRoot, "src/link.ts"));
+      git("init", "--quiet");
+      git("add", ".");
+      git("commit", "--quiet", "-m", "synthetic source fixture");
+      const commit = git("rev-parse", "HEAD");
+      expect(
+        (await verifyAcceptanceSource({ sourceRoot }, commit)).sourceRoot
+      ).toBe(sourceRoot);
+      const path = join(root, "source.tar");
+      git("archive", "--format=tar", `--output=${path}`, "HEAD");
+      const archive = await Bun.file(path).arrayBuffer();
+      const sha256 = new Bun.CryptoHasher("sha256")
+        .update(archive)
+        .digest("hex");
+      // Use the verifier's stdlib dependency: Bun.Archive drops symlinks on Windows.
+      const extraction = Bun.spawnSync([
+        "python3",
         "-c",
-        "core.hooksPath=/dev/null",
-        "-c",
-        "user.name=Acceptance fixture",
-        "-c",
-        "user.email=fixture@example.invalid",
-        ...args,
-      ],
-      { cwd: sourceRoot }
-    );
-    if (result.exitCode !== 0) throw new Error(result.stderr.toString());
-    return result.stdout.toString().trim();
-  };
-  try {
-    await mkdir(join(sourceRoot, "src"), { recursive: true });
-    await Bun.write(
-      join(sourceRoot, "src/main.ts"),
-      "export const fixture = 1;\n"
-    );
-    await symlink("main.ts", join(sourceRoot, "src/link.ts"));
-    git("init", "--quiet");
-    git("add", ".");
-    git("commit", "--quiet", "-m", "synthetic source fixture");
-    const commit = git("rev-parse", "HEAD");
-    expect(
-      (await verifyAcceptanceSource({ sourceRoot }, commit)).sourceRoot
-    ).toBe(sourceRoot);
-    const path = join(root, "source.tar");
-    git("archive", "--format=tar", `--output=${path}`, "HEAD");
-    const archive = await Bun.file(path).arrayBuffer();
-    const sha256 = new Bun.CryptoHasher("sha256").update(archive).digest("hex");
-    // Use the verifier's stdlib dependency: Bun.Archive drops symlinks on Windows.
-    const extraction = Bun.spawnSync([
-      "python3",
-      "-c",
-      "import sys,tarfile; tarfile.open(sys.argv[1]).extractall(sys.argv[2], filter='data')",
-      path,
-      extracted,
-    ]);
-    if (extraction.exitCode !== 0)
-      throw new Error(extraction.stderr.toString());
-    const settings = { sourceRoot: extracted, sourceArchive: { path, sha256 } };
-    await utimes(join(extracted, "src/main.ts"), new Date(), new Date());
-    expect((await verifyAcceptanceSource(settings, commit)).sourceRoot).toBe(
-      extracted
-    );
-    await Bun.write(
-      join(sourceRoot, "src/main.ts"),
-      "export const fixture = 2;\n"
-    );
-    await expect(
-      verifyAcceptanceSource({ sourceRoot }, commit)
-    ).rejects.toThrow("Source differs from pinned Git commit");
-    await Bun.write(
-      join(extracted, "src/main.ts"),
-      "export const fixture = 2;\n"
-    );
-    await expect(verifyAcceptanceSource(settings, commit)).rejects.toThrow(
-      "Source tree differs from archive"
-    );
-    await Bun.write(
-      join(extracted, "src/main.ts"),
-      "export const fixture = 1;\n"
-    );
-    await unlink(join(extracted, "src/link.ts"));
-    await symlink("wrong.ts", join(extracted, "src/link.ts"));
-    await expect(verifyAcceptanceSource(settings, commit)).rejects.toThrow(
-      "Source tree differs from archive"
-    );
-    await expect(
-      verifyAcceptanceSource(
-        { ...settings, sourceArchive: { path, sha256: "0".repeat(64) } },
-        commit
-      )
-    ).rejects.toThrow("Source archive hash mismatch");
-    await expect(
-      verifyAcceptanceSource(settings, "0".repeat(40))
-    ).rejects.toThrow("Source archive commit mismatch");
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
+        "import sys,tarfile; tarfile.open(sys.argv[1]).extractall(sys.argv[2], filter='data')",
+        path,
+        extracted,
+      ]);
+      if (extraction.exitCode !== 0)
+        throw new Error(extraction.stderr.toString());
+      const settings = {
+        sourceRoot: extracted,
+        sourceArchive: { path, sha256 },
+      };
+      await utimes(join(extracted, "src/main.ts"), new Date(), new Date());
+      expect((await verifyAcceptanceSource(settings, commit)).sourceRoot).toBe(
+        extracted
+      );
+      await Bun.write(
+        join(sourceRoot, "src/main.ts"),
+        "export const fixture = 2;\n"
+      );
+      await expect(
+        verifyAcceptanceSource({ sourceRoot }, commit)
+      ).rejects.toThrow("Source differs from pinned Git commit");
+      await Bun.write(
+        join(extracted, "src/main.ts"),
+        "export const fixture = 2;\n"
+      );
+      await expect(verifyAcceptanceSource(settings, commit)).rejects.toThrow(
+        "Source tree differs from archive"
+      );
+      await Bun.write(
+        join(extracted, "src/main.ts"),
+        "export const fixture = 1;\n"
+      );
+      await unlink(join(extracted, "src/link.ts"));
+      await symlink("wrong.ts", join(extracted, "src/link.ts"));
+      await expect(verifyAcceptanceSource(settings, commit)).rejects.toThrow(
+        "Source tree differs from archive"
+      );
+      await expect(
+        verifyAcceptanceSource(
+          { ...settings, sourceArchive: { path, sha256: "0".repeat(64) } },
+          commit
+        )
+      ).rejects.toThrow("Source archive hash mismatch");
+      await expect(
+        verifyAcceptanceSource(settings, "0".repeat(40))
+      ).rejects.toThrow("Source archive commit mismatch");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  },
+  process.platform === "win32" ? 30000 : 5000
+);
