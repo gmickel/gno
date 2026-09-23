@@ -231,8 +231,8 @@ describe("gno search smoke tests", () => {
         stderr: "pipe",
       }
     );
-    proc.stdin.write("markdown\n");
-    proc.stdin.end();
+    await proc.stdin.write("markdown\n");
+    await proc.stdin.end();
     const [stdout, stderr, exitCode] = await Promise.all([
       new Response(proc.stdout).text(),
       new Response(proc.stderr).text(),
