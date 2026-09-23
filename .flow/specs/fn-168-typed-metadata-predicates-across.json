@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-168-typed-metadata-predicates-across",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-23T08:36:25.143631Z",
   "created_at": "2026-09-21T20:53:41.926118Z",
   "default_impl": null,
   "default_review": null,
@@ -98,5 +98,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-23T07:47:00.319759Z"
+  "updated_at": "2026-09-23T08:36:25.143639Z"
 }
