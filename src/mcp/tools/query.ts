@@ -48,6 +48,7 @@ import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { diagnoseQueryTarget } from "../../pipeline/diagnose";
 import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
 import { createLazyVectorIndex } from "../../store/vector/lazy";
+import { appendRetrievalWarnings } from "../retrieval-warnings";
 import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
 interface QueryInput {
@@ -387,7 +388,8 @@ export function handleQuery(
         }
       }
     },
-    formatSearchResults
+    (data) =>
+      appendRetrievalWarnings(formatSearchResults(data), data.meta.warnings)
   );
 }
 

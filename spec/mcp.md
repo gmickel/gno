@@ -3066,3 +3066,17 @@ intersect caller scope before candidate limits and never expand authority.
 [metadata-predicate.schema.json](output-schemas/metadata-predicate.schema.json).
 See [Typed metadata filters](../docs/TYPED-METADATA.md) for exact membership,
 missing-field, invalid-document, and bounded-input semantics.
+
+### Retrieval coverage in text responses
+
+Search, vector search and query retain retrieval warnings in both text content
+and structured metadata, including zero-result responses. Incomplete or unknown
+metadata coverage does not establish absence. Preserve requested filters and
+scope; diagnose with the same filter when an expected target is known. Otherwise
+inspect the scoped coverage warning before claiming completeness.
+
+All typed-filter input descriptions carry this guidance. Verified Ask text
+also exposes the Capsule's metadata coverage warning. The compact agent
+protocol block and retrieval ladder remain unchanged.
+
+Coverage counts describe the scoped corpus, not the existence or metadata state of a particular matching document. With no known target, report the coverage limit instead of inventing a target or broadening the requested search.

@@ -5,7 +5,10 @@ import { z } from "zod";
 import type { ContextCapsuleBuildInput } from "./context-runtime-types";
 
 import { ContextCapsuleContractError } from "../core/context-capsule";
-import { metadataPredicateSchema } from "../core/typed-metadata";
+import {
+  metadataPredicateSchema,
+  METADATA_FILTER_DESCRIPTION,
+} from "../core/typed-metadata";
 
 const queryModeSchema = z
   .object({
@@ -29,7 +32,9 @@ export const contextBuildSurfaceSchema = z
     tagsAll: stringList.optional(),
     tagsAny: stringList.optional(),
     categories: stringList.optional(),
-    filter: metadataPredicateSchema.optional(),
+    filter: metadataPredicateSchema
+      .optional()
+      .describe(METADATA_FILTER_DESCRIPTION),
     author: z.string().optional(),
     lang: z.string().optional(),
     intent: z.string().optional(),

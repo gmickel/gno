@@ -201,7 +201,14 @@ describe("verified Ask synthesis", () => {
       facet: "reviewer",
       code: "facet_not_found",
     });
+    withGap.verification.capsule.warnings = [
+      ...withGap.verification.capsule.warnings,
+      { code: "metadata_coverage_incomplete" },
+    ];
     const mcpWithGap = formatVerifiedAskReadable(withGap);
+    expect(mcpWithGap).toContain("Warning [metadata_coverage_incomplete]");
+    expect(mcpWithGap).toContain("not proof of absence");
+    expect(mcpWithGap).toContain("Keep requested filters unchanged");
     expect(mcpWithGap).toContain("Unresolved facet: reviewer");
     expect(mcpWithGap).toContain("Gap: reviewer (facet_not_found)");
   });

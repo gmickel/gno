@@ -35,6 +35,7 @@ import {
   type VectorSearchDeps,
 } from "../../pipeline/vsearch";
 import { createVectorIndexPort } from "../../store/vector";
+import { appendRetrievalWarnings } from "../retrieval-warnings";
 import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
 interface VsearchInput {
@@ -280,6 +281,7 @@ export function handleVsearch(
         await embedPort?.dispose();
       }
     },
-    formatSearchResults
+    (data) =>
+      appendRetrievalWarnings(formatSearchResults(data), data.meta.warnings)
   );
 }
