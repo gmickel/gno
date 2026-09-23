@@ -89,7 +89,8 @@ export async function windowsPrivatePath(
     }
   } finally {
     reader.releaseLock();
-    if (child.exitCode === null) child.kill("SIGKILL");
+    if (child.exitCode === null && child.signalCode === null)
+      child.kill("SIGKILL");
     await child.exited;
   }
 }
