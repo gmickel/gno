@@ -42,6 +42,7 @@ if (-not $allowed) { throw 'Private owner access unavailable' }
 export function windowsPrivatePath(path: string, create = false): void {
   if (process.platform !== "win32")
     throw new Error("Windows ACL operation requires Windows");
+  const started = performance.now();
   const result = Bun.spawnSync(
     [
       "powershell.exe",
@@ -57,12 +58,16 @@ export function windowsPrivatePath(path: string, create = false): void {
         GNO_PRIVATE_PATH: path,
         GNO_PRIVATE_CREATE: create ? "1" : "0",
       },
+      stdin: "ignore",
+      // ACL checks return no data; do not allocate an unused stdout pipe.
+      stdout: "ignore",
+      stderr: "pipe",
       timeout: 10000,
       maxBuffer: 65536,
     }
   );
   if (result.exitCode !== 0)
     throw new Error(
-      `Private path ACL unavailable: ${result.stderr.toString().trim()}`
+      `Private path ACL unavailable (exit=${String(result.exitCode)}, signal=${String(result.signalCode)}, success=${String(result.success)}, elapsedMs=${Math.round(performance.now() - started)}): ${result.stderr.toString().trim() || "no stderr"}`
     );
 }

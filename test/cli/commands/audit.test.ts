@@ -764,23 +764,46 @@ describe("gno audit CLI", () => {
   test(
     "writes an explicitly requested private report artifact",
     async () => {
+      process.stdout.write = originalStdoutWrite;
       const reportPath = join(root, "audit.json");
       await Bun.write(reportPath, "pre-existing\n");
       await chmod(reportPath, 0o644);
       const originalInode = (await stat(reportPath)).ino;
-      const code = await runCli([
-        "bun",
-        "gno",
-        "audit",
-        "links",
-        "--json",
-        "--output",
-        reportPath,
-      ]);
-      expect(code).toBe(0);
-      expect(JSON.parse(await Bun.file(reportPath).text()).schemaVersion).toBe(
-        "1.0"
+      const child = Bun.spawn(
+        [
+          process.execPath,
+          "--no-env-file",
+          Bun.fileURLToPath(new URL("../../../src/index.ts", import.meta.url)),
+          "audit",
+          "links",
+          "--json",
+          "--output",
+          reportPath,
+        ],
+        {
+          env: process.env,
+          stdin: "ignore",
+          stdout: "pipe",
+          stderr: "pipe",
+          timeout: 25000,
+        }
       );
+      let stdout: string;
+      try {
+        const [captured, stderr, code] = await Promise.all([
+          new Response(child.stdout).text(),
+          new Response(child.stderr).text(),
+          child.exited,
+        ]);
+        stdout = captured;
+        expect({ code, stderr }).toEqual({ code: 0, stderr: "" });
+      } finally {
+        if (child.exitCode === null) child.kill("SIGKILL");
+        await child.exited;
+      }
+      const report = JSON.parse(await Bun.file(reportPath).text());
+      expect(report.schemaVersion).toBe("1.0");
+      expect(JSON.parse(stdout)).toEqual(report);
       if (process.platform === "win32")
         expect(() => windowsPrivatePath(reportPath)).not.toThrow();
       else expect((await stat(reportPath)).mode & 0o777).toBe(0o600);

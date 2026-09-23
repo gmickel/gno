@@ -93,7 +93,6 @@ def receipt_private(path):
     # two-second subprocess budget. ctypes is Python's standard Win32 bridge.
     import csv
     import ctypes
-    import re
     from ctypes import wintypes
 
     advapi = ctypes.WinDLL("advapi32", use_last_error=True)
@@ -117,24 +116,71 @@ def receipt_private(path):
         if not to_sddl(descriptor, 1, 4, ctypes.byref(sddl), None):
             return False
         acl = sddl.value
+        identity = subprocess.run(
+            ["whoami.exe", "/user", "/fo", "csv", "/nh"],
+            capture_output=True, text=True, check=True, timeout=1,
+        )
+        user_sid = next(csv.reader([identity.stdout.strip()]))[1]
+        log({"receiptAcl": acl, "receiptUserSid": user_sid})
+        return descriptor_is_private(descriptor, user_sid)
     finally:
         if sddl:
             kernel.LocalFree(ctypes.cast(sddl, ctypes.c_void_p))
         kernel.LocalFree(descriptor)
-    identity = subprocess.run(
-        ["whoami.exe", "/user", "/fo", "csv", "/nh"],
-        capture_output=True, text=True, check=True, timeout=1,
-    )
-    user_sid = next(csv.reader([identity.stdout.strip()]))[1]
-    allowed = {user_sid, "SY", "BA"}
-    log({"receiptAcl": acl, "receiptUserSid": user_sid})
-    entries = [entry.split(";") for entry in re.findall(r"\(([^()]*)\)", acl)]
-    # No/null DACL and unfamiliar ACE forms fail closed. Ordinary deny entries
-    # grant nothing; every allow entry must name the user, SYSTEM or admins.
-    return bool(entries) and all(
-        len(entry) == 6 and (entry[0] == "D" or (entry[0] == "A" and entry[5] in allowed))
-        for entry in entries
-    )
+
+
+def descriptor_is_private(descriptor, user_sid):
+    """Compare binary ACE identities, never SDDL display aliases such as LA."""
+    import ctypes
+    from ctypes import wintypes
+
+    class AclSize(ctypes.Structure):
+        _fields_ = [("count", wintypes.DWORD), ("used", wintypes.DWORD), ("free", wintypes.DWORD)]
+
+    class AceHeader(ctypes.Structure):
+        _fields_ = [("kind", wintypes.BYTE), ("flags", wintypes.BYTE), ("size", wintypes.WORD)]
+
+    advapi = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.LocalFree.argtypes = [ctypes.c_void_p]
+    kernel.LocalFree.restype = ctypes.c_void_p
+    advapi.GetSecurityDescriptorDacl.argtypes = [ctypes.c_void_p, ctypes.POINTER(wintypes.BOOL), ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wintypes.BOOL)]
+    advapi.GetSecurityDescriptorDacl.restype = wintypes.BOOL
+    advapi.GetAclInformation.argtypes = [ctypes.c_void_p, ctypes.c_void_p, wintypes.DWORD, ctypes.c_int]
+    advapi.GetAclInformation.restype = wintypes.BOOL
+    advapi.GetAce.argtypes = [ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(ctypes.c_void_p)]
+    advapi.GetAce.restype = wintypes.BOOL
+    advapi.ConvertSidToStringSidW.argtypes = [ctypes.c_void_p, ctypes.POINTER(wintypes.LPWSTR)]
+    advapi.ConvertSidToStringSidW.restype = wintypes.BOOL
+    present, defaulted = wintypes.BOOL(), wintypes.BOOL()
+    dacl = ctypes.c_void_p()
+    if not advapi.GetSecurityDescriptorDacl(descriptor, ctypes.byref(present), ctypes.byref(dacl), ctypes.byref(defaulted)):
+        return False
+    if not present.value or not dacl.value:
+        return False
+    info = AclSize()
+    if not advapi.GetAclInformation(dacl, ctypes.byref(info), ctypes.sizeof(info), 2) or not info.count:
+        return False
+    allowed = {user_sid, "S-1-5-18", "S-1-5-32-544"}
+    for index in range(info.count):
+        ace = ctypes.c_void_p()
+        if not advapi.GetAce(dacl, index, ctypes.byref(ace)):
+            return False
+        header = ctypes.cast(ace, ctypes.POINTER(AceHeader)).contents
+        # Only standard allow/deny ACEs are understood. Their SID begins after
+        # the four-byte header and four-byte access mask.
+        if header.kind not in (0, 1) or header.size < 16:
+            return False
+        sid = wintypes.LPWSTR()
+        if not advapi.ConvertSidToStringSidW(ace.value + 8, ctypes.byref(sid)):
+            return False
+        try:
+            if header.kind == 0 and sid.value not in allowed:
+                return False
+        finally:
+            kernel.LocalFree(ctypes.cast(sid, ctypes.c_void_p))
+    return True
+
 
 
 def remember(argv):

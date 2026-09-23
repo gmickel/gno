@@ -197,6 +197,28 @@ function flags(argv: string[], name: string): string[] {
 }
 
 describe.skipIf(!PYTHON)("hermes gno memory provider", () => {
+  test("receipt privacy checks native identities and rejects broader access", async () => {
+    const probe = Bun.spawn(
+      [PYTHON as string, join(HERE, "privacy_probe.py")],
+      {
+        env: { ...process.env, FAKE_GNO_LOG: "" },
+        stdout: "pipe",
+        stderr: "pipe",
+      }
+    );
+    const [code, stdout, stderr] = await Promise.all([
+      probe.exited,
+      new Response(probe.stdout).text(),
+      new Response(probe.stderr).text(),
+    ]);
+    expect(stderr).toBe("");
+    expect(code).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      native: process.platform === "win32" ? "windows" : "posix",
+      cases: process.platform === "win32" ? 7 : 2,
+    });
+  });
+
   test("prefetch maps the turn query to gno recall --json with config scopes and session identity", async () => {
     const fx = await fixture();
     const [, pre] = await drive(fx, [

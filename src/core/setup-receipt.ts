@@ -12,6 +12,7 @@ import { dirname, join } from "node:path";
 import type { ActivationVerificationReceipt } from "../store/types";
 
 import { canonicalizeIndexName } from "../app/index-name";
+import { withWriteLock } from "./file-lock";
 
 export const SETUP_RECEIPT_SCHEMA_VERSION = "1.0" as const;
 
@@ -278,29 +279,33 @@ export async function persistSetupReceipt(
 ): Promise<void> {
   const receiptDir = dirname(receipt.paths.receipt);
   await mkdir(receiptDir, { recursive: true, mode: 0o700 });
-  await chmod(receiptDir, 0o700);
+  // Windows cannot reliably replace the same destination concurrently.
+  // Reuse the process-shared writer lock; each completed receipt stays atomic.
+  await withWriteLock(`${receipt.paths.receipt}.lock`, async () => {
+    await chmod(receiptDir, 0o700);
 
-  const tempPath = `${receipt.paths.receipt}.tmp.${crypto.randomUUID()}`;
-  let tempFile: Awaited<ReturnType<typeof open>> | null = null;
-  try {
-    tempFile = await open(tempPath, "wx", 0o600);
-    await tempFile.writeFile(serializeSetupReceipt(receipt), "utf8");
-    // Set permissions before publication. Opening the shared destination for
-    // chmod can prevent a concurrent atomic replacement on Windows.
-    await tempFile.chmod(0o600);
-    await tempFile.sync();
-    await tempFile.close();
-    tempFile = null;
-    await rename(tempPath, receipt.paths.receipt);
-  } catch (error) {
-    await tempFile?.close().catch(() => {
-      /* best-effort temporary receipt handle cleanup */
-    });
-    await unlink(tempPath).catch(() => {
-      /* best-effort temporary receipt cleanup */
-    });
-    throw error;
-  }
+    const tempPath = `${receipt.paths.receipt}.tmp.${crypto.randomUUID()}`;
+    let tempFile: Awaited<ReturnType<typeof open>> | null = null;
+    try {
+      tempFile = await open(tempPath, "wx", 0o600);
+      await tempFile.writeFile(serializeSetupReceipt(receipt), "utf8");
+      // Set permissions before publication. Opening the shared destination for
+      // chmod can prevent a concurrent atomic replacement on Windows.
+      await tempFile.chmod(0o600);
+      await tempFile.sync();
+      await tempFile.close();
+      tempFile = null;
+      await rename(tempPath, receipt.paths.receipt);
+    } catch (error) {
+      await tempFile?.close().catch(() => {
+        /* best-effort temporary receipt handle cleanup */
+      });
+      await unlink(tempPath).catch(() => {
+        /* best-effort temporary receipt cleanup */
+      });
+      throw error;
+    }
+  });
 }
 
 export async function loadSetupReceipt(

@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reject Windows drive roots during folder setup and recognize compiled Windows server assets.
 - Enforce private filesystem permissions on Windows audit reports before writing report contents.
 - Keep the CLI alive while waiting for piped `--query-file -` input on Windows.
-- Set setup-receipt permissions before atomic publication to avoid Windows concurrent-rename failures. Hermes memory receipts now receive a protected user-only Windows ACL before any contents are written.
+- Serialize setup-receipt replacements and set permissions before atomic publication to avoid Windows concurrent-rename failures. Hermes memory receipts now receive a protected user-only Windows ACL before any contents are written.
 - Run the complete Windows regression suite in CI and release checks; correct platform-specific fixtures and path handling.
 
 ## [2.5.0] - 2026-09-23
