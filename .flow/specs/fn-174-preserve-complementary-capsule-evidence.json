@@ -15,7 +15,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-174-preserve-complementary-capsule-evidence.md",
-  "status": "open",
+  "status": "done",
   "title": "Preserve complementary Capsule evidence beyond lexical facet coverage",
   "tracker": {
     "baseHashFlow": null,
@@ -28,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-23T13:32:20.719841Z"
+  "updated_at": "2026-09-23T14:30:50.437550Z"
 }
