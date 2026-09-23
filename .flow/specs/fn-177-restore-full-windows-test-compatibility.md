@@ -1,0 +1,21 @@
+# Restore full Windows test compatibility
+
+## Goal
+
+Make the complete Windows regression suite pass without filename filtering, blanket skips, relaxed assertions or hidden failures, then unblock coordinated publication.
+
+## Evidence
+
+The corrected command in PR245 is `bun test --max-concurrency=1`. Run 35879140015 recorded 4,135 passing tests and 179 failures before cancellation after about20minutes; the run did not finish, so these are partial counts. The previous unsupported flag had silently selected only22tests. Failure identities are retained in `.flow/artifacts/fn-176-run-the-full-windows-suite-in-ci-and/windows-partial-run.json`; raw diagnostics remain available through the Actions job107242846993.
+
+## Requirements
+
+Group failures by root cause before editing. Distinguish platform-dependent fixture/path assumptions from product defects. Observed clusters include trace retrieval outcomes, watcher snapshots/reconciliation, MCP config validation, native lifecycle fixtures, macOS signing-script tests and timeouts in restoration tests. Use focused real reproductions; do not treat every failed case as a separate defect.
+
+Investigate SQLite resource release as a hypothesis: Bun's default close leaves separately prepared statements usable, while close(true) finalizes them. Establish whether this contributes to Windows cleanup/locking before changing the adapter.
+
+Keep each correction minimal and preserve public behavior unless a demonstrated product defect requires it. Run affected Linux/macOS checks and a complete Windows run. Preserve the initial negative evidence and verify the executed inventory, not just a green job label. Do not publish until the corrected full gate passes. Any runtime changes require corresponding Git and gno.sh docs/CLI/MCP/SDK/UI/skill updates only where the supported contract changes.
+
+## Boundaries
+
+Do not weaken the new workflow command-contract regression or restore the unsupported concurrency flag. Do not move the aborted v2.5.0 tag. A future verified release uses a fresh version. This compatibility work is separate from the completed compiled-context feature and from fn170 mutation receipts.
