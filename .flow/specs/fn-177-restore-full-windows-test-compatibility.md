@@ -6,7 +6,7 @@ Make the complete Windows regression suite pass without filename filtering, blan
 
 ## Evidence
 
-The corrected command in PR245 is `bun test --max-concurrency=1`. Run 35879140015 recorded 4,135 passing tests and 179 failures before cancellation after about20minutes; the run did not finish, so these are partial counts. The previous unsupported flag had silently selected only22tests. Failure identities are retained in `.flow/artifacts/fn-176-run-the-full-windows-suite-in-ci-and/windows-partial-run.json`; raw diagnostics remain available through the Actions job107242846993.
+The corrected command in PR #245 is `bun test --max-concurrency=1`. Run 35879140015 recorded 4,135 passing tests and 179 failures before cancellation after about 20 minutes; the run did not finish, so these are partial counts. The previous unsupported flag had silently selected only 22 tests. Failure identities are retained in `.flow/artifacts/fn-176-run-the-full-windows-suite-in-ci-and/windows-partial-run.json`; raw diagnostics remain available through the Actions job 107242846993.
 
 ## Requirements
 
@@ -18,7 +18,7 @@ Keep each correction minimal and preserve public behavior unless a demonstrated 
 
 ## Boundaries
 
-Do not weaken the new workflow command-contract regression or restore the unsupported concurrency flag. Do not move the aborted v2.5.0 tag. A future verified release uses a fresh version. This compatibility work is separate from the completed compiled-context feature and from fn170 mutation receipts.
+Do not weaken the new workflow command-contract regression or restore the unsupported concurrency flag. Do not move the aborted v2.5.0 tag. A future verified release uses a fresh version. This compatibility work is separate from the completed compiled-context feature and from fn-170 mutation receipts.
 
 ## Implementation evidence
 
@@ -26,3 +26,5 @@ Do not weaken the new workflow command-contract regression or restore the unsupp
 - Fixture corrections isolate Windows APPDATA, use native paths and file URLs, preserve virtual filesystem keys, and replace Unix-only launcher assumptions. Native safety/fallback assertions remain active.
 - Windows audit output uses a private directory before writing contents and verifies the final file ACL. Native acceptance captures use Windows ACL and CIM observations; archived instrumentation is bundled inside the harness namespace with separate source and deployed hashes. Runtime snapshot files remain unchanged.
 - Full Windows CI remains the completion gate; focused Linux results alone do not establish Windows compatibility.
+
+- Complete native Windows run 35912746439 on fc94700b passed 5,373 tests with 29 existing platform skips and zero failures across 643 files. Bootstrap security-check remediation is verified separately before final landing.

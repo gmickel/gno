@@ -6,6 +6,10 @@ import {
   renameSync,
   realpathSync,
   lstatSync,
+  openSync,
+  closeSync,
+  fstatSync,
+  constants,
 } from "node:fs";
 import { dirname, join } from "node:path"; // Bun has no path helpers.
 
@@ -14,6 +18,55 @@ import type { AcceptanceManifest } from "./manifest";
 
 import { childIdentitySchema } from "./child-receipt";
 import { privateCapturePath } from "./windows-observation";
+
+/** Read metadata and bytes through one handle; reject path replacement around
+ * the platform ACL check rather than reopening a checked filename. */
+export function readChildBootstrap(path: string): string {
+  const descriptor = openSync(
+    path,
+    constants.O_RDONLY |
+      (process.platform === "win32" ? 0 : constants.O_NOFOLLOW)
+  );
+  try {
+    const metadata = fstatSync(descriptor, { bigint: true });
+    const current = lstatSync(path, { bigint: true });
+    if (
+      !metadata.isFile() ||
+      current.isSymbolicLink() ||
+      metadata.dev !== current.dev ||
+      metadata.ino !== current.ino ||
+      realpathSync(path) !== path ||
+      (process.platform !== "win32" && (metadata.mode & 0o077n) !== 0n)
+    )
+      throw new Error("Private child capture bootstrap required");
+    privateCapturePath(path);
+    const checked = lstatSync(path, { bigint: true });
+    if (
+      checked.dev !== metadata.dev ||
+      checked.ino !== metadata.ino ||
+      checked.isSymbolicLink()
+    )
+      throw new Error("Child capture bootstrap replaced during privacy check");
+    const text = readFileSync(descriptor, "utf8");
+    const after = fstatSync(descriptor, { bigint: true });
+    const namedAfter = lstatSync(path, { bigint: true });
+    if (
+      namedAfter.dev !== metadata.dev ||
+      namedAfter.ino !== metadata.ino ||
+      namedAfter.isSymbolicLink()
+    )
+      throw new Error("Child capture bootstrap replaced during read");
+    if (
+      after.size !== metadata.size ||
+      after.mtimeNs !== metadata.mtimeNs ||
+      after.ctimeNs !== metadata.ctimeNs
+    )
+      throw new Error("Child capture bootstrap changed during read");
+    return text;
+  } finally {
+    closeSync(descriptor);
+  }
+}
 
 async function installForSelectedEntry(): Promise<void> {
   const expectedEntry = realpathSync(
@@ -29,10 +82,8 @@ async function installForSelectedEntry(): Promise<void> {
   // argv as worker configuration and never import native capture into them.
   if (actualEntry !== expectedEntry) return;
   const path = process.env.GNO_ACCEPTANCE_CHILD_BOOTSTRAP;
-  if (!path || realpathSync(path) !== path || !lstatSync(path).isFile())
-    throw new Error("Private child capture bootstrap required");
-  privateCapturePath(path);
-  const bootstrap = JSON.parse(readFileSync(path, "utf8")) as {
+  if (!path) throw new Error("Private child capture bootstrap required");
+  const bootstrap = JSON.parse(readChildBootstrap(path)) as {
     identity: Omit<ChildIdentity, "pid">;
     models: AcceptanceManifest["models"];
   };
