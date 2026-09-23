@@ -1,0 +1,33 @@
+{
+  "branch": "fn-173-preserve-mcp-retrieval-coverage-warnings",
+  "head_sha": "16fab17ae9e618d00c7277990b58846bb27bd5cd",
+  "id": "fn-173-preserve-mcp-retrieval-coverage-warnings",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 4,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      }
+    ],
+    "total": 4
+  },
+  "timestamp": "2026-09-23T11:24:13Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
