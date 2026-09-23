@@ -9,7 +9,14 @@ import { realpath } from "node:fs/promises";
 // node:os for homedir (no Bun os utils)
 import { homedir } from "node:os";
 // node:path for path utils (no Bun path utils)
-import { isAbsolute, join, posix as pathPosix, relative, sep } from "node:path";
+import {
+  isAbsolute,
+  join,
+  parse,
+  posix as pathPosix,
+  relative,
+  sep,
+} from "node:path";
 
 import { toAbsolutePath } from "../config/paths";
 
@@ -87,7 +94,7 @@ export async function validateCollectionRoot(
     DANGEROUS_ROOT_PATTERNS.map((p) => resolveRealPathSafe(p))
   );
 
-  if (dangerousRoots.includes(realPath)) {
+  if (realPath === parse(realPath).root || dangerousRoots.includes(realPath)) {
     throw new Error(`Cannot add ${inputPath}: resolves to dangerous root`);
   }
 

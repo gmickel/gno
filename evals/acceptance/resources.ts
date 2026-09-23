@@ -6,6 +6,7 @@ import {
   type ChildEvent,
   type ChildIdentity,
 } from "./child-receipt";
+import { windowsProcessCommand } from "./windows-observation";
 
 export interface ResourceSample {
   elapsedMs: number;
@@ -33,14 +34,30 @@ export interface ResourceSample {
 async function telemetry(
   cmd: string[]
 ): Promise<{ exitCode: number; output: string }> {
-  const child = Bun.spawn(cmd, {
+  const observation =
+    process.platform === "win32" && cmd[0] === "ps"
+      ? windowsProcessCommand(cmd)
+      : { cmd, env: process.env };
+  const child = Bun.spawn(observation.cmd, {
+    env: observation.env,
     stdout: "pipe",
     stderr: "ignore",
-    timeout: 2000,
+    timeout: process.platform === "win32" ? 10000 : 2000,
     killSignal: "SIGKILL",
   });
   try {
-    const output = await new Response(child.stdout).text();
+    const reader = child.stdout.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 1048576)
+        throw new Error("Process observation output exceeded limit");
+      chunks.push(value);
+    }
+    const output = new TextDecoder().decode(Buffer.concat(chunks));
     return { output, exitCode: await child.exited };
   } finally {
     if (child.exitCode === null && child.signalCode === null)

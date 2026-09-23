@@ -78,7 +78,7 @@ const runGit = async (
   signal?: AbortSignal
 ): Promise<string> => {
   const result = await runner({
-    command: "/usr/bin/git",
+    command: "git",
     args,
     cwd: repoPath,
     signal,
@@ -298,7 +298,20 @@ export const preflightQmd = async (
     );
   }
   const entrypointStats = await Bun.file(entrypointPath).stat();
-  if (!entrypointStats.isFile() || (entrypointStats.mode & 0o111) === 0) {
+  // Windows stat has no executable bits. Verify the pinned Git tree mode there;
+  // the clean checkout and content hash checks still bind the actual script.
+  const executable =
+    process.platform === "win32"
+      ? (
+          await runGit(
+            runner,
+            repoPath,
+            ["ls-tree", "HEAD", "--", lock.entrypoint.path],
+            options.signal
+          )
+        ).startsWith("100755 ")
+      : (entrypointStats.mode & 0o111) !== 0;
+  if (!entrypointStats.isFile() || !executable) {
     throw new AgenticHarnessError(
       "qmd_entrypoint_invalid",
       "Locked qmd entrypoint is not an executable regular file"

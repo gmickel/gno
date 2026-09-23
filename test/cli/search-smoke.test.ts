@@ -220,7 +220,7 @@ describe("gno search smoke tests", () => {
       ],
       {
         cwd: repoRoot,
-        stdin: new Blob(["markdown\n"]),
+        stdin: "pipe",
         env: {
           ...process.env,
           GNO_CONFIG_DIR: process.env.GNO_CONFIG_DIR,
@@ -231,6 +231,8 @@ describe("gno search smoke tests", () => {
         stderr: "pipe",
       }
     );
+    proc.stdin.write("markdown\n");
+    proc.stdin.end();
     const [stdout, stderr, exitCode] = await Promise.all([
       new Response(proc.stdout).text(),
       new Response(proc.stderr).text(),

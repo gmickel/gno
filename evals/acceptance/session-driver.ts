@@ -19,6 +19,7 @@ import {
   assertPackageSmokePathContained,
   buildPackageSmokeProcessEnv,
 } from "../../scripts/package-smoke-isolation";
+import { privateCapturePath } from "./windows-observation";
 
 export interface SessionBootstrap {
   runId: string;
@@ -81,6 +82,7 @@ const SESSION_HARNESS_FILES = [
   "capture-contract.ts",
   "child-receipt.ts",
   "parent-capture.ts",
+  "windows-observation.ts",
   "native-child-preload.ts",
   "manifest.ts",
   "records.ts",
@@ -97,8 +99,7 @@ export async function installSessionHarness(sourceRoot: string): Promise<void> {
   await assertPackageSmokePathContained(root, target, "snapshot harness");
   await mkdir(target, { recursive: true });
   if ((await realpath(target)) === (await realpath(import.meta.dir))) return;
-  for (const name of SESSION_HARNESS_FILES) {
-    const bytes = await Bun.file(join(import.meta.dir, name)).arrayBuffer();
+  const install = async (name: string, bytes: Uint8Array) => {
     const path = join(target, name);
     await assertPackageSmokePathContained(root, path, "snapshot harness");
     const destination = Bun.file(path);
@@ -110,7 +111,94 @@ export async function installSessionHarness(sourceRoot: string): Promise<void> {
       await mkdir(dirname(path), { recursive: true });
       await Bun.write(destination, bytes);
     }
+  };
+  for (const name of SESSION_HARNESS_FILES) {
+    const source = join(import.meta.dir, name);
+    if (name === "windows-observation.ts") {
+      const build = await Bun.build({
+        entrypoints: [source],
+        target: "bun",
+      });
+      if (!build.success || build.outputs.length !== 1)
+        throw new Error("Unable to bundle private observation harness");
+      const bytes = new Uint8Array(await build.outputs[0]!.arrayBuffer());
+      const sourceHashes: Record<string, string> = {};
+      for (const dependency of [
+        name,
+        "../../src/core/windows-private-path.ts",
+      ]) {
+        sourceHashes[dependency] = new Bun.CryptoHasher("sha256")
+          .update(
+            await Bun.file(join(import.meta.dir, dependency)).arrayBuffer()
+          )
+          .digest("hex");
+      }
+      await install(name, bytes);
+      await install(
+        "windows-observation.installation.json",
+        new TextEncoder().encode(
+          JSON.stringify({
+            schemaVersion: 1,
+            bundler: {
+              name: "bun",
+              version: Bun.version,
+              target: "bun",
+              bundle: true,
+            },
+            sources: sourceHashes,
+            destination: {
+              path: name,
+              sha256: new Bun.CryptoHasher("sha256")
+                .update(bytes)
+                .digest("hex"),
+            },
+          })
+        )
+      );
+    } else await install(name, await Bun.file(source).bytes());
   }
+}
+
+/** Source identity and deployed bytes are separate: bundles are never byte-equated
+ * with the development wrapper. Both identities remain bound in each receipt. */
+export async function observationHarnessSources(
+  sourceRoot: string
+): Promise<Record<string, string>> {
+  const directory = join(sourceRoot, "evals/acceptance");
+  const digest = async (path: string) =>
+    new Bun.CryptoHasher("sha256")
+      .update(await Bun.file(path).arrayBuffer())
+      .digest("hex");
+  const wrapper = "windows-observation.ts";
+  const shared = "../../src/core/windows-private-path.ts";
+  const installation = Bun.file(
+    join(directory, "windows-observation.installation.json")
+  );
+  if (!(await installation.exists()))
+    return {
+      [`source:${wrapper}`]: await digest(join(directory, wrapper)),
+      [`source:${shared}`]: await digest(join(directory, shared)),
+    };
+  const mapping = await installation.json();
+  if (
+    mapping.schemaVersion !== 1 ||
+    mapping.destination?.path !== wrapper ||
+    mapping.destination.sha256 !== (await digest(join(directory, wrapper))) ||
+    mapping.bundler?.name !== "bun" ||
+    mapping.bundler.target !== "bun" ||
+    mapping.bundler.bundle !== true ||
+    typeof mapping.bundler.version !== "string" ||
+    Object.keys(mapping.sources ?? {}).length !== 2 ||
+    [wrapper, shared].some(
+      (key) =>
+        typeof mapping.sources[key] !== "string" ||
+        !/^[a-f0-9]{64}$/.test(mapping.sources[key])
+    )
+  )
+    throw new Error("Invalid private observation harness mapping");
+  return Object.fromEntries(
+    [wrapper, shared].map((key) => [`source:${key}`, mapping.sources[key]])
+  );
 }
 
 export function createSessionDriverFactory(
@@ -157,15 +245,24 @@ export function createSessionDriverFactory(
       );
       await mkdir(options.protocolRoot, { recursive: true });
       const directory = await mkdtemp(join(options.protocolRoot, "session-"));
+      privateCapturePath(directory, true);
       const runId = crypto.randomUUID();
       const harnessSha256: Record<string, string> = {};
-      for (const name of SESSION_HARNESS_FILES) {
+      for (const name of [
+        ...SESSION_HARNESS_FILES,
+        "windows-observation.installation.json",
+      ]) {
         const file = Bun.file(join(sourceRoot, "evals/acceptance", name));
         if (await file.exists())
           harnessSha256[name] = new Bun.CryptoHasher("sha256")
             .update(await file.arrayBuffer())
             .digest("hex");
       }
+      if (harnessSha256["windows-observation.ts"])
+        Object.assign(
+          harnessSha256,
+          await observationHarnessSources(sourceRoot)
+        );
       await Bun.write(
         join(directory, "harness.json"),
         JSON.stringify({ sourceRoot, harnessSha256 })

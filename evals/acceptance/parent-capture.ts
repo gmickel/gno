@@ -6,7 +6,6 @@ import {
   mkdirSync,
   mkdtempSync,
   realpathSync,
-  lstatSync,
   writeFileSync,
   readFileSync,
   renameSync,
@@ -24,6 +23,7 @@ import {
 } from "../../src/pipeline/types";
 import { emptyCapture } from "./capture-contract";
 import { appendChildCapture, validateChildReceipt } from "./child-receipt";
+import { privateCapturePath } from "./windows-observation";
 
 export async function hasNativeWorker(): Promise<boolean> {
   return Bun.file(
@@ -42,8 +42,7 @@ export async function installParentCapture(
   const root = realpathSync(directory);
   if (root !== resolve(directory))
     throw new Error("Capture directory must be canonical");
-  if ((lstatSync(root).mode & 0o077) !== 0)
-    throw new Error("Capture directory must be private");
+  privateCapturePath(root);
   if (
     (await Bun.file(join(root, "children.json")).exists()) ||
     (await Bun.file(join(root, "requests.json")).exists()) ||
@@ -413,6 +412,7 @@ if (sidecar) {
   };
   const directory = `${sidecar}.children`;
   mkdirSync(directory, { mode: 0o700 });
+  privateCapturePath(directory, true);
   const session = await installParentCapture(
     input.runId,
     input.models,

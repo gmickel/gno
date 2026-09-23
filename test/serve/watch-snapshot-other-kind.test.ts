@@ -83,7 +83,8 @@ function nodeToStat(node: Node): WatcherSnapshotStat {
 }
 
 function resolveNode(root: Node, absPath: string): Node | null {
-  // Paths are virtual: root is "/", children joined with "/".
+  // Convert native joins back into the virtual tree separator.
+  absPath = absPath.replaceAll("\\", "/");
   if (absPath === "/" || absPath === "") {
     return root;
   }

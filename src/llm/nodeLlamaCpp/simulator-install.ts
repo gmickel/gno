@@ -1,4 +1,7 @@
 /** Install the pinned simulator guard in memory, including npm/nested installs. */
+// node:url — filesystem conversion of file URLs has no Bun equivalent.
+import { fileURLToPath } from "node:url";
+
 import type {
   SimulatorBackend,
   SimulatorDependencies,
@@ -52,14 +55,15 @@ export async function verifySimulatorPackage(
 export async function loadSimulatorDependencies(
   entry: string
 ): Promise<SimulatorDependencies> {
+  const parent = fileURLToPath(entry);
   const [guards, cache, locks, binding, tensors, byteModule] =
     await Promise.all([
       import(new URL("./utils/DisposeGuard.js", entry).href),
       import(new URL("./utils/LruCache.js", entry).href),
-      import(import.meta.resolve("lifecycle-utils", entry)),
+      import(import.meta.resolve("lifecycle-utils", parent)),
       import(new URL("./bindings/types.js", entry).href),
       import(new URL("./gguf/types/GgufTensorInfoTypes.js", entry).href),
-      import(import.meta.resolve("bytes", entry)),
+      import(import.meta.resolve("bytes", parent)),
     ]);
   return {
     DisposeGuard: guards.DisposeGuard,

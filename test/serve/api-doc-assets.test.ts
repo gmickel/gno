@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+// node:url — platform-correct file URL encoding has no Bun equivalent.
+import { pathToFileURL } from "node:url";
 
 import type { Config } from "../../src/config/types";
 import type { DocumentRow } from "../../src/store/types";
@@ -92,15 +94,13 @@ function assertDocAssetEnvelope(
 }
 
 test("pdfjs file URLs decode spaces, percent escapes, and Unicode", () => {
-  const encoded = new URL(
-    "file:///tmp/GNO%20PDF/%E6%BC%A2%E5%AD%97/package.json"
-  );
-  expect(pdfjsFileUrlToPath(encoded.href)).toBe(
-    "/tmp/GNO PDF/漢字/package.json"
-  );
-  expect(pdfjsFileUrlToPath("/tmp/plain/package.json")).toBe(
-    "/tmp/plain/package.json"
-  );
+  const decoded = join(tmpdir(), "GNO PDF", "漢字", "100%", "package.json");
+  const encoded = pathToFileURL(decoded);
+  expect(encoded.href).toContain("GNO%20PDF");
+  expect(encoded.href).toContain("100%25");
+  expect(pdfjsFileUrlToPath(encoded.href)).toBe(decoded);
+  const plain = join(tmpdir(), "plain", "package.json");
+  expect(pdfjsFileUrlToPath(plain)).toBe(plain);
 });
 
 async function setupSimpleAsset(

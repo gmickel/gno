@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import subprocess
 import time
 
 MODE = os.environ.get("FAKE_GNO_MODE", "ok")
@@ -85,6 +86,31 @@ def recall(argv):
     return result
 
 
+def receipt_private(path):
+    if os.name != "nt":
+        return os.stat(path).st_mode & 0o777 == 0o600
+    # Windows privacy is enforced by the DACL, not POSIX mode bits. Pass the
+    # path through the environment, never interpolate it into PowerShell code.
+    script = """
+$identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+$allowed = @($identity.User.Value, 'S-1-5-18', 'S-1-5-32-544')
+$acl = Get-Acl -LiteralPath $env:FAKE_RECEIPT_PATH -ErrorAction Stop
+$unexpected = @($acl.Access | Where-Object {
+    $_.AccessControlType -eq 'Allow' -and
+    $allowed -notcontains $_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value
+})
+if ($unexpected.Count -ne 0) { exit 1 }
+if ($acl.Access.Count -eq 0) { exit 1 }
+exit 0
+"""
+    result = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+        env={**os.environ, "FAKE_RECEIPT_PATH": path},
+        capture_output=True, timeout=5, check=False,
+    )
+    return result.returncode == 0
+
+
 def remember(argv):
     if "--receipt" in argv:
         # Prove the receipt file was readable, well-formed, and private
@@ -97,6 +123,7 @@ def remember(argv):
                 "receipt": presented.get("receipt"),
                 "path": path,
                 "mode": oct(os.stat(path).st_mode & 0o777),
+                "private": receipt_private(path),
             }
         )
     record = dict(FACT, text=argv[1], caller=flag(argv, "--caller"), session=flag(argv, "--session"))

@@ -6,7 +6,9 @@ import { emailRecordAdapter } from "../../src/converters/adapters/email/adapter"
 import { runRecordAdapter } from "../../src/ingestion/record-adapter";
 
 const fixturePath = (name: string): string =>
-  new URL(`../fixtures/exports/mail/${name}`, import.meta.url).pathname;
+  Bun.fileURLToPath(
+    new URL(`../fixtures/exports/mail/${name}`, import.meta.url)
+  );
 
 const bytesInput = (
   bytes: Uint8Array,

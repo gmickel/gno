@@ -3,6 +3,11 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import {
+  isBunfsPath,
+  isStandaloneExecutable,
+} from "../../src/serve/spa-production-build";
+
 const PROBE = join(import.meta.dir, "fixtures", "spa-compile-probe.ts");
 const CROSS_TARGETS = ["bun-windows-x64", "bun-darwin-x64"] as const;
 
@@ -52,7 +57,9 @@ test("compiled production SPA source serves the mount entry without bunfs Bun.bu
       standalone: boolean;
     };
     expect(report.standalone).toBe(true);
-    expect(report.bundleIndex).toContain("/$bunfs/");
+    expect(report.bundleIndex.replaceAll("\\", "/")).toContain(
+      process.platform === "win32" ? "B:/~BUN/" : "/$bunfs/"
+    );
     expect(report.htmlHasRoot).toBe(true);
     expect(report.entryHasMount).toBe(true);
     expect(
@@ -68,3 +75,19 @@ test("compiled production SPA source serves the mount entry without bunfs Bun.bu
     await rm(root, { force: true, recursive: true });
   }
 }, 180_000);
+
+test("virtual Bun roots are detected without classifying source paths as compiled", () => {
+  for (const path of [
+    "/$bunfs/root/app",
+    "B:/~BUN/root/app.exe",
+    "B:\\~BUN\\root\\app.exe",
+  ])
+    expect(isBunfsPath(path)).toBe(true);
+  for (const path of [
+    "/work/gno/src/serve/server.ts",
+    "C:\\work\\gno\\server.ts",
+    "B:/~BUN-backup/app.exe",
+  ])
+    expect(isBunfsPath(path)).toBe(false);
+  expect(isStandaloneExecutable()).toBe(false);
+});

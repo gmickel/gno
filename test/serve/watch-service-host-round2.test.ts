@@ -27,6 +27,7 @@ import {
   takePending,
 } from "../../src/serve/watch-service-state";
 import { safeRm } from "../helpers/cleanup";
+import { portableWatchOptions } from "./helpers/watch-portable-fixtures";
 
 function createCollection(
   name: string,
@@ -118,6 +119,7 @@ describe("durable forceFallback / overflow", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -229,6 +231,7 @@ describe("durable forceFallback / overflow", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -411,6 +414,7 @@ describe("generation options freshness", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", rootA)],
         eventBus: null,
         scheduler: null,

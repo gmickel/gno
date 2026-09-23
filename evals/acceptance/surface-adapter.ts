@@ -24,6 +24,7 @@ import {
 } from "../../scripts/package-smoke-isolation";
 import { projectAcceptance } from "./native-adapter";
 import { OwnedResources } from "./resources";
+import { observationHarnessSources } from "./session-driver";
 
 export interface SurfaceLaunch {
   /** Entrypoint and arguments after `bun --preload native-capture.ts`. */
@@ -276,6 +277,9 @@ export async function runSurfaceAcceptance(
     "native-capture.ts",
     "capture-contract.ts",
     "parent-capture.ts",
+    "windows-observation.ts",
+    "windows-observation.installation.json",
+    "../../src/core/windows-private-path.ts",
     "native-child-preload.ts",
     "child-receipt.ts",
   ]) {
@@ -285,6 +289,7 @@ export async function runSurfaceAcceptance(
         .update(await file.arrayBuffer())
         .digest("hex");
   }
+  Object.assign(harnessSha256, await observationHarnessSources(launch.cwd));
   const timeout = launch.timeoutMs ?? 120_000;
   if (!Number.isFinite(timeout) || timeout <= 0)
     throw new Error("Invalid surface timeout");

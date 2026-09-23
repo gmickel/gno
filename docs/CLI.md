@@ -854,6 +854,10 @@ for identical rule, subject/location, and evidence. Terminal human mode reports
 progress on stderr; JSON, `--quiet`, and `--no-progress` suppress it. `Ctrl-C`
 returns partial evidence rather than a false clean report.
 
+Reports written with `--output` are private to the current user. On Windows,
+this requires built-in Windows PowerShell to establish and verify filesystem
+permissions; the write fails if those checks are unavailable.
+
 Exit codes: `0` clean, `1` invalid input, `2` runtime failure, `4` complete with
 findings, and `5` partial, unavailable, inconclusive, cancelled, or repeatedly
 changed during the run. This command is unrelated to `gno egress-audit`, which

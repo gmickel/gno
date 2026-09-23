@@ -133,7 +133,7 @@ describe("CJK lexical benchmark fixture contract", () => {
     const actualIds: string[] = [];
     const glob = new Bun.Glob("**/*.md");
     for await (const path of glob.scan(CORPUS_ROOT)) {
-      actualIds.push(path);
+      actualIds.push(path.replaceAll("\\", "/"));
     }
 
     expect(new Set(sourceIds).size).toBe(sourceIds.length);

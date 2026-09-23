@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 // node:fs/promises — temp fixture dirs and symlinks for focused tests; no Bun equivalent
 import { mkdir, mkdtemp, symlink } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { homedir, tmpdir } from "node:os";
+import { join, normalize } from "node:path";
 
 import {
   ANY_REGRESSION_THRESHOLD_PERCENT,
@@ -100,7 +100,7 @@ describe("macos-file-provider-smoke refusals", () => {
     expect(
       resolveProviderRoot(
         join(
-          process.env.HOME ?? "/nonexistent-home",
+          homedir(),
           "Library",
           "CloudStorage",
           "GoogleDrive-fn118-definitely-missing",
@@ -173,7 +173,9 @@ describe("macos-file-provider-smoke refusals", () => {
       provider: null,
     },
   ])("classifies only exact provider-root shapes %#", ({ path, provider }) => {
-    expect(classifyProviderRootShape(path, "/home")).toBe(provider);
+    expect(classifyProviderRootShape(normalize(path), normalize("/home"))).toBe(
+      provider
+    );
   });
 
   test("validates an immediate OneDrive library and rejects its symlink sibling", async () => {

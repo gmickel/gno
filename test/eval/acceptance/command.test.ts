@@ -284,7 +284,16 @@ test("source identity rejects actual runtime and archive link mutations, tolerat
     git("archive", "--format=tar", `--output=${path}`, "HEAD");
     const archive = await Bun.file(path).arrayBuffer();
     const sha256 = new Bun.CryptoHasher("sha256").update(archive).digest("hex");
-    await new Bun.Archive(archive).extract(extracted);
+    // Use the verifier's stdlib dependency: Bun.Archive drops symlinks on Windows.
+    const extraction = Bun.spawnSync([
+      "python3",
+      "-c",
+      "import sys,tarfile; tarfile.open(sys.argv[1]).extractall(sys.argv[2], filter='data')",
+      path,
+      extracted,
+    ]);
+    if (extraction.exitCode !== 0)
+      throw new Error(extraction.stderr.toString());
     const settings = { sourceRoot: extracted, sourceArchive: { path, sha256 } };
     await utimes(join(extracted, "src/main.ts"), new Date(), new Date());
     expect((await verifyAcceptanceSource(settings, commit)).sourceRoot).toBe(

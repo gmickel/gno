@@ -38,7 +38,9 @@ describe("formatSearchResults terminal links", () => {
       terminalLinks: { isTTY: true, editorUriTemplate: null },
     });
 
-    expect(output).toContain("\u001B]8;;file:///tmp/notes/test.md\u0007");
+    expect(output).toContain(
+      `\u001B]8;;${Bun.pathToFileURL("/tmp/notes/test.md").href}\u0007`
+    );
     expect(output).toContain("gno://notes/test.md");
     expect(output).toContain("\u001B]8;;\u0007");
   });

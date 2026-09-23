@@ -78,6 +78,14 @@ export const NETWORK_BOUNDARY_INVENTORY = [
     enforcement: "no_collection_data",
   },
   {
+    id: "windows-private-path-acl",
+    key: "src/core/windows-private-path.ts::child_process#1",
+    path: "src/core/windows-private-path.ts",
+    primitive: "child_process",
+    action: null,
+    enforcement: "local_process_only",
+  },
+  {
     id: "local-file-operations",
     key: "src/core/file-ops.ts::child_process#1",
     path: "src/core/file-ops.ts",

@@ -3,10 +3,12 @@ import { expect, test } from "bun:test";
 import { mkdtemp, realpath, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+// node:url — file URL conversion has no Bun equivalent.
+import { fileURLToPath } from "node:url";
 
 import { verifyPackedNativeWorker } from "../../scripts/package-smoke-native-worker";
 
-const root = new URL("../../", import.meta.url).pathname;
+const root = fileURLToPath(new URL("../../", import.meta.url));
 
 test("packed native entry and client preserve lifecycle, fault, framing and request identity contracts", async () => {
   const temp = await realpath(

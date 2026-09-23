@@ -1,8 +1,7 @@
+import { describe, expect, test } from "bun:test";
 /**
  * Focused unit tests for watcher event classification and reconciliation helpers.
  */
-
-import { describe, expect, test } from "bun:test";
 // node:fs/promises — test fixture setup
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 // node:os — tmpdir
@@ -39,6 +38,7 @@ import {
   createEmptyWatcherSnapshot,
 } from "../../src/serve/watch-snapshot";
 import { safeRm } from "../helpers/cleanup";
+import { createPortableWatcherFs } from "./helpers/watch-portable-fixtures";
 
 function createCollection(
   name: string,
@@ -281,7 +281,9 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
     try {
       await writeFile(join(root, "keep.md"), "one");
       await writeFile(join(root, "change.md"), "old");
-      const built = await buildWatcherSnapshot(root);
+      const built = await buildWatcherSnapshot(root, {
+        fs: createPortableWatcherFs(),
+      });
       expect(built.status).toBe("ok");
       if (built.status !== "ok") {
         throw new Error("snapshot required");
@@ -290,6 +292,7 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
       await writeFile(join(root, "change.md"), "new-content-longer");
       // Ambiguous temp hint in the same directory.
       const classified = await classifyDirtyHints({
+        snapshotOptions: { fs: createPortableWatcherFs() },
         collection: createCollection("notes", root),
         store: createStubStore(),
         rootAbs: root,
@@ -315,7 +318,9 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
       await writeFile(join(root, "dir1", "a.md"), "a");
       await writeFile(join(root, "dir1", "sub", "b.md"), "b");
       await writeFile(join(root, "sibling.md"), "s");
-      const built = await buildWatcherSnapshot(root);
+      const built = await buildWatcherSnapshot(root, {
+        fs: createPortableWatcherFs(),
+      });
       expect(built.status).toBe("ok");
       if (built.status !== "ok") {
         throw new Error("snapshot required");
@@ -323,6 +328,7 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
 
       await safeRm(join(root, "dir1"));
       const classified = await classifyDirtyHints({
+        snapshotOptions: { fs: createPortableWatcherFs() },
         collection: createCollection("notes", root),
         store: createStubStore(),
         rootAbs: root,
@@ -346,7 +352,9 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
     const root = await mkdtemp(join(tmpdir(), "gno-watch-newdir-"));
     try {
       await writeFile(join(root, "root.md"), "r");
-      const built = await buildWatcherSnapshot(root);
+      const built = await buildWatcherSnapshot(root, {
+        fs: createPortableWatcherFs(),
+      });
       expect(built.status).toBe("ok");
       if (built.status !== "ok") {
         throw new Error("snapshot required");
@@ -355,6 +363,7 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
       await mkdir(join(root, "fresh"), { recursive: true });
       await writeFile(join(root, "fresh", "n.md"), "n");
       const classified = await classifyDirtyHints({
+        snapshotOptions: { fs: createPortableWatcherFs() },
         collection: createCollection("notes", root),
         store: createStubStore(),
         rootAbs: root,
@@ -377,6 +386,7 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
       await mkdir(join(root, "nested"), { recursive: true });
       await writeFile(join(root, "nested", "a.md"), "a");
       const classified = await classifyDirtyHints({
+        snapshotOptions: { fs: createPortableWatcherFs() },
         collection: createCollection("notes", root),
         store: createStubStore({
           // Non-root inventory uses descendants alone (not direct-child).
@@ -401,6 +411,7 @@ describe("classifyDirtyHints and widenVanishedExactPaths", () => {
 
   test("partial scan failure keeps prior snapshot uncommitted (null next)", async () => {
     const classified = await classifyDirtyHints({
+      snapshotOptions: { fs: createPortableWatcherFs() },
       collection: createCollection("notes", "/no/such/root-xyz"),
       store: createStubStore(),
       rootAbs: "/no/such/root-xyz",

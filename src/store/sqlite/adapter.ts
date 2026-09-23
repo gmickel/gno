@@ -669,7 +669,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   async close(): Promise<void> {
     this.fenceForShutdown();
     if (this.db) {
-      this.db.close();
+      // Finalize prepared statements too, so Windows releases the file handle now.
+      this.db.close(true);
       this.db = null;
     }
   }

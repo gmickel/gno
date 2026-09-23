@@ -299,7 +299,7 @@ export const scanShippedNetworkBoundaries = async (
     if (relativePath.endsWith(".d.ts")) continue;
     callsites.push(
       ...scanNetworkBoundarySource(
-        relativePath,
+        relativePath.replaceAll("\\", "/"),
         await Bun.file(`${root}/${relativePath}`).text()
       )
     );

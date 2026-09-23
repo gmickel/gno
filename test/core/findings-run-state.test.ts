@@ -117,7 +117,7 @@ describe("findings run state", () => {
 
   test("state path sits next to the index database", () => {
     expect(findingsRunStatePath("/data/index-default.sqlite")).toBe(
-      "/data/index-default.findings-run.json"
+      join("/data", "index-default.findings-run.json")
     );
   });
 

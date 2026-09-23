@@ -19,6 +19,7 @@ import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { defaultSyncService } from "../../src/ingestion";
 import { CollectionWatchService } from "../../src/serve/watch-service";
 import { safeRm } from "../helpers/cleanup";
+import { portableWatchOptions } from "./helpers/watch-portable-fixtures";
 
 function createCollection(
   name: string,
@@ -96,6 +97,7 @@ describe("init absorption forceFallback", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -142,6 +144,7 @@ describe("init absorption forceFallback", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -195,6 +198,7 @@ describe("retry scheduling", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -274,6 +278,7 @@ describe("generation full reconcile durability", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", rootA)],
         eventBus: null,
         scheduler: null,
@@ -345,6 +350,7 @@ describe("generation full reconcile durability", () => {
       }) as typeof defaultSyncService.syncCollection;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [createCollection("notes", rootA)],
         eventBus: null,
         scheduler: null,

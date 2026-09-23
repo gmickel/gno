@@ -17,8 +17,10 @@ const TEST_DIR = join(import.meta.dir, ".temp-mcp-config-validation");
 const HOME_DIR = join(TEST_DIR, "home");
 const PROJECT_DIR = join(TEST_DIR, "project");
 const ORIGINAL_XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME;
+const ORIGINAL_APPDATA = process.env.APPDATA;
 
 beforeEach(async () => {
+  process.env.APPDATA = join(TEST_DIR, "appdata");
   await safeRm(TEST_DIR);
   await Promise.all([
     mkdir(HOME_DIR, { recursive: true }),
@@ -28,6 +30,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  if (ORIGINAL_APPDATA === undefined) {
+    delete process.env.APPDATA;
+  } else {
+    process.env.APPDATA = ORIGINAL_APPDATA;
+  }
   if (ORIGINAL_XDG_CONFIG_HOME === undefined) {
     delete process.env.XDG_CONFIG_HOME;
   } else {

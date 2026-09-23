@@ -8,15 +8,15 @@
  * invokes `gno remember`).
  */
 
-import { afterEach, describe, expect, test } from "bun:test";
 import {
-  chmod,
-  mkdtemp,
-  mkdir,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises"; // filesystem structure ops (no Bun equivalent)
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  test,
+} from "bun:test";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises"; // filesystem structure ops (no Bun equivalent)
 import { tmpdir } from "node:os"; // no Bun os utils
 import { join } from "node:path"; // no Bun path utils
 
@@ -38,6 +38,30 @@ interface Fixture {
 }
 
 const cleanups: string[] = [];
+let nativeLauncherRoot: string | undefined;
+let nativeLauncher: string | undefined;
+
+beforeAll(async () => {
+  nativeLauncherRoot = await mkdtemp(join(tmpdir(), "hermes-gno-launcher-"));
+  nativeLauncher = join(
+    nativeLauncherRoot,
+    process.platform === "win32" ? "gno.exe" : "gno"
+  );
+  const built = Bun.spawnSync([
+    process.execPath,
+    "build",
+    "--compile",
+    join(HERE, "fake-gno-launcher.ts"),
+    "--outfile",
+    nativeLauncher,
+  ]);
+  expect(built.exitCode).toBe(0);
+}, 60_000);
+
+afterAll(async () => {
+  if (nativeLauncherRoot)
+    await rm(nativeLauncherRoot, { recursive: true, force: true });
+});
 
 afterEach(async () => {
   for (const dir of cleanups.splice(0)) {
@@ -55,14 +79,10 @@ async function fixture(
   const bin = join(root, "bin");
   await mkdir(join(home, "gno"), { recursive: true });
   await mkdir(bin, { recursive: true });
-  const gnoPath = join(bin, "gno");
-  if (!opts.missingBinary) {
-    await writeFile(
-      gnoPath,
-      `#!/bin/sh\nexec "${PYTHON}" "${FAKE_GNO}" "$@"\n`
-    );
-    await chmod(gnoPath, 0o755);
-  }
+  const gnoPath =
+    !opts.missingBinary && nativeLauncher
+      ? nativeLauncher
+      : join(bin, process.platform === "win32" ? "gno.exe" : "gno");
   const log = join(root, "gno-calls.log");
   const merged = {
     scopes: "project:gno, family",
@@ -97,6 +117,8 @@ async function drive(
       HERMES_HOME: fx.home,
       FAKE_GNO_LOG: fx.log,
       FAKE_GNO_MODE: "ok",
+      FAKE_GNO_PYTHON: PYTHON as string,
+      FAKE_GNO_SCRIPT: FAKE_GNO,
       ...env,
     },
     stdout: "pipe",
@@ -130,6 +152,7 @@ interface ReceiptSeen {
   receipt: Record<string, unknown>;
   path: string;
   mode: string;
+  private: boolean;
 }
 
 /** What `gno remember --receipt` found in the receipt file while it ran. */
@@ -269,7 +292,8 @@ describe.skipIf(!PYTHON)("hermes gno memory provider", () => {
     expect(receiptPath).toMatch(/hermes-gno-receipt-.*\.json$/);
     const [seen] = await receiptsSeen(fx);
     expect(seen?.path).toBe(receiptPath);
-    expect(seen?.mode).toBe("0o600");
+    expect(seen?.private).toBe(true);
+    if (process.platform !== "win32") expect(seen?.mode).toBe("0o600");
     expect(seen?.receipt).toMatchObject({
       caller: "hermes:ivan",
       session: "sess-initial",

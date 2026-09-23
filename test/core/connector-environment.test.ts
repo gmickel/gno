@@ -1,4 +1,6 @@
 import { expect, test } from "bun:test";
+// node:path provides platform-native fixture paths; Bun has no path API.
+import { join } from "node:path";
 
 import { normalizeConnectorWorkspaceEnvironment } from "../../src/core/connector-environment";
 
@@ -6,12 +8,12 @@ test("connector workspace environment accepts only audited absolute roots", () =
   expect(normalizeConnectorWorkspaceEnvironment(undefined)).toEqual({});
   expect(
     normalizeConnectorWorkspaceEnvironment({
-      GNO_DATA_DIR: "/srv/gno/data",
-      GNO_CACHE_DIR: "/srv/gno/cache",
+      GNO_DATA_DIR: join(import.meta.dir, "data"),
+      GNO_CACHE_DIR: join(import.meta.dir, "cache"),
     })
   ).toEqual({
-    GNO_DATA_DIR: "/srv/gno/data",
-    GNO_CACHE_DIR: "/srv/gno/cache",
+    GNO_DATA_DIR: join(import.meta.dir, "data"),
+    GNO_CACHE_DIR: join(import.meta.dir, "cache"),
   });
 
   for (const environment of [

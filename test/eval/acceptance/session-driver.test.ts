@@ -229,9 +229,10 @@ test("driver pins declared backend/build policy and only explicit canonical CUDA
   await Bun.write(
     join(sourceRoot, "evals/acceptance/session-child.ts"),
     `
+    import {join} from 'node:path';
     const {runId,directory}=await Bun.file(process.env.GNO_ACCEPTANCE_SESSION_CONFIG).json();
     process.on('message',async ({sequence,operation})=>{
-      const resultPath=directory+'/'+sequence+'.reply.json.gz';
+      const resultPath=join(directory,sequence+'.reply.json.gz');
       await Bun.write(resultPath,Bun.gzipSync(JSON.stringify({runId,sequence,pid:process.pid,response:{loaded:false,env:{gpu:process.env.GNO_LLAMA_GPU,build:process.env.GNO_LLAMA_BUILD,cudaPath:process.env.CUDA_PATH??null}}})));
       process.send({runId,pid:process.pid,sequence,ok:true,resultPath});
       if(operation==='close'){process.disconnect();process.exit(0);}
@@ -288,7 +289,7 @@ test("installed harness imports inside a fresh selected product root without nat
   const root = await realpath(
     await mkdtemp(join(tmpdir(), "gno-session-portable-"))
   );
-  const source = new URL("../../../", import.meta.url).pathname;
+  const source = Bun.fileURLToPath(new URL("../../../", import.meta.url));
   const { installSessionHarness } =
     await import("../../../evals/acceptance/session-driver");
   try {
@@ -384,6 +385,107 @@ test("helper installation rejects a companion-directory symlink outside the sele
     expect(
       await Bun.file(join(outside, "package-smoke-isolation.ts")).exists()
     ).toBe(false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("archived harness bundles shared privacy support without adding runtime source", async () => {
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "gno-harness-archive-"))
+  );
+  const { installSessionHarness } =
+    await import("../../../evals/acceptance/session-driver");
+  const { verifyAcceptanceSource } =
+    await import("../../../scripts/retrieval-acceptance-source");
+  try {
+    const sourceRoot = join(root, "source");
+    await mkdir(join(sourceRoot, "src"), { recursive: true });
+    await Bun.write(
+      join(sourceRoot, "src/main.ts"),
+      "export const original = true;\n"
+    );
+    const git = (...args: string[]) => {
+      const result = Bun.spawnSync(
+        [
+          "git",
+          "-c",
+          "user.name=Harness fixture",
+          "-c",
+          "user.email=fixture@example.invalid",
+          ...args,
+        ],
+        { cwd: sourceRoot }
+      );
+      if (result.exitCode !== 0) throw new Error(result.stderr.toString());
+      return result.stdout.toString().trim();
+    };
+    git("init", "--quiet");
+    git("add", ".");
+    git("-c", "core.hooksPath=", "commit", "--quiet", "-m", "fixture");
+    const commit = git("rev-parse", "HEAD");
+    const path = join(root, "source.tar");
+    git("archive", "--format=tar", `--output=${path}`, "HEAD");
+    const bytes = await Bun.file(path).arrayBuffer();
+    const sourceArchive = {
+      path,
+      sha256: new Bun.CryptoHasher("sha256").update(bytes).digest("hex"),
+    };
+    await installSessionHarness(sourceRoot);
+    expect(
+      (await verifyAcceptanceSource({ sourceRoot, sourceArchive }, commit))
+        .sourceRoot
+    ).toBe(sourceRoot);
+    expect(
+      await Bun.file(
+        join(sourceRoot, "src/core/windows-private-path.ts")
+      ).exists()
+    ).toBe(false);
+    expect(await Bun.file(join(sourceRoot, "src/main.ts")).text()).toBe(
+      "export const original = true;\n"
+    );
+    const mapping = await Bun.file(
+      join(sourceRoot, "evals/acceptance/windows-observation.installation.json")
+    ).json();
+    const bundled = await Bun.file(
+      join(sourceRoot, "evals/acceptance/windows-observation.ts")
+    ).bytes();
+    const { observationHarnessSources } =
+      await import("../../../evals/acceptance/session-driver");
+    expect(await observationHarnessSources(sourceRoot)).toEqual(
+      await observationHarnessSources(process.cwd())
+    );
+    expect(mapping.bundler).toEqual({
+      name: "bun",
+      version: Bun.version,
+      target: "bun",
+      bundle: true,
+    });
+    expect(mapping.destination.sha256).toBe(
+      new Bun.CryptoHasher("sha256").update(bundled).digest("hex")
+    );
+    expect(mapping.sources["../../src/core/windows-private-path.ts"]).toBe(
+      new Bun.CryptoHasher("sha256")
+        .update(
+          await Bun.file(
+            new URL(
+              "../../../src/core/windows-private-path.ts",
+              import.meta.url
+            )
+          ).bytes()
+        )
+        .digest("hex")
+    );
+    await Bun.write(
+      join(sourceRoot, "evals/acceptance/windows-observation.ts"),
+      "tampered"
+    );
+    await expect(observationHarnessSources(sourceRoot)).rejects.toThrow(
+      "mapping"
+    );
+    expect(new TextDecoder().decode(bundled)).not.toContain(
+      'from "../../src/core/windows-private-path"'
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

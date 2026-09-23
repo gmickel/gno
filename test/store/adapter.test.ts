@@ -52,6 +52,15 @@ describe("SqliteAdapter", () => {
   });
 
   describe("lifecycle", () => {
+    test("close releases separately prepared statements immediately", async () => {
+      expect((await adapter.open(dbPath, "unicode61")).ok).toBe(true);
+      const statement = adapter.getRawDb().prepare("SELECT 1 AS value");
+      expect(statement.get()).toEqual({ value: 1 });
+      await adapter.close();
+      expect(() => statement.get()).toThrow("Database has closed");
+      await adapter.close();
+    });
+
     test("opens and closes database", async () => {
       expect(adapter.isOpen()).toBe(false);
 

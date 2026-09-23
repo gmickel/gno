@@ -183,7 +183,9 @@ describe("project profile clean-machine portability", () => {
             onlyFiles: true,
           })
         )),
-      ].sort();
+      ]
+        .map((path) => path.replaceAll("\\", "/"))
+        .sort();
       expect(trackedFiles).toEqual([
         ".gno/index.yml",
         "docs/note.md",

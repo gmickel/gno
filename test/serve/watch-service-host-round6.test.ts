@@ -1,6 +1,5 @@
-/** Host review round-6: special exact path + dirty generation retention. */
-
 import { describe, expect, test } from "bun:test";
+/** Host review round-6: special exact path + dirty generation retention. */
 // node:fs/promises — test fixture setup
 import { mkdtemp, unlink, writeFile } from "node:fs/promises";
 // node:os — tmpdir
@@ -12,6 +11,7 @@ import { defaultSyncService } from "../../src/ingestion";
 import { CollectionWatchService } from "../../src/serve/watch-service";
 import { computeTargetedRetry } from "../../src/serve/watch-service-flush-helpers";
 import { safeRm } from "../helpers/cleanup";
+import { portableWatchOptions } from "./helpers/watch-portable-fixtures";
 import {
   coll,
   createSyncResult,
@@ -34,6 +34,7 @@ describe("exact special path (lstat kind)", () => {
     try {
       await writeFile(join(root, "special.md"), "was-file");
       const serviceBoot = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -75,6 +76,7 @@ describe("exact special path (lstat kind)", () => {
       }) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -186,6 +188,7 @@ describe("dirty generation retention", () => {
       }) as typeof defaultSyncService.inactivateAbsentSources;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,
@@ -264,6 +267,7 @@ describe("dirty generation retention", () => {
         })) as typeof defaultSyncService.syncPaths;
 
       const service = new CollectionWatchService({
+        ...portableWatchOptions(),
         collections: [coll("notes", root)],
         eventBus: null,
         scheduler: null,

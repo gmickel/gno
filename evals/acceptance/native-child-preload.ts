@@ -13,6 +13,7 @@ import type { ChildIdentity, ChildReceipt } from "./child-receipt";
 import type { AcceptanceManifest } from "./manifest";
 
 import { childIdentitySchema } from "./child-receipt";
+import { privateCapturePath } from "./windows-observation";
 
 async function installForSelectedEntry(): Promise<void> {
   const expectedEntry = realpathSync(
@@ -28,13 +29,9 @@ async function installForSelectedEntry(): Promise<void> {
   // argv as worker configuration and never import native capture into them.
   if (actualEntry !== expectedEntry) return;
   const path = process.env.GNO_ACCEPTANCE_CHILD_BOOTSTRAP;
-  if (
-    !path ||
-    realpathSync(path) !== path ||
-    !lstatSync(path).isFile() ||
-    (lstatSync(path).mode & 0o077) !== 0
-  )
+  if (!path || realpathSync(path) !== path || !lstatSync(path).isFile())
     throw new Error("Private child capture bootstrap required");
+  privateCapturePath(path);
   const bootstrap = JSON.parse(readFileSync(path, "utf8")) as {
     identity: Omit<ChildIdentity, "pid">;
     models: AcceptanceManifest["models"];

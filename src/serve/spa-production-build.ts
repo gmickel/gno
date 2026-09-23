@@ -79,12 +79,13 @@ const contentTypeFor = (path: string): string => {
   return "application/octet-stream";
 };
 
-export const isStandaloneExecutable = (): boolean =>
-  import.meta.path.includes("/$bunfs/") ||
-  import.meta.path.includes("\\$bunfs\\");
+export const isBunfsPath = (path: string): boolean => {
+  const normalized = path.replaceAll("\\", "/");
+  return normalized.includes("/$bunfs/") || normalized.startsWith("B:/~BUN/");
+};
 
-export const isBunfsPath = (path: string): boolean =>
-  path.includes("/$bunfs/") || path.includes("\\$bunfs\\");
+export const isStandaloneExecutable = (): boolean =>
+  isBunfsPath(import.meta.path);
 
 const rewriteProductionHtml = (html: string, jsEntryPath: string): string => {
   const script = `<script type="module" src="/${basename(jsEntryPath)}"></script>`;

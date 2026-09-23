@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-test("foreground serve completes graceful teardown before the CLI exits on SIGINT", async () => {
+test("foreground serve exits cleanly on SIGINT under the platform shutdown contract", async () => {
   const child = Bun.spawn(
     [process.execPath, "scripts/serve-shutdown-smoke.ts", "--signal", "SIGINT"],
     {
@@ -17,4 +17,9 @@ test("foreground serve completes graceful teardown before the CLI exits on SIGIN
 
   expect(exitCode, stderr).toBe(0);
   expect(stdout).toContain("Serve shutdown passed");
+  expect(stdout).toContain(
+    process.platform === "win32"
+      ? "platform signal termination"
+      : "graceful teardown"
+  );
 }, 20_000);

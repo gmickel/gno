@@ -5,6 +5,7 @@ import { tmpdir } from "node:os"; // Bun has no OS temp-directory API.
 import { join } from "node:path"; // Bun has no path helpers.
 
 import { installParentCapture } from "../../../evals/acceptance/parent-capture";
+import { privateCapturePath } from "../../../evals/acceptance/windows-observation";
 
 test("selected pipeline attachment captures direct-surface metadata without tracing and restores property hook", async () => {
   const { attachSearchResultsTraceMetadata } =
@@ -14,6 +15,7 @@ test("selected pipeline attachment captures direct-surface metadata without trac
   const root = await realpath(
     await mkdtemp(join(tmpdir(), "gno-pipeline-attachment-"))
   );
+  privateCapturePath(root, true);
   const original = Object.defineProperty;
   const capture = await installParentCapture("direct-surface", [], root);
   try {
@@ -88,8 +90,10 @@ test.each([0, 7])(
     Bun.spawn = ((command: unknown, ...args: unknown[]) => {
       if (
         Array.isArray(command) &&
-        command[0] === "ps" &&
-        command[2] === "pid=,rss=" &&
+        ((command[0] === "ps" && command[2] === "pid=,rss=") ||
+          (command[0] === "powershell.exe" &&
+            (args[0] as { env?: Record<string, string> })?.env
+              ?.GNO_QA_PROCESS_FIELDS === "rss")) &&
         !injected
       ) {
         injected = true;
@@ -101,9 +105,13 @@ test.each([0, 7])(
             process.execPath,
             "--no-env-file",
             "-e",
-            `await Bun.sleep(100);const p=Bun.spawn(${JSON.stringify(["ps", "-o", "pid=,rss=", "-p", String(owner.pid)])},{stdout:'inherit',stderr:'ignore'});process.exit(await p.exited)`,
+            `await Bun.sleep(100);const p=Bun.spawn(${JSON.stringify(command)},{stdout:'inherit',stderr:'ignore'});process.exit(await p.exited)`,
           ],
-          { stdout: "pipe", stderr: "ignore" }
+          {
+            stdout: "pipe",
+            stderr: "ignore",
+            env: (args[0] as { env?: Record<string, string> })?.env,
+          }
         );
       }
       return Reflect.apply(spawn, Bun, [command, ...args]);

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Release SQLite statements when closing an index and let Windows lock waiters yield so the current writer can finish.
+- Reject Windows drive roots during folder setup and recognize compiled Windows server assets.
+- Enforce private filesystem permissions on Windows audit reports before writing report contents.
+- Run the complete Windows regression suite in CI and release checks; correct platform-specific fixtures and path handling.
+
 ## [2.5.0] - 2026-09-23
 
 ### Added

@@ -4,6 +4,8 @@
  */
 
 import { describe, expect, test } from "bun:test";
+// node:path — Bun has no path utilities.
+import { normalize } from "node:path";
 
 import type {
   DirectoryAvailabilityPort,
@@ -76,7 +78,9 @@ function memoryFs(tree: Record<string, string[]>): WatcherSnapshotFs {
     openDir: async (absPath: string) => {
       const handle = { __watcherDirHandle: Symbol(String(++seq)) } as never;
       const key =
-        absPath === "/" || absPath === "" ? "" : absPath.replace(/^\//, "");
+        absPath === "/" || absPath === ""
+          ? ""
+          : absPath.replaceAll("\\", "/").replace(/^\//, "");
       handles.set(handle, key);
       return handle;
     },
@@ -133,7 +137,7 @@ function blockAtDirectoryRead(
     mode: "local",
     classify: async () => ({ kind: "available" }),
     readDirectory: (absPath, read) => {
-      if (absPath.endsWith(blockedSuffix)) {
+      if (absPath.endsWith(normalize(blockedSuffix))) {
         return {
           kind: "dataless",
           code: "DATALESS_DIRECTORY",
@@ -152,7 +156,7 @@ describe("watcher snapshot source-availability descent", () => {
       cloud: ["hidden.md"],
     });
     const classifier = directoryClassifier((absPath) => {
-      if (absPath.endsWith("/cloud") || absPath === "cloud") {
+      if (absPath.endsWith(normalize("/cloud")) || absPath === "cloud") {
         return {
           kind: "dataless",
           code: "DATALESS_DIRECTORY",
@@ -198,7 +202,7 @@ describe("watcher snapshot source-availability descent", () => {
       cloud: ["previously-indexed.md"],
     };
     const classifier = directoryClassifier((absPath) => {
-      if (absPath.endsWith("/cloud") || absPath === "cloud") {
+      if (absPath.endsWith(normalize("/cloud")) || absPath === "cloud") {
         return {
           kind: "dataless",
           code: "DATALESS_DIRECTORY",
@@ -292,7 +296,7 @@ describe("watcher snapshot source-availability descent", () => {
       cloud: ["kept.md"],
     });
     const classifier = directoryClassifier((absPath) => {
-      if (absPath.endsWith("/cloud") || absPath === "cloud") {
+      if (absPath.endsWith(normalize("/cloud")) || absPath === "cloud") {
         return {
           kind: "dataless",
           code: "DATALESS_DIRECTORY",
@@ -408,7 +412,7 @@ describe("watcher snapshot source-availability descent", () => {
       {
         disposed: () => false,
         getGeneration: () => 1,
-        getRoot: () => "/collection",
+        getRoot: () => normalize("/collection"),
         setSnapshot: (name, snapshot) => snapshots.set(name, snapshot),
         clearSnapshot: (name) => snapshots.delete(name),
         setReady: () => undefined,

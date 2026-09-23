@@ -137,15 +137,32 @@ export async function acquireSqliteWriteLock(
   const databasePath = sqliteLockPath(lockPath);
   await mkdir(dirname(databasePath), { recursive: true });
 
+  const deadline = performance.now() + normalizedBusyTimeout(timeoutMs);
   const database = new Database(databasePath, { create: true });
   try {
-    database.exec(`PRAGMA busy_timeout = ${normalizedBusyTimeout(timeoutMs)}`);
-    database.exec("BEGIN IMMEDIATE");
+    // A synchronous SQLite busy wait blocks same-process owners from releasing.
+    // Keep each attempt immediate and yield between contended attempts instead.
+    database.exec("PRAGMA busy_timeout = 0");
+    for (;;) {
+      try {
+        database.exec("BEGIN IMMEDIATE");
+        break;
+      } catch (cause) {
+        if (!isSqliteLockContention(cause)) throw cause;
+        const remainingMs = deadline - performance.now();
+        if (remainingMs <= 0) {
+          database.close();
+          return null;
+        }
+        await Bun.sleep(Math.min(25, remainingMs));
+        if (performance.now() >= deadline) {
+          database.close();
+          return null;
+        }
+      }
+    }
   } catch (cause) {
     database.close();
-    if (isSqliteLockContention(cause)) {
-      return null;
-    }
     throw cause;
   }
 

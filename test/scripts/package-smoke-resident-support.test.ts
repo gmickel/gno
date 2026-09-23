@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 
 import {
   isExpectedResidentShutdownExit,
@@ -96,7 +96,7 @@ describe("packed resident shutdown exits", () => {
       [
         process.execPath,
         "-e",
-        "process.on('SIGTERM', () => setTimeout(() => process.exit(0), 75)); process.send?.('ready'); setInterval(() => {}, 1000)",
+        "process.on('message', () => setTimeout(() => process.exit(0), 75)); process.send?.('ready'); setInterval(() => {}, 1000)",
       ],
       {
         stdout: "pipe",
@@ -113,8 +113,21 @@ describe("packed resident shutdown exits", () => {
     };
 
     await ready;
-    await stopResident(running, "delayed resident", 500);
-    expect(child.exitCode).toBe(0);
+    // Windows terminates on SIGTERM without running a JS handler. Translate
+    // the requested signal into cooperative IPC for this deadline-only test.
+    const nativeKill = child.kill.bind(child);
+    const kill = spyOn(child, "kill").mockImplementation((signal) => {
+      if (signal === "SIGTERM") child.send("shutdown");
+      else nativeKill(signal);
+    });
+    try {
+      await stopResident(running, "delayed resident", 500);
+      expect(child.exitCode).toBe(0);
+      expect(kill.mock.calls).toEqual([["SIGTERM"]]);
+    } finally {
+      kill.mockRestore();
+      if (isResidentProcessGone(child.pid) === false) nativeKill("SIGKILL");
+    }
   });
 
   test("treats SIGKILL fallback as a successful stop", async () => {

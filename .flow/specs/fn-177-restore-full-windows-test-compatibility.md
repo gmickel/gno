@@ -10,7 +10,7 @@ The corrected command in PR245 is `bun test --max-concurrency=1`. Run 3587914001
 
 ## Requirements
 
-Group failures by root cause before editing. Distinguish platform-dependent fixture/path assumptions from product defects. Observed clusters include trace retrieval outcomes, watcher snapshots/reconciliation, MCP config validation, native lifecycle fixtures, macOS signing-script tests and timeouts in restoration tests. Use focused real reproductions; do not treat every failed case as a separate defect.
+Group failures by root cause before editing. Distinguish platform-dependent fixture/path assumptions from product defects. Observed clusters include integration fixtures, watcher snapshots/reconciliation, MCP config validation, native lifecycle fixtures, macOS signing-script tests and timeouts in restoration tests. The initial trace-retrieval grouping included subsequent integration output; grouping every file header attributes those failures to the integration fixtures. Use focused real reproductions; do not treat every failed case as a separate defect.
 
 Investigate SQLite resource release as a hypothesis: Bun's default close leaves separately prepared statements usable, while close(true) finalizes them. Establish whether this contributes to Windows cleanup/locking before changing the adapter.
 
@@ -19,3 +19,10 @@ Keep each correction minimal and preserve public behavior unless a demonstrated 
 ## Boundaries
 
 Do not weaken the new workflow command-contract regression or restore the unsupported concurrency flag. Do not move the aborted v2.5.0 tag. A future verified release uses a fresh version. This compatibility work is separate from the completed compiled-context feature and from fn170 mutation receipts.
+
+## Implementation evidence
+
+- SQLite close regression proves separately prepared statements are finalized immediately. SQLite fallback contention now yields between immediate attempts, allowing same-process writers to release without blocking the event loop.
+- Fixture corrections isolate Windows APPDATA, use native paths and file URLs, preserve virtual filesystem keys, and replace Unix-only launcher assumptions. Native safety/fallback assertions remain active.
+- Windows audit output uses a private directory before writing contents and verifies the final file ACL. Native acceptance captures use Windows ACL and CIM observations; archived instrumentation is bundled inside the harness namespace with separate source and deployed hashes. Runtime snapshot files remain unchanged.
+- Full Windows CI remains the completion gate; focused Linux results alone do not establish Windows compatibility.
