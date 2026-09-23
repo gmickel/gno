@@ -1,0 +1,26 @@
+bun test v1.4.2 (744846f84)
+
+test/serve/public/pages/CompiledContext.dom.test.tsx:
+69 |     return "blob:test";
+70 |   };
+71 |   try {
+72 |     await user.click(screen.getByRole("button", { name: "Download Markdown" }));
+73 |     expect(await captured?.text()).toBe(source);
+74 |     expect(window.location.href).toBe(locationBeforeDownload);
+                                      ^
+error: expect(received).toBe(expected)
+
+Expected: "http://localhost/"
+Received: "blob:test"
+
+      at <anonymous> (/home/gordon/work/gno-fn169/test/serve/public/pages/CompiledContext.dom.test.tsx:74:34)
+(fail) preview keeps source inert, reports omissions, downloads exact bytes, and invalidates edited inputs [55.72ms]
+(pass) freshness check submits inline bytes and renders stale reasons [13.62ms]
+(pass) oversize pasted input is rejected before any request [19.32ms]
+(pass) failed verification exposes the error without a download [11.22ms]
+(pass) file upload uses contents, rejects oversized replacement, and keeps server paths out of requests [33.44ms]
+
+ 4 pass
+ 1 fail
+ 21 expect() calls
+Ran 5 tests across 1 file. [266.00ms]

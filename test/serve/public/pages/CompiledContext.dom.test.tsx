@@ -1,5 +1,5 @@
 import { fireEvent, screen } from "@testing-library/react";
-import { beforeEach, expect, mock, test } from "bun:test";
+import { beforeEach, expect, mock, spyOn, test } from "bun:test";
 
 import { apiError, apiOk, renderWithUser } from "../../../helpers/dom";
 
@@ -61,8 +61,18 @@ test("preview keeps source inert, reports omissions, downloads exact bytes, and 
     capsule: { id: "capsule-test" },
     budgetTokens: 12000,
   });
+  const locationBeforeDownload = window.location.href;
   const original = URL.createObjectURL.bind(URL);
   let captured: Blob | undefined;
+  let downloaded: { href: string; filename: string } | undefined;
+  // Happy DOM treats download anchors as navigation, replacing the shared
+  // window with blob:test. Intercept the browser download boundary only.
+  const downloadClick = spyOn(
+    window.HTMLAnchorElement.prototype,
+    "click"
+  ).mockImplementation(function (this: HTMLAnchorElement) {
+    downloaded = { href: this.href, filename: this.download };
+  });
   URL.createObjectURL = (blob) => {
     captured = blob as Blob;
     return "blob:test";
@@ -70,8 +80,15 @@ test("preview keeps source inert, reports omissions, downloads exact bytes, and 
   try {
     await user.click(screen.getByRole("button", { name: "Download Markdown" }));
     expect(await captured?.text()).toBe(source);
+    expect(captured?.type).toBe("text/markdown;charset=utf-8");
+    expect(downloaded).toEqual({
+      href: "blob:test",
+      filename: "project.gno-context.md",
+    });
+    expect(window.location.href).toBe(locationBeforeDownload);
   } finally {
     URL.createObjectURL = original;
+    downloadClick.mockRestore();
   }
   fireEvent.change(screen.getByLabelText("Token budget"), {
     target: { value: "400" },

@@ -11,9 +11,10 @@ Verification evidence is retained under `.flow/artifacts/fn-169-compiled-project
 Satisfy every R-ID in the parent spec acceptance criteria.
 
 ## Done summary
-Blocked:
-R6 preregistered quality gate failed. The 36-draw fixed-model paired study showed identical grounded success (12/18 each) and all supplied evidence preserved, but a required source was already omitted by the baseline Capsule as redundant_coverage. The frozen abstention key also failed in both arms; its possible ambiguity is retained without rescoring. See .flow/artifacts/fn-169-compiled-project-context-from-verified/eval/REPORT.md. Implementation and live surface QA are complete; keep delivery draft, no release/deployment or automatic integration. Follow-up: fn-174-preserve-complementary-capsule-evidence.
+Implemented the compiled-context contract across local CLI/SDK file operations, inline MCP/REST, browser preview/check/download, ingestion exclusion, shipped skills and both documentation surfaces. The fn-174 correction resolves the recorded missing-source gate without changing fixtures or thresholds. The original paired comparison now passes after the correction; original failures and a separately preregistered abstention probe remain retained.
+
+Validation:5386tests passed/2existing skips,364UItests after download-test isolation correction, lint,15documentation checks,47/47skill checks, live isolated CLI/MCP/REST/browser QA and site check/typecheck/build/27tests plus driven pages. Native noExpand policy screen has an independent pre-existing failure tracked in fn-175; no native pass claimed. Delivery remains the existing linked PRs244 and69, with no merge, product release or site deployment.
 ## Evidence
-- Commits:
-- Tests:
-- PRs:
+- Commits: 46c16e3e6cfdf81259cfb719996e78fc0c32d67b
+- Tests: mise exec bun@1.4.2 -- bun test (5386 pass,2 skip), mise exec bun@1.4.2 -- bun test test/serve/public (364 pass), bun run lint:check, bun run docs:verify, bun run eval:hybrid (86%), fixed paired reader (36 draws,PASS), supplemental abstention (6 draws,PASS), isolated live CLI/MCP/REST/browser and site QA
+- PRs: https://github.com/gmickel/gno/pull/244, https://github.com/gmickel/gno.sh/pull/69

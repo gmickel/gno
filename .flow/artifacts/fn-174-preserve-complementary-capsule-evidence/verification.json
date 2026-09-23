@@ -1,0 +1,33 @@
+{
+  "tests": {
+    "passed": 5386,
+    "skipped": 2,
+    "failed": 0
+  },
+  "webUiAfterIsolationFix": {
+    "passed": 364,
+    "failed": 0
+  },
+  "lint": "pass with27existingwarnings",
+  "docs": "15passed2model-cache-skips",
+  "hybridEval": {
+    "cases": 33,
+    "score": 86,
+    "recallAt5": 82
+  },
+  "pairedReader": {
+    "validDraws": 36,
+    "gate": "PASS",
+    "before": "12/18 each",
+    "after": "15/18 each",
+    "twoSources": "0/3 to3/3 each",
+    "originalAbstention": "0/3 each retained",
+    "medianCompiledCostReductionPercent": 71.6
+  },
+  "supplementalAbstention": "6/6 PASS; separate, not pooled",
+  "liveQa": "Both source texts and URIs retained across CLI/MCP/REST/browser; current check; desktop/mobile; two docs pages and Markdown twins",
+  "siteGates": "check/typecheck/build and27tests pass",
+  "nativeScreen": "Independent failure on pre-fix revision retained; post-fix capture invalid. fn-175 follow-up. No policy adoption.",
+  "reviewStages": "skipped by repository policy",
+  "release": "none"
+}
