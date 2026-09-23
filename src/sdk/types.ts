@@ -1,9 +1,17 @@
+import type {
+  previewCompiledContext,
+  checkCompiledContext,
+} from "../app/compiled-context";
+import type {
+  compileContextFile,
+  checkContextFile,
+  refreshContextFile,
+} from "../app/compiled-context-files";
 /**
  * Public SDK types.
  *
  * @module src/sdk/types
  */
-
 import type {
   ContextCapsuleBuildInput,
   ContextRuntimeErrorCode,
@@ -18,6 +26,10 @@ import type {
   CollectionEgressPolicyState,
   EgressRelaxationConfirmation,
 } from "../core/collection-egress-policy-service";
+import type {
+  CompiledContextPreviewInput,
+  CompiledContextCheckInput,
+} from "../core/compiled-context";
 import type {
   ContextCapsuleErrorCode,
   ContextCapsuleV1,
@@ -328,6 +340,21 @@ export interface GnoClient {
   query(query: string, options?: GnoQueryOptions): Promise<SearchResults>;
   ask(query: string, options?: GnoAskOptions): Promise<AskResult>;
   context(input: GnoContextInput): Promise<GnoContextResult>;
+  compiledContextPreview(
+    input: CompiledContextPreviewInput
+  ): ReturnType<typeof previewCompiledContext>;
+  compiledContextCheck(
+    input: CompiledContextCheckInput
+  ): ReturnType<typeof checkCompiledContext>;
+  compileContextFile(
+    input: Parameters<typeof compileContextFile>[0]
+  ): ReturnType<typeof compileContextFile>;
+  checkContextFile(
+    input: Parameters<typeof checkContextFile>[0]
+  ): ReturnType<typeof checkContextFile>;
+  refreshContextFile(
+    input: Parameters<typeof refreshContextFile>[0]
+  ): ReturnType<typeof refreshContextFile>;
   verifyContext(
     capsule: ContextCapsuleV1
   ): Promise<GnoContextVerificationResult>;

@@ -1,0 +1,1 @@
+{"$schema": "./node_modules/oxlint/configuration_schema.json", "ignorePatterns": [], "rules": {"eslint/no-control-regex": "warn", "max-lines-per-function": "off"}, "extends": ["ultracite/oxlint/core", "ultracite/oxlint/react"]}

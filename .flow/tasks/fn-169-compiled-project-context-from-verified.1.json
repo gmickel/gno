@@ -1,0 +1,15 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-09-23T12:08:22.232445Z",
+  "depends_on": [],
+  "id": "fn-169-compiled-project-context-from-verified.1",
+  "implicit_owner": true,
+  "priority": null,
+  "spec": "fn-169-compiled-project-context-from-verified",
+  "spec_path": ".flow/tasks/fn-169-compiled-project-context-from-verified.1.md",
+  "status": "done",
+  "title": "Implement compiled project context from verified Capsules",
+  "updated_at": "2026-09-23T12:35:40.209870Z"
+}

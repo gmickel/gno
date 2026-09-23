@@ -66,6 +66,10 @@ async function runConnectorInstallRoute(actualConfigPath: string): Promise<{
       }) as never,
       handleInstallConnector: installConnector as never,
       waitForShutdown: async () => {
+        expect(capturedOptions?.routes["/context/compiled"]).toBeDefined();
+        expect(capturedOptions?.routes["/context/compiled"]).toBe(
+          capturedOptions?.routes["/"]
+        );
         const route = capturedOptions?.routes["/api/connectors/install"];
         expect(route).toBeDefined();
         const response = await route?.POST(

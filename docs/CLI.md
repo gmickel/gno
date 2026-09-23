@@ -1194,7 +1194,10 @@ gno context build "pure vector/lexical" --budget 12000 --no-graph --json
 The budget applies to the complete canonical payload, not separately to each
 document. Evidence keeps exact canonical-mirror line ranges and source, mirror,
 and passage hashes. Selection collapses duplicates, rewards uncovered query
-facets, and records every omission and gap. `--fast` avoids model loading;
+facets, and records every omission and gap. Keyword facet coverage does not
+establish semantic completeness. Distinct relevant, nonoverlapping passages
+remain eligible after their facets are covered, subject to budgets and per-source
+share limits. `--fast` avoids model loading;
 default and `--thorough` use available semantic/rerank capabilities plus
 bounded graph expansion and record
 fallbacks when attempted but unavailable. The persisted retrieval plan records
@@ -2262,3 +2265,22 @@ gno search "rollout" --filter '{"op":"gte","key":"confidence","value":0.8}'
 See [Typed metadata filters](TYPED-METADATA.md) for source YAML, operators,
 missing-field truth tables, limits, and sync recovery. Fixed flags such as
 `--tags-all` and `--collection` still intersect the custom predicate.
+
+## Compiled project context
+
+`gno context compiled` exports verified Capsules to owned Markdown artifacts.
+
+```bash
+gno context compiled preview --capsule capsule.json --budget 12000 --json
+gno context compiled compile --capsule capsule.json --budget 12000 --output project.gno-context.md
+gno context compiled check project.gno-context.md
+gno context compiled refresh project.gno-context.md --capsule-output project-refresh-01.gno-context.capsule.json
+```
+
+Run `gno update` first when source files changed: freshness checks indexed state.
+`check` exits 0 current, 3 stale, 4 conflict, 2 unverifiable; invalid input exits 1.
+Compile requires a new output and creates an adjacent private ownership sidecar.
+For each stale refresh choose a fresh Capsule output filename; current refresh is
+a verified no-op. Budgets include all output bytes, and missing required facets
+remain explicit. See [compiled context](COMPILED-CONTEXT.md) for bounds, inclusion
+recipes, source privacy, and recovery. Existing `gno context check` is unchanged.

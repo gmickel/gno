@@ -47,6 +47,7 @@ const Collections = lazy(() => import("./pages/Collections"));
 const Connectors = lazy(() => import("./pages/Connectors"));
 const Ask = lazy(() => import("./pages/Ask"));
 const GraphView = lazy(() => import("./pages/GraphView"));
+const CompiledContext = lazy(() => import("./pages/CompiledContext"));
 const TraceHistory = lazy(() => import("./pages/TraceHistory"));
 
 type Route =
@@ -59,6 +60,7 @@ type Route =
   | "/collections"
   | "/graph"
   | "/connectors"
+  | "/context/compiled"
   | "/traces";
 type Navigate = (to: string | number) => void;
 
@@ -78,6 +80,7 @@ const routes: Record<Route, React.ComponentType<RoutePageProps>> = {
   "/ask": Ask,
   "/graph": GraphView,
   "/traces": TraceHistory,
+  "/context/compiled": CompiledContext,
 };
 
 interface AppContentProps {
@@ -194,6 +197,14 @@ function AppContent({
               type="button"
             >
               Trace history
+            </button>
+            <span className="text-border/30">—</span>
+            <button
+              className="transition-colors duration-300 hover:text-primary"
+              onClick={() => navigate("/context/compiled")}
+              type="button"
+            >
+              Compiled context
             </button>
             <span className="text-border/30">—</span>
             <a

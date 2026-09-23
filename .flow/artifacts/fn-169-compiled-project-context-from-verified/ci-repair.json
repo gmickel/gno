@@ -1,0 +1,18 @@
+{
+  "failureRun": "https://github.com/gmickel/gno/actions/runs/35862379106",
+  "failure": "Browse DOM test read the document before its independent request rendered",
+  "fix": "Await Roadmap with findByText after the independently loaded tree",
+  "files": [
+    "test/serve/public/pages/Browse.dom.test.tsx"
+  ],
+  "validation": {
+    "command": "mise exec bun@1.4.2 -- bun test test/serve/public --timeout 30000",
+    "passed": 364,
+    "failed": 0,
+    "assertions": 2017,
+    "typedLint": "pass",
+    "format": "pass"
+  },
+  "runtimeChanged": false,
+  "qualityGate": "R6 remains blocked; no fixture or threshold changed"
+}

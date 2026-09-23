@@ -1,0 +1,17 @@
+[
+  {
+    "case": "remote",
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"compiled_context_unavailable\",\"message\":\"Compiled context is invalid, stale, or unavailable for this caller\"}}"
+  },
+  {
+    "case": "path",
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"compiled_context_unavailable\",\"message\":\"Compiled context is invalid, stale, or unavailable for this caller\"}}"
+  },
+  {
+    "case": "small-budget",
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"compiled_context_unavailable\",\"message\":\"Compiled context is invalid, stale, or unavailable for this caller\"}}"
+  }
+]

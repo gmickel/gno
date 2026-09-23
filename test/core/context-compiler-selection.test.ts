@@ -71,7 +71,38 @@ const measuredProjection = <T>(
 };
 
 describe("deterministic Context budget selection", () => {
-  test("rewards uncovered facets and reports every stable omission reason", () => {
+  test("retains complementary facts with the same query facets", () => {
+    const security = candidate("security", {
+      text: "Release approval checklist: security approval is mandatory.",
+      facets: ["release", "approval", "checklist"],
+    });
+    const operations = candidate("operations", {
+      text: "Release approval checklist: operations approval is also mandatory.",
+      facets: [...security.facets],
+      retrievalRank: 2,
+    });
+    const select = (candidates: (typeof security)[]) =>
+      selectContextEvidence({
+        candidates,
+        requestedFacets: security.facets,
+        limits: {
+          requestedBytes: 12000,
+          requestedTokens: 12000,
+          safetyMarginBytes: 0,
+          safetyMarginTokens: 0,
+        },
+        projectCanonical: measuredProjection,
+      });
+    const result = select([security, operations]);
+    expect(result.selected.map((item) => item.uri)).toEqual([
+      security.uri,
+      operations.uri,
+    ]);
+    expect(select([operations, security])).toEqual(result);
+    expect(result.omissions).toEqual([]);
+  });
+
+  test("prioritizes uncovered facets while enforcing omission and budget guards", () => {
     const alpha = candidate("alpha", { text: "alpha", facets: ["alpha"] });
     const duplicate = candidate("duplicate", {
       text: alpha.text,
@@ -167,7 +198,8 @@ describe("deterministic Context budget selection", () => {
     expect(first.omissions).toEqual(second.omissions);
     expect(first.reasonCounts.duplicate).toBe(1);
     expect(first.reasonCounts.overlap).toBe(1);
-    expect(first.reasonCounts.redundant_coverage).toBe(1);
+    expect(first.reasonCounts.redundant_coverage).toBe(0);
+    expect(first.selected.map((item) => item.uri)).toContain(redundant.uri);
     expect(first.reasonCounts.document_share_cap).toBe(1);
     expect(first.reasonCounts.filtered_by_scope).toBe(1);
     expect(first.reasonCounts.invalid_coordinates).toBe(1);
@@ -330,7 +362,7 @@ describe("deterministic Context budget selection", () => {
     expect(result.coverage.coveredFacets).toEqual(["alpha", "beta", "gamma"]);
     expect(result.coverage.unresolvedFacets).toEqual([]);
     expect(result.omissions).toContainEqual(
-      expect.objectContaining({ uri: wide.uri, reason: "redundant_coverage" })
+      expect.objectContaining({ uri: wide.uri, reason: "global_budget" })
     );
   });
 });

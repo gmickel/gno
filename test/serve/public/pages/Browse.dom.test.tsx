@@ -107,7 +107,7 @@ describe("Browse page DOM interactions", () => {
     expect(
       await screen.findByRole("tree", { name: "Browse tree" })
     ).toBeTruthy();
-    expect(screen.getByText("Roadmap")).toBeTruthy();
+    expect(await screen.findByText("Roadmap")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Open folder/i })).toBeTruthy();
 
     const projectsNode = screen.getByRole("treeitem", { name: /projects/i });

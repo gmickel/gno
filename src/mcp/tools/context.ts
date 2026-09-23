@@ -1,6 +1,5 @@
-/** MCP Context Capsule tools over the shared application runtime. */
-
 import type { RetrievalTraceSession } from "../../core/retrieval-trace-session";
+/** MCP Context Capsule tools over the shared application runtime. */
 import type { ModelLease } from "../../llm/nodeLlamaCpp/lifecycle";
 import type {
   EmbeddingPort,
@@ -11,6 +10,10 @@ import type { VectorIndexPort } from "../../store/vector";
 import type { ToolContext } from "../server";
 import type { ToolResult } from "./index";
 
+import {
+  previewCompiledContext,
+  checkCompiledContext,
+} from "../../app/compiled-context";
 import { formatContextCapsuleAgentJson } from "../../app/context-agent-projection";
 import { formatContextCapsuleVerificationMarkdown } from "../../app/context-format";
 import {
@@ -321,5 +324,46 @@ export const handleContextVerify = (
         parsed.format === "md"
           ? formatContextCapsuleVerificationMarkdown(receipt)
           : canonicalVerifiedContextCapsuleJson(receipt),
+    };
+  });
+
+const compiledDeps = (context: ToolContext) => {
+  const egress = context.getEgressContext?.();
+  return {
+    store: context.store,
+    config: context.config,
+    indexName: context.indexName,
+    destinationZone:
+      egress?.destinationZone === "loopback"
+        ? ("local_process" as const)
+        : (egress?.destinationZone ?? ("local_process" as const)),
+    caller: egress?.caller ?? {
+      authenticated: true,
+      operationAuthorized: true,
+    },
+  };
+};
+
+export const handleCompiledContextPreview = (
+  args: unknown,
+  context: ToolContext
+): Promise<ToolResult> =>
+  runContextTool(context, async () => {
+    const result = await previewCompiledContext(args, compiledDeps(context));
+    return {
+      structuredContent: result as unknown as Record<string, unknown>,
+      text: JSON.stringify(result),
+    };
+  });
+
+export const handleCompiledContextCheck = (
+  args: unknown,
+  context: ToolContext
+): Promise<ToolResult> =>
+  runContextTool(context, async () => {
+    const result = await checkCompiledContext(args, compiledDeps(context));
+    return {
+      structuredContent: result as unknown as Record<string, unknown>,
+      text: JSON.stringify(result),
     };
   });

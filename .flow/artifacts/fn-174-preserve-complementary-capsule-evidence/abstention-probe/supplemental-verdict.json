@@ -1,0 +1,24 @@
+{
+  "valid": true,
+  "guardsPassed": true,
+  "allControlsAndAbstentionPassed": true,
+  "groundedSuccess": {
+    "capsule": 3,
+    "compiled": 3
+  },
+  "abstention": {
+    "capsule": [
+      true,
+      true,
+      true
+    ],
+    "compiled": [
+      true,
+      true,
+      true
+    ]
+  },
+  "separateSupplementalInstrument": true,
+  "changesOriginalScores": false,
+  "passed": true
+}

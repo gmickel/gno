@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { mkdir } from "node:fs/promises";
+// Bun has no directory creation or realpath primitive.
+import { mkdir, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -58,7 +59,10 @@ describe("Context Capsule CLI and SDK", () => {
   let capsulePath: string;
 
   beforeEach(async () => {
-    testDir = join(tmpdir(), `gno-context-capsule-${crypto.randomUUID()}`);
+    testDir = join(
+      await realpath(tmpdir()),
+      `gno-context-capsule-${crypto.randomUUID()}`
+    );
     const docsDir = join(testDir, "docs");
     await mkdir(docsDir, { recursive: true });
     process.env.GNO_CONFIG_DIR = join(testDir, "config");
@@ -78,6 +82,92 @@ describe("Context Capsule CLI and SDK", () => {
       ).code
     ).toBe(0);
     expect((await cli("update")).code).toBe(0);
+  });
+
+  test("compiled commands preserve owned bytes and report conflicts without writing", async () => {
+    const built = await cli(
+      "context",
+      "build",
+      "launch decision",
+      "--budget",
+      "50000",
+      "--fast",
+      "--output",
+      capsulePath,
+      "--json"
+    );
+    expect(built.code).toBe(0);
+    const outputPath = join(testDir, "project.gno-context.md");
+    const preview = await cli(
+      "context",
+      "compiled",
+      "preview",
+      "--capsule",
+      capsulePath,
+      "--budget",
+      "20000",
+      "--json"
+    );
+    expect(preview.code).toBe(0);
+    const expected = JSON.parse(preview.stdout);
+    const compiled = await cli(
+      "context",
+      "compiled",
+      "compile",
+      "--capsule",
+      capsulePath,
+      "--budget",
+      "20000",
+      "--output",
+      outputPath,
+      "--json"
+    );
+    expect(compiled.code).toBe(0);
+    expect(await Bun.file(outputPath).text()).toBe(expected.markdown);
+    const checked = await cli(
+      "context",
+      "compiled",
+      "check",
+      outputPath,
+      "--json"
+    );
+    expect(checked.code).toBe(0);
+    expect(JSON.parse(checked.stdout).status).toBe("current");
+    const edited = expected.markdown + "\nManual edit\n";
+    await Bun.write(outputPath, edited);
+    const conflict = await cli(
+      "context",
+      "compiled",
+      "check",
+      outputPath,
+      "--json"
+    );
+    expect(conflict.code).toBe(4);
+    expect(JSON.parse(conflict.stdout).status).toBe("conflict");
+    expect(await Bun.file(outputPath).text()).toBe(edited);
+    const missing = await cli(
+      "context",
+      "compiled",
+      "check",
+      join(testDir, "missing.gno-context.md"),
+      "--json"
+    );
+    expect(missing.code).toBe(2);
+    expect(JSON.parse(missing.stdout).status).toBe("unverifiable");
+    const invalidPath = join(testDir, "invalid.json");
+    await Bun.write(invalidPath, "not JSON");
+    const invalid = await cli(
+      "context",
+      "compiled",
+      "preview",
+      "--capsule",
+      invalidPath,
+      "--budget",
+      "20000",
+      "--json"
+    );
+    expect(invalid.code).toBe(1);
+    expect(invalid.stdout).toBe("");
   });
 
   afterEach(async () => {

@@ -19,6 +19,7 @@ describe("web UI collections discoverability", () => {
     expect(html).toContain("Browse");
     expect(html).toContain("Graph");
     expect(html).toContain("Trace history");
+    expect(html).toContain("Compiled context");
   });
 
   test("browse exposes collection management and reindex actions", async () => {

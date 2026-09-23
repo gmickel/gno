@@ -1074,3 +1074,20 @@ The same `--filter` JSON works on `vsearch`, `query`, `ask`, and `context build`
 Use only indexed `gno.metadata` fields. See SKILL.md for strict types,
 missing-field semantics, and diagnose-before-relaxing guidance. Repair metadata
 with `gno update` when authorized; no predicate expands existing scope.
+
+## Compiled project context
+
+```bash
+gno update
+gno context compiled preview --capsule capsule.json --budget 12000 --bytes 65536 --json
+gno context compiled compile --capsule capsule.json --budget 12000 --output project.gno-context.md
+gno context compiled check project.gno-context.md
+gno context compiled refresh project.gno-context.md --capsule-output project-refresh-01.gno-context.capsule.json
+```
+
+Check exits: 0 current, 3 stale, 4 conflict, 2 unverifiable; invalid input 1.
+Freshness checks indexed state. Compile requires a new output; stale refresh
+requires a fresh explicit Capsule filename. Sidecars preserve ownership and
+hand-edit conflicts. Current refresh is a no-op. Bounds: 4 MiB inputs/output,
+1,000,000 tokens; framing and citations count. Existing `context check` is
+configuration validation and is unchanged.

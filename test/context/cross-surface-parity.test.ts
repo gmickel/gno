@@ -26,9 +26,15 @@ import { parseContextBuildSurfaceInput } from "../../src/app/context-surface";
 import { createContextCapsuleV1 } from "../../src/core/context-capsule";
 import { sha256Text } from "../../src/core/context-capsule-validation";
 import {
+  handleCompiledContextPreview,
+  handleCompiledContextCheck,
+} from "../../src/mcp/tools/context";
+import {
   handleContext,
   handleContextVerify,
 } from "../../src/mcp/tools/context";
+import { createGnoClient } from "../../src/sdk/client";
+import { handleCompiledContext } from "../../src/serve/compiled-context";
 import {
   handleContextBuild,
   handleContextVerify as handleRestContextVerify,
@@ -174,6 +180,185 @@ describe("Context Capsule REST/MCP parity", () => {
   afterEach(async () => {
     await store.close();
     await safeRm(root);
+  });
+
+  test("compiled preview agrees across SDK, MCP and REST; check preserves bytes", async () => {
+    const sdk = await createGnoClient({
+      config,
+      dbPath: join(root, "index-default.sqlite"),
+      indexName: "default",
+    });
+    try {
+      const capsule = await sdk.context(buildInput);
+      const input = { capsule, budgetTokens: 20_000 };
+      toolContext.config = sdk.config;
+      serverContext.config = sdk.config;
+      const preview = await sdk.compiledContextPreview(input);
+      const mcp = await handleCompiledContextPreview(input, toolContext);
+      expect(mcp.isError).not.toBe(true);
+      expect(mcp.structuredContent).toEqual(preview);
+      const request = new Request(
+        "http://localhost/api/context/compiled/preview",
+        {
+          method: "POST",
+          headers: { host: "localhost", "content-type": "application/json" },
+          body: JSON.stringify(input),
+        }
+      );
+      const response = await handleCompiledContext(
+        serverContext,
+        request,
+        {
+          requestIP: () => ({
+            address: "127.0.0.1",
+            family: "IPv4",
+            port: 12345,
+          }),
+        },
+        "preview"
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual(preview);
+      const checked = await handleCompiledContextCheck(
+        { capsule, markdown: preview.markdown },
+        toolContext
+      );
+      expect(checked.structuredContent).toMatchObject({
+        status: "current",
+        digest: preview.digest,
+      });
+      expect(checked.structuredContent).toEqual(
+        await sdk.compiledContextCheck({ capsule, markdown: preview.markdown })
+      );
+    } finally {
+      await sdk.close();
+    }
+  });
+
+  test("compiled adapters reject local-only inline evidence for remote callers", async () => {
+    const sdk = await createGnoClient({
+      config,
+      dbPath: join(root, "index-default.sqlite"),
+      indexName: "default",
+    });
+    const capsule = await sdk.context(buildInput);
+    toolContext.config = sdk.config;
+    serverContext.config = sdk.config;
+    await sdk.close();
+    const input = { capsule, budgetTokens: 20_000 };
+    const mcp = await handleCompiledContextPreview(input, {
+      ...toolContext,
+      getEgressContext: () => ({
+        destinationZone: "remote",
+        caller: { authenticated: true, operationAuthorized: true },
+      }),
+    });
+    expect(mcp.isError).toBe(true);
+    expect(JSON.stringify(mcp)).not.toContain("owner Mina");
+    const local = await handleCompiledContextPreview(input, toolContext);
+    expect(local.isError).not.toBe(true);
+    const markdown = local.structuredContent?.markdown;
+    const check = await handleCompiledContextCheck(
+      { capsule, markdown },
+      {
+        ...toolContext,
+        getEgressContext: () => ({
+          destinationZone: "remote",
+          caller: { authenticated: true, operationAuthorized: true },
+        }),
+      }
+    );
+    expect(check.structuredContent).toMatchObject({ status: "unverifiable" });
+    expect(JSON.stringify(check)).not.toContain("owner Mina");
+
+    const request = new Request(
+      "http://localhost/api/context/compiled/preview",
+      {
+        method: "POST",
+        headers: { host: "localhost", "x-forwarded-for": "203.0.113.1" },
+        body: JSON.stringify(input),
+      }
+    );
+    const response = await handleCompiledContext(
+      serverContext,
+      request,
+      {
+        requestIP: () => ({
+          address: "127.0.0.1",
+          family: "IPv4",
+          port: 12345,
+        }),
+      },
+      "preview"
+    );
+    expect(response.status).toBe(400);
+    expect(await response.text()).not.toContain("owner Mina");
+  });
+
+  test("REST proxy callers need authentication even when collection permits remote egress", async () => {
+    config.collections = config.collections.map((entry) => ({
+      ...entry,
+      egressPolicy: "remote",
+    }));
+    expect((await store.syncCollections(config.collections)).ok).toBe(true);
+    const sdk = await createGnoClient({
+      config,
+      dbPath: join(root, "index-default.sqlite"),
+      indexName: "default",
+    });
+    const capsule = await sdk.context(buildInput);
+    config = sdk.config;
+    toolContext.config = config;
+    serverContext.config = config;
+    await sdk.close();
+    const input = { capsule, budgetTokens: 20_000 };
+    const authenticated = await handleCompiledContextPreview(input, {
+      ...toolContext,
+      getEgressContext: () => ({
+        destinationZone: "remote",
+        caller: { authenticated: true, operationAuthorized: true },
+      }),
+    });
+    expect(authenticated.isError, JSON.stringify(authenticated)).not.toBe(true);
+    const response = await handleCompiledContext(
+      serverContext,
+      new Request("http://localhost/api/context/compiled/preview", {
+        method: "POST",
+        headers: { host: "localhost", forwarded: "for=203.0.113.1" },
+        body: JSON.stringify(input),
+      }),
+      {
+        requestIP: () => ({
+          address: "127.0.0.1",
+          family: "IPv4",
+          port: 12345,
+        }),
+      },
+      "preview"
+    );
+    expect(response.status).toBe(400);
+  });
+
+  test("compiled remote requests cannot request local file writes", async () => {
+    const result = await handleCompiledContextPreview(
+      { capsule: {}, budgetTokens: 1000, outputPath: "/tmp/secret" },
+      toolContext
+    );
+    expect(result.isError).toBe(true);
+    const response = await handleCompiledContext(
+      serverContext,
+      new Request("http://localhost/api/context/compiled/check", {
+        method: "POST",
+        body: JSON.stringify({
+          capsule: {},
+          markdown: "",
+          capsulePath: "/tmp/secret",
+        }),
+      }),
+      undefined,
+      "check"
+    );
+    expect(response.status).toBe(400);
   });
 
   test("maps the complete closed surface request to the shared runtime input", () => {

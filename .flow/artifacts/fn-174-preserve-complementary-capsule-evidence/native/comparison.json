@@ -1,0 +1,7 @@
+{
+  "before": "/tmp/gno-fn174-native-baseline",
+  "after": "/tmp/gno-fn174-native-verified",
+  "beforeSource": "65ebd81a3fb0b3fdbaa3a2a872cccd530b86010f",
+  "afterSource": "46c16e3e6cfdf81259cfb719996e78fc0c32d67b",
+  "result": "Native noExpand policy comparison failed on missing-policy before and after; post-fix capture also invalid due expansion inference failure. No native PASS claimed. See fn-175."
+}

@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "rendererVersion": {
+      "type": "string",
+      "const": "1"
+    },
+    "capsuleId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "markdown": {
+      "type": "string"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "verificationDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "lineageDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "budget": {
+      "type": "object",
+      "properties": {
+        "requestedTokens": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 1000000
+        },
+        "requestedBytes": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 4194304
+        },
+        "usedTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "usedBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "estimator": {
+          "type": "string",
+          "enum": ["unicode_conservative", "active_tokenizer"]
+        },
+        "tokenizerFingerprint": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "requestedTokens",
+        "requestedBytes",
+        "usedTokens",
+        "usedBytes",
+        "estimator",
+        "tokenizerFingerprint"
+      ],
+      "additionalProperties": false
+    },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "coveredFacets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unresolvedFacets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["complete", "coveredFacets", "unresolvedFacets"],
+      "additionalProperties": false
+    },
+    "evidenceIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "omissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "evidenceId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["evidenceId", "reason"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "rendererVersion",
+    "capsuleId",
+    "markdown",
+    "digest",
+    "verificationDigest",
+    "lineageDigest",
+    "budget",
+    "coverage",
+    "evidenceIds",
+    "omissions"
+  ],
+  "additionalProperties": false
+}

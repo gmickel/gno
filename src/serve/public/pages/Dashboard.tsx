@@ -540,6 +540,13 @@ export default function Dashboard({ navigate }: PageProps) {
             <HistoryIcon className="size-4" />
             Trace history
           </Button>
+          <Button
+            onClick={() => navigate("/context/compiled")}
+            size="lg"
+            variant="outline"
+          >
+            Compiled context
+          </Button>
         </nav>
 
         {error && (

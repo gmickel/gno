@@ -16,3 +16,8 @@ review-fanout/
 artifacts/*/pr-cognitive-aid/*.json
 artifacts/*/pr-cognitive-aid/.write.lock
 # End of auto-managed block. User patterns below this line are preserved.
+
+# Raw eval draws are retained in hash-verified archives beside each directory.
+artifacts/fn-169-compiled-project-context-from-verified/eval/draws/
+artifacts/fn-174-preserve-complementary-capsule-evidence/candidate/draws/
+artifacts/fn-174-preserve-complementary-capsule-evidence/abstention-probe/draws/

@@ -1,0 +1,158 @@
+{
+  "preRegisteredGate": true,
+  "valid": true,
+  "unchangedRuntimeAndFixtureHashes": {
+    "src/core/context-budget.ts": true,
+    "src/core/compiled-context.ts": true,
+    "src/app/compiled-context.ts": true,
+    "evals/compiled-context-prepare.ts": true,
+    "evals/compiled-context-reader.py": true,
+    "evals/fixtures/compiled-context/cases.json": true,
+    "evals/fixtures/compiled-context/PREREGISTER.md": true
+  },
+  "sourceFrozenThroughoutRun": true,
+  "rows": [
+    {
+      "case": "abstention",
+      "before": {
+        "capsule": 0,
+        "compiled": 0
+      },
+      "after": {
+        "capsule": 0,
+        "compiled": 0
+      }
+    },
+    {
+      "case": "budget_pressure",
+      "before": {
+        "capsule": 3,
+        "compiled": 3
+      },
+      "after": {
+        "capsule": 3,
+        "compiled": 3
+      }
+    },
+    {
+      "case": "injection",
+      "before": {
+        "capsule": 3,
+        "compiled": 3
+      },
+      "after": {
+        "capsule": 3,
+        "compiled": 3
+      }
+    },
+    {
+      "case": "owner",
+      "before": {
+        "capsule": 3,
+        "compiled": 3
+      },
+      "after": {
+        "capsule": 3,
+        "compiled": 3
+      }
+    },
+    {
+      "case": "polarity",
+      "before": {
+        "capsule": 3,
+        "compiled": 3
+      },
+      "after": {
+        "capsule": 3,
+        "compiled": 3
+      }
+    },
+    {
+      "case": "two_sources",
+      "before": {
+        "capsule": 0,
+        "compiled": 0
+      },
+      "after": {
+        "capsule": 3,
+        "compiled": 3
+      }
+    }
+  ],
+  "guardBefore": false,
+  "guardAfter": true,
+  "perCaseNoRegression": true,
+  "postfixAbstentionOriginalKey": {
+    "capsule": [
+      false,
+      false,
+      false
+    ],
+    "compiled": [
+      false,
+      false,
+      false
+    ]
+  },
+  "superiority": {
+    "per_feature": {
+      "abstention": 0.0,
+      "budget_pressure": 0.0,
+      "injection": 0.0,
+      "owner": 0.0,
+      "polarity": 0.0,
+      "two_sources": 0.0
+    },
+    "pooled_capsule": 0.8333333333333334,
+    "pooled_compiled": 0.8333333333333334,
+    "pooled_gap": 0.0,
+    "spreads": {
+      "abstention": 0.0,
+      "budget_pressure": 0.0,
+      "injection": 0.0,
+      "owner": 0.0,
+      "polarity": 0.0,
+      "two_sources": 0.0
+    },
+    "verdict": "NOT CONFIRMED",
+    "why": "a feature moved the wrong way"
+  },
+  "preservation": [
+    {
+      "case": "owner",
+      "allProvidedTextAndUrisPreserved": true,
+      "sourceCount": 1
+    },
+    {
+      "case": "two_sources",
+      "allProvidedTextAndUrisPreserved": true,
+      "sourceCount": 2
+    },
+    {
+      "case": "polarity",
+      "allProvidedTextAndUrisPreserved": true,
+      "sourceCount": 1
+    },
+    {
+      "case": "injection",
+      "allProvidedTextAndUrisPreserved": true,
+      "sourceCount": 1
+    },
+    {
+      "case": "abstention",
+      "allProvidedTextAndUrisPreserved": true,
+      "sourceCount": 1
+    },
+    {
+      "case": "budget_pressure",
+      "allProvidedTextAndUrisPreserved": true,
+      "sourceCount": 1
+    }
+  ],
+  "medianCost": {
+    "capsule": 4093.0,
+    "compiled": 1163.5
+  },
+  "retainsOriginalFailedStudy": true,
+  "supplementalProbeNotPooled": true
+}

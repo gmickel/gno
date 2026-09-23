@@ -1,0 +1,229 @@
+{
+  "abstention": {
+    "capsule": [
+      true,
+      true,
+      true
+    ],
+    "compiled": [
+      true,
+      true,
+      true
+    ]
+  },
+  "discriminating": {
+    "missing_fact": {
+      "all_correct": [
+        "Q1",
+        "Q2",
+        "Q3"
+      ],
+      "all_fail": [],
+      "discriminating": []
+    }
+  },
+  "drawCount": 6,
+  "gatePassed": true,
+  "guardsPassed": true,
+  "lowerMedianCost": true,
+  "metrics": {
+    "missing_fact": {
+      "capsule": [
+        {
+          "abstention": [
+            true
+          ],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO",
+            "Q3": "NOT SPECIFIED"
+          },
+          "draw": 0,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [
+            true
+          ],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO",
+            "Q3": "NOT SPECIFIED"
+          },
+          "draw": 1,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [
+            true
+          ],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO",
+            "Q3": "NOT SPECIFIED"
+          },
+          "draw": 2,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ],
+      "compiled": [
+        {
+          "abstention": [
+            true
+          ],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO",
+            "Q3": "NOT SPECIFIED"
+          },
+          "draw": 0,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [
+            true
+          ],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO",
+            "Q3": "NOT SPECIFIED"
+          },
+          "draw": 1,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        },
+        {
+          "abstention": [
+            true
+          ],
+          "answers": {
+            "Q1": "YES",
+            "Q2": "NO",
+            "Q3": "NOT SPECIFIED"
+          },
+          "draw": 2,
+          "groundedSuccess": true,
+          "requiredCitations": true,
+          "specified": {
+            "correct": 2,
+            "silent": [],
+            "total": 2,
+            "wrong": []
+          },
+          "valid": true
+        }
+      ]
+    }
+  },
+  "nonRegression": true,
+  "preparation": {
+    "fixtureSha256": "7e3c10269bf64427be5966134793f71e5a05ef6991b5d2808632c4b031be49e7",
+    "guardsPassed": true,
+    "manifest": {
+      "/home/gordon/work/gno-fn169/.flow/artifacts/fn-174-preserve-complementary-capsule-evidence/abstention-probe/cases.json": "7e3c10269bf64427be5966134793f71e5a05ef6991b5d2808632c4b031be49e7",
+      "evals/compiled-context-prepare.ts": "c6fe1dbeff6b7ffa8aab9dca314a3890f59e612cbaf823263edc1ddfa06ae722",
+      "evals/fixtures/compiled-context/PREREGISTER.md": "2d2d8e0258dc0eacd0a0a5b1fa5f41352400cb772211ea15d27a52686f558e87",
+      "src/app/compiled-context.ts": "bf0c948a243ab143c74e37e5270f27afd866e38568bd901191d716531aed3f91",
+      "src/core/compiled-context.ts": "32a68e28bed783768ec239140a5609b29a1f182d4805c61dbfd91a8708caf06f"
+    },
+    "records": [
+      {
+        "baselineBytes": 3985,
+        "capsuleId": "f28797811e0ac015088509806dc3e4f441edeedee4f4d4bae887e17a950f5a36",
+        "compiledBytes": 1087,
+        "coverage": {
+          "complete": true,
+          "coveredFacets": [
+            "contact",
+            "policy",
+            "travel"
+          ],
+          "unresolvedFacets": []
+        },
+        "estimator": "unicode_conservative",
+        "guards": {
+          "baselineBudget": true,
+          "citations": true,
+          "compiledBudget": true,
+          "current": true,
+          "deterministic": true,
+          "privacyRejected": true,
+          "requiredEvidence": true,
+          "stale": true
+        },
+        "id": "missing_fact",
+        "omissions": [],
+        "requiredUris": [
+          "gno://eval/contacts.md"
+        ],
+        "sha256": {
+          "capsule": "e1184a110f259985aefff4385891e271d3169b12a7572c78874b8ca9a8e90f39",
+          "compiled": "47c62ddd3de5c54c99124fd5e92ff9f63be453c0a97104076f4f2ab5b52dd69f"
+        },
+        "stale": {
+          "capsuleId": null,
+          "digest": null,
+          "reasons": [
+            "Capsule requires refresh: content_stale, index_changed"
+          ],
+          "schemaVersion": "1.0",
+          "status": "stale"
+        }
+      }
+    ],
+    "schemaVersion": "1.0"
+  },
+  "superiority": {
+    "per_feature": {
+      "missing_fact": 0.0
+    },
+    "pooled_capsule": 1.0,
+    "pooled_compiled": 1.0,
+    "pooled_gap": 0.0,
+    "spreads": {
+      "missing_fact": 0.0
+    },
+    "verdict": "NOT CONFIRMED",
+    "why": "a feature moved the wrong way"
+  },
+  "valid": true
+}

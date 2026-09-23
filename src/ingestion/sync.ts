@@ -1,12 +1,11 @@
+// node:fs/promises for realpath/stat (no Bun equivalent for canonical paths or file stats)
+import { realpath, stat } from "node:fs/promises";
 /**
  * Sync service - orchestrates file ingestion.
  * Walks collections, converts files, chunks content, updates store.
  *
  * @module src/ingestion/sync
  */
-
-// node:fs/promises for realpath/stat (no Bun equivalent for canonical paths or file stats)
-import { realpath, stat } from "node:fs/promises";
 // node:path for join (no Bun path utils)
 import { isAbsolute, join, relative, sep } from "node:path";
 
@@ -61,6 +60,10 @@ import { normalizeTag, validateTag } from "../core/tags";
 import { TYPED_METADATA_INGEST_VERSION } from "../core/typed-metadata";
 import { defaultChunker } from "./chunker";
 import { persistChunkLayout, prepareChunking } from "./chunking";
+import {
+  isCompiledContextPath,
+  isCompiledContextContent,
+} from "./compiled-context";
 import {
   extractHashtags,
   parseFrontmatter,
@@ -642,6 +645,14 @@ export class SyncService {
     store: StorePort,
     options: SyncOptions
   ): Promise<FileSyncResult> {
+    const generatedResult: FileSyncResult = {
+      relPath: entry.relPath,
+      status: "skipped",
+      errorCode: "GENERATED_CONTEXT",
+      errorMessage:
+        "Compiled context is derived material; index original sources instead",
+    };
+    if (isCompiledContextPath(entry.relPath)) return generatedResult;
     const limits = {
       maxBytes: options.limits?.maxBytes ?? DEFAULT_LIMITS.maxBytes,
       timeoutMs: options.limits?.timeoutMs ?? DEFAULT_LIMITS.timeoutMs,
@@ -733,6 +744,13 @@ export class SyncService {
         guardedBytes = sourceRead.bytes;
       }
 
+      const generatedPrefix =
+        guardedBytes?.subarray(0, 4096) ??
+        new Uint8Array(
+          await Bun.file(entry.absPath).slice(0, 4096).arrayBuffer()
+        );
+      if (isCompiledContextContent(generatedPrefix)) return generatedResult;
+
       if (recordAdapter) {
         return await processRecordContainer({
           adapter: recordAdapter,
@@ -754,11 +772,7 @@ export class SyncService {
         });
       }
 
-      const sniffBytes = guardedBytes
-        ? guardedBytes.subarray(0, Math.min(512, guardedBytes.byteLength))
-        : new Uint8Array(
-            await Bun.file(entry.absPath).slice(0, 512).arrayBuffer()
-          );
+      const sniffBytes = generatedPrefix.subarray(0, 512);
       const mime = this.mimeDetector.detect(entry.relPath, sniffBytes);
 
       const priorRecordDocuments = mustOk(
@@ -1447,6 +1461,20 @@ export class SyncService {
         store,
         syncOptions
       );
+      if (result.errorCode === "GENERATED_CONTEXT") {
+        const inactive = await this.inactivateOneAbsentSource(
+          collection,
+          store,
+          relPath,
+          projectionSourceIds,
+          { existingDoc, recordDocuments }
+        );
+        markedInactive += inactive.markedInactive;
+        results.push(
+          inactive.result.status === "error" ? inactive.result : result
+        );
+        continue;
+      }
       results.push(result);
       if (result.status === "error" || result.status === "skipped") {
         continue;
@@ -1872,6 +1900,8 @@ export class SyncService {
               store,
               syncOptions
             );
+            if (result.errorCode === "GENERATED_CONTEXT")
+              seenPaths.delete(entry.relPath);
             fileResults.push(result);
             switch (result.status) {
               case "added":
@@ -1938,6 +1968,8 @@ export class SyncService {
               store,
               syncOptions
             );
+            if (result.errorCode === "GENERATED_CONTEXT")
+              seenPaths.delete(entry.relPath);
             fileResults.push(result);
             results.push(result);
           } finally {

@@ -1,0 +1,7 @@
+{"case": "missing_fact", "arm": "compiled", "draw": 0, "valid": true}
+{"case": "missing_fact", "arm": "capsule", "draw": 0, "valid": true}
+{"case": "missing_fact", "arm": "capsule", "draw": 1, "valid": true}
+{"case": "missing_fact", "arm": "compiled", "draw": 1, "valid": true}
+{"case": "missing_fact", "arm": "capsule", "draw": 2, "valid": true}
+{"case": "missing_fact", "arm": "compiled", "draw": 2, "valid": true}
+{"valid": true, "guardsPassed": true, "nonRegression": true, "lowerMedianCost": true, "gatePassed": true, "drawCount": 6}

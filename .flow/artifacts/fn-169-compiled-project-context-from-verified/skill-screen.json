@@ -1,0 +1,12 @@
+{
+  "score": 100,
+  "passed": 47,
+  "total": 47,
+  "cases": 20,
+  "modelIds": [
+    "claude-sonnet-4-5-20250929"
+  ],
+  "errorReceipts": 0,
+  "currentSkillMatchesSnapshot": true,
+  "scope": "single-draw existing CLI skill regression screen; no compiled-context-specific task efficacy claim"
+}

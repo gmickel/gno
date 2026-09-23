@@ -1,0 +1,475 @@
+bun test v1.4.2 (744846f84)
+
+test/serve/public/MetadataFilter.dom.test.tsx:
+(pass) basic controls retain invalid values and allow correction without widening the filter [67.66ms]
+
+test/serve/public/clipper-approval-location.test.ts:
+(pass) browser clipper approval launch > accepts one exact fragment and scrubs it synchronously [0.16ms]
+(pass) browser clipper approval launch > rejects query strings, codes, extra fields, and malformed IDs [0.08ms]
+
+test/serve/public/clipper-pairing-page.dom.test.tsx:
+(pass) browser clipper approval page > requires explicit eight-digit approval and performs CSRF GET before POST [69.83ms]
+(pass) browser clipper approval page > lets the user retry an invalid code without retaining it [28.08ms]
+(pass) browser clipper approval page > fails closed and clears terminal or unknown responses [27.19ms]
+(pass) browser clipper approval page > keeps approval retryable while the local gateway is offline [25.96ms]
+
+test/serve/public/code-language.test.ts:
+(pass) code language normalization > maps obsidian tasks fences to markdown [0.06ms]
+(pass) code language normalization > falls back to text for unknown languages [0.03ms]
+(pass) code language normalization > accepts allowlisted language ids without importing grammars [0.02ms]
+(pass) code language normalization > extracts hyphenated language ids from markdown classes [0.04ms]
+(pass) code language normalization > highlighting unsupported fence ids does not throw [29.79ms]
+(pass) code language normalization > unknown fence language highlights as text without throw [0.25ms]
+
+test/serve/public/connectors-page.test.tsx:
+(pass) connectors page > renders explicit MCP proof action and honest skill semantics [11.22ms]
+(pass) connectors page > runs retrieval proof only after the user chooses a collection and clicks [22.21ms]
+(pass) connectors page > renders a failed proof code with its plain next action [11.90ms]
+
+test/serve/public/local-history.test.ts:
+(pass) local history > appends newest snapshots first [0.14ms]
+(pass) local history > deduplicates identical content [0.06ms]
+
+test/serve/public/metadata-filter.test.ts:
+(pass) metadata filter preserves exact scalar types and rejects malformed or incompatible values [0.51ms]
+(pass) shareable filter state retains valid and invalid predicates without silently broadening [0.20ms]
+
+test/serve/public/navigation-state.test.ts:
+(pass) navigation state > recent docs dedupe and cap [0.17ms]
+(pass) navigation state > favorite docs toggle on and off [0.08ms]
+(pass) navigation state > favorite collections toggle on and off [0.07ms]
+
+test/serve/public/navigation.test.tsx:
+(pass) web UI collections discoverability > dashboard exposes collections navigation [11.42ms]
+(pass) web UI collections discoverability > browse exposes collection management and reindex actions [13.17ms]
+(pass) web UI collections discoverability > trace history exposes bounded local management actions [1.97ms]
+
+test/serve/public/retrieval-filters.test.ts:
+(pass) retrieval filters > parseTagsCsv normalizes, validates, dedupes [0.12ms]
+(pass) retrieval filters > parseQueryModeSpec parses valid mode:text [0.09ms]
+(pass) retrieval filters > parseQueryModeSpec rejects invalid values [0.03ms]
+(pass) retrieval filters > parseQueryModes enforces single hyde and dedupes [0.03ms]
+(pass) retrieval filters > URL roundtrip for filters [0.09ms]
+
+test/serve/public/trace-history-detail.dom.test.tsx:
+(pass) trace history evidence and purge truthfulness > selects an exact recorded evidence span for labeling [6.05ms]
+(pass) trace history evidence and purge truthfulness > keeps wal_busy physical cleanup visible with retry guidance [0.46ms]
+(pass) trace history evidence and purge truthfulness > keeps failed physical cleanup visible with retry guidance [0.36ms]
+
+test/serve/public/workspace-tabs.test.ts:
+(pass) workspace tabs > loads fallback tab when storage is empty [0.20ms]
+(pass) workspace tabs > restores stored tabs when reopening root route [0.14ms]
+(pass) workspace tabs > injects explicit current route when it is missing from restored tabs [0.06ms]
+(pass) workspace tabs > updates active tab location and label [0.04ms]
+(pass) workspace tabs > labels retrieval trace history tabs [0.03ms]
+(pass) workspace tabs > persists active tab browse tree state [0.07ms]
+(pass) workspace tabs > close active tab activates a neighbor [0.09ms]
+
+test/serve/public/components/AIModelSelector.test.tsx:
+(pass) AIModelSelector > uses parent status without issuing a duplicate status request [2.27ms]
+
+test/serve/public/components/AskVerificationPanel.dom.test.tsx:
+(pass) AskVerificationPanel > renders verdicts, exact evidence, gaps, and degradation [14.79ms]
+
+test/serve/public/components/BacklinksPanel.test.tsx:
+(pass) BacklinksPanel cache > returns null for empty cache [0.05ms]
+(pass) BacklinksPanel cache > stores and retrieves data [0.03ms]
+(pass) BacklinksPanel cache > returns null for different key [0.01ms]
+(pass) BacklinksPanel cache > expires entries after TTL [0.03ms]
+(pass) BacklinksPanel cache > returns data within TTL [0.02ms]
+(pass) BacklinksPanel request sequencing > ignores stale responses using request ID [200.30ms]
+(pass) BacklinksPanel API response handling > parses valid backlinks response [0.45ms]
+(pass) BacklinksPanel API response handling > handles empty backlinks array [0.05ms]
+(pass) BacklinksPanel API response handling > backlink has all required fields [0.04ms]
+(pass) BacklinksPanel props > accepts required docId prop [0.02ms]
+(pass) BacklinksPanel props > accepts optional className [0.02ms]
+(pass) BacklinksPanel props > accepts optional defaultOpen [0.02ms]
+(pass) BacklinksPanel props > accepts optional onNavigate callback [0.05ms]
+(pass) BacklinksPanel display logic > extracts filename from URI for display [0.04ms]
+(pass) BacklinksPanel display logic > uses title when available [0.03ms]
+(pass) BacklinksPanel display logic > falls back to filename when title empty [0.03ms]
+(pass) BacklinksPanel display logic > truncates long context snippets [0.04ms]
+(pass) BacklinksPanel display logic > preserves short context snippets [0.02ms]
+(pass) BacklinksPanel cache key generation > generates unique cache key per docId [0.02ms]
+(pass) BacklinksPanel cache key generation > handles special characters in docId [0.01ms]
+
+test/serve/public/components/BootstrapStatus.test.tsx:
+(pass) BootstrapStatus > renders runtime, cache, and model readiness [2.53ms]
+(pass) BootstrapStatus > never renders a failed projected connector as green [1.03ms]
+(pass) BootstrapStatus > distinguishes unknown semantic state from explicit unavailability [0.57ms]
+(pass) BootstrapStatus > renders unprojected connector count when no pair is displayed [0.56ms]
+
+test/serve/public/components/BrowseTreeSidebar.dom.test.tsx:
+(pass) BrowseTreeSidebar > allows collapsing the selected collection root in root view [12.39ms]
+
+test/serve/public/components/CaptureModal.dom.test.tsx:
+(pass) CaptureModal DOM interactions > submits a note from the dialog with keyboard interaction and tag input [398.01ms]
+(pass) CaptureModal DOM interactions > shows missing collection state [165.53ms]
+(pass) CaptureModal DOM interactions > submits provenance fields and shows skipped sync without job progress [494.58ms]
+(pass) CaptureModal DOM interactions > submits untouched preset scaffold as preset only [128.21ms]
+(pass) CaptureModal DOM interactions > submits edited preset scaffold as content without preset id [201.02ms]
+
+test/serve/public/components/CollectionModelDialog.dom.test.tsx:
+(pass) CollectionModelDialog DOM interactions > renders effective model state and saves a role override patch [41.15ms]
+(pass) CollectionModelDialog DOM interactions > requires visible revision-bound confirmation before relaxing policy [36.57ms]
+(pass) CollectionModelDialog DOM interactions > explains policy decisions and manages local audit receipts with explicit confirmations [85.50ms]
+
+test/serve/public/components/FirstRunWizard.test.tsx:
+(pass) FirstRunWizard > renders onboarding copy and suggested folders [2.34ms]
+(pass) FirstRunWizard > shows exact lexical remediation without treating embeddings as blocking [0.99ms]
+
+test/serve/public/components/FrontmatterDisplay.dom.test.tsx:
+(pass) FrontmatterDisplay > renders YAML link arrays as clickable links and tags as chips [3.31ms]
+
+test/serve/public/components/HealthCenter.test.tsx:
+(pass) HealthCenter > renders health checks and actions [0.79ms]
+(pass) HealthCenter > renders failed lexical activation as blocked, never ready [0.40ms]
+(pass) HealthCenter > renders safe resident lifecycle counters without identities [0.31ms]
+(pass) HealthCenter > never labels an observed skipped connector proof as passed [0.06ms]
+(pass) HealthCenter > never labels a truncated connector projection as healthy [0.04ms]
+(pass) HealthCenter > surfaces truncation even when no projected proof is observable [0.03ms]
+
+test/serve/public/components/IndexingProgress.dom.test.tsx:
+(pass) IndexingProgress lifecycle regressions run against real modules [2364.04ms]
+
+test/serve/public/components/MarkdownPreview.dom.test.tsx:
+(pass) MarkdownPreview > renders resolved wiki links as clickable document links [27.60ms]
+(pass) MarkdownPreview > rewrites note-relative image sources through doc asset route [1.92ms]
+(pass) MarkdownPreview > keeps external image sources unchanged [1.11ms]
+
+test/serve/public/components/OutgoingLinksPanel.test.tsx:
+(pass) OutgoingLinksPanel types > OutgoingLink interface matches API response shape [0.05ms]
+(pass) OutgoingLinksPanel types > OutgoingLink supports optional fields [0.02ms]
+(pass) OutgoingLinksPanel types > OutgoingLink resolved=false indicates broken link [0.01ms]
+(pass) OutgoingLinksPanel URI building > builds URI with collection prefix [0.02ms]
+(pass) OutgoingLinksPanel URI building > builds URI without collection when not present [0.01ms]
+(pass) OutgoingLinksPanel link classification > identifies wiki links [0.02ms]
+(pass) OutgoingLinksPanel link classification > identifies broken links [0.02ms]
+(pass) OutgoingLinksPanel link classification > counts broken links in array [0.02ms]
+(pass) OutgoingLinksPanel display text > uses linkText when available [0.02ms]
+(pass) OutgoingLinksPanel display text > falls back to targetRef when no linkText
+(pass) OutgoingLinksPanel display text > falls back to targetRef when linkText is empty [0.01ms]
+(pass) OutgoingLinksPanel API URL encoding > encodes docId with hash prefix [0.02ms]
+(pass) OutgoingLinksPanel API URL encoding > encodes docId with special characters [0.01ms]
+(pass) OutgoingLinksPanel API URL encoding > handles simple docId [0.01ms]
+
+test/serve/public/components/PublishExportDialog.dom.test.tsx:
+(pass) explicit local publish export > keyboard cancellation returns focus and reopening clears the previous access [29.46ms]
+(pass) explicit local publish export > starts without access and cancels without a request or artifact [15.15ms]
+(pass) explicit local publish export > exports exactly the confirmed public mode through the local API [23.49ms]
+(pass) explicit local publish export > exports exactly the confirmed secret-link mode through the local API [25.61ms]
+(pass) explicit local publish export > exports exactly the confirmed invite-only mode through the local API [22.45ms]
+(pass) explicit local publish export > exports exactly the confirmed encrypted mode through the local API [125.70ms]
+(pass) explicit local publish export > requires matching encryption inputs and renews confirmation after access changes [71.94ms]
+(pass) explicit local publish export > retains the review on failure and refuses a mismatched artifact [30.54ms]
+(pass) explicit local publish export > rejects invalid choices and incomplete review before building a request [0.11ms]
+
+test/serve/public/components/QuickSwitcher.dom.test.tsx:
+(pass) QuickSwitcher DOM interactions > offers contextual note creation inside browse location [69.64ms]
+(pass) QuickSwitcher DOM interactions > shows core actions even before typing [25.76ms]
+(pass) QuickSwitcher DOM interactions > filters recent items when typing [36.44ms]
+(pass) QuickSwitcher DOM interactions > arrow keys change the selected command item [18.59ms]
+(pass) QuickSwitcher DOM interactions > keeps visible section matches ahead of generic actions [30.23ms]
+
+test/serve/public/components/RefactorImpactPreview.dom.test.tsx:
+(pass) RefactorImpactPreview > shows affected docs, rewrites, unresolved items, and confirmation gate [9.40ms]
+(pass) RefactorImpactPreview > allows confirming a safe plan and surfaces sync-pending outcomes [5.86ms]
+
+test/serve/public/components/RelatedNotesSidebar.test.ts:
+(pass) RelatedNotesSidebar cache > returns null for missing key [0.07ms]
+(pass) RelatedNotesSidebar cache > stores and retrieves data [0.04ms]
+(pass) RelatedNotesSidebar cache > tracks cache size [0.02ms]
+(pass) RelatedNotesSidebar cache > clears cache [0.01ms]
+(pass) RelatedNotesSidebar cache key > builds key with all params [0.02ms]
+(pass) RelatedNotesSidebar cache key > uses 'static' when no content hash [0.01ms]
+(pass) RelatedNotesSidebar cache key > different docIds produce different keys [0.01ms]
+(pass) RelatedNotesSidebar cache key > different limits produce different keys
+(pass) RelatedNotesSidebar cache key > different thresholds produce different keys [0.01ms]
+(pass) content hash > produces consistent hash for same content [0.03ms]
+(pass) content hash > produces different hash for different content [0.01ms]
+(pass) content hash > handles empty string
+(pass) content hash > handles unicode [0.01ms]
+(pass) RelatedNotesSidebar debounce > delays execution [60.13ms]
+(pass) RelatedNotesSidebar debounce > cancels pending execution on new call [100.17ms]
+(pass) RelatedNotesSidebar debounce > can cancel pending [60.25ms]
+(pass) RelatedNotesSidebar request sequencing > increments request ID [0.11ms]
+(pass) RelatedNotesSidebar request sequencing > isCurrent returns true for latest [0.03ms]
+(pass) RelatedNotesSidebar request sequencing > isCurrent returns false for stale [0.01ms]
+(pass) RelatedNotesSidebar request sequencing > prevents race conditions [100.19ms]
+(pass) similarity score display > converts score to percentage [0.12ms]
+(pass) similarity score display > handles edge cases [0.03ms]
+(pass) API URL construction > builds correct URL [0.06ms]
+(pass) API URL construction > encodes special characters in docId [0.02ms]
+(pass) API URL construction > handles different limit values [0.01ms]
+(pass) API URL construction > handles different threshold values [0.01ms]
+(pass) cache TTL expiration > entry expires after TTL [60.24ms]
+(pass) component behavior simulation > full flow: cache miss -> fetch -> cache hit [0.32ms]
+(pass) component behavior simulation > content change triggers refetch via different cache key [0.15ms]
+(pass) props defaults > default limit is 5 [0.03ms]
+(pass) props defaults > default threshold is 0.5 [0.01ms]
+(pass) props defaults > threshold range is 0-1 [0.02ms]
+
+test/serve/public/components/TagFacets.dom.test.tsx:
+(pass) TagFacets DOM interactions > renders accessible groups and routes active tag actions [35.72ms]
+
+test/serve/public/components/TagInput.dom.test.tsx:
+(pass) TagInput DOM interactions > adds hierarchical suggestions with keyboard combobox semantics [75.52ms]
+(pass) TagInput DOM interactions > shows validation errors and removes the last tag with backspace [32.69ms]
+
+test/serve/public/components/WikiLinkAutocomplete.test.tsx:
+(pass) WikiLinkAutocomplete > fuzzyScore > exact match scores highest [0.08ms]
+(pass) WikiLinkAutocomplete > fuzzyScore > exact match case insensitive [0.02ms]
+(pass) WikiLinkAutocomplete > fuzzyScore > prefix match scores high [0.01ms]
+(pass) WikiLinkAutocomplete > fuzzyScore > substring match at word boundary scores well [0.02ms]
+(pass) WikiLinkAutocomplete > fuzzyScore > substring match mid-word scores lower [0.01ms]
+(pass) WikiLinkAutocomplete > fuzzyScore > scattered match returns positive score [0.02ms]
+(pass) WikiLinkAutocomplete > fuzzyScore > no match returns -1 [0.01ms]
+(pass) WikiLinkAutocomplete > fuzzyScore > partial scattered match that fails returns -1
+(pass) WikiLinkAutocomplete > fuzzyScore > consecutive chars in scattered match get bonus [0.01ms]
+(pass) WikiLinkAutocomplete > fuzzyScore > ranking order: exact > prefix > word boundary > substring > scattered [0.01ms]
+(pass) WikiLinkAutocomplete > getMatchIndices > substring match returns consecutive indices [0.04ms]
+(pass) WikiLinkAutocomplete > getMatchIndices > prefix match returns starting indices [0.01ms]
+(pass) WikiLinkAutocomplete > getMatchIndices > scattered match returns scattered indices [0.02ms]
+(pass) WikiLinkAutocomplete > getMatchIndices > case insensitive matching [0.02ms]
+(pass) WikiLinkAutocomplete > getMatchIndices > no match returns empty array or partial [0.01ms]
+(pass) WikiLinkAutocomplete > filtering and sorting > empty query returns first N docs unfiltered [0.05ms]
+(pass) WikiLinkAutocomplete > filtering and sorting > filters by prefix [0.04ms]
+(pass) WikiLinkAutocomplete > filtering and sorting > filters case insensitively [0.04ms]
+(pass) WikiLinkAutocomplete > filtering and sorting > multiple matches ranked by score [0.03ms]
+(pass) WikiLinkAutocomplete > filtering and sorting > scattered match finds documents [0.02ms]
+(pass) WikiLinkAutocomplete > filtering and sorting > respects max results limit [0.01ms]
+(pass) WikiLinkAutocomplete > filtering and sorting > no matches returns empty array [0.04ms]
+(pass) WikiLinkAutocomplete > exact match detection > detects exact title match [0.03ms]
+(pass) WikiLinkAutocomplete > exact match detection > case insensitive exact match [0.01ms]
+(pass) WikiLinkAutocomplete > exact match detection > no exact match for partial
+(pass) WikiLinkAutocomplete > exact match detection > no exact match for non-existent [0.01ms]
+(pass) WikiLinkAutocomplete > create option logic > shows create for new title [0.03ms]
+(pass) WikiLinkAutocomplete > create option logic > hides create for exact match [0.01ms]
+(pass) WikiLinkAutocomplete > create option logic > hides create when no callback
+(pass) WikiLinkAutocomplete > create option logic > hides create for empty query [0.01ms]
+(pass) WikiLinkAutocomplete > keyboard navigation index logic > down from -1 goes to 0 [0.02ms]
+(pass) WikiLinkAutocomplete > keyboard navigation index logic > down wraps to beginning
+(pass) WikiLinkAutocomplete > keyboard navigation index logic > up from 0 wraps to end [0.01ms]
+(pass) WikiLinkAutocomplete > keyboard navigation index logic > up decrements normally
+(pass) WikiLinkAutocomplete > keyboard navigation index logic > down increments normally
+(pass) WikiLinkAutocomplete > ARIA attributes > component should have role=listbox [0.01ms]
+(pass) WikiLinkAutocomplete > ARIA attributes > options should have role=option
+(pass) WikiLinkAutocomplete > ARIA attributes > active option should have aria-selected=true
+(pass) WikiLinkAutocomplete > ARIA attributes > listbox should have aria-label
+(pass) WikiLinkAutocomplete > position styling > fixed positioning with x/y coordinates [0.02ms]
+(pass) WikiLinkAutocomplete > position styling > z-index ensures visibility above modals
+
+test/serve/public/hooks/use-doc-events.test.ts:
+(pass) use-doc-events retry policy > backs off exponentially and caps delay [0.04ms]
+
+test/serve/public/hooks/use-pdf-document.dom.test.tsx:
+Warning: Please use the `legacy` build in Node.js environments.
+(pass) use-pdf-document > StrictMode: two getDocument permitted; first destroyed; never two undestroyed [105.39ms]
+(pass) use-pdf-document > success unmount: task destroy once and documentDestroy once [52.67ms]
+(pass) use-pdf-document > rejection: task.destroy on cleanup, documentDestroy zero times [52.76ms]
+(pass) use-pdf-document > URL-change: old last resolve does not overwrite; destroy counts exact [104.03ms]
+(pass) use-pdf-document > retry race: superseded reject LAST cannot overwrite; destroy exact [104.19ms]
+(pass) use-pdf-document > stale late resolution after unmount: task remains singly destroyed, no documentDestroy [51.87ms]
+(pass) use-pdf-document > classifyPdfError discrimination for all four reasons [210.92ms]
+(pass) use-pdf-document > per-load opaque distinct docId including same URL [105.25ms]
+(pass) use-pdf-document > repeated cleanup is idempotent (no double documentDestroy) [52.65ms]
+(pass) use-pdf-document > HEAD probe once per load: whole-file under the bound, ranged at or above it [212.86ms]
+(pass) use-pdf-document > HEAD failure, non-2xx, or missing/invalid Content-Length falls back to ranged without a document error [272.41ms]
+(pass) use-pdf-document > synchronous getDocument throw after the probe surfaces as a document error, not an unhandled rejection [51.85ms]
+(pass) use-pdf-document > unmount during the HEAD probe never creates a loading task [0.59ms]
+
+test/serve/public/hooks/use-pdf-pages.dom.test.tsx:
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+(pass) use-pdf-pages > I3-01: genuine IO virtualization — actual DOM canvas proof, full prior-window zeroing [197.62ms]
+(pass) use-pdf-pages > I3-02: exact cancel→cancelled-settle→replacement-start seq; logical scale; single-owner cancel [58.17ms]
+(pass) use-pdf-pages > I3-05: null context / sync render throw rollback; failed promise; disposeAll barrier [159.89ms]
+(pass) use-pdf-pages > T2: initial window admits every initially-active page immediately [28.58ms]
+(pass) use-pdf-pages > T1: 200-page traversal stays far below 60 starts; final window renders after quiescence [229.11ms]
+(pass) use-pdf-pages > T4: pages entering and leaving before quiescence emit no events [62.39ms]
+(pass) use-pdf-pages > T7: cadence under the quiescence boundary admits nothing; a pause over it admits [211.55ms]
+(pass) use-pdf-pages > T5: disposal during timer expiry starts nothing [164.41ms]
+(pass) use-pdf-pages > T3: a genId commit admits every active page immediately; stale-gen timer no-ops [225.06ms]
+(pass) use-pdf-pages > T6: deferred flush respects canvas replacement, ceiling and single admission per page [244.30ms]
+(pass) use-pdf-pages > SOL6-IMPL-02: canvas replaced while getPage is pending starts nothing [58.61ms]
+(pass) use-pdf-pages > SOL6-IMPL-02: canvas disconnected while getPage is pending starts nothing [53.53ms]
+(pass) use-pdf-pages > SOL6-IMPL-01: a committed scale change re-renders every active page even when genId is unchanged [14.93ms]
+(pass) use-pdf-pages > R2: page 1 geometry publishes every slot and paints before later pages resolve [13.12ms]
+(pass) use-pdf-pages > R2: mixed-size documents settle per-page heights; fit modes recompute against the widest page in one commit [154.79ms]
+(pass) use-pdf-pages > R2: a scale-changing geometry correction opens a new admission epoch [109.32ms]
+(pass) use-pdf-pages > R2: the top edge of the page in view stays fixed when later heights land [104.91ms]
+(pass) use-pdf-pages > R2: the anchor is the page straddling the viewport top, not the first page inside the observer margin [106.23ms]
+(pass) use-pdf-pages > R2: a later page's geometry failure rides on its slot and is not fatal [103.33ms]
+(pass) use-pdf-pages > R2: a render-path getPage failure on a later page is nonfatal and rides on its slot [56.25ms]
+(pass) use-pdf-pages > page metadata acquisition failures surface a classified viewer error [51.80ms]
+(pass) use-pdf-pages > render-setup exceptions release admission so retry can render [110.12ms]
+(pass) use-pdf-pages > concurrent cold-window admissions reserve the live-canvas ceiling atomically [56.59ms]
+(pass) use-pdf-pages > same-generation scale replacement owns a pending getPage continuation [107.61ms]
+(pass) use-pdf-pages > retention through hook churn + disposeAll; metrics survive unmount [58.14ms]
+
+test/serve/public/lib/deep-links.test.ts:
+(pass) deep link helpers > buildDocDeepLink includes source view and line range [0.06ms]
+(pass) deep link helpers > buildEditDeepLink omits invalid lineEnd without lineStart [0.04ms]
+(pass) deep link helpers > parseDocumentDeepLink reads line range and defaults view [0.03ms]
+(pass) deep link helpers > parseDocumentDeepLink ignores additive citation selectors [0.02ms]
+
+test/serve/public/lib/doc-asset-url.test.ts:
+(pass) doc-asset-url (fn-112 task .5 N5) > assetPathFromRelPath uses basename only [0.08ms]
+(pass) doc-asset-url (fn-112 task .5 N5) > buildDocAssetUrl encodes uri and basename path [0.07ms]
+(pass) doc-asset-url (fn-112 task .5 N5) > dirname+basename resolves nested document and not sibling dir [0.05ms]
+(pass) doc-asset-url (fn-112 task .5 N5) > recordSourcePath-shaped relPath still basename-resolves [0.02ms]
+(pass) doc-asset-url (fn-112 task .5 N5) > isPdfDocument is case-insensitive mime or ext [0.08ms]
+(pass) doc-asset-url (fn-112 task .5 N5) > isExtractedTextAvailable predicate table [0.04ms]
+
+test/serve/public/lib/math-sum-precise.test.ts:
+(pass) Math.sumPrecise compatibility > preserves an existing native implementation [0.02ms]
+(pass) Math.sumPrecise compatibility > compensates mixed-magnitude cancellation [0.01ms]
+
+test/serve/public/lib/pdf.test.ts:
+(pass) fn-112 PDF fixtures (semantic) > js-action.pdf has catalog /OpenAction with /S /JavaScript and /JS [0.13ms]
+(pass) fn-112 PDF fixtures (semantic) > standard-font.pdf has no embedded FontFile stream [0.04ms]
+(pass) fn-112 PDF fixtures (semantic) > cjk-cmap.pdf references UniJIS-UCS2-H Type0 encoding [0.03ms]
+(pass) fn-112 PDF fixtures (semantic) > zero-page.pdf has /Count 0 [0.02ms]
+(pass) lib/pdf single-import rule > only lib/pdf.ts imports pdfjs-dist [12.02ms]
+(pass) lib/pdf single-import rule > facade source has no isEvalSupported and no enableScripting: true [0.15ms]
+(pass) lib/pdf single-import rule > transport policy comes from transportOptionsFor; no fetch-bridge workarounds [0.14ms]
+(pass) lib/pdf single-import rule > transportOptionsFor maps each tier to its pdf.js options [0.06ms]
+(pass) lib/pdf single-import rule > transportHintForContentLength tiers by the 8 MB bound; unknown sizes are ranged [0.06ms]
+(pass) lib/pdf single-import rule > exports TextLayer, getDocument, classifiers, PdfFallbackReason surface [0.03ms]
+(pass) zoom / fit / DPR cap math > clampZoom bounds and non-finite [0.04ms]
+(pass) zoom / fit / DPR cap math > stepZoom steps and clamps [0.03ms]
+(pass) zoom / fit / DPR cap math > fitWidthScale portrait and landscape [0.03ms]
+(pass) zoom / fit / DPR cap math > fitPageScale uses the tighter dimension [0.03ms]
+(pass) zoom / fit / DPR cap math > computeEffectiveScale applies min(dpr,2)*zoom and area cap [0.08ms]
+(pass) sanitizeAnnotationUrl > allows http(s) only [0.06ms]
+(pass) classifyPdfError / isRenderingCancelled > classifies password, corrupt, network, bootstrap [0.04ms]
+(pass) classifyPdfError / isRenderingCancelled > isRenderingCancelled [0.04ms]
+(pass) __gnoPdfMetrics channel > attaches once to globalThis and survives independently of React [0.14ms]
+(pass) __gnoPdfMetrics channel > records full schema with monotonic seq and opaque ids [0.21ms]
+Warning: UnknownErrorException: Unable to load font data at: file:///home/gordon/work/gno-fn169/node_modules/pdfjs-dist/standard_fonts/LiberationSans-Regular.ttf
+(pass) __gnoPdfMetrics channel > genuine dual getDocument loads of viewer-links.pdf: distinct ids + content + privacy [54.82ms]
+(pass) __gnoPdfMetrics channel > metrics event t is direct performance.now() (not elapsed) [0.08ms]
+(pass) __gnoPdfMetrics channel > ring buffer drops oldest and increments dropped [0.06ms]
+(pass) __gnoPdfMetrics channel > reset clears records/dropped/seq; snapshot is deeply frozen clone [0.09ms]
+(pass) __gnoPdfMetrics channel > export round-trips through JSON [0.06ms]
+
+test/serve/public/lib/section-links.test.ts:
+(pass) section link helpers > readable copy-link stays human and omits durable selector [0.08ms]
+(pass) section link helpers > citation link is additive versioned and size-bounded [1.17ms]
+(pass) section link helpers > old readable links still navigate without citation evidence [0.14ms]
+(pass) section link helpers > exact and recovered citation links navigate to current anchor [1.23ms]
+(pass) section link helpers > ambiguous stale missing and invalid never navigate [0.68ms]
+(pass) section link helpers > notice copy never embeds section bodies and strip removes st only [0.07ms]
+
+test/serve/public/lib/wiki-link.test.ts:
+(pass) wiki link query detection > detects active query after [[ [0.03ms]
+(pass) wiki link query detection > returns null when cursor is outside wiki link [0.01ms]
+(pass) wiki link query detection > returns null when link is already closed [0.02ms]
+
+test/serve/public/pages/Ask.dom.test.tsx:
+(pass) Ask reload retains collection with its metadata filter in URL and request [70.23ms]
+
+test/serve/public/pages/Browse.dom.test.tsx:
+(pass) Browse page DOM interactions > renders tree navigation, folder contents, and keyboard traversal [38.62ms]
+
+test/serve/public/pages/DocView-actions.dom.test.tsx:
+(pass) DocView locality-aware actions > local client: read-only Reveal site and file:// Open original render [17.21ms]
+(pass) DocView locality-aware actions > local client: editable Reveal site renders [9.96ms]
+(pass) DocView locality-aware actions > remote client: Reveal hidden, Open original is an inline asset link, Download unchanged [9.36ms]
+(pass) DocView locality-aware actions > remote client: non-PDF read-only source keeps an inline Open original [7.56ms]
+(pass) DocView locality-aware actions > remote client: editable document shows no Reveal [7.67ms]
+(pass) DocView locality-aware actions > capabilities fetch failure treats the client as remote [8.47ms]
+(pass) DocView locality-aware actions > header action row wraps so a 375px viewport does not clip actions [10.02ms]
+
+test/serve/public/pages/DocView.dom.test.tsx:
+(pass) DocView DOM interactions > edits tags with the shared TagInput flow and persists them [114.45ms]
+(pass) DocView PDF integration (fn-112.5) > mime/ext classification renders lazy PdfViewer stub with basename asset URL [7.79ms]
+(pass) DocView PDF integration (fn-112.5) > case-insensitive Application/PDF and .PDF ext classify as PDF [15.75ms]
+(pass) DocView PDF integration (fn-112.5) > Pages/Text pill toggles branches; no viewer when Text [17.00ms]
+(pass) DocView PDF integration (fn-112.5) > view=source and lineStart deep links land on Text [11.72ms]
+(pass) DocView PDF integration (fn-112.5) > fallback corrupt: exact notice, hook, download only, clears on Pages [23.01ms]
+(pass) DocView PDF integration (fn-112.5) > fallback password: exact notice, hook, download only, clears on Pages [21.66ms]
+(pass) DocView PDF integration (fn-112.5) > fallback network: exact notice, hook, download only, clears on Pages [25.63ms]
+(pass) DocView PDF integration (fn-112.5) > fallback bootstrap: exact notice, hook, download only, clears on Pages [22.82ms]
+(pass) DocView PDF integration (fn-112.5) > B5-01: predicate-false spurious onFallback does not switch view or unmount viewer [114.36ms]
+(pass) DocView PDF integration (fn-112.5) > predicate true + manual empty Text: no extracted sub-state, zero fallbacks [14.26ms]
+(pass) DocView PDF integration (fn-112.5) > asset URL: nested, recordSourcePath-shaped, container, same-basename sibling uris [27.75ms]
+(pass) DocView PDF integration (fn-112.5) > B5-03: App-equivalent location key remount unmounts A and mounts B with new asset URL [19.53ms]
+(pass) DocView PDF integration (fn-112.5) > content not available remains distinct from no-extracted-text [17.27ms]
+(pass) DocView outline section links (fn-61.7) > outline exposes readable and citation controls with distinct copy payloads [44.58ms]
+(pass) DocView outline section links (fn-61.7) > clipboard rejection shows unavailable feedback without copied-success [32.81ms]
+(pass) DocView outline section links (fn-61.7) > invalid citation selector blocks hash navigation at the DocView boundary [16.21ms]
+
+test/serve/public/pages/Search.dom.test.tsx:
+(pass) Search page DOM interactions > manages advanced retrieval state and renders the empty state [197.05ms]
+(pass) Search page DOM interactions > navigates to a document from search results [42.77ms]
+(pass) Search page DOM interactions > invalid typed filter blocks retrieval; correction sends typed predicate and shows coverage warning [115.94ms]
+
+test/serve/public/pages/CompiledContext.dom.test.tsx:
+(pass) preview keeps source inert, reports omissions, downloads exact bytes, and invalidates edited inputs [19.96ms]
+(pass) freshness check submits inline bytes and renders stale reasons [9.99ms]
+(pass) oversize pasted input is rejected before any request [20.58ms]
+(pass) failed verification exposes the error without a download [10.11ms]
+(pass) file upload uses contents, rejects oversized replacement, and keeps server paths out of requests [26.51ms]
+
+test/serve/public/components/pdf/PdfPageView.dom.test.tsx:
+(pass) PdfPageView > rotation-aware placeholder aspect from viewport-derived width/height [0.53ms]
+(pass) PdfPageView > https link target blank noopener; javascript inert; internal page-jump [54.14ms]
+(pass) PdfPageView > I3-06: wrapper carries live viewport scale on initial render and zoom update [3.65ms]
+(pass) PdfPageView > I3-06: CSS page wrapper contract + semantic card surface, no raw colors [0.18ms]
+(pass) PdfPageView > I3-03: same-component identity replace — deferred getPage OLD-last does not mutate [4.12ms]
+(pass) PdfPageView > I3-03: same-component identity replace — deferred textContent OLD-last [4.57ms]
+(pass) PdfPageView > I3-03: same-component identity replace — deferred TextLayer.render OLD-last [4.57ms]
+(pass) PdfPageView > I3-03: same-component identity replace — deferred OLD getDestination after real click [6.35ms]
+(pass) PdfPageView > I3-03: same-component identity replace — deferred OLD getPageIndex after real click [6.07ms]
+(pass) PdfPageView > pdfjs-dist is imported only from lib/pdf.ts facade [10.98ms]
+
+test/serve/public/components/pdf/PdfToolbar.dom.test.tsx:
+(pass) PdfToolbar > prev/next call onPageChange and disable at boundaries [10.86ms]
+(pass) PdfToolbar > page input: digits clamp 0→1 and >N→N on Enter/blur; empty/non-numeric revert [27.30ms]
+(pass) PdfToolbar > page indicator is aria-live with tabular n/N [4.72ms]
+(pass) PdfToolbar > zoom in/out and fit modes; custom leaves both unpressed [7.89ms]
+(pass) PdfToolbar > zoom-level combobox: stops within bounds, current level selected, accessible name [4.56ms]
+(pass) PdfToolbar > zoom-level combobox disables with controlsDisabled and keeps steppers independent [4.44ms]
+(pass) PdfToolbar > zoom-level combobox opens and selecting a level calls onZoomTo with that value [23.98ms]
+(pass) PdfToolbar > zoom-level combobox marks 100% as the default level [13.53ms]
+(pass) PdfToolbar > zoom-out disabled at MIN_ZOOM; zoom-in disabled at MAX_ZOOM [9.53ms]
+(pass) PdfToolbar > responsive structure: flex-wrap, mobile break, fit labels, page input [5.83ms]
+(pass) PdfToolbar > no Pages/Text view toggle; download is real anchor [5.56ms]
+(pass) PdfToolbar > disabled empty document disables controls; download stays actionable [4.96ms]
+(pass) PdfToolbar > icon buttons expose aria-labels [5.22ms]
+
+test/serve/public/components/pdf/PdfViewer.dom.test.tsx:
+(pass) PdfViewer > production PdfViewerProps expose only the four contract keys [7.53ms]
+(pass) PdfViewer > loading state exact copy, role=status, no Card chrome [5.55ms]
+(pass) PdfViewer > empty state exact copy, download action, no Card chrome [5.36ms]
+(pass) PdfViewer > error state corrupt exact copy, role=alert, no Card chrome [5.25ms]
+(pass) PdfViewer > error state password exact copy, role=alert, no Card chrome [6.04ms]
+(pass) PdfViewer > error state network exact copy, role=alert, no Card chrome [4.98ms]
+(pass) PdfViewer > error state bootstrap exact copy, role=alert, no Card chrome [5.61ms]
+(pass) PdfViewer > onFallback fires once per failed load when extractedTextAvailable true [6.66ms]
+(pass) PdfViewer > onFallback for all four reasons once each; false never fires and keeps panel [26.95ms]
+(pass) PdfViewer > progressive: page column with rendered and unrendered pages, zero state cards [8.18ms]
+(pass) PdfViewer > toolbar zoom/fit commits bump gen (stub pages records increasing genId) [18.01ms]
+(pass) PdfViewer > zoom-level combobox commits zoom + custom fit + exactly one gen bump; no bump when already current [60.18ms]
+(pass) PdfViewer > keyboard: handled keys preventDefault and change state; unhandled do not [21.75ms]
+(pass) PdfViewer > keyboard at MIN/MAX zoom does not preventDefault or change state [115.37ms]
+(pass) PdfViewer > no view toggle; cursor-pointer on actions [5.57ms]
+(pass) PdfViewer > password has no retry; retry invokes doc.retry [9.26ms]
+(pass) PdfViewer > page acquisition errors use the same designed panel and fallback path [10.50ms]
+(pass) PdfViewer > R2: a later-page geometry failure keeps drawn pages mounted and shows the page error on the failed slot [5.36ms]
+(pass) PdfViewer > R2: document load failure takes the fallback path even when slots are present [4.69ms]
+(pass) PdfViewer > R2: page 1 geometry failure takes the fallback path even when slots are present [4.33ms]
+(pass) PdfViewer > viewer is focusable with aria-label [4.87ms]
+(pass) PdfViewer > page navigation respects prefers-reduced-motion for scroll behavior [13.59ms]
+(pass) PdfViewer > visible page changes keep toolbar and next-page navigation synchronized [14.83ms]
+(pass) PdfViewer > internal PDF annotations navigate through the viewer callback [11.01ms]
+(pass) PdfViewer > keyboard 0 resets zoom to custom 100%; already-reset does not preventDefault [9.03ms]
+(pass) PdfViewer > integration: real usePdfDocument loading → empty for zero-page proxy [12.03ms]
+(pass) PdfViewer > integration: viewer zoom gen commit reaches real usePdfPages cancel/metrics [26.30ms]
+
+ 364 pass
+ 0 fail
+ 2020 expect() calls
+Ran 364 tests across 50 files. [11.80s]

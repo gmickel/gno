@@ -86,6 +86,30 @@ describe("Context Capsule MCP transport contract", () => {
     await safeRm(root);
   });
 
+  test("compiled context tools expose strict read-only inline contracts", async () => {
+    const listed = await client.listTools();
+    for (const name of [
+      "gno_context_compiled_preview",
+      "gno_context_compiled_check",
+    ]) {
+      const tool = listed.tools.find((entry) => entry.name === name);
+      expect(tool?.inputSchema.additionalProperties).toBe(false);
+      expect(tool?.inputSchema.required).toContain("capsule");
+      expect(tool?.annotations?.readOnlyHint).toBe(true);
+      expect(tool?.inputSchema.properties).not.toHaveProperty("outputPath");
+      const rejected = await client.callTool({
+        name,
+        arguments: {
+          capsule: {},
+          budgetTokens: 1000,
+          markdown: "",
+          outputPath: "/tmp/unowned",
+        },
+      });
+      expect(rejected.isError).toBe(true);
+    }
+  });
+
   test("publishes a closed object schema", async () => {
     const tools = await client.listTools();
     const contextTool = tools.tools.find((tool) => tool.name === "gno_context");

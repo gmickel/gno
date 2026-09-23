@@ -1282,3 +1282,13 @@ Opt in per source note with a nested YAML `gno.metadata` map; no collection-wide
 schema or model configuration is required. Ordinary tags/author/category fields
 keep their existing behavior. See [Typed metadata filters](TYPED-METADATA.md)
 for supported values, executable examples, limits, and normal sync backfill.
+
+## Compiled context configuration
+
+Compiled project context uses the active index, collection scope, egress policy,
+and recorded Capsule tokenizer identity. It adds no background job or automatic
+instruction-file inclusion. Budgets are explicit command/request arguments.
+Keep artifacts within the source collection's privacy boundary. Generated
+`.gno-context.*` files and recognized compiled content/sidecars are excluded from
+ingestion, including renamed copies; index original sources instead. See
+[compiled context](COMPILED-CONTEXT.md).

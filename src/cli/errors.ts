@@ -15,7 +15,9 @@ export type CliErrorCode =
   | "NOT_RUNNING"
   | "BUSY"
   | "AUDIT_FINDINGS"
-  | "AUDIT_PARTIAL";
+  | "AUDIT_PARTIAL"
+  | "CONTEXT_STALE"
+  | "CONTEXT_CONFLICT";
 
 export interface CliErrorOptions {
   details?: Record<string, unknown>;
@@ -72,10 +74,15 @@ export function exitCodeFor(err: CliError): 1 | 2 | 3 | 4 | 5 {
   if (err.code === "VALIDATION") {
     return 1;
   }
-  if (err.code === "NOT_RUNNING") {
+  if (err.code === "NOT_RUNNING" || err.code === "CONTEXT_STALE") {
     return 3;
   }
-  if (err.code === "BUSY" || err.code === "AUDIT_FINDINGS") return 4;
+  if (
+    err.code === "BUSY" ||
+    err.code === "AUDIT_FINDINGS" ||
+    err.code === "CONTEXT_CONFLICT"
+  )
+    return 4;
   if (err.code === "AUDIT_PARTIAL") return 5;
   return 2;
 }

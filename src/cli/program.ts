@@ -2803,6 +2803,76 @@ function wireManagementCommands(program: Command): void {
       await writeOutput(output, format === "json" ? "json" : "md");
     });
 
+  const compiledCmd = contextCmd
+    .command("compiled")
+    .description("Compile, check and refresh verified project context");
+  for (const operation of ["preview", "compile", "check", "refresh"] as const) {
+    const command = compiledCmd
+      .command(
+        operation === "check" || operation === "refresh"
+          ? `${operation} <file>`
+          : operation
+      )
+      .description(`${operation} a separate managed context artifact`)
+      .option("--json", "JSON output");
+    if (operation === "preview" || operation === "compile") {
+      command
+        .requiredOption("--capsule <file>", "explicit Capsule JSON file")
+        .requiredOption("--budget <tokens>", "whole-output token budget")
+        .option("--bytes <bytes>", "whole-output byte budget");
+    }
+    if (operation === "compile")
+      command.requiredOption(
+        "--output <file>",
+        "new *.gno-context.md artifact"
+      );
+    if (operation === "check")
+      command.option("--capsule <file>", "relocated Capsule JSON file");
+    if (operation === "refresh")
+      command.requiredOption(
+        "--capsule-output <file>",
+        "explicit refreshed Capsule destination"
+      );
+    command.action(async (...args: unknown[]) => {
+      const file =
+        operation === "check" || operation === "refresh"
+          ? (args[0] as string)
+          : undefined;
+      const opts = args[file === undefined ? 0 : 1] as Record<string, unknown>;
+      const globals = getGlobals();
+      const { contextCompiled } = await import("./commands/context-compiled");
+      const result = await contextCompiled(operation, {
+        configPath: globals.config,
+        indexName: globals.index,
+        capsulePath: opts.capsule as string | undefined,
+        capsuleOutputPath: opts.capsuleOutput as string | undefined,
+        outputPath: file ?? (opts.output as string | undefined),
+        budgetTokens:
+          opts.budget === undefined
+            ? undefined
+            : parseContextInteger("budget", opts.budget),
+        budgetBytes:
+          opts.bytes === undefined
+            ? undefined
+            : parseContextInteger("bytes", opts.bytes),
+        json: Boolean(opts.json || globals.json),
+      });
+      await writeOutput(
+        result.output,
+        opts.json || globals.json ? "json" : "terminal"
+      );
+      if (result.status && result.status !== "current") {
+        const code =
+          result.status === "stale"
+            ? "CONTEXT_STALE"
+            : result.status === "conflict"
+              ? "CONTEXT_CONFLICT"
+              : "RUNTIME";
+        throw new CliError(code, result.status, { silent: true });
+      }
+    });
+  }
+
   contextCmd
     .command("verify <file>")
     .description("Verify a saved Context Capsule without rebuilding it")

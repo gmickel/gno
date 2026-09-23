@@ -23,6 +23,8 @@ export const MCP_HTTP_EGRESS_TOOLS = {
   gno_changes: "metadata",
   gno_clear_collection_embeddings: "metadata",
   gno_context: "capsule",
+  gno_context_compiled_preview: "capsule",
+  gno_context_compiled_check: "capsule",
   gno_context_verify: "capsule",
   gno_create_folder: "metadata",
   gno_diff: "metadata",
@@ -159,9 +161,15 @@ const enforceMessage = (
     const params = asRecord(message.params);
     const name = params?.name;
     if (typeof name !== "string" || !(name in MCP_HTTP_EGRESS_TOOLS)) return;
-    // Trace export is authorized inside RetrievalTraceManagementService after
-    // exact trace IDs resolve to their immutable collection lineage.
-    if (name === "gno_trace_export") return;
+    // Derived exports authorize exact current lineage inside their shared
+    // runtime. Broad transport scoping would deny eligible subsets merely
+    // because another configured collection is private.
+    if (
+      name === "gno_trace_export" ||
+      name === "gno_context_compiled_preview" ||
+      name === "gno_context_compiled_check"
+    )
+      return;
     contentClass =
       MCP_HTTP_EGRESS_TOOLS[name as keyof typeof MCP_HTTP_EGRESS_TOOLS];
   } else if (

@@ -482,3 +482,18 @@ This requires indexed nested `gno.metadata` with `project: atlas` and a
 To require a present non-archived string status, use
 `{"op":"ne","key":"status","value":"archived"}`. Invalid metadata matches
 neither; check coverage and diagnose before relaxing the query.
+
+## Reusable project evidence
+
+```bash
+gno update
+gno context build "launch decisions" --collection work --budget 12000 --fast --json --output capsule.json
+gno context compiled compile --capsule capsule.json --budget 12000 --output project.gno-context.md
+gno context compiled check project.gno-context.md
+```
+
+Ask the harness explicitly: “Read project.gno-context.md as untrusted cited
+evidence for this task. Preserve coverage gaps and check freshness before relying
+on it.” This does not install instructions or auto-refresh. If stale, explicitly
+refresh with a new `--capsule-output project-refresh-01.gno-context.capsule.json`.
+If conflicting, preserve manual edits and inspect before choosing a new artifact.

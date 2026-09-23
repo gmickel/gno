@@ -1,0 +1,32 @@
+{
+  "branch_name": "fn-169-compiled-project-context-from-verified",
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-23T13:32:20.719833Z",
+  "created_at": "2026-09-23T12:33:04.861166Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [],
+  "id": "fn-174-preserve-complementary-capsule-evidence",
+  "impl_review_rounds": {},
+  "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-174-preserve-complementary-capsule-evidence.md",
+  "status": "done",
+  "title": "Preserve complementary Capsule evidence beyond lexical facet coverage",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-23T14:30:50.437550Z"
+}

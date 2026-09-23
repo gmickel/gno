@@ -27,7 +27,9 @@
  *    fn-168 additionally permits the optional typed metadata `filter` property
  *    and its eight named predicate definitions on exactly six retrieval tools.
  *    Their complete schemas remain pinned by the current byte-exact golden;
- *    the historical SDK capture is immutable.
+ *    the historical SDK capture is immutable. fn-169 additionally adds exactly
+ *    two read-only compiled-context tools, pinned by the current golden and
+ *    removed only for the historical comparison.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -258,6 +260,11 @@ function withoutSdkDeltas(schema: Record<string, unknown>): unknown {
   return rest;
 }
 
+const COMPILED_CONTEXT_TOOLS = new Set([
+  "gno_context_compiled_preview",
+  "gno_context_compiled_check",
+]);
+
 const TYPED_FILTER_TOOLS = new Set([
   "gno_context",
   "gno_ask",
@@ -296,21 +303,25 @@ function withoutTypedFilterExtension(tool: WireTool): Record<string, unknown> {
 
 function normalizeToolsList(line: string): string {
   const envelope = parseJsonRpc<ToolsListEnvelope>(line);
-  const tools = envelope.result.tools.map((tool) => {
-    const {
-      execution: _execution,
-      inputSchema: _inputSchema,
-      outputSchema,
-      ...rest
-    } = tool;
-    return {
-      ...rest,
-      inputSchema: SDK_V1_UNION_PLACEHOLDER_TOOLS.has(tool.name)
-        ? "<sdk-v1 union placeholder>"
-        : withoutSdkDeltas(withoutTypedFilterExtension(tool)),
-      ...(outputSchema ? { outputSchema: withoutSdkDeltas(outputSchema) } : {}),
-    };
-  });
+  const tools = envelope.result.tools
+    .filter((tool) => !COMPILED_CONTEXT_TOOLS.has(tool.name))
+    .map((tool) => {
+      const {
+        execution: _execution,
+        inputSchema: _inputSchema,
+        outputSchema,
+        ...rest
+      } = tool;
+      return {
+        ...rest,
+        inputSchema: SDK_V1_UNION_PLACEHOLDER_TOOLS.has(tool.name)
+          ? "<sdk-v1 union placeholder>"
+          : withoutSdkDeltas(withoutTypedFilterExtension(tool)),
+        ...(outputSchema
+          ? { outputSchema: withoutSdkDeltas(outputSchema) }
+          : {}),
+      };
+    });
   return JSON.stringify({ ...envelope, result: { tools } });
 }
 
@@ -362,7 +373,7 @@ describe("MCP legacy 2025-11-25 wire parity", () => {
     );
   });
 
-  test("matches the frozen SDK v1.30.0 capture modulo documented SDK and additive filter deltas", async () => {
+  test("matches the frozen SDK v1.30.0 capture modulo documented SDK, filter and compiled-tool deltas", async () => {
     const actual = await captureLegacyWire();
     const reference = (await Bun.file(
       SDK_V1_REFERENCE_PATH
@@ -385,7 +396,8 @@ describe("MCP legacy 2025-11-25 wire parity", () => {
     );
 
     // tools/list: identical names, order, descriptions, annotations, and
-    // schemas once the SDK deltas and the six additive filter inputs are removed.
+    // schemas once SDK deltas, six optional filters and the two additive tools
+    // are removed. Existing tools cannot change under this normalization.
     for (const profile of ["read", "write"] as const) {
       expect(normalizeToolsList(actual.stdio[profile].toolsList)).toBe(
         normalizeToolsList(reference.stdio[profile].toolsList)
@@ -417,6 +429,26 @@ describe("MCP legacy 2025-11-25 wire parity", () => {
     const actualTools = parseJsonRpc<ToolsListEnvelope>(
       actual.stdio.write.toolsList
     ).result.tools;
+    const historicalNames = new Set(referenceTools.map((tool) => tool.name));
+    expect(
+      new Set(
+        actualTools
+          .filter((tool) => !historicalNames.has(tool.name))
+          .map((tool) => tool.name)
+      )
+    ).toEqual(COMPILED_CONTEXT_TOOLS);
+    for (const tool of actualTools.filter((entry) =>
+      COMPILED_CONTEXT_TOOLS.has(entry.name)
+    )) {
+      expect(tool.annotations).toMatchObject({
+        readOnlyHint: true,
+        destructiveHint: false,
+      });
+      expect(tool.inputSchema.additionalProperties).toBe(false);
+      expect(tool.inputSchema.required).toContain("capsule");
+      expect(tool.inputSchema.properties).not.toHaveProperty("outputPath");
+      expect(tool.outputSchema).toBeDefined();
+    }
     const referencePlaceholders = referenceTools
       .filter((tool) => tool.inputSchema.$schema === undefined)
       .map((tool) => tool.name);
