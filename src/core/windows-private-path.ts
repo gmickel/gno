@@ -39,11 +39,14 @@ foreach ($rule in $rules) {
 if (-not $allowed) { throw 'Private owner access unavailable' }
 `;
 
-export function windowsPrivatePath(path: string, create = false): void {
+export async function windowsPrivatePath(
+  path: string,
+  create = false
+): Promise<void> {
   if (process.platform !== "win32")
     throw new Error("Windows ACL operation requires Windows");
   const started = performance.now();
-  const result = Bun.spawnSync(
+  const child = Bun.spawn(
     [
       "powershell.exe",
       "-NoLogo",
@@ -63,11 +66,30 @@ export function windowsPrivatePath(path: string, create = false): void {
       stdout: "ignore",
       stderr: "pipe",
       timeout: 10000,
-      maxBuffer: 65536,
     }
   );
-  if (result.exitCode !== 0)
-    throw new Error(
-      `Private path ACL unavailable (exit=${String(result.exitCode)}, signal=${String(result.signalCode)}, success=${String(result.success)}, elapsedMs=${Math.round(performance.now() - started)}): ${result.stderr.toString().trim() || "no stderr"}`
-    );
+  const reader = child.stderr.getReader();
+  try {
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 65536)
+        throw new Error("Private path ACL stderr exceeded 64 KiB");
+      chunks.push(value);
+    }
+    const exitCode = await child.exited;
+    if (exitCode !== 0) {
+      const stderr = new TextDecoder().decode(Buffer.concat(chunks)).trim();
+      throw new Error(
+        `Private path ACL unavailable (exit=${String(exitCode)}, signal=${String(child.signalCode)}, elapsedMs=${Math.round(performance.now() - started)}): ${stderr || "no stderr"}`
+      );
+    }
+  } finally {
+    reader.releaseLock();
+    if (child.exitCode === null) child.kill("SIGKILL");
+    await child.exited;
+  }
 }

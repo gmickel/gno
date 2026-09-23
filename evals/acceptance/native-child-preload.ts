@@ -21,7 +21,7 @@ import { privateCapturePath } from "./windows-observation";
 
 /** Read metadata and bytes through one handle; reject path replacement around
  * the platform ACL check rather than reopening a checked filename. */
-export function readChildBootstrap(path: string): string {
+export async function readChildBootstrap(path: string): Promise<string> {
   const descriptor = openSync(
     path,
     constants.O_RDONLY |
@@ -39,7 +39,7 @@ export function readChildBootstrap(path: string): string {
       (process.platform !== "win32" && (metadata.mode & 0o077n) !== 0n)
     )
       throw new Error("Private child capture bootstrap required");
-    privateCapturePath(path);
+    await privateCapturePath(path);
     const checked = lstatSync(path, { bigint: true });
     if (
       checked.dev !== metadata.dev ||
@@ -83,7 +83,7 @@ async function installForSelectedEntry(): Promise<void> {
   if (actualEntry !== expectedEntry) return;
   const path = process.env.GNO_ACCEPTANCE_CHILD_BOOTSTRAP;
   if (!path) throw new Error("Private child capture bootstrap required");
-  const bootstrap = JSON.parse(readChildBootstrap(path)) as {
+  const bootstrap = JSON.parse(await readChildBootstrap(path)) as {
     identity: Omit<ChildIdentity, "pid">;
     models: AcceptanceManifest["models"];
   };

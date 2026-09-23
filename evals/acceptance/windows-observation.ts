@@ -15,13 +15,16 @@ function command(script: string): string[] {
   ];
 }
 
-export function privateCapturePath(path: string, create = false): void {
+export async function privateCapturePath(
+  path: string,
+  create = false
+): Promise<void> {
   if (process.platform !== "win32") {
     if ((lstatSync(path).mode & 0o077) !== 0)
       throw new Error("Capture path must be private");
     return;
   }
-  windowsPrivatePath(path, create);
+  await windowsPrivatePath(path, create);
 }
 
 const PROCESSES = `

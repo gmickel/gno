@@ -245,7 +245,7 @@ export function createSessionDriverFactory(
       );
       await mkdir(options.protocolRoot, { recursive: true });
       const directory = await mkdtemp(join(options.protocolRoot, "session-"));
-      privateCapturePath(directory, true);
+      await privateCapturePath(directory, true);
       const runId = crypto.randomUUID();
       const harnessSha256: Record<string, string> = {};
       for (const name of [

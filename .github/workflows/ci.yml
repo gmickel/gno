@@ -18,29 +18,6 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  windows-acl-probe:
-    runs-on: windows-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.2
-      - run: bun install --frozen-lockfile
-      - name: Match Windows test temp root
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path "D:/Temp" | Out-Null
-          echo "TEMP=D:/Temp" >> $env:GITHUB_ENV
-          echo "TMP=D:/Temp" >> $env:GITHUB_ENV
-      - id: probe
-        run: bun .github/scripts/windows-acl-probe.ts
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: windows-acl-probe
-          path: ${{ runner.temp }}/windows-acl-probe.json
-
   changes:
     runs-on: ubuntu-latest
     outputs:

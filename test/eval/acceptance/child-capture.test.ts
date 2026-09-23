@@ -47,7 +47,7 @@ test("child capture transparently forwards operational arguments and exact reque
     "evals/acceptance/native-child-preload.ts"
   );
   const dispatcher = join(process.cwd(), "src/llm/native-worker/dispatcher.ts");
-  privateCapturePath(root, true);
+  await privateCapturePath(root, true);
   const bootstrap = join(root, "bootstrap.json");
   const exactRequest = {
     version: 1,
@@ -218,7 +218,7 @@ test("actual selected child captures input and hash failure without loading a ba
   const root = await realpath(
     await mkdtemp(join(tmpdir(), "gno-child-capture-"))
   );
-  privateCapturePath(root, true);
+  await privateCapturePath(root, true);
   const path = join(root, "not-a-model.gguf");
   await Bun.write(path, "deliberately not a native model");
   const modelUri = `file:${path}`;
@@ -454,7 +454,7 @@ test("candidate adapter import and parent capture do not load native leaf module
     await mkdtemp(join(tmpdir(), "gno-native-free-parent-"))
   );
   try {
-    privateCapturePath(root, true);
+    await privateCapturePath(root, true);
     const adapter = join(process.cwd(), "evals/acceptance/native-adapter.ts");
     const bridge = join(process.cwd(), "evals/acceptance/parent-capture.ts");
     const child = Bun.spawn(
@@ -636,7 +636,7 @@ test("actual worker removes only its QA preload before dependency fork; nonentry
     "evals/acceptance/native-child-preload.ts"
   );
   const entry = join(process.cwd(), "src/llm/native-worker/entry.ts");
-  privateCapturePath(root, true);
+  await privateCapturePath(root, true);
   const bootstrap = join(root, "bootstrap.json");
   const probe = join(root, "binding-probe.cjs");
   const observer = join(root, "fork-observer.ts");

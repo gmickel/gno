@@ -805,7 +805,7 @@ describe("gno audit CLI", () => {
       expect(report.schemaVersion).toBe("1.0");
       expect(JSON.parse(stdout)).toEqual(report);
       if (process.platform === "win32")
-        expect(() => windowsPrivatePath(reportPath)).not.toThrow();
+        await expect(windowsPrivatePath(reportPath)).resolves.toBeUndefined();
       else expect((await stat(reportPath)).mode & 0o777).toBe(0o600);
       expect((await stat(reportPath)).ino).not.toBe(originalInode);
     },

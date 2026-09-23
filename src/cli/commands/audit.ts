@@ -220,14 +220,14 @@ export const writeAuditReport = async (
   const temporaryPath = join(temporaryDirectory, "report");
   try {
     if (process.platform === "win32")
-      windowsPrivatePath(temporaryDirectory, true);
+      await windowsPrivatePath(temporaryDirectory, true);
     await Bun.write(temporaryPath, `${formatAuditReport(report, options)}\n`, {
       createPath: false,
       mode: 0o600,
     });
     await chmod(temporaryPath, 0o600);
     await rename(temporaryPath, path);
-    if (process.platform === "win32") windowsPrivatePath(path);
+    if (process.platform === "win32") await windowsPrivatePath(path);
   } finally {
     await unlink(temporaryPath).catch(() => undefined);
     await rmdir(temporaryDirectory).catch(() => undefined);

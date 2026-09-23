@@ -42,7 +42,7 @@ export async function installParentCapture(
   const root = realpathSync(directory);
   if (root !== resolve(directory))
     throw new Error("Capture directory must be canonical");
-  privateCapturePath(root);
+  await privateCapturePath(root);
   if (
     (await Bun.file(join(root, "children.json")).exists()) ||
     (await Bun.file(join(root, "requests.json")).exists()) ||
@@ -412,7 +412,7 @@ if (sidecar) {
   };
   const directory = `${sidecar}.children`;
   mkdirSync(directory, { mode: 0o700 });
-  privateCapturePath(directory, true);
+  await privateCapturePath(directory, true);
   const session = await installParentCapture(
     input.runId,
     input.models,

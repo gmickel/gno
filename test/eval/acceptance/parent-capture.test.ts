@@ -15,7 +15,7 @@ test("selected pipeline attachment captures direct-surface metadata without trac
   const root = await realpath(
     await mkdtemp(join(tmpdir(), "gno-pipeline-attachment-"))
   );
-  privateCapturePath(root, true);
+  await privateCapturePath(root, true);
   const original = Object.defineProperty;
   const capture = await installParentCapture("direct-surface", [], root);
   try {

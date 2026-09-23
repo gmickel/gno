@@ -13,13 +13,13 @@ test("bootstrap reads a private regular file and rejects a symbolic link", async
     await mkdtemp(join(tmpdir(), "gno-bootstrap-handle-"))
   );
   try {
-    privateCapturePath(root, true);
+    await privateCapturePath(root, true);
     const path = join(root, "bootstrap.json");
     fs.writeFileSync(path, '{"original":true}', { mode: 0o600 });
-    expect(readChildBootstrap(path)).toBe('{"original":true}');
+    expect(await readChildBootstrap(path)).toBe('{"original":true}');
     const link = join(root, "link.json");
     await symlink(path, link);
-    expect(() => readChildBootstrap(link)).toThrow();
+    await expect(readChildBootstrap(link)).rejects.toThrow();
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -33,7 +33,7 @@ test("bootstrap rejects pathname replacement and closes its original read handle
   let descriptor: number | undefined;
   let restore = () => {};
   try {
-    privateCapturePath(root, true);
+    await privateCapturePath(root, true);
     const path = join(root, "bootstrap.json");
     fs.writeFileSync(path, '{"original":true}', { mode: 0o600 });
     const replacement = join(root, "replacement.json");
@@ -49,7 +49,9 @@ test("bootstrap rejects pathname replacement and closes its original read handle
       return originalRead(input, options);
     }) as typeof fs.readFileSync);
     restore = () => read.mockRestore();
-    expect(() => readChildBootstrap(path)).toThrow("replaced during read");
+    await expect(readChildBootstrap(path)).rejects.toThrow(
+      "replaced during read"
+    );
     expect(descriptor).toBeDefined();
     expect(() => fs.fstatSync(descriptor!)).toThrow();
   } finally {

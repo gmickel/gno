@@ -14,22 +14,22 @@ test("capture privacy accepts owned inherited evidence and refuses broader read 
     await mkdtemp(join(tmpdir(), "gno-private-capture-"))
   );
   try {
-    privateCapturePath(root, true);
+    await privateCapturePath(root, true);
     const path = join(root, "evidence ' with spaces.json");
     // Keep the native owner chosen for this fresh file (token Owner may differ
     // from User under elevation); only its inherited DACL establishes privacy.
     await Bun.write(path, "synthetic");
     if (process.platform !== "win32") await chmod(path, 0o600);
-    expect(() => privateCapturePath(path)).not.toThrow();
+    await expect(privateCapturePath(path)).resolves.toBeUndefined();
     if (process.platform === "win32") {
-      expect(() => privateCapturePath(root, true)).toThrow("empty");
+      await expect(privateCapturePath(root, true)).rejects.toThrow("empty");
       const grant = Bun.spawnSync(
         ["icacls.exe", path, "/grant", "*S-1-1-0:R"],
         { timeout: 10000, maxBuffer: 65536 }
       );
       expect(grant.exitCode).toBe(0);
     } else await chmod(path, 0o644);
-    expect(() => privateCapturePath(path)).toThrow(/private|ACL/);
+    await expect(privateCapturePath(path)).rejects.toThrow(/private|ACL/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -63,7 +63,7 @@ test("private evidence setup completes in an IPC child with the native worker en
       "--eval",
       `
       import {privateCapturePath} from ${JSON.stringify(helper)};
-      privateCapturePath(${JSON.stringify(root)}, true);
+      await privateCapturePath(${JSON.stringify(root)}, true);
       process.send("private", () => process.disconnect());
     `,
     ],
@@ -87,7 +87,7 @@ test("private evidence setup completes in an IPC child with the native worker en
       stderr: "",
       reported: true,
     });
-    privateCapturePath(root);
+    await privateCapturePath(root);
   } finally {
     if (child.exitCode === null) child.kill("SIGKILL");
     await child.exited;
