@@ -27,4 +27,10 @@ Do not weaken the new workflow command-contract regression or restore the unsupp
 - Windows audit output uses a private directory before writing contents and verifies the final file ACL. Native acceptance captures use Windows ACL and CIM observations; archived instrumentation is bundled inside the harness namespace with separate source and deployed hashes. Runtime snapshot files remain unchanged.
 - Full Windows CI remains the completion gate; focused Linux results alone do not establish Windows compatibility.
 
-- Complete native Windows run 35912746439 on fc94700b passed 5,373 tests with 29 existing platform skips and zero failures across 643 files. Bootstrap security-check remediation is verified separately before final landing.
+- Complete native Windows run 35912746439 on fc94700b passed 5,373 tests with 29 existing platform skips and zero failures across 643 files. Bootstrap security-check remediation was subsequently verified by CodeQL and native Windows.
+
+## Completion evidence
+
+Final runtime head `260c57fa219e09c6c90019569ac89593dc7e9331` passed the complete Windows inventory: 5,375 passed, 29 existing platform skips, zero failures across 644 files. Linux and macOS CI, watcher jobs, CodeQL, clipper E2E and Windows packaging also passed. The final receipt is `.flow/artifacts/fn-177-restore-full-windows-test-compatibility/final-verification.json`.
+
+Windows ACL checks await bounded subprocess completion before writing protected bytes. Setup receipt writers share the existing process lock; Hermes privacy assertions compare canonical SIDs; bootstrap reads use a verified open descriptor. The temporary diagnostic job was removed, with its results retained. Shipped command syntax and retrieval quality thresholds are unchanged.

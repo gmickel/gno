@@ -1,0 +1,27 @@
+{
+  "head": "260c57fa219e09c6c90019569ac89593dc7e9331",
+  "version": "2.5.1",
+  "windows": {
+    "command": "bun test --max-concurrency=1",
+    "pass": 5375,
+    "skip": 29,
+    "fail": 0,
+    "tests": 5404,
+    "files": 644,
+    "seconds": 404.36,
+    "url": "https://github.com/gmickel/gno/actions/runs/35924825875/job/107397537654"
+  },
+  "linuxLocal": {
+    "pass": 5402,
+    "skip": 2,
+    "fail": 0,
+    "tests": 5404,
+    "files": 644
+  },
+  "ci": "https://github.com/gmickel/gno/actions/runs/35924825875",
+  "checks": "All CI, CodeQL and Windows packaging checks passed",
+  "packageSmoke": "v2.5.1 packed CLI/API/MCP smoke passed; real GNO sentinel unchanged",
+  "skillEval": "47/47 passed; no shipped guidance change required",
+  "website": "gno.sh PR70 merged after desktop/mobile QA and passing CI; deploy follows product publication",
+  "reviewStages": "Skipped under repository policy; required code-host checks retained"
+}
