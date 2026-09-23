@@ -1,9 +1,10 @@
-import { join as pathJoin } from "node:path";
 /**
  * MCP gno_query tool - Hybrid search with expansion and reranking.
  *
  * @module src/mcp/tools/query
  */
+
+import { join as pathJoin } from "node:path";
 
 import type {
   EmbeddingPort,

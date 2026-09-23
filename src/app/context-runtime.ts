@@ -63,6 +63,7 @@ export const buildContextCapsule = async (
     deps.config.collections.map((collection) => collection.name)
   );
   const noRerank = normalized.depthPolicy === "fast" || normalized.noRerank;
+  let metadataCoverageIncomplete = false;
   const plan = await compileContextEvidence<ContextCapsuleV1>(
     {
       goal: normalized.goal,
@@ -133,15 +134,18 @@ export const buildContextCapsule = async (
               warning.code === "METADATA_COVERAGE_INCOMPLETE"
           )
         ) {
-          throw new ContextRuntimeError(
-            "invalid_filter",
-            "Typed metadata coverage is incomplete or unknown. Sync the collection and correct invalid gno.metadata values before building a filtered Context Capsule."
-          );
+          metadataCoverageIncomplete = true;
         }
         return result.value;
       },
       projectCanonical: (draft, snapshots) =>
-        projectContextCapsule(draft, snapshots, normalized, deps),
+        projectContextCapsule(
+          draft,
+          snapshots,
+          normalized,
+          deps,
+          metadataCoverageIncomplete
+        ),
     }
   );
   if (!plan.projection) {

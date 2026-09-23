@@ -318,11 +318,18 @@ const validateCoverageBindings = (
       path: ["coverage", "gaps"],
     });
   }
-  const complete = unresolved.length === 0 && value.coverage.gaps.length === 0;
+  const metadataIncomplete =
+    value.schemaVersion === "1.2" &&
+    value.warnings.some(({ code }) => code === "metadata_coverage_incomplete");
+  const complete =
+    unresolved.length === 0 &&
+    value.coverage.gaps.length === 0 &&
+    !metadataIncomplete;
   if (value.coverage.complete !== complete) {
     context.addIssue({
       code: "custom",
-      message: "complete must reflect unresolved facets and gaps",
+      message:
+        "complete must reflect unresolved facets, gaps, and metadata coverage",
       path: ["coverage", "complete"],
     });
   }
@@ -379,6 +386,11 @@ export const validateContextCapsulePayload = (
     });
   }
   const expectedWarnings = new Set<string>();
+  if (
+    value.schemaVersion === "1.2" &&
+    warningSet.has("metadata_coverage_incomplete")
+  )
+    expectedWarnings.add("metadata_coverage_incomplete");
   if (!value.coverage.complete) expectedWarnings.add("incomplete_coverage");
   if (value.omissions.truncated) expectedWarnings.add("omissions_truncated");
   if (fallbackTokenizer) expectedWarnings.add("token_estimate_used");

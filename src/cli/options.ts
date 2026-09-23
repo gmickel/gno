@@ -1,13 +1,14 @@
-import {
-  normalizeProjectAffinityValues,
-  ProjectAffinityInputError,
-} from "../core/project-affinity-surface";
 /**
  * Output format selection and validation.
  * Implements conditional defaults per spec.
  *
  * @module src/cli/options
  */
+
+import {
+  normalizeProjectAffinityValues,
+  ProjectAffinityInputError,
+} from "../core/project-affinity-surface";
 import {
   normalizeMetadataPredicate,
   type MetadataPredicate,

@@ -154,7 +154,8 @@ export const projectContextCapsule = (
     egressLineage: ContextCapsulePayloadV1_1["egressLineage"];
   },
   input: NormalizedContextBuildInput,
-  deps: ContextCapsuleRuntimeDeps
+  deps: ContextCapsuleRuntimeDeps,
+  metadataCoverageIncomplete = false
 ): ContextCanonicalProjection<ContextCapsuleV1> | null => {
   if (draft.selection.selected.length === 0) return null;
   const evidence = draft.selection.selected.map((candidate, index) =>
@@ -292,6 +293,20 @@ export const projectContextCapsule = (
         : {
             ...payload,
             schemaVersion: "1.2" as const,
+            coverage: {
+              ...payload.coverage,
+              complete:
+                payload.coverage.complete && !metadataCoverageIncomplete,
+            },
+            warnings: [
+              ...payload.warnings,
+              ...(metadataCoverageIncomplete && payload.coverage.complete
+                ? [{ code: "incomplete_coverage" as const }]
+                : []),
+              ...(metadataCoverageIncomplete
+                ? [{ code: "metadata_coverage_incomplete" as const }]
+                : []),
+            ],
             scope: { ...payload.scope, filter: input.filter },
             retrieval: {
               ...payload.retrieval,

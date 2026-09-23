@@ -1,15 +1,16 @@
-// node:fs/promises for realpath/stat (no Bun equivalent for canonical paths or file stats)
-import { realpath, stat } from "node:fs/promises";
-// node:path for join (no Bun path utils)
-import { isAbsolute, join, relative, sep } from "node:path";
-
-import type { NormalizedContentTypeRule } from "../config";
 /**
  * Sync service - orchestrates file ingestion.
  * Walks collections, converts files, chunks content, updates store.
  *
  * @module src/ingestion/sync
  */
+
+// node:fs/promises for realpath/stat (no Bun equivalent for canonical paths or file stats)
+import { realpath, stat } from "node:fs/promises";
+// node:path for join (no Bun path utils)
+import { isAbsolute, join, relative, sep } from "node:path";
+
+import type { NormalizedContentTypeRule } from "../config";
 import type { Collection } from "../config/types";
 import type { TypedMetadata } from "../core/typed-metadata";
 import type {

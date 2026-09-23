@@ -71,13 +71,6 @@ export const projectRecordEvidenceMetadata = (
     )
   )
     return undefined;
-  // Custom fields are document eligibility metadata, not evidence provenance.
-  // Keep existing Capsule/get record contracts stable and diagnostics private.
-  const {
-    custom: _custom,
-    customError: _customError,
-    ...provenance
-  } = source.recordMetadata ?? {};
   return {
     recordKey: source.recordKey,
     sourceLocator: source.recordSourceLocator,
@@ -87,6 +80,6 @@ export const projectRecordEvidenceMetadata = (
       version: source.converterVersion,
       fingerprint: source.recordAdapterFingerprint,
     },
-    ...provenance,
+    ...source.recordMetadata,
   };
 };

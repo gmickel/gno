@@ -135,3 +135,14 @@ test("quoted alias-like text and bounded scalar aliases remain valid strings", (
     },
   });
 });
+
+test("large ordinary frontmatter remains valid empty metadata", () => {
+  expect(
+    extractTypedMetadata("---\nordinary: " + "x".repeat(70_000) + "\n---\nbody")
+  ).toEqual({ typedMetadata: {} });
+  expect(
+    extractTypedMetadata(
+      "---\ngno:\n  metadata:\n    value: " + "x".repeat(70_000) + "\n---\nbody"
+    ).metadataError
+  ).toContain("64 KiB");
+});

@@ -28,7 +28,6 @@ import { persistChunkLayout } from "./chunking";
 import { runRecordAdapter } from "./record-adapter";
 import { recordVirtualPath } from "./record-path";
 import { reconcileRecordSnapshot, type RecordSyncPlan } from "./record-sync";
-import { validateRecordMetadata } from "./typed-metadata";
 import { DEFAULT_CHUNK_PARAMS, MAX_RECORD_IMPORT_RECEIPT_ITEMS } from "./types";
 
 interface RecordDocumentMetadata {
@@ -380,14 +379,12 @@ const persistRecord = async (
         author: record.metadata?.author ?? inferred.author,
         frontmatterDate: primaryDate(dateFields) ?? inferred.frontmatterDate,
         dateFields,
-        ...(record.metadata?.customError
-          ? { metadataError: record.metadata.customError }
-          : record.metadata?.custom !== undefined
-            ? validateRecordMetadata(record.metadata.custom)
-            : {
-                typedMetadata: inferred.typedMetadata,
-                metadataError: inferred.metadataError,
-              }),
+        typedMetadata: record.metadataError
+          ? undefined
+          : (record.typedMetadata ?? inferred.typedMetadata),
+        metadataError:
+          record.metadataError ??
+          (record.typedMetadata ? undefined : inferred.metadataError),
         recordKey: record.recordKey,
         recordSourcePath: input.entry.relPath,
         recordSourceLocator: record.sourceLocator,

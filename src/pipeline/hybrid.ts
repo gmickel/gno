@@ -1,10 +1,11 @@
-import type { Config } from "../config/types";
 /**
  * Hybrid search orchestrator.
  * Combines BM25, vector search, expansion, fusion, and reranking.
  *
  * @module src/pipeline/hybrid
  */
+
+import type { Config } from "../config/types";
 import type { EmbeddingPort, GenerationPort, RerankPort } from "../llm/types";
 import type { DocumentRow, StorePort } from "../store/types";
 import type {

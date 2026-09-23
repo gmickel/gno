@@ -693,6 +693,18 @@ export const contextCapsulePayloadV1_2Schema = z
     schemaVersion: z.literal(CONTEXT_CAPSULE_CURRENT_SCHEMA_VERSION),
     scope: scopeSchema.extend({ filter: metadataPredicateSchema }),
     retrieval: contextCapsuleRetrievalV1_2Schema,
+    warnings: z
+      .array(
+        z
+          .object({
+            code: z.union([
+              contextCapsuleWarningCodeSchema,
+              z.literal("metadata_coverage_incomplete"),
+            ]),
+          })
+          .strict()
+      )
+      .max(32),
   })
   .strict()
   .superRefine((value, context) => {

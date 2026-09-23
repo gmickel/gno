@@ -1,9 +1,10 @@
-import { join as pathJoin } from "node:path";
 /**
  * MCP gno_vsearch tool - Vector/semantic similarity search.
  *
  * @module src/mcp/tools/vsearch
  */
+
+import { join as pathJoin } from "node:path";
 
 import type { EmbeddingPort } from "../../llm/types";
 import type { SearchResult, SearchResults } from "../../pipeline/types";

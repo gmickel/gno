@@ -7,6 +7,7 @@ import type {
   RecordAnchor,
   RecordMetadata,
 } from "../converters/types";
+import type { TypedMetadata } from "../core/typed-metadata";
 
 import { canonicalize, mirrorHash } from "../converters/canonicalize";
 import { RECORD_METADATA_LIMITS } from "../converters/types";
@@ -34,6 +35,8 @@ const RECORD_ATTACHMENT_DISPOSITIONS = new Set<
 >(["inline", "attachment"]);
 
 export interface CanonicalRecord {
+  typedMetadata?: TypedMetadata;
+  metadataError?: string;
   recordKey: string;
   stableId: string;
   sourceLocator: string;
@@ -45,7 +48,7 @@ export interface CanonicalRecord {
   adapterFingerprint: string;
   title?: string;
   languageHint?: string;
-  metadata?: RecordMetadata;
+  metadata?: Omit<RecordMetadata, "custom">;
   anchors?: RecordAnchor[];
 }
 
@@ -188,7 +191,7 @@ const normalizeFailureReference = (
 
 const normalizeMetadata = (
   metadata: RecordMetadata | undefined
-): RecordMetadata | undefined => {
+): Omit<RecordMetadata, "custom"> | undefined => {
   if (!metadata) return undefined;
   const normalizeList = (
     values: string[] | undefined,
@@ -226,12 +229,7 @@ const normalizeMetadata = (
   ) {
     throw new Error("record metadata out of bounds");
   }
-  const custom = Object.hasOwn(metadata, "custom")
-    ? validateRecordMetadata(metadata.custom)
-    : undefined;
   return {
-    custom: custom?.typedMetadata,
-    customError: custom?.metadataError,
     author: boundedText(metadata.author, RECORD_METADATA_LIMITS.maxPersonChars),
     participants: normalizeList(
       metadata.participants,
@@ -354,6 +352,10 @@ export const canonicalRecord = (
   const sourceLocator = normalizeLocator(record.sourceLocator);
   const markdown = canonicalize(record.markdown);
   const metadata = normalizeMetadata(record.metadata);
+  const custom =
+    record.metadata && Object.hasOwn(record.metadata, "custom")
+      ? validateRecordMetadata(record.metadata.custom, "metadata.custom")
+      : undefined;
   const anchors = normalizeAnchors(record.anchors);
   const title = boundedText(record.title, RECORD_METADATA_LIMITS.maxTitleChars);
   const languageHint = boundedText(
@@ -366,6 +368,7 @@ export const canonicalRecord = (
       languageHint,
       markdown,
       metadata,
+      ...custom,
       sourceLocator,
       stableId,
       title,
@@ -376,6 +379,7 @@ export const canonicalRecord = (
       anchors,
       languageHint,
       metadata,
+      ...custom,
       sourceLocator,
       stableId,
       title,
@@ -401,6 +405,7 @@ export const canonicalRecord = (
     title,
     languageHint,
     metadata,
+    ...custom,
     anchors,
     accountingChars: derivedSource.length,
     metadataChars,

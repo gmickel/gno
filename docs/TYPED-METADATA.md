@@ -86,6 +86,10 @@ normal embedding rules. GNO never rewrites source notes during this repair.
 Filtered responses warn when relevant documents still need re-ingestion or
 contain invalid metadata. An empty result with a coverage warning is not proof
 that no matching document exists. Correct the source YAML and sync again.
+Filtered Capsules may still use eligible evidence: version 1.2 records
+`metadata_coverage_incomplete` and `coverage.complete: false` while metadata
+coverage is incomplete. Conversion failures without searchable content are
+reported as ingestion errors, not a permanent typed-metadata backfill backlog.
 Use `gno query diagnose "rollout" --target <uri-or-path> --filter '<JSON>'`
 before relaxing a predicate: metadata backfill, invalid metadata, and predicate
 mismatch are distinct eligibility reasons. Diagnostics do not echo excluded

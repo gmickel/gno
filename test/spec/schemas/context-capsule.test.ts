@@ -724,6 +724,32 @@ test("Capsule 1.2 binds canonical typed predicates while legacy contracts reject
   ).toThrow();
   const schema = await loadSchema("context-capsule-v1");
   assertValid(capsule, schema);
+  const incomplete = createContextCapsuleV1({
+    ...payload,
+    coverage: { ...payload.coverage, complete: false },
+    warnings: [
+      ...payload.warnings,
+      { code: "incomplete_coverage" },
+      { code: "metadata_coverage_incomplete" },
+    ],
+  });
+  assertValid(incomplete, schema);
+  expect(incomplete.capsuleId).not.toBe(capsule.capsuleId);
+  expect(parseCanonicalContextCapsuleForVerification(incomplete)).toBeDefined();
+  expect(() =>
+    parseContextCapsuleV1({ ...incomplete, warnings: capsule.warnings })
+  ).toThrow();
+  const legacyWarning = {
+    ...createContextCapsuleV1(legacy),
+    warnings: [{ code: "metadata_coverage_incomplete" }],
+  };
+  assertInvalid(legacyWarning, schema);
+  expect(() =>
+    createContextCapsuleV1({
+      ...legacy,
+      warnings: [{ code: "metadata_coverage_incomplete" }],
+    })
+  ).toThrow();
   assertInvalid({ ...capsule, schemaVersion: "1.1" }, schema);
   const { filter: omitted, ...scope } = payload.scope;
   expect(omitted).toEqual(filter);

@@ -1,12 +1,13 @@
-import { join as pathJoin } from "node:path"; // No Bun path utils equivalent
-
-import type { ChunkRow, FtsResult, StorePort } from "../store/types";
 /**
  * BM25 search pipeline.
  * Wraps StorePort.searchFts() to produce SearchResults.
  *
  * @module src/pipeline/search
  */
+
+import { join as pathJoin } from "node:path"; // No Bun path utils equivalent
+
+import type { ChunkRow, FtsResult, StorePort } from "../store/types";
 import type {
   SearchOptions,
   SearchResult,

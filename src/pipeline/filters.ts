@@ -1,9 +1,10 @@
-import type { ChunkRow, DocumentRow, StorePort } from "../store/types";
 /**
  * Shared query filter evaluation for live query assembly and diagnostics.
  *
  * @module src/pipeline/filters
  */
+
+import type { ChunkRow, DocumentRow, StorePort } from "../store/types";
 import type { HybridSearchOptions } from "./types";
 
 import {

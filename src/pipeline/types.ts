@@ -1,10 +1,11 @@
-import type { NormalizedContentTypeRule } from "../config/content-types";
 /**
  * Search pipeline types.
  * Defines SearchPipelinePort and related types for search operations.
  *
  * @module src/pipeline/types
  */
+
+import type { NormalizedContentTypeRule } from "../config/content-types";
 import type {
   ContextCapsuleV1,
   ContextCapsuleVerification,

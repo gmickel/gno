@@ -1,4 +1,3 @@
-import { Database } from "bun:sqlite";
 /**
  * SQLite implementation of StorePort.
  * Uses bun:sqlite for database operations.
@@ -10,6 +9,7 @@ import { Database } from "bun:sqlite";
 
 // CRITICAL: Import setup FIRST to configure custom SQLite before any Database use
 import "./setup";
+import { Database } from "bun:sqlite";
 // node:async_hooks binds nested transactions to one async request; Bun has no separate native equivalent.
 import { AsyncLocalStorage } from "node:async_hooks";
 // node:path basename: no Bun path utilities.
@@ -1444,7 +1444,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         .query<{ pending: number; invalid: number }, (string | number)[]>(`
         SELECT COALESCE(SUM(CASE WHEN d.ingest_version IS NULL OR d.ingest_version < ${TYPED_METADATA_INGEST_VERSION} OR (d.typed_metadata IS NULL AND d.metadata_error IS NULL) THEN 1 ELSE 0 END),0) AS pending,
         COALESCE(SUM(CASE WHEN d.metadata_error IS NOT NULL THEN 1 ELSE 0 END),0) AS invalid
-        FROM documents d WHERE d.id IN (SELECT id FROM (${eligible.sql}))
+        FROM documents d WHERE d.mirror_hash IS NOT NULL AND d.id IN (SELECT id FROM (${eligible.sql}))
       `)
         .get(...eligible.params);
       return ok(row ?? { pending: 0, invalid: 0 });

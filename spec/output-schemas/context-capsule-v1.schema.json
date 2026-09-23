@@ -183,6 +183,21 @@
       },
       "else": {
         "properties": {
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "enum": [
+                    "incomplete_coverage",
+                    "omissions_truncated",
+                    "token_estimate_used"
+                  ]
+                }
+              }
+            }
+          },
           "scope": {
             "type": "object",
             "not": {
@@ -494,7 +509,8 @@
             "enum": [
               "incomplete_coverage",
               "omissions_truncated",
-              "token_estimate_used"
+              "token_estimate_used",
+              "metadata_coverage_incomplete"
             ]
           }
         }

@@ -1,11 +1,12 @@
-import type { McpServer } from "@modelcontextprotocol/server";
-
-import { z } from "zod";
 /**
  * MCP tool registration and shared utilities.
  *
  * @module src/mcp/tools
  */
+
+import type { McpServer } from "@modelcontextprotocol/server";
+
+import { z } from "zod";
 
 import type { ToolContext } from "../server";
 

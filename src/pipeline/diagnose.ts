@@ -1,9 +1,10 @@
-import type { NormalizedContentTypeRule } from "../config";
 /**
  * Targeted query diagnostics.
  *
  * @module src/pipeline/diagnose
  */
+
+import type { NormalizedContentTypeRule } from "../config";
 import type { DocumentRow, StoreResult } from "../store/types";
 import type { HybridSearchDeps } from "./hybrid";
 import type {

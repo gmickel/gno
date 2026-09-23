@@ -1,10 +1,11 @@
-import type { Config } from "../config/types";
 /**
  * Vector search pipeline.
  * Wraps VectorIndexPort.searchNearest() to produce SearchResults.
  *
  * @module src/pipeline/vsearch
  */
+
+import type { Config } from "../config/types";
 import type { EmbeddingPort } from "../llm/types";
 import type { DocumentRow, StorePort } from "../store/types";
 import type { VectorIndexPort } from "../store/vector/types";

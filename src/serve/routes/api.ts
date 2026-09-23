@@ -1,11 +1,12 @@
-// node:fs/promises structure ops + realpath have no Bun equivalent
-import { readdir, realpath } from "node:fs/promises";
 /**
  * REST API routes for GNO web UI.
  * All routes return JSON with consistent error format.
  *
  * @module src/serve/routes/api
  */
+
+// node:fs/promises structure ops + realpath have no Bun equivalent
+import { readdir, realpath } from "node:fs/promises";
 // node:path has no Bun equivalent
 import { posix as pathPosix } from "node:path";
 

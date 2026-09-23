@@ -1,9 +1,10 @@
-import { mkdir } from "node:fs/promises";
 /**
  * GNO SDK client.
  *
  * @module src/sdk/client
  */
+
+import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import type { Config } from "../config/types";

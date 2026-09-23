@@ -1,10 +1,11 @@
-import type { ChunkingParams } from "../config/chunking";
 /**
  * Store layer types and interfaces.
  * Defines StorePort (port interface) and all data types for persistence.
  *
  * @module src/store/types
  */
+
+import type { ChunkingParams } from "../config/chunking";
 import type {
   Collection,
   Context,

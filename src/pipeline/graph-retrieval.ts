@@ -1,3 +1,9 @@
+/**
+ * Bounded graph expansion for hybrid retrieval.
+ *
+ * @module src/pipeline/graph-retrieval
+ */
+
 import type { MetadataPredicate } from "../core/typed-metadata";
 import type {
   ChunkRow,
@@ -7,11 +13,6 @@ import type {
   GraphLink,
   StorePort,
 } from "../store/types";
-/**
- * Bounded graph expansion for hybrid retrieval.
- *
- * @module src/pipeline/graph-retrieval
- */
 import type { FusionCandidate } from "./types";
 
 import { typedMetadataFilterReason } from "./filters";

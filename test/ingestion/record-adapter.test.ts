@@ -749,7 +749,8 @@ test("custom metadata validates without dropping ordinary record evidence", asyn
     input()
   );
   expect(good.records).toHaveLength(1);
-  expect(good.records[0]?.metadata?.custom).toEqual({
+  expect(good.records[0]?.metadata).not.toHaveProperty("custom");
+  expect(good.records[0]?.typedMetadata).toEqual({
     approved: false,
     confidence: 0,
     teams: ["search"],
@@ -771,8 +772,6 @@ test("custom metadata validates without dropping ordinary record evidence", asyn
   );
   expect(bad.records).toHaveLength(1);
   expect(bad.records[0]?.markdown).toContain("ordinary evidence");
-  expect(bad.records[0]?.metadata?.custom).toBeUndefined();
-  expect(bad.records[0]?.metadata?.customError).toContain(
-    "invalid typed metadata"
-  );
+  expect(bad.records[0]?.typedMetadata).toBeUndefined();
+  expect(bad.records[0]?.metadataError).toContain("invalid typed metadata");
 });

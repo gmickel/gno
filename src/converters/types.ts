@@ -159,8 +159,6 @@ export const RECORD_METADATA_LIMITS = {
 /** Metadata shared by export adapters and later search/get projections. */
 export interface RecordMetadata {
   custom?: TypedMetadata;
-  /** Derived validation diagnostic; adapters do not set this field. */
-  customError?: string;
   author?: string;
   participants?: string[];
   categories?: string[];

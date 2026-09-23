@@ -1,9 +1,10 @@
-import { join as pathJoin } from "node:path";
 /**
  * MCP gno_search tool - BM25 full-text search.
  *
  * @module src/mcp/tools/search
  */
+
+import { join as pathJoin } from "node:path";
 
 import type { RetrievalTraceSession } from "../../core/retrieval-trace-session";
 import type { SearchResult, SearchResults } from "../../pipeline/types";
