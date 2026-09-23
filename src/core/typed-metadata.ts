@@ -12,6 +12,10 @@ export type MetadataPredicate =
   | { op: "in" | "nin" | "all"; key: string; values: MetadataScalar[] }
   | { op: "exists"; key: string; value: boolean };
 
+export const METADATA_COVERAGE_GUIDANCE =
+  "Incomplete coverage is not proof of absence or of matching documents. Warnings describe the query scope, not a specific target. Keep requested filters unchanged. If an expected target is known, diagnose it with the same filter; otherwise report the coverage limit without inventing a target or broadening the search.";
+export const METADATA_FILTER_DESCRIPTION = `Typed custom metadata predicate; intersects existing scope. ${METADATA_COVERAGE_GUIDANCE}`;
+
 export const TYPED_METADATA_INGEST_VERSION = 7;
 export const METADATA_LIMITS = {
   keys: 64,

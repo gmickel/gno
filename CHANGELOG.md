@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve retrieval coverage warnings in MCP text responses, including empty results, and explain safe typed-filter use in tool inputs. Verified Ask text now identifies incomplete metadata coverage.
+
 ## [2.4.0] - 2026-09-23
 
 ### Added

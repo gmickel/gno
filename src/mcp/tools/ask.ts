@@ -17,6 +17,8 @@ import { attachRetrievalTraceMetadata } from "../../core/retrieval-trace-session
 import { normalizeStructuredQueryInput } from "../../core/structured-query";
 import {
   metadataPredicateSchema,
+  METADATA_FILTER_DESCRIPTION,
+  METADATA_COVERAGE_GUIDANCE,
   normalizeMetadataPredicate,
 } from "../../core/typed-metadata";
 import { resolveModelUri } from "../../llm/registry";
@@ -44,7 +46,9 @@ export const askInputSchema = z
     candidateLimit: z.number().int().min(1).max(100).optional(),
     exclude: z.array(z.string()).optional(),
     queryModes: z.array(queryModeSchema).optional(),
-    filter: metadataPredicateSchema.optional(),
+    filter: metadataPredicateSchema
+      .optional()
+      .describe(METADATA_FILTER_DESCRIPTION),
     tagsAll: z.array(z.string()).optional(),
     tagsAny: z.array(z.string()).optional(),
     since: z.string().optional(),
@@ -110,6 +114,15 @@ export const formatVerifiedAskReadable = (
         `  ${exactSpan(evidence.uri, evidence.startLine, evidence.endLine)} (${evidence.evidenceId})`
       );
     }
+  }
+  if (
+    result.verification?.capsule.warnings.some(
+      (warning) => warning.code === "metadata_coverage_incomplete"
+    )
+  ) {
+    lines.push(
+      "Warning [metadata_coverage_incomplete]: " + METADATA_COVERAGE_GUIDANCE
+    );
   }
   for (const gap of result.verification?.capsule.coverage.gaps ?? []) {
     lines.push(`Gap: ${gap.facet} (${gap.code})`);

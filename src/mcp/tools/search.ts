@@ -24,6 +24,7 @@ import {
   type MetadataPredicate,
 } from "../../core/typed-metadata";
 import { searchBm25 } from "../../pipeline/search";
+import { appendRetrievalWarnings } from "../retrieval-warnings";
 import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
 interface SearchInput {
@@ -175,6 +176,7 @@ export function handleSearch(
         throw cause;
       }
     },
-    formatSearchResults
+    (data) =>
+      appendRetrievalWarnings(formatSearchResults(data), data.meta.warnings)
   );
 }

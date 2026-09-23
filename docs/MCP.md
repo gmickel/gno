@@ -1984,3 +1984,17 @@ Use the tool's existing scope fields alongside the predicate. Invalid predicates
 fail validation; missing metadata is not an excuse to drop the filter. See
 [Typed metadata filters](TYPED-METADATA.md) for exact types, bounded schemas,
 coverage warnings, and the difference between `ne` and `not(eq)`.
+
+### Typed-filter coverage warnings
+
+Search, vector search and query include coverage warnings in both MCP text
+content and structured metadata, even when no results are returned. Verified
+Ask text also identifies incomplete Capsule metadata coverage. An empty result
+with incomplete or unknown coverage does not establish absence.
+
+Preserve the requested predicate and collection scope. When an expected document
+is known, diagnose that target with the same filter; otherwise inspect the
+coverage warning before drawing conclusions. The filter descriptions advertise
+this guidance even when the GNO skill is not installed.
+
+Coverage counts describe the scoped corpus, not the existence or metadata state of a particular matching document. With no known target, report the coverage limit instead of inventing a target or broadening the requested search.

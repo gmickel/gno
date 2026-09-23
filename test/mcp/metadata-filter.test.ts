@@ -30,6 +30,15 @@ test("MCP advertises typed filters and rejects invalid predicates before retriev
       expect(tool).toBeDefined();
       const schema = tool?.inputSchema;
       expect(schema?.properties).toHaveProperty("filter");
+      expect(JSON.stringify(schema?.properties?.filter)).toContain(
+        "Incomplete coverage is not proof of absence"
+      );
+      expect(JSON.stringify(schema?.properties?.filter)).toContain(
+        "Keep requested filters unchanged"
+      );
+      expect(JSON.stringify(schema?.properties?.filter)).toContain(
+        "If an expected target is known"
+      );
       expect(JSON.stringify(schema)).toContain('"gte"');
       expect(JSON.stringify(schema).length).toBeLessThan(100_000);
     }
