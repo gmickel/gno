@@ -75,7 +75,8 @@ async function loadArchiveConfig(): Promise<Config> {
 }
 
 async function withService<T>(
-  run: (service: SessionsService, config: Config) => Promise<T>
+  run: (service: SessionsService, config: Config) => Promise<T>,
+  readDirectory?: ReadDirectory
 ): Promise<T> {
   const opened = await initStore({
     configPath,
@@ -90,6 +91,7 @@ async function withService<T>(
         configPath,
         indexName: INDEX,
         store: opened.store,
+        readDirectory,
       }),
       opened.config
     );
@@ -1102,6 +1104,16 @@ describe("review round 1 regressions", () => {
 const permissionsEnforced =
   process.platform !== "win32" && process.getuid?.() !== 0;
 
+/** A directory listing that fails for `target` the way the OS would. */
+function failingListing(target: string, code: "EACCES" | "ENOENT") {
+  return ((dir: string, options: Parameters<ReadDirectory>[1]) =>
+    dir === target
+      ? Promise.reject(
+          Object.assign(new Error(`${code}: scandir '${dir}'`), { code })
+        )
+      : readdir(dir, options as { withFileTypes: true })) as ReadDirectory;
+}
+
 describe("unreadable sources never read as up to date", () => {
   test.skipIf(!permissionsEnforced)(
     "an unreadable source root fails, keeps its archive and is not available",
@@ -1186,20 +1198,11 @@ describe("unreadable sources never read as up to date", () => {
   test("enumeration reports an unlistable subdirectory and throws for the root", async () => {
     const nested = join(codexRoot, "2026");
     await mkdir(nested, { recursive: true });
-    const denied = (dir: string) =>
-      Object.assign(new Error(`EACCES: permission denied, scandir '${dir}'`), {
-        code: "EACCES",
-      });
-    const failing = (target: string): ReadDirectory =>
-      ((dir: string, options: Parameters<ReadDirectory>[1]) =>
-        dir === target
-          ? Promise.reject(denied(dir))
-          : readdir(dir, options as { withFileTypes: true })) as ReadDirectory;
     const partial = await enumerateUnits({
       harness: "codex",
       root: codexRoot,
       excluded: [],
-      readDirectory: failing(nested),
+      readDirectory: failingListing(nested, "EACCES"),
     });
     expect(partial.units).toHaveLength(4);
     expect(partial.unreadable).toEqual([
@@ -1210,8 +1213,47 @@ describe("unreadable sources never read as up to date", () => {
         harness: "codex",
         root: codexRoot,
         excluded: [],
-        readDirectory: failing(codexRoot),
+        readDirectory: failingListing(codexRoot, "EACCES"),
       })
     ).rejects.toThrow("EACCES");
   });
+
+  for (const code of ["EACCES", "ENOENT"] as const) {
+    test(`a root listing that fails with ${code} after preflight maintains the archive, then fails`, async () => {
+      await importMain();
+      await setLiterals(["alpha queue"]);
+      await expectSessionsError(
+        withService(
+          (service) =>
+            service.import({ sourceId: "codex-main" }, { allowPaths: false }),
+          failingListing(codexRoot, code)
+        ),
+        "SESSIONS_SOURCE_UNAVAILABLE"
+      );
+      expect(await readAll(join(archiveRoot, "work"))).not.toContain(
+        "alpha queue"
+      );
+      expect(await searchArchive("alpha queue SQLite")).toEqual([]);
+    });
+  }
+
+  test.skipIf(!permissionsEnforced)(
+    "prune refuses a source whose parent directory cannot be read",
+    async () => {
+      await importMain();
+      const parent = join(root, "sources");
+      await chmod(parent, 0o000);
+      try {
+        await expectSessionsError(
+          withService((service) =>
+            service.prune({ sourceId: "codex-main", apply: true })
+          ),
+          "SESSIONS_SOURCE_UNAVAILABLE"
+        );
+      } finally {
+        await chmod(parent, 0o755);
+      }
+      expect(await searchArchive("SQLite")).toHaveLength(1);
+    }
+  );
 });

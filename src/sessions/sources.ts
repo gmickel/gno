@@ -364,7 +364,8 @@ export async function detectHarness(
  */
 export async function detectRootHarness(
   root: string,
-  excluded: readonly string[]
+  excluded: readonly string[],
+  readDirectory?: ReadDirectory
 ): Promise<SessionHarness | null> {
   const info = await stat(root);
   if (info.isFile()) return detectHarness(root);
@@ -374,6 +375,7 @@ export async function detectRootHarness(
       root,
       excluded,
       limit: 1,
+      readDirectory,
     });
     const first = units[0];
     if (first && (await detectHarness(first.path)) === harness) return harness;
