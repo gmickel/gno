@@ -83,7 +83,13 @@ import {
   isPdfDocument,
 } from "../lib/doc-asset-url";
 import { waitForDocumentAvailability } from "../lib/document-availability";
-import { type RequestIntent, requestIdForIntent } from "../lib/request-intent";
+import {
+  clearRequestIntent,
+  type RequestIntent,
+  requestIdForIntent,
+} from "../lib/request-intent";
+
+const TAG_INTENT_KEY = "gno:tag-intent";
 import {
   buildReadableSectionUrl,
   createCitationSectionUrl,
@@ -1222,7 +1228,8 @@ export default function DocView({ navigate }: PageProps) {
           uri: doc.uri,
           requestId: requestIdForIntent(
             tagIntentRef,
-            `${doc.uri}\u0000${doc.source.sourceHash}\u0000${editedTags.join(",")}`
+            `${doc.uri}\u0000${doc.source.sourceHash}\u0000${editedTags.join(",")}`,
+            TAG_INTENT_KEY
           ),
         }),
       }
@@ -1235,6 +1242,7 @@ export default function DocView({ navigate }: PageProps) {
       return;
     }
 
+    clearRequestIntent(tagIntentRef, TAG_INTENT_KEY);
     // Update doc with new tags
     setDoc({
       ...doc,

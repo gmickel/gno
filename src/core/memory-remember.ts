@@ -493,7 +493,20 @@ export async function rememberFact(
       inspect: async (plan) => {
         const file = Bun.file(absPathOf(plan));
         if (!(await file.exists())) return "absent";
-        return (await file.text()) === serialize(plan)
+        if ((await file.text()) !== serialize(plan)) return "unexpected";
+        // Another successor may have superseded the predecessor while this
+        // one sat unprojected: finishing would leave two successors.
+        const [predecessorUri] = plan.supersedes;
+        if (!predecessorUri) return "published";
+        const predecessor = await store.getDocumentByUri(predecessorUri);
+        if (!predecessor.ok || !predecessor.value) return "unexpected";
+        const successors = await store.getEdgeBacklinksForDoc(
+          predecessor.value.id,
+          { edgeType: MEMORY_SUPERSEDES_EDGE }
+        );
+        const ownUri = `gno://${collection.name}/${plan.relPath}`;
+        return successors.ok &&
+          successors.value.every((edge) => edge.sourceUri === ownUri)
           ? "published"
           : "unexpected";
       },

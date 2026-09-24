@@ -352,26 +352,53 @@ describe("retention and capacity", () => {
     expect(await files(f)).toEqual(["a.txt", "b.txt"]);
   });
 
-  test("a full ledger rejects new admission before any write but still replays", async () => {
+  test("a full ledger rejects new admission before any write, still compacts, still replays", async () => {
     const f = await fixture();
+    const old = Date.now() - REQUEST_RECEIPT_RETENTION_MS - 1;
     await writeFile(f, { requestId: "kept", payload: "a" });
+    // Admitted "in the past", so nothing has compacted it yet.
+    await writeFile(f, { requestId: "old", payload: "o", now: old });
     const db = new Database(f.ledgerPath);
     db.run(
       `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ?)
        INSERT INTO request_receipts
          (namespace, request_id, operation, digest, status, created_at_ms, updated_at_ms)
        SELECT 'local', 'fill-' || i, 'capture', 'x', 'expired', 0, 0 FROM n`,
-      [REQUEST_LEDGER_MAX_ROWS - 1]
+      [REQUEST_LEDGER_MAX_ROWS - 2]
     );
     db.close();
 
     expect(
       await codeOf(writeFile(f, { requestId: "next", payload: "b" }))
     ).toBe("REQUEST_CAPACITY_EXHAUSTED");
-    expect(await files(f)).toEqual(["a.txt"]);
+    expect(await files(f)).toEqual(["a.txt", "o.txt"]);
+    const check = new Database(f.ledgerPath, { readonly: true });
+    const compacted = check
+      .query(
+        "SELECT status, result_json FROM request_receipts WHERE request_id = 'old'"
+      )
+      .get();
+    check.close();
+    expect(compacted).toEqual({ status: "expired", result_json: null });
     expect(
       (await writeFile(f, { requestId: "kept", payload: "a" })).request.replayed
     ).toBe(true);
+  });
+
+  test("a receipt past retention reads as expired before any compaction", async () => {
+    const f = await fixture();
+    const old = Date.now() - REQUEST_RECEIPT_RETENTION_MS - 1;
+    await writeFile(f, { requestId: "old", payload: "a", now: old });
+    expect(
+      await readRequestStatus({
+        ledgerPath: f.ledgerPath,
+        namespace: "local",
+        requestId: "old",
+      })
+    ).toMatchObject({ status: "expired" });
+    expect(await codeOf(writeFile(f, { requestId: "old", payload: "a" }))).toBe(
+      "REQUEST_EXPIRED"
+    );
   });
 
   test("an unavailable ledger fails before any write", async () => {

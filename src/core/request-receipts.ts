@@ -240,7 +240,24 @@ async function openLedger(path: string): Promise<Database> {
   }
 }
 
+/** A committed receipt past retention reads as expired even before compaction. */
 function getRow(
+  db: Database,
+  namespace: string,
+  requestId: string,
+  nowMs: number
+): LedgerRow | null {
+  const row = readRow(db, namespace, requestId);
+  if (
+    row?.status !== "committed" ||
+    row.updated_at_ms >= nowMs - REQUEST_RECEIPT_RETENTION_MS
+  ) {
+    return row;
+  }
+  return { ...row, status: "expired", result_json: null, ref_json: null };
+}
+
+function readRow(
   db: Database,
   namespace: string,
   requestId: string
@@ -269,12 +286,13 @@ function admitRow(
     refJson: string | null;
   }
 ): void {
+  // Committed on its own: a capacity rejection must not undo compaction.
+  db.query(
+    `UPDATE request_receipts
+        SET status = 'expired', plan_json = NULL, result_json = NULL, ref_json = NULL
+      WHERE status = 'committed' AND updated_at_ms < ?`
+  ).run(input.nowMs - REQUEST_RECEIPT_RETENTION_MS);
   db.transaction(() => {
-    db.query(
-      `UPDATE request_receipts
-          SET status = 'expired', plan_json = NULL, result_json = NULL, ref_json = NULL
-        WHERE status = 'committed' AND updated_at_ms < ?`
-    ).run(input.nowMs - REQUEST_RECEIPT_RETENTION_MS);
     const count =
       db
         .query<{ n: number }, []>("SELECT COUNT(*) AS n FROM request_receipts")
@@ -364,7 +382,7 @@ export async function readRequestStatus(input: {
   }
   const db = await openLedger(input.ledgerPath);
   try {
-    const row = getRow(db, input.namespace, requestId);
+    const row = getRow(db, input.namespace, requestId, Date.now());
     if (!row) return { requestId, status: "not_found" };
     return {
       requestId,
@@ -464,7 +482,7 @@ async function runUnderLease<TPlan, TResult>(
   const now = write.now ?? Date.now;
   const db = await openLedger(write.ledgerPath);
   try {
-    const row = getRow(db, write.namespace, write.requestId);
+    const row = getRow(db, write.namespace, write.requestId, now());
     const replay = replayTerminal<TResult>(row, write);
     if (replay) return replay;
 
@@ -598,7 +616,12 @@ export async function runRequestedWrite<TPlan, TResult>(
     if (!(await Bun.file(write.ledgerPath).exists())) return null;
     const db = await openLedger(write.ledgerPath);
     try {
-      return getRow(db, write.namespace, write.requestId);
+      return getRow(
+        db,
+        write.namespace,
+        write.requestId,
+        (write.now ?? Date.now)()
+      );
     } finally {
       db.close();
     }

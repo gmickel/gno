@@ -28,6 +28,7 @@ void mock.module(
 describe("CaptureModal DOM interactions", () => {
   beforeEach(() => {
     apiFetch.mockReset();
+    sessionStorage.clear();
   });
 
   test("submits a note from the dialog with keyboard interaction and tag input", async () => {
@@ -132,7 +133,7 @@ describe("CaptureModal DOM interactions", () => {
     });
   });
 
-  test("retrying the same capture reuses its request ID; an edit starts a new one", async () => {
+  test("a retried capture keeps its request ID across a refresh; an edit starts a new one", async () => {
     apiFetch.mockImplementation(async (...args: unknown[]) => {
       const endpoint = typeof args[0] === "string" ? args[0] : "";
       if (endpoint === "/api/status") {
@@ -150,23 +151,33 @@ describe("CaptureModal DOM interactions", () => {
 
     const { CaptureModal } =
       await import("../../../../src/serve/public/components/CaptureModal");
-    const { user } = renderWithUser(
-      <CaptureModal onOpenChange={() => undefined} open={true} />
-    );
-    await screen.findByRole("dialog", { name: "New note" });
-    await user.type(screen.getByLabelText("Title"), "Lost response");
-    await user.type(screen.getByLabelText("Content"), "Body");
-
-    const submitAndFail = async () => {
+    const open = async () => {
+      const rendered = renderWithUser(
+        <CaptureModal onOpenChange={() => undefined} open={true} />
+      );
+      await screen.findByRole("dialog", { name: "New note" });
+      await rendered.user.type(screen.getByLabelText("Title"), "Lost response");
+      await rendered.user.type(screen.getByLabelText("Content"), "Body");
+      return rendered;
+    };
+    const submitAndFail = async (
+      user: ReturnType<typeof renderWithUser>["user"]
+    ) => {
       await user.click(screen.getByRole("button", { name: "Create note" }));
       await user.click(
         await screen.findByRole("button", { name: "Try again" })
       );
     };
-    await submitAndFail();
-    await submitAndFail();
-    await user.type(screen.getByLabelText("Content"), " edited");
-    await submitAndFail();
+
+    const first = await open();
+    await submitAndFail(first.user);
+    await submitAndFail(first.user);
+    first.unmount(); // a page refresh: component state is gone
+
+    const second = await open();
+    await submitAndFail(second.user);
+    await second.user.type(screen.getByLabelText("Content"), " edited");
+    await submitAndFail(second.user);
 
     const requestIds = apiFetch.mock.calls
       .filter((call) => call[0] === "/api/capture")
@@ -174,10 +185,14 @@ describe("CaptureModal DOM interactions", () => {
         (call) =>
           JSON.parse((call[1] as { body: string }).body).requestId as string
       );
-    expect(requestIds).toHaveLength(3);
+    expect(requestIds).toHaveLength(4);
     expect(requestIds[0]).toMatch(/^[0-9a-f-]{36}$/u);
-    expect(requestIds[1]).toBe(requestIds[0]);
-    expect(requestIds[2]).not.toBe(requestIds[0]);
+    const [firstId] = requestIds;
+    expect(requestIds.slice(1, 3)).toEqual([
+      firstId as string,
+      firstId as string,
+    ]);
+    expect(requestIds[3]).not.toBe(requestIds[0]);
   });
 
   test("shows missing collection state", async () => {

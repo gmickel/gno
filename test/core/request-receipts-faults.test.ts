@@ -165,3 +165,39 @@ describe("recovery never overwrites or recreates a changed target", () => {
     }
   }
 });
+
+test("an interrupted supersede never lands as a second successor", async () => {
+  const h = await harness();
+  const seed = await seedOp(h, "remember-supersede");
+  const crashed = await runOp(h, "remember-supersede", {
+    requestId: "req-a",
+    seed,
+    checkpoint: (at) => {
+      if (at === "published") throw new Error("simulated crash");
+    },
+  });
+  expect(crashed.ok).toBe(false);
+  const competing = await runOp(h, "remember-supersede", {
+    requestId: "req-b",
+    seed,
+    variant: "competing",
+  });
+  expect(competing.ok).toBe(true);
+
+  const retried = await runOp(h, "remember-supersede", {
+    requestId: "req-a",
+    seed,
+  });
+  expect(retried).toMatchObject({
+    ok: false,
+    code: "REQUEST_RECOVERY_CONFLICT",
+  });
+  const predecessor = await h.store.getDocumentByUri(seed.predecessorUri ?? "");
+  const successors = await h.store.getEdgeBacklinksForDoc(
+    predecessor.ok && predecessor.value ? predecessor.value.id : -1,
+    { edgeType: MEMORY_SUPERSEDES_EDGE }
+  );
+  expect(
+    successors.ok && successors.value.map((edge) => edge.sourceUri)
+  ).toEqual([competing.ref as string]);
+});

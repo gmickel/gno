@@ -3369,10 +3369,13 @@ interface DocUpdatePlan {
   fullPath: string;
   collection: string;
   relPath: string;
-  documentId: number;
   docid: string;
+  /** Stable identity; row IDs do not survive an index rebuild. */
   gnoUri: string;
   baseHash: string;
+  /** Tag set before and after this update (null when tags are unchanged). */
+  baseTagState: string | null;
+  resultTagState: string | null;
   /** Null when only store tags change (no file write). */
   newHash: string | null;
   indexedSourceHash: string;
@@ -3482,6 +3485,21 @@ export async function handleUpdateDoc(
     }
   }
 
+  /** Sorted tag set; with `userTags`, the set once those replace the user tags. */
+  const tagState = async (
+    documentId: number,
+    userTags?: string[]
+  ): Promise<string> => {
+    const rows = await store.getTagsForDoc(documentId);
+    if (!rows.ok) throw new Error(rows.error.message);
+    const kept = userTags
+      ? rows.value.filter((row) => row.source !== "user")
+      : rows.value;
+    return [...new Set([...kept.map((row) => row.tag), ...(userTags ?? [])])]
+      .sort()
+      .join("\n");
+  };
+
   const readModifiedAt = async (path: string): Promise<string> => {
     const { stat } = await import("node:fs/promises"); // no Bun structure stat parity
     return (await stat(path)).mtime.toISOString();
@@ -3536,6 +3554,12 @@ export async function handleUpdateDoc(
       );
     }
     const currentText = await file.text();
+    const tagStates = normalizedTags
+      ? {
+          base: await tagState(doc.id),
+          result: await tagState(doc.id, normalizedTags),
+        }
+      : null;
     const currentSourceHash = hashContent(currentText);
     if (body.expectedSourceHash || body.expectedModifiedAt) {
       const currentModifiedAt = await readModifiedAt(fullPath);
@@ -3581,7 +3605,8 @@ export async function handleUpdateDoc(
         fullPath,
         collection: doc.collection,
         relPath: doc.relPath,
-        documentId: doc.id,
+        baseTagState: tagStates?.base ?? null,
+        resultTagState: tagStates?.result ?? null,
         docid: doc.docid,
         gnoUri: doc.uri,
         baseHash: currentSourceHash,
@@ -3602,9 +3627,13 @@ export async function handleUpdateDoc(
   /** Committed boundary: file published, tags stored, new hash recorded. */
   const finish = async (plan: DocUpdatePlan): Promise<DocUpdateOutcome> => {
     if (normalizedTags) {
+      const current = await store.getDocumentByUri(plan.gnoUri);
+      if (!current.ok || !current.value) {
+        throw new Error(`${plan.gnoUri} is no longer indexed`);
+      }
       // User source since this is a user action.
       const tagResult = await store.setDocTags(
-        plan.documentId,
+        current.value.id,
         normalizedTags,
         "user"
       );
@@ -3676,8 +3705,24 @@ export async function handleUpdateDoc(
         checkpoint: deps?.requestCheckpoint,
         prepare,
         inspect: async (plan) => {
-          // Tags only: nothing on disk to publish; finish re-applies tags.
-          if (plan.newHash === null) return "published";
+          if (plan.newHash === null) {
+            // Tags only: resume only if neither the file nor the tags moved
+            // on since admission (or the tags already are this request's).
+            const current = await store.getDocumentByUri(plan.gnoUri);
+            const file = Bun.file(plan.fullPath);
+            if (
+              !current.ok ||
+              !current.value ||
+              !(await file.exists()) ||
+              hashContent(await file.text()) !== plan.baseHash
+            ) {
+              return "unexpected";
+            }
+            const tags = await tagState(current.value.id);
+            return tags === plan.baseTagState || tags === plan.resultTagState
+              ? "published"
+              : "unexpected";
+          }
           const file = Bun.file(plan.fullPath);
           if (!(await file.exists())) return "unexpected";
           const onDisk = hashContent(await file.text());

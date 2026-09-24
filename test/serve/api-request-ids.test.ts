@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { acquireWriteLock } from "../../src/core/file-lock";
+import { defaultSyncService } from "../../src/ingestion";
 import {
   handleCreateCapture,
   handleMemoryRemember,
@@ -108,6 +109,47 @@ describe("document saves under the write lease", () => {
       "# Doc\n\nv0\n"
     );
   });
+});
+
+test("an interrupted tag-only save never overwrites newer tags", async () => {
+  await Bun.write(join(h.notes.path, "data.txt"), "plain text\n");
+  await defaultSyncService.syncCollection(h.notes, h.store, {
+    runUpdateCmd: false,
+    gitPull: false,
+  });
+  const doc = await h.store.getDocument("notes", "data.txt");
+  if (!doc.ok || !doc.value) throw new Error("fixture not indexed");
+  const { docid, uri } = doc.value;
+  const tagSave = (tags: string[], requestId?: string, crash = false) =>
+    handleUpdateDoc(
+      ctx(),
+      h.store,
+      docid,
+      new Request("http://localhost/api/docs/data", {
+        method: "PUT",
+        body: JSON.stringify({ uri, tags, requestId }),
+      }),
+      {
+        lockPath: h.lockPath,
+        requestCheckpoint: (stage) => {
+          if (crash && stage === "published")
+            throw new Error("simulated crash");
+        },
+      }
+    );
+  const userTags = async () => {
+    const rows = await h.store.getTagsForDoc(doc.value!.id);
+    return rows.ok ? rows.value.map((row) => row.tag) : [];
+  };
+
+  expect((await tagSave(["stale"], "tags-a", true)).status).toBe(500);
+  expect((await tagSave(["newer"])).status).toBe(200);
+  const retried = await tagSave(["stale"], "tags-a");
+  expect(retried.status).toBe(409);
+  expect(await retried.json()).toMatchObject({
+    error: { code: "REQUEST_RECOVERY_CONFLICT" },
+  });
+  expect(await userTags()).toEqual(["newer"]);
 });
 
 describe("REST request IDs", () => {

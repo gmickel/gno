@@ -81,7 +81,7 @@ export async function openReceiptHarness(
   const notes: Collection = {
     name: "notes",
     path: join(root, "notes"),
-    pattern: "**/*.md",
+    pattern: "**/*.{md,txt}",
     include: [],
     exclude: [],
   };

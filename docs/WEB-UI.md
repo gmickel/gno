@@ -268,8 +268,10 @@ content (or tag set) being saved. Retrying the same save after a network error
 reuses that ID, so a save that reached disk but lost its response returns the
 committed result instead of a false "Document changed on disk" conflict.
 Edited content or a different tag set gets a new ID. Pending and conflict
-errors show the server's message. After a browser refresh the editor reloads
-the current document from disk.
+errors show the server's message. The unconfirmed request ID is kept for the
+browser tab, so retrying the same capture or save after a page refresh still
+replays instead of writing twice; after a refresh the editor reloads the
+current document from disk.
 
 ### Keyboard Shortcuts
 

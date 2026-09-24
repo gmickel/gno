@@ -26,7 +26,13 @@ import {
   resolveNotePreset,
 } from "../../../core/note-presets";
 import { apiFetch } from "../hooks/use-api";
-import { type RequestIntent, requestIdForIntent } from "../lib/request-intent";
+import {
+  clearRequestIntent,
+  type RequestIntent,
+  requestIdForIntent,
+} from "../lib/request-intent";
+
+const CAPTURE_INTENT_KEY = "gno:capture-intent";
 import { getActiveWikiLinkQuery } from "../lib/wiki-link";
 import { IndexingProgress } from "./IndexingProgress";
 import { TagInput } from "./TagInput";
@@ -332,7 +338,8 @@ export function CaptureModal({
           // A retry of this exact capture replays instead of adding a suffix copy.
           requestId: requestIdForIntent(
             captureIntentRef,
-            JSON.stringify(payload)
+            JSON.stringify(payload),
+            CAPTURE_INTENT_KEY
           ),
         }),
       }
@@ -345,7 +352,7 @@ export function CaptureModal({
     }
 
     if (data) {
-      captureIntentRef.current = null;
+      clearRequestIntent(captureIntentRef, CAPTURE_INTENT_KEY);
       // Save last used collection
       localStorage.setItem(STORAGE_KEY, collection);
 

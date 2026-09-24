@@ -73,7 +73,13 @@ import {
   loadLatestLocalHistory,
   type LocalHistoryEntry,
 } from "../lib/local-history";
-import { type RequestIntent, requestIdForIntent } from "../lib/request-intent";
+import {
+  clearRequestIntent,
+  type RequestIntent,
+  requestIdForIntent,
+} from "../lib/request-intent";
+
+const SAVE_INTENT_KEY = "gno:save-intent";
 import { getActiveWikiLinkQuery } from "../lib/wiki-link";
 
 interface PageProps {
@@ -318,7 +324,8 @@ export default function DocumentEditor({ navigate }: PageProps) {
       doc
         ? requestIdForIntent(
             saveIntentRef,
-            `${doc.uri}\u0000${doc.source.sourceHash}\u0000${contentToSave}`
+            `${doc.uri}\u0000${doc.source.sourceHash}\u0000${contentToSave}`,
+            SAVE_INTENT_KEY
           )
         : undefined,
     [doc]
@@ -355,6 +362,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
           appendLocalHistory(doc.docid, originalContent);
           refreshHistoryEntries(doc.docid);
         }
+        clearRequestIntent(saveIntentRef, SAVE_INTENT_KEY);
         setSaveStatus("saved");
         setOriginalContent(contentToSave);
         setLastSaved(new Date());
@@ -579,6 +587,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
       appendLocalHistory(doc.docid, originalContent);
       refreshHistoryEntries(doc.docid);
     }
+    clearRequestIntent(saveIntentRef, SAVE_INTENT_KEY);
     setSaveStatus("saved");
     setOriginalContent(content);
     setLastSaved(new Date());
