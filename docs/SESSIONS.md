@@ -356,13 +356,14 @@ session content and no host paths.
 | :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `truncated_tail`        | The final line was cut mid-write (a session still running). Readable threads are archived; rerun later.                                                                                                 |
 | `format_drift`          | Structure GNO does not recognise, for example assistant turns without any recognised human turn, or a Codex fork without its history boundary (archived as nothing rather than duplicating the parent). |
+| `malformed_records`     | Some records were not valid JSON and were dropped; the unit stays incomplete and is retried.                                                                                                            |
 | `unit_conflict`         | Two units of one source share a locator (for example the same rollout file name in two folders); the second is not imported.                                                                            |
 | `snapshot_read_failed`  | A SQLite store could not be read in one read-only snapshot. Rerun; check the harness is not migrating.                                                                                                  |
 | `permission_denied`     | The file or database is not readable by your user.                                                                                                                                                      |
 | `source_missing`        | The unit disappeared between listing and reading.                                                                                                                                                       |
 | `read_failed`           | Another read error.                                                                                                                                                                                     |
 | `format_not_recognised` | The unit is not a supported session format (`unsupported`).                                                                                                                                             |
-| `over_limit`            | The unit or thread exceeds a [limit](#limits) (`skipped_policy` for threads).                                                                                                                           |
+| `over_limit`            | The unit or thread exceeds a [limit](#limits) (`skipped_policy` for threads). A thread at the turn limit is skipped whole, never archived truncated.                                                    |
 | `mixed_domain`          | The thread spans collections; it was [quarantined](#quarantined-threads).                                                                                                                               |
 
 Recovery behaviour:
@@ -398,6 +399,13 @@ Recovery behaviour:
   withheld in the receipt warnings, and its unit keeps the old redaction
   stamp. A new parser cannot recover content from sources that were rotated
   or deleted.
+- **Policy skips withdraw earlier copies.** When a thread that was archived
+  before is now quarantined or over a limit, its earlier archive file is moved
+  to `<archiveRoot>/.gno-sessions/withheld/` and removed from the index, so no
+  stale copy stays searchable.
+- **A deleted source root.** When a registered source root itself disappears,
+  import still maintains its retained archive (redaction rescans) and reports
+  the source as `failed` with reason `source_missing`.
 - **Database stores.** A thread with assistant turns but no recognised human
   turn in an OpenClaw or Hermes store is reported in the unit warnings; it does
   not hold the whole store incomplete.

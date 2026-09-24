@@ -1909,7 +1909,12 @@ adapter.
   mappings) change, so a quarantined thread is imported once it is mapped.
 - Units are recorded complete only after the lexical sync of the changed
   archive files succeeds; a failed or interrupted sync is retried by the next
-  run.
+  run. Units with malformed records stay `incomplete` (`malformed_records`).
+- A thread withheld by policy (`mixed_domain`, `over_limit`; a thread at the
+  turn limit is skipped whole) has any earlier archive copy moved to
+  `<archive>/.gno-sessions/withheld/` and removed from the index.
+- A registered source whose root is gone still gets archive-only maintenance
+  (redaction rescans) and is reported as a `failed` unit (`source_missing`).
 - Imports on one archive serialize on `<archive>/.gno-sessions/import.lock`;
   a concurrent run exits `BUSY` (`SESSIONS_BUSY`).
 - A source file that disappears keeps its archive; `status` reports it as
@@ -1931,7 +1936,9 @@ availability, unit counts (complete, incomplete, failed, pending),
 
 **prune**: lists archived units whose source is gone (preview by default);
 `--apply` deletes exactly those archive files and syncs the index, never a
-file a still-present unit references. Source deletion alone never removes
+file a still-present unit references. It plans under the archive lock; when
+the index sync fails it records nothing, returns `applied: false` with an
+`error`, and the next prune retries. Source deletion alone never removes
 archive files.
 
 **Exit codes:** `VALIDATION` (1) for selection, destination, binding,

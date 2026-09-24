@@ -25,11 +25,12 @@ import { defaultSyncService, withContentTypeRules } from "../ingestion";
 import {
   archiveFilePath,
   renderThread,
+  threadRelPath,
   rescanArchiveContent,
   SESSION_STATE_DIRNAME,
 } from "./archive";
 import { canonicalConfigPath, writeIndexBinding } from "./binding";
-import { redactionStamp } from "./sanitize";
+import { redactionStamp, sanitizeValue } from "./sanitize";
 import {
   archiveCollection,
   protectedRoots,
@@ -115,12 +116,15 @@ export interface SessionPrunePreview {
   applied: boolean;
   units: Array<{ locator: string; threads: number }>;
   archiveFiles: number;
+  /** Set when the index sync failed; nothing was recorded and a rerun retries. */
+  error?: string;
 }
 
 interface ResolvedSource {
   id: string;
   harness: SessionHarness | null;
-  root: string;
+  /** Canonical root, or null when a registered root is gone (archive-only). */
+  root: string | null;
   collection: string;
   projects: Array<{ prefix: string; collection: string }>;
 }
@@ -412,12 +416,19 @@ export class SessionsService {
       }
       const canonical = await canonicalPath(source.path);
       if (!canonical) {
-        throw new SessionsError(
-          "SESSIONS_SOURCE_UNAVAILABLE",
-          `Session source "${source.id}" is not readable right now; its archive is retained.`
-        );
+        // With archived units the run still maintains the retained archive
+        // (redaction rescans); without any there is nothing to do.
+        const state = await loadState(sessions.archiveRoot);
+        const archived = Object.keys(state.sources[source.id]?.units ?? {});
+        if (archived.length === 0) {
+          throw new SessionsError(
+            "SESSIONS_SOURCE_UNAVAILABLE",
+            `Session source "${source.id}" is not readable right now.`
+          );
+        }
+      } else {
+        assertSafeSourceRoot(canonical, protectedRoots(sessions));
       }
-      assertSafeSourceRoot(canonical, protectedRoots(sessions));
       return [
         {
           id: source.id,
@@ -561,39 +572,55 @@ export class SessionsService {
         units: {},
       };
       let enumerated: { units: SessionUnit[]; truncated: boolean };
-      try {
-        const harness =
-          source.harness ?? (await detectRootHarness(source.root, excluded));
-        enumerated = harness
-          ? await enumerateUnits({ harness, root: source.root, excluded })
-          : { units: [], truncated: false };
-        if (!harness) {
-          counts.unsupported += 1;
-          recordUnit({
-            sourceId: source.id,
-            harness: null,
-            locator: ".",
-            outcome: "unsupported",
-            reason: "format_not_recognised",
-            threads: 0,
-            turns: 0,
-            collections: [],
-          });
-          continue;
-        }
-      } catch (error) {
+      if (source.root === null) {
         counts.failed += 1;
         recordUnit({
           sourceId: source.id,
           harness: source.harness,
           locator: ".",
           outcome: "failed",
-          reason: unitReason(error),
+          reason: "source_missing",
           threads: 0,
           turns: 0,
           collections: [],
         });
-        continue;
+        enumerated = { units: [], truncated: false };
+      } else {
+        try {
+          const root = source.root;
+          const harness =
+            source.harness ?? (await detectRootHarness(root, excluded));
+          enumerated = harness
+            ? await enumerateUnits({ harness, root, excluded })
+            : { units: [], truncated: false };
+          if (!harness) {
+            counts.unsupported += 1;
+            recordUnit({
+              sourceId: source.id,
+              harness: null,
+              locator: ".",
+              outcome: "unsupported",
+              reason: "format_not_recognised",
+              threads: 0,
+              turns: 0,
+              collections: [],
+            });
+            continue;
+          }
+        } catch (error) {
+          counts.failed += 1;
+          recordUnit({
+            sourceId: source.id,
+            harness: source.harness,
+            locator: ".",
+            outcome: "failed",
+            reason: unitReason(error),
+            threads: 0,
+            turns: 0,
+            collections: [],
+          });
+          continue;
+        }
       }
       if (enumerated.truncated) {
         warnings.push(
@@ -602,8 +629,14 @@ export class SessionsService {
       }
       const present = new Set<string>();
       const destinations = destinationsStamp(source);
-      for (const unit of enumerated.units) {
-        const key = unitKey(source.id, unit.locator);
+      for (const found of enumerated.units) {
+        const key = unitKey(source.id, found.locator);
+        // Receipts, warnings and checkpoint state show the locator with the
+        // owner's redaction applied; identity stays in the opaque key.
+        const unit: SessionUnit = {
+          ...found,
+          locator: sanitizeValue(found.locator, redaction),
+        };
         if (present.has(key)) {
           // Two units with the same locator would share archive files.
           counts.failed += 1;
@@ -888,13 +921,29 @@ export class SessionsService {
     let unitUpdated = 0;
     let unitSkipped = 0;
     let unitTurns = 0;
+    // Threads withheld by policy; an earlier archived copy is withdrawn too.
+    const withdrawn = new Set<string>();
+    const withhold = (thread: ParsedThread, warning: string): void => {
+      counts.skippedPolicy += 1;
+      unitSkipped += 1;
+      receiptWarnings.push(warning);
+      withdrawn.add(
+        threadRelPath(source.id, thread.harness, options.key, thread.threadId)
+      );
+    };
     for (const thread of parsed.threads) {
       const destination = threadDestination(thread, source);
       if (destination === null) {
-        counts.skippedPolicy += 1;
-        unitSkipped += 1;
-        receiptWarnings.push(
+        withhold(
+          thread,
           "a thread spans working directories mapped to different collections and was quarantined (mixed_domain)"
+        );
+        continue;
+      }
+      if (thread.turns.length >= SESSION_LIMITS.maxTurnsPerThread) {
+        withhold(
+          thread,
+          "a thread reached the per-thread turn limit and was skipped rather than archived truncated (over_limit)"
         );
         continue;
       }
@@ -908,9 +957,8 @@ export class SessionsService {
         redaction: options.redaction,
       });
       if (rendered.overLimit) {
-        counts.skippedPolicy += 1;
-        unitSkipped += 1;
-        receiptWarnings.push(
+        withhold(
+          thread,
           "a thread exceeded the archive size limit and was skipped (over_limit)"
         );
         continue;
@@ -960,6 +1008,12 @@ export class SessionsService {
       written.map((item) => `${item.collection}\0${item.relPath}`)
     );
     for (const old of options.previous?.threads ?? []) {
+      if (withdrawn.has(old.relPath)) {
+        if (!options.dryRun) {
+          await this.withdraw(sessions, old, options.markChanged);
+        }
+        continue;
+      }
       const moved =
         !keep.has(`${old.collection}\0${old.relPath}`) &&
         written.some((item) => item.relPath === old.relPath);
@@ -978,7 +1032,9 @@ export class SessionsService {
       }
     }
 
-    const complete = parsed.complete;
+    // Dropped malformed input keeps the unit incomplete, so it is retried and
+    // never reported as fully imported.
+    const complete = parsed.complete && diagnostics.malformedRecords === 0;
     if (!complete) counts.incomplete += 1;
     setState({
       status: complete ? "complete" : "incomplete",
@@ -1005,7 +1061,9 @@ export class SessionsService {
         ? {
             reason: diagnostics.truncatedTail
               ? "truncated_tail"
-              : "format_drift",
+              : diagnostics.malformedRecords > 0
+                ? "malformed_records"
+                : "format_drift",
           }
         : {}),
       threads: written.length,
@@ -1029,35 +1087,62 @@ export class SessionsService {
   ): Promise<number> {
     let withheld = 0;
     for (const thread of unitState.threads) {
+      // Always resync: a rescan whose earlier sync failed left the archive
+      // already rewritten, and the index must still catch up.
+      markChanged(thread.collection, thread.relPath);
       const path = archiveFilePath(
-        sessions.archiveRoot,
-        thread.collection,
-        thread.relPath
-      );
-      const aside = withheldPath(
         sessions.archiveRoot,
         thread.collection,
         thread.relPath
       );
       const content = await readText(path);
       if (content === null) {
-        if (await Bun.file(aside).exists()) withheld += 1;
+        if (
+          await Bun.file(
+            withheldPath(
+              sessions.archiveRoot,
+              thread.collection,
+              thread.relPath
+            )
+          ).exists()
+        ) {
+          withheld += 1;
+        }
         continue;
       }
       const rescanned = rescanArchiveContent(content, redaction);
       if (!rescanned) {
-        await mkdir(dirname(aside), { recursive: true });
-        await rename(path, aside);
-        markChanged(thread.collection, thread.relPath);
+        await this.withdraw(sessions, thread, markChanged);
         withheld += 1;
         continue;
       }
       if (rescanned.content !== content) {
         await atomicWrite(path, rescanned.content);
-        markChanged(thread.collection, thread.relPath);
       }
     }
     return withheld;
+  }
+
+  /** Move an archive file out of its collection (out of retrieval). */
+  private async withdraw(
+    sessions: SessionsConfig,
+    thread: { collection: string; relPath: string },
+    markChanged: (collection: string, relPath: string) => void
+  ): Promise<void> {
+    const path = archiveFilePath(
+      sessions.archiveRoot,
+      thread.collection,
+      thread.relPath
+    );
+    if (!(await Bun.file(path).exists())) return;
+    const aside = withheldPath(
+      sessions.archiveRoot,
+      thread.collection,
+      thread.relPath
+    );
+    await mkdir(dirname(aside), { recursive: true });
+    await rename(path, aside);
+    markChanged(thread.collection, thread.relPath);
   }
 
   private async syncChanged(
@@ -1124,15 +1209,69 @@ export class SessionsService {
     apply: boolean;
   }): Promise<SessionPrunePreview> {
     const sessions = requireSessionsConfig(this.deps.config);
-    const source = sessions.sources.find(
-      (item) => item.id === options.sourceId
+    if (!options.apply) {
+      return (await this.planPrune(sessions, options.sourceId)).preview;
+    }
+    if (!this.deps.store) {
+      throw new SessionsError(
+        "SESSIONS_INVALID_INPUT",
+        "An open archive index is required to prune."
+      );
+    }
+    const lock = await acquireWriteLock(
+      importLockPath(sessions.archiveRoot),
+      IMPORT_LOCK_WAIT_MS
     );
+    if (!lock) {
+      throw new SessionsError(
+        "SESSIONS_BUSY",
+        "A session import is running for this archive; retry when it finishes."
+      );
+    }
+    try {
+      // Plan under the lock so a concurrent import cannot change the state
+      // this run acts on.
+      const plan = await this.planPrune(sessions, options.sourceId);
+      if (plan.removable.length === 0 || !plan.sourceState) return plan.preview;
+      const changed = new Map<string, Set<string>>();
+      for (const [, unit] of plan.removable) {
+        for (const thread of unit.threads) {
+          if (plan.referenced.has(`${thread.collection}\0${thread.relPath}`)) {
+            continue;
+          }
+          await unlink(
+            archiveFilePath(
+              sessions.archiveRoot,
+              thread.collection,
+              thread.relPath
+            )
+          ).catch(() => undefined);
+          const set = changed.get(thread.collection) ?? new Set<string>();
+          set.add(thread.relPath);
+          changed.set(thread.collection, set);
+        }
+      }
+      const lexical = await this.syncChanged(sessions, changed);
+      if (lexical.status === "failed") {
+        // State keeps the units, so the next prune retries the removal.
+        return { ...plan.preview, error: lexical.error };
+      }
+      for (const [key] of plan.removable) delete plan.sourceState.units[key];
+      await saveState(sessions.archiveRoot, plan.state);
+      return { ...plan.preview, applied: true };
+    } finally {
+      await lock.release();
+    }
+  }
+
+  private async planPrune(sessions: SessionsConfig, sourceId: string) {
+    const source = sessions.sources.find((item) => item.id === sourceId);
     const state = await loadState(sessions.archiveRoot);
-    const sourceState = state.sources[options.sourceId];
+    const sourceState = state.sources[sourceId];
     if (!source && !sourceState) {
       throw new SessionsError(
         "SESSIONS_UNKNOWN_SOURCE",
-        `Unknown session source "${options.sourceId}".`
+        `Unknown session source "${sourceId}".`
       );
     }
     const present = new Set<string>();
@@ -1159,61 +1298,23 @@ export class SessionsService {
     );
     const preview: SessionPrunePreview = {
       schemaVersion: "1",
-      sourceId: options.sourceId,
+      sourceId,
       applied: false,
       units: removable.map(([, unit]) => ({
         locator: unit.locator,
         threads: unit.threads.length,
       })),
       archiveFiles: removable.reduce(
-        (sum, [, unit]) => sum + unit.threads.length,
+        (sum, [, unit]) =>
+          sum +
+          unit.threads.filter(
+            (thread) =>
+              !referenced.has(`${thread.collection}\0${thread.relPath}`)
+          ).length,
         0
       ),
     };
-    if (!options.apply || removable.length === 0 || !sourceState)
-      return preview;
-    if (!this.deps.store) {
-      throw new SessionsError(
-        "SESSIONS_INVALID_INPUT",
-        "An open archive index is required to prune."
-      );
-    }
-    const lock = await acquireWriteLock(
-      importLockPath(sessions.archiveRoot),
-      IMPORT_LOCK_WAIT_MS
-    );
-    if (!lock) {
-      throw new SessionsError(
-        "SESSIONS_BUSY",
-        "A session import is running for this archive; retry when it finishes."
-      );
-    }
-    try {
-      const changed = new Map<string, Set<string>>();
-      for (const [key, unit] of removable) {
-        for (const thread of unit.threads) {
-          if (referenced.has(`${thread.collection}\0${thread.relPath}`)) {
-            continue;
-          }
-          await unlink(
-            archiveFilePath(
-              sessions.archiveRoot,
-              thread.collection,
-              thread.relPath
-            )
-          ).catch(() => undefined);
-          const set = changed.get(thread.collection) ?? new Set<string>();
-          set.add(thread.relPath);
-          changed.set(thread.collection, set);
-        }
-        delete sourceState.units[key];
-      }
-      await saveState(sessions.archiveRoot, state);
-      await this.syncChanged(sessions, changed);
-    } finally {
-      await lock.release();
-    }
-    return { ...preview, applied: true };
+    return { preview, removable, referenced, state, sourceState };
   }
 }
 

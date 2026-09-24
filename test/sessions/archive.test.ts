@@ -116,4 +116,34 @@ describe("archive rendering", () => {
       right.find((tag) => tag.startsWith("project-id/"))
     );
   });
+
+  test("a secret revealed in a later turn is removed from every field", () => {
+    const secret = ["synthetic", "pass123"].join("");
+    const rendered = renderThread({
+      thread: thread({
+        cwd: `/work/${secret}`,
+        threadId: `thread-${secret}`,
+        turns: [
+          {
+            turnId: `t-${secret}`,
+            role: "human",
+            text: "first",
+            locator: "line:1",
+          },
+          {
+            turnId: "t2",
+            role: "human",
+            text: `password=${secret}`,
+            locator: "line:2",
+          },
+        ],
+      }),
+      sourceId: "s",
+      unitKey: "unit-1",
+      unitLocator: `${secret}.jsonl`,
+      parser: "codex/1",
+      redaction: {},
+    });
+    expect(rendered.content).not.toContain(secret);
+  });
 });

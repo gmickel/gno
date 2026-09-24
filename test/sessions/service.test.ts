@@ -103,6 +103,47 @@ async function searchArchive(query: string): Promise<string[]> {
   }
 }
 
+/** A service whose index sync always fails (the store itself works). */
+async function withFailingSync<T>(
+  run: (service: SessionsService) => Promise<T>
+): Promise<T> {
+  return withService(async (_service, config) => {
+    const opened = await initStore({
+      configPath,
+      indexName: INDEX,
+      allowEmptyCollections: true,
+    });
+    if (!opened.ok) throw new Error(opened.error);
+    try {
+      return await run(
+        new SessionsService({
+          config,
+          configPath,
+          indexName: INDEX,
+          store: opened.store,
+          syncService: {
+            syncPaths: () => Promise.reject(new Error(`EIO ${archiveRoot}`)),
+            syncCollection: () => Promise.reject(new Error("unused")),
+          },
+        })
+      );
+    } finally {
+      await opened.store.close();
+    }
+  });
+}
+
+async function setLiterals(literals: string[]): Promise<void> {
+  const config = await loadArchiveConfig();
+  config.sessions!.redaction = { literals };
+  await saveConfigToPath(config, configPath);
+}
+
+const importMain = () =>
+  withService((service) =>
+    service.import({ sourceId: "codex-main" }, { allowPaths: false })
+  );
+
 async function expectSessionsError(
   promise: Promise<unknown>,
   code: SessionsError["code"]
@@ -816,5 +857,153 @@ describe("archive isolation (R8)", () => {
         "/author"
       );
     }
+  });
+});
+
+describe("review round 1 regressions", () => {
+  test("receipts and checkpoint state apply configured literals to locators", async () => {
+    await setLiterals(["0000c0de-0000-7000-8000-000000000001"]);
+    const receipt = await importMain();
+    const state = await Bun.file(
+      join(archiveRoot, ".gno-sessions", "state.json")
+    ).text();
+    expect(JSON.stringify(receipt)).not.toContain(
+      "0000c0de-0000-7000-8000-000000000001"
+    );
+    expect(state).not.toContain("0000c0de-0000-7000-8000-000000000001");
+  });
+
+  test("a rescan whose index sync failed is resynced by the next run", async () => {
+    await importMain();
+    await rename(join(codexRoot, CODEX_MAIN), join(root, "gone.jsonl"));
+    await setLiterals(["alpha queue"]);
+    const failed = await withFailingSync((service) =>
+      service.import({ sourceId: "codex-main" }, { allowPaths: false })
+    );
+    expect(failed.lexical.status).toBe("failed");
+    expect(await searchArchive("alpha queue SQLite")).toHaveLength(1);
+    await importMain();
+    expect(await searchArchive("alpha queue SQLite")).toEqual([]);
+  });
+
+  test("a deleted source root still gets archive-only redaction maintenance", async () => {
+    await importMain();
+    await rename(codexRoot, join(root, "codex-gone"));
+    await setLiterals(["alpha queue"]);
+    const receipt = await importMain();
+    expect(receipt.units).toContainEqual(
+      expect.objectContaining({ outcome: "failed", reason: "source_missing" })
+    );
+    expect(await readAll(join(archiveRoot, "work"))).not.toContain(
+      "alpha queue"
+    );
+    expect(await searchArchive("alpha queue SQLite")).toEqual([]);
+  });
+
+  test("malformed records keep a unit incomplete so it is retried", async () => {
+    await appendFile(join(codexRoot, CODEX_MAIN), "{not json\n");
+    const receipt = await importMain();
+    const unit = receipt.units.find((item) => item.locator === CODEX_MAIN);
+    expect(unit).toMatchObject({
+      outcome: "incomplete",
+      reason: "malformed_records",
+    });
+    const status = await withService((service) => service.status());
+    expect(status.sources[0]?.units.pending).toBeGreaterThanOrEqual(2);
+  });
+
+  test("a thread at the turn limit is skipped instead of archived truncated", async () => {
+    const lines = [
+      JSON.stringify({
+        timestamp: "2026-09-23T10:00:00.000Z",
+        ordinal: 0,
+        type: "session_meta",
+        payload: {
+          id: "0000c0de-0000-7000-8000-00000000ffff",
+          cwd: "/work/long",
+          cli_version: "0.156.1",
+          source: "cli",
+        },
+      }),
+    ];
+    for (let index = 1; index <= 20_001; index += 1) {
+      lines.push(
+        JSON.stringify({
+          timestamp: "2026-09-23T10:00:01.000Z",
+          ordinal: index,
+          type: "event_msg",
+          payload: {
+            type: "item_completed",
+            item: {
+              type: index % 2 ? "UserMessage" : "AgentMessage",
+              id: `t${index}`,
+              content: [{ type: "text", text: `placeholder ${index}` }],
+            },
+          },
+        })
+      );
+    }
+    await Bun.write(
+      join(codexRoot, "rollout-2026-09-23T10-00-00-long.jsonl"),
+      `${lines.join("\n")}\n`
+    );
+    const receipt = await withService((service) =>
+      service.import(
+        { sourceId: "codex-main", dryRun: true },
+        { allowPaths: false }
+      )
+    );
+    const unit = receipt.units.find((item) => item.locator.includes("-long"));
+    expect(unit?.outcome).toBe("skipped_policy");
+    expect(unit?.warnings?.join(" ")).toContain("turn limit");
+  });
+
+  test("prune plans under the lock and keeps state when its index sync fails", async () => {
+    await importMain();
+    await rename(join(codexRoot, CODEX_MAIN), join(root, "gone.jsonl"));
+    await mkdir(join(archiveRoot, ".gno-sessions"), { recursive: true });
+    const held = await acquireWriteLock(importLockPath(archiveRoot), 1_000);
+    try {
+      await withService((service) =>
+        expectSessionsError(
+          service.prune({ sourceId: "codex-main", apply: true }),
+          "SESSIONS_BUSY"
+        )
+      );
+    } finally {
+      await held?.release();
+    }
+    const failed = await withFailingSync((service) =>
+      service.prune({ sourceId: "codex-main", apply: true })
+    );
+    expect(failed.applied).toBe(false);
+    expect(failed.error).toBeDefined();
+    expect(await searchArchive("SQLite")).toHaveLength(1);
+    const applied = await withService((service) =>
+      service.prune({ sourceId: "codex-main", apply: true })
+    );
+    expect(applied.applied).toBe(true);
+    expect(await searchArchive("SQLite")).toEqual([]);
+  });
+
+  test("a thread quarantined after an earlier import is withdrawn from retrieval", async () => {
+    await importMain();
+    expect(await searchArchive("SQLite")).toHaveLength(1);
+    await appendFile(
+      join(codexRoot, CODEX_MAIN),
+      `${JSON.stringify({ timestamp: "2026-09-20T10:20:00.000Z", ordinal: 20, type: "turn_context", payload: { cwd: "/work/other" } })}\n${JSON.stringify({ timestamp: "2026-09-20T10:21:00.000Z", ordinal: 21, type: "event_msg", payload: { type: "item_completed", item: { type: "UserMessage", id: "item-x", content: [{ type: "text", text: "cross-project note" }] } } })}\n`
+    );
+    await removeSessionSource({ configPath, id: "codex-main" });
+    await addSessionSource({
+      configPath,
+      id: "codex-main",
+      harness: "codex",
+      path: codexRoot,
+      collection: "work",
+      projects: [{ prefix: "/work/other", collection: "private" }],
+    });
+    const receipt = await importMain();
+    expect(receipt.counts.skippedPolicy).toBe(1);
+    expect(await searchArchive("SQLite")).toEqual([]);
   });
 });

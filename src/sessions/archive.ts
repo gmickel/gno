@@ -153,11 +153,34 @@ export function renderThread(options: {
   const { thread, sourceId, parser } = options;
   const sanitizer = new ThreadSanitizer(options.redaction);
   const project = projectIdentity(thread.cwd);
-  const projectLabel = project ? sanitizer.sanitize(project.label) : null;
+  // Pass 1 detects secrets in every persisted field; pass 2 (`clean`)
+  // propagates values found anywhere in the thread into every field, so a
+  // secret revealed in a later turn is also removed from titles, tags and IDs.
+  const raw = {
+    project: project ? sanitizer.sanitize(project.label) : null,
+    sessionId: sanitizer.sanitize(thread.sessionId),
+    threadId: sanitizer.sanitize(thread.threadId),
+    parentThreadId: thread.parentThreadId
+      ? sanitizer.sanitize(thread.parentThreadId)
+      : null,
+    unit: sanitizer.sanitize(options.unitLocator),
+  };
+  const rawDrafts = thread.turns.map((turn) => ({
+    turn,
+    text: sanitizer.sanitize(turn.text),
+    turnId: sanitizer.sanitize(turn.turnId),
+    locator: sanitizer.sanitize(turn.locator),
+  }));
+  const clean = (value: string): string => sanitizer.propagate(value);
+  const projectLabel = raw.project === null ? null : clean(raw.project);
   const harnessLabel = SESSION_HARNESS_LABELS[thread.harness];
-  const sessionId = `${thread.harness}/${sourceId}/${sanitizer.sanitize(thread.sessionId)}`;
-  const threadId = `${thread.harness}/${sourceId}/${sanitizer.sanitize(thread.threadId)}`;
-  const unit = sanitizer.sanitize(options.unitLocator);
+  const sessionId = `${thread.harness}/${sourceId}/${clean(raw.sessionId)}`;
+  const threadId = `${thread.harness}/${sourceId}/${clean(raw.threadId)}`;
+  const parentThreadId =
+    raw.parentThreadId === null
+      ? null
+      : `${thread.harness}/${sourceId}/${clean(raw.parentThreadId)}`;
+  const unit = clean(raw.unit);
 
   const categories = [
     "session",
@@ -169,11 +192,11 @@ export function renderThread(options: {
     categories.push(`project-id/${project.id}`);
   }
 
-  const drafts = thread.turns.map((turn) => ({
-    turn,
-    text: sanitizer.sanitize(turn.text),
-    turnId: sanitizer.sanitize(turn.turnId),
-    locator: sanitizer.sanitize(turn.locator),
+  const drafts = rawDrafts.map((draft) => ({
+    turn: draft.turn,
+    text: clean(draft.text),
+    turnId: clean(draft.turnId),
+    locator: clean(draft.locator),
   }));
 
   const lines: string[] = [];
@@ -183,7 +206,7 @@ export function renderThread(options: {
   let overLimit = false;
   for (const draft of drafts) {
     const { turn } = draft;
-    const text = sanitizer.propagate(draft.text);
+    const { text } = draft;
     const speaker = roleLabel(turn.role);
     const titleParts = [speaker, harnessLabel, projectLabel ?? "no project"];
     // One bounded line keeps each record small in bounded context delivery.
@@ -217,11 +240,7 @@ export function renderThread(options: {
         locator: draft.locator,
         turnId: draft.turnId,
         threadKind: thread.kind,
-        ...(thread.parentThreadId
-          ? {
-              parentThreadId: `${thread.harness}/${sourceId}/${sanitizer.sanitize(thread.parentThreadId)}`,
-            }
-          : {}),
+        ...(parentThreadId ? { parentThreadId } : {}),
         parser,
         redaction: SESSION_REDACTION_VERSION,
         format: SESSION_ARCHIVE_FORMAT_VERSION,
