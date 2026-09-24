@@ -17,7 +17,7 @@ import type { ContextHolder } from "../../src/serve/routes/api";
 import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
 import { initStore } from "../../src/cli/commands/shared";
-import { getConfigPaths, loadConfig } from "../../src/config";
+import { getConfigPaths, loadConfig, saveConfigToPath } from "../../src/config";
 import { acquireWriteLock } from "../../src/core/file-lock";
 import { searchBm25 } from "../../src/pipeline/search";
 import {
@@ -181,6 +181,33 @@ describe("GET /api/sessions/status", () => {
 });
 
 describe("POST /api/sessions/import", () => {
+  test("the import child uses the server's config and never syncs the file's into the index", async () => {
+    const loaded = await loadConfig(configPath);
+    if (!loaded.ok) throw new Error(loaded.error.message);
+    await saveConfigToPath(
+      {
+        ...loaded.value,
+        collections: [
+          ...loaded.value.collections,
+          {
+            ...loaded.value.collections[0]!,
+            name: "ghost",
+            path: join(root, "ghost"),
+          },
+        ],
+      },
+      configPath
+    );
+    const response = await handleSessionsImport(
+      ctxHolder,
+      post("/api/sessions/import", { sourceId: "codex-main" })
+    );
+    expect(response.status).toBe(200);
+    const collections = await store.getCollections();
+    if (!collections.ok) throw new Error(collections.error.message);
+    expect(collections.value.map((row) => row.name)).not.toContain("ghost");
+  });
+
   // Imported in-process, each of these archive files syncs in one multi-second
   // transaction and the server stops answering; the child process keeps the
   // event loop free. The bound is generous for slow CI runners.

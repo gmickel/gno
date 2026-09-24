@@ -9,10 +9,12 @@
  * store connection: the archive import lock, receipts and error codes are
  * unchanged.
  *
- * Executed directly, this module is the child entry: it reads one request
- * from stdin and writes one JSON result line to stdout. The request carries
- * the caller's loaded config, so the child imports with exactly the config
- * the server holds.
+ * The child reads one request from stdin and writes one JSON result line to
+ * stdout. The request carries the caller's loaded config: the child opens
+ * the index without syncing any config into it and imports with exactly the
+ * config the server holds. From source the child runs this module; a
+ * compiled executable re-runs itself with `IMPORT_CHILD_ENV` set, which the
+ * CLI entry routes here before any command runs.
  *
  * @module src/sessions/import-child
  */
@@ -20,7 +22,10 @@
 import type { Config } from "../config/types";
 import type { SessionImportReceipt } from "./types";
 
-import { initStore } from "../cli/commands/shared";
+import { getIndexDbPath } from "../app/constants";
+import { SqliteAdapter } from "../store/sqlite/adapter";
+import { assertSessionBinding } from "./binding";
+import { IMPORT_CHILD_ENV } from "./import-child-env";
 import { SessionsService } from "./service";
 import { type SessionsErrorCode, SessionsError } from "./types";
 
@@ -52,21 +57,32 @@ async function importInThisProcess(
       indexName: request.indexName,
     }).import(input, { allowPaths: false });
   }
-  const opened = await initStore({
+  const dbPath = getIndexDbPath(request.indexName);
+  await assertSessionBinding({
+    config: request.config,
     configPath: request.configPath,
     indexName: request.indexName,
-    allowEmptyCollections: true,
+    dbPath,
   });
-  if (!opened.ok) throw new Error(opened.error);
+  // The server already projected this config into the index; the child only
+  // opens it (no collection/context sync).
+  const store = new SqliteAdapter();
+  store.setConfigPath(request.configPath);
+  const opened = await store.open(
+    dbPath,
+    request.config.ftsTokenizer,
+    request.config.busyTimeoutMs
+  );
+  if (!opened.ok) throw new Error(opened.error.message);
   try {
     return await new SessionsService({
       config: request.config,
       configPath: request.configPath,
       indexName: request.indexName,
-      store: opened.store,
+      store,
     }).import(input, { allowPaths: false });
   } finally {
-    await opened.store.close();
+    await store.close();
   }
 }
 
@@ -77,11 +93,11 @@ async function importInThisProcess(
 export async function importInChildProcess(
   request: ImportChildRequest
 ): Promise<SessionImportReceipt> {
-  // A compiled single-file executable cannot run an external TS entry.
-  if (import.meta.dir.includes("$bunfs")) return importInThisProcess(request);
+  // A compiled executable cannot run an external TS entry: it re-runs itself.
+  const compiled = import.meta.dir.includes("$bunfs");
   const child = Bun.spawn({
-    cmd: [process.execPath, import.meta.path],
-    env: process.env,
+    cmd: compiled ? [process.execPath] : [process.execPath, import.meta.path],
+    env: compiled ? { ...process.env, [IMPORT_CHILD_ENV]: "1" } : process.env,
     stdin: new Blob([JSON.stringify(request)]),
     stdout: "pipe",
     stderr: "pipe",
@@ -108,7 +124,10 @@ export async function importInChildProcess(
   throw new Error(result.message);
 }
 
-async function main(): Promise<void> {
+/** Child entry: one request on stdin, one JSON result line on stdout. */
+export async function runImportChild(): Promise<void> {
+  // Nothing this child starts may re-enter child mode.
+  delete process.env[IMPORT_CHILD_ENV];
   let result: ImportChildResult;
   try {
     const request = JSON.parse(
@@ -128,4 +147,4 @@ async function main(): Promise<void> {
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }
 
-if (import.meta.main) await main();
+if (import.meta.main) await runImportChild();
