@@ -49,7 +49,10 @@
           "id": { "type": "string" },
           "harness": { "enum": ["codex", "claude-code", "openclaw", "hermes"] },
           "collection": { "type": "string" },
-          "available": { "type": "boolean" },
+          "available": {
+            "type": "boolean",
+            "description": "False when the source root is missing or cannot be listed."
+          },
           "units": {
             "type": "object",
             "additionalProperties": false,

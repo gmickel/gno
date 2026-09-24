@@ -14,8 +14,10 @@ import { Database } from "bun:sqlite";
 
 // Configures the platform SQLite before any Database opens (macOS).
 import "../store/sqlite/setup";
-// node:fs/promises: readdir/lstat/realpath/stat have no Bun equivalents.
-import { lstat, readdir, realpath, stat } from "node:fs/promises";
+// node:fs: permission constants for access(); no Bun equivalent.
+import { constants } from "node:fs";
+// node:fs/promises: access/readdir/lstat/realpath/stat have no Bun equivalents.
+import { access, lstat, readdir, realpath, stat } from "node:fs/promises";
 // node:os homedir: no Bun equivalent.
 import { homedir } from "node:os";
 // node:path: no Bun path utilities.
@@ -51,6 +53,50 @@ export interface SessionUnit {
   storage: "jsonl" | "sqlite";
   size: number;
   mtimeMs: number;
+}
+
+/**
+ * Part of a source that could not be read. A directory is reported without
+ * a locator: its name can be a host path (Claude Code encodes working
+ * directories), so only its reason is exposed.
+ */
+export interface UnreadableEntry {
+  locator: string | null;
+  reason: string;
+}
+
+/** Stable, path-free reason for a filesystem read failure. */
+export function readFailureReason(error: unknown): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  const message = error instanceof Error ? error.message : String(error);
+  if (code === "ENOENT" || /ENOENT|no such file/i.test(message)) {
+    return "source_missing";
+  }
+  if (
+    code === "EACCES" ||
+    code === "EPERM" ||
+    /EACCES|EPERM|permission/i.test(message)
+  ) {
+    return "permission_denied";
+  }
+  return "read_failed";
+}
+
+/**
+ * Whether an existing source root can be read now: a directory must be
+ * listable and a file readable. A missing root is not readable either.
+ */
+export async function isReadableRoot(root: string): Promise<boolean> {
+  try {
+    const info = await stat(root);
+    await access(
+      root,
+      info.isDirectory() ? constants.R_OK | constants.X_OK : constants.R_OK
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** True when `child` equals `parent` or lies inside it (canonical paths). */
@@ -96,19 +142,30 @@ export function defaultDiscoveryRoots(
   return roots;
 }
 
+/** Directory listing, injectable so tests can simulate read failures. */
+export type ReadDirectory = typeof readdir;
+
 interface WalkOptions {
   root: string;
+  readDirectory: ReadDirectory;
   excluded: readonly string[];
   maxDepth: number;
   accept: (relPath: string, name: string) => boolean;
   limit: number;
 }
 
+/**
+ * List candidate files under `root`. A root that cannot be listed throws; a
+ * subdirectory that cannot be listed is reported in `unreadable` so callers
+ * never mistake unread data for "no changes".
+ */
 async function walk(options: WalkOptions): Promise<{
   files: Array<{ path: string; relPath: string }>;
   truncated: boolean;
+  unreadable: UnreadableEntry[];
 }> {
   const files: Array<{ path: string; relPath: string }> = [];
+  const unreadable: UnreadableEntry[] = [];
   const queue: Array<{ dir: string; depth: number }> = [
     { dir: options.root, depth: 0 },
   ];
@@ -118,8 +175,10 @@ async function walk(options: WalkOptions): Promise<{
     if (!next) break;
     let entries;
     try {
-      entries = await readdir(next.dir, { withFileTypes: true });
-    } catch {
+      entries = await options.readDirectory(next.dir, { withFileTypes: true });
+    } catch (error) {
+      if (next.dir === options.root) throw error;
+      unreadable.push({ locator: null, reason: readFailureReason(error) });
       continue;
     }
     entries.sort((left, right) => left.name.localeCompare(right.name));
@@ -141,12 +200,12 @@ async function walk(options: WalkOptions): Promise<{
       if (!options.accept(relPath, entry.name)) continue;
       if (files.length >= options.limit) {
         truncated = true;
-        return { files, truncated };
+        return { files, truncated, unreadable };
       }
       files.push({ path: full, relPath });
     }
   }
-  return { files, truncated };
+  return { files, truncated, unreadable };
 }
 
 const CLAUDE_MAIN = /^[^/]+\/[^/]+\.jsonl$/;
@@ -174,17 +233,24 @@ function unitLocator(harness: SessionHarness, relPath: string): string {
 /**
  * Enumerate the units of one source root. A root that is itself a file is a
  * single unit. Paths outside the root (via symlinks) and excluded
- * directories are skipped.
+ * directories are skipped. A root that cannot be read throws; unreadable
+ * subdirectories and files are returned in `unreadable`.
  */
 export async function enumerateUnits(options: {
   harness: SessionHarness;
   root: string;
   excluded: readonly string[];
   limit?: number;
-}): Promise<{ units: SessionUnit[]; truncated: boolean }> {
+  readDirectory?: ReadDirectory;
+}): Promise<{
+  units: SessionUnit[];
+  truncated: boolean;
+  unreadable: UnreadableEntry[];
+}> {
   const limit = options.limit ?? SESSION_LIMITS.maxUnitsPerSource;
   const info = await stat(options.root);
   if (info.isFile()) {
+    await access(options.root, constants.R_OK);
     return {
       units: [
         {
@@ -197,6 +263,7 @@ export async function enumerateUnits(options: {
         },
       ],
       truncated: false,
+      unreadable: [],
     };
   }
   const accept = (relPath: string, name: string): boolean => {
@@ -211,8 +278,9 @@ export async function enumerateUnits(options: {
         return HERMES_DB.test(relPath);
     }
   };
-  const { files, truncated } = await walk({
+  const { files, truncated, unreadable } = await walk({
     root: options.root,
+    readDirectory: options.readDirectory ?? readdir,
     excluded: options.excluded,
     maxDepth: options.harness === "codex" ? 4 : 3,
     accept,
@@ -220,22 +288,25 @@ export async function enumerateUnits(options: {
   });
   const units: SessionUnit[] = [];
   for (const file of files) {
+    const locator = unitLocator(options.harness, file.relPath);
     let info2;
     try {
       info2 = await lstat(file.path);
-    } catch {
+      await access(file.path, constants.R_OK);
+    } catch (error) {
+      unreadable.push({ locator, reason: readFailureReason(error) });
       continue;
     }
     units.push({
       harness: options.harness,
       path: file.path,
-      locator: unitLocator(options.harness, file.relPath),
+      locator,
       storage: /\.(?:sqlite|db)$/.test(file.relPath) ? "sqlite" : "jsonl",
       size: info2.size,
       mtimeMs: info2.mtimeMs,
     });
   }
-  return { units, truncated };
+  return { units, truncated, unreadable };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 // node:fs/promises for temp fixtures (no Bun equivalent for cp/mkdir/readdir)
 import {
   appendFile,
+  chmod,
   cp,
   mkdir,
   readdir,
@@ -26,6 +27,7 @@ import {
   initSessionArchive,
   removeSessionSource,
 } from "../../src/sessions/setup";
+import { enumerateUnits, type ReadDirectory } from "../../src/sessions/sources";
 import { importLockPath } from "../../src/sessions/state";
 import { type SessionHarness, SessionsError } from "../../src/sessions/types";
 import { openScopedIndexStore } from "../../src/store/sqlite/scoped-index";
@@ -919,10 +921,7 @@ describe("review round 1 regressions", () => {
     await importMain();
     await rename(codexRoot, join(root, "codex-gone"));
     await setLiterals(["alpha queue"]);
-    const receipt = await importMain();
-    expect(receipt.units).toContainEqual(
-      expect.objectContaining({ outcome: "failed", reason: "source_missing" })
-    );
+    await expectSessionsError(importMain(), "SESSIONS_SOURCE_UNAVAILABLE");
     expect(await readAll(join(archiveRoot, "work"))).not.toContain(
       "alpha queue"
     );
@@ -1095,5 +1094,124 @@ describe("review round 1 regressions", () => {
       units.complete + units.incomplete + units.failed
     ).toBeLessThanOrEqual(units.total);
     expect(status.sources[0]!.sourceUnavailable).toBe(1);
+  });
+});
+
+// chmod cannot make a directory unreadable on Windows, and root ignores
+// permissions; the injected-listing test below covers the same path there.
+const permissionsEnforced =
+  process.platform !== "win32" && process.getuid?.() !== 0;
+
+describe("unreadable sources never read as up to date", () => {
+  test.skipIf(!permissionsEnforced)(
+    "an unreadable source root fails, keeps its archive and is not available",
+    async () => {
+      await importMain();
+      await chmod(codexRoot, 0o000);
+      try {
+        await expectSessionsError(importMain(), "SESSIONS_SOURCE_UNAVAILABLE");
+        const status = await withService((service) => service.status());
+        expect(status.sources[0]?.available).toBe(false);
+        await expectSessionsError(
+          withService((service) =>
+            service.prune({ sourceId: "codex-main", apply: true })
+          ),
+          "SESSIONS_SOURCE_UNAVAILABLE"
+        );
+      } finally {
+        await chmod(codexRoot, 0o755);
+      }
+      expect(await searchArchive("SQLite")).toHaveLength(1);
+    }
+  );
+
+  test.skipIf(!permissionsEnforced)(
+    "an unreadable subdirectory makes the import partial and is read once readable",
+    async () => {
+      const nested = join(codexRoot, "2026", "09", "20");
+      await mkdir(nested, { recursive: true });
+      await rename(join(codexRoot, CODEX_MAIN), join(nested, CODEX_MAIN));
+      await chmod(nested, 0o000);
+      try {
+        const receipt = await importMain();
+        expect(receipt.status).toBe("partial");
+        expect(receipt.counts.failed).toBe(1);
+        expect(receipt.units).toContainEqual(
+          expect.objectContaining({
+            locator: ".",
+            outcome: "failed",
+            reason: "permission_denied",
+          })
+        );
+        expect(await searchArchive("SQLite")).toEqual([]);
+        expect((await importMain()).counts.failed).toBe(1);
+        await expectSessionsError(
+          withService((service) =>
+            service.prune({ sourceId: "codex-main", apply: true })
+          ),
+          "SESSIONS_SOURCE_UNAVAILABLE"
+        );
+      } finally {
+        await chmod(nested, 0o755);
+      }
+      const healed = await importMain();
+      expect(healed.counts.failed).toBe(0);
+      expect(healed.counts.imported).toBeGreaterThan(0);
+      expect(await searchArchive("SQLite")).toHaveLength(1);
+    }
+  );
+
+  test.skipIf(!permissionsEnforced)(
+    "an unreadable unit file fails by locator instead of being skipped",
+    async () => {
+      await importMain();
+      const file = join(codexRoot, CODEX_MAIN);
+      await chmod(file, 0o000);
+      try {
+        const receipt = await importMain();
+        expect(receipt.counts.failed).toBe(1);
+        expect(receipt.units).toContainEqual(
+          expect.objectContaining({
+            locator: CODEX_MAIN,
+            outcome: "failed",
+            reason: "permission_denied",
+          })
+        );
+      } finally {
+        await chmod(file, 0o644);
+      }
+    }
+  );
+
+  test("enumeration reports an unlistable subdirectory and throws for the root", async () => {
+    const nested = join(codexRoot, "2026");
+    await mkdir(nested, { recursive: true });
+    const denied = (dir: string) =>
+      Object.assign(new Error(`EACCES: permission denied, scandir '${dir}'`), {
+        code: "EACCES",
+      });
+    const failing = (target: string): ReadDirectory =>
+      ((dir: string, options: Parameters<ReadDirectory>[1]) =>
+        dir === target
+          ? Promise.reject(denied(dir))
+          : readdir(dir, options as { withFileTypes: true })) as ReadDirectory;
+    const partial = await enumerateUnits({
+      harness: "codex",
+      root: codexRoot,
+      excluded: [],
+      readDirectory: failing(nested),
+    });
+    expect(partial.units).toHaveLength(4);
+    expect(partial.unreadable).toEqual([
+      { locator: null, reason: "permission_denied" },
+    ]);
+    await expect(
+      enumerateUnits({
+        harness: "codex",
+        root: codexRoot,
+        excluded: [],
+        readDirectory: failing(codexRoot),
+      })
+    ).rejects.toThrow("EACCES");
   });
 });
