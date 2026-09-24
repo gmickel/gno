@@ -8,7 +8,9 @@
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-170-durable-receipts-for-safe-mutation",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-170-durable-receipts-for-safe-mutation.1": 0
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
@@ -78,6 +80,33 @@
       "task": null,
       "timestamp": "2026-09-21T22:24:34.836829Z",
       "verdict": "SHIP"
+    },
+    {
+      "artifact_sha256": "c7c7d073315aec9e554e7f5d72b8f35502a88bb3eb554777734da8bf7211fb7b",
+      "backend": "codex",
+      "base_sha": "9a0e5e5b069daf005e7c0f12670349c0d4cc1df9",
+      "counter_kind": "impl",
+      "failure_class": "nonzero_exit",
+      "finalized": {
+        "digest": "not_applicable",
+        "receipt": "not_applicable",
+        "status": "not_applicable"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "9e1674e6d6b81d4d2eff04717fd3de9ed820ba29",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "outcome": "transport_failure",
+      "output_bytes": 75,
+      "output_sha256": "54a3f11c7b2d494ea37c84ca79ea09596e131b28e95c2073cb830fa99ab55bd5",
+      "reservation_id": "072cfdac4fca420ead60bd2e5a13bf65",
+      "round_consumed": false,
+      "scope": "impl:fn-170-durable-receipts-for-safe-mutation.1",
+      "superseded_by": null,
+      "task": "fn-170-durable-receipts-for-safe-mutation.1",
+      "timestamp": "2026-09-24T08:10:50.688247Z",
+      "verdict": null
     }
   ],
   "review_hash_epoch": {
@@ -87,6 +116,7 @@
   "review_pending_rounds": {},
   "review_reservations": {},
   "review_transport_failures": {
+    "impl:fn-170-durable-receipts-for-safe-mutation.1": 1,
     "plan": 0
   },
   "spec_path": ".flow/specs/fn-170-durable-receipts-for-safe-mutation.md",
@@ -103,5 +133,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-21T22:24:34.838890Z"
+  "updated_at": "2026-09-24T08:10:50.688532Z"
 }
