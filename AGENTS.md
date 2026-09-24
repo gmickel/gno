@@ -109,9 +109,11 @@ fixture format and the golden refresh (`bun run eval:memory:fixtures
 synthetic native fixtures for all four harnesses (`evals/fixtures/sessions/`,
 sha256-pinned in `manifest.json`) through the real session service and
 compares the result with a manually normalized gold archive
-(`gold/turns.json`: hand-written per-turn records with native identity, role,
-time and redacted text, in its own structure). The gold arm is indexed as a
-plain JSONL file with an eval-defined field mapping; both arms use the same
+(`gold/turns.json`: hand-written per-turn records with native identity,
+locator, role, time and redacted text). The gold arm is indexed with the
+identical mandatory record envelope of the archive format (title shape,
+speaker prefix, one-line provenance, categories), which is what "same usable
+budget" means for R6; both arms use the same
 lexical retrieval and Context Capsule budget/byte cap, offline, and both are
 judged against the gold records (exact turn text fully present in the
 delivered text with verified identity and role). Thresholds live in

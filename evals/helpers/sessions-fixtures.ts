@@ -75,6 +75,8 @@ export interface GoldTurnRecord {
   role: Role;
   at: string;
   text: string;
+  /** Native locator inside the thread's unit (e.g. `line:5`, `messages/102`). */
+  locator: string;
 }
 
 export interface GoldThreadRecord {
@@ -85,6 +87,8 @@ export interface GoldThreadRecord {
   kind: "main" | "subagent";
   format: string;
   project: string | null;
+  /** Native unit (file or database) that holds the thread. */
+  unit: string;
   turns: GoldTurnRecord[];
 }
 
@@ -107,6 +111,7 @@ export interface GoldTurn extends GoldTurnRecord {
   kind: GoldThreadRecord["kind"];
   format: string;
   project: string | null;
+  unit: string;
 }
 
 /** The literal the gold archive uses where a credential value was removed. */
@@ -128,6 +133,7 @@ export function flattenGold(fixture: GoldFixture): GoldTurn[] {
         kind: thread.kind,
         format: thread.format,
         project: thread.project,
+        unit: thread.unit,
       });
     }
   }

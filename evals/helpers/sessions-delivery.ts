@@ -18,7 +18,6 @@ import type { Arm, ArmContext } from "./sessions-harness";
 import { buildContextCapsule } from "../../src/app/context-runtime";
 import { searchBm25 } from "../../src/pipeline/search";
 import { GOLD_REDACTION } from "./sessions-fixtures";
-import { goldArmProjectLabel } from "./sessions-harness";
 
 /** Shared, frozen delivery settings (both arms). */
 export interface CapsuleSettings {
@@ -99,44 +98,25 @@ const provenanceTurn = (text: string): string | null =>
     .find((segment) => segment.startsWith("turn "))
     ?.slice("turn ".length) ?? null;
 
-const GOLD_HEADING = /^Turn (.+)$/;
 const SPEAKER_PREFIX = /^(Human|Assistant): /m;
 
 /**
- * Parse what an arm delivered. The pipeline arm renders role three ways
- * (record author, speaker prefix, provenance speaker), its thread as
- * record metadata and its turn id in the provenance block; the gold arm
- * delivers role and thread as record metadata and the turn id in its title.
+ * Parse what an arm delivered. Both arms carry the same record envelope, so
+ * both are judged the same way: role from the record author, the speaker
+ * prefix and the provenance speaker; thread from record metadata; turn id
+ * from the provenance block.
  */
 export function parseDelivered(
   arm: Arm,
   surface: string,
   rawText: string,
-  title: string | null | undefined,
+  _title: string | null | undefined,
   record: DeliveredRecord | undefined
 ): DeliveredItem {
   const text = unescapeMarkdown(rawText);
   const author = record?.author ?? null;
   const recordThreadId = record?.threadId ?? null;
   const categories = [...(record?.categories ?? [])].sort();
-  if (arm === "pipeline") {
-    return {
-      arm,
-      surface,
-      text,
-      author,
-      recordThreadId,
-      categories,
-      roles: [
-        toRole(author),
-        toRole(SPEAKER_PREFIX.exec(text)?.[1]),
-        toRole(provenanceSegments(text)[0]),
-      ],
-      thread: recordThreadId,
-      turnId: provenanceTurn(text),
-    };
-  }
-  const heading = GOLD_HEADING.exec(unescapeMarkdown(title ?? "").trim());
   return {
     arm,
     surface,
@@ -144,9 +124,13 @@ export function parseDelivered(
     author,
     recordThreadId,
     categories,
-    roles: [toRole(author)],
+    roles: [
+      toRole(author),
+      toRole(SPEAKER_PREFIX.exec(text)?.[1]),
+      toRole(provenanceSegments(text)[0]),
+    ],
     thread: recordThreadId,
-    turnId: heading?.[1] ?? null,
+    turnId: provenanceTurn(text),
   };
 }
 
@@ -163,10 +147,8 @@ export function presentsText(
   role: Role
 ): boolean {
   if (!item.roles.includes(role)) return false;
-  const source =
-    item.arm === "pipeline"
-      ? `${speakerLabel(role)}: ${goldTextSource(text)}`
-      : goldTextSource(text);
+  // Both arms prefix the dialogue with the speaker (shared envelope).
+  const source = `${speakerLabel(role)}: ${goldTextSource(text)}`;
   return new RegExp(source).test(item.text);
 }
 
@@ -209,13 +191,12 @@ export async function runLookup(
   return items;
 }
 
-/** The arm's own filter label for a question's project. */
+/** The project filter label; both arms carry the same `project-id/*` tag. */
 export function projectFilter(
-  arm: Arm,
+  _arm: Arm,
   project: string,
   projectIds: CasesFixture["projectIds"]
 ): string {
-  if (arm === "gold") return goldArmProjectLabel(project);
   const id = projectIds[project];
   if (!id) throw new Error(`no expected project id for ${project}`);
   return `project-id/${id}`;

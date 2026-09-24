@@ -7,8 +7,13 @@
  * - pipeline: the real `SessionsService.import` of synthetic native fixtures
  *   for every supported harness format into a temp session archive;
  * - gold: the manually normalized turns in `fixtures/sessions/gold/turns.json`
- *   (hand-written per-turn records with their own structure), indexed as a
- *   plain JSONL file with an eval-defined field mapping.
+ *   (hand-written text, roles and identities), indexed as JSONL records.
+ *
+ * Gate definition: "same usable budget" means the gold archive carries the
+ * identical mandatory per-record envelope as the archive format (title
+ * shape, speaker prefix, one-line provenance block, categories), so both
+ * arms spend the same envelope bytes and the comparison measures dialogue
+ * selection and parsing (helpers/sessions-harness, GOLD_ARM_FIELD_MAPPING).
  *
  * Both arms are judged against the gold turn records: a turn counts only when
  * its exact text is fully present in the delivered text with verified

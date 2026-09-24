@@ -8,7 +8,8 @@
     "`project` is the working directory recorded natively for the thread.",
     "Every credential value is replaced by the literal `[REDACTED]`, including a bare repeat of a credential that appeared earlier in the thread. Surrounding text (for example `password=` or a URL's user and host) is kept.",
     "A slash command is written as the person typed it (`/<name> <args>`), not as the harness's command wrapper markup.",
-    "Text is otherwise verbatim: no speaker prefix, no trimming of punctuation, no rewording."
+    "Text is otherwise verbatim: no speaker prefix, no trimming of punctuation, no rewording.",
+    "Each thread names its native `unit` (rollout file name, session file relative to the project folder, agent-store path, or `state.db`) and each turn its native `locator` inside that unit (`line:N`, `transcript_events/<window>/<seq>` for the original entry, `messages/<id>`); both were located by hand in the native fixtures."
   ],
   "threads": [
     {
@@ -19,30 +20,35 @@
       "kind": "main",
       "format": "codex",
       "project": "/work/a/api",
+      "unit": "rollout-2026-09-10T09-00-00-0000e7a1-0000-7000-8000-00000000a001.jsonl",
       "turns": [
         {
           "turn": "item-u1",
           "role": "human",
           "at": "2026-09-10T09:00:02Z",
-          "text": "Decision: the orchid gateway keeps its rate limit at 40 requests per minute per tenant. The staging deploy key is [REDACTED] and stays out of the repo."
+          "text": "Decision: the orchid gateway keeps its rate limit at 40 requests per minute per tenant. The staging deploy key is [REDACTED] and stays out of the repo.",
+          "locator": "line:5"
         },
         {
           "turn": "item-a1",
           "role": "assistant",
           "at": "2026-09-10T09:00:05Z",
-          "text": "Suggestion: raise the orchid gateway rate limit to 400 requests per minute per tenant and rotate [REDACTED] today."
+          "text": "Suggestion: raise the orchid gateway rate limit to 400 requests per minute per tenant and rotate [REDACTED] today.",
+          "locator": "line:8"
         },
         {
           "turn": "item-u2",
           "role": "human",
           "at": "2026-09-10T09:00:06Z",
-          "text": "Rejected. Burst credit for the orchid gateway is capped at 10 extra requests, and the 40 per minute limit is final."
+          "text": "Rejected. Burst credit for the orchid gateway is capped at 10 extra requests, and the 40 per minute limit is final.",
+          "locator": "line:10"
         },
         {
           "turn": "item-a2",
           "role": "assistant",
           "at": "2026-09-10T09:00:07Z",
-          "text": "Understood: the orchid gateway allows 40 requests per minute per tenant with a burst credit of 10."
+          "text": "Understood: the orchid gateway allows 40 requests per minute per tenant with a burst credit of 10.",
+          "locator": "line:11"
         }
       ]
     },
@@ -54,12 +60,14 @@
       "kind": "subagent",
       "format": "codex",
       "project": "/work/a/api",
+      "unit": "rollout-2026-09-10T09-30-00-0000e7a1-0000-7000-8000-00000000a002.jsonl",
       "turns": [
         {
           "turn": "item-draft",
           "role": "assistant",
           "at": "2026-09-10T09:30:03Z",
-          "text": "Subagent draft: orchid gateway config change prepared with a 400 per minute limit."
+          "text": "Subagent draft: orchid gateway config change prepared with a 400 per minute limit.",
+          "locator": "line:6"
         }
       ]
     },
@@ -71,12 +79,14 @@
       "kind": "main",
       "format": "codex",
       "project": "/work/c/billing",
+      "unit": "rollout-2026-09-11T06-00-00-0000e7a1-0000-7000-8000-00000000c001.jsonl",
       "turns": [
         {
           "turn": "item-exec-result",
           "role": "assistant",
           "at": "2026-09-11T06:00:02Z",
-          "text": "Exec result: invoice archive retention job ran in dry-run mode."
+          "text": "Exec result: invoice archive retention job ran in dry-run mode.",
+          "locator": "line:3"
         }
       ]
     },
@@ -88,18 +98,21 @@
       "kind": "main",
       "format": "codex-legacy",
       "project": "/work/b/api",
+      "unit": "rollout-2025-12-01T15-00-00-0000e7a1-0000-7000-8000-00000000b001.jsonl",
       "turns": [
         {
           "turn": "ordinal:2",
           "role": "human",
           "at": "2025-12-01T15:00:02Z",
-          "text": "Decision: the heron ledger API paginates with opaque cursor tokens, never numeric offsets."
+          "text": "Decision: the heron ledger API paginates with opaque cursor tokens, never numeric offsets.",
+          "locator": "line:3"
         },
         {
           "turn": "ordinal:5",
           "role": "assistant",
           "at": "2025-12-01T15:00:05Z",
-          "text": "Suggestion: numeric offsets would make heron ledger pagination simpler for clients."
+          "text": "Suggestion: numeric offsets would make heron ledger pagination simpler for clients.",
+          "locator": "line:6"
         }
       ]
     },
@@ -111,30 +124,35 @@
       "kind": "main",
       "format": "claude-code",
       "project": "/work/a/api",
+      "unit": "e7a1c1a0-0000-4000-8000-00000000a001.jsonl",
       "turns": [
         {
           "turn": "a1000000-0000-4000-8000-000000000002",
           "role": "human",
           "at": "2026-09-12T10:00:01Z",
-          "text": "Decision for the orchid gateway: send HTTP 429 with a Retry-After header once a tenant passes the limit. password=[REDACTED]"
+          "text": "Decision for the orchid gateway: send HTTP 429 with a Retry-After header once a tenant passes the limit. password=[REDACTED]",
+          "locator": "line:3"
         },
         {
           "turn": "a1000000-0000-4000-8000-000000000004",
           "role": "assistant",
           "at": "2026-09-12T10:00:03Z",
-          "text": "Proposal: silently dropping excess orchid gateway requests would be cheaper than returning 429. The value [REDACTED] should move to the vault."
+          "text": "Proposal: silently dropping excess orchid gateway requests would be cheaper than returning 429. The value [REDACTED] should move to the vault.",
+          "locator": "line:5"
         },
         {
           "turn": "a1000000-0000-4000-8000-000000000007",
           "role": "human",
           "at": "2026-09-12T10:00:06Z",
-          "text": "/plan document the orchid gateway 429 behaviour"
+          "text": "/plan document the orchid gateway 429 behaviour",
+          "locator": "line:8"
         },
         {
           "turn": "a1000000-0000-4000-8000-000000000009",
           "role": "assistant",
           "at": "2026-09-12T10:00:08Z",
-          "text": "Confirmed: excess orchid gateway requests get HTTP 429 with Retry-After, as you decided."
+          "text": "Confirmed: excess orchid gateway requests get HTTP 429 with Retry-After, as you decided.",
+          "locator": "line:10"
         }
       ]
     },
@@ -146,12 +164,14 @@
       "kind": "subagent",
       "format": "claude-code",
       "project": "/work/a/api",
+      "unit": "e7a1c1a0-0000-4000-8000-00000000a001/agent-b7c2.jsonl",
       "turns": [
         {
           "turn": "a1500000-0000-4000-8000-000000000002",
           "role": "assistant",
           "at": "2026-09-12T10:00:03.8Z",
-          "text": "Subagent report: two orchid gateway endpoints bypass the limiter."
+          "text": "Subagent report: two orchid gateway endpoints bypass the limiter.",
+          "locator": "line:2"
         }
       ]
     },
@@ -163,24 +183,28 @@
       "kind": "main",
       "format": "claude-code-legacy",
       "project": "/work/b/api",
+      "unit": "e7a1c1a0-0000-4000-8000-00000000b001.jsonl",
       "turns": [
         {
           "turn": "b1000000-0000-4000-8000-000000000001",
           "role": "human",
           "at": "2025-10-05T08:00:01Z",
-          "text": "Decision: heron ledger cursor tokens expire after 15 minutes."
+          "text": "Decision: heron ledger cursor tokens expire after 15 minutes.",
+          "locator": "line:2"
         },
         {
           "turn": "b1000000-0000-4000-8000-000000000003",
           "role": "assistant",
           "at": "2025-10-05T08:00:03Z",
-          "text": "Suggestion: heron ledger cursor tokens could live for 24 hours to reduce client retries."
+          "text": "Suggestion: heron ledger cursor tokens could live for 24 hours to reduce client retries.",
+          "locator": "line:4"
         },
         {
           "turn": "b1000000-0000-4000-8000-000000000004",
           "role": "human",
           "at": "2025-10-05T08:00:04Z",
-          "text": "No, keep the 15 minute expiry for heron ledger cursors; clients must restart pagination."
+          "text": "No, keep the 15 minute expiry for heron ledger cursors; clients must restart pagination.",
+          "locator": "line:5"
         }
       ]
     },
@@ -192,30 +216,35 @@
       "kind": "main",
       "format": "openclaw-jsonl",
       "project": "/work/c/billing",
+      "unit": "main/sessions/e7a10c1a-0000-4000-8000-00000000c001.jsonl",
       "turns": [
         {
           "turn": "e2",
           "role": "human",
           "at": "2026-09-13T11:00:02Z",
-          "text": "Decision: invoice archives are retained for seven years and then purged. Authorization: Bearer [REDACTED]"
+          "text": "Decision: invoice archives are retained for seven years and then purged. Authorization: Bearer [REDACTED]",
+          "locator": "line:4"
         },
         {
           "turn": "e3",
           "role": "assistant",
           "at": "2026-09-13T11:00:03Z",
-          "text": "Suggestion: purging invoice archives after 90 days would cut storage costs."
+          "text": "Suggestion: purging invoice archives after 90 days would cut storage costs.",
+          "locator": "line:5"
         },
         {
           "turn": "e8",
           "role": "human",
           "at": "2026-09-13T11:00:08Z",
-          "text": "Invoice archive purge runs on the first Sunday of each month."
+          "text": "Invoice archive purge runs on the first Sunday of each month.",
+          "locator": "line:10"
         },
         {
           "turn": "e9",
           "role": "assistant",
           "at": "2026-09-13T11:00:09Z",
-          "text": "Noted: the monthly invoice purge is scheduled."
+          "text": "Noted: the monthly invoice purge is scheduled.",
+          "locator": "line:11"
         }
       ]
     },
@@ -227,24 +256,28 @@
       "kind": "main",
       "format": "openclaw-sqlite",
       "project": "/work/b/api",
+      "unit": "main/openclaw-agent.sqlite",
       "turns": [
         {
           "turn": "m1",
           "role": "human",
           "at": "2026-09-14T12:00:01Z",
-          "text": "Decision: the heron ledger API returns at most 200 records per page. The read replica is postgres://ledger:[REDACTED]@db.internal/heron for now."
+          "text": "Decision: the heron ledger API returns at most 200 records per page. The read replica is postgres://ledger:[REDACTED]@db.internal/heron for now.",
+          "locator": "transcript_events/w-ledger-1/2"
         },
         {
           "turn": "m2",
           "role": "assistant",
           "at": "2026-09-14T12:00:02Z",
-          "text": "Suggestion: 1000 records per page would reduce heron ledger round trips."
+          "text": "Suggestion: 1000 records per page would reduce heron ledger round trips.",
+          "locator": "transcript_events/w-ledger-1/3"
         },
         {
           "turn": "m3",
           "role": "human",
           "at": "2026-09-14T12:06:00Z",
-          "text": "Keep 200 records per page for the heron ledger; large exports go through the batch endpoint."
+          "text": "Keep 200 records per page for the heron ledger; large exports go through the batch endpoint.",
+          "locator": "transcript_events/w-ledger-2/4"
         }
       ]
     },
@@ -256,12 +289,14 @@
       "kind": "subagent",
       "format": "openclaw-sqlite",
       "project": "/work/b/api",
+      "unit": "main/openclaw-agent.sqlite",
       "turns": [
         {
           "turn": "s2",
           "role": "assistant",
           "at": "2026-09-14T12:07:02Z",
-          "text": "Subagent result: heron ledger page size change drafted at 1000."
+          "text": "Subagent result: heron ledger page size change drafted at 1000.",
+          "locator": "transcript_events/w-ledger-sub/3"
         }
       ]
     },
@@ -273,24 +308,28 @@
       "kind": "main",
       "format": "hermes",
       "project": "/work/a/api",
+      "unit": "state.db",
       "turns": [
         {
           "turn": "message:102",
           "role": "human",
           "at": "2026-09-15T08:00:01Z",
-          "text": "Decision: orchid gateway limits are enforced per tenant, not per API key. Service credential api_key=[REDACTED] is scoped to the gateway."
+          "text": "Decision: orchid gateway limits are enforced per tenant, not per API key. Service credential api_key=[REDACTED] is scoped to the gateway.",
+          "locator": "messages/102"
         },
         {
           "turn": "message:103",
           "role": "assistant",
           "at": "2026-09-15T08:00:02Z",
-          "text": "Suggestion: orchid gateway enforcement per API key would be fairer for large tenants."
+          "text": "Suggestion: orchid gateway enforcement per API key would be fairer for large tenants.",
+          "locator": "messages/103"
         },
         {
           "turn": "message:108",
           "role": "human",
           "at": "2026-09-15T08:01:02Z",
-          "text": "Orchid gateway follow-up: publish the per tenant limit in the API handbook."
+          "text": "Orchid gateway follow-up: publish the per tenant limit in the API handbook.",
+          "locator": "messages/108"
         }
       ]
     },
@@ -302,12 +341,14 @@
       "kind": "subagent",
       "format": "hermes",
       "project": "/work/a/api",
+      "unit": "state.db",
       "turns": [
         {
           "turn": "message:202",
           "role": "assistant",
           "at": "2026-09-15T08:02:02Z",
-          "text": "Delegate result: per API key enforcement drafted for the orchid gateway."
+          "text": "Delegate result: per API key enforcement drafted for the orchid gateway.",
+          "locator": "messages/202"
         }
       ]
     },
@@ -319,18 +360,21 @@
       "kind": "main",
       "format": "hermes",
       "project": "/work/c/billing",
+      "unit": "state.db",
       "turns": [
         {
           "turn": "message:301",
           "role": "human",
           "at": "2026-09-16T17:00:01Z",
-          "text": "Decision: invoice archive exports are encrypted with the tenant key before upload."
+          "text": "Decision: invoice archive exports are encrypted with the tenant key before upload.",
+          "locator": "messages/301"
         },
         {
           "turn": "message:302",
           "role": "assistant",
           "at": "2026-09-16T17:00:02Z",
-          "text": "Suggestion: skipping encryption for invoice archive exports would speed uploads."
+          "text": "Suggestion: skipping encryption for invoice archive exports would speed uploads.",
+          "locator": "messages/302"
         }
       ]
     }

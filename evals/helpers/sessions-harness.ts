@@ -4,10 +4,11 @@
  * - pipeline: synthetic native fixtures for every supported harness format,
  *   registered and imported through the public sessions service API into a
  *   temp session archive (its own config + named index);
- * - gold: the hand-normalized turns in `gold/turns.json`, written as a plain
- *   JSONL file with a minimal field mapping defined here (no pipeline
- *   rendering, title format or categories) and synced into its own config +
- *   named index through the same collection sync.
+ * - gold: the hand-normalized turns in `gold/turns.json` (independently
+ *   authored text, roles and identities), written as JSONL records carrying
+ *   the same mandatory record envelope as the archive format (see
+ *   GOLD_ARM_FIELD_MAPPING) and synced into its own config + named index
+ *   through the same collection sync.
  *
  * Every GNO config/data/cache lookup stays inside the temp root.
  *
@@ -20,7 +21,7 @@ import { cp, mkdir, mkdtemp, readdir } from "node:fs/promises";
 // node:os provides the temporary root
 import { tmpdir } from "node:os";
 // node:path has no Bun path utilities
-import { dirname, join, sep } from "node:path";
+import { basename, dirname, join, sep } from "node:path";
 
 import type { Collection, Config } from "../../src/config/types";
 import type { JsonlFieldMapping } from "../../src/converters/adapters/jsonl/config";
@@ -86,49 +87,87 @@ export interface SessionsEvalContext {
 // Gold arm rendering (eval-defined, independent of src/sessions)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Minimal field mapping for the gold arm's JSONL file. */
+/**
+ * Gold-arm record envelope (gate definition). "Same usable budget" means
+ * the gold archive carries the identical mandatory per-record envelope the
+ * archive format defines: the title shape, the speaker prefix, the one-line
+ * provenance block and the categories. Only the dialogue text, roles and
+ * identities are authored by hand, so both arms spend the same envelope
+ * bytes and the comparison measures dialogue selection and parsing.
+ */
 export const GOLD_ARM_FIELD_MAPPING: JsonlFieldMapping = {
-  id: "/key",
-  title: "/heading",
-  body: "/text",
-  author: "/role",
-  sessionId: "/session",
-  threadId: "/thread",
-  categories: "/labels",
-  dateFields: { recorded: "/at" },
+  id: "/id",
+  title: "/title",
+  body: "/body",
+  author: "/author",
+  categories: "/categories",
+  sessionId: "/sessionId",
+  threadId: "/threadId",
+  dateFields: { recorded: "/recordedAt" },
 };
 
-/** Heading of a gold-arm record; the delivered title carries turn identity. */
-export const goldArmHeading = (turn: string): string => `Turn ${turn}`;
-
-/**
- * Gold-arm filter label for a native working directory. Record categories
- * follow the tag grammar, so the directory becomes hierarchical segments.
- */
-export const goldArmProjectLabel = (project: string): string =>
-  `gold-project/${project.replace(/^\/+/, "")}`;
+const HARNESS_LABELS: Record<GoldTurn["harness"], string> = {
+  codex: "Codex",
+  "claude-code": "Claude Code",
+  openclaw: "OpenClaw",
+  hermes: "Hermes",
+};
 
 interface GoldArmLine {
-  key: string;
-  heading: string;
-  text: string;
-  role: Role;
-  session: string;
-  thread: string;
-  labels: string[];
-  at: string;
+  id: string;
+  title: string;
+  body: string;
+  author: Role;
+  categories: string[];
+  sessionId?: string;
+  threadId: string;
+  recordedAt: string;
 }
 
-const goldArmLine = (turn: GoldTurn): GoldArmLine => ({
-  key: turn.key,
-  heading: goldArmHeading(turn.turn),
-  text: turn.text,
-  role: turn.role,
-  session: turn.sessionKey,
-  thread: turn.threadKey,
-  labels: turn.project ? [goldArmProjectLabel(turn.project)] : [],
-  at: turn.at,
-});
+const speaker = (role: Role): string =>
+  role === "human" ? "Human" : "Assistant";
+
+const goldArmLine = (
+  turn: GoldTurn,
+  projectIds: CasesFixture["projectIds"]
+): GoldArmLine => {
+  const project = turn.project ? basename(turn.project) : null;
+  const categories = [
+    "session",
+    `harness/${turn.harness}`,
+    `session-kind/${turn.kind}`,
+    `role/${turn.role}`,
+  ];
+  if (turn.project && project) {
+    const id = projectIds[turn.project];
+    if (!id) throw new Error(`no expected project id for ${turn.project}`);
+    categories.push(`project/${project}`, `project-id/${id}`);
+  }
+  const provenance = [
+    turn.role === "assistant"
+      ? "Assistant (assistant output, not a user decision)"
+      : "Human",
+    `source ${turn.source}`,
+    `locator ${turn.unit}#${turn.locator}`,
+    `turn ${turn.turn}`,
+  ].join(" · ");
+  return {
+    id: turn.key,
+    title: [
+      speaker(turn.role),
+      HARNESS_LABELS[turn.harness],
+      project ?? "no project",
+    ].join(" · "),
+    body: `${speaker(turn.role)}: ${turn.text}\n\nProvenance: ${provenance}`,
+    author: turn.role,
+    categories,
+    ...(turn.sessionKey === turn.threadKey
+      ? {}
+      : { sessionId: turn.sessionKey }),
+    threadId: turn.threadKey,
+    recordedAt: turn.at,
+  };
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Setup
@@ -257,7 +296,8 @@ async function setupPipelineArm(
 
 async function setupGoldArm(
   root: string,
-  gold: GoldTurn[]
+  gold: GoldTurn[],
+  projectIds: CasesFixture["projectIds"]
 ): Promise<ArmContext> {
   const configPath = join(root, "gold.yml");
   const indexName = "sessions-eval-gold";
@@ -265,7 +305,7 @@ async function setupGoldArm(
   await mkdir(collectionDir, { recursive: true });
   await Bun.write(
     join(collectionDir, "gold-turns.jsonl"),
-    `${gold.map((turn) => JSON.stringify(goldArmLine(turn))).join("\n")}\n`
+    `${gold.map((turn) => JSON.stringify(goldArmLine(turn, projectIds))).join("\n")}\n`
   );
   const collection = {
     name: COLLECTION,
@@ -297,7 +337,7 @@ async function setupGoldArm(
     .all()
     .map((row) => JSON.parse(row.categories ?? "[]") as string[]);
   const labelled = indexed.filter((categories) =>
-    categories.some((tag) => tag.startsWith("gold-project/"))
+    categories.some((tag) => tag.startsWith("project-id/"))
   ).length;
   const expectedLabelled = gold.filter((turn) => turn.project).length;
   if (indexed.length !== gold.length || labelled !== expectedLabelled) {
@@ -333,7 +373,7 @@ async function setupSessionsEval(): Promise<SessionsEvalContext> {
   process.env.GNO_CACHE_DIR = join(root, "gno-cache");
   const sourceRoots = await materializeSources(root, cases);
   const pipeline = await setupPipelineArm(root, cases, sourceRoots);
-  const goldArm = await setupGoldArm(root, gold);
+  const goldArm = await setupGoldArm(root, gold, cases.projectIds);
   return {
     root,
     cases,
