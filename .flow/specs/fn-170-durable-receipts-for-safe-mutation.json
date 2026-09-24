@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-170-durable-receipts-for-safe-mutation",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-24T09:08:22.360938Z",
   "created_at": "2026-09-21T20:53:43.390526Z",
   "default_impl": null,
   "default_review": null,
@@ -270,5 +270,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-24T09:06:31.872859Z"
+  "updated_at": "2026-09-24T09:08:22.360945Z"
 }
