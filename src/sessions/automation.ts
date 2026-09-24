@@ -25,6 +25,7 @@ import type { SessionsServiceDeps } from "./service";
 import { getIndexDbPath } from "../app/constants";
 import { loadConfig } from "../config";
 import { applyConfigFileChange } from "../core/config-mutation";
+import { acquireWriteLock } from "../core/file-lock";
 import { SESSION_STATE_DIRNAME } from "./archive";
 import {
   admit,
@@ -75,6 +76,7 @@ import {
 import { importInChildProcess } from "./import-child";
 import { SessionsService } from "./service";
 import { canonicalPath } from "./sources";
+import { importLockPath } from "./state";
 import {
   type SessionAutomationRunResult,
   type SessionImportReceipt,
@@ -975,26 +977,30 @@ export async function runAutomationProfile(
     failure = { failure: "contention", reason: "busy" };
   } else {
     try {
-      // Archive collections added since the store opened must exist in it.
-      // Write only when one is missing: an import child or another writer
-      // may hold the index.
-      const known = await deps.store.getCollections();
-      const missing =
-        !known.ok ||
-        config.collections.some(
-          (collection) =>
-            !known.value.some((row) => row.name === collection.name)
+      // Another import (a CLI import or a server's import child) holds the
+      // archive and writes the index in long transactions: report busy
+      // before touching the index rather than waiting behind it.
+      const probe = await acquireWriteLock(
+        importLockPath(sessions.archiveRoot),
+        0
+      );
+      if (!probe) {
+        throw new SessionsError(
+          "SESSIONS_BUSY",
+          "Another session import is running for this archive."
         );
-      if (missing) {
-        const synced = await deps.store.syncCollections(config.collections);
-        if (!synced.ok) {
-          throw isIndexLockContention(synced.error)
-            ? new SessionsError("SESSIONS_BUSY", "The archive index is busy.")
-            : new SessionsError(
-                "SESSIONS_RUNTIME_FAILURE",
-                "Archive collections could not be synced into the index."
-              );
-        }
+      }
+      await probe.release();
+      // Project the current archive collections (added, changed or removed)
+      // into the index before importing.
+      const synced = await deps.store.syncCollections(config.collections);
+      if (!synced.ok) {
+        throw isIndexLockContention(synced.error)
+          ? new SessionsError("SESSIONS_BUSY", "The archive index is busy.")
+          : new SessionsError(
+              "SESSIONS_RUNTIME_FAILURE",
+              "Archive collections could not be synced into the index."
+            );
       }
       const service = new SessionsService({
         config,

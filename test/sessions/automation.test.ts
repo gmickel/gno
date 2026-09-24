@@ -1157,7 +1157,6 @@ describe("index contention is a busy run", () => {
   test("a locked index while syncing a new archive collection records busy, not runtime_error", async () => {
     const result = await withStore((store) => {
       const locked = Object.create(store) as typeof store;
-      locked.getCollections = async () => ({ ok: true, value: [] });
       locked.syncCollections = async () => ({
         ok: false,
         error: {
@@ -1173,6 +1172,55 @@ describe("index contention is a busy run", () => {
     });
     expect(result).toMatchObject({ outcome: "failed", reason: "busy" });
     expect((await profileRun())?.lastRun?.reason).toBe("busy");
+  });
+
+  test("a run while another import holds the archive is busy and never touches the index", async () => {
+    await mkdir(join(archiveRoot, ".gno-sessions"), { recursive: true });
+    const held = await acquireWriteLock(importLockPath(archiveRoot), 1000);
+    let synced = false;
+    let result;
+    try {
+      result = await withStore((store) => {
+        const watched = Object.create(store) as typeof store;
+        watched.syncCollections = async (collections) => {
+          synced = true;
+          return store.syncCollections(collections);
+        };
+        return runAutomationProfile(
+          { ...ctx(), store: watched, alive: dead },
+          "main",
+          { trigger: "manual" }
+        );
+      });
+    } finally {
+      await held?.release();
+    }
+    expect(result).toMatchObject({ outcome: "failed", reason: "busy" });
+    expect(synced).toBe(false);
+  });
+
+  test("a run projects changed archive collection settings into the index", async () => {
+    const config = await archiveConfig();
+    config.collections[0]!.pattern = "**/*.jsonl.changed";
+    await saveConfigToPath(config, configPath);
+    // The CLI run opens the index without projecting config itself.
+    const { runAutomation } = await import("../../src/cli/commands/sessions");
+    await runAutomation({ configPath, indexName: INDEX }, "main");
+    // Open without projecting config: only the run may have written it.
+    const { SqliteAdapter } = await import("../../src/store/sqlite/adapter");
+    const { getIndexDbPath } = await import("../../src/app/constants");
+    const store = new SqliteAdapter();
+    const opened = await store.open(getIndexDbPath(INDEX), config.ftsTokenizer);
+    if (!opened.ok) throw new Error(opened.error.message);
+    try {
+      const rows = await store.getCollections();
+      if (!rows.ok) throw new Error(rows.error.message);
+      expect(rows.value.find((row) => row.name === "work")?.pattern).toBe(
+        "**/*.jsonl.changed"
+      );
+    } finally {
+      await store.close();
+    }
   });
 
   test("a contended CLI run exits 4 with SESSIONS_BUSY and records the busy run", async () => {
