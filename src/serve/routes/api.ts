@@ -3376,6 +3376,8 @@ interface DocUpdatePlan {
   /** Tag set before and after this update (null when tags are unchanged). */
   baseTagState: string | null;
   resultTagState: string | null;
+  /** User-source tags before this update: store-only tag writes change them. */
+  baseUserTagState: string | null;
   /** Null when only store tags change (no file write). */
   newHash: string | null;
   indexedSourceHash: string;
@@ -3500,6 +3502,16 @@ export async function handleUpdateDoc(
       .join("\n");
   };
 
+  const userTagState = async (documentId: number): Promise<string> => {
+    const rows = await store.getTagsForDoc(documentId);
+    if (!rows.ok) throw new Error(rows.error.message);
+    return rows.value
+      .filter((row) => row.source === "user")
+      .map((row) => row.tag)
+      .sort()
+      .join("\n");
+  };
+
   const readModifiedAt = async (path: string): Promise<string> => {
     const { stat } = await import("node:fs/promises"); // no Bun structure stat parity
     return (await stat(path)).mtime.toISOString();
@@ -3558,6 +3570,7 @@ export async function handleUpdateDoc(
       ? {
           base: await tagState(doc.id),
           result: await tagState(doc.id, normalizedTags),
+          baseUser: await userTagState(doc.id),
         }
       : null;
     const currentSourceHash = hashContent(currentText);
@@ -3607,6 +3620,7 @@ export async function handleUpdateDoc(
         relPath: doc.relPath,
         baseTagState: tagStates?.base ?? null,
         resultTagState: tagStates?.result ?? null,
+        baseUserTagState: tagStates?.baseUser ?? null,
         docid: doc.docid,
         gnoUri: doc.uri,
         baseHash: currentSourceHash,
@@ -3726,8 +3740,21 @@ export async function handleUpdateDoc(
           const file = Bun.file(plan.fullPath);
           if (!(await file.exists())) return "unexpected";
           const onDisk = hashContent(await file.text());
-          if (onDisk === plan.newHash) return "published";
-          return onDisk === plan.baseHash ? "absent" : "unexpected";
+          if (onDisk !== plan.newHash) {
+            return onDisk === plan.baseHash ? "absent" : "unexpected";
+          }
+          if (plan.resultTagState === null) return "published";
+          // Content plus tags: finish rewrites the user tags, so resume only
+          // if no store-only tag write landed since admission. A re-sync of
+          // this request's own file may move frontmatter tags; that is fine.
+          const current = await store.getDocumentByUri(plan.gnoUri);
+          if (!current.ok || !current.value) return "unexpected";
+          const tags = await tagState(current.value.id);
+          return tags === plan.baseTagState ||
+            tags === plan.resultTagState ||
+            (await userTagState(current.value.id)) === plan.baseUserTagState
+            ? "published"
+            : "unexpected";
         },
         finish,
         resultRef: ({ body, target }) => ({

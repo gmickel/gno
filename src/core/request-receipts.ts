@@ -18,6 +18,7 @@ import { basename, dirname, join } from "node:path";
 
 import { MCP_ERRORS } from "./errors";
 import { withWriteLock } from "./file-lock";
+import { windowsPrivatePath } from "./windows-private-path";
 import { writeLeasePath } from "./write-lease";
 
 /** Committed receipts keep their full outcome this long, then become tombstones. */
@@ -217,12 +218,31 @@ CREATE TABLE IF NOT EXISTS request_receipts (
   PRIMARY KEY (namespace, request_id)
 ) WITHOUT ROWID`;
 
+/** Ledger directories whose owner-only Windows DACL this process verified. */
+const privateLedgerDirs = new Set<string>();
+
+/**
+ * Windows ignores POSIX modes: give a new ledger directory the current-user
+ * DACL before SQLite creates the database or its WAL/SHM (they inherit it),
+ * and refuse an existing one that grants another principal access.
+ */
+async function secureLedgerDir(
+  dir: string,
+  created: string | undefined
+): Promise<void> {
+  if (process.platform !== "win32" || privateLedgerDirs.has(dir)) return;
+  await windowsPrivatePath(dir, created !== undefined);
+  privateLedgerDirs.add(dir);
+}
+
 async function openLedger(path: string): Promise<Database> {
   try {
-    await mkdir(dirname(path), { recursive: true, mode: 0o700 });
+    const dir = dirname(path);
+    const created = await mkdir(dir, { recursive: true, mode: 0o700 });
+    await secureLedgerDir(dir, created);
     const db = new Database(path, { create: true, strict: true });
     try {
-      // Private before any journal file exists (they inherit this mode).
+      // POSIX: private before any journal file exists (they inherit this mode).
       await chmod(path, 0o600);
       db.run(`PRAGMA busy_timeout = ${LEDGER_BUSY_TIMEOUT_MS}`);
       db.run("PRAGMA journal_mode = WAL");

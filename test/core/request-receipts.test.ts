@@ -24,6 +24,7 @@ import {
   runRequestedWrite,
   validateRequestId,
 } from "../../src/core/request-receipts";
+import { windowsPrivatePath } from "../../src/core/windows-private-path";
 import { safeRm } from "../helpers/cleanup";
 
 const roots: string[] = [];
@@ -221,7 +222,10 @@ describe("admission and replay", () => {
       "status",
       "updatedAt",
     ]);
-    if (process.platform !== "win32") {
+    if (process.platform === "win32") {
+      // Throws unless the ledger grants only the current user access.
+      await windowsPrivatePath(f.ledgerPath);
+    } else {
       expect((await stat(f.ledgerPath)).mode & 0o777).toBe(0o600);
     }
   });

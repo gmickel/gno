@@ -152,6 +152,96 @@ test("an interrupted tag-only save never overwrites newer tags", async () => {
   expect(await userTags()).toEqual(["newer"]);
 });
 
+test("an interrupted content-plus-tags save never overwrites newer tags", async () => {
+  await Bun.write(join(h.notes.path, "data.txt"), "plain text\n");
+  await defaultSyncService.syncCollection(h.notes, h.store, {
+    runUpdateCmd: false,
+    gitPull: false,
+  });
+  const doc = await h.store.getDocument("notes", "data.txt");
+  if (!doc.ok || !doc.value) throw new Error("fixture not indexed");
+  const { docid, uri } = doc.value;
+  const put = (body: Record<string, unknown>, crash = false) =>
+    handleUpdateDoc(
+      ctx(),
+      h.store,
+      docid,
+      new Request("http://localhost/api/docs/data", {
+        method: "PUT",
+        body: JSON.stringify({ uri, ...body }),
+      }),
+      {
+        lockPath: h.lockPath,
+        requestCheckpoint: (stage) => {
+          if (crash && stage === "published")
+            throw new Error("simulated crash");
+        },
+        syncCollection: async () => {
+          throw new Error("deferred sync is not exercised here");
+        },
+      }
+    );
+  const tags = async () => {
+    const rows = await h.store.getTagsForDoc(doc.value!.id);
+    return rows.ok ? rows.value.map((row) => row.tag) : [];
+  };
+  const original = { content: "edited\n", tags: ["stale"], requestId: "mix-a" };
+
+  expect((await put(original, true)).status).toBe(500);
+  // Store-only tag change on the published file (no file write).
+  expect((await put({ tags: ["newer"] })).status).toBe(200);
+  const retried = await put(original);
+  expect(retried.status).toBe(409);
+  expect(await retried.json()).toMatchObject({
+    error: { code: "REQUEST_RECOVERY_CONFLICT" },
+  });
+  expect(await tags()).toEqual(["newer"]);
+});
+
+test("an interrupted content-plus-tags save still finishes after a re-sync", async () => {
+  const seed = await seedOp(h, "document-update");
+  const seeded = await h.store.getDocument("notes", "doc.md");
+  if (!seeded.ok || !seeded.value) throw new Error("fixture not indexed");
+  await h.store.setDocTags(seeded.value.id, ["mine"], "user");
+  const original = {
+    content: "---\ntags: [old]\n---\n# Doc\n\nv1\n",
+    tags: ["fresh"],
+    requestId: "mix-b",
+  };
+  const put = (crash = false) =>
+    handleUpdateDoc(
+      ctx(),
+      h.store,
+      seed.docid ?? "",
+      new Request("http://localhost/api/docs/doc", {
+        method: "PUT",
+        body: JSON.stringify({ uri: seed.docUri, ...original }),
+      }),
+      {
+        lockPath: h.lockPath,
+        requestCheckpoint: (stage) => {
+          if (crash && stage === "published")
+            throw new Error("simulated crash");
+        },
+        syncCollection: async () => {
+          throw new Error("deferred sync is not exercised here");
+        },
+      }
+    );
+
+  expect((await put(true)).status).toBe(500);
+  // A sync after the crash re-reads this request's own frontmatter tags.
+  await defaultSyncService.syncCollection(h.notes, h.store, {
+    runUpdateCmd: false,
+    gitPull: false,
+  });
+  const retried = await put();
+  expect(retried.status).toBe(200);
+  const doc = await h.store.getDocument("notes", "doc.md");
+  const rows = await h.store.getTagsForDoc(doc.ok ? (doc.value?.id ?? -1) : -1);
+  expect(rows.ok && rows.value.map((row) => row.tag).sort()).toEqual(["fresh"]);
+});
+
 describe("REST request IDs", () => {
   test("a capture retry replays with its original status and is inspectable", async () => {
     const body = {
