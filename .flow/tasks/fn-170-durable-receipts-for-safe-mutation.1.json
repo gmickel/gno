@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-170-durable-receipts-for-safe-mutation",
   "spec_path": ".flow/tasks/fn-170-durable-receipts-for-safe-mutation.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Durable receipts for safe mutation retries",
   "updated_at": "2026-09-24T07:07:55.328058Z"
 }
