@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-171-native-agent-session-ingestion",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-24T12:56:00.739541Z",
   "created_at": "2026-09-21T20:55:14.846767Z",
   "default_impl": null,
   "default_review": null,
@@ -578,5 +578,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-24T12:55:02.644946Z"
+  "updated_at": "2026-09-24T12:56:00.739548Z"
 }
