@@ -12,7 +12,7 @@ import type { SessionAutomationRunResult } from "../sessions/types";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 
 import { acquireCliWriteLease } from "../core/write-lease";
-import { tickAutomation } from "../sessions/automation";
+import { heartbeatAutomation, tickAutomation } from "../sessions/automation";
 import { AUTOMATION_TICK_MS } from "../sessions/automation-state";
 
 const LEASE_HOLDER_COMMAND = "gno daemon (session automation)";
@@ -58,6 +58,7 @@ export class SessionAutomationScheduler {
   readonly #options: SessionAutomationSchedulerOptions;
   readonly #startedAt: Date;
   #timer: ReturnType<typeof setTimeout> | null = null;
+  #heartbeat: ReturnType<typeof setInterval> | null = null;
   #running: Promise<void> | null = null;
   #disposed = false;
 
@@ -66,9 +67,27 @@ export class SessionAutomationScheduler {
     this.#startedAt = (options.now ?? (() => new Date()))();
   }
 
-  /** Drain once at startup, then tick. */
+  /** Drain once at startup, then tick; heartbeat independently of ticks. */
   start(): void {
+    this.#beat();
+    this.#heartbeat = setInterval(
+      () => this.#beat(),
+      this.#options.tickMs ?? AUTOMATION_TICK_MS
+    );
+    this.#heartbeat.unref?.();
     this.#schedule(0);
+  }
+
+  /** A tick or import in progress must not let the heartbeat go stale. */
+  #beat(): void {
+    if (this.#disposed) return;
+    const options = this.#options;
+    heartbeatAutomation({
+      configPath: options.configPath,
+      indexName: options.indexName,
+      now: options.now,
+      daemonStartedAt: this.#startedAt,
+    }).catch((error: unknown) => options.onError?.(error));
   }
 
   /** One tick; coalesces with a tick already in flight. */
@@ -105,6 +124,8 @@ export class SessionAutomationScheduler {
 
   dispose(): void {
     this.#disposed = true;
+    if (this.#heartbeat) clearInterval(this.#heartbeat);
+    this.#heartbeat = null;
     if (this.#timer) clearTimeout(this.#timer);
     this.#timer = null;
   }

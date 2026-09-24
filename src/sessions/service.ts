@@ -325,7 +325,12 @@ export class SessionsService {
         collection: source.collection,
         projects: source.projects ?? [],
       });
-      for (const unit of units) {
+      // One batch of stats: status stays responsive while an import runs
+      // in the same process.
+      const fingerprints = await Promise.all(
+        units.map((unit) => unitFingerprint(unit).catch(() => ""))
+      );
+      for (const [index, unit] of units.entries()) {
         const key = unitKey(source.id, unit.locator);
         present.add(key);
         const previous = known[key];
@@ -333,7 +338,7 @@ export class SessionsService {
           !previous ||
           previous.status !== "complete" ||
           previous.destinations !== destinations ||
-          previous.fingerprint !== (await unitFingerprint(unit).catch(() => ""))
+          previous.fingerprint !== fingerprints[index]
         ) {
           pending += 1;
         }
@@ -1393,22 +1398,13 @@ function mergeThreads(
 }
 
 async function countArchiveFiles(root: string): Promise<number> {
-  let count = 0;
-  const queue = [root];
-  while (queue.length > 0) {
-    const dir = queue.pop() as string;
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      if (entry.isDirectory()) queue.push(join(dir, entry.name));
-      else if (entry.isFile() && entry.name.endsWith(".jsonl")) count += 1;
-    }
-  }
-  return count;
+  const entries = await readdir(root, {
+    recursive: true,
+    withFileTypes: true,
+  }).catch(() => []);
+  return entries.filter(
+    (entry) => entry.isFile() && entry.name.endsWith(".jsonl")
+  ).length;
 }
 
 async function sampleVersions(

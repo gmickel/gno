@@ -655,16 +655,20 @@ export async function handleSessionsAutomationEnable(
   const { body } = parsed;
   const extra = unknownKeys(body, ENABLE_KEYS);
   if (extra) return extra;
-  const hook = body.hook as
-    | { harness?: unknown; settings?: unknown }
-    | undefined;
+  const hook = body.hook as { harness?: unknown } | undefined;
   const schedule = body.schedule as { cadence?: unknown } | undefined;
+  if (hook && typeof hook === "object" && "settings" in hook) {
+    // The browser installs only into the default or already recorded
+    // settings file; another file is named locally with the CLI.
+    return invalid(
+      "hook.settings is not accepted here; choose another settings file with gno sessions automation enable --settings"
+    );
+  }
   if (
     (hook !== undefined &&
       (typeof hook !== "object" ||
         hook === null ||
-        typeof hook.harness !== "string" ||
-        (hook.settings !== undefined && typeof hook.settings !== "string"))) ||
+        typeof hook.harness !== "string")) ||
     (schedule !== undefined &&
       (typeof schedule !== "object" ||
         schedule === null ||
@@ -680,14 +684,7 @@ export async function handleSessionsAutomationEnable(
       await automationContext(ctxHolder),
       id,
       {
-        ...(hook
-          ? {
-              hook: {
-                harness: hook.harness as string,
-                settings: hook.settings as string | undefined,
-              },
-            }
-          : {}),
+        ...(hook ? { hook: { harness: hook.harness as string } } : {}),
         ...(schedule
           ? { schedule: { cadence: schedule.cadence as string | undefined } }
           : {}),

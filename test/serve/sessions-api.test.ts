@@ -635,6 +635,27 @@ describe("automation routes", () => {
     ]);
   });
 
+  test("the browser cannot choose a hook settings file", async () => {
+    await setAutomationProfile(
+      { configPath, indexName: INDEX },
+      { id: "main", sources: ["codex-main"] }
+    );
+    await expectError(
+      await handleSessionsAutomationEnable(
+        ctxHolder,
+        store,
+        "main",
+        post("/api/sessions/automation/main/enable", {
+          hook: { harness: "claude-code", settings: join(root, "any.json") },
+        }),
+        { server: localServer }
+      ),
+      400,
+      "SESSIONS_INVALID_INPUT"
+    );
+    expect(await Bun.file(join(root, "any.json")).exists()).toBe(false);
+  });
+
   test("a local owner enables a schedule; any allowed client runs the profile", async () => {
     const deps = { server: localServer };
     const path = "/api/sessions/automation/main";

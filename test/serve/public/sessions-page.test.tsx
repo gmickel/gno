@@ -236,6 +236,98 @@ describe("sessions page", () => {
     expect(screen.getByText("every 30m; not running: no daemon")).toBeTruthy();
   });
 
+  test("automation actions move keyboard focus to their outcome", async () => {
+    const { user } = await renderPage();
+    const failWith = (text: string): Promise<SessionsApiResult> =>
+      Promise.resolve({
+        data: null,
+        error: text,
+        sessionsCode: "SESSIONS_INVALID_INPUT",
+        status: 400,
+      });
+    sessionsApi.mockImplementation(async (...args: unknown[]) => {
+      const endpoint = String(args[0]);
+      const method = (args[1] as RequestInit | undefined)?.method ?? "GET";
+      if (endpoint === "/api/sessions/status") return statusResult();
+      if (endpoint.endsWith("/preview")) {
+        return ok({
+          archiveRoot: "/a",
+          sources: [],
+          collections: [],
+          hook: { settings: "/s", command: "c" },
+          daemon: { state: "not_running", command: "gno daemon" },
+          notes: [],
+        });
+      }
+      if (endpoint.endsWith("/enable")) return failWith("Cadence is invalid");
+      if (method === "PUT" || method === "DELETE") return ok({});
+      if (endpoint.endsWith("/disable")) return ok({});
+      return ok({});
+    });
+
+    // Create profile: focus lands on the announcement.
+    await user.type(await screen.findByLabelText("Profile ID"), "web");
+    await user.click(screen.getByRole("checkbox", { name: /codex-main/ }));
+    await user.click(screen.getByRole("button", { name: /Create profile/ }));
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toContain(
+        "Profile web created"
+      )
+    );
+
+    // Pause: the Pause button disappears; focus lands on a switch.
+    const paused = structuredClone(status);
+    paused.automation.profiles[0]!.schedule!.enabled = false;
+    statusResult = () => ok(paused);
+    await user.click(screen.getByRole("button", { name: "Pause nightly" }));
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute("role")).toBe("switch")
+    );
+
+    // An invalid cadence error takes focus, also when it repeats.
+    const scheduleSwitch = screen.getByRole("switch", {
+      name: /Daemon schedule/,
+    });
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      (scheduleSwitch as HTMLInputElement).focus();
+      await user.click(scheduleSwitch);
+      await user.click(await screen.findByRole("button", { name: "Enable" }));
+      await waitFor(() =>
+        expect(document.activeElement?.textContent).toContain(
+          "Cadence is invalid"
+        )
+      );
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+    }
+
+    // Remove: the card disappears; focus lands on the announcement.
+    await user.click(
+      screen.getByRole("button", { name: "Remove profile nightly" })
+    );
+    await user.click(screen.getByRole("button", { name: "Confirm remove" }));
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toContain(
+        "Profile nightly removed"
+      )
+    );
+  });
+
+  test("status is polled while a profile is running", async () => {
+    const running = structuredClone(status);
+    running.automation.profiles[0]!.state = "running";
+    statusResult = () => ok(running);
+    await renderPage();
+    await screen.findByText("running");
+    const calls = () =>
+      sessionsApi.mock.calls.filter(
+        (args) => args[0] === "/api/sessions/status"
+      ).length;
+    const before = calls();
+    await waitFor(() => expect(calls()).toBeGreaterThan(before), {
+      timeout: 3500,
+    });
+  });
+
   test("preview shows a partial receipt with redaction and destination policy", async () => {
     const { user } = await renderPage();
     await user.click(

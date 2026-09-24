@@ -27,6 +27,7 @@ import { notifyAutomationImport } from "../../src/serve/session-automation";
 import {
   admitHookTrigger,
   type AutomationContext,
+  heartbeatAutomation,
   disableAutomation,
   enableAutomation,
   removeAutomationProfile,
@@ -977,5 +978,75 @@ describe("review round 1 regressions", () => {
     // An up-to-date rerun synced nothing, so nothing is queued.
     expect(marked).toBe(1);
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe("live QA regressions", () => {
+  test.each(["banana", "5s"])(
+    "a hand-edited invalid cadence (%s) is reported off with a warning and never runs",
+    async (cadence) => {
+      const config = await archiveConfig();
+      config.sessions!.automation![0]!.schedule = { enabled: true, cadence };
+      await saveConfigToPath(config, configPath);
+      await heartbeatAutomation({
+        ...ctx(),
+        pid: process.pid,
+        daemonStartedAt: new Date(clock),
+      }).catch(() => undefined);
+      clock += 24 * 60 * MINUTE;
+      expect(await tick()).toEqual([]);
+      const current = await status();
+      const profile = current.automation.profiles[0]!;
+      expect(profile.schedule).toMatchObject({ enabled: false, cadence });
+      expect(profile.state).toBe("off");
+      expect(profile.recovery).toContain(`"${cadence}" is invalid`);
+      expect(current.warnings.join(" ")).toContain(`"${cadence}" is invalid`);
+    }
+  );
+
+  test("the heartbeat alone keeps a busy daemon reported as running", async () => {
+    await enableAutomation(ctx(), "main", { schedule: { cadence: "1h" } });
+    await tick({ pid: process.pid });
+    clock += 20 * MINUTE;
+    expect((await status()).automation.daemon.state).toBe("stale");
+    await heartbeatAutomation({
+      ...ctx(),
+      pid: process.pid,
+      daemonStartedAt: new Date(T0),
+    });
+    expect((await status()).automation.daemon.state).toBe("running");
+  });
+
+  test("a hook for an unknown profile says so", async () => {
+    expect(
+      await admitHookTrigger(ctx(), {
+        harness: "claude-code",
+        profileId: "ghost",
+        payload: null,
+      })
+    ).toEqual({
+      outcome: "skipped",
+      profileId: "ghost",
+      reason: "unknown_profile",
+    });
+  });
+
+  test("--settings must name an existing file unless it is the default location", async () => {
+    const missing = join(root, "claude", "nope.json");
+    await expectCode(
+      enableAutomation(ctx(), "main", {
+        hook: { harness: "claude-code", settings: missing },
+      }),
+      "SESSIONS_INVALID_INPUT"
+    );
+    expect(await Bun.file(missing).exists()).toBe(false);
+    const home = join(root, "claude-home");
+    const created = await enableAutomation(
+      { ...ctx(), env: { CLAUDE_CONFIG_DIR: home } },
+      "main",
+      { hook: { harness: "claude-code" } }
+    );
+    expect(created.hook.settings).toBe(join(home, "settings.json"));
+    expect(await Bun.file(join(home, "settings.json")).exists()).toBe(true);
   });
 });

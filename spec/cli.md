@@ -1984,7 +1984,10 @@ profile's hook is enabled, and durably records one pending generation. It
 never imports, parses sessions or uses the network, and waits at most 1 s for
 the lock. Output is one content-free line: `accepted (…pending, not yet
 archived…)`, `skipped (…)` (exit 0), or `not accepted (…)` (exit 2).
-`GNO_SESSIONS_HOOKS=off` or `0` skips immediately.
+`GNO_SESSIONS_HOOKS=off` or `0` skips immediately. An unknown profile is
+reported as `skipped (… unknown_profile)`, a profile whose hook is off as
+`skipped (… hook_disabled)`. An explicit `--settings` other than the default
+location must name an existing file (`VALIDATION`).
 
 **prune**: lists archived units whose source is gone (preview by default);
 `--apply` deletes exactly those archive files and syncs the index, never a

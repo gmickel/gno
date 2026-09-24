@@ -56,6 +56,7 @@ import {
   profileCollections,
   profileLimit,
   profileRetries,
+  scheduleRunnable,
 } from "./automation-status";
 import { canonicalConfigPath, assertSessionBinding } from "./binding";
 import {
@@ -467,6 +468,18 @@ export async function enableAutomation(
       );
     }
     settings = resolve(settings);
+    // Only the documented default location may be created; any other file
+    // must already exist as a settings file the owner names explicitly.
+    const isDefault = settings === resolve(defaultClaudeSettingsPath(ctx.env));
+    if (input.hook.settings !== undefined && !isDefault) {
+      const file = await stat(settings).catch(() => null);
+      if (!file?.isFile()) {
+        throw new SessionsError(
+          "SESSIONS_INVALID_INPUT",
+          "--settings must name an existing Claude Code settings file; only the default settings.json is created when missing."
+        );
+      }
+    }
   }
   let cadence: string | undefined;
   if (input.schedule) {
@@ -719,9 +732,17 @@ export async function admitHookTrigger(
     };
   }
   const { sessions } = await loadArchive(ctx);
-  const enabled = sessions.automation?.find(
+  const configured = sessions.automation?.find(
     (item) => item.id === input.profileId
-  )?.hook;
+  );
+  if (!configured) {
+    return {
+      outcome: "skipped",
+      profileId: input.profileId,
+      reason: "unknown_profile",
+    };
+  }
+  const enabled = configured.hook;
   if (!enabled?.enabled || enabled.harness !== input.harness) {
     // Nothing to admit: the state file is not touched.
     return {
@@ -876,7 +897,7 @@ export async function runAutomationProfile(
         (kind) =>
           kind === "manual" ||
           (kind === "hook" && profile.hook?.enabled === true) ||
-          (kind === "schedule" && profile.schedule?.enabled === true)
+          (kind === "schedule" && scheduleRunnable(profile))
       );
       if (isPending(run) && allowed.length === 0) {
         clearPending(run);
@@ -997,6 +1018,34 @@ export async function runAutomationProfile(
  * interrupted runs, then a drain of every profile that may start. Archives
  * without automation profiles are left untouched.
  */
+/**
+ * Daemon heartbeat, written on its own timer so a long import or the
+ * daemon's initial sync never makes a live daemon look absent. Archives
+ * without automation profiles are left untouched.
+ */
+export async function heartbeatAutomation(
+  deps: AutomationContext & { pid?: number; daemonStartedAt: Date }
+): Promise<void> {
+  const { sessions } = await loadArchive(deps);
+  if (
+    (sessions.automation ?? []).length === 0 ||
+    !(await stateDirExists(sessions.archiveRoot))
+  ) {
+    return;
+  }
+  await mutateAutomationState(
+    sessions.archiveRoot,
+    (state) => {
+      state.daemon = {
+        pid: deps.pid ?? process.pid,
+        startedAt: deps.daemonStartedAt.toISOString(),
+        heartbeatAt: nowOf(deps).toISOString(),
+      };
+    },
+    { lockWaitMs: HOOK_ADMISSION_DEADLINE_MS }
+  );
+}
+
 export async function tickAutomation(
   deps: AutomationRunDeps & { daemonStartedAt: Date }
 ): Promise<SessionAutomationRunResult[]> {
@@ -1019,8 +1068,8 @@ export async function tickAutomation(
       };
       const ids: string[] = [];
       for (const profile of profiles) {
-        const cadenceMs = profile.schedule?.enabled
-          ? automationCadenceMs(profile.schedule.cadence)
+        const cadenceMs = scheduleRunnable(profile)
+          ? automationCadenceMs(profile.schedule?.cadence)
           : null;
         let run = ownProfile(state, profile.id);
         if (cadenceMs !== null) {

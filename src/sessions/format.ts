@@ -99,9 +99,12 @@ function formatAutomationLines(automation: SessionAutomationStatus): string[] {
       : "hook off";
     let schedule = "schedule off";
     if (profile.schedule?.enabled) {
-      const next = profile.schedule.nextDueAt
-        ? `next ${at(profile.schedule.nextDueAt)}`
-        : "not running: no daemon";
+      let next = "not running: no daemon";
+      if (profile.schedule.nextDueAt) {
+        next = `next ${at(profile.schedule.nextDueAt)}`;
+      } else if (automation.daemon.state === "running") {
+        next = "due time set on the daemon's next tick";
+      }
       schedule = `schedule every ${profile.schedule.cadence}, ${next}`;
     }
     lines.push(

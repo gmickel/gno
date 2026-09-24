@@ -57,6 +57,20 @@ function stateVariant(
   return "secondary";
 }
 
+/** Poll status this often while a run is in progress. */
+const RUN_POLL_MS = 2000;
+
+type Notify = (text: string) => void;
+
+function scheduleLine(
+  daemonRunning: boolean,
+  nextDueAt: string | null,
+  at: (iso: string | null) => string
+): string {
+  if (!daemonRunning) return "not running: no daemon";
+  return nextDueAt ? `next ${at(nextDueAt)}` : "due time set on the next tick";
+}
+
 function clockFor(timezone: string): (iso: string | null) => string {
   return (iso) => {
     if (!iso) return "never";
@@ -73,20 +87,30 @@ function clockFor(timezone: string): (iso: string | null) => string {
 function CreateProfileForm({
   sources,
   onDone,
+  notify,
 }: {
   sources: SessionSourceStatus[];
   onDone: () => Promise<void>;
+  notify: Notify;
 }) {
   const idField = useId();
   const [id, setId] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ text: string; nonce: number } | null>(
+    null
+  );
   const [saving, setSaving] = useState(false);
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
+  const fail = (text: string) =>
+    setError((current) => ({ text, nonce: (current?.nonce ?? 0) + 1 }));
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (selected.length === 0) {
-      setError("Select at least one registered source.");
+      fail("Select at least one registered source.");
       return;
     }
     setSaving(true);
@@ -96,13 +120,15 @@ function CreateProfileForm({
     );
     setSaving(false);
     if (result.error) {
-      setError(result.error);
+      fail(result.error);
       return;
     }
+    const created = id.trim();
     setError(null);
     setId("");
     setSelected([]);
     await onDone();
+    notify(`Profile ${created} created; every trigger is off.`);
   };
 
   return (
@@ -143,8 +169,13 @@ function CreateProfileForm({
         ))}
       </fieldset>
       {error && (
-        <p className="break-words text-destructive text-sm" role="alert">
-          {error}
+        <p
+          className="break-words text-destructive text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          ref={errorRef}
+          role="alert"
+          tabIndex={-1}
+        >
+          {error.text}
         </p>
       )}
       <Button disabled={saving} size="sm" type="submit">
@@ -252,18 +283,24 @@ function ProfileCard({
   daemonRunning,
   localClient,
   onChanged,
+  notify,
+  onRunActive,
 }: {
   profile: SessionProfileStatus;
   timezone: string;
   daemonRunning: boolean;
   localClient: boolean;
   onChanged: () => Promise<void>;
+  notify: Notify;
+  onRunActive: (active: boolean) => void;
 }) {
   const at = clockFor(timezone);
   const hookSwitch = useId();
   const scheduleSwitch = useId();
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ text: string; nonce: number } | null>(
+    null
+  );
   const [confirming, setConfirming] = useState<{
     trigger: Trigger;
     preview: AutomationPreview;
@@ -302,7 +339,8 @@ function ProfileCard({
     const result = await sessionsApi<T>(endpoint, init);
     setBusy(null);
     if (result.error) {
-      setError(result.error);
+      const text = result.error;
+      setError((current) => ({ text, nonce: (current?.nonce ?? 0) + 1 }));
       return null;
     }
     setError(null);
@@ -341,7 +379,13 @@ function ProfileCard({
       method: "POST",
       body: JSON.stringify(which),
     });
-    if (done) await onChanged();
+    if (!done) return;
+    await onChanged();
+    // The Pause button is gone once nothing is enabled: land on a switch.
+    (which.schedule && !which.hook
+      ? switches.schedule
+      : switches.hook
+    ).current?.focus();
   };
 
   const toggle = (trigger: Trigger, on: boolean) => {
@@ -352,11 +396,12 @@ function ProfileCard({
   };
 
   const runNow = async () => {
+    onRunActive(true);
     const result = await call<SessionAutomationRunResult>(
       "run",
       "/api/sessions/automation/run",
       { method: "POST", body: JSON.stringify({ profileId: profile.id }) }
-    );
+    ).finally(() => onRunActive(false));
     if (result) {
       setLastRun(result);
       await onChanged();
@@ -365,7 +410,9 @@ function ProfileCard({
 
   const remove = async () => {
     const done = await call("remove", base, { method: "DELETE" });
-    if (done) await onChanged();
+    if (!done) return;
+    await onChanged();
+    notify(`Profile ${profile.id} removed; archived sessions were kept.`);
   };
 
   const hookOn = profile.hook?.enabled === true;
@@ -487,11 +534,11 @@ function ProfileCard({
             Daemon schedule
             <span className="block text-muted-foreground text-xs">
               {scheduleOn
-                ? `every ${profile.schedule?.cadence}; ${
-                    daemonRunning && profile.schedule?.nextDueAt
-                      ? `next ${at(profile.schedule.nextDueAt)}`
-                      : "not running: no daemon"
-                  }`
+                ? `every ${profile.schedule?.cadence}; ${scheduleLine(
+                    daemonRunning,
+                    profile.schedule?.nextDueAt ?? null,
+                    at
+                  )}`
                 : "off"}
             </span>
           </span>
@@ -566,7 +613,7 @@ function ProfileCard({
           role="alert"
           tabIndex={-1}
         >
-          {error}
+          {error.text}
         </p>
       )}
     </li>
@@ -593,6 +640,42 @@ export function AutomationPanel({
 }: AutomationPanelProps) {
   const at = clockFor(automation.timezone);
   const daemonRunning = automation.daemon.state === "running";
+  const [notice, setNotice] = useState<{ text: string; nonce: number } | null>(
+    null
+  );
+  const noticeRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (notice) noticeRef.current?.focus();
+  }, [notice]);
+  const notify: Notify = (text) =>
+    setNotice((current) => ({ text, nonce: (current?.nonce ?? 0) + 1 }));
+
+  // Poll while a run is in progress (here, in the daemon, or requested from
+  // this page) so running/pending states appear without a reload.
+  const [runsInFlight, setRunsInFlight] = useState(0);
+  const onRunActive = (active: boolean) =>
+    setRunsInFlight((count) => Math.max(0, count + (active ? 1 : -1)));
+  const active =
+    runsInFlight > 0 ||
+    automation.profiles.some(
+      (profile) =>
+        profile.state === "running" ||
+        (daemonRunning && profile.state === "pending")
+    );
+  const refresh = useRef(onChanged);
+  refresh.current = onChanged;
+  useEffect(() => {
+    if (!active) return;
+    let polling = false;
+    const timer = setInterval(() => {
+      if (polling) return;
+      polling = true;
+      void refresh.current().finally(() => {
+        polling = false;
+      });
+    }, RUN_POLL_MS);
+    return () => clearInterval(timer);
+  }, [active]);
   let daemonLine = "not running: no daemon";
   if (daemonRunning) {
     daemonLine = `running (heartbeat ${at(automation.daemon.heartbeatAt)})`;
@@ -641,7 +724,9 @@ export function AutomationPanel({
               daemonRunning={daemonRunning}
               key={profile.id}
               localClient={localClient}
+              notify={notify}
               onChanged={onChanged}
+              onRunActive={onRunActive}
               profile={profile}
               timezone={automation.timezone}
             />
@@ -649,7 +734,21 @@ export function AutomationPanel({
         </ul>
       )}
       {localClient && sources.length > 0 && (
-        <CreateProfileForm onDone={onChanged} sources={sources} />
+        <CreateProfileForm
+          notify={notify}
+          onDone={onChanged}
+          sources={sources}
+        />
+      )}
+      {notice && (
+        <p
+          className="break-words text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          ref={noticeRef}
+          role="status"
+          tabIndex={-1}
+        >
+          {notice.text}
+        </p>
       )}
     </section>
   );

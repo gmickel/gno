@@ -878,7 +878,7 @@ What the page does:
   per-unit outcomes without writing anything. **Import** runs the manual
   import. A `partial` receipt stays on screen with each incomplete, failed,
   deferred, or quarantined unit and its reason; importing again retries them.
-- **Automation.** Off by default. A same-host browser can create a profile
+- **Automation.** Off by default. A browser on this machine can create a profile
   from registered sources and switch the Claude Code SessionEnd hook and the
   daemon schedule on separately; each switch first shows a preview of the
   sources, destinations, the settings file it edits, and the daemon
@@ -888,7 +888,11 @@ What the page does:
   the next due time only while a daemon runs (otherwise `not running: no
 daemon`), and a recovery action. **Run now** works for any allowed client;
   **Pause** and **Remove** (which uninstalls the owned hook entry and keeps
-  archives) are same-host only.
+  archives) are same-host only. While a run is in progress the page refreshes
+  its status every 2 seconds, so the profile shows `running`, and after each
+  action keyboard focus moves to the resulting status, switch, or error.
+  Status requests to a `gno serve` that is itself running an import can take
+  several seconds.
 - **Session search.** Searches the archive with harness, project, role
   (human only, assistant only, or both), and archive-collection filters. Each
   result carries an explicit **Human** or **Assistant** badge and opens the
@@ -898,7 +902,7 @@ The page never imports on its own, and `gno serve` does not run hooks'
 pending work or schedules: they run in `gno daemon` on the archive (see
 [Automation](SESSIONS.md#automation-opt-in)). Discovery, registration,
 removal, archive init, and automation changes are refused (403) for anything
-other than a same-host browser; status, import by source ID, automation
+other than a same-host client; status, import by source ID, automation
 runs, and search follow the normal API rules. See
 [Agent Sessions](SESSIONS.md) and the [REST endpoints](API.md#agent-sessions).
 

@@ -29,7 +29,7 @@ Three rules shape the feature:
 | :------ | :------------------------- | :--------------------------------------- | :----------------------------------------- |
 | CLI     | `gno sessions status`      | `gno sessions import`                    | `gno sessions discover`, `init`, `source`  |
 | MCP     | `gno_sessions_status`      | `gno_sessions_import` (`--enable-write`) | none (host paths never reach MCP clients)  |
-| REST    | `GET /api/sessions/status` | `POST /api/sessions/import`              | same-host browser only                     |
+| REST    | `GET /api/sessions/status` | `POST /api/sessions/import`              | same-host client only                      |
 | SDK     | `client.sessionsStatus()`  | `client.importSessions()`                | `client.discoverSessions()`                |
 | Web UI  | `/sessions` page           | Dry-run preview, then import             | Sources and archive setup (same host only) |
 
@@ -544,7 +544,9 @@ history.
 
 `enable --hook claude-code` adds one entry to a Claude Code settings file,
 by default `$CLAUDE_CONFIG_DIR/settings.json`, else
-`~/.claude/settings.json` (choose another with `--settings <absolute path>`):
+`~/.claude/settings.json`, which is created when missing. Another file can
+be chosen only with the CLI (`--settings <absolute path>`), and it must
+already exist; the Web UI and REST always use the recorded or default file:
 
 ```json
 {
@@ -657,7 +659,14 @@ shows as a failed run with reason `busy`, retried with backoff.
 | `retryAt`       | When a failed run is retried                                                  |
 | `recovery`      | The next action to take, when one is needed                                   |
 
-The `daemon` block reports `running` only with a fresh heartbeat from a live
+A schedule whose cadence was hand-edited to an invalid value (for example
+`banana`, or `5s` below the minimum) is reported with `enabled: false`, a
+warning, and a recovery action, and never runs until you fix it with
+`sessions automation set … --cadence`.
+
+The daemon writes its heartbeat every 30 seconds on its own timer, so it
+stays `running` during its initial sync and during long imports. The
+`daemon` block reports `running` only with a fresh heartbeat from a live
 daemon on this archive, `stale` for a live process that stopped ticking, and
 `not_running` otherwise; then the schedule shows `not running: no daemon`
 instead of a due time.
@@ -800,7 +809,8 @@ discovery, and hooks and schedules cannot be enabled over MCP.
 import by source ID, and `POST /api/sessions/automation/run` work for any
 allowed client; discovery, source registration and removal, archive init,
 and every automation profile change (create, preview, enable, disable,
-remove) answer only a same-host browser.
+remove) answer only a same-host client (a local process; cross-origin
+browser pages are refused).
 
 **SDK** ([SDK.md](SDK.md#agent-sessions)). Open a client on the archive pair:
 
@@ -814,7 +824,7 @@ const receipt = await client.importSessions({
   dryRun: true,
 });
 // Run a configured automation profile now (hooks and schedules are enabled
-// from the CLI or a same-host browser only).
+// from the CLI or a same-host client only).
 const run = await client.runSessionsAutomation({ profileId: "claude" });
 ```
 

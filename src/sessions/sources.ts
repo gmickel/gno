@@ -216,13 +216,12 @@ export async function enumerateUnits(options: {
     limit,
   });
   const units: SessionUnit[] = [];
-  for (const file of files) {
-    let info2;
-    try {
-      info2 = await lstat(file.path);
-    } catch {
-      continue;
-    }
+  const infos = await Promise.all(
+    files.map((file) => lstat(file.path).catch(() => null))
+  );
+  for (const [index, file] of files.entries()) {
+    const info2 = infos[index];
+    if (!info2) continue;
     units.push({
       harness: options.harness,
       path: file.path,

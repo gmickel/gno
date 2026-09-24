@@ -38,6 +38,11 @@ export function automationCadenceMs(
   return ms !== null && ms >= MIN_AUTOMATION_CADENCE_MS ? ms : null;
 }
 
+/** Enabled with a valid cadence; a hand-edited invalid cadence never runs. */
+export const scheduleRunnable = (profile: SessionAutomationProfile): boolean =>
+  profile.schedule?.enabled === true &&
+  automationCadenceMs(profile.schedule.cadence) !== null;
+
 export const profileLimit = (profile: SessionAutomationProfile): number =>
   profile.limit ?? DEFAULT_AUTOMATION_LIMIT;
 
@@ -88,6 +93,12 @@ function recoveryFor(
   daemon: SessionAutomationStatus["daemon"]["state"]
 ): string | null {
   const id = profile.id;
+  if (
+    profile.schedule?.enabled &&
+    automationCadenceMs(profile.schedule.cadence) === null
+  ) {
+    return `The schedule cadence "${profile.schedule.cadence}" is invalid, so the schedule does not run: fix it with \`gno sessions automation set ${id} --source … --cadence 30m\` (<n>s|m|h|d, 1m to 30d).`;
+  }
   if (profile.hook?.enabled && installed === false) {
     return `The Claude Code hook entry is missing from its settings file: run \`gno sessions automation enable ${id} --hook claude-code\` to reinstall it.`;
   }
@@ -102,7 +113,9 @@ function recoveryFor(
       return `Automatic retries are exhausted: check \`gno sessions status\`, then run \`gno sessions automation run ${id}\`.`;
     }
   }
-  const scheduled = profile.schedule?.enabled === true;
+  // A live run needs no action; suggesting "run now" would only hit busy.
+  if (state === "running") return null;
+  const scheduled = scheduleRunnable(profile);
   if (daemon !== "running" && (scheduled || state === "pending")) {
     return `not running: no daemon. Schedules and admitted hook work run only while \`gno daemon\` runs on this archive's config and index; or run \`gno sessions automation run ${id}\` now.`;
   }
@@ -124,7 +137,7 @@ function deriveState(
     if (run.attempts > retries) return "failed";
     return run.retryAt ? "retrying" : "pending";
   }
-  const enabled = profile.hook?.enabled || profile.schedule?.enabled;
+  const enabled = profile.hook?.enabled || scheduleRunnable(profile);
   if (!enabled) return "off";
   if (run?.lastRun?.outcome === "failed") return "failed";
   if (run?.lastRun?.outcome === "partial") return "partial";
@@ -165,7 +178,7 @@ export async function readAutomationStatus(input: {
     const cadenceValid = automationCadenceMs(profile.schedule?.cadence);
     if (profile.schedule && cadenceValid === null) {
       warnings.push(
-        `automation profile ${profile.id}: cadence "${profile.schedule.cadence}" is invalid (use <n>s|m|h|d, at least 1m); the schedule does not run`
+        `automation profile ${profile.id}: cadence "${profile.schedule.cadence}" is invalid (use <n>s|m|h|d, 1m to 30d); the schedule is reported off and does not run`
       );
     }
     const pending = run && isPending(run) && run.pendingSince;
@@ -183,11 +196,12 @@ export async function readAutomationStatus(input: {
         : null,
       schedule: profile.schedule
         ? {
-            enabled: profile.schedule.enabled,
+            // Effective state: an invalid cadence (warned above) never runs.
+            enabled: scheduleRunnable(profile),
             cadence: profile.schedule.cadence,
             // A due time is only real while a daemon is ticking.
             nextDueAt:
-              profile.schedule.enabled && daemon === "running"
+              scheduleRunnable(profile) && daemon === "running"
                 ? (run?.nextDueAt ?? null)
                 : null,
           }
