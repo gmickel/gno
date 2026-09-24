@@ -877,6 +877,25 @@ describe("review round 1 regressions", () => {
     expect((await status()).automation.profiles[0]?.state).toBe("running");
   });
 
+  test("a run starting while removal is under way never starts", async () => {
+    const { getConfigWriteLockPath } =
+      await import("../../src/core/config-write-lock");
+    // Park the removal inside the marker lock, waiting for the config lock.
+    const configLock = await acquireWriteLock(
+      await getConfigWriteLockPath(configPath),
+      1000
+    );
+    const removal = removeAutomationProfile(ctx(), "main");
+    await Bun.sleep(400);
+    const run = runNow().catch((error: unknown) => error);
+    await Bun.sleep(200);
+    await configLock?.release();
+    const [removed, ran] = await Promise.all([removal, run]);
+    expect(removed.removed).toBe(true);
+    expect(ran).toMatchObject({ ran: false, reason: "profile_removed" });
+    expect(await archiveTree(archiveRoot)).toEqual({});
+  });
+
   test("moving the hook to another settings file uninstalls the old entry", async () => {
     const other = join(root, "claude", "other.json");
     await Bun.write(other, "{}\n");

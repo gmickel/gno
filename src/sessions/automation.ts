@@ -28,6 +28,7 @@ import { applyConfigFileChange } from "../core/config-mutation";
 import { SESSION_STATE_DIRNAME } from "./archive";
 import {
   admit,
+  type AutomationState,
   beginRun,
   canStart,
   classifyRunError,
@@ -628,48 +629,47 @@ export async function removeAutomationProfile(
 ): Promise<SessionAutomationChange> {
   const { sessions } = await loadArchive(ctx);
   const profile = findProfile(sessions, id);
-  // A running import must stay visible in status until it settles, so a
-  // profile with a live run is not removed (nothing changes).
-  const { state } = await loadAutomationState(sessions.archiveRoot);
-  if (isRunLive(ownProfile(state, id)?.running ?? null, nowOf(ctx))) {
-    throw new SessionsError(
-      "SESSIONS_BUSY",
-      `Automation profile "${id}" is running. Pause it with disable (nothing new starts), then remove it once status shows the run finished.`
-    );
-  }
-  let entriesRemoved = 0;
-  if (profile.hook) {
+  const identity = await hookIdentity(ctx, id);
+  // Runs start under the marker lock after rechecking the profile, so doing
+  // the whole removal under that lock means a run either started first (and
+  // removal refuses, keeping it visible) or never starts.
+  const remove = async (
+    state: AutomationState | null
+  ): Promise<{ entriesRemoved: number; pendingCleared: boolean }> => {
+    const run = state ? ownProfile(state, id) : undefined;
+    if (isRunLive(run?.running ?? null, nowOf(ctx))) {
+      throw new SessionsError(
+        "SESSIONS_BUSY",
+        `Automation profile "${id}" is running. Pause it with disable (nothing new starts), then remove it once status shows the run finished.`
+      );
+    }
     // Fails closed: an unreadable settings file keeps the profile, so the
     // owned entry never outlives the profile that can remove it.
-    entriesRemoved = (
-      await removeClaudeHook(profile.hook.settings, await hookIdentity(ctx, id))
-    ).removed;
-  }
-  await editProfile(ctx, id, () => null);
-  let settled: {
-    pendingCleared: boolean;
-    running: { startedAt: string } | null;
-  } = { pendingCleared: false, running: null };
-  if (await stateDirExists(sessions.archiveRoot)) {
-    settled = await mutateAutomationState(sessions.archiveRoot, (state) => {
-      const run = ownProfile(state, id);
-      delete state.profiles[id];
-      return {
-        pendingCleared: run ? isPending(run) : false,
-        running:
-          run && isRunLive(run.running, nowOf(ctx))
-            ? { startedAt: run.running!.startedAt }
-            : null,
-      };
-    });
-  }
+    const entriesRemoved = profile.hook
+      ? (await removeClaudeHook(profile.hook.settings, identity)).removed
+      : 0;
+    await editProfile(ctx, id, () => null);
+    if (state) delete state.profiles[id];
+    return { entriesRemoved, pendingCleared: run ? isPending(run) : false };
+  };
+  // With the archive gone no run can start (runs need its state directory),
+  // so only then is the lock-free path safe.
+  const archivePresent = await ensureStateDir(sessions.archiveRoot).then(
+    () => true,
+    () => false
+  );
+  const removed = archivePresent
+    ? await mutateAutomationState(sessions.archiveRoot, remove)
+    : await remove(null);
   return {
     schemaVersion: "1",
     profileId: id,
-    hook: profile.hook ? { enabled: false, entriesRemoved } : null,
+    hook: profile.hook
+      ? { enabled: false, entriesRemoved: removed.entriesRemoved }
+      : null,
     schedule: profile.schedule ? { enabled: false } : null,
-    pendingCleared: settled.pendingCleared,
-    running: settled.running,
+    pendingCleared: removed.pendingCleared,
+    running: null,
     removed: true,
     warnings: [],
   };
