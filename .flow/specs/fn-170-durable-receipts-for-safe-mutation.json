@@ -9,7 +9,7 @@
   "depends_on_epics": [],
   "id": "fn-170-durable-receipts-for-safe-mutation",
   "impl_review_rounds": {
-    "fn-170-durable-receipts-for-safe-mutation.1": 1
+    "fn-170-durable-receipts-for-safe-mutation.1": 0
   },
   "next_task": 1,
   "no_plan": true,
@@ -175,9 +175,78 @@
       "task": "fn-170-durable-receipts-for-safe-mutation.1",
       "timestamp": "2026-09-24T08:52:28.983782Z",
       "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "bcd17a21a4ecd5c24b003eb02e2abf8aa611ed499a6b3b3eab05465e2a902a0e",
+      "backend": "codex",
+      "base_sha": "9a0e5e5b069daf005e7c0f12670349c0d4cc1df9",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-0b8dc8caddb0298ed438b4c13df563a9",
+            "classification": "introduced",
+            "findingId": "finding-0b8dc8caddb0298ed438b4c13df563a9",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-7e7f6d2289fa645f1b162cb9ab257b51",
+            "classification": "introduced",
+            "findingId": "finding-7e7f6d2289fa645f1b162cb9ab257b51",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-5460287e1af5632f6f8429d0f7c22470",
+            "classification": "introduced",
+            "findingId": "finding-5460287e1af5632f6f8429d0f7c22470",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-4b3c1cb82f9440ff89026788f6896ff2",
+            "classification": "introduced",
+            "findingId": "finding-4b3c1cb82f9440ff89026788f6896ff2",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "9bba1895ba8cad226a523167ec7fa95722a26d0f",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1630,
+      "output_sha256": "f699d83dae6b82e9ef86fc5a626fcd23f16d9d5ea617ece92a673f50a3e5c01d",
+      "reservation_id": "b688b44fb8444990af8e15792c1b71b1",
+      "round_consumed": true,
+      "scope": "impl:fn-170-durable-receipts-for-safe-mutation.1",
+      "superseded_by": null,
+      "task": "fn-170-durable-receipts-for-safe-mutation.1",
+      "timestamp": "2026-09-24T09:06:31.870071Z",
+      "verdict": "SHIP"
     }
   ],
   "review_hash_epoch": {
+    "impl:fn-170-durable-receipts-for-safe-mutation.1": 1,
     "plan": 1,
     "plan#completion": 0
   },
@@ -201,5 +270,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-24T08:52:28.986356Z"
+  "updated_at": "2026-09-24T09:06:31.872859Z"
 }
