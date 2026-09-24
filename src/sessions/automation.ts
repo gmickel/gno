@@ -377,6 +377,11 @@ export async function previewAutomationProfile(
   const configPath = identity.configPath;
   const daemonCommand = `gno --config ${configPath} --index ${ctx.indexName} daemon`;
   const notes: string[] = [];
+  if (profile.schedule?.enabled && !scheduleRunnable(profile)) {
+    notes.push(
+      `warning: cadence "${profile.schedule.cadence}" is invalid (use <n>s|m|h|d, 1m to 30d); the schedule is off and does not run until you fix it with sessions automation set ${id} --source … --cadence 30m.`
+    );
+  }
   if (!profile.hook?.enabled && !profile.schedule?.enabled) {
     notes.push(
       `Nothing runs automatically until you enable a trigger: gno --config ${configPath} --index ${ctx.indexName} sessions automation enable ${id} --hook claude-code and/or --schedule --cadence <n>s|m|h|d.`
@@ -408,7 +413,8 @@ export async function previewAutomationProfile(
       installed: await inspectClaudeHook(settings, identity),
     },
     schedule: {
-      enabled: profile.schedule?.enabled === true,
+      // Effective state, as in status: an invalid cadence never runs.
+      enabled: scheduleRunnable(profile),
       cadence: profile.schedule?.cadence ?? null,
       minimum: "1m",
     },

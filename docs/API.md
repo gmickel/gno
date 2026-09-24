@@ -2690,7 +2690,9 @@ DELETE /api/sessions/automation/:id
   installs the hook only into the profile's recorded settings file or the
   default `$CLAUDE_CONFIG_DIR/settings.json` (else `~/.claude/settings.json`);
   a `hook.settings` field is rejected, so another settings file can only be
-  chosen with the CLI. `PUT`,
+  chosen with the CLI. `preview` returns host paths, so it also applies the
+  CSRF Origin check although it is a GET: a cross-origin page gets
+  `403 CSRF_VIOLATION`. `PUT`,
   `enable`, and `preview` return the preview object (sources with host
   paths, destination collections, the hook command and settings file, the
   schedule, and the daemon prerequisite); `disable` and `DELETE` return

@@ -533,6 +533,21 @@ describe("server wiring", () => {
             ((await csrf?.json()) as ErrorBody | undefined)?.error.code
           ).toBe("CSRF_VIOLATION");
 
+          // The automation preview returns host paths: a cross-origin page
+          // is refused even though it is a GET.
+          const crossOriginPreview = await routes[
+            "/api/sessions/automation/:id/preview"
+          ]?.GET?.(
+            new Request(`${ORIGIN}/api/sessions/automation/main/preview`, {
+              headers: {
+                host: "127.0.0.1:3000",
+                origin: "http://evil.example",
+              },
+            }),
+            localServer
+          );
+          expect(crossOriginPreview?.status).toBe(403);
+
           const remote = await routes["/api/sessions/sources/:id"]?.DELETE?.(
             post("/api/sessions/sources/codex-main", undefined, "DELETE"),
             remoteServer

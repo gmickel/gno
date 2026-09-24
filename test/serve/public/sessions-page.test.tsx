@@ -331,6 +331,32 @@ describe("sessions page", () => {
     await screen.findByText("idle", undefined, { timeout: 3500 });
   });
 
+  test("a failed profile shows its recovery, not queued work, and Remove moves focus to Confirm", async () => {
+    const failed = structuredClone(status);
+    Object.assign(failed.automation.profiles[0]!, {
+      state: "failed",
+      pending: { since: "2026-09-24T10:00:00.000Z", triggers: ["manual"] },
+      recovery: "A selected source is missing: fix it, then run again.",
+    });
+    statusResult = () => ok(failed);
+    const { user } = await renderPage();
+    await screen.findByText(/A selected source is missing/);
+    expect(screen.queryByText("Pending")).toBeNull();
+
+    await user.click(
+      screen.getByRole("button", { name: "Remove profile nightly" })
+    );
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("Confirm remove")
+    );
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute("aria-label")).toBe(
+        "Remove profile nightly"
+      )
+    );
+  });
+
   test("status is polled while a profile is running", async () => {
     const running = structuredClone(status);
     running.automation.profiles[0]!.state = "running";

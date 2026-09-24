@@ -110,7 +110,9 @@ function formatAutomationLines(automation: SessionAutomationStatus): string[] {
     lines.push(
       `- profile ${profile.id}: ${profile.state}; sources ${profile.sources.join(", ")} -> ${profile.collections.join(", ") || "(none)"}; ${hook}; ${schedule}`
     );
-    if (profile.pending) {
+    // A failure awaiting correction is shown by state and action, not as
+    // queued work.
+    if (profile.pending && profile.state !== "failed") {
       const retry = profile.retryAt ? `, retry at ${at(profile.retryAt)}` : "";
       lines.push(
         `  pending since ${at(profile.pending.since)} (${profile.pending.triggers.join(", ") || "continuation"})${retry}`
@@ -131,6 +133,14 @@ function formatAutomationLines(automation: SessionAutomationStatus): string[] {
   return lines;
 }
 
+/** What follows a run: remaining work, or the next step after a failure. */
+export function runTail(result: SessionAutomationRunResult): string {
+  if (result.outcome === "failed") {
+    return "; see gno sessions status for the recovery action";
+  }
+  return result.pending ? "; more work is pending" : "";
+}
+
 /** Plain-text automation run result shared by the CLI and MCP. */
 export function formatAutomationRunText(
   result: SessionAutomationRunResult
@@ -139,7 +149,7 @@ export function formatAutomationRunText(
     return `Automation profile ${result.profileId}: not started (${result.reason ?? "unknown"})${result.pending ? "; work stays pending" : ""}`;
   }
   const lines = [
-    `Automation profile ${result.profileId}: ${result.outcome}${result.reason ? ` (${result.reason})` : ""}${result.pending ? "; more work is pending" : ""}`,
+    `Automation profile ${result.profileId}: ${result.outcome}${result.reason ? ` (${result.reason})` : ""}${runTail(result)}`,
   ];
   for (const receipt of result.receipts) {
     const deferred =

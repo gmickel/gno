@@ -579,7 +579,9 @@ export function formatAutomationPreview(
     `Schedule: ${preview.schedule.enabled ? `on, every ${preview.schedule.cadence}` : `off${preview.schedule.cadence ? ` (cadence ${preview.schedule.cadence})` : ""}`}; minimum ${preview.schedule.minimum}`,
     `Budget: ${preview.limit} changed units per source per run; ${preview.retries} automatic retries`,
     `Daemon: ${preview.daemon.state === "running" ? "running" : "not running: no daemon"} (${preview.daemon.command})`,
-    ...preview.notes.map((note) => `note: ${note}`),
+    ...preview.notes.map((note) =>
+      note.startsWith("warning: ") ? note : `note: ${note}`
+    ),
   ];
   return lines.join("\n");
 }

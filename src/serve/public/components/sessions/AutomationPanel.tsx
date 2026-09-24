@@ -307,6 +307,18 @@ function ProfileCard({
   } | null>(null);
   const [cadence, setCadence] = useState(profile.schedule?.cadence ?? "");
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const confirmRemoveRef = useRef<HTMLButtonElement>(null);
+  const removeRef = useRef<HTMLButtonElement>(null);
+  const removeReturnFocus = useRef(false);
+  // The Remove button unmounts when its confirm step opens: move focus to
+  // Confirm, and back to Remove on Cancel.
+  useEffect(() => {
+    if (confirmRemove) confirmRemoveRef.current?.focus();
+    else if (removeReturnFocus.current) {
+      removeReturnFocus.current = false;
+      removeRef.current?.focus();
+    }
+  }, [confirmRemove]);
   const [lastRun, setLastRun] = useState<SessionAutomationRunResult | null>(
     null
   );
@@ -411,8 +423,9 @@ function ProfileCard({
   const remove = async () => {
     const done = await call("remove", base, { method: "DELETE" });
     if (!done) return;
-    await onChanged();
+    // Announce (and focus) before the refresh unmounts this card.
     notify(`Profile ${profile.id} removed; archived sessions were kept.`);
+    await onChanged();
   };
 
   const hookOn = profile.hook?.enabled === true;
@@ -462,15 +475,21 @@ function ProfileCard({
             (confirmRemove ? (
               <>
                 <Button
-                  disabled={busy !== null}
-                  onClick={() => void remove()}
+                  aria-disabled={busy !== null}
+                  onClick={() => {
+                    if (busy === null) void remove();
+                  }}
+                  ref={confirmRemoveRef}
                   size="sm"
                   variant="destructive"
                 >
                   Confirm remove
                 </Button>
                 <Button
-                  onClick={() => setConfirmRemove(false)}
+                  onClick={() => {
+                    setConfirmRemove(false);
+                    removeReturnFocus.current = true;
+                  }}
                   size="sm"
                   variant="ghost"
                 >
@@ -482,6 +501,7 @@ function ProfileCard({
                 aria-label={`Remove profile ${profile.id}`}
                 disabled={busy !== null}
                 onClick={() => setConfirmRemove(true)}
+                ref={removeRef}
                 size="sm"
                 variant="ghost"
               >
@@ -558,7 +578,7 @@ function ProfileCard({
       )}
 
       <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
-        {profile.pending && (
+        {profile.pending && profile.state !== "failed" && (
           <>
             <dt className="text-muted-foreground">Pending</dt>
             <dd>
@@ -603,7 +623,11 @@ function ProfileCard({
           {lastRun.ran
             ? `${lastRun.outcome}${lastRun.reason ? ` (${lastRun.reason})` : ""}`
             : `not started (${lastRun.reason ?? "unknown"})`}
-          {lastRun.pending ? "; work is still pending" : ""}
+          {lastRun.outcome === "failed"
+            ? "; see the recovery action above"
+            : lastRun.pending
+              ? "; work is still pending"
+              : ""}
         </p>
       )}
       {error && (

@@ -127,7 +127,11 @@ import {
   handleTracePurge,
   handleTraceShow,
 } from "./routes/traces";
-import { forbiddenResponse, isRequestAllowed } from "./security";
+import {
+  forbiddenResponse,
+  isOriginAllowed,
+  isRequestAllowed,
+} from "./security";
 import {
   createSpaBundleSource,
   type SpaBundleSource,
@@ -953,17 +957,22 @@ export async function startServer(
         },
         "/api/sessions/automation/:id/preview": {
           GET: async (req: Request, server: RequestPeerServer) =>
-            withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleSessionsAutomationPreview(
-                  ctxHolder,
-                  automationProfileId(req),
-                  req,
-                  { server }
-                )
-              ),
-              isDev
-            ),
+            !isOriginAllowed(req, port)
+              ? withSecurityHeaders(forbiddenResponse(), isDev)
+              : withSecurityHeaders(
+                  await handleResidentRead(
+                    runtime as ResidentRuntime,
+                    req,
+                    () =>
+                      handleSessionsAutomationPreview(
+                        ctxHolder,
+                        automationProfileId(req),
+                        req,
+                        { server }
+                      )
+                  ),
+                  isDev
+                ),
         },
         "/api/sessions/automation/:id/enable": {
           POST: async (req: Request, server: RequestPeerServer) => {

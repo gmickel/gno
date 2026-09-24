@@ -671,7 +671,7 @@ shows as a failed run with reason `busy`, retried with backoff.
 
 A schedule whose cadence was hand-edited to an invalid value (for example
 `banana`, or `5s` below the minimum) is reported with `enabled: false`, a
-warning, and a recovery action, and never runs until you fix it with
+warning, and a recovery action (in status and in `preview`), and never runs until you fix it with
 `sessions automation set … --cadence`.
 
 The daemon writes its heartbeat every 30 seconds on its own timer, so it
@@ -680,6 +680,11 @@ stays `running` during its initial sync and during long imports. The
 daemon on this archive, `stale` for a live process that stopped ticking, and
 `not_running` otherwise; then the schedule shows `not running: no daemon`
 instead of a due time.
+
+A profile in `failed` state keeps its admitted work in the JSON `pending`
+field, but the text status and the Web UI show the failure and its recovery
+action instead of a pending line, because that work only runs after you fix
+the cause.
 
 A run's outcome is `complete`, `up_to_date` (a verified no-op: every source
 was already current), `partial` (incomplete or deferred units, or a failed

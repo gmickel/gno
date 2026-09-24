@@ -13,7 +13,10 @@ import { join, relative } from "node:path";
 
 import type { SessionTriggerKind } from "../../src/sessions/types";
 
-import { runSessionsHook } from "../../src/cli/commands/sessions";
+import {
+  formatAutomationPreview,
+  runSessionsHook,
+} from "../../src/cli/commands/sessions";
 import { initStore } from "../../src/cli/commands/shared";
 import { CliError } from "../../src/cli/errors";
 import { loadConfig, saveConfigToPath } from "../../src/config";
@@ -54,6 +57,10 @@ import {
   buildClaudeHookCommand,
   installClaudeHook,
 } from "../../src/sessions/claude-hook";
+import {
+  formatAutomationRunText,
+  formatStatusText,
+} from "../../src/sessions/format";
 import { SessionsService } from "../../src/sessions/service";
 import {
   addSessionSource,
@@ -1086,4 +1093,41 @@ describe("fn-171 unreadable source through automation", () => {
       }
     }
   );
+});
+
+describe("re-drive QA regressions", () => {
+  test("preview reports an invalid hand-edited cadence as off with a warning", async () => {
+    const config = await archiveConfig();
+    config.sessions!.automation![0]!.schedule = {
+      enabled: true,
+      cadence: "banana",
+    };
+    await saveConfigToPath(config, configPath);
+    const { previewAutomationProfile } =
+      await import("../../src/sessions/automation");
+    const preview = await previewAutomationProfile(ctx(), "main");
+    expect(preview.schedule).toMatchObject({
+      enabled: false,
+      cadence: "banana",
+    });
+    const text = formatAutomationPreview(preview, false);
+    expect(text).toContain("Schedule: off");
+    expect(text).toContain('warning: cadence "banana" is invalid');
+  });
+
+  test("a source_unavailable failure reads as a failure with an action, not queued work", async () => {
+    expect(await runNow()).toMatchObject({ outcome: "complete" });
+    const claudeRoot = join(root, "sources", "claude");
+    await rename(claudeRoot, `${claudeRoot}-gone`);
+    const failed = await runNow();
+    expect(failed).toMatchObject({ outcome: "failed", pending: true });
+    const line = formatAutomationRunText(failed);
+    expect(line).not.toContain("pending");
+    expect(line).toContain("recovery action");
+    const text = formatStatusText(await status());
+    expect(text).not.toContain("pending since");
+    expect(text).toContain(
+      "action: A selected source or the archive destination is missing"
+    );
+  });
 });
