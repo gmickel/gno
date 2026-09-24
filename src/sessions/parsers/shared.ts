@@ -7,6 +7,8 @@
 
 import { Database } from "bun:sqlite";
 
+// Configures the platform SQLite before any Database opens (macOS).
+import "../../store/sqlite/setup";
 import { readBoundedUtf8Lines } from "../../converters/adapters/shared/utf8-lines";
 import {
   type ParsedTurn,

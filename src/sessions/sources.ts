@@ -11,6 +11,9 @@
  */
 
 import { Database } from "bun:sqlite";
+
+// Configures the platform SQLite before any Database opens (macOS).
+import "../store/sqlite/setup";
 // node:fs/promises: readdir/lstat/realpath/stat have no Bun equivalents.
 import { lstat, readdir, realpath, stat } from "node:fs/promises";
 // node:os homedir: no Bun equivalent.
