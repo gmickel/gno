@@ -7,7 +7,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 // node:fs/promises for temp fixtures (no Bun equivalent for cp/mkdir/readdir/rename)
-import { cp, mkdir, readdir, rename } from "node:fs/promises";
+import { chmod, cp, mkdir, readdir, rename } from "node:fs/promises";
 // node:path has no Bun path utilities
 import { join, relative } from "node:path";
 
@@ -1049,4 +1049,34 @@ describe("live QA regressions", () => {
     expect(created.hook.settings).toBe(join(home, "settings.json"));
     expect(await Bun.file(join(home, "settings.json")).exists()).toBe(true);
   });
+});
+
+describe("fn-171 unreadable source through automation", () => {
+  test.each(["missing", "unreadable"] as const)(
+    "a %s source root fails the run as source_unavailable and keeps lastSuccessAt",
+    async (kind) => {
+      expect(await runNow()).toMatchObject({ outcome: "complete" });
+      const success = (await profileRun())?.lastSuccessAt;
+      expect(success).toBeTruthy();
+      const claudeRoot = join(root, "sources", "claude");
+      if (kind === "missing") await rename(claudeRoot, `${claudeRoot}-gone`);
+      else await chmod(claudeRoot, 0o000);
+      try {
+        clock += MINUTE;
+        const result = await runNow();
+        expect(result).toMatchObject({
+          ran: true,
+          outcome: "failed",
+          reason: "source_unavailable",
+        });
+        const profile = (await status()).automation.profiles[0]!;
+        expect(profile.state).toBe("failed");
+        expect(profile.lastRun?.outcome).toBe("failed");
+        expect(profile.lastSuccessAt).toBe(success ?? "");
+        expect(profile.recovery).toContain("missing or unreadable");
+      } finally {
+        if (kind === "unreadable") await chmod(claudeRoot, 0o755);
+      }
+    }
+  );
 });

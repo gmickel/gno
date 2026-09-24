@@ -369,8 +369,8 @@ session content and no host paths.
 | `malformed_records`     | Some records were not valid JSON and were dropped; the unit stays incomplete and is retried.                                                                                                            |
 | `unit_conflict`         | Two units of one source share a locator (for example the same rollout file name in two folders); the second is not imported.                                                                            |
 | `snapshot_read_failed`  | A SQLite store could not be read in one read-only snapshot. Rerun; check the harness is not migrating.                                                                                                  |
-| `permission_denied`     | The file or database is not readable by your user.                                                                                                                                                      |
-| `source_missing`        | The unit disappeared between listing and reading.                                                                                                                                                       |
+| `permission_denied`     | The file, database, or a directory inside the source (locator `.`) is not readable by your user. Fix the permissions and rerun; its checkpoint does not advance until it is read.                       |
+| `source_missing`        | The unit or a directory inside the source disappeared between listing and reading.                                                                                                                      |
 | `read_failed`           | Another read error.                                                                                                                                                                                     |
 | `format_not_recognised` | The unit is not a supported session format (`unsupported`).                                                                                                                                             |
 | `over_limit`            | The unit or thread exceeds a [limit](#limits) (`skipped_policy` for threads). A thread at the turn limit is skipped whole, never archived truncated.                                                    |
@@ -413,9 +413,16 @@ Recovery behaviour:
   before is now quarantined or over a limit, its earlier archive file is moved
   to `<archiveRoot>/.gno-sessions/withheld/` and removed from the index, so no
   stale copy stays searchable.
-- **A deleted source root.** When a registered source root itself disappears,
-  import still maintains its retained archive (redaction rescans) and reports
-  the source as `failed` with reason `source_missing`.
+- **A missing or unreadable source root.** When a registered source root is
+  missing or cannot be listed, import still maintains its retained archive
+  (redaction rescans) and then fails with `SESSIONS_SOURCE_UNAVAILABLE`
+  (exit 2). It never reports the source as up to date.
+- **Unreadable parts of a source.** A directory or session file inside the
+  source that cannot be read is reported as a `failed` unit
+  (`permission_denied`, `source_missing`, or `read_failed`; a directory has
+  the locator `.` because its name can be a host path), so the receipt is
+  `partial` or `failed`, never `nothing_to_do`. Units there keep their
+  checkpoints and archives and are read once they are readable.
 - **Database stores.** A thread with assistant turns but no recognised human
   turn in an OpenClaw or Hermes store is reported in the unit warnings; it does
   not hold the whole store incomplete.
@@ -430,11 +437,14 @@ gno --config ~/gno-sessions/archive.yml --index sessions sessions source remove 
 ```
 
 - `status` lists archive collections with thread counts and, per source, its
-  availability, unit counts (complete, incomplete, failed, pending),
+  availability (`false` when the root is missing or cannot be read), unit counts (complete, incomplete, failed, pending),
   `sourceUnavailable`, `staleParser`, and last import time.
 - Deleting or rotating a source file never deletes its archive. `status`
   counts such units under `sourceUnavailable`.
-- `prune` previews the archive files whose source is gone; `--apply` deletes
+- `prune` previews the archive files whose source is gone. It needs a
+  complete listing of the source: when part of the source cannot be read, or
+  the listing hit the unit limit, it fails with `SESSIONS_SOURCE_UNAVAILABLE`
+  instead of treating unread units as deleted. `--apply` deletes
   exactly those files and syncs the index. An archive file that a
   still-present unit references is never pruned, so a session file that the
   harness moved or renamed keeps its archive.

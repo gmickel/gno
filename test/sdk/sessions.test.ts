@@ -9,15 +9,11 @@ import { createGnoClient } from "../../src/sdk";
 import { GnoSdkError } from "../../src/sdk/errors";
 import { addSessionSource, initSessionArchive } from "../../src/sessions/setup";
 import { safeRm } from "../helpers/cleanup";
-import { FIXTURES, tempDir } from "../sessions/helpers";
+import { FIXTURES, snapshotSessionEnv, tempDir } from "../sessions/helpers";
 
 let root: string;
 let configPath: string;
-const env = {
-  config: process.env.GNO_CONFIG_DIR,
-  data: process.env.GNO_DATA_DIR,
-  cache: process.env.GNO_CACHE_DIR,
-};
+const restoreEnv = snapshotSessionEnv();
 
 beforeAll(async () => {
   root = await tempDir("gno-sdk-sessions-");
@@ -44,9 +40,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  process.env.GNO_CONFIG_DIR = env.config;
-  process.env.GNO_DATA_DIR = env.data;
-  process.env.GNO_CACHE_DIR = env.cache;
+  restoreEnv();
   await safeRm(root);
 });
 

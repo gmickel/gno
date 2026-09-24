@@ -12,14 +12,14 @@ import { join } from "node:path";
 
 import { runCli } from "../../src/cli/run";
 import { safeRm } from "../helpers/cleanup";
-import { FIXTURES, tempDir } from "../sessions/helpers";
+import { FIXTURES, snapshotSessionEnv, tempDir } from "../sessions/helpers";
 
 /** Text that only exists in the archived Codex fixture turn. */
 const ARCHIVED = "alpha queue uses SQLite";
 
 let root: string;
 let archiveUri: string;
-const saved = { ...process.env };
+const restoreEnv = snapshotSessionEnv();
 
 async function cli(
   ...args: string[]
@@ -34,7 +34,12 @@ async function cli(
   process.stdout.write = capture;
   process.stderr.write = capture;
   try {
-    return { code: await runCli(["node", "gno", ...args]), output };
+    // --offline keeps model-backed commands from downloading on CI; the
+    // sweep is about index binding, not model availability.
+    return {
+      code: await runCli(["node", "gno", "--offline", ...args]),
+      output,
+    };
   } finally {
     process.stdout.write = out;
     process.stderr.write = err;
@@ -102,7 +107,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  process.env = saved;
+  restoreEnv();
   await safeRm(root);
 });
 

@@ -30,15 +30,11 @@ import {
   initSessionArchive,
 } from "../../../src/sessions/setup";
 import { safeRm } from "../../helpers/cleanup";
-import { FIXTURES, tempDir } from "../../sessions/helpers";
+import { FIXTURES, snapshotSessionEnv, tempDir } from "../../sessions/helpers";
 import { assertValid, loadSchema } from "./validator";
 
 let root: string;
-const env = {
-  config: process.env.GNO_CONFIG_DIR,
-  data: process.env.GNO_DATA_DIR,
-  cache: process.env.GNO_CACHE_DIR,
-};
+const restoreEnv = snapshotSessionEnv();
 
 /** A fresh archive per surface so every receipt starts from the same state. */
 async function freshArchive(name: string): Promise<{ configPath: string }> {
@@ -97,9 +93,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  process.env.GNO_CONFIG_DIR = env.config;
-  process.env.GNO_DATA_DIR = env.data;
-  process.env.GNO_CACHE_DIR = env.cache;
+  restoreEnv();
   await safeRm(root);
 });
 
@@ -308,7 +302,7 @@ describe("session receipts agree across surfaces", () => {
     const codexSessions = join(home, ".codex", "sessions");
     await mkdir(codexSessions, { recursive: true });
     await cp(join(FIXTURES, "codex"), codexSessions, { recursive: true });
-    const saved = { ...process.env };
+    const restoreDiscoveryEnv = snapshotSessionEnv();
     process.env.HOME = home;
     for (const key of [
       "CODEX_HOME",
@@ -328,7 +322,7 @@ describe("session receipts agree across surfaces", () => {
         { harness: "codex", units: 4 },
       ]);
     } finally {
-      process.env = saved;
+      restoreDiscoveryEnv();
     }
   });
 });

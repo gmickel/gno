@@ -11,7 +11,14 @@
  */
 
 // node:fs/promises: directory creation/removal and listing have no Bun equivalents.
-import { mkdir, readdir, rename, stat, unlink } from "node:fs/promises";
+import {
+  mkdir,
+  readdir,
+  realpath,
+  rename,
+  stat,
+  unlink,
+} from "node:fs/promises";
 // node:path: no Bun path utilities.
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
@@ -46,6 +53,9 @@ import {
   detectHarness,
   detectRootHarness,
   enumerateUnits,
+  isReadableRoot,
+  type ReadDirectory,
+  readFailureReason,
   parseUnit,
   SESSION_PARSERS,
   type SessionUnit,
@@ -92,6 +102,8 @@ export interface SessionsServiceDeps {
   syncService?: Pick<typeof defaultSyncService, "syncPaths" | "syncCollection">;
   env?: NodeJS.ProcessEnv;
   now?: () => Date;
+  /** Directory listing used for source roots (tests inject failures). */
+  readDirectory?: ReadDirectory;
 }
 
 export interface SessionImportInput {
@@ -211,9 +223,7 @@ async function readText(path: string): Promise<string | null> {
 function unitReason(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (/database|sqlite|SQLITE/i.test(message)) return "snapshot_read_failed";
-  if (/ENOENT|no such file/i.test(message)) return "source_missing";
-  if (/EACCES|EPERM|permission/i.test(message)) return "permission_denied";
-  return "read_failed";
+  return readFailureReason(error);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -247,10 +257,16 @@ export class SessionsService {
           root: canonical,
           excluded,
           limit: DISCOVERY_UNIT_LIMIT,
+          readDirectory: this.deps.readDirectory,
         });
       } catch {
         warnings.push(`${root.harness}: source root could not be read`);
         continue;
+      }
+      if (enumerated.unreadable.length > 0) {
+        warnings.push(
+          `${root.harness}: ${enumerated.unreadable.length} entries under the source root could not be read`
+        );
       }
       if (enumerated.units.length === 0) continue;
       const registered = sessions?.sources.find(
@@ -303,15 +319,22 @@ export class SessionsService {
       const known = sourceState?.units ?? {};
       const canonical = await canonicalPath(source.path);
       let units: SessionUnit[] = [];
+      let readable = false;
       if (canonical) {
         try {
-          units = (
-            await enumerateUnits({
-              harness: source.harness,
-              root: canonical,
-              excluded: protectedRoots(sessions),
-            })
-          ).units;
+          const enumerated = await enumerateUnits({
+            harness: source.harness,
+            root: canonical,
+            excluded: protectedRoots(sessions),
+            readDirectory: this.deps.readDirectory,
+          });
+          units = enumerated.units;
+          readable = true;
+          if (enumerated.unreadable.length > 0) {
+            warnings.push(
+              `${source.id}: ${enumerated.unreadable.length} entries could not be read; their units are not counted`
+            );
+          }
         } catch {
           warnings.push(`${source.id}: source could not be read`);
         }
@@ -349,7 +372,7 @@ export class SessionsService {
         id: source.id,
         harness: source.harness,
         collection: source.collection,
-        available: canonical !== null,
+        available: readable,
         units: {
           total: units.length,
           // Counted over present units only; units whose source is gone
@@ -446,10 +469,13 @@ export class SessionsService {
           `Unknown session source "${input.sourceId}". Registered: ${sessions.sources.map((item) => item.id).join(", ") || "(none)"}.`
         );
       }
-      const canonical = await canonicalPath(source.path);
+      const found = await canonicalPath(source.path);
+      if (found) assertSafeSourceRoot(found, protectedRoots(sessions));
+      const canonical = found && (await isReadableRoot(found)) ? found : null;
       if (!canonical) {
         // With archived units the run still maintains the retained archive
-        // (redaction rescans); without any there is nothing to do.
+        // (redaction rescans) before failing; without any there is nothing
+        // to maintain.
         const state = await loadState(sessions.archiveRoot);
         const archived = Object.keys(state.sources[source.id]?.units ?? {});
         if (archived.length === 0) {
@@ -458,8 +484,6 @@ export class SessionsService {
             `Session source "${source.id}" is not readable right now.`
           );
         }
-      } else {
-        assertSafeSourceRoot(canonical, protectedRoots(sessions));
       }
       return [
         {
@@ -483,6 +507,8 @@ export class SessionsService {
         "Path imports need an explicit destination: --collection <archive collection>."
       );
     }
+    // Validate the destination before touching the filesystem.
+    archiveCollection(this.deps.config, sessions, input.collection);
     const resolved: ResolvedSource[] = [];
     for (const path of paths) {
       if (!isAbsolute(path)) {
@@ -492,7 +518,7 @@ export class SessionsService {
         );
       }
       const canonical = await canonicalPath(path);
-      if (!canonical) {
+      if (!(canonical && (await isReadableRoot(canonical)))) {
         throw new SessionsError(
           "SESSIONS_SOURCE_UNAVAILABLE",
           "A selected session path does not exist or is not readable."
@@ -599,33 +625,38 @@ export class SessionsService {
       changed.set(collection, set);
     };
 
+    // Sources whose root is missing or cannot be read: their retained
+    // archive is still maintained, then the run fails.
+    const unavailable: string[] = [];
+    const nothingListed: Awaited<ReturnType<typeof enumerateUnits>> = {
+      units: [],
+      truncated: false,
+      unreadable: [],
+    };
+
     for (const source of sources) {
       const sourceState: SourceState = state.sources[source.id] ?? {
         lastImportAt: null,
         units: {},
       };
-      let enumerated: { units: SessionUnit[]; truncated: boolean };
+      let enumerated: Awaited<ReturnType<typeof enumerateUnits>>;
       if (source.root === null) {
-        counts.failed += 1;
-        recordUnit({
-          sourceId: source.id,
-          harness: source.harness,
-          locator: ".",
-          outcome: "failed",
-          reason: "source_missing",
-          threads: 0,
-          turns: 0,
-          collections: [],
-        });
-        enumerated = { units: [], truncated: false };
+        unavailable.push(source.id);
+        enumerated = nothingListed;
       } else {
         try {
           const root = source.root;
           const harness =
-            source.harness ?? (await detectRootHarness(root, excluded));
+            source.harness ??
+            (await detectRootHarness(root, excluded, this.deps.readDirectory));
           enumerated = harness
-            ? await enumerateUnits({ harness, root, excluded })
-            : { units: [], truncated: false };
+            ? await enumerateUnits({
+                harness,
+                root,
+                excluded,
+                readDirectory: this.deps.readDirectory,
+              })
+            : nothingListed;
           if (!harness) {
             counts.unsupported += 1;
             // A selected file is named by its safe (redacted) file name.
@@ -645,24 +676,49 @@ export class SessionsService {
             continue;
           }
         } catch (error) {
-          counts.failed += 1;
-          recordUnit({
-            sourceId: source.id,
-            harness: source.harness,
-            locator: ".",
-            outcome: "failed",
-            reason: unitReason(error),
-            threads: 0,
-            turns: 0,
-            collections: [],
-          });
-          continue;
+          const reason = unitReason(error);
+          if (reason === "source_missing" || reason === "permission_denied") {
+            // The root became unreadable after preflight.
+            unavailable.push(source.id);
+            enumerated = nothingListed;
+          } else {
+            counts.failed += 1;
+            recordUnit({
+              sourceId: source.id,
+              harness: source.harness,
+              locator: ".",
+              outcome: "failed",
+              reason,
+              threads: 0,
+              turns: 0,
+              collections: [],
+            });
+            continue;
+          }
         }
       }
       if (enumerated.truncated) {
         warnings.push(
           `${source.id}: more than ${SESSION_LIMITS.maxUnitsPerSource} units; the rest are left for a later run`
         );
+      }
+      // Unread parts of a source fail explicitly; their units keep their
+      // checkpoints and archives untouched.
+      for (const entry of enumerated.unreadable) {
+        counts.failed += 1;
+        recordUnit({
+          sourceId: source.id,
+          harness: source.harness,
+          locator:
+            entry.locator === null
+              ? "."
+              : sanitizeValue(entry.locator, redaction),
+          outcome: "failed",
+          reason: entry.reason,
+          threads: 0,
+          turns: 0,
+          collections: [],
+        });
       }
       const present = new Set<string>();
       const destinations = destinationsStamp(source);
@@ -831,6 +887,13 @@ export class SessionsService {
       }
       await saveState(sessions.archiveRoot, state);
       backlog = await this.embeddingBacklog();
+    }
+    if (unavailable.length > 0) {
+      // State is saved: the retained archive was maintained; the run failed.
+      throw new SessionsError(
+        "SESSIONS_SOURCE_UNAVAILABLE",
+        `Session source "${unavailable[0]}" is missing or not readable right now; its archive is retained.`
+      );
     }
 
     const failures = counts.failed + counts.incomplete + counts.unsupported;
@@ -1341,14 +1404,48 @@ export class SessionsService {
       );
     }
     const present = new Set<string>();
-    const canonical = source ? await canonicalPath(source.path) : null;
+    let canonical: string | null = null;
+    if (source) {
+      try {
+        canonical = await realpath(source.path);
+      } catch (error) {
+        // Only a root that is really gone counts as deleted; a root that
+        // cannot be resolved (for example an unreadable parent) is unread.
+        if (readFailureReason(error) !== "source_missing") {
+          throw new SessionsError(
+            "SESSIONS_SOURCE_UNAVAILABLE",
+            `Session source "${sourceId}" could not be read completely; prune needs a complete listing.`
+          );
+        }
+      }
+    }
     if (source && canonical) {
-      const { units } = await enumerateUnits({
-        harness: source.harness,
-        root: canonical,
-        excluded: protectedRoots(sessions),
-      });
-      for (const unit of units) present.add(unitKey(source.id, unit.locator));
+      // Prune removes archives whose unit is absent, so it runs only over a
+      // complete listing: an unread part of the source is not a deletion.
+      let enumerated;
+      try {
+        enumerated = await enumerateUnits({
+          harness: source.harness,
+          root: canonical,
+          excluded: protectedRoots(sessions),
+          readDirectory: this.deps.readDirectory,
+        });
+      } catch {
+        enumerated = null;
+      }
+      if (
+        !enumerated ||
+        enumerated.truncated ||
+        enumerated.unreadable.length > 0
+      ) {
+        throw new SessionsError(
+          "SESSIONS_SOURCE_UNAVAILABLE",
+          `Session source "${sourceId}" could not be read completely; prune needs a complete listing.`
+        );
+      }
+      for (const unit of enumerated.units) {
+        present.add(unitKey(source.id, unit.locator));
+      }
     }
     const entries = Object.entries(sourceState?.units ?? {});
     const removable = entries.filter(([key]) => !present.has(key));

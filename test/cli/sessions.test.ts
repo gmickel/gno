@@ -1,16 +1,16 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-// node:fs/promises for temp fixtures (no Bun equivalent for mkdir)
-import { mkdir } from "node:fs/promises";
+// node:fs/promises for temp fixtures (no Bun equivalent for mkdir/cp/chmod)
+import { chmod, cp, mkdir } from "node:fs/promises";
 // node:path has no Bun path utilities
 import { join } from "node:path";
 
 import { runCli } from "../../src/cli/run";
 import { safeRm } from "../helpers/cleanup";
-import { FIXTURES, tempDir } from "../sessions/helpers";
+import { FIXTURES, snapshotSessionEnv, tempDir } from "../sessions/helpers";
 
 let root: string;
 let archiveConfig: string;
-const saved = { ...process.env };
+const restoreEnv = snapshotSessionEnv();
 
 async function cli(
   ...args: string[]
@@ -97,7 +97,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  process.env = saved;
+  restoreEnv();
   await safeRm(root);
 });
 
@@ -248,4 +248,45 @@ describe("gno sessions CLI", () => {
       outcome: "unsupported",
     });
   });
+
+  // chmod cannot make a directory unreadable on Windows, and root ignores
+  // permissions; the service suite covers that path with an injected listing.
+  test.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "import of an unreadable registered source exits 2, never up to date",
+    async () => {
+      const archive = ["--config", archiveConfig, "--index", "sessions"];
+      const locked = join(root, "locked-codex");
+      await cp(join(FIXTURES, "codex"), locked, { recursive: true });
+      const add = await cli(
+        ...archive,
+        "sessions",
+        "source",
+        "add",
+        "locked",
+        "--harness",
+        "codex",
+        "--path",
+        locked,
+        "--collection",
+        "work"
+      );
+      expect(add.code).toBe(0);
+      await chmod(locked, 0o000);
+      try {
+        const result = await cli(
+          ...archive,
+          "sessions",
+          "import",
+          "--source",
+          "locked",
+          "--json"
+        );
+        expect(result.code).toBe(2);
+        expect(sessionsCode(result.stderr)).toBe("SESSIONS_SOURCE_UNAVAILABLE");
+      } finally {
+        await chmod(locked, 0o755);
+        await cli(...archive, "sessions", "source", "remove", "locked");
+      }
+    }
+  );
 });

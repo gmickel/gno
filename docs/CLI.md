@@ -760,7 +760,8 @@ Import does not embed: run `embed` on the same archive pair.
 gno --config ~/gno-sessions/archive.yml --index sessions sessions status --json
 ```
 
-Archive collections with thread counts and, per source, availability, unit
+Archive collections with thread counts and, per source, availability (`false`
+when the root is missing or cannot be read), unit
 counts (complete, incomplete, failed, pending), `sourceUnavailable`,
 `staleParser`, and last import time. The `automation` block reports daemon
 availability and, per profile, `state`, hook and schedule switches, pending
@@ -818,7 +819,8 @@ gno --config ~/gno-sessions/archive.yml --index sessions sessions prune --source
 
 Lists archive files whose source is gone (preview by default); `--apply`
 deletes exactly those files and syncs the index. Deleting a source file never
-removes its archive on its own.
+removes its archive on its own. Prune refuses (`SESSIONS_SOURCE_UNAVAILABLE`,
+exit 2) when part of the source cannot be read.
 
 **Exit codes:** 1 for usage and validation errors, 2 for an unavailable
 source, an import or automation run whose status is `failed`, or a hook that

@@ -59,17 +59,12 @@
           "lastImportAt"
         ],
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "harness": {
-            "enum": ["codex", "claude-code", "openclaw", "hermes"]
-          },
-          "collection": {
-            "type": "string"
-          },
+          "id": { "type": "string" },
+          "harness": { "enum": ["codex", "claude-code", "openclaw", "hermes"] },
+          "collection": { "type": "string" },
           "available": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "False when the source root is missing or cannot be listed."
           },
           "units": {
             "type": "object",
