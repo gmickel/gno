@@ -65,6 +65,9 @@ const DOC = {
 };
 
 let putResponses: Array<() => ReturnType<typeof apiOk<unknown>>>;
+/** Source hash the server reports for the document after the first load. */
+let diskHash = "hash-0";
+let docLoads = 0;
 const puts = () =>
   apiFetch.mock.calls
     .filter(
@@ -76,12 +79,21 @@ beforeEach(() => {
   apiFetch.mockReset();
   sessionStorage.clear();
   docEvent = null;
+  diskHash = "hash-0";
+  docLoads = 0;
   setTestLocation(`/edit?uri=${encodeURIComponent(DOC.uri)}`);
   let revision = 0;
   putResponses = [];
   apiFetch.mockImplementation(async (...args: unknown[]) => {
     const [endpoint, init] = args as [string, { method?: string } | undefined];
-    if (endpoint.startsWith("/api/doc?")) return apiOk(DOC);
+    if (endpoint.startsWith("/api/doc?")) {
+      docLoads += 1;
+      return apiOk(
+        docLoads === 1
+          ? DOC
+          : { ...DOC, source: { ...DOC.source, sourceHash: diskHash } }
+      );
+    }
     if (init?.method === "PUT") {
       const next = putResponses.shift();
       if (next) return next();
@@ -139,24 +151,36 @@ describe("DocumentEditor saves", () => {
     expect(puts()).toHaveLength(1);
   });
 
-  test("a replayed save after a lost response clears the stale change notice", async () => {
+  const replayedSave = (sourceHash: string) => () =>
+    apiOk({
+      success: true,
+      version: { sourceHash, modifiedAt: "2026-09-24T00:00:01.000Z" },
+      request: { replayed: true },
+    });
+
+  async function lostSaveThenNotice() {
     putResponses.push(() => apiError("Failed to fetch") as never);
     const { editor, rerender } = await openEditor();
     fireEvent.change(editor, { target: { value: "v1" } });
     ctrlS();
-
     // Phones hide the inline status text; the failure gets its own row.
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Failed to fetch"
     );
-    // The lost save's own sync job reports the file as changed on disk.
     docEvent = { uri: DOC.uri, changedAt: new Date().toISOString() };
     const { default: DocumentEditor } =
       await import("../../../../src/serve/public/pages/DocumentEditor");
     rerender(<DocumentEditor navigate={() => undefined} />);
     await screen.findByText(/changed on disk/u);
+  }
 
+  test("a replayed save clears the notice when disk still holds that commit", async () => {
+    await lostSaveThenNotice();
+    // The lost save's own sync caused the notice: disk holds its commit.
+    diskHash = "hash-v1";
+    putResponses.push(replayedSave("hash-v1"));
     ctrlS();
+
     await waitFor(() => expect(puts()).toHaveLength(2));
     const [lost, retry] = puts();
     expect(retry.requestId).toBe(lost.requestId);
@@ -164,5 +188,15 @@ describe("DocumentEditor saves", () => {
       expect(screen.queryByText(/changed on disk/u)).toBeNull()
     );
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("a replayed save keeps the notice when another writer changed disk since", async () => {
+    await lostSaveThenNotice();
+    diskHash = "hash-v2-from-someone-else";
+    putResponses.push(replayedSave("hash-v1"));
+    ctrlS();
+
+    await waitFor(() => expect(docLoads).toBe(2));
+    expect(screen.getByText(/changed on disk/u)).toBeTruthy();
   });
 });

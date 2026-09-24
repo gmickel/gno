@@ -130,6 +130,8 @@ interface UpdateDocResponse {
     sourceHash: string;
     modifiedAt?: string;
   };
+  /** Present when the save carried a request ID. */
+  request?: { replayed: boolean };
 }
 
 interface DocsAutocompleteResponse {
@@ -364,10 +366,21 @@ export default function DocumentEditor({ navigate }: PageProps) {
         return false;
       }
 
-      // The save was checked against the loaded revision, so disk now holds
-      // exactly this content: any earlier change notice is stale.
-      ignoreDocEventsUntilRef.current = Date.now() + 5_000;
-      setExternalChangeNotice(null);
+      if (data?.request?.replayed) {
+        // A replay reports an earlier commit; disk may have moved on since.
+        // Clear the change notice only if the file still holds that commit.
+        const { data: latest } = await apiFetch<DocData>(
+          `/api/doc?uri=${encodeURIComponent(current.uri)}`
+        );
+        if (latest?.source.sourceHash === data.version.sourceHash) {
+          setExternalChangeNotice(null);
+        }
+      } else {
+        // Written now against the loaded revision: the next change event is
+        // this save's own sync, and any earlier notice is stale.
+        ignoreDocEventsUntilRef.current = Date.now() + 5_000;
+        setExternalChangeNotice(null);
+      }
       const previous = committedContentRef.current;
       if (previous !== contentToSave) {
         appendLocalHistory(current.docid, previous);
@@ -614,10 +627,16 @@ export default function DocumentEditor({ navigate }: PageProps) {
     loadDocument();
   }, [loadDocument]);
 
+  // Judge each change event once; later doc updates must not re-raise it.
+  const handledDocEventRef = useRef<string | null>(null);
   useEffect(() => {
     if (!doc || latestDocEvent?.uri !== doc.uri) {
       return;
     }
+    if (handledDocEventRef.current === latestDocEvent.changedAt) {
+      return;
+    }
+    handledDocEventRef.current = latestDocEvent.changedAt;
     if (Date.now() < ignoreDocEventsUntilRef.current) {
       return;
     }
@@ -750,7 +769,11 @@ export default function DocumentEditor({ navigate }: PageProps) {
   // Save and navigate
   const handleSaveAndNavigate = async () => {
     cancelAutosave();
-    await persistContent(content);
+    // A failed save keeps the editor (and its error) instead of losing the draft.
+    if (!(await persistContent(content))) {
+      setShowUnsavedDialog(false);
+      return;
+    }
     // Trigger embedding (fire and forget)
     void apiFetch("/api/embed", { method: "POST" });
     setShowUnsavedDialog(false);
