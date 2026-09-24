@@ -1226,7 +1226,8 @@ describe("unreadable sources never read as up to date", () => {
         withService(
           (service) =>
             service.import({ sourceId: "codex-main" }, { allowPaths: false }),
-          failingListing(codexRoot, code)
+          // The service lists the canonical root (macOS: /private/var).
+          failingListing(await realpath(codexRoot), code)
         ),
         "SESSIONS_SOURCE_UNAVAILABLE"
       );
