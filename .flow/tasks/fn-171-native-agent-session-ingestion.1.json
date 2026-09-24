@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-171-native-agent-session-ingestion",
   "spec_path": ".flow/tasks/fn-171-native-agent-session-ingestion.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Native agent-session ingestion",
   "updated_at": "2026-09-24T08:21:49.422253Z"
 }

@@ -681,7 +681,7 @@
     "plan": 0
   },
   "spec_path": ".flow/specs/fn-171-native-agent-session-ingestion.md",
-  "status": "open",
+  "status": "done",
   "title": "Native agent-session ingestion",
   "tracker": {
     "baseHashFlow": null,
@@ -694,5 +694,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-24T13:34:53.696074Z"
+  "updated_at": "2026-09-24T13:51:46.729533Z"
 }
